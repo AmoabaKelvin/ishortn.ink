@@ -7,6 +7,9 @@ body {
   background: linear-gradient(42deg, #0a2942 0%, #0b473f 100%);
   color: #fff;
 }
+
+/* Include fonts, found in the /public/fonts/, fonts are MazzardH-Regular.otf MazzardL-Bold and Ocean-Semibold */
+
 @font-face {
   font-family: "MazzardH-Regular";
   src: url("/fonts/MazzardH-Regular.otf");
@@ -15,19 +18,26 @@ body {
 @font-face {
   font-family: "MazzardL-Bold";
   src: url("/fonts/MazzardL-Bold.otf");
-  }
+}
 
 @font-face {
   font-family: "Ocean-Semibold";
   src: url("/fonts/Ocean-Semibold.otf");
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+a,
+span,
+li,
+button,
+input,
+textarea,
+select {
+  @apply font-mazzardRegular;
 }
