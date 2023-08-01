@@ -10,7 +10,7 @@ export default function LandingPageNav() {
   return (
     <header className="bg-transparent">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-5" aria-label="Top">
-        <div className="w-full py-6 flex items-center justify-between border-b border-indigo-500 lg:border-none">
+        <div className="w-full py-6 flex items-center justify-between border-b border-yellow-500 lg:border-none">
           <div className="flex items-center">
             <a href="#">
               <span className="text-2xl font-ocean">iShortn</span>
@@ -36,7 +36,7 @@ export default function LandingPageNav() {
             </a>
             <a
               href="#"
-              className="inline-block bg-white py-2 px-4 border border-transparent rounded-md text-base font-medium text-black hover:bg-indigo-50"
+              className="inline-block bg-yellow-500 py-2 px-4 border border-transparent rounded-md text-base font-medium text-black hover:bg-indigo-50"
             >
               Sign up
             </a>
