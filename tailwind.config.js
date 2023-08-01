@@ -7,6 +7,16 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        primary: '#00A878',
+      },
+      fontFamily: {
+        mazzardRegular: ['MazzardH-Regular', 'sans-serif'],
+        mazzardLBold: ['MazzardH-Bold', 'sans-serif'],
+        ocean: [
+          'Ocean-Semibold', 'sans-serif'
+        ]
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':
