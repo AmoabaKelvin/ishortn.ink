@@ -7,14 +7,19 @@ body {
   background: linear-gradient(42deg, #0a2942 0%, #0b473f 100%);
   color: #fff;
 }
+@font-face {
+  font-family: "MazzardH-Regular";
+  src: url("/fonts/MazzardH-Regular.otf");
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+@font-face {
+  font-family: "MazzardL-Bold";
+  src: url("/fonts/MazzardL-Bold.otf");
   }
+
+@font-face {
+  font-family: "Ocean-Semibold";
+  src: url("/fonts/Ocean-Semibold.otf");
 }
 
 body {
