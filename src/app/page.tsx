@@ -4,8 +4,8 @@ export default function Home() {
   return (
     <>
       <LandingPageNav />
-      <main className="flex min-h-screen flex-col items-center p-28">
-        <section className="flex flex-col md:flex-row w-full">
+      <main className="flex min-h-screen flex-col items-center p-4 md:p-28">
+        <section className="flex flex-col gap-6 md:flex-row w-full">
           {/* Left side */}
           <div className="flex flex-col justify-center items-center md:items-start md:justify-start md:w-1/2">
             <h1 className="text-4xl md:text-6xl font-bold text-center md:text-left font-ocean leading-10">
