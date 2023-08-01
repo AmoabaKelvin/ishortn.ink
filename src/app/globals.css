@@ -2,10 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+body {
+  /* Css to apply gradient to top right, from #0a2942 to #0b473f */
+  background: linear-gradient(42deg, #0a2942 0%, #0b473f 100%);
+  color: #fff;
+}
 }
 
 @media (prefers-color-scheme: dark) {
