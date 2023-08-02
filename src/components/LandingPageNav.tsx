@@ -36,7 +36,7 @@ export default function LandingPageNav() {
             </a>
             <a
               href="#"
-              className="inline-block bg-yellow-500 py-2 px-4 border border-transparent rounded-md text-base font-medium text-black hover:bg-indigo-50"
+              className="inline-block bg-yellow-500 py-2 px-4 border border-transparent rounded-md text-base font-medium text-black hover:bg-yellow-600"
             >
               Sign up
             </a>
