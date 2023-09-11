@@ -39,7 +39,7 @@ export function TryOutTab() {
   };
 
   return (
-    <Tabs defaultValue="test" className="w-[500px]">
+    <Tabs defaultValue="shorten-link" className="w-[500px]">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger
           value="shorten-link"
