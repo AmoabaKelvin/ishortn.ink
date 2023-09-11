@@ -13,16 +13,22 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 
+import { toast } from "react-hot-toast";
+
+import { validateUrlInput, copyToClipboard } from "@/lib/utils";
+
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
   const [shortUrl, setShortUrl] = useState("");
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(`https://ishortn.ink/${text}`);
-  };
-
   const handleLinkShortenGeneration = async () => {
-    // TODO: ADD INPUT VALIDATION TO THE ORIGINAL LINK FIELD
+    if (!validateUrlInput({ url: orginalLink })) {
+      toast.error("Please enter a valid URL", {
+        duration: 5000,
+        position: "bottom-right",
+      });
+      return;
+    }
     const response = await fetch("/api/links/", {
       method: "POST",
       headers: {
@@ -76,7 +82,7 @@ export function TryOutTab() {
             <div className="space-y-1">
               {shortUrl && (
                 <div className="p-2 bg-slate-100 rounded font-mono text-sm flex justify-between items-center">
-                  <span>https://ishortn.ink/{shortUrl}</span>
+                  <span>ishortn.ink/{shortUrl}</span>
                   <Button
                     variant={"outline"}
                     size={"sm"}
