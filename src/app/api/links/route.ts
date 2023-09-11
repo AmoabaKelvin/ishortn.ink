@@ -11,7 +11,6 @@ export async function POST(req: Request) {
 
   const q = query(collection(db, "links"), where("original_url", "==", url));
   const docs = await getDocs(q);
-
   const docSnap = docs.docs[0];
 
   if (docSnap) {
@@ -20,13 +19,13 @@ export async function POST(req: Request) {
   }
 
   const shortUrl = await generateShortUrl(url);
-
   await addDoc(collection(db, "links"), {
     original_url: url,
     short_code: shortUrl,
   });
 
-  return new Response(JSON.stringify({ url: shortUrl }), { status: 201 });
+  const urlToShorten = `ishortn.ink/${shortUrl}`;
+  return new Response(JSON.stringify({ url: urlToShorten }), { status: 201 });
 }
 
 export async function GET(req: Request) {
@@ -34,7 +33,6 @@ export async function GET(req: Request) {
 
   const q = query(collection(db, "links"), where("short_code", "==", url));
   const docs = await getDocs(q);
-
   const docSnap = docs.docs[0];
 
   if (docSnap) {
