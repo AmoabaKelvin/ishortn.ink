@@ -1,4 +1,5 @@
-import LandingPageNav from "@/components/LandingPageNav";
+import LandingPageNav from "@/components/landing/nav-bar";
+import { TryOutTab } from "@/components/tryout/shorten-link";
 
 export default function Home() {
   return (
@@ -29,6 +30,11 @@ export default function Home() {
           <div className="flex justify-center items-center md:w-1/2">
             <h1>Some image will be placed here</h1>
           </div>
+        </section>
+
+        {/* section for the try out section, displays a tab where you can switch between generating QR Codes and shortnening links */}
+        <section className="my-16">
+          <TryOutTab />
         </section>
       </main>
     </>
