@@ -1,4 +1,3 @@
-/* This example requires Tailwind CSS v2.0+ */
 const navigation = [
   { name: "How it works?", href: "#" },
   { name: "All features", href: "#" },
