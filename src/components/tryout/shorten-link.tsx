@@ -54,7 +54,7 @@ export function TryOutTab() {
           Generate QR
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="test">
+      <TabsContent value="shorten-link">
         <Card>
           <CardHeader>
             <CardTitle>Shorten a link</CardTitle>
