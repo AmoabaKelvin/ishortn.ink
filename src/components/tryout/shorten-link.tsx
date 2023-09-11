@@ -13,9 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 
+import { copyToClipboard, validateUrlInput } from "@/lib/utils";
 import { toast } from "react-hot-toast";
-
-import { validateUrlInput, copyToClipboard } from "@/lib/utils";
 
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
@@ -82,7 +81,7 @@ export function TryOutTab() {
             <div className="space-y-1">
               {shortUrl && (
                 <div className="p-2 bg-slate-100 rounded font-mono text-sm flex justify-between items-center">
-                  <span>ishortn.ink/{shortUrl}</span>
+                  <span>{shortUrl}</span>
                   <Button
                     variant={"outline"}
                     size={"sm"}
