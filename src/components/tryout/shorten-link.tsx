@@ -13,16 +13,22 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 
+import { toast } from "react-hot-toast";
+
+import { validateUrlInput, copyToClipboard } from "@/lib/utils";
+
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
   const [shortUrl, setShortUrl] = useState("");
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(`https://ishortn.ink/${text}`);
-  };
-
   const handleLinkShortenGeneration = async () => {
-    // TODO: ADD INPUT VALIDATION TO THE ORIGINAL LINK FIELD
+    if (!validateUrlInput(orginalLink)) {
+      toast.error("Please enter a valid URL", {
+        duration: 5000,
+        position: "bottom-right",
+      });
+      return;
+    }
     const response = await fetch("/api/links/", {
       method: "POST",
       headers: {
