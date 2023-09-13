@@ -2,6 +2,8 @@ import { getDocs, addDoc, collection, query, where } from "firebase/firestore";
 import { db } from "../utils/db";
 import { generateShortUrl } from "../utils/links";
 
+const BASE_URL = "ishortn.ink";
+
 export async function POST(req: Request) {
   const { url } = await req.json();
 
@@ -14,8 +16,8 @@ export async function POST(req: Request) {
   const docSnap = docs.docs[0];
 
   if (docSnap) {
-    console.log(docSnap.data());
-    return new Response(JSON.stringify({ url: docSnap.data().original_url }));
+    const alreadyShortenedURL = `${BASE_URL}/${docSnap.data().short_code}`;
+    return new Response(JSON.stringify({ url: alreadyShortenedURL }));
   }
 
   const shortUrl = await generateShortUrl(url);
@@ -24,7 +26,7 @@ export async function POST(req: Request) {
     short_code: shortUrl,
   });
 
-  const urlToShorten = `ishortn.ink/${shortUrl}`;
+  const urlToShorten = `${BASE_URL}/${shortUrl}`;
   return new Response(JSON.stringify({ url: urlToShorten }), { status: 201 });
 }
 
