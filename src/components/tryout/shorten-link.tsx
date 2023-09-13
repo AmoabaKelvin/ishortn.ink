@@ -15,10 +15,12 @@ import { useState } from "react";
 
 import { copyToClipboard, validateUrlInput } from "@/lib/utils";
 import { toast } from "react-hot-toast";
+import { TbClipboardCopy } from "react-icons/tb";
 
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
   const [shortUrl, setShortUrl] = useState("");
+  const [urlState, setUrlState] = useState("Copy");
 
   const handleLinkShortenGeneration = async () => {
     if (!validateUrlInput({ url: orginalLink })) {
@@ -41,6 +43,16 @@ export function TryOutTab() {
     const data = await response.json();
     const { url } = data;
     setShortUrl(url);
+  };
+
+  //TODO: use function from lib utils
+  const CopyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setUrlState("Copied!");
+    });
+    setTimeout(() => {
+      setUrlState("Copy");
+    }, 3000);
   };
 
   return (
@@ -85,9 +97,13 @@ export function TryOutTab() {
                   <Button
                     variant={"outline"}
                     size={"sm"}
-                    onClick={() => copyToClipboard(shortUrl)}
+                    onClick={() => CopyToClipboard(shortUrl)}
+                    className="hover:from-green-700 hover:to-green-700 hover:border-green-500 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   >
-                    Copy
+                    <span className="flex items-center justify-center">
+                      {urlState}
+                      <TbClipboardCopy className="ml-2" />
+                    </span>
                   </Button>
                 </div>
               )}
