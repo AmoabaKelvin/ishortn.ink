@@ -24,7 +24,7 @@ export default function Home() {
       <main className="flex min-h-screen w-screen overflow-x-hidden flex-col items-center p-4 md:p-28">
         <section className="flex flex-col gap-6 md:flex-row w-full">
           {/* Left side */}
-          <div className="flex flex-col mt-16 -mt-5  justify-center items-center md:items-start md:justify-start md:w-1/2">
+          <div className="flex flex-col mt-16 md:-mt-5  justify-center items-center md:items-start md:justify-start md:w-1/2">
             <h1 className=" font-bold text-center md:text-left font-ocean leading-10">
               <span className="leading-10 text-3xl md:text-6xl ">
                 Transform links{" "}
