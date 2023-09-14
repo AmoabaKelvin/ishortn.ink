@@ -16,6 +16,7 @@ import { useState } from "react";
 import { copyToClipboard, validateUrlInput } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import { TbClipboardCopy } from "react-icons/tb";
+import { cn } from "@/lib/utils";
 
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
@@ -114,11 +115,10 @@ export function TryOutTab() {
           <CardFooter>
             <Button
               onClick={handleLinkShortenGeneration}
-              className={`text-sm text-white bg-black hover:text-green-600 hover:bg-green-50 active:scale-95 active:ring-4 active:ring-green-300 transition-transform duration-300 ease-in-out ${
-                loading
-                  ? "bg-green-300 cursor-not-allowed hover:bg-green-300"
-                  : ""
-              }`}
+              className={cn(
+                "text-sm text-white bg-black hover:text-green-600 hover:bg-slate-700 active:scale-95 active:ring-4 active:ring-green-300 transition-transform duration-300 ease-in-out",
+                loading && "bg-green-300 cursor-not-allowed hover:bg-green-300"
+              )}
               // disabled={loading}
             >
               {loading ? (
