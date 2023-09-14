@@ -13,17 +13,22 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 
-import { copyToClipboard, validateUrlInput } from "@/lib/utils";
+import { linkSchema } from "@/config/schemas/link";
 import { toast } from "react-hot-toast";
 import { TbClipboardCopy } from "react-icons/tb";
 
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
+  const [linkAlias, setLinkAlias] = useState(""); //TODO: use this to generate custom links [optional]
   const [shortUrl, setShortUrl] = useState("");
   const [urlState, setUrlState] = useState("Copy");
 
   const handleLinkShortenGeneration = async () => {
-    if (!validateUrlInput({ url: orginalLink })) {
+    const linkData = linkSchema.safeParse({
+      url: orginalLink,
+      alias: linkAlias,
+    });
+    if (!linkData.success) {
       toast.error("Please enter a valid URL", {
         duration: 5000,
         position: "bottom-right",
@@ -36,7 +41,8 @@ export function TryOutTab() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        url: orginalLink,
+        url: linkData.data.url,
+        alias: linkData.data.alias,
       }),
     });
 
@@ -45,7 +51,6 @@ export function TryOutTab() {
     setShortUrl(url);
   };
 
-  //TODO: use function from lib utils
   const CopyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setUrlState("Copied!");
@@ -83,10 +88,27 @@ export function TryOutTab() {
             <div className="space-y-1">
               <Label htmlFor="name">URL</Label>
               <Input
-                id="name"
+                id="url"
                 placeholder="https://somelongurl.com"
+                type="url"
                 onChange={(e) => setOrginalLink(e.target.value)}
                 value={orginalLink}
+              />
+
+              {/* Custom link aliases */}
+            </div>
+            <div>
+              <Label htmlFor="alias">Customize your link</Label>
+              <span className="text-xs text-gray-400">(optional)</span>
+              <Input
+                id="alias"
+                placeholder="Enter an alias for your link"
+                type="text"
+                onChange={(e) => setLinkAlias(e.target.value)}
+                value={linkAlias}
+                maxLength={10}
+                minLength={3}
+                className="border-slate-100"
               />
             </div>
 
