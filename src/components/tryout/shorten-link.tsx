@@ -15,7 +15,7 @@ import { useState } from "react";
 
 import { copyToClipboard, validateUrlInput } from "@/lib/utils";
 import { toast } from "react-hot-toast";
-import { TbClipboardCopy } from "react-icons/tb";
+import { ClapperboardIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -106,7 +106,7 @@ export function TryOutTab() {
                   >
                     <span className="flex items-center justify-center">
                       {urlState}
-                      <TbClipboardCopy className="ml-2" />
+                      <ClapperboardIcon className="ml-2" />
                     </span>
                   </Button>
                 </div>
