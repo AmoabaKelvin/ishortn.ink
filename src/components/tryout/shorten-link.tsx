@@ -17,6 +17,7 @@ import { copyToClipboard, validateUrlInput } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import { TbClipboardCopy } from "react-icons/tb";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
@@ -119,12 +120,12 @@ export function TryOutTab() {
                 "text-sm text-white bg-black hover:text-green-600 hover:bg-slate-700 active:scale-95 active:ring-4 active:ring-green-300 transition-transform duration-300 ease-in-out",
                 loading && "bg-green-300 cursor-not-allowed hover:bg-green-300"
               )}
-              // disabled={loading}
+              disabled={loading}
             >
               {loading ? (
                 <div className="flex">
                   <span className="text-md text-black">loading...</span>
-                  <div className="ml-2 text-green-600 inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                  <Loader2 className="animate-spin ml-2 text-green-600" />
                 </div>
               ) : (
                 "Shorten URL"
