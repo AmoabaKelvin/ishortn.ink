@@ -1,42 +1,34 @@
-import { getDocs, addDoc, collection, query, where } from "firebase/firestore";
-import { db } from "../utils/db";
-import { generateShortUrl } from "../utils/links";
+import * as Queries from "./queries";
+
+const BASE_URL = "ishortn.ink";
 
 export async function POST(req: Request) {
-  const { url } = await req.json();
+  const { url, alias } = await req.json();
 
   if (!url) {
     return new Response("Invalid URL", { status: 400 });
   }
 
-  const q = query(collection(db, "links"), where("original_url", "==", url));
-  const docs = await getDocs(q);
-  const docSnap = docs.docs[0];
-
-  if (docSnap) {
-    console.log(docSnap.data());
-    return new Response(JSON.stringify({ url: docSnap.data().original_url }));
+  const existingUrl = await Queries.getLink(url);
+  if (alias && existingUrl && existingUrl.alias === alias) {
+    return new Response(JSON.stringify({ url: `${BASE_URL}/${alias}` }));
   }
 
-  const shortUrl = await generateShortUrl(url);
-  await addDoc(collection(db, "links"), {
-    original_url: url,
-    short_code: shortUrl,
-  });
-
-  const urlToShorten = `ishortn.ink/${shortUrl}`;
-  return new Response(JSON.stringify({ url: urlToShorten }), { status: 201 });
+  const newLink = await Queries.insertLink(url, alias);
+  return new Response(JSON.stringify({ url: `${BASE_URL}/${newLink}` }));
 }
 
 export async function GET(req: Request) {
-  const url = new URL(req.url).searchParams.get("url");
+  const alias = new URL(req.url).searchParams.get("alias");
 
-  const q = query(collection(db, "links"), where("short_code", "==", url));
-  const docs = await getDocs(q);
-  const docSnap = docs.docs[0];
+  if (!alias) {
+    return new Response("Invalid URL", { status: 400 });
+  }
 
-  if (docSnap) {
-    return new Response(JSON.stringify({ url: docSnap.data().original_url }));
+  const existingUrl = await Queries.retrieveShortenedLink(alias);
+
+  if (existingUrl) {
+    return new Response(JSON.stringify({ url: existingUrl }));
   }
 
   return new Response("Not Found", { status: 404 });
