@@ -21,6 +21,7 @@ export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
   const [shortUrl, setShortUrl] = useState("");
   const [urlState, setUrlState] = useState("Copy");
+  const [loading, setLoading] = useState(false);
 
   const handleLinkShortenGeneration = async () => {
     if (!validateUrlInput({ url: orginalLink })) {
@@ -30,6 +31,7 @@ export function TryOutTab() {
       });
       return;
     }
+    setLoading(true);
     const response = await fetch("/api/links/", {
       method: "POST",
       headers: {
@@ -43,6 +45,7 @@ export function TryOutTab() {
     const data = await response.json();
     const { url } = data;
     setShortUrl(url);
+    setLoading(false);
   };
 
   //TODO: use function from lib utils
@@ -89,7 +92,6 @@ export function TryOutTab() {
                 value={orginalLink}
               />
             </div>
-
             <div className="space-y-1">
               {shortUrl && (
                 <div className="p-2 bg-slate-100 rounded font-mono text-sm flex justify-between items-center">
@@ -112,9 +114,19 @@ export function TryOutTab() {
           <CardFooter>
             <Button
               onClick={handleLinkShortenGeneration}
-              className="text-sm text-white bg-black hover:text-green-600 hover:bg-green-50 active:scale-95 active:ring-4 active:ring-green-300 transition-transform duration-300 ease-in-out"
+              className={`text-sm text-white bg-black hover:text-green-600 hover:bg-green-50 active:scale-95 active:ring-4 active:ring-green-300 transition-transform duration-300 ease-in-out ${
+                loading ? "opacity-90 cursor-not-allowed" : ""
+              }`}
+              disabled={loading}
             >
-              Shorten Link
+              {loading ? (
+                <div className="flex">
+                  <span className="text-md text-white">loading...</span>
+                  <div className="ml-2 text-green-600 inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                </div>
+              ) : (
+                "Shorten URL"
+              )}
             </Button>
           </CardFooter>
         </Card>
