@@ -15,7 +15,7 @@ export const checkIfAliasExists = async (alias: string) => {
 
 export const insertLink = async (
   url: string,
-  alias: string
+  alias: string,
 ): Promise<string> => {
   const shortCode = await generateShortUrl(url);
   const whatToInsert = alias ? alias : shortCode;
@@ -37,7 +37,7 @@ export const getLink = async (url: string): Promise<Link | null> => {
 };
 
 export const retrieveShortenedLink = async (
-  alias: string
+  alias: string,
 ): Promise<string | null> => {
   const q = query(collection(db, "links"), where("alias", "==", alias));
   const docs = await getDocs(q);
