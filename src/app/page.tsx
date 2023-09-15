@@ -1,6 +1,6 @@
 "use client";
-import LandingPageNav from "@/components/landing/nav-bar";
-import { LinkShortenerAndQRGenerator } from "@/components/tryout/shorten-link";
+import LandingPageNav from "@/components/landing-page/nav-bar";
+import { LinkShortenerAndQRGenerator } from "@/components/forms/link-shortener-and-qr-generator";
 import { useRef } from "react";
 import landingImage from "../../public/images/home-image-removebg.png";
 import Image from "next/image";
