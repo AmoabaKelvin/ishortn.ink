@@ -15,9 +15,8 @@ import { useState } from "react";
 
 import { linkSchema } from "@/config/schemas/link";
 import { toast } from "react-hot-toast";
-import { Clipboard } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { Icons } from "@/components/icons";
 
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
@@ -128,7 +127,7 @@ export function TryOutTab() {
                   >
                     <span className="flex items-center justify-center">
                       {urlState}
-                      <Clipboard className="ml-2" />
+                      <Icons.clipboard className="ml-2" />
                     </span>
                   </Button>
                 </div>
@@ -147,7 +146,7 @@ export function TryOutTab() {
               {loading ? (
                 <div className="flex">
                   <span className="text-md text-black">loading...</span>
-                  <Loader2 className="animate-spin ml-2 text-green-600" />
+                  <Icons.loadingSpinner className="animate-spin ml-2 text-green-600" />
                 </div>
               ) : (
                 "Shorten URL"
