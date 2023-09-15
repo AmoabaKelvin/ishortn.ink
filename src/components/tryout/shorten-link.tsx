@@ -19,7 +19,7 @@ import { TbClipboardCopy } from "react-icons/tb";
 
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
-  const [linkAlias, setLinkAlias] = useState(""); //TODO: use this to generate custom links [optional]
+  const [linkAlias, setLinkAlias] = useState("");
   const [shortUrl, setShortUrl] = useState("");
   const [urlState, setUrlState] = useState("Copy");
 
