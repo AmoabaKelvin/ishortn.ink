@@ -139,7 +139,7 @@ export function LinkShortenerAndQRGenerator() {
               onClick={handleLinkShortenGeneration}
               className={cn(
                 "text-sm text-white bg-black hover:text-green-600 hover:bg-slate-700 active:scale-95 active:ring-4 active:ring-green-300 transition-transform duration-300 ease-in-out",
-                loading && "bg-green-300 cursor-not-allowed hover:bg-green-300"
+                loading && "bg-green-300 cursor-not-allowed hover:bg-green-300",
               )}
               disabled={loading}
             >
