@@ -18,7 +18,7 @@ import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { Icons } from "@/components/icons";
 
-export function TryOutTab() {
+export function LinkShortenerAndQRGenerator() {
   const [orginalLink, setOrginalLink] = useState("");
   const [linkAlias, setLinkAlias] = useState("");
   const [shortUrl, setShortUrl] = useState("");

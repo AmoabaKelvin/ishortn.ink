@@ -1,6 +1,6 @@
 "use client";
 import LandingPageNav from "@/components/landing/nav-bar";
-import { TryOutTab } from "@/components/tryout/shorten-link";
+import { LinkShortenerAndQRGenerator } from "@/components/tryout/shorten-link";
 import { useRef } from "react";
 import landingImage from "../../public/images/home-image-removebg.png";
 import Image from "next/image";
@@ -53,7 +53,6 @@ export default function Home() {
               width={400}
               height={400}
             />{" "}
-            {/* Use the Image component */}
           </div>
         </section>
 
@@ -61,7 +60,7 @@ export default function Home() {
         <section className=" w-11/12 flex justify-center my-16">
           <div ref={tryOutRef}>
             {" "}
-            <TryOutTab />{" "}
+            <LinkShortenerAndQRGenerator />{" "}
           </div>
         </section>
       </main>
