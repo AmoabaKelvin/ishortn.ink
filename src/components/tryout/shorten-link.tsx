@@ -15,13 +15,16 @@ import { useState } from "react";
 
 import { linkSchema } from "@/config/schemas/link";
 import { toast } from "react-hot-toast";
-import { TbClipboardCopy } from "react-icons/tb";
+import { Clipboard } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 export function TryOutTab() {
   const [orginalLink, setOrginalLink] = useState("");
   const [linkAlias, setLinkAlias] = useState("");
   const [shortUrl, setShortUrl] = useState("");
   const [urlState, setUrlState] = useState("Copy");
+  const [loading, setLoading] = useState(false);
 
   const handleLinkShortenGeneration = async () => {
     const linkData = linkSchema.safeParse({
@@ -35,6 +38,7 @@ export function TryOutTab() {
       });
       return;
     }
+    setLoading(true);
     const response = await fetch("/api/links/", {
       method: "POST",
       headers: {
@@ -49,6 +53,7 @@ export function TryOutTab() {
     const data = await response.json();
     const { url } = data;
     setShortUrl(url);
+    setLoading(false);
   };
 
   const CopyToClipboard = (text: string) => {
@@ -111,7 +116,6 @@ export function TryOutTab() {
                 className="border-slate-100"
               />
             </div>
-
             <div className="space-y-1">
               {shortUrl && (
                 <div className="p-2 bg-slate-100 rounded font-mono text-sm flex justify-between items-center">
@@ -124,7 +128,7 @@ export function TryOutTab() {
                   >
                     <span className="flex items-center justify-center">
                       {urlState}
-                      <TbClipboardCopy className="ml-2" />
+                      <Clipboard className="ml-2" />
                     </span>
                   </Button>
                 </div>
@@ -132,7 +136,23 @@ export function TryOutTab() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleLinkShortenGeneration}>Shorten Link</Button>
+            <Button
+              onClick={handleLinkShortenGeneration}
+              className={cn(
+                "text-sm text-white bg-black hover:text-green-600 hover:bg-slate-700 active:scale-95 active:ring-4 active:ring-green-300 transition-transform duration-300 ease-in-out",
+                loading && "bg-green-300 cursor-not-allowed hover:bg-green-300"
+              )}
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="flex">
+                  <span className="text-md text-black">loading...</span>
+                  <Loader2 className="animate-spin ml-2 text-green-600" />
+                </div>
+              ) : (
+                "Shorten URL"
+              )}
+            </Button>
           </CardFooter>
         </Card>
       </TabsContent>
@@ -155,7 +175,9 @@ export function TryOutTab() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button>Generate</Button>
+            <Button className="text-sm text-white bg-black hover:text-green-600 hover:bg-green-50 active:scale-95 active:ring-4 active:ring-green-300 transition-transform duration-300 ease-in-out">
+              Generate
+            </Button>
           </CardFooter>
         </Card>
       </TabsContent>
