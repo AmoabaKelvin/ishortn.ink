@@ -26,7 +26,7 @@ export default function Home() {
                 Transform links{" "}
               </span>
               <br />
-              <span className="text-green-500 text-4xl md:text-5xl">
+              <span className="text-green-500 text-4xl md:text-5xl font-ocean">
                 unleash results
               </span>
             </h1>
