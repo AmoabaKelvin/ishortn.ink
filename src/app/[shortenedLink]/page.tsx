@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 const getTheOriginalLink = async (shortenedLink: string) => {
   const host = process.env.HOST;
   const response = await fetch(host + "/api/links?alias=" + shortenedLink);
+  if (!response.ok) {
+    throw new Error("Something went wrong");
+  }
   const data = await response.json();
   return data.url;
 };
