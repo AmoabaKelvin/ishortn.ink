@@ -20,7 +20,7 @@ export const insertLink = async (
   const shortCode = await generateShortUrl(url);
   const whatToInsert = alias ? alias : shortCode;
   await addDoc(collection(db, "links"), {
-    originalUrl: url,
+    originalUrl: url.trim(),
     alias: whatToInsert,
   });
   return whatToInsert;
