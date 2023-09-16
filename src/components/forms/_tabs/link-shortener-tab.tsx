@@ -80,7 +80,7 @@ const LinkShortenerTab = () => {
               type="text"
               className={cn(
                 "border-slate-100",
-                errors.alias && "border-red-500"
+                errors.alias && "border-red-500",
               )}
               {...register("alias", {
                 required: false,
