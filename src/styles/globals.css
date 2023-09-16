@@ -80,3 +80,15 @@ body {
   background: linear-gradient(42deg, #0a2942 0%, #0b473f 100%);
   color: #fff;
 }
+
+/* Use MazzardH-Regular font */
+@font-face {
+  font-family: "MazzardH";
+  src: url("/fonts/MazzardH-Regular.otf") format("truetype");
+}
+
+/* Use MazzardH-Bold font */
+@font-face {
+  font-family: "Ocean";
+  src: url("/fonts/Ocean-Semibold.otf") format("truetype");
+}
