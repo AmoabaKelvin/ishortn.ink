@@ -1,3 +1,6 @@
+import Image from "next/image";
+import Logo from "../../../public/images/logo-text-white.png";
+
 const navigation = [
   { name: "How it works?", href: "#" },
   { name: "All features", href: "#" },
@@ -12,7 +15,7 @@ export default function LandingPageNav() {
         <div className=" mx-auto py-6 flex items-center justify-between border-b border-yellow-500 lg:border-none">
           <div className="flex items-center">
             <a href="#">
-              <span className="text-2xl font-ocean">iShortn</span>
+              <Image src={Logo} alt="logo" width={150} height={150} />
             </a>
           </div>
           <div className="hidden ml-10 space-x-8 lg:block">
