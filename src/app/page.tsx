@@ -4,6 +4,7 @@ import { LinkShortenerAndQRGenerator } from "@/components/forms/link-shortener-a
 import { useRef } from "react";
 import landingImage from "../../public/images/home-image-removebg.png";
 import Image from "next/image";
+import { FrequentlyAskedQuestions } from "@/components/landing-page/faq";
 
 export default function Home() {
   const tryOutRef = useRef<HTMLDivElement | null>(null);
@@ -62,6 +63,13 @@ export default function Home() {
             {" "}
             <LinkShortenerAndQRGenerator />{" "}
           </div>
+        </section>
+
+        <section className="md:w-6/12">
+          <h1 className="text-2xl font-mazzard font-bold text-center my-10">
+            Frequently Asked Questions
+          </h1>
+          <FrequentlyAskedQuestions />
         </section>
       </main>
     </>
