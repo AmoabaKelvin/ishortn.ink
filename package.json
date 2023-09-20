@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "format:check": "prettier -c \"**/*.{ts,tsx,md}\""
+    "format:check": "prettier -c \"**/*.{ts,tsx,md}\"",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "5.3.1",
