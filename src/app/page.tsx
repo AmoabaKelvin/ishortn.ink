@@ -5,6 +5,7 @@ import { useRef } from "react";
 import landingImage from "../../public/images/home-image-removebg.png";
 import Image from "next/image";
 import { FrequentlyAskedQuestions } from "@/components/landing-page/faq";
+import PageFooter from "@/components/landing-page/footer";
 
 export default function Home() {
   const tryOutRef = useRef<HTMLDivElement | null>(null);
@@ -72,6 +73,7 @@ export default function Home() {
           <FrequentlyAskedQuestions />
         </section>
       </main>
+      <PageFooter />
     </>
   );
 }
