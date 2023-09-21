@@ -18,10 +18,10 @@ export default function Home() {
   return (
     <>
       <LandingPageNav />
-      <main className="flex min-h-screen flex-col items-center p-4 md:p-28">
-        <section className="flex flex-col gap-6 md:flex-row w-full">
+      <main className="flex min-h-screen w-screen flex-col items-center p-4 md:pt-40 px-16">
+        <section className="flex flex-col gap-6 md:flex-row w-4/5">
           {/* Left side */}
-          <div className="flex flex-col mt-16 md:-mt-5  justify-center items-center lg:items-start lg:justify-start lg:w-2/3">
+          <div className="flex flex-col mt-16 md:-mt-5  justify-center items-center lg:items-start lg:justify-start w-full">
             <h1 className=" font-bold text-center lg:text-left font-ocean leading-10">
               <span className="leading-10 text-5xl md:text-6xl ">
                 Transform links{" "}

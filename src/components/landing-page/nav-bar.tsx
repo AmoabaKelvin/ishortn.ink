@@ -12,7 +12,7 @@ export default function LandingPageNav() {
   return (
     <header className="bg-transparent overflow-hidden">
       <nav
-        className=" w-11/12 md:w-4/5  mx-auto px-4 sm:px-6 lg:px-5"
+        className=" w-11/12 md:w-4/5  mx-auto px-4 sm:px-6 lg:px-5 py-5"
         aria-label="Top"
       >
         <div className=" mx-auto py-2 flex items-center justify-between border-b border-yellow-500 lg:border-none">
