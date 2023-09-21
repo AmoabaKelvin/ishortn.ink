@@ -15,10 +15,10 @@ export default function LandingPageNav() {
         className=" w-11/12 md:w-4/5  mx-auto px-4 sm:px-6 lg:px-5"
         aria-label="Top"
       >
-        <div className=" mx-auto py-6 flex items-center justify-between border-b border-yellow-500 lg:border-none">
+        <div className=" mx-auto py-2 flex items-center justify-between border-b border-yellow-500 lg:border-none">
           <div className="flex items-center">
             <a href="#">
-              <Image src={Logo} alt="logo" width={150} height={150} />
+              <Image src={Logo} alt="logo" width={100} height={100} />
             </a>
           </div>
           <div className="hidden ml-10 space-x-8 lg:block">
@@ -35,24 +35,24 @@ export default function LandingPageNav() {
           <div className="ml-10 space-x-4">
             <a
               href="#"
-              className="inline-block bg-green-500 py-2 px-4 border border-transparent rounded-md text-base font-medium text-white hover:bg-opacity-75"
+              className="inline-block bg-green-500 text-sm px-1 py-1 md:py-2 md:px-4  border border-transparent rounded-md md:text-base font-medium text-white hover:bg-opacity-75"
             >
               Sign in
             </a>
             <a
               href="#"
-              className="inline-block bg-yellow-500 py-2 px-4 border border-transparent rounded-md text-base font-medium text-black hover:bg-yellow-600"
+              className="inline-block bg-yellow-500 text-sm px-1 py-1 md:py-2 md:px-4 border border-transparent rounded-md md:text-base font-medium text-black hover:bg-yellow-600"
             >
               Sign up
             </a>
           </div>
         </div>
-        <div className="py-4 flex flex-wrap justify-center space-x-6 lg:hidden">
+        <div className="py-4 flex flex-wrap justify-center space-x-4 lg:hidden">
           {navigation.map((link) => (
             <a
               key={link.name}
               href={link.href}
-              className="text-base font-medium text-white hover:text-indigo-50"
+              className="text-sm font-medium text-white hover:text-indigo-50"
             >
               {link.name}
             </a>
