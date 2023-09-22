@@ -19,8 +19,8 @@ export default function Home() {
   return (
     <>
       <LandingPageNav />
-      <main className="flex min-h-screen w-screen flex-col items-center p-4 md:pt-40 px-16">
-        <section className="flex flex-col gap-6 md:flex-row w-4/5">
+      <main className="flex min-h-screen w-screen flex-col items-center p-4 md:pt-40 lg:px-16">
+        <section className="flex flex-col gap-6 md:flex-row w-full md:w-4/5">
           {/* Left side */}
           <div className="flex flex-col mt-16 md:-mt-5  justify-center items-center lg:items-start lg:justify-start w-full">
             <h1 className=" font-bold text-center lg:text-left font-ocean leading-10">
@@ -66,7 +66,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="md:w-6/12">
+        <section className="w-11/12 md:w-4/5 lg:w-3/5">
           <h1 className="text-2xl font-mazzard font-bold text-center my-10">
             Frequently Asked Questions
           </h1>

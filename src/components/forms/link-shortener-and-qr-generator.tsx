@@ -4,7 +4,7 @@ import QRGenerationTab from "./_tabs/qr-generation-tab";
 
 export function LinkShortenerAndQRGenerator() {
   return (
-    <Tabs defaultValue="shorten-link" className="w-[400px] md:w-[500px]">
+    <Tabs defaultValue="shorten-link" className="w-full md:w-[500px]">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger
           value="shorten-link"
