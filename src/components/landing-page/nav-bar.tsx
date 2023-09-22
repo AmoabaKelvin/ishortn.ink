@@ -47,7 +47,7 @@ export default function LandingPageNav() {
             </a>
           </div>
         </div>
-        <div className="py-4 flex flex-wrap justify-center space-x-4 lg:hidden">
+        <div className="py-4 flex flex-wrap justify-center space-x-8 md:space-x-28 lg:hidden">
           {navigation.map((link) => (
             <a
               key={link.name}
