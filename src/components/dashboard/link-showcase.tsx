@@ -5,14 +5,20 @@ import { Badge } from "@/components/ui/badge";
 import { Copy } from "lucide-react";
 
 import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 
 const LinkShowcase = () => {
   const { toast } = useToast();
+  const router = useRouter();
+
   return (
     <div className="flex items-center justify-between px-6 py-4 rounded-md bg-slate-50">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
-          <p className="flex items-center text-blue-600 cursor-pointer hover:underline">
+          <p
+            className="flex items-center text-blue-600 cursor-pointer hover:underline"
+            onClick={() => router.push("/dashboard/analytics/1")}
+          >
             <span className="inline-block w-2 h-2 mr-2 bg-blue-300 rounded-full animate-pulse"></span>
             ishortn.ink/sth
           </p>
