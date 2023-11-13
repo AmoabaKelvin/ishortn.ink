@@ -75,7 +75,7 @@
   }
 }
 
-body {
+.gradient {
   /* Css to apply gradient to top right, from #0a2942 to #0b473f */
   background: linear-gradient(42deg, #0a2942 0%, #0b473f 100%);
   color: #fff;
