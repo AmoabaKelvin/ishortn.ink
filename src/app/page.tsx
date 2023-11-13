@@ -1,11 +1,11 @@
 "use client";
-import LandingPageNav from "@/components/landing-page/nav-bar";
 import { LinkShortenerAndQRGenerator } from "@/components/forms/link-shortener-and-qr-generator";
-import { useRef } from "react";
-import landingImage from "../../public/images/home-image-removebg.png";
-import Image from "next/image";
 import { FrequentlyAskedQuestions } from "@/components/landing-page/faq";
 import PageFooter from "@/components/landing-page/footer";
+import LandingPageNav from "@/components/landing-page/nav-bar";
+import Image from "next/image";
+import { useRef } from "react";
+import landingImage from "../../public/images/home-image-removebg.png";
 
 export default function Home() {
   const tryOutRef = useRef<HTMLDivElement | null>(null);
@@ -17,7 +17,7 @@ export default function Home() {
   };
 
   return (
-    <>
+    <html className="gradient">
       <LandingPageNav />
       <main className="flex flex-col items-center min-h-screen p-4 md:p-28">
         <section className="flex flex-col w-full gap-6 md:flex-row">
@@ -74,6 +74,6 @@ export default function Home() {
         </section>
       </main>
       <PageFooter />
-    </>
+    </html>
   );
 }
