@@ -6,6 +6,8 @@ import { Toaster as ShadToaster } from "@/components/ui/toaster";
 import { Toaster } from "react-hot-toast";
 const nunito = Nunito_Sans({ subsets: ["latin"] });
 
+import { ClerkProvider } from "@clerk/nextjs";
+
 export const metadata: Metadata = {
   title: "iShortn",
   description: `Power up your links with our AI-driven analytics, advanced URL
@@ -29,12 +31,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={nunito.className}>
-        <Toaster />
-        <ShadToaster />
-        {children}
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body className={nunito.className}>
+          <Toaster />
+          <ShadToaster />
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
