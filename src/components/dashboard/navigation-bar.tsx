@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { UserButton } from "@clerk/nextjs";
 
 const NavigationBar = () => {
   return (
@@ -6,7 +6,7 @@ const NavigationBar = () => {
       <h2 className="text-xl font-semibold leading-tight text-gray-800">
         <span className="text-blue-600">ishortn.ink</span> / Dashboard
       </h2>
-      <Button className="w-10 h-10 rounded-full">KA</Button>
+      <UserButton />
     </div>
   );
 };
