@@ -10,12 +10,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model ShortenedUrl {
   id        Int      @id @default(autoincrement())
   url       String   @db.Text
-  alias      String   @unique
+  alias     String   @unique
   createdAt DateTime @default(now())
 }
 
-// Future features: updates, user account, analytics
+model User {
+  id        String   @id @unique
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  imageUrl  String?
+}
