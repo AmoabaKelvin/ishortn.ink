@@ -10,11 +10,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model ShortenedUrl {
-  id        Int      @id @default(autoincrement())
-  url       String   @db.Text
-  alias     String   @unique
-  createdAt DateTime @default(now())
+model Link {
+  id         Int         @id @default(autoincrement())
+  url        String      @db.Text
+  alias      String      @unique
+  createdAt  DateTime    @default(now())
+  linkVisits LinkVisit[]
+
+  User   User?   @relation(fields: [userId], references: [id])
+  userId String?
 }
 
 model User {
@@ -23,4 +27,18 @@ model User {
   email     String   @unique
   createdAt DateTime @default(now())
   imageUrl  String?
+  links     Link[]
+}
+
+model LinkVisit {
+  // Number of clicks will be the number of rows in this table
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  linkId    Int
+  link      Link     @relation(fields: [linkId], references: [id])
+  device    String
+  browser   String
+  os        String
+  country   String
+  city      String
 }
