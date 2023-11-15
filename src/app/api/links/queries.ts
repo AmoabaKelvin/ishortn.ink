@@ -1,12 +1,14 @@
-import { generateShortUrl } from "../utils/links";
 import { Link } from "@/config/schemas/link";
+import { generateShortUrl } from "../utils/links";
+
+import { auth } from "@clerk/nextjs";
 
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 export const checkIfAliasExists = async (alias: string) => {
-  const link = await prisma.shortenedUrl.findUnique({
+  const link = await prisma.link.findUnique({
     where: {
       alias,
     },
@@ -17,9 +19,21 @@ export const checkIfAliasExists = async (alias: string) => {
 
 export const insertLink = async (
   url: string,
-  alias: string,
+  alias: string
 ): Promise<string> => {
-  const link = await prisma.shortenedUrl.create({
+  const { userId } = auth();
+  if (userId) {
+    // Create a new link with the user
+    const link = await prisma.link.create({
+      data: {
+        alias: alias || (await generateShortUrl(url)),
+        url,
+        userId,
+      },
+    });
+    return link.alias;
+  }
+  const link = await prisma.link.create({
     data: {
       alias: alias || (await generateShortUrl(url)),
       url,
@@ -29,7 +43,7 @@ export const insertLink = async (
 };
 
 export const getLink = async (url: string): Promise<Link | null> => {
-  const link = await prisma.shortenedUrl.findFirst({
+  const link = await prisma.link.findFirst({
     where: {
       url,
     },
@@ -39,9 +53,9 @@ export const getLink = async (url: string): Promise<Link | null> => {
 };
 
 export const retrieveShortenedLink = async (
-  alias: string,
+  alias: string
 ): Promise<string | null> => {
-  const link = await prisma.shortenedUrl.findUnique({
+  const link = await prisma.link.findUnique({
     where: {
       alias,
     },
