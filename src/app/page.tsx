@@ -17,7 +17,7 @@ export default function Home() {
   };
 
   return (
-    <body className="h-full gradient">
+    <div className="h-full gradient">
       <LandingPageNav />
       <main className="flex flex-col items-center min-h-screen p-4 md:p-28">
         <section className="flex flex-col w-full gap-6 md:flex-row">
@@ -74,6 +74,6 @@ export default function Home() {
         </section>
       </main>
       <PageFooter />
-    </body>
+    </div>
   );
 }
