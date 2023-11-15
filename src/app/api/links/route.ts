@@ -2,6 +2,10 @@ import * as Queries from "./queries";
 
 import * as platform from "platform";
 
+import { PrismaClient } from "@prisma/client";
+
+const db = new PrismaClient();
+
 const BASE_URL = "ishortn.ink";
 
 export async function POST(req: Request) {
@@ -21,9 +25,28 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  console.log(">>> URL", req.url);
   const alias = new URL(req.url).searchParams.get("alias");
-  // console.log(req);
-  console.log(">>> User agent", req.headers.get("user-agent"));
+
+  // Ip address
+  const ip =
+    req.headers.get("x-forwarded-for") ||
+    req.headers.get("cf-connecting-ip") ||
+    req.headers.get("x-real-ip") ||
+    req.headers.get("x-client-ip") ||
+    req.headers.get("x-forwarded") ||
+    req.headers.get("forwarded-for") ||
+    req.headers.get("forwarded") ||
+    req.headers.get("remote-addr");
+
+  console.log(">>> IP", ip);
+
+  // Print the location of the IP address
+  const ipLocation = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
+    res.json()
+  );
+
+  console.log(">>> IP Location", ipLocation);
 
   const userDetails = platform.parse(req.headers.get("user-agent") || "");
 
@@ -46,25 +69,40 @@ export async function GET(req: Request) {
     Xbox: "console",
   };
 
-  console.log({
-    platform: userDetails.os,
-    browser: userDetails.name,
-    version: userDetails.version,
-    product: userDetails.product,
-    manufacturer: userDetails.manufacturer,
-    stringified: userDetails.toString(),
-    deviceType: platformMapToDeviceType[userDetails.os?.family!],
-  });
+  console.log(">>> User details", userDetails);
 
   if (!alias) {
     return new Response("Invalid URL", { status: 400 });
   }
 
-  const existingUrl = await Queries.retrieveShortenedLink(alias);
+  const retrievedLink = await db.link.findUnique({
+    where: {
+      alias: alias.replaceAll('"', ""),
+    },
+  });
 
-  if (existingUrl) {
-    return new Response(JSON.stringify({ url: existingUrl }));
+  console.log(">>> Retrieved link", retrievedLink);
+
+  if (!retrievedLink) {
+    return new Response("Not Found", { status: 404 });
   }
 
-  return new Response("Not Found", { status: 404 });
+  if (retrievedLink?.userId) {
+    console.log("User is logged in", retrievedLink.userId);
+    // TODO: Add user tracking
+    console.log(">>> User tracking");
+    await db.linkVisit.create({
+      data: {
+        linkId: retrievedLink.id,
+        os: userDetails.os?.family || "Unknown",
+        browser: userDetails.name || "Unknown",
+        device: platformMapToDeviceType[userDetails.os?.family!] || "Unknown",
+        country: ipLocation.country_name || "Unknown",
+        city: ipLocation.city || "Unknown",
+      },
+    });
+  }
+
+  // return Response.redirect(retrievedLink.url, 301);
+  return new Response(JSON.stringify({ url: retrievedLink }));
 }
