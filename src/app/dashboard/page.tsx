@@ -3,8 +3,31 @@ import TabSwitcher from "@/components/dashboard/tab-switcher";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { auth } from "@clerk/nextjs";
 
-const Dashboard = () => {
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+// Get all links from the user
+const getUserLinks = async () => {
+  const { userId } = auth();
+  console.log(userId);
+  const links = await prisma.link.findMany({
+    where: {
+      userId: userId,
+    },
+    include: {
+      linkVisits: true,
+    },
+  });
+
+  return links;
+};
+
+const Dashboard = async () => {
+  const links = await getUserLinks();
+  console.log(links);
   return (
     <main className="flex flex-col gap-10">
       <TabSwitcher />
@@ -52,13 +75,15 @@ const Dashboard = () => {
                 <span className="text-xl font-semibold text-gray-800">
                   Total Links
                 </span>
-                <span className="text-5xl text-gray-500">20</span>
+                <span className="text-5xl text-gray-500">{links.length}</span>
               </div>
               <div className="flex items-center justify-between mt-6">
                 <span className="text-xl font-semibold text-gray-800">
                   Total Clicks
                 </span>
-                <span className="text-5xl text-gray-500">20</span>
+                <span className="text-5xl text-gray-500">
+                  {links.reduce((acc, link) => acc + link.linkVisits.length, 0)}
+                </span>
               </div>
             </div>
           </div>
@@ -67,8 +92,8 @@ const Dashboard = () => {
           <Input type="text" placeholder="Search for a link" />
 
           <div className="flex flex-col gap-5 mt-6">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <LinkShowcase key={i} />
+            {links.map((link) => (
+              <LinkShowcase key={link.id} link={link} />
             ))}
           </div>
         </div>
