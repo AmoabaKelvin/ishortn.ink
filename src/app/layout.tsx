@@ -6,6 +6,8 @@ import { Toaster as ShadToaster } from "@/components/ui/toaster";
 import { Toaster } from "react-hot-toast";
 const nunito = Nunito_Sans({ subsets: ["latin"] });
 
+import Script from "next/script";
+
 import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
@@ -32,6 +34,15 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
+      <Script type="text/javascript" id="ms_clarity">
+        {`(function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "iv16reka4j")`}
+        ;
+      </Script>
+
       <html lang="en">
         <body className={nunito.className}>
           <Toaster />
