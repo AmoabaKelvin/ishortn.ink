@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { name: "Links", href: "/dashboard" },
   { name: "Profile", href: "/dashboard/profile" },
+  { name: "Create Link", href: "/dashboard/links" },
 ];
 
 const TabSwitcher = () => {
