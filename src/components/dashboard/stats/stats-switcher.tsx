@@ -23,7 +23,7 @@ const StatsSwitcher = ({
               className={cn(
                 "inline-block py-2 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 cursor-pointer",
                 currentView === name.toLowerCase() &&
-                  "text-blue-600 border-blue-600 dark:border-blue-500"
+                  "text-blue-600 border-blue-600 dark:border-blue-500",
               )}
             >
               {name}

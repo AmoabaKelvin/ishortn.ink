@@ -31,7 +31,7 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 );
 
 const options = {
@@ -63,7 +63,7 @@ const options = {
 
 const LinkAnalyticsStats = ({ link }: { link: Link }) => {
   const [cityOrCountry, setCityOrCountry] = useState<"city" | "country">(
-    "country"
+    "country",
   );
 
   const [selectedDeviceView, setSelectedDeviceView] = useState<
@@ -88,7 +88,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
 
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
 
   const data2 = {
@@ -115,7 +115,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
 
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
 
   const devices = Object.entries(totalDevices).map(([name, clicks]) => ({
@@ -133,7 +133,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
 
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
   // convert the object to an array
   const countriesArray = Object.entries(countries).map(([country, clicks]) => ({
@@ -151,7 +151,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
 
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
   // convert the object to an array
   const citiesArray = Object.entries(cities).map(([city, clicks]) => ({
@@ -171,7 +171,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
 
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
   // convert the object to an array
   const osArray = Object.entries(os).map(([os, clicks]) => ({
@@ -189,7 +189,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
 
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
   // convert the object to an array
   const browsersArray = Object.entries(browsers).map(([browser, clicks]) => ({

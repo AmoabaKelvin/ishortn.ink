@@ -21,7 +21,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
 
   const daysSinceToday = Math.floor(
     (new Date().getTime() - new Date(link.createdAt).getTime()) /
-      (1000 * 60 * 60 * 24)
+      (1000 * 60 * 60 * 24),
   );
 
   return (
@@ -40,7 +40,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
               className="w-3 h-3"
               onClick={() => {
                 window.navigator.clipboard.writeText(
-                  `ishortn.ink/${link.alias}`
+                  `ishortn.ink/${link.alias}`,
                 );
                 toast({
                   description: "The link has been copied to your clipboard",
