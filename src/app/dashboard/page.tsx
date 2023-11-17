@@ -1,4 +1,4 @@
-import LinkShowcase from "@/components/dashboard/link-showcase";
+import LinkShowcase from "@/components/dashboard/link-overview/link-showcase";
 import TabSwitcher from "@/components/dashboard/tab-switcher";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
