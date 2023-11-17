@@ -9,7 +9,13 @@
     "lint": "next lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier -c \"**/*.{ts,tsx,md}\"",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.tsx": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@clerk/nextjs": "^4.27.1",
@@ -52,5 +58,9 @@
     "tailwindcss-animated": "^1.0.1",
     "typescript": "5.1.6",
     "zod": "^3.22.2"
+  },
+  "devDependencies": {
+    "husky": "^8.0.0",
+    "lint-staged": "^15.1.0"
   }
 }
