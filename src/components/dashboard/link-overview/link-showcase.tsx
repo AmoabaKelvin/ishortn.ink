@@ -1,6 +1,6 @@
 "use client";
 
-import { LinkActions } from "@/components/dashboard/link-showcase-dropdown";
+import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
 import { Badge } from "@/components/ui/badge";
 import { Copy } from "lucide-react";
 
@@ -54,7 +54,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
             {/* Only show the days since today */}
             {daysSinceToday === 0
               ? "Today"
-              : `${daysSinceToday} day${daysSinceToday > 1 ? "s" : ""} ago`}
+              : `${daysSinceToday} day${daysSinceToday > 1 ? "s" : ""}`}
           </span>
           <span className="mx-1 text-slate-300">•</span>
           <span className="text-gray-900 cursor-pointer hover:underline">
