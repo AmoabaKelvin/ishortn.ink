@@ -1,4 +1,5 @@
 import NavigationBar from "@/components/dashboard/navigation-bar";
+import TabSwitcher from "@/components/dashboard/tab-switcher";
 
 import { satoshi } from "@/styles/fonts";
 
@@ -9,7 +10,11 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     >
       <NavigationBar />
 
-      <div className="py-4 mt-4">{children}</div>
+      <div className="mt-7">
+        <TabSwitcher />
+      </div>
+
+      <div className="py-4 mt-7">{children}</div>
     </div>
   );
 };
