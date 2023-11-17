@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "next-sitemap",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
@@ -40,6 +41,7 @@
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.276.0",
     "next": "latest",
+    "next-sitemap": "^4.2.3",
     "platform": "^1.3.6",
     "postcss": "8.4.27",
     "prettier": "^3.0.3",
