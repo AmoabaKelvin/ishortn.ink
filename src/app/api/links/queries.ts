@@ -17,7 +17,7 @@ export const checkIfAliasExists = async (alias: string) => {
 
 export const insertLink = async (
   url: string,
-  alias: string
+  alias: string,
 ): Promise<string> => {
   const { userId } = auth();
   if (userId) {
@@ -51,7 +51,7 @@ export const getLink = async (url: string): Promise<Link | null> => {
 };
 
 export const retrieveShortenedLink = async (
-  alias: string
+  alias: string,
 ): Promise<string | null> => {
   const link = await prisma.link.findUnique({
     where: {
