@@ -1,11 +1,11 @@
 import LinkShowcase from "@/components/dashboard/link-overview/link-showcase";
-import TabSwitcher from "@/components/dashboard/tab-switcher";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { auth } from "@clerk/nextjs";
 
 import prisma from "@/db";
+import Link from "next/link";
 
 // Get all links from the user
 const getUserLinks = async () => {
@@ -28,14 +28,16 @@ const Dashboard = async () => {
   console.log(links);
   return (
     <main className="flex flex-col gap-10">
-      <TabSwitcher />
+      {/* <TabSwitcher /> */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold leading-tight text-gray-800">
           Links
         </h2>
-        <Button>
-          Create Link
-          <kbd className="ml-2">⌘K</kbd>
+        <Button asChild>
+          <Link href="/dashboard/links">
+            Create Link
+            <kbd className="ml-2">⌘K</kbd>
+          </Link>
         </Button>
       </div>
 
