@@ -2,9 +2,7 @@ import * as Queries from "./queries";
 
 import * as platform from "platform";
 
-import { PrismaClient } from "@prisma/client";
-
-const db = new PrismaClient();
+import prisma from "@/db";
 
 const BASE_URL = "ishortn.ink";
 
@@ -41,6 +39,10 @@ export async function GET(req: Request) {
 
   console.log(">>> IP", ip);
 
+  // Log the referer
+  const referer = req.headers.get("referer");
+  console.log(">>> Referer", referer);
+
   // Print the location of the IP address
   const ipLocation = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
     res.json()
@@ -75,7 +77,7 @@ export async function GET(req: Request) {
     return new Response("Invalid URL", { status: 400 });
   }
 
-  const retrievedLink = await db.link.findUnique({
+  const retrievedLink = await prisma.link.findUnique({
     where: {
       alias: alias.replaceAll('"', ""),
     },
@@ -91,7 +93,7 @@ export async function GET(req: Request) {
     console.log("User is logged in", retrievedLink.userId);
     // TODO: Add user tracking
     console.log(">>> User tracking");
-    await db.linkVisit.create({
+    await prisma.linkVisit.create({
       data: {
         linkId: retrievedLink.id,
         os: userDetails.os?.family || "Unknown",

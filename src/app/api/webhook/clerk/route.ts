@@ -2,9 +2,7 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 
-import { PrismaClient } from "@prisma/client";
-
-const db = new PrismaClient();
+import prisma from "@/db";
 
 export async function POST(req: Request) {
   // You can find this in the Clerk Dashboard -> Webhooks -> choose the webhook
@@ -62,7 +60,7 @@ export async function POST(req: Request) {
   // Get the user info
   const userInfo = getUserInfo(payload);
 
-  await db.user.upsert({
+  await prisma.user.upsert({
     where: { id: id! },
     update: {
       name: userInfo.name,

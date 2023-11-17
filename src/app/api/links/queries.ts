@@ -3,9 +3,7 @@ import { generateShortUrl } from "../utils/links";
 
 import { auth } from "@clerk/nextjs";
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "@/db";
 
 export const checkIfAliasExists = async (alias: string) => {
   const link = await prisma.link.findUnique({

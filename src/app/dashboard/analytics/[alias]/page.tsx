@@ -1,11 +1,10 @@
 import { auth } from "@clerk/nextjs";
-import { PrismaClient } from "@prisma/client";
 import LinkAnalyticsStats from "./stats";
 
-const db = new PrismaClient();
+import prisma from "@/db";
 
 const LinkAnalytics = async ({ params }: { params: { alias: string } }) => {
-  const linkStats = await db.link.findUnique({
+  const linkStats = await prisma.link.findUnique({
     where: {
       alias: params.alias,
       userId: auth().userId,
