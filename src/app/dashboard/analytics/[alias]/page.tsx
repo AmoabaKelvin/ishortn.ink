@@ -1,5 +1,5 @@
+import LinkAnalyticsStats from "@/components/dashboard/stats/stats";
 import { auth } from "@clerk/nextjs";
-import LinkAnalyticsStats from "./stats";
 
 import prisma from "@/db";
 
