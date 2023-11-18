@@ -1,6 +1,6 @@
 import * as Queries from "./queries";
 
-import * as platform from "platform";
+import { UAParser } from "ua-parser-js";
 
 import prisma from "@/db";
 
@@ -45,33 +45,16 @@ export async function GET(req: Request) {
 
   // Print the location of the IP address
   const ipLocation = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
-    res.json(),
+    res.json()
   );
 
   console.log(">>> IP Location", ipLocation);
 
-  const userDetails = platform.parse(req.headers.get("user-agent") || "");
+  const userAgent = req.headers.get("user-agent");
+  const parser = new UAParser(userAgent!);
+  const userAgentDetails = parser.getResult();
 
-  const platformMapToDeviceType: Record<string, string> = {
-    // Add index signature
-    iOS: "mobile",
-    "OS X": "desktop",
-    iPad: "tablet",
-    iPod: "mobile",
-    "Windows Phone": "mobile",
-    Windows: "desktop",
-    "Mac OS": "desktop",
-    Linux: "desktop",
-    Android: "mobile",
-    BlackBerry: "mobile",
-    "Chrome OS": "desktop",
-    "PlayStation 4": "console",
-    "Nintendo Switch": "console",
-    "Xbox One": "console",
-    Xbox: "console",
-  };
-
-  console.log(">>> User details", userDetails);
+  console.log(">>> User agent from ua-parser", userAgentDetails);
 
   if (!alias) {
     return new Response("Invalid URL", { status: 400 });
@@ -96,9 +79,10 @@ export async function GET(req: Request) {
     await prisma.linkVisit.create({
       data: {
         linkId: retrievedLink.id,
-        os: userDetails.os?.family || "Unknown",
-        browser: userDetails.name || "Unknown",
-        device: platformMapToDeviceType[userDetails.os?.family!] || "Unknown",
+        os: userAgentDetails.os.name || "Unknown",
+        browser: userAgentDetails.browser.name || "Unknown",
+        device: userAgentDetails.device.type || "Unknown",
+        model: userAgentDetails.device.model || "Unknown",
         country: ipLocation.country_name || "Unknown",
         city: ipLocation.city || "Unknown",
       },
