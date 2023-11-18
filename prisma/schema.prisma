@@ -39,6 +39,7 @@ model LinkVisit {
   device    String
   browser   String
   os        String
+  model     String   @default("")
   country   String
   city      String
 }
