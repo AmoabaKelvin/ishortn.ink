@@ -3,6 +3,7 @@ import * as Queries from "./queries";
 import { UAParser } from "ua-parser-js";
 
 import prisma from "@/db";
+import { someKnownDesktopDevices } from "../utils";
 
 const BASE_URL = "ishortn.ink";
 
@@ -81,7 +82,11 @@ export async function GET(req: Request) {
         linkId: retrievedLink.id,
         os: userAgentDetails.os.name || "Unknown",
         browser: userAgentDetails.browser.name || "Unknown",
-        device: userAgentDetails.device.type || "Unknown",
+        device:
+          userAgentDetails.device.type ||
+          someKnownDesktopDevices.includes(userAgentDetails.os.name!)
+            ? "Desktop"
+            : "Unknown",
         model: userAgentDetails.device.model || "Unknown",
         country: ipLocation.country_name || "Unknown",
         city: ipLocation.city || "Unknown",
