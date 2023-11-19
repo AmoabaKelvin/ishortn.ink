@@ -95,5 +95,5 @@ export async function GET(req: Request) {
   }
 
   // return Response.redirect(retrievedLink.url, 301);
-  return new Response(JSON.stringify({ url: retrievedLink }));
+  return new Response(JSON.stringify(retrievedLink));
 }
