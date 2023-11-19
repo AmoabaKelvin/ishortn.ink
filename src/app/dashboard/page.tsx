@@ -43,7 +43,7 @@ const Dashboard = async () => {
 
       {/* Another section, there will be a column to the right that contains a simple form to create short link quick */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-11">
-        <div className="flex flex-col col-span-4 gap-4">
+        <div className="flex flex-col w-full col-span-11 gap-4 md:col-span-4 ">
           <div className="p-6 rounded-md bg-gray-50 h-max">
             <div>
               <h1 className="text-xl font-semibold leading-tight text-gray-800">
@@ -88,7 +88,7 @@ const Dashboard = async () => {
             </div>
           </div>
         </div>
-        <div className="col-span-7">
+        <div className="col-span-11 md:col-span-7">
           <Input type="text" placeholder="Search for a link" />
 
           <div className="flex flex-col gap-5 mt-6">
