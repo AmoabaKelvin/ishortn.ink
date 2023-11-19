@@ -52,9 +52,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
         <p className="text-sm text-gray-500">
           <span>
             {/* Only show the days since today */}
-            {daysSinceToday === 0
-              ? "Today"
-              : `${daysSinceToday} day${daysSinceToday > 1 ? "s" : ""}`}
+            {daysSinceToday === 0 ? "Today" : `${daysSinceToday}d`}
           </span>
           <span className="mx-1 text-slate-300">•</span>
           <span className="text-gray-900 cursor-pointer hover:underline">
@@ -67,7 +65,9 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           variant="secondary"
           className="transition-all duration-500 rounded-md bg-slate-100 hover:scale-110"
         >
-          {link.linkVisits.length} visits
+          {link.linkVisits.length}
+          <span className="hidden md:inline">visits</span>
+          <span className="inline md:hidden">v</span>
         </Badge>
 
         <LinkActions />
