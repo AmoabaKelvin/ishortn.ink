@@ -67,7 +67,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
   );
 
   const [selectedDeviceView, setSelectedDeviceView] = useState<
-    "device" | "os" | "browser"
+    "device" | "os" | "browser" | "model"
   >("device");
 
   const clicksAsTimeSeries = link.linkVisits.reduce(
@@ -197,6 +197,24 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
     clicks,
   }));
 
+  const models = link.linkVisits.reduce(
+    (acc, { model }) => {
+      if (!acc[model]) {
+        acc[model] = 0;
+      }
+
+      acc[model] += 1;
+
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  // convert the object to an array
+  const modelsArray = Object.entries(models).map(([model, clicks]) => ({
+    model,
+    clicks,
+  }));
+
   const handleCanvasDownload = () => {
     const canvas = document.querySelector("canvas");
     const link = document.createElement("a");
@@ -216,7 +234,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
   return (
     <div className="flex flex-col max-w-4xl gap-8 mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold leading-tight text-gray-800">
+        <h1 className="font-semibold leading-tight text-gray-800 md:text-3xl">
           {/* Link Analytics for{" "} */}
           <span className="text-slate-600">Details for </span>
           <span className="text-blue-600 cursor-pointer hover:underline">
@@ -280,10 +298,9 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
           <StatsSwitcher
             currentView={selectedDeviceView}
             setCurrentView={handleViewChange}
-            views={["Device", "OS", "Browser"]}
+            views={["Device", "OS", "Browser", "Model"]}
           />
-
-          {/* Render the devices, os, or browsers here */}
+          {/* Render the devices, OS, browsers, or models here */}
           {selectedDeviceView === "device" ? (
             <>
               {devices.map(({ name, clicks }) => (
@@ -306,7 +323,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
                 />
               ))}
             </>
-          ) : (
+          ) : selectedDeviceView === "browser" ? (
             <>
               {browsersArray.map(({ browser, clicks }) => (
                 <StatBar
@@ -317,7 +334,18 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
                 />
               ))}
             </>
-          )}
+          ) : selectedDeviceView === "model" ? (
+            <>
+              {modelsArray.map(({ model, clicks }) => (
+                <StatBar
+                  name={model}
+                  clicks={clicks}
+                  totalClicks={totalClicks}
+                  key={model}
+                />
+              ))}
+            </>
+          ) : null}
         </StatsSection>
       </div>
     </div>
