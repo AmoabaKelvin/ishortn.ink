@@ -41,21 +41,6 @@ export async function GET(req: Request) {
   console.log(">>> IP", ip);
 
   // Log the referer
-  const referer = req.headers.get("referer");
-  console.log(">>> Referer", referer);
-
-  // Print the location of the IP address
-  const ipLocation = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
-    res.json(),
-  );
-
-  console.log(">>> IP Location", ipLocation);
-
-  const userAgent = req.headers.get("user-agent");
-  const parser = new UAParser(userAgent!);
-  const userAgentDetails = parser.getResult();
-
-  console.log(">>> User agent from ua-parser", userAgentDetails);
 
   if (!alias) {
     return new Response("Invalid URL", { status: 400 });
@@ -74,6 +59,16 @@ export async function GET(req: Request) {
   }
 
   if (retrievedLink?.userId) {
+    const referer = req.headers.get("referer");
+    console.log(">>> Referer", referer);
+
+    const userAgent = req.headers.get("user-agent");
+    const parser = new UAParser(userAgent!);
+    const userAgentDetails = parser.getResult();
+
+    const ipLocation = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
+      res.json(),
+    );
     console.log("User is logged in", retrievedLink.userId);
     // TODO: Add user tracking
     console.log(">>> User tracking");
