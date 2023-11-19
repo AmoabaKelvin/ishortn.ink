@@ -46,7 +46,7 @@ export async function GET(req: Request) {
 
   // Print the location of the IP address
   const ipLocation = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
-    res.json()
+    res.json(),
   );
 
   console.log(">>> IP Location", ipLocation);
