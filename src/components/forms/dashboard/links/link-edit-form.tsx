@@ -37,7 +37,14 @@ const LinkEditForm = () => {
     };
 
     if (debouncedDestinationURL) {
-      getOGData();
+      // test if the url is valid
+      if (
+        /^(https?:\/\/|www\.)[\w\-]+(\.[\w\-]+)+[/#?]?.*$/.test(
+          debouncedDestinationURL,
+        )
+      ) {
+        getOGData();
+      }
     }
   }, [debouncedDestinationURL]);
 
