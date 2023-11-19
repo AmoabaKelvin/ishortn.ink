@@ -13,7 +13,7 @@ const getTheOriginalLink = async (shortenedLink: string) => {
     // throw new Error("Something went wrong");
   }
   const data = await response.json();
-  return data.url.url;
+  return data.url;
 };
 
 const RedirectionPage = async ({
