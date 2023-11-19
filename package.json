@@ -15,6 +15,9 @@
   "lint-staged": {
     "*.tsx": [
       "prettier --write"
+    ],
+    "*.ts": [
+      "prettier --write"
     ]
   },
   "dependencies": {
