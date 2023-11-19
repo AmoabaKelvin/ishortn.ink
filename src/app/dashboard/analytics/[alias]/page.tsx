@@ -1,0 +1,24 @@
+import LinkAnalyticsStats from "@/components/dashboard/stats/stats";
+import { auth } from "@clerk/nextjs";
+
+import prisma from "@/db";
+
+const LinkAnalytics = async ({ params }: { params: { alias: string } }) => {
+  const linkStats = await prisma.link.findUnique({
+    where: {
+      alias: params.alias,
+      userId: auth().userId,
+    },
+    include: {
+      linkVisits: true,
+    },
+  });
+
+  if (!linkStats) {
+    return <p>Link not found</p>;
+  }
+
+  return <LinkAnalyticsStats link={linkStats} />;
+};
+
+export default LinkAnalytics;

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `LinkVisit` ADD COLUMN `model` VARCHAR(191) NOT NULL DEFAULT '';
