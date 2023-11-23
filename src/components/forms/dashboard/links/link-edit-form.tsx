@@ -11,12 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEffect, useState } from "react";
-import { LinkExpirationDatePicker } from "./date-picker";
+import { useEffect, useState, useTransition } from "react";
+import * as Yup from "yup";
 
+import { LinkExpirationDatePicker } from "./date-picker";
+import { Loader2 } from "lucide-react";
 import { useDebounce } from "use-debounce";
 
+import { Prisma } from "@prisma/client";
+
+import { useFormik } from "formik";
+import { cn, fullUrlRegex } from "@/lib/utils";
+import { createLink } from "@/app/dashboard/_actions/link-actions";
+
+type LinkEditFormProps = Prisma.LinkCreateInput;
+
 const LinkEditForm = () => {
+  const [loading, startTransition] = useTransition();
   const [destinationURL, setDestinationURL] = useState<string>("");
   const [metaData, setMetaData] = useState<Record<string, string>>({
     title: "",
@@ -24,9 +35,38 @@ const LinkEditForm = () => {
     image: "",
   });
 
+  const formik = useFormik<LinkEditFormProps>({
+    initialValues: {
+      url: "",
+      alias: "",
+      disableLinkAfterClicks: 0,
+      disableLinkAfterDate: null,
+    },
+    validationSchema: Yup.object({
+      url: Yup.string()
+        .required("Destination URL is required")
+        .matches(fullUrlRegex, "Please enter a valid URL"),
+      alias: Yup.string().matches(
+        /^[a-zA-Z0-9-_]+$/,
+        "Only letters, numbers, dashes and underscores are allowed",
+      ),
+      disableLinkAfterClicks: Yup.number().optional(),
+    }),
+    onSubmit: async (values) => {
+      console.log(values);
+      startTransition(async () => {
+        const response = await createLink(values);
+        console.log(response);
+      });
+    },
+  });
+
   const [debouncedDestinationURL] = useDebounce(destinationURL, 500);
 
   useEffect(() => {
+    // Log formik errors
+    console.log(formik.errors);
+
     const getOGData = async () => {
       const response = await fetch(
         `https://api.dub.co/metatags?url=${debouncedDestinationURL}`,
@@ -37,16 +77,11 @@ const LinkEditForm = () => {
     };
 
     if (debouncedDestinationURL) {
-      // test if the url is valid
-      if (
-        /^(https?:\/\/|www\.)[\w\-]+(\.[\w\-]+)+[/#?]?.*$/.test(
-          debouncedDestinationURL,
-        )
-      ) {
+      if (fullUrlRegex.test(debouncedDestinationURL)) {
         getOGData();
       }
     }
-  }, [debouncedDestinationURL]);
+  }, [debouncedDestinationURL, formik.errors]);
 
   return (
     // Two column layout
@@ -60,7 +95,7 @@ const LinkEditForm = () => {
           </p>
         </div>
 
-        <form className="flex flex-col gap-4">
+        <form className="flex flex-col gap-4" onSubmit={formik.handleSubmit}>
           {/* Vertical Divider */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="Destination URL">Destination URL</Label>
@@ -68,8 +103,13 @@ const LinkEditForm = () => {
               id="Destination URL"
               placeholder="https://example.com"
               type="url"
-              onChange={(e) => setDestinationURL(e.target.value)}
+              className={`${formik.errors.url && "border-red-500"}`}
+              onChange={(e) => {
+                setDestinationURL(e.target.value);
+                formik.setFieldValue("url", e.target.value);
+              }}
             />
+            <span className="text-sm text-red-500">{formik.errors.url}</span>
           </div>
 
           {/* Link alias, show the ishortn.ink in a disabled select and the input right next to it*/}
@@ -89,7 +129,11 @@ const LinkEditForm = () => {
               <Input
                 id="Link alias"
                 placeholder="example"
-                className="flex-grow rounded-tl-none rounded-bl-none"
+                className={cn(
+                  "flex-grow rounded-tl-none rounded-bl-none",
+                  formik.errors.alias && "border-red-500",
+                )}
+                {...formik.getFieldProps("alias")}
               />
             </div>
           </div>
@@ -109,7 +153,11 @@ const LinkEditForm = () => {
                 Deactivate the link after a certain date
               </span>
             </div>
-            <LinkExpirationDatePicker />
+            <LinkExpirationDatePicker
+              setSeletectedDate={(date) => {
+                formik.setFieldValue("disableLinkAfterDate", date);
+              }}
+            />
           </div>
 
           {/* Deactivate after Number of clicks */}
@@ -124,19 +172,23 @@ const LinkEditForm = () => {
               id="Deactivate after"
               placeholder="Leave empty for no limit"
               type="number"
+              {...formik.getFieldProps("disableLinkAfterClicks")}
             />
           </div>
 
           {/* Password protection */}
-          <div className="flex flex-col gap-2">
+          {/* <div className="flex flex-col gap-2">
             <Label htmlFor="Password protection">Password protection</Label>
             <Input
               id="Password protection"
               placeholder="Never"
               type="password"
             />
-          </div>
-          <Button className="mt-8">Create Link</Button>
+          </div> */}
+          <Button className="mt-8" disabled={loading} type="submit">
+            Create Link
+            {loading && <Loader2 className="ml-2 animate-spin" />}
+          </Button>
         </form>
       </div>
       <div className="items-center justify-center md:flex">
