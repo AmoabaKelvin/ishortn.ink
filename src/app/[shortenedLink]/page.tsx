@@ -10,8 +10,7 @@ const getTheOriginalLink = async (shortenedLink: string) => {
   // const incomingHeaders = headers();
 
   const response = await fetch(host + `/api/links?alias=${shortenedLink}`, {
-    method: "GET",
-    headers: headers(),
+    headers: new Headers(headers()),
     cache: "no-cache",
     // headers: headers(),
   });
