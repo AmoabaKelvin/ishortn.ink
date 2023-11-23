@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 const getTheOriginalLink = async (shortenedLink: string) => {
-  const host = process.env.HOST;
+  // const host = process.env.HOST;
   const response = await fetch(
     "https://www.ishortn.ink" + `/api/links?alias=${shortenedLink}`,
     {
       cache: "no-cache",
-      headers: headers(),
+      // headers: headers(),
     },
   );
   if (!response.ok) {
