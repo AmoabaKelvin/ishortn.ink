@@ -7,7 +7,7 @@ const getTheOriginalLink = async (shortenedLink: string) => {
   const host = process.env.HOST;
   const response = await fetch(host + `/api/links?alias=${shortenedLink}`, {
     cache: "no-cache",
-    // headers: headers(),
+    headers: headers(),
   });
   if (!response.ok) {
     // throw new Error("Something went wrong");
