@@ -24,11 +24,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const incomingHeaders = headers();
-
-  console.log(">>> Incoming headers", incomingHeaders.get("user-agent"));
-
-  console.log(">>> Incoming headers", incomingHeaders);
   console.log(">>> URL", req.url);
   const alias = new URL(req.url).searchParams.get("alias");
 
