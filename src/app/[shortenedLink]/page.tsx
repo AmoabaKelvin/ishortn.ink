@@ -9,7 +9,7 @@ const getTheOriginalLink = async (shortenedLink: string) => {
 
   const response = await fetch(host + `/api/links?alias=${shortenedLink}`, {
     cache: "no-cache",
-    headers: { ...incomingHeaders },
+    headers: incomingHeaders,
   });
   if (!response.ok) {
     // throw new Error("Something went wrong");
