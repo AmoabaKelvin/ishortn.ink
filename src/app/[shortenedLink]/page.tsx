@@ -1,14 +1,20 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import axios from "axios";
+
 export const dynamic = "force-dynamic";
 
 const getTheOriginalLink = async (shortenedLink: string) => {
   const host = process.env.HOST;
+  // const incomingHeaders = headers();
+
   const response = await fetch(host + `/api/links?alias=${shortenedLink}`, {
+    headers: new Headers(headers()),
     cache: "no-cache",
     // headers: headers(),
   });
+
   if (!response.ok) {
     // throw new Error("Something went wrong");
   }
