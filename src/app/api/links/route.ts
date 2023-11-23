@@ -1,9 +1,9 @@
 import * as Queries from "./queries";
-
 import { UAParser } from "ua-parser-js";
 
 import prisma from "@/db";
 import { someKnownDesktopDevices } from "../utils";
+import { headers } from "next/headers";
 
 const BASE_URL = "ishortn.ink";
 
