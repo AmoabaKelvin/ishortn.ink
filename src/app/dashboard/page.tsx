@@ -6,6 +6,7 @@ import { auth } from "@clerk/nextjs";
 
 import prisma from "@/db";
 import Link from "next/link";
+import LinksView from "@/components/dashboard/link-overview/links-view";
 
 // Get all links from the user
 const getUserLinks = async () => {
@@ -25,7 +26,6 @@ const getUserLinks = async () => {
 
 const Dashboard = async () => {
   const links = await getUserLinks();
-  console.log(links);
   return (
     <main className="flex flex-col gap-10">
       {/* <TabSwitcher /> */}
@@ -89,13 +89,7 @@ const Dashboard = async () => {
           </div>
         </div>
         <div className="col-span-11 md:col-span-7">
-          <Input type="text" placeholder="Search for a link" />
-
-          <div className="flex flex-col gap-5 mt-6">
-            {links.map((link) => (
-              <LinkShowcase key={link.id} link={link} />
-            ))}
-          </div>
+          <LinksView links={links} />
         </div>
       </div>
     </main>
