@@ -1,5 +1,7 @@
 import * as Queries from "./queries";
 
+import { headers } from "next/headers";
+
 import { UAParser } from "ua-parser-js";
 
 import prisma from "@/db";
@@ -24,6 +26,11 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  const incomingHeaders = headers();
+  console.log(">>> User agent", incomingHeaders.get("user-agent"));
+  console.log(">>> User IP agent", incomingHeaders.get("cf-connecting-ip"));
+  console.log(">>> User IP agent", incomingHeaders.get("x-real-ip"));
+
   console.log(">>> URL", req.url);
   const alias = new URL(req.url).searchParams.get("alias");
 
