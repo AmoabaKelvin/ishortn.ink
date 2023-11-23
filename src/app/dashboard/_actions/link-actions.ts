@@ -13,29 +13,28 @@ export const createLink = async (link: Prisma.LinkCreateInput) => {
     return;
   }
 
-  console.log("Link: ", link);
+  const existingLink = await prisma.link.findUnique({
+    where: {
+      alias: link.alias,
+    },
+  });
 
-  try {
-    const createdLink = prisma.link.create({
-      data: {
-        ...link,
-        alias: link.alias || (await generateShortUrl(link.url)),
-        User: {
-          connect: {
-            id: userId,
-          },
+  if (existingLink) {
+    return {
+      error: "Alias already exists, please enter another one",
+    };
+  }
+
+  const createdLink = prisma.link.create({
+    data: {
+      ...link,
+      alias: link.alias || (await generateShortUrl(link.url)),
+      User: {
+        connect: {
+          id: userId,
         },
       },
-    });
-
-    return createdLink;
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        return {
-          error: "Alias already exists",
-        };
-      }
-    }
-  }
+    },
+  });
+  return createdLink;
 };
