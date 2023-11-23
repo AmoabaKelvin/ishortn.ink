@@ -10,10 +10,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@radix-ui/react-label";
 import React, { useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
 import QRCode from "qrcode.react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+import { useFormik } from "formik";
 
 interface UrlShortnerInputs {
   content: string;
@@ -23,15 +24,20 @@ const QRGenerationTab = () => {
   const [enteredContent, setenteredContent] = useState("");
   const qrCodeCanvasRef = React.useRef(null);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<UrlShortnerInputs>();
+  // const {
+  //   register,
+  //   handleSubmit,
+  //   formState: { errors },
+  // } = useForm<UrlShortnerInputs>();
 
-  const onSubmit: SubmitHandler<UrlShortnerInputs> = async (data) => {
-    setenteredContent(data.content);
-  };
+  const formik = useFormik<UrlShortnerInputs>({
+    initialValues: {
+      content: "",
+    },
+    onSubmit: async (values) => {
+      setenteredContent(values.content);
+    },
+  });
 
   const downloadQRCode = () => {
     if (!enteredContent) return;
@@ -49,7 +55,7 @@ const QRGenerationTab = () => {
 
   return (
     <Card>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={formik.handleSubmit}>
         <CardHeader>
           <CardTitle>Generate QR Code</CardTitle>
           <CardDescription>
@@ -63,9 +69,8 @@ const QRGenerationTab = () => {
               id="current"
               type="text"
               placeholder="tosomebeautifulpage.com"
-              {...register("content", {
-                required: true,
-              })}
+              required
+              {...formik.getFieldProps("content")}
             />
           </div>
         </CardContent>
@@ -99,7 +104,7 @@ const QRGenerationTab = () => {
               transition={{ duration: 0.7 }}
             >
               <Button
-                className="text-sm text-white bg-black duration-300 hover:animate-out"
+                className="text-sm text-white duration-300 bg-black hover:animate-out"
                 type="submit"
                 onClick={downloadQRCode}
               >

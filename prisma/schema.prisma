@@ -12,11 +12,13 @@ datasource db {
 }
 
 model Link {
-  id         Int         @id @default(autoincrement())
-  url        String      @db.Text
-  alias      String      @unique
-  createdAt  DateTime    @default(now())
-  linkVisits LinkVisit[]
+  id                     Int         @id @default(autoincrement())
+  url                    String      @db.Text
+  alias                  String      @unique
+  createdAt              DateTime    @default(now())
+  linkVisits             LinkVisit[]
+  disableLinkAfterClicks Int?
+  disableLinkAfterDate   DateTime?
 
   User   User?   @relation(fields: [userId], references: [id])
   userId String?

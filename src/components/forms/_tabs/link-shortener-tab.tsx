@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 import { useState } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
+
+import { useFormik } from "formik";
 
 interface UrlShortnerInputs {
   url: string;
@@ -24,22 +25,24 @@ const LinkShortenerTab = () => {
   const [shortUrl, setShortUrl] = useState("");
   const [linkCopied, setlinkCopied] = useState("Copy");
   const [loading, setLoading] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<UrlShortnerInputs>();
 
-  const onSubmit: SubmitHandler<UrlShortnerInputs> = async (data) => {
-    setLoading(true);
-    const { url } = await axios
-      .post("/api/links/", {
-        ...data,
-      })
-      .then((res) => res.data);
-    setShortUrl(url);
-    setLoading(false);
-  };
+  const formik = useFormik<UrlShortnerInputs>({
+    initialValues: {
+      url: "",
+      alias: "",
+    },
+    onSubmit: async (values) => {
+      setLoading(true);
+
+      const { url } = await axios
+        .post("/api/links/", {
+          ...values,
+        })
+        .then((res) => res.data);
+      setShortUrl(url);
+      setLoading(false);
+    },
+  });
 
   const copyToClipboard = async (url: string) => {
     await navigator.clipboard.writeText(shortUrl);
@@ -55,7 +58,7 @@ const LinkShortenerTab = () => {
           Create beautiful short links for your brand.
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={formik.handleSubmit}>
         <CardContent className="space-y-2">
           <div className="space-y-1">
             <Label htmlFor="name">URL</Label>
@@ -63,10 +66,8 @@ const LinkShortenerTab = () => {
               id="url"
               placeholder="https://somelongurl.com"
               type="url"
-              {...register("url", {
-                required: true,
-                pattern: /^(https?:\/\/|www\.)[\w\-]+(\.[\w\-]+)+[/#?]?.*$/,
-              })}
+              required
+              {...formik.getFieldProps("url")}
             />
 
             {/* Custom link aliases */}
@@ -78,15 +79,13 @@ const LinkShortenerTab = () => {
               id="alias"
               placeholder="Enter an alias for your link"
               type="text"
+              minLength={3}
+              maxLength={20}
               className={cn(
                 "border-slate-100",
-                errors.alias && "border-red-500",
+                formik.errors.alias && "border-red-500",
               )}
-              {...register("alias", {
-                required: false,
-                maxLength: 20,
-                minLength: 3,
-              })}
+              {...formik.getFieldProps("alias")}
             />
           </div>
           <div className="space-y-1">
