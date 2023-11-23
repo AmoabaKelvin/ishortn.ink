@@ -74,7 +74,7 @@ export async function GET(req: Request) {
     const userAgentDetails = parser.getResult();
 
     const ipLocation = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
-      res.json(),
+      res.json()
     );
     console.log("User is logged in", retrievedLink.userId);
     // TODO: Add user tracking
