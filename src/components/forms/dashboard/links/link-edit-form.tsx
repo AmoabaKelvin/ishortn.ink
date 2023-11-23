@@ -14,21 +14,26 @@ import {
 import { useEffect, useState, useTransition } from "react";
 import * as Yup from "yup";
 
-import { LinkExpirationDatePicker } from "./date-picker";
 import { Loader2 } from "lucide-react";
 import { useDebounce } from "use-debounce";
+import { LinkExpirationDatePicker } from "./date-picker";
 
 import { Prisma } from "@prisma/client";
 
-import { useFormik } from "formik";
-import { cn, fullUrlRegex } from "@/lib/utils";
 import { createLink } from "@/app/dashboard/_actions/link-actions";
+import { cn, fullUrlRegex } from "@/lib/utils";
+import { useFormik } from "formik";
+
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 
 type LinkEditFormProps = Prisma.LinkCreateInput;
 
 const LinkEditForm = () => {
   const [loading, startTransition] = useTransition();
+  const router = useRouter();
   const [destinationURL, setDestinationURL] = useState<string>("");
+  const { toast } = useToast();
   const [metaData, setMetaData] = useState<Record<string, string>>({
     title: "",
     description: "",
@@ -56,7 +61,20 @@ const LinkEditForm = () => {
       console.log(values);
       startTransition(async () => {
         const response = await createLink(values);
-        console.log(response);
+
+        if (response && "error" in response) {
+          toast({
+            title: "Uh oh!",
+            description: response.error,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Success",
+            description: "Link created successfully",
+          });
+          router.push("/dashboard/");
+        }
       });
     },
   });
@@ -64,15 +82,11 @@ const LinkEditForm = () => {
   const [debouncedDestinationURL] = useDebounce(destinationURL, 500);
 
   useEffect(() => {
-    // Log formik errors
-    console.log(formik.errors);
-
     const getOGData = async () => {
       const response = await fetch(
         `https://api.dub.co/metatags?url=${debouncedDestinationURL}`,
       );
       const data = await response.json();
-      console.log(data);
       setMetaData(data);
     };
 
@@ -84,9 +98,7 @@ const LinkEditForm = () => {
   }, [debouncedDestinationURL, formik.errors]);
 
   return (
-    // Two column layout
     <section className="grid grid-cols-1 gap-5 mt-6 md:grid-cols-11">
-      {/* Creation section */}
       <div className="flex flex-col col-span-5 gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl">Create your Link</h1>
@@ -96,7 +108,6 @@ const LinkEditForm = () => {
         </div>
 
         <form className="flex flex-col gap-4" onSubmit={formik.handleSubmit}>
-          {/* Vertical Divider */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="Destination URL">Destination URL</Label>
             <Input
@@ -191,10 +202,10 @@ const LinkEditForm = () => {
           </Button>
         </form>
       </div>
-      <div className="items-center justify-center md:flex">
+      <div className="items-center justify-center hidden md:flex">
         <div className="h-screen border-r border-gray-200" />
       </div>
-      <div className="flex flex-col gap-4 md:col-span-5">
+      <div className="flex flex-col gap-4 mt-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl">How users see your link</h1>
           <p className="text-sm text-gray-500">
@@ -224,6 +235,7 @@ const LinkEditForm = () => {
                   {metaData.description || "Description"}
                 </span>
               </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={metaData.image || "https://via.placeholder.com/1200x630"}
                 alt="OG Image"
