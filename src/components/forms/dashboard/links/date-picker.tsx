@@ -13,8 +13,19 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-export function LinkExpirationDatePicker() {
+interface LinkExpirationDatePickerProps {
+  setSeletectedDate: (date: Date) => void;
+}
+
+export function LinkExpirationDatePicker({
+  setSeletectedDate,
+}: LinkExpirationDatePickerProps) {
   const [date, setDate] = React.useState<Date>();
+
+  const handleSelect = (date: Date) => {
+    setDate(date);
+    setSeletectedDate(date);
+  };
 
   return (
     <Popover>
@@ -34,7 +45,7 @@ export function LinkExpirationDatePicker() {
         <Calendar
           mode="single"
           selected={date}
-          onSelect={setDate}
+          onSelect={(date) => handleSelect(date!)}
           initialFocus
         />
       </PopoverContent>
