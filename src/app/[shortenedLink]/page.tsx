@@ -5,9 +5,11 @@ export const dynamic = "force-dynamic";
 
 const getTheOriginalLink = async (shortenedLink: string) => {
   const host = process.env.HOST;
+  const incomingHeaders = headers();
+
   const response = await fetch(host + `/api/links?alias=${shortenedLink}`, {
     cache: "no-cache",
-    headers: headers(),
+    headers: { ...incomingHeaders },
   });
   if (!response.ok) {
     // throw new Error("Something went wrong");
