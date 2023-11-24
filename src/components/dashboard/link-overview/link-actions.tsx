@@ -12,9 +12,14 @@ import {
 type linkActionsProps = {
   handleModal: () => void;
   handleDelete: () => void;
+  handleQRCodeModal: () => void;
 };
 
-export function LinkActions({ handleDelete, handleModal }: linkActionsProps) {
+export function LinkActions({
+  handleDelete,
+  handleModal,
+  handleQRCodeModal,
+}: linkActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -31,7 +36,7 @@ export function LinkActions({ handleDelete, handleModal }: linkActionsProps) {
             <span>Edit</span>
             {/* <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleQRCodeModal()}>
             <QrCode className="w-4 h-4 mr-2" />
             <span>QrCode</span>
             <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
