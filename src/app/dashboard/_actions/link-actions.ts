@@ -90,6 +90,13 @@ export const deleteLink = async (id: number) => {
     };
   }
 
+  // Delete all the clicks associated with the link
+  await prisma.linkVisit.deleteMany({
+    where: {
+      linkId: id,
+    },
+  });
+
   const deletedLink = prisma.link.delete({
     where: {
       id,
