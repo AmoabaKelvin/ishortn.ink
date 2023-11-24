@@ -8,6 +8,7 @@ const nunito = Nunito_Sans({ subsets: ["latin"] });
 
 import Script from "next/script";
 
+import ClientProvider from "@/components/providers/client-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
@@ -122,6 +123,7 @@ export default function RootLayout({
         <body className={nunito.className}>
           <Toaster />
           <ShadToaster />
+          <ClientProvider />
           {children}
         </body>
       </html>
