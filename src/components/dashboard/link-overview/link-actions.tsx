@@ -9,7 +9,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function LinkActions() {
+type linkActionsProps = {
+  handleDelete: () => void;
+};
+
+export function LinkActions({ handleDelete }: linkActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -36,7 +40,7 @@ export function LinkActions() {
             <span>Deactivate</span>
             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-red-500">
+          <DropdownMenuItem className="text-red-500" onClick={handleDelete}>
             <Trash className="w-4 h-4 mr-2" />
             <span>Delete</span>
             <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
