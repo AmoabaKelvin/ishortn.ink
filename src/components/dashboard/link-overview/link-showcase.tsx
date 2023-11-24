@@ -12,6 +12,7 @@ import { Prisma } from "@prisma/client";
 import { deleteLink } from "@/app/dashboard/_actions/link-actions";
 import { useState } from "react";
 import { LinkEditModal } from "../modals/link-edit-modal";
+import { QRCodeModal } from "../modals/qr-code-modal";
 
 type Link = Prisma.LinkGetPayload<{
   include: {
@@ -24,6 +25,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
   const router = useRouter();
 
   const [openModal, setOpenModal] = useState(false);
+  const [qrModal, setQrModal] = useState(false);
 
   const daysSinceToday = Math.floor(
     (new Date().getTime() - new Date(link.createdAt).getTime()) /
@@ -32,6 +34,10 @@ const LinkShowcase = ({ link }: { link: Link }) => {
 
   const handleModal = () => {
     setOpenModal(!openModal);
+  };
+
+  const handleQRCodeModal = () => {
+    setQrModal(!qrModal);
   };
 
   const handleLinkDeletion = async () => {
@@ -100,6 +106,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
         <LinkActions
           handleDelete={handleLinkDeletion}
           handleModal={handleModal}
+          handleQRCodeModal={handleQRCodeModal}
         />
 
         <LinkEditModal
@@ -107,6 +114,12 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           open={openModal}
           setOpen={setOpenModal}
           linkId={link.id}
+        />
+
+        <QRCodeModal
+          open={qrModal}
+          setOpen={setQrModal}
+          destinationUrl={`https://ishortn.ink/${link.alias}`}
         />
       </div>
     </div>
