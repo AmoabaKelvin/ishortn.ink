@@ -27,7 +27,7 @@ const ClientProvider = () => {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [router]);
+  }, [router, toast]);
 
   return null;
 };
