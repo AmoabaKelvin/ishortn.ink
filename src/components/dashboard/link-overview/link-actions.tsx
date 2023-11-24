@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type linkActionsProps = {
+  handleModal: () => void;
   handleDelete: () => void;
 };
 
-export function LinkActions({ handleDelete }: linkActionsProps) {
+export function LinkActions({ handleDelete, handleModal }: linkActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -25,7 +26,7 @@ export function LinkActions({ handleDelete }: linkActionsProps) {
         {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
         {/* <DropdownMenuSeparator /> */}
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleModal()}>
             <Pencil className="w-4 h-4 mr-2" />
             <span>Edit</span>
             {/* <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
