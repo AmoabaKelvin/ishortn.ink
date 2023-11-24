@@ -1,12 +1,11 @@
-import LinkShowcase from "@/components/dashboard/link-overview/link-showcase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { auth } from "@clerk/nextjs";
 
+import LinksView from "@/components/dashboard/link-overview/links-view";
 import prisma from "@/db";
 import Link from "next/link";
-import LinksView from "@/components/dashboard/link-overview/links-view";
 
 // Get all links from the user
 const getUserLinks = async () => {

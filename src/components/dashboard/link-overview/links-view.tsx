@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import React from "react";
 
-import { Prisma } from "@prisma/client";
 import { Input } from "@/components/ui/input";
+import { Prisma } from "@prisma/client";
 import LinkShowcase from "./link-showcase";
 
 type Link = Prisma.LinkGetPayload<{
