@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { Prisma } from "@prisma/client";
 
 import { deleteLink } from "@/app/dashboard/_actions/link-actions";
+import { useState } from "react";
+import { LinkEditModal } from "../modals/link-edit-modal";
 
 type Link = Prisma.LinkGetPayload<{
   include: {
@@ -21,10 +23,16 @@ const LinkShowcase = ({ link }: { link: Link }) => {
   const { toast } = useToast();
   const router = useRouter();
 
+  const [openModal, setOpenModal] = useState(false);
+
   const daysSinceToday = Math.floor(
     (new Date().getTime() - new Date(link.createdAt).getTime()) /
       (1000 * 60 * 60 * 24),
   );
+
+  const handleModal = () => {
+    setOpenModal(!openModal);
+  };
 
   const handleLinkDeletion = async () => {
     const response = await deleteLink(link.id);
@@ -89,7 +97,17 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           <span className="inline md:hidden">v</span>
         </Badge>
 
-        <LinkActions handleDelete={handleLinkDeletion} />
+        <LinkActions
+          handleDelete={handleLinkDeletion}
+          handleModal={handleModal}
+        />
+
+        <LinkEditModal
+          link={{ ...link, linkVisits: undefined }}
+          open={openModal}
+          setOpen={setOpenModal}
+          linkId={link.id}
+        />
       </div>
     </div>
   );
