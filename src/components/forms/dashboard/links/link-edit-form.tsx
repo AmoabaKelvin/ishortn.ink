@@ -55,7 +55,10 @@ const LinkEditForm = () => {
         /^[a-zA-Z0-9-_]+$/,
         "Only letters, numbers, dashes and underscores are allowed",
       ),
-      disableLinkAfterClicks: Yup.number().optional(),
+      disableLinkAfterClicks: Yup.number().min(
+        0,
+        "Number of clicks must be greater than or equal to 0",
+      ),
     }),
     onSubmit: async (values) => {
       console.log(values);
@@ -183,8 +186,15 @@ const LinkEditForm = () => {
               id="Deactivate after"
               placeholder="Leave empty for no limit"
               type="number"
+              min={0}
+              className={cn(
+                formik.errors.disableLinkAfterClicks && "border-red-500",
+              )}
               {...formik.getFieldProps("disableLinkAfterClicks")}
             />
+            <span className="text-sm text-red-500">
+              {formik.errors.disableLinkAfterClicks}
+            </span>
           </div>
 
           {/* Password protection */}
