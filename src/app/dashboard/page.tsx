@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { auth } from "@clerk/nextjs";
 
 import LinksView from "@/components/dashboard/link-overview/links-view";
+import QuickShortenForm from "@/components/forms/dashboard/links/quick-shorten";
 import prisma from "@/db";
 import Link from "next/link";
 
@@ -53,10 +52,8 @@ const Dashboard = async () => {
               </p>
             </div>
             <div>
-              <Label htmlFor="url">URL</Label>
-              <Input id="url" type="text" placeholder="https://example.com" />
+              <QuickShortenForm />
             </div>
-            <Button className="w-full mt-5">Shorten</Button>
           </div>
 
           {/* Quick Stats, total links, total clicks */}
