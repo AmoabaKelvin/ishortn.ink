@@ -63,3 +63,76 @@ export const quickLinkShorten = async (url: string) => {
   revalidatePath("/dashboard");
   return createdLink;
 };
+
+export const deleteLink = async (id: number) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  // Check if the link exists and belongs to the user
+  const link = await prisma.link.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!link) {
+    return {
+      error: "Link not found",
+    };
+  }
+
+  if (link.userId !== userId) {
+    return {
+      error: "You are not authorized to delete this link",
+    };
+  }
+
+  const deletedLink = prisma.link.delete({
+    where: {
+      id,
+    },
+  });
+  revalidatePath("/dashboard");
+  return deletedLink;
+};
+
+export const updateLink = async (link: Prisma.LinkUpdateInput, id: number) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  // Check if the link exists and belongs to the user
+  const existingLink = await prisma.link.findUnique({
+    where: {
+      id: id,
+    },
+  });
+
+  if (!existingLink) {
+    return {
+      error: "Link not found",
+    };
+  }
+
+  if (existingLink.userId !== userId) {
+    return {
+      error: "You are not authorized to update this link",
+    };
+  }
+
+  const updatedLink = prisma.link.update({
+    where: {
+      id: id,
+    },
+    data: {
+      ...link,
+    },
+  });
+  revalidatePath("/dashboard");
+  return updatedLink;
+};
