@@ -1,10 +1,12 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
-import { auth } from "@clerk/nextjs";
+import { revalidatePath } from "next/cache";
 
-import prisma from "@/db";
+import { auth } from "@clerk/nextjs";
+import { Prisma } from "@prisma/client";
+
 import { generateShortUrl } from "@/app/api/utils/links";
+import prisma from "@/db";
 
 export const createLink = async (link: Prisma.LinkCreateInput) => {
   const { userId } = auth();
@@ -36,5 +38,28 @@ export const createLink = async (link: Prisma.LinkCreateInput) => {
       },
     },
   });
+  revalidatePath("/dashboard");
+  return createdLink;
+};
+
+export const quickLinkShorten = async (url: string) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  const createdLink = prisma.link.create({
+    data: {
+      url,
+      alias: await generateShortUrl(url),
+      User: {
+        connect: {
+          id: userId,
+        },
+      },
+    },
+  });
+  revalidatePath("/dashboard");
   return createdLink;
 };
