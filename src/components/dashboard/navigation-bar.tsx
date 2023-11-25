@@ -10,7 +10,7 @@ const NavigationBar = () => {
         </Link>{" "}
         / Dashboard
       </h2>
-      <UserButton />
+      <UserButton afterSignOutUrl="/" />
     </div>
   );
 };
