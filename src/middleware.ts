@@ -8,6 +8,14 @@ export default authMiddleware({
   publicRoutes: ["/api/webhook/clerk", "/", "/api/links", "/:shortenedLink"],
 
   afterAuth(auth, req) {
+    // if there is no user and the route is /dashboard, redirect to sign in
+    if (!auth.userId && req.nextUrl.pathname === "/dashboard") {
+      console.log(">>> redirecting to sign in");
+      const signInUrl = req.nextUrl.clone();
+      signInUrl.pathname = "auth/sign-in";
+      return NextResponse.redirect(signInUrl);
+    }
+
     if (!auth.userId && !auth.isPublicRoute) {
       console.log(">>> redirecting to sign in");
       const signInUrl = req.nextUrl.clone();
