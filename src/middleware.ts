@@ -1,4 +1,4 @@
-import { authMiddleware, redirectToSignIn } from "@clerk/nextjs";
+import { authMiddleware } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
 
 // This example protects all routes including api/trpc routes
@@ -9,7 +9,10 @@ export default authMiddleware({
 
   afterAuth(auth, req) {
     if (!auth.userId && !auth.isPublicRoute) {
-      return redirectToSignIn({ returnBackUrl: req.url });
+      console.log(">>> redirecting to sign in");
+      const signInUrl = req.nextUrl.clone();
+      signInUrl.pathname = "auth/sign-in";
+      return NextResponse.redirect(signInUrl);
     }
 
     // Redirect any logged in users to the dashboard if they try to visit the homepage
