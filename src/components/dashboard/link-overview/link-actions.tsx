@@ -13,12 +13,14 @@ type linkActionsProps = {
   handleModal: () => void;
   handleDelete: () => void;
   handleQRCodeModal: () => void;
+  handleDisable: () => void;
 };
 
 export function LinkActions({
   handleDelete,
   handleModal,
   handleQRCodeModal,
+  handleDisable,
 }: linkActionsProps) {
   return (
     <DropdownMenu>
@@ -41,7 +43,7 @@ export function LinkActions({
             <span>QrCode</span>
             <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleDisable()}>
             <ToggleLeft className="w-4 h-4 mr-2" />
             <span>Deactivate</span>
             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
