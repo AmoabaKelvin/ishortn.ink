@@ -10,7 +10,14 @@ const NavigationBar = () => {
         </Link>{" "}
         / Dashboard
       </h2>
-      <UserButton />
+      <div className="flex items-center justify-between space-x-4">
+        <Link href="https://ishortn.ink/feedback" target="_blank">
+          <span className="text-sm font-medium text-gray-600 hover:text-gray-800">
+            Feedback
+          </span>
+        </Link>
+        <UserButton />
+      </div>
       {/* <LogoutButton /> */}
     </div>
   );
