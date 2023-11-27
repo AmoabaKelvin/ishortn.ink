@@ -1,5 +1,5 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
+import LogoutButton from "./custom-signout";
 
 const NavigationBar = () => {
   return (
@@ -10,7 +10,8 @@ const NavigationBar = () => {
         </Link>{" "}
         / Dashboard
       </h2>
-      <UserButton afterSignOutUrl="/" />
+      {/* <UserButton afterSignOutUrl="/" /> */}
+      <LogoutButton />
     </div>
   );
 };
