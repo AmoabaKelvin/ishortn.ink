@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 import { Prisma } from "@prisma/client";
 
-import { deleteLink } from "@/app/dashboard/_actions/link-actions";
+import { deleteLink, disableLink } from "@/app/dashboard/_actions/link-actions";
 import { useState } from "react";
 import { LinkEditModal } from "../modals/link-edit-modal";
 import { QRCodeModal } from "../modals/qr-code-modal";
@@ -57,6 +57,23 @@ const LinkShowcase = ({ link }: { link: Link }) => {
     }
   };
 
+  const handleLinkDisabling = async () => {
+    const response = await disableLink(link.id);
+    console.log(response);
+    if (response && "id" in response) {
+      toast({
+        title: "Link deactivated",
+        description: "Your link has been deactivated.",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "An error occurred while deactivating your link.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex items-center justify-between px-6 py-4 rounded-md bg-slate-50">
       <div className="flex flex-col gap-2">
@@ -65,7 +82,12 @@ const LinkShowcase = ({ link }: { link: Link }) => {
             className="flex items-center text-blue-600 cursor-pointer hover:underline"
             onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
           >
-            <span className="inline-block w-2 h-2 mr-2 bg-blue-300 rounded-full animate-pulse"></span>
+            {/* <span className="inline-block w-2 h-2 mr-2 bg-blue-300 rounded-full animate-pulse"></span> */}
+            {link.disabled ? (
+              <span className="inline-block w-2 h-2 mr-2 bg-red-300 rounded-full animate-pulse"></span>
+            ) : (
+              <span className="inline-block w-2 h-2 mr-2 bg-blue-300 rounded-full animate-pulse"></span>
+            )}
             ishortn.ink/{link.alias}
           </p>
           <div className="flex items-center justify-center w-6 h-6 bg-white rounded-full cursor-pointer hover:animate-wiggle-more ">
@@ -107,6 +129,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           handleDelete={handleLinkDeletion}
           handleModal={handleModal}
           handleQRCodeModal={handleQRCodeModal}
+          handleDisable={handleLinkDisabling}
         />
 
         <LinkEditModal
