@@ -19,6 +19,7 @@ model Link {
   linkVisits             LinkVisit[]
   disableLinkAfterClicks Int?
   disableLinkAfterDate   DateTime?
+  disabled               Boolean     @default(false)
 
   User   User?   @relation(fields: [userId], references: [id])
   userId String?
