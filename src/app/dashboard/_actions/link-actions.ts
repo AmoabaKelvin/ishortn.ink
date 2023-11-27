@@ -143,3 +143,40 @@ export const updateLink = async (link: Prisma.LinkUpdateInput, id: number) => {
   revalidatePath("/dashboard");
   return updatedLink;
 };
+
+export const disableLink = async (id: number) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  const link = await prisma.link.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!link) {
+    return {
+      error: "Link not found",
+    };
+  }
+
+  if (link.userId !== userId) {
+    return {
+      error: "You are not authorized to disable this link",
+    };
+  }
+
+  const disabledLink = prisma.link.update({
+    where: {
+      id,
+    },
+    data: {
+      disabled: true,
+    },
+  });
+  revalidatePath("/dashboard");
+  return disabledLink;
+};
