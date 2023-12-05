@@ -180,3 +180,45 @@ export const disableLink = async (id: number) => {
   revalidatePath("/dashboard");
   return disabledLink;
 };
+
+type DynamicLinkCreateInput = Omit<Prisma.DynamicLinkCreateInput, "user">;
+
+export const createDynamicLink = async (link: DynamicLinkCreateInput) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  const createdLink = prisma.dynamicLink.create({
+    data: {
+      ...link,
+      user: {
+        connect: {
+          id: userId,
+        },
+      },
+    },
+  });
+  revalidatePath("/dashboard");
+  return createdLink;
+};
+
+export const validateSubdomainAvailability = async (subdomain: string) => {
+  // check if the subdomain is valid
+  // check if the subdomain is already taken
+  // check if the subdomain is available
+  // set formik error if the subdomain is invalid
+  // formik.setFieldError("subdomain", "Subdomain is invalid");
+  const isLinkThere = await prisma.dynamicLink.findUnique({
+    where: {
+      subdomain,
+    },
+  });
+
+  if (isLinkThere) {
+    return false;
+  }
+
+  return true;
+};
