@@ -1,8 +1,7 @@
 import prisma from "@/db";
 import { Metadata, ResolvingMetadata } from "next";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-
+import { notFound, redirect } from "next/navigation";
 type Props = {
   params: { software: string };
 };
@@ -42,15 +41,17 @@ const RedirectionPage = async ({
     },
   });
 
+  if (!dynamicLink) {
+    notFound();
+  }
+
   if (dynamicLink?.fallbackUrl) {
     redirect(dynamicLink.fallbackUrl);
   }
 
-  // redirect to the app store or playstore
   const incomingHeaders = headers();
   const userAgent = incomingHeaders.get("user-agent");
 
-  // check the device type
   if (userAgent?.includes("iPhone") || userAgent?.includes("iPad")) {
     redirect(
       dynamicLink?.appStoreUrl
