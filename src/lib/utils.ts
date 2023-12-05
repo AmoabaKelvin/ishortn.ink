@@ -1,4 +1,4 @@
-import { type ClassValue, clsx } from "clsx";
+import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import * as z from "zod";
 
@@ -20,3 +20,24 @@ export const copyToClipboard = (text: string) => {
 
 export const fullUrlRegex =
   /(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?\/[a-zA-Z0-9]{2,}|((https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?)|(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})?/g;
+
+export const getValidSubdomain = (host?: string | null) => {
+  let subdomain: string | null = null;
+  if (!host && typeof window !== "undefined") {
+    // On client side, get the host from window
+    host = window.location.host;
+  }
+  // we should improve here for custom vercel deploy page
+  if (host && host.includes(".") && !host.includes(".vercel.app")) {
+    const candidate = host.split(".")[0];
+    if (candidate && !candidate.includes("www")) {
+      // Valid candidate
+      subdomain = candidate;
+    }
+  }
+  if (host && host.includes("ngrok-free.app")) {
+    return null;
+  }
+
+  return subdomain;
+};
