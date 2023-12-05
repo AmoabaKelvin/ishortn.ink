@@ -28,12 +28,13 @@ model Link {
 }
 
 model User {
-  id        String   @id @unique
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
-  imageUrl  String?
-  links     Link[]
+  id           String        @id @unique
+  name         String
+  email        String        @unique
+  createdAt    DateTime      @default(now())
+  imageUrl     String?
+  links        Link[]
+  dynamicLinks DynamicLink[]
 }
 
 model LinkVisit {
@@ -50,4 +51,24 @@ model LinkVisit {
   city      String
 
   @@index([linkId])
+}
+
+model DynamicLink {
+  id                       Int      @id @default(autoincrement())
+  subdomain                String   @unique
+  createdAt                DateTime @default(now())
+  playStoreUrl             String
+  appStoreUrl              String
+  iosTeamId                String
+  iosBundleId              String
+  androidPackageName       String
+  androidSha256Fingerprint String
+  fallbackUrl              String
+  title                    String
+  description              String
+  imageUrl                 String
+  userId                   String
+  user                     User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
