@@ -14,6 +14,7 @@ import { Loader2 } from "lucide-react";
 import { useTransition } from "react";
 
 import { createDynamicLink } from "@/app/dashboard/_actions/link-actions";
+import { subdomainsThatAreNotAllowed } from "@/lib/constants";
 
 interface FormFields {
   subdomain: string;
@@ -51,7 +52,8 @@ const DynamicLinksForm = () => {
     validationSchema: Yup.object({
       subdomain: Yup.string()
         .required("Subdomain is required")
-        .matches(/^[a-zA-Z0-9]+$/, "Only letters and numbers are allowed"),
+        .matches(/^[a-zA-Z0-9]+$/, "Only letters and numbers are allowed")
+        .notOneOf(subdomainsThatAreNotAllowed, "Subdomain is not allowed"),
       fallbackUrl: Yup.string().optional(),
       title: Yup.string().optional(),
       description: Yup.string().optional(),
@@ -102,6 +104,8 @@ const DynamicLinksForm = () => {
   const validateSubdomain = async (subdomain: string) => {
     // if response is 200, there is a subdomain available
     // if response is 400, there is no subdomain available
+    if (formik.errors.subdomain) return;
+
     const response = await fetch(
       `/api/links/validate-subdomain?subdomain=${subdomain}`,
     );
