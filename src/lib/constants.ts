@@ -1,0 +1,26 @@
+export const subdomainsThatAreNotAllowed = [
+  // since we are using clerk, there are some configuration subdomains that
+  // when used, will cause some issues
+  "www",
+  "api",
+  "app",
+  "accounts",
+  "clerk",
+  "clk._domainkey",
+  "clk2._domainkey",
+  "clkmail",
+  "dashboard",
+  "signin",
+  "signup",
+  "signout",
+  "auth",
+  "login",
+  "logout",
+  "register",
+  "session",
+  "sessions",
+  "oauth",
+  "authorize",
+  "callback",
+  "ishortn",
+];
