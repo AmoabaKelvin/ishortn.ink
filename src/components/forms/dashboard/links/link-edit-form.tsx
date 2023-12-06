@@ -25,7 +25,6 @@ import { cn, fullUrlRegex } from "@/lib/utils";
 import { useFormik } from "formik";
 
 import { useToast } from "@/components/ui/use-toast";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type LinkEditFormProps = Prisma.LinkCreateInput;
@@ -103,13 +102,14 @@ const LinkEditForm = () => {
 
   return (
     <>
-      <div className="justify-end hidden gap-2 mb-4 md:flex">
+      {/* TODO: UNCOMMENT LATER WHEN EVERYTHING IS STABLE */}
+      {/* <div className="justify-end hidden gap-2 mb-4 md:flex">
         <Button asChild variant="secondary">
           <Link href="/dashboard/links/dynamic-links">
             Create a dynamic link instead
           </Link>
         </Button>
-      </div>
+      </div> */}
 
       <section className="grid grid-cols-1 gap-5 mt-6 md:grid-cols-11">
         <div className="flex flex-col col-span-5 gap-4">
