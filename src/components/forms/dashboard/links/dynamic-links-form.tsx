@@ -104,6 +104,8 @@ const DynamicLinksForm = () => {
   const validateSubdomain = async (subdomain: string) => {
     // if response is 200, there is a subdomain available
     // if response is 400, there is no subdomain available
+    if (formik.errors.subdomain) return;
+
     const response = await fetch(
       `/api/links/validate-subdomain?subdomain=${subdomain}`,
     );
