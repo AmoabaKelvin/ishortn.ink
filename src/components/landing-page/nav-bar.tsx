@@ -3,20 +3,25 @@ import Link from "next/link";
 import Logo from "../../../public/images/logo-text-white.png";
 
 const navigation = [
-  { name: "How it works?", href: "#" },
-  { name: "All features", href: "#" },
-  { name: "About us", href: "#" },
-  // { name: "Company", href: "#" },
+  { name: "All features", href: "#features" },
+  { name: "About us", href: "#footer" },
 ];
 
 export default function LandingPageNav() {
+  const handleScrollingToElementHref = (href: string) => {
+    const element = document.querySelector(href);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <header className="overflow-hidden bg-transparent">
       <nav
-        className="w-11/12 px-4 mx-auto  md:w-4/5 sm:px-6 lg:px-5"
+        className="w-11/12 px-4 mx-auto md:w-4/5 sm:px-6 lg:px-5"
         aria-label="Top"
       >
-        <div className="flex items-center justify-between py-2 mx-auto border-b border-yellow-500  lg:border-none">
+        <div className="flex items-center justify-between py-2 mx-auto border-b border-yellow-500 lg:border-none">
           <div className="flex items-center">
             <a href="#">
               <Image src={Logo} alt="logo" width={100} height={100} />
@@ -27,6 +32,10 @@ export default function LandingPageNav() {
               <a
                 key={link.name}
                 href={link.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleScrollingToElementHref(link.href);
+                }}
                 className="text-base text-white font-mazzardRegular hover:text-yellow-500"
               >
                 {link.name}
