@@ -111,3 +111,26 @@ input[type="tel"],
 input[type="color"] {
   font-size: 16px;
 }
+
+.link-underline {
+  border-bottom-width: 0;
+  background-image:
+    linear-gradient(transparent, transparent),
+    /* linear-gradient(#fff, #fff); */ /* bg-yellow-500 */
+      linear-gradient(#facc15, #facc15);
+  background-size: 0 3px;
+  width: fit-content;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.5s ease-in-out;
+}
+
+.link-underline-black {
+  background-image: linear-gradient(transparent, transparent),
+    linear-gradient(#f2c, #f2c);
+}
+
+.link-underline:hover {
+  background-size: 100% 3px;
+  background-position: 0 100%;
+}
