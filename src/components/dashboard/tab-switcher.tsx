@@ -9,6 +9,7 @@ const links = [
   { name: "Links", href: "/dashboard" },
   { name: "Profile", href: "/dashboard/profile" },
   { name: "Create Link", href: "/dashboard/links" },
+  { name: "Dynamic Links", href: "/dashboard/links/dynamic" },
 ];
 
 const TabSwitcher = () => {
