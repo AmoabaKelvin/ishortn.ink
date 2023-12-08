@@ -54,21 +54,35 @@ model LinkVisit {
 }
 
 model DynamicLink {
-  id                       Int      @id @default(autoincrement())
-  subdomain                String   @unique
-  createdAt                DateTime @default(now())
-  playStoreUrl             String
-  appStoreUrl              String
-  iosTeamId                String
-  iosBundleId              String
-  androidPackageName       String
-  androidSha256Fingerprint String
-  fallbackUrl              String
-  title                    String
-  description              String
-  imageUrl                 String
+  id                       Int                    @id @default(autoincrement())
+  name                     String
+  subdomain                String                 @unique
+  createdAt                DateTime               @default(now())
+  playStoreUrl             String                 @default("")
+  appStoreUrl              String                 @default("")
+  iosTeamId                String                 @default("")
+  iosBundleId              String                 @default("")
+  androidPackageName       String                 @default("")
+  androidSha256Fingerprint String                 @default("")
   userId                   String
-  user                     User     @relation(fields: [userId], references: [id])
+  user                     User                   @relation(fields: [userId], references: [id])
+  childLinks               DynamicLinkChildLink[]
 
   @@index([userId])
+}
+
+model DynamicLinkChildLink {
+  // this is to enable us to have multiple links for the same dynamic link
+  id                  Int         @id @default(autoincrement())
+  dynamicLinkId       Int
+  createdAt           DateTime    @default(now())
+  dynamicLink         DynamicLink @relation(fields: [dynamicLinkId], references: [id])
+  metaDataTitle       String      @default("")
+  metaDataDescription String      @default("")
+  metaDataImageUrl    String      @default("")
+  shortLink           String
+  link                String
+  createdFromUI       Boolean     @default(false)
+
+  @@index([dynamicLinkId])
 }
