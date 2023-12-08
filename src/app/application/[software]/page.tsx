@@ -10,21 +10,22 @@ export async function generateMetadata(
   { params }: Props,
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
-  // read route params
   const subdomain = params.software;
 
-  const dynamicLink = await prisma.dynamicLink.findUnique({
+  const dynamicLink = await prisma.dynamicLinkChildLink.findFirst({
     where: {
-      subdomain,
+      shortLink: subdomain,
     },
   });
 
   // get the metadata added by the user and merge it with the parent metadata
   return {
-    title: `${dynamicLink?.title} | ${subdomain}`,
-    description: `${dynamicLink?.description}`,
+    title: `${dynamicLink?.metaDataTitle}` || "Link sharing powered by ishortn",
+    description:
+      `${dynamicLink?.metaDataDescription}` ||
+      "Link sharing powered by ishortn",
     openGraph: {
-      images: [dynamicLink?.imageUrl as string],
+      images: [dynamicLink?.metaDataImageUrl as string],
     },
   };
 }
@@ -35,19 +36,20 @@ const RedirectionPage = async ({
 }) => {
   const subdomain = params.software;
 
-  const dynamicLink = await prisma.dynamicLink.findUnique({
+  const resolvedDynamicLink = await prisma.dynamicLinkChildLink.findFirst({
     where: {
-      subdomain,
+      shortLink: subdomain,
+    },
+    include: {
+      dynamicLink: true,
     },
   });
 
-  if (!dynamicLink) {
+  if (!resolvedDynamicLink) {
     notFound();
   }
 
-  if (dynamicLink?.fallbackUrl) {
-    redirect(dynamicLink.fallbackUrl);
-  }
+  const dynamicLink = resolvedDynamicLink.dynamicLink;
 
   const incomingHeaders = headers();
   const userAgent = incomingHeaders.get("user-agent");
@@ -66,17 +68,7 @@ const RedirectionPage = async ({
     );
   }
 
-  if (dynamicLink?.fallbackUrl) {
-    redirect(dynamicLink.fallbackUrl);
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <main className="flex flex-col items-center justify-center flex-1 w-full px-20 text-center">
-        {params.software} powered by ishortn.ink
-      </main>
-    </div>
-  );
+  redirect(resolvedDynamicLink.link);
 };
 
 export default RedirectionPage;
