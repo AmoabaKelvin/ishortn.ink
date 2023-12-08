@@ -26,6 +26,7 @@ import { useFormik } from "formik";
 
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import LinkPreviewComponent from "./link-preview-component";
 
 type LinkEditFormProps = Prisma.LinkCreateInput;
 
@@ -236,12 +237,11 @@ const LinkEditForm = () => {
           </div>
 
           {/* OG Preview cards for twitter, facebook and linkedin */}
-          <div className="flex flex-col gap-4">
+          {/* <div className="flex flex-col gap-4">
             <div className="border rounded-lg">
               <div className="flex flex-col p-5 bg-white rounded-lg">
                 <div className="flex flex-col gap-2">
                   <span className="text-sm text-gray-500">
-                    {/* Get only the actual url, like devshare.dev from https://www.devshare.dev */}
                     {destinationURL &&
                       /^(https?:\/\/|www\.)[\w\-]+(\.[\w\-]+)+[/#?]?.*$/.test(
                         destinationURL,
@@ -257,7 +257,6 @@ const LinkEditForm = () => {
                     {metaData.description || "Description"}
                   </span>
                 </div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={metaData.image || "https://via.placeholder.com/1200x630"}
                   alt="OG Image"
@@ -265,7 +264,14 @@ const LinkEditForm = () => {
                 />
               </div>
             </div>
-          </div>
+          </div> */}
+          <LinkPreviewComponent
+            destinationURL={destinationURL}
+            // metaData={metaData}
+            metaTitle={metaData.title}
+            metaDescription={metaData.description}
+            metaImage={metaData.image}
+          />
         </div>
       </section>
     </>
