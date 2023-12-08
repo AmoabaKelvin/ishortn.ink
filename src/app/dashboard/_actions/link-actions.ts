@@ -222,3 +222,32 @@ export const validateSubdomainAvailability = async (subdomain: string) => {
 
   return true;
 };
+
+type DynamicLinkChildCreateInput = Omit<
+  Prisma.DynamicLinkChildLinkCreateInput,
+  "user" | "dynamicLink"
+>;
+
+export const createDynamicLinkChildLink = async (
+  link: DynamicLinkChildCreateInput,
+  selectedDynamicLinkProjectID: number,
+) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  const createdLink = prisma.dynamicLinkChildLink.create({
+    data: {
+      ...link,
+      dynamicLink: {
+        connect: {
+          id: selectedDynamicLinkProjectID,
+        },
+      },
+    },
+  });
+  revalidatePath("/dashboard/links/dynamic");
+  return createdLink;
+};
