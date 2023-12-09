@@ -43,8 +43,8 @@ export async function generateMetadata(
   };
 }
 
-const PathPage = async (params: { domain: string; slug: string }) => {
-  const subdomain = params.domain;
+const PathPage = async (params: Props["params"]) => {
+  const subdomain = params.software;
 
   const dynamicLink = await prisma.dynamicLink.findFirst({
     where: {
@@ -53,7 +53,7 @@ const PathPage = async (params: { domain: string; slug: string }) => {
     include: {
       childLinks: {
         where: {
-          shortLink: params.slug,
+          shortLink: params.path,
         },
       },
     },
