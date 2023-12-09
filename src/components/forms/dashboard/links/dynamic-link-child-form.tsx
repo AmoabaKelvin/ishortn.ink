@@ -28,22 +28,29 @@ import {
 import { useRouter } from "next/navigation";
 import LinkPreviewComponent from "./link-preview-component";
 
-type FormFields = Omit<Prisma.DynamicLinkChildLinkCreateInput, "user">;
+type FormFields = Omit<
+  Prisma.DynamicLinkChildLinkCreateInput,
+  "user" | "dynamicLink"
+>;
 
 type FormProps = {
   formFields?: FormFields;
+  selectedProject?: number;
   userDynamicLinksProjects?: Prisma.DynamicLinkGetPayload<{}>[];
 };
 const DynamicLinksForm = ({
   formFields,
   userDynamicLinksProjects,
+  selectedProject: selectedProjectId,
 }: FormProps) => {
   const { toast } = useToast();
   const router = useRouter();
   const [loading, startTransition] = useTransition();
-  const [selectedProject, setSelectedProject] = useState<number | null>(null);
+  const [selectedProject, setSelectedProject] = useState<number | null>(
+    selectedProjectId || null,
+  );
 
-  const formik = useFormik<Omit<FormFields, "dynamicLink">>({
+  const formik = useFormik<FormFields>({
     initialValues: {
       link: formFields?.link || "",
       metaDataTitle: formFields?.metaDataTitle || "",
@@ -139,6 +146,7 @@ const DynamicLinksForm = ({
               onValueChange={(value: string) => {
                 setSelectedProject(Number(value));
               }}
+              value={selectedProject?.toString()}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a project" />
