@@ -2,7 +2,11 @@ import DynamicLinksForm from "@/components/forms/dashboard/links/dynamic-link-ch
 import prisma from "@/db";
 import { auth } from "@clerk/nextjs";
 
-const DynamicLinkCreatePage = async () => {
+const DynamicLinkCreatePage = async ({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) => {
   const { userId } = auth();
 
   const dynamicLinksProjects = await prisma.dynamicLink.findMany({
@@ -10,6 +14,24 @@ const DynamicLinkCreatePage = async () => {
       userId: userId as string,
     },
   });
+
+  if (searchParams.id) {
+    const dynamicLinkChild = await prisma.dynamicLinkChildLink.findFirst({
+      where: {
+        id: Number(searchParams.id),
+      },
+    });
+
+    if (dynamicLinkChild) {
+      return (
+        <DynamicLinksForm
+          userDynamicLinksProjects={dynamicLinksProjects}
+          formFields={dynamicLinkChild}
+          selectedProject={dynamicLinkChild.dynamicLinkId}
+        />
+      );
+    }
+  }
 
   return <DynamicLinksForm userDynamicLinksProjects={dynamicLinksProjects} />;
 };
