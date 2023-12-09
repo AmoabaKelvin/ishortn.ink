@@ -8,9 +8,8 @@ import { useRouter } from "next/navigation";
 
 import { Prisma } from "@prisma/client";
 
-import { deleteLink } from "@/app/dashboard/_actions/link-actions";
+import { deleteDynamicLinkChildLink } from "@/app/dashboard/_actions/link-actions";
 import { useState } from "react";
-import { LinkEditModal } from "../modals/link-edit-modal";
 import { QRCodeModal } from "../modals/qr-code-modal";
 
 type Link = Prisma.DynamicLinkGetPayload<{
@@ -31,17 +30,16 @@ const DynamicLinksShowCase = ({ link }: { link: Link }) => {
       (1000 * 60 * 60 * 24),
   );
 
-  const handleModal = () => {
-    setOpenModal(!openModal);
+  const handleModal = (id: number) => {
+    router.push(`/dashboard/links/dynamic/create?id=${id}`);
   };
 
   const handleQRCodeModal = () => {
     setQrModal(!qrModal);
   };
 
-  const handleLinkDeletion = async () => {
-    const response = await deleteLink(link.id);
-    console.log(response);
+  const handleLinkDeletion = async (id: number) => {
+    const response = await deleteDynamicLinkChildLink(id);
     if (response && "id" in response) {
       toast({
         title: "Link deleted",
@@ -66,10 +64,7 @@ const DynamicLinksShowCase = ({ link }: { link: Link }) => {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               <p className="flex items-center text-blue-600 cursor-pointer hover:underline">
-                {/* <span className="inline-block w-2 h-2 mr-2 bg-blue-300 rounded-full animate-pulse"></span> */}
                 <span className="inline-block w-2 h-2 mr-2 bg-blue-300 rounded-full animate-pulse"></span>
-                {/* ishortn.ink/{link.alias} */}
-                {/* {link.dynamicLink.subdomain}.ishortn.ink/{link.shortLink} */}
                 {link.subdomain}.ishortn.ink/{childLink.shortLink}
               </p>
               <div className="flex items-center justify-center w-6 h-6 bg-white rounded-full cursor-pointer hover:animate-wiggle-more ">
@@ -77,7 +72,6 @@ const DynamicLinksShowCase = ({ link }: { link: Link }) => {
                   className="w-3 h-3"
                   onClick={() => {
                     window.navigator.clipboard.writeText(
-                      // `https://${link.dynamicLink.subdomain}.ishortn.ink/${link.shortLink}`
                       `https://${link.subdomain}.ishortn.ink/${childLink.shortLink}`,
                     );
                     toast({
@@ -100,22 +94,14 @@ const DynamicLinksShowCase = ({ link }: { link: Link }) => {
           </div>
           <div className="flex items-center gap-2">
             <LinkActions
-              handleDelete={handleLinkDeletion}
-              handleModal={handleModal}
+              handleDelete={() => handleLinkDeletion(childLink.id)}
+              handleModal={() => handleModal(childLink.id)}
               handleQRCodeModal={handleQRCodeModal}
-            />
-
-            <LinkEditModal
-              link={{ ...link, linkVisits: undefined }}
-              open={openModal}
-              setOpen={setOpenModal}
-              linkId={link.id}
             />
 
             <QRCodeModal
               open={qrModal}
               setOpen={setQrModal}
-              // destinationUrl={`https://${link.dynamicLink.subdomain}.ishortn.ink/${link.shortLink}`}
               destinationUrl={`${link.subdomain}.ishortn.ink/${childLink.shortLink}`}
             />
           </div>
