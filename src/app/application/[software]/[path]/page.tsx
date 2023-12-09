@@ -4,20 +4,20 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import PageRenderer from "./page-renderer";
 
-type Props = {
-  params: { software: string; path: string };
-};
+interface PageProps {
+  params: { subdomain: string; path: string };
+}
 
 export async function generateMetadata(
-  { params }: Props,
+  { params }: PageProps,
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
-  const subdomain = params.software;
+  const subdomain = params.subdomain;
   const path = params.path;
 
   const dynamicLink = await prisma.dynamicLink.findFirst({
     where: {
-      subdomain: subdomain,
+      subdomain,
     },
     include: {
       childLinks: {
@@ -43,8 +43,8 @@ export async function generateMetadata(
   };
 }
 
-const PathPage = async (params: Props["params"]) => {
-  const subdomain = params.software;
+const PathPage = async ({ params }: PageProps) => {
+  const subdomain = params.subdomain;
 
   const dynamicLink = await prisma.dynamicLink.findFirst({
     where: {
