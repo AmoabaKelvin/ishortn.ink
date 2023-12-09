@@ -69,7 +69,9 @@ export default async function middleware(
   const subdomain = getValidSubdomain(host);
 
   if (subdomain) {
-    url.pathname = `/application/${subdomain}`;
+    const paths = url.pathname.split("/").slice(1);
+    // add the subdomain to the path
+    url.pathname = `/application/${subdomain}/${paths.join("/")}`;
     return NextResponse.rewrite(url);
   }
 
