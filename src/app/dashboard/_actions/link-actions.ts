@@ -251,3 +251,41 @@ export const createDynamicLinkChildLink = async (
   revalidatePath("/dashboard/links/dynamic");
   return createdLink;
 };
+
+export const deleteDynamicLinkChildLink = async (id: number) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  // Check if the link exists and belongs to the user
+  const link = await prisma.dynamicLinkChildLink.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      dynamicLink: true,
+    },
+  });
+
+  if (!link) {
+    return {
+      error: "Link not found",
+    };
+  }
+
+  if (link.dynamicLink.userId !== userId) {
+    return {
+      error: "You are not authorized to delete this link",
+    };
+  }
+
+  const deletedLink = prisma.dynamicLinkChildLink.delete({
+    where: {
+      id,
+    },
+  });
+  revalidatePath("/dashboard/links/dynamic");
+  return deletedLink;
+};
