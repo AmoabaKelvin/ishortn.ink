@@ -12,7 +12,9 @@ const CreateDynamicLinkProjectPage = async ({
     });
 
     if (project) {
-      return <DynamicLinksForm initialValues={project} />;
+      return (
+        <DynamicLinksForm initialValues={project} projectId={project.id} />
+      );
     }
   }
   return <DynamicLinksForm />;
