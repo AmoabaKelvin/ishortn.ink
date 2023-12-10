@@ -33,21 +33,25 @@ import { Prisma } from "@prisma/client";
 
 type FormFields = Omit<Prisma.DynamicLinkCreateInput, "user" | "childLinks">;
 
-const DynamicLinksForm = () => {
+interface FormProps {
+  initialValues?: FormFields;
+}
+
+const DynamicLinksForm = ({ initialValues }: FormProps) => {
   const { toast } = useToast();
   const [loading, startTransition] = useTransition();
   const [subdomain, setSubdomain] = useState<string>("");
 
   const formik = useFormik<FormFields>({
     initialValues: {
-      subdomain: "",
-      name: "",
-      iosBundleId: "",
-      iosTeamId: "",
-      appStoreUrl: "",
-      androidPackageName: "",
-      androidSha256Fingerprint: "",
-      playStoreUrl: "",
+      subdomain: initialValues?.subdomain || "",
+      name: initialValues?.name || "",
+      iosBundleId: initialValues?.iosBundleId || "",
+      iosTeamId: initialValues?.iosTeamId || "",
+      appStoreUrl: initialValues?.appStoreUrl || "",
+      androidPackageName: initialValues?.androidPackageName || "",
+      androidSha256Fingerprint: initialValues?.androidSha256Fingerprint || "",
+      playStoreUrl: initialValues?.playStoreUrl || "",
     },
     validationSchema: Yup.object({
       name: Yup.string().required("Name is required"),
