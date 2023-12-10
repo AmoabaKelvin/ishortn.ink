@@ -184,15 +184,24 @@ export const disableLink = async (id: number) => {
 
 type DynamicLinkCreateInput = Omit<Prisma.DynamicLinkCreateInput, "user">;
 
-export const createDynamicLink = async (link: DynamicLinkCreateInput) => {
+export const createDynamicLink = async (
+  link: DynamicLinkCreateInput,
+  projectID?: number,
+) => {
   const { userId } = auth();
 
   if (!userId) {
     return;
   }
 
-  const createdLink = prisma.dynamicLink.create({
-    data: {
+  const createdLink = prisma.dynamicLink.upsert({
+    where: {
+      id: projectID || 0,
+    },
+    update: {
+      ...link,
+    },
+    create: {
       ...link,
       user: {
         connect: {
@@ -201,27 +210,8 @@ export const createDynamicLink = async (link: DynamicLinkCreateInput) => {
       },
     },
   });
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/dynamic");
   return createdLink;
-};
-
-export const validateSubdomainAvailability = async (subdomain: string) => {
-  // check if the subdomain is valid
-  // check if the subdomain is already taken
-  // check if the subdomain is available
-  // set formik error if the subdomain is invalid
-  // formik.setFieldError("subdomain", "Subdomain is invalid");
-  const isLinkThere = await prisma.dynamicLink.findUnique({
-    where: {
-      subdomain,
-    },
-  });
-
-  if (isLinkThere) {
-    return false;
-  }
-
-  return true;
 };
 
 type DynamicLinkChildCreateInput = Omit<
@@ -232,6 +222,7 @@ type DynamicLinkChildCreateInput = Omit<
 export const createDynamicLinkChildLink = async (
   link: DynamicLinkChildCreateInput,
   selectedDynamicLinkProjectID: number,
+  linkID?: number,
 ) => {
   const { userId } = auth();
 
@@ -239,7 +230,6 @@ export const createDynamicLinkChildLink = async (
     return;
   }
 
-  // check if there is no shortlink entered by the user, then we can generate one
   if (!link.shortLink) {
     link.shortLink = await generateShortLinkForProject(
       link.shortLink,
@@ -247,8 +237,19 @@ export const createDynamicLinkChildLink = async (
     );
   }
 
-  const createdLink = prisma.dynamicLinkChildLink.create({
-    data: {
+  const createdLink = prisma.dynamicLinkChildLink.upsert({
+    where: {
+      id: linkID || 0,
+    },
+    update: {
+      ...link,
+      dynamicLink: {
+        connect: {
+          id: selectedDynamicLinkProjectID,
+        },
+      },
+    },
+    create: {
       ...link,
       dynamicLink: {
         connect: {
@@ -257,6 +258,7 @@ export const createDynamicLinkChildLink = async (
       },
     },
   });
+
   revalidatePath("/dashboard/links/dynamic");
   return createdLink;
 };
