@@ -4,7 +4,6 @@ import Link from "next/link";
 import DynamicLinksView from "@/components/dashboard/dynamic-links/dynamic-links-view";
 import DynamicLinkProjectCard from "@/components/dashboard/dynamic-links/project-card";
 import prisma from "@/db";
-import { cn } from "@/lib/utils";
 import { auth } from "@clerk/nextjs";
 
 const DynamicLinksDashboard = async () => {
@@ -27,16 +26,8 @@ const DynamicLinksDashboard = async () => {
         <h2 className="text-xl font-semibold leading-tight text-gray-800">
           Dynamic Links
         </h2>
-        <Button
-          asChild
-          className={cn(dynamicLinksProjects.length === 0) && "bg-gray-500"}
-        >
-          <Link
-            href="/dashboard/links/dynamic/create"
-            className={cn(
-              dynamicLinksProjects.length === 0 && "pointer-events-none",
-            )}
-          >
+        <Button asChild>
+          <Link href="/dashboard/links/dynamic/create">
             Create Dynamic Link
           </Link>
         </Button>
