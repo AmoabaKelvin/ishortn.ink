@@ -53,7 +53,7 @@ const DynamicLinksForm = ({
   );
 
   const handleShortLinkValidation = async (value: string) => {
-    if (!selectedProject) {
+    if (!selectedProject || !value) {
       return;
     }
 
@@ -85,6 +85,7 @@ const DynamicLinksForm = ({
       metaDataDescription: Yup.string().optional(),
       metaDataImageUrl: Yup.string().url("Please enter a valid URL").optional(),
       shortLink: Yup.string().optional(),
+      fallbackLink: Yup.string().url("Please enter a valid URL").optional(),
     }),
     onSubmit: (values) => {
       startTransition(async () => {
@@ -172,6 +173,11 @@ const DynamicLinksForm = ({
                   "border-red-500",
               )}
             />
+            <span className="text-sm text-red-500">
+              {formik.errors.fallbackLink &&
+                formik.touched.fallbackLink &&
+                formik.errors.fallbackLink}
+            </span>
           </div>
 
           {/* main project tagging */}
