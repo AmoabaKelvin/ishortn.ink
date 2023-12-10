@@ -16,31 +16,20 @@ import { useTransition } from "react";
 import { createDynamicLink } from "@/app/dashboard/_actions/link-actions";
 import { subdomainsThatAreNotAllowed } from "@/lib/constants";
 import { Prisma } from "@prisma/client";
-
-// interface FormFields {
-//   subdomain: string;
-//   fallbackUrl: string;
-//   title: string;
-//   description: string;
-//   imageUrl: string;
-//   iosBundleId: string;
-//   iosTeamId: string;
-//   appStoreUrl: string;
-//   androidPackageName: string;
-//   androidSha256Fingerprint: string;
-//   playStoreUrl: string;
-// }
+import { useRouter } from "next/navigation";
 
 type FormFields = Omit<Prisma.DynamicLinkCreateInput, "user" | "childLinks">;
 
 interface FormProps {
   initialValues?: FormFields;
+  projectId?: number;
 }
 
-const DynamicLinksForm = ({ initialValues }: FormProps) => {
+const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
   const { toast } = useToast();
   const [loading, startTransition] = useTransition();
   const [subdomain, setSubdomain] = useState<string>("");
+  const router = useRouter();
 
   const formik = useFormik<FormFields>({
     initialValues: {
@@ -72,7 +61,7 @@ const DynamicLinksForm = ({ initialValues }: FormProps) => {
     }),
     onSubmit: (values) => {
       startTransition(async () => {
-        const response = await createDynamicLink(values);
+        const response = await createDynamicLink(values, projectId);
 
         if (response && "error" in response) {
           toast({
@@ -85,15 +74,13 @@ const DynamicLinksForm = ({ initialValues }: FormProps) => {
         if (response && "id" in response) {
           toast({
             title: "Success",
-            description: "Link created successfully",
+            description: `Link ${
+              projectId ? "updated" : "created"
+            } successfully`,
           });
         }
-
-        toast({
-          title: "Success",
-          description: "Link created successfully",
-        });
         formik.resetForm();
+        router.push("/dashboard/links/dynamic");
       });
     },
   });
@@ -174,10 +161,6 @@ const DynamicLinksForm = ({ initialValues }: FormProps) => {
             id="Subdomain"
             placeholder="Subdomain"
             {...formik.getFieldProps("subdomain")}
-            // onChange={(e) => {
-            //   formik.setFieldValue("subdomain", e.target.value);
-            // }}
-            {...formik.getFieldProps("subdomain")}
             onBlur={(e) => {
               formik.handleBlur(e);
               validateSubdomain(formik.values.subdomain);
@@ -245,9 +228,9 @@ const DynamicLinksForm = ({ initialValues }: FormProps) => {
             )}
           />
           <span className="text-sm text-red-500">
-            {formik.errors.iosTeamId && formik.touched.iosTeamId
-              ? formik.errors.iosTeamId
-              : null}
+            {formik.errors.iosTeamId &&
+              formik.touched.iosTeamId &&
+              formik.errors.iosTeamId}
           </span>
         </div>
         {/* app store url */}
