@@ -50,6 +50,24 @@ const DynamicLinksForm = ({
     selectedProjectId || null,
   );
 
+  const handleShortLinkValidation = async (value: string) => {
+    if (!selectedProject) {
+      return;
+    }
+
+    const response = await fetch(
+      `/api/links/dynamic-links/validate-shortlink?shortLink=${value}&projectID=${selectedProject}`,
+    );
+
+    if (response.status === 200) {
+      formik.setFieldError("shortLink", "");
+    }
+
+    if (response.status === 400 || response.status === 404) {
+      formik.setFieldError("shortLink", "Short link is not available");
+    }
+  };
+
   const formik = useFormik<FormFields>({
     initialValues: {
       link: formFields?.link || "",
@@ -67,8 +85,6 @@ const DynamicLinksForm = ({
     }),
     onSubmit: (values) => {
       startTransition(async () => {
-        console.log(values);
-
         if (!selectedProject) {
           toast({
             title: "Uh oh!",
@@ -182,7 +198,16 @@ const DynamicLinksForm = ({
                   formik.touched.shortLink &&
                   "border-red-500",
               )}
+              onBlur={(e) => {
+                handleShortLinkValidation(e.target.value);
+                formik.handleBlur(e);
+              }}
             />
+            <span className="text-sm text-red-500">
+              {formik.errors.shortLink && formik.touched.shortLink
+                ? formik.errors.shortLink
+                : ""}
+            </span>
           </div>
 
           <div className="flex items-center gap-4 mt-3 mb-3">
