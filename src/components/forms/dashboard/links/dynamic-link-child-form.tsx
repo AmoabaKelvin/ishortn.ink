@@ -52,6 +52,14 @@ const DynamicLinksForm = ({
     selectedProjectId || null,
   );
 
+  const showToastNotification = (title: string, description: string) => {
+    toast({
+      title,
+      description,
+      variant: "destructive",
+    });
+  };
+
   const handleShortLinkValidation = async (value: string) => {
     if (!selectedProject || !value) {
       return;
@@ -104,21 +112,20 @@ const DynamicLinksForm = ({
           selectedLinkID,
         );
 
-        if (response && "error" in response) {
-          toast({
-            title: "Uh oh!",
-            description: "Could not create link",
-            variant: "destructive",
-          });
-        }
-
-        if (response && "id" in response) {
-          toast({
-            title: "Success",
-            description: `Link ${
-              selectedLinkID ? "updated" : "created"
-            } successfully`,
-          });
+        if (response) {
+          if ("error" in response) {
+            showToastNotification("Uh oh!", "Could not create link");
+          } else if ("alreadyExists" in response) {
+            showToastNotification(
+              "Uh oh!",
+              "You already have the same link in this project",
+            );
+          } else if ("id" in response) {
+            showToastNotification(
+              "Success",
+              `Link ${selectedLinkID ? "updated" : "created"} successfully`,
+            );
+          }
         }
 
         formik.resetForm();
