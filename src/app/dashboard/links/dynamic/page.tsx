@@ -4,10 +4,10 @@ import Link from "next/link";
 import DynamicLinksView from "@/components/dashboard/dynamic-links/dynamic-links-view";
 import DynamicLinkProjectCard from "@/components/dashboard/dynamic-links/project-card";
 import prisma from "@/db";
+import { cn } from "@/lib/utils";
 import { auth } from "@clerk/nextjs";
 
 const DynamicLinksDashboard = async () => {
-  const { userId } = auth();
   const dynamicLinksProjects = await prisma.dynamicLink.findMany({
     include: {
       childLinks: {
@@ -27,8 +27,16 @@ const DynamicLinksDashboard = async () => {
         <h2 className="text-xl font-semibold leading-tight text-gray-800">
           Dynamic Links
         </h2>
-        <Button asChild>
-          <Link href="/dashboard/links/dynamic/create">
+        <Button
+          asChild
+          className={cn(dynamicLinksProjects.length === 0) && "bg-gray-500"}
+        >
+          <Link
+            href="/dashboard/links/dynamic/create"
+            className={cn(
+              dynamicLinksProjects.length === 0 && "pointer-events-none",
+            )}
+          >
             Create Dynamic Link
           </Link>
         </Button>
@@ -68,7 +76,7 @@ const DynamicLinksDashboard = async () => {
                     </p>
                   </div>
                   <Button asChild className="w-full">
-                    <Link href="/dashboard/links/dynamic/create">
+                    <Link href="/dashboard/links/dynamic/project/create">
                       Create New Project
                     </Link>
                   </Button>
