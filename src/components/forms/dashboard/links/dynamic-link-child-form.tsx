@@ -37,11 +37,13 @@ type FormProps = {
   formFields?: FormFields;
   selectedProject?: number;
   userDynamicLinksProjects?: Prisma.DynamicLinkGetPayload<{}>[];
+  selectedLinkID?: number;
 };
 const DynamicLinksForm = ({
   formFields,
   userDynamicLinksProjects,
   selectedProject: selectedProjectId,
+  selectedLinkID,
 }: FormProps) => {
   const { toast } = useToast();
   const router = useRouter();
@@ -75,6 +77,7 @@ const DynamicLinksForm = ({
       metaDataDescription: formFields?.metaDataDescription || "",
       metaDataImageUrl: formFields?.metaDataImageUrl || "",
       shortLink: formFields?.shortLink || "",
+      fallbackLink: formFields?.fallbackLink || "",
     },
     validationSchema: Yup.object({
       link: Yup.string().required("Link is required"),
@@ -97,6 +100,7 @@ const DynamicLinksForm = ({
         const response = await createDynamicLinkChildLink(
           { ...values, createdFromUI: true },
           selectedProject,
+          selectedLinkID,
         );
 
         if (response && "error" in response) {
@@ -110,14 +114,12 @@ const DynamicLinksForm = ({
         if (response && "id" in response) {
           toast({
             title: "Success",
-            description: "Link created successfully",
+            description: `Link ${
+              selectedLinkID ? "updated" : "created"
+            } successfully`,
           });
         }
 
-        toast({
-          title: "Success",
-          description: "Link created successfully",
-        });
         formik.resetForm();
         router.push("/dashboard/links/dynamic");
       });
@@ -138,7 +140,10 @@ const DynamicLinksForm = ({
         <form className="flex flex-col gap-6" onSubmit={formik.handleSubmit}>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-1">
-              <Label htmlFor="link">Enter a destination link</Label>
+              <Label htmlFor="link">Enter a link</Label>
+              <span className="text-sm text-gray-500">
+                The link your app can handle
+              </span>
             </div>
             <Input
               id="link"
@@ -146,6 +151,25 @@ const DynamicLinksForm = ({
               {...formik.getFieldProps("link")}
               className={cn(
                 formik.errors.link && formik.touched.link && "border-red-500",
+              )}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="fallbackLink">Enter a fallback link</Label>
+              <span className="text-sm text-gray-500">
+                The link to open on an unsupported device
+              </span>
+            </div>
+            <Input
+              id="fallbackLink"
+              placeholder="https://example.com"
+              {...formik.getFieldProps("fallbackLink")}
+              className={cn(
+                formik.errors.fallbackLink &&
+                  formik.touched.fallbackLink &&
+                  "border-red-500",
               )}
             />
           </div>
