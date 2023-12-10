@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 
 import { generateShortUrl } from "@/app/api/utils/links";
 import prisma from "@/db";
+import { generateShortLinkForProject } from "@/lib/utils";
 
 export const createLink = async (link: Prisma.LinkCreateInput) => {
   const { userId } = auth();
@@ -236,6 +237,14 @@ export const createDynamicLinkChildLink = async (
 
   if (!userId) {
     return;
+  }
+
+  // check if there is no shortlink entered by the user, then we can generate one
+  if (!link.shortLink) {
+    link.shortLink = await generateShortLinkForProject(
+      link.shortLink,
+      selectedDynamicLinkProjectID,
+    );
   }
 
   const createdLink = prisma.dynamicLinkChildLink.create({
