@@ -241,6 +241,18 @@ export const createDynamicLinkChildLink = async (
   }
 
   if (!link.shortLink) {
+    const existingLink = await prisma.dynamicLinkChildLink.findFirst({
+      where: {
+        link: link.link,
+        dynamicLinkId: selectedDynamicLinkProjectID,
+      },
+    });
+
+    // return the link and don't create a new one
+    if (existingLink) {
+      return { ...existingLink, alreadyExists: true };
+    }
+
     link.shortLink = await generateShortLinkForProject(
       link.link,
       selectedDynamicLinkProjectID,
