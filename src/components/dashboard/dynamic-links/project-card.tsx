@@ -9,7 +9,7 @@ const DynamicLinkProjectCard = ({ link }: { link: Link }) => {
     <div className="flex flex-col p-3 bg-white rounded-md">
       <div className="flex items-center justify-between">
         <Link
-          href={`/dashboard/links/dynamic/${link.id}`}
+          href={`/dashboard/links/dynamic/project/create?id=${link.id}`}
           className="hover:underline"
         >
           {link.name}
