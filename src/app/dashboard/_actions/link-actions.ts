@@ -9,12 +9,22 @@ import { generateShortUrl } from "@/app/api/utils/links";
 import prisma from "@/db";
 import { generateShortLinkForProject } from "@/lib/utils";
 
-export const createLink = async (link: Prisma.LinkCreateInput) => {
+const authenticateAndGetUserId = () => {
   const { userId } = auth();
-
   if (!userId) {
-    return;
+    throw new Error("Authentication failed");
   }
+  return userId;
+};
+
+const handleError = (linkCreator: string, userId: number) => {
+  if (linkCreator !== userId.toString()) {
+    throw new Error("You are not authorized to delete this link");
+  }
+};
+
+export const createLink = async (link: Prisma.LinkCreateInput) => {
+  const userId = authenticateAndGetUserId();
 
   const existingLink = await prisma.link.findUnique({
     where: {
@@ -297,6 +307,48 @@ export const deleteDynamicLinkChildLink = async (id: number) => {
       id,
     },
   });
+  revalidatePath("/dashboard/links/dynamic");
+  return deletedLink;
+};
+
+export const deleteDynamicLinkProject = async (id: number) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  const link = await prisma.dynamicLink.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!link) {
+    return {
+      error: "Link not found",
+    };
+  }
+
+  if (link.userId !== userId) {
+    return {
+      error: "You are not authorized to delete this link",
+    };
+  }
+
+  // Delete all the clicks associated with the link
+  await prisma.dynamicLinkChildLink.deleteMany({
+    where: {
+      dynamicLinkId: id,
+    },
+  });
+
+  const deletedLink = prisma.dynamicLink.delete({
+    where: {
+      id,
+    },
+  });
+
   revalidatePath("/dashboard/links/dynamic");
   return deletedLink;
 };
