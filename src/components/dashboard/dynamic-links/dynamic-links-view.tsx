@@ -18,8 +18,9 @@ const DynamicLinksView = ({ links }: { links: Link[] }) => {
   const [search, setSearch] = useState("");
 
   const filteredLinks = links.filter((link) =>
-    // link.url.toLowerCase().includes(search.toLowerCase())
-    link.name.toLowerCase().includes(search.toLowerCase()),
+    link.childLinks.some((childLink) =>
+      childLink.shortLink.toLowerCase().includes(search.toLowerCase()),
+    ),
   );
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
