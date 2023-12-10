@@ -242,7 +242,7 @@ export const createDynamicLinkChildLink = async (
 
   if (!link.shortLink) {
     link.shortLink = await generateShortLinkForProject(
-      link.shortLink,
+      link.link,
       selectedDynamicLinkProjectID,
     );
   }
