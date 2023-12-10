@@ -27,6 +27,7 @@ const DynamicLinkCreatePage = async ({
         <DynamicLinksForm
           userDynamicLinksProjects={dynamicLinksProjects}
           formFields={dynamicLinkChild}
+          selectedLinkID={dynamicLinkChild.id}
           selectedProject={dynamicLinkChild.dynamicLinkId}
         />
       );
