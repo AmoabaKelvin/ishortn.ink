@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Prisma } from "@prisma/client";
-import { ExternalLinkIcon, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
@@ -60,15 +60,10 @@ const DynamicLinkProjectCard = ({ link }: { link: Link }) => {
         </div>
         <div className="flex justify-between mt-1">
           <span className="text-sm text-blue-500">
-            <Link
-              href={`https://${link.subdomain}.ishortn.ink`}
-              target="_blank"
-              className="flex items-center"
-              rel="noreferrer"
-            >
+            <span className="flex items-center" rel="noreferrer">
               {link.subdomain}.ishortn.ink
-              <ExternalLinkIcon className="w-3 h-3 ml-0.5" />
-            </Link>
+              {/* <ExternalLinkIcon className="w-3 h-3 ml-0.5" /> */}
+            </span>
           </span>
           <Trash2
             className="w-4 h-4 ml-1 text-gray-500 cursor-pointer group-hover:text-red-500"
