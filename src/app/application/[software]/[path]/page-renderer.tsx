@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 const PageRenderer = ({
@@ -10,9 +11,10 @@ const PageRenderer = ({
   domain: string;
   ogImage: string;
 }) => {
+  const router = useRouter();
   useEffect(() => {
-    window.location.href = domain;
-  }, [domain]);
+    router.push(domain);
+  }, [domain, router]);
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-screen gap-4">
