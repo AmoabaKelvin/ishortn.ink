@@ -1,3 +1,5 @@
+"use server";
+
 import prisma from "@/db";
 import { generateShortLinkForProject } from "@/lib/utils";
 import { auth } from "@clerk/nextjs";
