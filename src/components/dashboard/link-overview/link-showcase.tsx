@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 import { Prisma } from "@prisma/client";
 
-import { deleteLink, disableLink } from "@/app/dashboard/_actions/link-actions";
+import { deleteLink, disableLink } from "@/actions/link-actions";
 import { useState } from "react";
 import { LinkEditModal } from "../modals/link-edit-modal";
 import { QRCodeModal } from "../modals/qr-code-modal";

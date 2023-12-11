@@ -6,58 +6,48 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 import { useFormik } from "formik";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import * as Yup from "yup";
 
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import { useTransition } from "react";
 
-import { createDynamicLink } from "@/app/dashboard/_actions/link-actions";
+import { createDynamicLink } from "@/actions/dynamic-links-actions";
 import { subdomainsThatAreNotAllowed } from "@/lib/constants";
+import { Prisma } from "@prisma/client";
+import { useRouter } from "next/navigation";
 
-interface FormFields {
-  subdomain: string;
-  fallbackUrl: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  iosBundleId: string;
-  iosTeamId: string;
-  appStoreUrl: string;
-  androidPackageName: string;
-  androidSha256Fingerprint: string;
-  playStoreUrl: string;
+type FormFields = Omit<Prisma.DynamicLinkCreateInput, "user" | "childLinks">;
+
+interface FormProps {
+  initialValues?: FormFields;
+  projectId?: number;
 }
 
-const DynamicLinksForm = () => {
+const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
   const { toast } = useToast();
   const [loading, startTransition] = useTransition();
   const [subdomain, setSubdomain] = useState<string>("");
+  const router = useRouter();
 
   const formik = useFormik<FormFields>({
     initialValues: {
-      subdomain: "",
-      fallbackUrl: "",
-      title: "",
-      description: "",
-      imageUrl: "",
-      iosBundleId: "",
-      iosTeamId: "",
-      appStoreUrl: "",
-      androidPackageName: "",
-      androidSha256Fingerprint: "",
-      playStoreUrl: "",
+      subdomain: initialValues?.subdomain || "",
+      name: initialValues?.name || "",
+      iosBundleId: initialValues?.iosBundleId || "",
+      iosTeamId: initialValues?.iosTeamId || "",
+      appStoreUrl: initialValues?.appStoreUrl || "",
+      androidPackageName: initialValues?.androidPackageName || "",
+      androidSha256Fingerprint: initialValues?.androidSha256Fingerprint || "",
+      playStoreUrl: initialValues?.playStoreUrl || "",
     },
     validationSchema: Yup.object({
+      name: Yup.string().required("Name is required"),
       subdomain: Yup.string()
         .required("Subdomain is required")
         .matches(/^[a-zA-Z0-9]+$/, "Only letters and numbers are allowed")
         .notOneOf(subdomainsThatAreNotAllowed, "Subdomain is not allowed"),
-      fallbackUrl: Yup.string().optional(),
-      title: Yup.string().optional(),
-      description: Yup.string().optional(),
-      imageUrl: Yup.string().optional(),
       iosBundleId: Yup.string().required("iOS Bundle ID is required"),
       iosTeamId: Yup.string().required("Team ID is required"),
       appStoreUrl: Yup.string().url("Please enter a valid URL"),
@@ -71,11 +61,7 @@ const DynamicLinksForm = () => {
     }),
     onSubmit: (values) => {
       startTransition(async () => {
-        console.log(values);
-
-        const response = await createDynamicLink(values);
-
-        console.log(response);
+        const response = await createDynamicLink(values, projectId);
 
         if (response && "error" in response) {
           toast({
@@ -88,15 +74,13 @@ const DynamicLinksForm = () => {
         if (response && "id" in response) {
           toast({
             title: "Success",
-            description: "Link created successfully",
+            description: `Link ${
+              projectId ? "updated" : "created"
+            } successfully`,
           });
         }
-
-        toast({
-          title: "Success",
-          description: "Link created successfully",
-        });
         formik.resetForm();
+        router.push("/dashboard/links/dynamic");
       });
     },
   });
@@ -106,9 +90,7 @@ const DynamicLinksForm = () => {
     // if response is 400, there is no subdomain available
     if (formik.errors.subdomain) return;
 
-    const response = await fetch(
-      `/api/links/validate-subdomain?subdomain=${subdomain}`,
-    );
+    const response = await fetch(`/api/links/domains?subdomain=${subdomain}`);
 
     if (response.status === 200) {
       formik.setFieldError("subdomain", "Subdomain is already taken");
@@ -131,10 +113,6 @@ const DynamicLinksForm = () => {
     }
   };
 
-  useEffect(() => {
-    console.log(formik.errors);
-  });
-
   return (
     <div className="flex flex-col gap-4 md:max-w-2xl">
       <div className="flex flex-col gap-1">
@@ -146,6 +124,25 @@ const DynamicLinksForm = () => {
 
       {/* Link details, and subdomain */}
       <form className="flex flex-col gap-6" onSubmit={formik.handleSubmit}>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="Subdomain">Enter a name for this link</Label>
+          </div>
+          <Input
+            id="Link Project Name"
+            type="text"
+            placeholder="myapp"
+            {...formik.getFieldProps("name")}
+            className={cn(
+              formik.errors.name && formik.touched.name && "border-red-500",
+            )}
+          />
+          <span className="text-sm text-red-500">
+            {formik.errors.name && formik.touched.name
+              ? formik.errors.name
+              : null}
+          </span>
+        </div>
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
             <Label htmlFor="Subdomain">Enter a subdomain</Label>
@@ -162,10 +159,6 @@ const DynamicLinksForm = () => {
             id="Subdomain"
             placeholder="Subdomain"
             {...formik.getFieldProps("subdomain")}
-            // onChange={(e) => {
-            //   formik.setFieldValue("subdomain", e.target.value);
-            // }}
-            {...formik.getFieldProps("subdomain")}
             onBlur={(e) => {
               formik.handleBlur(e);
               validateSubdomain(formik.values.subdomain);
@@ -181,92 +174,6 @@ const DynamicLinksForm = () => {
               ? formik.errors.subdomain
               : null}
           </span>
-        </div>
-
-        {/* fallback url */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="Fallback URL">Fallback URL</Label>
-            <span className="text-sm text-gray-500">
-              The URL to which the user is redirected if the app isn&apos;t
-              installed.
-              <span className="text-black">
-                {" "}
-                Leave blank to redirect to the app store.
-              </span>
-            </span>
-          </div>
-          <Input
-            id="Fallback URL"
-            placeholder="https://example.com"
-            {...formik.getFieldProps("fallbackUrl")}
-            onBlur={(e) => {
-              formik.handleBlur(e);
-              validateFallbackUrl(formik.values.fallbackUrl);
-            }}
-            className={cn(
-              formik.errors.fallbackUrl &&
-                formik.touched.fallbackUrl &&
-                "border-red-500",
-            )}
-          />
-          <span className="text-sm text-red-500">
-            {formik.errors.fallbackUrl && formik.touched.fallbackUrl
-              ? formik.errors.fallbackUrl
-              : null}
-          </span>
-        </div>
-
-        {/* configuration for meta data */}
-        <div className="flex items-center gap-4 mt-3 mb-3">
-          <div className="flex-grow border-t border-gray-200" />
-          <span className="text-gray-500">
-            Meta Data Configuration (Optional)
-          </span>
-          <div className="flex-grow border-t border-gray-200" />
-        </div>
-
-        {/* title */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="Title">Title</Label>
-            <span className="text-sm text-gray-500">
-              The title to show on preview cards.
-            </span>
-          </div>
-          <Input
-            id="Title"
-            placeholder="Title"
-            {...formik.getFieldProps("title")}
-          />
-        </div>
-        {/* description */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="Description">Description</Label>
-            <span className="text-sm text-gray-500">
-              The description to show on preview cards.
-            </span>
-          </div>
-          <Input
-            id="Description"
-            placeholder="Description"
-            {...formik.getFieldProps("description")}
-          />
-        </div>
-        {/* image url */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="Image URL">Image URL</Label>
-            <span className="text-sm text-gray-500">
-              The URL of the image to use as a thumbnail for this link.
-            </span>
-          </div>
-          <Input
-            id="Image URL"
-            placeholder="https://example.com/image.png"
-            {...formik.getFieldProps("imageUrl")}
-          />
         </div>
 
         {/* Configuration for ios, a horizonal divider with ios in the middle */}
@@ -319,9 +226,9 @@ const DynamicLinksForm = () => {
             )}
           />
           <span className="text-sm text-red-500">
-            {formik.errors.iosTeamId && formik.touched.iosTeamId
-              ? formik.errors.iosTeamId
-              : null}
+            {formik.errors.iosTeamId &&
+              formik.touched.iosTeamId &&
+              formik.errors.iosTeamId}
           </span>
         </div>
         {/* app store url */}

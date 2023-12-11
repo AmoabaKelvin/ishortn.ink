@@ -8,12 +8,22 @@ import { Prisma } from "@prisma/client";
 import { generateShortUrl } from "@/app/api/utils/links";
 import prisma from "@/db";
 
-export const createLink = async (link: Prisma.LinkCreateInput) => {
+const authenticateAndGetUserId = () => {
   const { userId } = auth();
-
   if (!userId) {
-    return;
+    throw new Error("Authentication failed");
   }
+  return userId;
+};
+
+const handleError = (linkCreator: string, userId: number) => {
+  if (linkCreator !== userId.toString()) {
+    throw new Error("You are not authorized to delete this link");
+  }
+};
+
+export const createLink = async (link: Prisma.LinkCreateInput) => {
+  const userId = authenticateAndGetUserId();
 
   const existingLink = await prisma.link.findUnique({
     where: {
@@ -179,46 +189,4 @@ export const disableLink = async (id: number) => {
   });
   revalidatePath("/dashboard");
   return disabledLink;
-};
-
-type DynamicLinkCreateInput = Omit<Prisma.DynamicLinkCreateInput, "user">;
-
-export const createDynamicLink = async (link: DynamicLinkCreateInput) => {
-  const { userId } = auth();
-
-  if (!userId) {
-    return;
-  }
-
-  const createdLink = prisma.dynamicLink.create({
-    data: {
-      ...link,
-      user: {
-        connect: {
-          id: userId,
-        },
-      },
-    },
-  });
-  revalidatePath("/dashboard");
-  return createdLink;
-};
-
-export const validateSubdomainAvailability = async (subdomain: string) => {
-  // check if the subdomain is valid
-  // check if the subdomain is already taken
-  // check if the subdomain is available
-  // set formik error if the subdomain is invalid
-  // formik.setFieldError("subdomain", "Subdomain is invalid");
-  const isLinkThere = await prisma.dynamicLink.findUnique({
-    where: {
-      subdomain,
-    },
-  });
-
-  if (isLinkThere) {
-    return false;
-  }
-
-  return true;
 };

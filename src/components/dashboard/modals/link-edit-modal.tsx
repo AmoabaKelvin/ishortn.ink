@@ -23,7 +23,7 @@ import { Prisma } from "@prisma/client";
 import { useFormik } from "formik";
 import { useTransition } from "react";
 
-import { updateLink } from "@/app/dashboard/_actions/link-actions";
+import { updateLink } from "@/actions/link-actions";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 
