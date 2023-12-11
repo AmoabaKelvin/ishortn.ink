@@ -47,10 +47,11 @@ export const createDynamicLinkChildLink = async (
   link: DynamicLinkChildCreateInput,
   selectedDynamicLinkProjectID: number,
   linkID?: number,
+  userID?: string,
 ) => {
   const { userId } = auth();
 
-  if (!userId) {
+  if (!userId && !userID) {
     return;
   }
 
