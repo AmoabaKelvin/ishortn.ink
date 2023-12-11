@@ -15,7 +15,7 @@ import { useTransition } from "react";
 
 import { Prisma } from "@prisma/client";
 
-import { createDynamicLinkChildLink } from "@/app/dashboard/_actions/link-actions";
+import { createDynamicLinkChildLink } from "@/actions/dynamic-links-actions";
 import {
   Select,
   SelectContent,

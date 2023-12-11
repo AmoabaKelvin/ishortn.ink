@@ -3,7 +3,7 @@
 import { useFormik } from "formik";
 import { useTransition } from "react";
 
-import { quickLinkShorten } from "@/app/dashboard/_actions/link-actions";
+import { quickLinkShorten } from "@/actions/link-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

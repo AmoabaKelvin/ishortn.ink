@@ -20,7 +20,7 @@ import { LinkExpirationDatePicker } from "./date-picker";
 
 import { Prisma } from "@prisma/client";
 
-import { createLink } from "@/app/dashboard/_actions/link-actions";
+import { createLink } from "@/actions/link-actions";
 import { cn, fullUrlRegex } from "@/lib/utils";
 import { useFormik } from "formik";
 

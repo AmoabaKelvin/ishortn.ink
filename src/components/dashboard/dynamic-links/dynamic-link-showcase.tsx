@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 import { Prisma } from "@prisma/client";
 
-import { deleteDynamicLinkChildLink } from "@/app/dashboard/_actions/link-actions";
+import { deleteDynamicLinkChildLink } from "@/actions/dynamic-links-actions";
 import { useState } from "react";
 import { QRCodeModal } from "../modals/qr-code-modal";
 

@@ -14,7 +14,7 @@ import { ExternalLinkIcon, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-import { deleteDynamicLinkProject } from "@/app/dashboard/_actions/link-actions";
+import { deleteDynamicLinkProject } from "@/actions/dynamic-links-actions";
 
 type Link = Prisma.DynamicLinkGetPayload<{}>;
 

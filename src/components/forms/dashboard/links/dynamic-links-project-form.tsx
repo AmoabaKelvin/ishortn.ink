@@ -13,7 +13,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import { useTransition } from "react";
 
-import { createDynamicLink } from "@/app/dashboard/_actions/link-actions";
+import { createDynamicLink } from "@/actions/dynamic-links-actions";
 import { subdomainsThatAreNotAllowed } from "@/lib/constants";
 import { Prisma } from "@prisma/client";
 import { useRouter } from "next/navigation";
