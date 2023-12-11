@@ -84,7 +84,7 @@ const PathPage = async ({ params }: PageProps) => {
 
   return (
     <PageRenderer
-      domain={dynamicLinkChildLink!.fallbackLink}
+      domain={dynamicLinkChildLink!.fallbackLink || dynamicLinkChildLink!.link}
       ogImage={dynamicLinkChildLink!.metaDataImageUrl}
     />
   );
