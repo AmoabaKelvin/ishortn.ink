@@ -1,5 +1,4 @@
 import { UserButton } from "@clerk/nextjs";
-import Image from "next/image";
 import Link from "next/link";
 
 const NavigationBar = () => {
@@ -13,9 +12,9 @@ const NavigationBar = () => {
       </h2>
       <div className="flex items-center justify-between space-x-4">
         <div className="flex items-center gap-4">
-          <Link href="https://discord.gg/DE9xjVvk" target="_blank">
+          {/* <Link href="https://discord.gg/DE9xjVvk" target="_blank">
             <Image src="/discord.svg" width={20} height={20} alt="Discord" />
-          </Link>
+          </Link> */}
           <Link href="https://ishortn.ink/feedback" target="_blank">
             <span className="text-sm font-medium text-gray-600 hover:text-gray-800">
               Feedback
