@@ -7,16 +7,7 @@ import CreateAPIKey from "./create-key";
 
 const unkey = new Unkey({ token: process.env.UNKEY_TOKEN! });
 
-export async function create(ownerId: number) {
-  const key = await unkey.keys.create({
-    apiId: process.env.UNKEY_API_ID!,
-    ownerId: String(ownerId),
-    prefix: "ishortn",
-  });
-  return key;
-}
-
-export async function getUserKey(userID: string) {
+async function getUserKey(userID: string) {
   const keys = await unkey.apis.listKeys({
     ownerId: String(userID),
     apiId: process.env.UNKEY_API_ID!,
