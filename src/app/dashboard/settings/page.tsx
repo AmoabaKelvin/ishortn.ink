@@ -32,6 +32,7 @@ const SettingsPage = async () => {
           <Link
             href="https://documenter.getpostman.com/view/21227678/2s9YkjAibQ"
             target="_blank"
+            className="text-blue-600 dark:text-blue-500"
           >
             View Documentation
           </Link>
