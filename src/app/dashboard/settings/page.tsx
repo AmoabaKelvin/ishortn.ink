@@ -41,5 +41,3 @@ const SettingsPage = async () => {
 };
 
 export default SettingsPage;
-
-// ishortn_3ZZhmQUSjRzvfZKcLx78mTSu
