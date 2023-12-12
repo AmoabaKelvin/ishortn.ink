@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs";
 import { Unkey } from "@unkey/api";
+import Link from "next/link";
 import ApiKeyCard from "./api-key-card";
 import CreateAPIKey from "./create-key";
 
@@ -27,7 +28,13 @@ const SettingsPage = async () => {
       <div className="max-w-3xl">
         <h2 className="text-lg font-medium">API Keys</h2>
         <p className="mt-2 mb-10 text-sm text-gray-600 dark:text-gray-400">
-          API Keys are used to authenticate requests to the API.
+          API Keys are used to authenticate requests to the API.{" "}
+          <Link
+            href="https://documenter.getpostman.com/view/21227678/2s9YkjAibQ"
+            target="_blank"
+          >
+            View Documentation
+          </Link>
         </p>
 
         {keys.result?.total! > 0 ? (
