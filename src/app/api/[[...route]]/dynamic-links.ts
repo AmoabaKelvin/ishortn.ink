@@ -1,6 +1,5 @@
 import { createDynamicLinkChildLink } from "@/actions/dynamic-links-actions";
 import prisma from "@/db";
-import { Prisma } from "@prisma/client";
 import { Hono } from "hono";
 import { validator } from "hono/validator";
 import { z } from "zod";
@@ -100,30 +99,27 @@ dynamicLinksAPI.post(
 
     return c.json(
       {
-        ...formatDataToReturn(
-          createdLink as unknown as Prisma.DynamicLinkChildLinkSelect,
-          subdomain,
-        ),
+        url: `https://${subdomain}.ishortn.ink/${createdLink!.shortLink}`,
       },
       201,
     );
   },
 );
 
-const formatDataToReturn = (
-  data: Omit<Prisma.DynamicLinkChildLinkSelect, "id" | "createdAt">,
-  subdomain: string,
-) => {
-  return {
-    // id: data.id,
-    link: data.link,
-    shortLink: data.shortLink,
-    completeUrl: `https://${subdomain}.ishortn.ink/${data.shortLink}`,
-    fallbackLink: data.fallbackLink,
-    metaData: {
-      description: data.metaDataDescription,
-      imageUrl: data.metaDataImageUrl,
-      title: data.metaDataTitle,
-    },
-  };
-};
+// const formatDataToReturn = (
+//   data: Omit<Prisma.DynamicLinkChildLinkSelect, "id" | "createdAt">,
+//   subdomain: string,
+// ) => {
+//   return {
+//     // id: data.id,
+//     link: data.link,
+//     shortLink: data.shortLink,
+//     completeUrl: `https://${subdomain}.ishortn.ink/${data.shortLink}`,
+//     fallbackLink: data.fallbackLink,
+//     metaData: {
+//       description: data.metaDataDescription,
+//       imageUrl: data.metaDataImageUrl,
+//       title: data.metaDataTitle,
+//     },
+//   };
+// };
