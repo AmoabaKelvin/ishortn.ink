@@ -85,7 +85,12 @@ export default async function middleware(
       "/.well-known/assetlinks.json",
     ],
 
-    ignoredRoutes: ["/.well-known/assetlinks.json"],
+    ignoredRoutes: [
+      "/.well-known/assetlinks.json",
+      "/api-doc",
+      "/api/dynamic-links/:shortUrl",
+      "/api/dynamic-links",
+    ],
 
     afterAuth(auth, req) {
       if (!auth.userId && req.nextUrl.pathname === "/dashboard") {
