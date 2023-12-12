@@ -18,6 +18,10 @@ async function getUserKey(userID: string) {
 const SettingsPage = async () => {
   const keys = await getUserKey(auth().userId!);
 
+  if (keys.error) {
+    return <div>Something went wrong. Please contact us.</div>;
+  }
+
   return (
     <div>
       <div className="max-w-3xl">
