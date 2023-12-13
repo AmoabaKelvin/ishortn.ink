@@ -69,16 +69,21 @@ const PathPage = async ({ params }: PageProps) => {
   const userAgent = incomingHeaders.get("user-agent");
 
   if (userAgent?.includes("iPhone") || userAgent?.includes("iPad")) {
-    redirect(
-      dynamicLink?.appStoreUrl
-        ? dynamicLink.appStoreUrl
-        : `https://apps.apple.com/app/id${dynamicLink?.iosBundleId}`,
-    );
+    redirect(dynamicLink.appStoreUrl);
   } else if (userAgent?.includes("Android")) {
-    redirect(
-      dynamicLink?.playStoreUrl
-        ? dynamicLink.playStoreUrl
-        : `https://play.google.com/store/apps/details?id=${dynamicLink?.androidPackageName}`,
+    redirect(dynamicLink.playStoreUrl);
+  }
+
+  if (!dynamicLinkChildLink?.fallbackLink) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="text-4xl font-bold">
+          This is the end of the link chain
+        </div>
+        <div className="text-2xl">
+          Please contact the owner of this link for more information
+        </div>
+      </div>
     );
   }
 
