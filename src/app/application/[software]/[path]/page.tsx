@@ -12,7 +12,7 @@ export async function generateMetadata(
   { params }: PageProps,
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
-  const subdomain = params.subdomain;
+  const subdomain = headers().get("host")?.split(".")[0];
   const path = params.path;
 
   const dynamicLink = await prisma.dynamicLink.findFirst({
@@ -44,7 +44,7 @@ export async function generateMetadata(
 }
 
 const PathPage = async ({ params }: PageProps) => {
-  const subdomain = params.subdomain;
+  const subdomain = headers().get("host")?.split(".")[0];
 
   const dynamicLink = await prisma.dynamicLink.findFirst({
     where: {
