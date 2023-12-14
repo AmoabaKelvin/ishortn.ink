@@ -29,6 +29,14 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
   const [loading, startTransition] = useTransition();
   const router = useRouter();
 
+  const showToast = (title: string, description: string) => {
+    toast({
+      title,
+      description,
+      variant: "destructive",
+    });
+  };
+
   const formik = useFormik<FormFields>({
     initialValues: {
       subdomain: initialValues?.subdomain || "",
@@ -55,6 +63,42 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
     }),
     onSubmit: (values) => {
       startTransition(async () => {
+        const isIOSPartiallyFilled =
+          values.iosBundleId || values.iosTeamId || values.appStoreUrl;
+        const isIOSCompletelyFilled =
+          values.iosBundleId && values.iosTeamId && values.appStoreUrl;
+
+        const isAndroidPartiallyFilled =
+          values.androidPackageName ||
+          values.androidSha256Fingerprint ||
+          values.playStoreUrl;
+        const isAndroidCompletelyFilled =
+          values.androidPackageName &&
+          values.androidSha256Fingerprint &&
+          values.playStoreUrl;
+
+        if (isIOSPartiallyFilled && !isIOSCompletelyFilled) {
+          showToast(
+            "Uh oh!",
+            "Apple configuration fields are partially filled. Please fill all fields or leave all fields empty",
+          );
+          return;
+        }
+
+        if (isAndroidPartiallyFilled && !isAndroidCompletelyFilled) {
+          showToast(
+            "Uh oh!",
+            "Android fields are partially filled. Please fill all fields or leave all fields empty",
+          );
+          return;
+        } else if (!isIOSPartiallyFilled && !isAndroidPartiallyFilled) {
+          showToast(
+            "Uh oh!",
+            "Please fill at least one of the platform fields",
+          );
+          return;
+        }
+
         const response = await createDynamicLink(values, projectId);
 
         if (response && "error" in response) {
