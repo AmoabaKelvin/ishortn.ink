@@ -5,6 +5,11 @@ const pages = [
   "dashboard/analytics",
   "dashboard/links",
   "dashboard/profile",
+  "dashboard/settings",
+  "dashboard/links/dynamic",
+  "dashboard/links/dynamic/create",
+  "dashboard/links/dynamic/project",
+  "application",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 import { useFormik } from "formik";
-import { useState } from "react";
 import * as Yup from "yup";
 
 import { useToast } from "@/components/ui/use-toast";
@@ -28,8 +27,15 @@ interface FormProps {
 const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
   const { toast } = useToast();
   const [loading, startTransition] = useTransition();
-  const [subdomain, setSubdomain] = useState<string>("");
   const router = useRouter();
+
+  const showToast = (title: string, description: string) => {
+    toast({
+      title,
+      description,
+      variant: "destructive",
+    });
+  };
 
   const formik = useFormik<FormFields>({
     initialValues: {
@@ -48,19 +54,51 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
         .required("Subdomain is required")
         .matches(/^[a-zA-Z0-9]+$/, "Only letters and numbers are allowed")
         .notOneOf(subdomainsThatAreNotAllowed, "Subdomain is not allowed"),
-      iosBundleId: Yup.string().required("iOS Bundle ID is required"),
-      iosTeamId: Yup.string().required("Team ID is required"),
-      appStoreUrl: Yup.string().url("Please enter a valid URL"),
-      androidPackageName: Yup.string().required(
-        "Android Package Name is required",
-      ),
-      androidSha256Fingerprint: Yup.string().required(
-        "Android SHA256 Fingerprint is required",
-      ),
-      playStoreUrl: Yup.string().url("Please enter a valid URL"),
+      iosBundleId: Yup.string().optional(),
+      iosTeamId: Yup.string().required("Team ID is required").optional(),
+      appStoreUrl: Yup.string().url("Please enter a valid URL").optional(),
+      androidPackageName: Yup.string().optional(),
+      androidSha256Fingerprint: Yup.string().optional(),
+      playStoreUrl: Yup.string().url("Please enter a valid URL").optional(),
     }),
     onSubmit: (values) => {
       startTransition(async () => {
+        const isIOSPartiallyFilled =
+          values.iosBundleId || values.iosTeamId || values.appStoreUrl;
+        const isIOSCompletelyFilled =
+          values.iosBundleId && values.iosTeamId && values.appStoreUrl;
+
+        const isAndroidPartiallyFilled =
+          values.androidPackageName ||
+          values.androidSha256Fingerprint ||
+          values.playStoreUrl;
+        const isAndroidCompletelyFilled =
+          values.androidPackageName &&
+          values.androidSha256Fingerprint &&
+          values.playStoreUrl;
+
+        if (isIOSPartiallyFilled && !isIOSCompletelyFilled) {
+          showToast(
+            "Uh oh!",
+            "Apple configuration fields are partially filled. Please fill all fields or leave all fields empty",
+          );
+          return;
+        }
+
+        if (isAndroidPartiallyFilled && !isAndroidCompletelyFilled) {
+          showToast(
+            "Uh oh!",
+            "Android fields are partially filled. Please fill all fields or leave all fields empty",
+          );
+          return;
+        } else if (!isIOSPartiallyFilled && !isAndroidPartiallyFilled) {
+          showToast(
+            "Uh oh!",
+            "Please fill at least one of the platform fields",
+          );
+          return;
+        }
+
         const response = await createDynamicLink(values, projectId);
 
         if (response && "error" in response) {
@@ -90,7 +128,7 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
     // if response is 400, there is no subdomain available
     if (formik.errors.subdomain) return;
 
-    const response = await fetch(`/api/links/domains?subdomain=${subdomain}`);
+    const response = await fetch(`/api/domains?subdomain=${subdomain}`);
 
     if (response.status === 200) {
       formik.setFieldError("subdomain", "Subdomain is already taken");

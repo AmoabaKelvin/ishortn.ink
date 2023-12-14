@@ -33,7 +33,7 @@ export default async function middleware(
     const subdomain = getValidSubdomain(host);
 
     const response = await fetch(
-      env.NEXT_PUBLIC_ROOT_DOMAIN + `/api/links/domains?subdomain=${subdomain}`,
+      env.NEXT_PUBLIC_ROOT_DOMAIN + `/api/domains?subdomain=${subdomain}`,
     );
 
     const responseJson =
@@ -80,6 +80,7 @@ export default async function middleware(
       "/api/webhook/clerk",
       "/",
       "/api/links",
+      "/api/domains",
       "/:shortenedLink",
       "/apple-app-site-association",
       "/.well-known/assetlinks.json",

@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { prettyJSON } from "hono/pretty-json";
 import { handle } from "hono/vercel";
 
+import { domainsAPI } from "./domains";
 import { dynamicLinksAPI } from "./dynamic-links";
 
 export type Variables = {
@@ -33,6 +34,7 @@ app.get("/ping", async (c) => {
 });
 
 app.route("/dynamic-links", dynamicLinksAPI);
+app.route("/domains", domainsAPI);
 
 export const GET = handle(app);
 export const POST = handle(app);
