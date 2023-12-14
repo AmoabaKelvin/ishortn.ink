@@ -90,7 +90,7 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
     // if response is 400, there is no subdomain available
     if (formik.errors.subdomain) return;
 
-    const response = await fetch(`/api/links/domains?subdomain=${subdomain}`);
+    const response = await fetch(`/api/domains?subdomain=${subdomain}`);
 
     if (response.status === 200) {
       formik.setFieldError("subdomain", "Subdomain is already taken");
