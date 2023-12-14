@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 import { useFormik } from "formik";
-import { useState } from "react";
 import * as Yup from "yup";
 
 import { useToast } from "@/components/ui/use-toast";
@@ -28,7 +27,6 @@ interface FormProps {
 const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
   const { toast } = useToast();
   const [loading, startTransition] = useTransition();
-  const [subdomain, setSubdomain] = useState<string>("");
   const router = useRouter();
 
   const formik = useFormik<FormFields>({
@@ -48,16 +46,12 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
         .required("Subdomain is required")
         .matches(/^[a-zA-Z0-9]+$/, "Only letters and numbers are allowed")
         .notOneOf(subdomainsThatAreNotAllowed, "Subdomain is not allowed"),
-      iosBundleId: Yup.string().required("iOS Bundle ID is required"),
-      iosTeamId: Yup.string().required("Team ID is required"),
-      appStoreUrl: Yup.string().url("Please enter a valid URL"),
-      androidPackageName: Yup.string().required(
-        "Android Package Name is required",
-      ),
-      androidSha256Fingerprint: Yup.string().required(
-        "Android SHA256 Fingerprint is required",
-      ),
-      playStoreUrl: Yup.string().url("Please enter a valid URL"),
+      iosBundleId: Yup.string().optional(),
+      iosTeamId: Yup.string().required("Team ID is required").optional(),
+      appStoreUrl: Yup.string().url("Please enter a valid URL").optional(),
+      androidPackageName: Yup.string().optional(),
+      androidSha256Fingerprint: Yup.string().optional(),
+      playStoreUrl: Yup.string().url("Please enter a valid URL").optional(),
     }),
     onSubmit: (values) => {
       startTransition(async () => {
