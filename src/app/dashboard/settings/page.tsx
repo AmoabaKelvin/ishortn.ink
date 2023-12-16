@@ -38,7 +38,7 @@ const SettingsPage = async () => {
           </Link>
         </p>
 
-        {keys.result?.total! > 0 ? (
+        {keys.result?.keys.length > 0 ? (
           <ApiKeyCard
             start={keys.result?.keys[0].start!}
             createdAt={keys.result?.keys[0].createdAt!}
