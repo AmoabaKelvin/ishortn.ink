@@ -1,5 +1,4 @@
 import { authMiddleware } from "@clerk/nextjs";
-import { Prisma } from "@prisma/client";
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { env } from "process";
 
@@ -32,12 +31,13 @@ export default async function middleware(
     const host = req.headers.get("host");
     const subdomain = getValidSubdomain(host);
 
+    console.log(subdomain);
+
     const response = await fetch(
       env.NEXT_PUBLIC_ROOT_DOMAIN + `/api/domains?subdomain=${subdomain}`,
     );
 
-    const responseJson =
-      (await response.json()) as Prisma.DynamicLinkCreateInput;
+    const responseJson = await response.json();
 
     /* -------------------------------------------------------------------------- */
     /*                                HOW IT WORKS                                */
@@ -53,7 +53,7 @@ export default async function middleware(
           apps: [],
           details: [
             {
-              appID: `${responseJson.iosTeamId}.${responseJson.iosBundleId}`,
+              appID: `${responseJson.link.iosTeamId}.${responseJson.link.iosBundleId}`,
               paths: ["*"],
             },
           ],
@@ -81,9 +81,9 @@ export default async function middleware(
       "/",
       "/api/links",
       "/api/domains",
-      "/:shortenedLink",
       "/apple-app-site-association",
       "/.well-known/assetlinks.json",
+      "/:shortenedLink",
     ],
 
     ignoredRoutes: ["/.well-known/assetlinks.json"],
