@@ -27,7 +27,7 @@ export const createAPIKey = async () => {
 };
 
 export const revokeAPIKey = async (keyId: string) => {
-  const key = await unkey.keys.revoke({
+  const key = await unkey.keys.delete({
     keyId,
   });
   revalidatePath("/dashboard/settings");
