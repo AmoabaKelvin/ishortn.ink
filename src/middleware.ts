@@ -81,6 +81,7 @@ export default async function middleware(
       "/",
       "/api/links",
       "/api/domains",
+      "/api/dynamic-links",
       "/apple-app-site-association",
       "/.well-known/assetlinks.json",
       "/:shortenedLink",
