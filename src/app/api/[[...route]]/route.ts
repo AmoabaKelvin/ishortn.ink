@@ -1,5 +1,6 @@
 import { verifyKey } from "@unkey/api";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { prettyJSON } from "hono/pretty-json";
 import { handle } from "hono/vercel";
 
@@ -29,6 +30,13 @@ app.use("/dynamic-links/*", async (c, next) => {
   await next();
 });
 
+app.use(
+  "/dynamic-links/*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE"],
+  }),
+);
 app.get("/ping", async (c) => {
   return c.text("pong");
 });
