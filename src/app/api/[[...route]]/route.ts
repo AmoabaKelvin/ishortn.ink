@@ -14,6 +14,7 @@ export type Variables = {
 const app = new Hono<{ Variables: Variables }>().basePath("/api");
 
 app.use("*", prettyJSON());
+app.use("*", cors());
 
 app.use("/dynamic-links/*", async (c, next) => {
   const authorizationKey = c.req.raw.headers.get("x-ishortn-key");
@@ -30,13 +31,6 @@ app.use("/dynamic-links/*", async (c, next) => {
   await next();
 });
 
-app.use(
-  "/dynamic-links/*",
-  cors({
-    origin: "*",
-    allowMethods: ["GET", "POST", "PUT", "DELETE"],
-  }),
-);
 app.get("/ping", async (c) => {
   return c.text("pong");
 });
