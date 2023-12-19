@@ -13,8 +13,15 @@ export type Variables = {
 
 const app = new Hono<{ Variables: Variables }>().basePath("/api");
 
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST"],
+    allowHeaders: ["x-ishortn-key", "Content-Type"],
+  }),
+);
 app.use("*", prettyJSON());
-app.use("*", cors());
 
 app.use("/dynamic-links/*", async (c, next) => {
   const authorizationKey = c.req.raw.headers.get("x-ishortn-key");
