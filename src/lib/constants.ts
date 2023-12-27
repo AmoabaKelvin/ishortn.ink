@@ -23,4 +23,11 @@ export const subdomainsThatAreNotAllowed = [
   "authorize",
   "callback",
   "ishortn",
+  "docs",
+  "documentation",
+  "support",
+  "help",
+  "status",
+  "blog",
+  "trail",
 ];
