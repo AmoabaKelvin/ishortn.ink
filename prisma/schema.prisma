@@ -81,8 +81,8 @@ model DynamicLinkChildLink {
   metaDataDescription String      @default("")
   metaDataImageUrl    String      @default("")
   shortLink           String
-  link                String
-  fallbackLink        String
+  link                String      @db.Text
+  fallbackLink        String      @db.Text
   createdFromUI       Boolean     @default(false)
 
   @@index([dynamicLinkId])
