@@ -132,7 +132,6 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
 
     if (response.status === 200) {
       formik.setFieldError("subdomain", "Subdomain is already taken");
-      return;
     } else {
       formik.setFieldError("subdomain", "");
       return true;
