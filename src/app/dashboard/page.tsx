@@ -83,6 +83,16 @@ const Dashboard = async () => {
               </div>
             </div>
           </div>
+
+          {/* buy me a coffee button */}
+          <a href="https://www.buymeacoffee.com/kelvinamoaba">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://img.buymeacoffee.com/button-api/?text=Help keep the servers alive&emoji=&slug=kelvinamoaba&button_colour=5F7FFF&font_colour=ffffff&font_family=Inter&outline_colour=000000&coffee_colour=FFDD00"
+              className="w-full h-12"
+              alt="Buy Me A Coffee"
+            />
+          </a>
         </div>
         <div className="col-span-11 md:col-span-7">
           <LinksView links={links} />
