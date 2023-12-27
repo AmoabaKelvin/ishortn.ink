@@ -139,18 +139,6 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
     }
   };
 
-  const validateFallbackUrl = async (fallbackUrl: string) => {
-    const responseFromCall = await fetch(fallbackUrl);
-
-    if (!responseFromCall.ok) {
-      formik.setFieldError("fallbackUrl", "URL is not reachable");
-      return;
-    } else {
-      formik.setFieldError("fallbackUrl", "");
-      return true;
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4 md:max-w-2xl">
       <div className="flex flex-col gap-1">
