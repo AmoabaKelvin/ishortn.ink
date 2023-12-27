@@ -13,9 +13,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
   title: "iShortn",
-  description: `Power up your links with our AI-driven analytics, advanced URL
-  shortening, and dynamic QR code creation and boost engagement
-  results like never before. Unleash the power of your links today!`,
+  description:
+    "Dynamic links, URL shortener, and QR code generator. Firebase shutting down? No problem, we got you covered.",
   authors: [
     {
       name: "Kelvin Amoaba",
@@ -23,6 +22,7 @@ export const metadata: Metadata = {
     },
   ],
   keywords: [
+    "dynamic links",
     "iShortn",
     "shorten",
     "url",
