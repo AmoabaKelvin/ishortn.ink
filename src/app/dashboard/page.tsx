@@ -33,8 +33,7 @@ const Dashboard = async () => {
         </h2>
         <Button asChild>
           <Link href="/dashboard/links">
-            Create Link
-            <kbd className="ml-2">⌘K</kbd>
+            Create Link <kbd className="ml-2">⌘K</kbd>
           </Link>
         </Button>
       </div>
