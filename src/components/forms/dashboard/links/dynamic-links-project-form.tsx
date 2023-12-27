@@ -382,7 +382,8 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
 
         {/* submit button */}
         <Button className="mt-2" disabled={loading} type="submit">
-          Save Dynamic Link
+          {/* Save */}
+          {projectId ? "Update" : "Create"} Dynamic Link
           {loading && <Loader2 className="ml-2 animate-spin" />}
         </Button>
       </form>
