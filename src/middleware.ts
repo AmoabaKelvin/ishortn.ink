@@ -20,6 +20,10 @@ export const getValidSubdomain = (host?: string | null) => {
     return null;
   }
 
+  if (host && host.includes("docs.ishortn.ink")) {
+    return null;
+  }
+
   return subdomain;
 };
 
