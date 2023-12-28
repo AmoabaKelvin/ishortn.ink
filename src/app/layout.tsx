@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { Nunito_Sans } from "next/font/google";
 
@@ -125,6 +126,7 @@ export default function RootLayout({
           <ShadToaster />
           <ClientProvider />
           {children}
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
