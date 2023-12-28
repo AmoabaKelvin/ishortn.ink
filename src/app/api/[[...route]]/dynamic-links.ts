@@ -1,5 +1,5 @@
-import { createDynamicLinkChildLink } from "@/actions/dynamic-links-actions";
 import prisma from "@/db";
+import { generateShortLinkForProject } from "@/lib/utils";
 import { Hono } from "hono";
 import { validator } from "hono/validator";
 import { z } from "zod";
@@ -83,19 +83,42 @@ dynamicLinksAPI.post(
       return c.text("Not found!", 404);
     }
 
-    const createdLink = await createDynamicLinkChildLink(
-      {
+    const linkIsAlreadyCreated = await prisma.dynamicLinkChildLink.findFirst({
+      where: {
         link: link.link,
-        shortLink: "",
+        dynamicLinkId: dynamicLinkProject.id,
+      },
+    });
+
+    if (linkIsAlreadyCreated) {
+      return c.json(
+        {
+          url: `https://${subdomain}.ishortn.ink/${linkIsAlreadyCreated.shortLink}`,
+        },
+        200,
+      );
+    }
+
+    const shortLink = await generateShortLinkForProject(
+      link.link,
+      dynamicLinkProject.id,
+    );
+
+    const createdLink = await prisma.dynamicLinkChildLink.create({
+      data: {
+        link: link.link,
+        shortLink: shortLink,
         fallbackLink: link.fallbackLink || "",
         metaDataDescription: link.metaData.description,
         metaDataImageUrl: link.metaData.imageUrl,
         metaDataTitle: link.metaData.title,
+        dynamicLink: {
+          connect: {
+            id: dynamicLinkProject.id,
+          },
+        },
       },
-      dynamicLinkProject.id,
-      undefined,
-      userID,
-    );
+    });
 
     return c.json(
       {
@@ -105,21 +128,3 @@ dynamicLinksAPI.post(
     );
   },
 );
-
-// const formatDataToReturn = (
-//   data: Omit<Prisma.DynamicLinkChildLinkSelect, "id" | "createdAt">,
-//   subdomain: string,
-// ) => {
-//   return {
-//     // id: data.id,
-//     link: data.link,
-//     shortLink: data.shortLink,
-//     completeUrl: `https://${subdomain}.ishortn.ink/${data.shortLink}`,
-//     fallbackLink: data.fallbackLink,
-//     metaData: {
-//       description: data.metaDataDescription,
-//       imageUrl: data.metaDataImageUrl,
-//       title: data.metaDataTitle,
-//     },
-//   };
-// };
