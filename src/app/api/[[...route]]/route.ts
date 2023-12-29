@@ -6,6 +6,7 @@ import { handle } from "hono/vercel";
 
 import { domainsAPI } from "./domains";
 import { dynamicLinksAPI } from "./dynamic-links";
+import { webhook } from "./webhook";
 
 export type Variables = {
   userID: string;
@@ -44,6 +45,7 @@ app.get("/ping", async (c) => {
 
 app.route("/dynamic-links", dynamicLinksAPI);
 app.route("/domains", domainsAPI);
+app.route("/webhook", webhook);
 
 export const GET = handle(app);
 export const POST = handle(app);
