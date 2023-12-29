@@ -1,34 +1,73 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Table of Contents
+- [What is ishortn?](#what-is-ishortn)
+- [Features and Roadmap](#features-and-roadmap)
+- [How do I keep the servers running?](#how-do-i-keep-the-servers-running)
 
-## Getting Started
+## Contributing to ishortn
 
-First, run the development server:
+- [Reporting issues and suggesting features](#reporting-issues-and-suggesting-features)
+- [Coding contributions](#coding-contributions)
+- [Documentation and translations](#documentation-and-translations)
+- [Other ways to contribute](#other-ways-to-contribute)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+## Additional Resources
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- [Official Discord Server](https://discord.gg/S66ZvMzkU4)
+- [Buy Me a Coffee](https://www.buymeacoffee.com/kelvinamoaba)
+- [Website](https://ishortn.ink)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
-## Learn More
+## What is ishortn?
 
-To learn more about Next.js, take a look at the following resources:
+[ishortn](https://ishortn.ink) is a Dynamic Links and URL shortener that allows you to shorten links, track the clicks, and get analytics on your links. It is a free and open source project that is built with Next.js, Tailwind CSS, and other awesome technologies.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+I integrated the dynamic linking feature into this project since firebase is going to be shutting down the service in August of 2025. 
+This has led to the panic of many projects that rely on the service, and alternatives to the firebase dynamic linking service are quite expensive.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+I hope this project can help those who are in need of a dynamic linking service.
 
-## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Features and Roadmap
+- Dynamic Links (Apple universal links & Android app links)
+- Link shortening
+- Link analytics (clicks, countries, devices, browsers, cities)
+- Link expiration
+- Link QR code generation
+- Link password protection (coming soon)
+- Geo targeting (coming soon)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Not all features are available yet, but they are coming soon. If you would like to request a feature, please open an issue on the [Github repository](
+  https://github.com/AmoabaKelvin/ishortn/issues
+) or send me an email at [kel.amoaba@gmail.com](mailto:kel.amoaba@gmail.com).
+
+## How do I keep the servers running?
+Since this is a free project, we rely a lot on donations to cover things like database and server costs. 
+So if you would like to help out, you can donate to my  [Buy Me a Coffee](https://www.buymeacoffee.com/kelvinamoaba) page.
+This will go a long way to keep the servers buzzing and the project alive.
+
+
+## Contributing
+We welcome contributions from the community to help make ishortn even better! Here are some ways you can get involved:
+
+### Reporting issues and suggesting features
+Found a bug? Missing a feature? Let us know by opening an issue on the [Github repository](https://github.com/AmoabaKelvin/ishortn/issues). Be as detailed as possible in your description to help us understand and address the issue effectively.
+Have a great idea for a new feature? We're always open to suggestions! Share your thoughts by opening an issue and starting a discussion.
+
+### Coding contributions
+If you're a developer, we'd appreciate your help with bug fixes, new features, and improvements to the existing codebase. This was quickly hacked up so you might spot areas that can benifit from some nice bits of code. We regard highly nice and readeable code 💗
+
+### Documentation and translations
+We always strive to have clear and comprehensive documentation for ishortn. If you find any areas that could be improved, please let us know or feel free to submit a pull request with your suggested changes.
+If you're fluent in another language, you can help us translate the documentation and user interface to make ishortn accessible to a wider audience.
+
+## Other ways to contribute:
+- Spread the word about ishortn! Share it with your friends, colleagues, and on social media.
+- Star the project on Github to show your support.
+- Donate to support the project's ongoing development and server costs. You can make a donation through the Buy Me a Coffee: https://www.buymeacoffee.com/kelvinamoaba page.
+
+We value your contributions and appreciate your commitment to making ishortn a better project.
+
+
+Thank you for being a part of the community!
+
