@@ -30,7 +30,7 @@ const SettingsPage = async () => {
         <p className="mt-2 mb-10 text-sm text-gray-600 dark:text-gray-400">
           API Keys are used to authenticate requests to the API.{" "}
           <Link
-            href="https://documenter.getpostman.com/view/21227678/2s9YkjAibQ"
+            href="https://ishortn.mintlify.app/introduction"
             target="_blank"
             className="text-blue-600 dark:text-blue-500"
           >
