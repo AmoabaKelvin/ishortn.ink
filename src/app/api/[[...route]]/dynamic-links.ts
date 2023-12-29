@@ -10,8 +10,8 @@ export const dynamicLinksAPI = new Hono<{ Variables: Variables }>();
 const DynamicLinkChildLinkSchema = z.object({
   projectSubdomain: z.string().url(),
   metaData: z.object({
-    title: z.string().optional(),
-    description: z.string().optional(),
+    title: z.string().max(191).optional(),
+    description: z.string().max(191).optional(),
     imageUrl: z.string().url().optional(),
   }),
   link: z.string().url(),
