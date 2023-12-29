@@ -1,11 +1,11 @@
+import prisma from "@/db";
 import { WebhookEvent } from "@clerk/nextjs/server";
-import { headers } from "next/headers";
+import { Hono } from "hono";
 import { Webhook } from "svix";
 
-import prisma from "@/db";
+export const webhook = new Hono();
 
-export async function POST(req: Request) {
-  // You can find this in the Clerk Dashboard -> Webhooks -> choose the webhook
+webhook.post("/clerk", async (c) => {
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
@@ -14,8 +14,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Get the headers
-  const headerPayload = headers();
+  const headerPayload = c.req.raw.headers;
   const svix_id = headerPayload.get("svix-id");
   const svix_timestamp = headerPayload.get("svix-timestamp");
   const svix_signature = headerPayload.get("svix-signature");
@@ -28,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   // Get the body
-  const payload = await req.json();
+  const payload = await c.req.json();
   const body = JSON.stringify(payload);
 
   // Create a new SVIX instance with your secret.
@@ -78,7 +77,7 @@ export async function POST(req: Request) {
   // Return a 201 status code
 
   return new Response("", { status: 201 });
-}
+});
 
 interface EmailAddress {
   email_address: string;
