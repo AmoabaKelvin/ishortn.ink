@@ -25,6 +25,11 @@ app.use(
 app.use("*", prettyJSON());
 
 app.use("/dynamic-links/*", async (c, next) => {
+  // if we are making a request to /dynamic-links/validate-shortlink, we don't need to check for authorization
+  if (c.req.url.includes("/dynamic-links/validate-shortlink")) {
+    return await next();
+  }
+
   const authorizationKey = c.req.raw.headers.get("x-ishortn-key");
   if (!authorizationKey) {
     return c.json({ error: "Unauthorized" }, 401);
