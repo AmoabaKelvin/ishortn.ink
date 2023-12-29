@@ -110,7 +110,7 @@ dynamicLinksAPI.post(
         shortLink: shortLink,
         fallbackLink: link.fallbackLink || "",
         metaDataDescription: link.metaData.description,
-        metaDataImageUrl: link.metaData.imageUrl,
+        metaDataImageUrl: link.metaData.imageUrl || "",
         metaDataTitle: link.metaData.title,
         dynamicLink: {
           connect: {
