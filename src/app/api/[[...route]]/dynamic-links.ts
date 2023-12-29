@@ -1,5 +1,8 @@
 import prisma from "@/db";
-import { generateShortLinkForProject } from "@/lib/utils";
+import {
+  checkShortURLIsAvailableForProject,
+  generateShortLinkForProject,
+} from "@/lib/utils";
 import { Hono } from "hono";
 import { validator } from "hono/validator";
 import { z } from "zod";
@@ -23,6 +26,25 @@ dynamicLinksAPI.get("/", async (c) => {
   return c.json({
     message: "Hello, dynamic links!",
   });
+});
+
+dynamicLinksAPI.get("/validate-shortlink", async (c) => {
+  const { shortLink, projectID } = c.req.query();
+
+  if (!projectID || !shortLink) {
+    return c.text("Invalid URL", 400);
+  }
+
+  const response = await checkShortURLIsAvailableForProject(
+    shortLink,
+    Number(projectID),
+  );
+
+  if (!response) {
+    return c.text("Not Available", 400);
+  }
+
+  return c.json(null, 200);
 });
 
 dynamicLinksAPI.get("/:shortUrl", async (c) => {
