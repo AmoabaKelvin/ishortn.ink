@@ -66,7 +66,7 @@ const DynamicLinksForm = ({
     }
 
     const response = await fetch(
-      `/api/links/dynamic-links/validate-shortlink?shortLink=${value}&projectID=${selectedProject}`,
+      `/api/dynamic-links/validate-shortlink?shortLink=${value}&projectID=${selectedProject}`,
     );
 
     if (response.status === 200) {
