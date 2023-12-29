@@ -78,8 +78,8 @@ model DynamicLinkChildLink {
   createdAt           DateTime    @default(now())
   dynamicLink         DynamicLink @relation(fields: [dynamicLinkId], references: [id])
   metaDataTitle       String      @default("")
-  metaDataDescription String      @default("")
-  metaDataImageUrl    String      @default("")
+  metaDataDescription String      @default("") // cannot be longer than 191 characters
+  metaDataImageUrl    String      @db.Text // since we do not know the length of the image url, we use text so that it can be of any length
   shortLink           String
   link                String      @db.Text
   fallbackLink        String      @db.Text
