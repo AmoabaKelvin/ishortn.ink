@@ -121,8 +121,8 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           className="transition-all duration-500 rounded-md bg-slate-100 hover:scale-110"
         >
           {link.linkVisits.length}
-          <span className="hidden md:inline">visits</span>
-          <span className="inline md:hidden">v</span>
+          <span className="hidden ml-0.5 md:inline">visits</span>
+          <span className="inline ml-0.5 md:hidden">v</span>
         </Badge>
 
         <LinkActions
