@@ -6,10 +6,8 @@ import QuickShortenForm from "@/components/forms/dashboard/links/quick-shorten";
 import prisma from "@/db";
 import Link from "next/link";
 
-// Get all links from the user
 const getUserLinks = async () => {
   const { userId } = auth();
-  console.log(userId);
   const links = await prisma.link.findMany({
     where: {
       userId: userId,
