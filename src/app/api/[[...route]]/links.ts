@@ -133,6 +133,15 @@ linksAPI.post("/", async (c) => {
     },
   });
 
+  // check if an alias was provided
+  if (!alias && existingLink) {
+    return c.json(
+      JSON.stringify({
+        url: `https://ishortn.ink/${existingLink.alias}`,
+      }),
+    );
+  }
+
   if (alias && existingLink && existingLink.alias === alias) {
     return c.json(
       JSON.stringify({
