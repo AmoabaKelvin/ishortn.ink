@@ -34,11 +34,13 @@ const LinkShortenerTab = () => {
     onSubmit: async (values) => {
       setLoading(true);
 
-      const { url } = await axios
+      const url = await axios
         .post("/api/links/", {
           ...values,
         })
-        .then((res) => res.data);
+        .then((res) => {
+          return JSON.parse(res.data).url;
+        });
       setShortUrl(url);
       setLoading(false);
     },
