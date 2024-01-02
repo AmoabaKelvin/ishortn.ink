@@ -91,7 +91,7 @@ linksAPI.get("/:shortLink", async (c) => {
         where: {
           linkId: originalLink.id,
         },
-      })) >= originalLink.disableLinkAfterClicks
+      })) >= originalLink.disableLinkAfterClicks!
     ) {
       await prisma.link.update({
         where: {
