@@ -86,12 +86,12 @@ linksAPI.get("/:shortLink", async (c) => {
     const userAgentDetails = parseUserAgent(c.req);
 
     if (
-      originalLink.disableLinkAfterClicks !== 0 &&
+      originalLink.disableLinkAfterClicks !== null &&
       (await prisma.linkVisit.count({
         where: {
           linkId: originalLink.id,
         },
-      })) >= originalLink.disableLinkAfterClicks!
+      })) >= originalLink.disableLinkAfterClicks
     ) {
       await prisma.link.update({
         where: {
