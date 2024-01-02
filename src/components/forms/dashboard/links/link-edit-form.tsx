@@ -64,6 +64,10 @@ const LinkEditForm = () => {
     onSubmit: async (values) => {
       console.log(values);
       startTransition(async () => {
+        // if disableLinkAfterClicks is 0, set it to null
+        if (values.disableLinkAfterClicks === 0) {
+          values.disableLinkAfterClicks = null;
+        }
         const response = await createLink(values);
 
         if (response && "error" in response) {
