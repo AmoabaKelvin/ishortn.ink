@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 
+import * as yup from "yup";
+
 const QuickShortenForm = () => {
   const { toast } = useToast();
   const [loading, startTransition] = useTransition();
@@ -17,6 +19,9 @@ const QuickShortenForm = () => {
     initialValues: {
       url: "",
     },
+    validationSchema: yup.object({
+      url: yup.string().url().required(),
+    }),
     onSubmit: async (values) => {
       startTransition(async () => {
         const response = await quickLinkShorten(values.url);
@@ -47,7 +52,13 @@ const QuickShortenForm = () => {
         type="url"
         placeholder="https://example.com"
         {...formik.getFieldProps("url")}
+        className={`${
+          formik.touched.url && formik.errors.url && "border-red-500"
+        }`}
       />
+      <span className="text-xs text-red-500">
+        {formik.touched.url && formik.errors.url}
+      </span>
       <Button className="w-full mt-5" type="submit" disabled={loading}>
         Shorten
       </Button>
