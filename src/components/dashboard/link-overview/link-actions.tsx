@@ -5,7 +5,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -13,7 +12,9 @@ type linkActionsProps = {
   handleModal: () => void;
   handleDelete: () => void;
   handleQRCodeModal: () => void;
-  handleDisable?: () => void;
+  handleDisable: () => void;
+  handleEnable: () => void;
+  isLinkActive: boolean;
 };
 
 export function LinkActions({
@@ -21,17 +22,15 @@ export function LinkActions({
   handleModal,
   handleQRCodeModal,
   handleDisable,
+  handleEnable,
+  isLinkActive,
 }: linkActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {/* <Button variant="outline"> */}
         <MoreVertical className="w-4 h-4 hover:cursor-pointer" />
-        {/* </Button> */}
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
-        {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
-        {/* <DropdownMenuSeparator /> */}
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={() => handleModal()}>
             <Pencil className="w-4 h-4 mr-2" />
@@ -41,22 +40,27 @@ export function LinkActions({
           <DropdownMenuItem onClick={() => handleQRCodeModal()}>
             <QrCode className="w-4 h-4 mr-2" />
             <span>QrCode</span>
-            <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
           </DropdownMenuItem>
-          {handleDisable && (
+          {isLinkActive ? (
             <DropdownMenuItem
               className="text-red-500"
               onClick={() => handleDisable()}
             >
               <ToggleLeft className="w-4 h-4 mr-2" />
               <span>Deactivate</span>
-              <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              // className="text-green-700"
+              onClick={() => handleEnable()}
+            >
+              <ToggleLeft className="w-4 h-4 mr-2" />
+              <span>Activate</span>
             </DropdownMenuItem>
           )}
           <DropdownMenuItem className="text-red-500" onClick={handleDelete}>
             <Trash className="w-4 h-4 mr-2" />
             <span>Delete</span>
-            <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
