@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 import { Prisma } from "@prisma/client";
 
-import { deleteLink, disableLink } from "@/actions/link-actions";
+import { deleteLink, disableLink, enableLink } from "@/actions/link-actions";
 import { useState } from "react";
 import { LinkEditModal } from "../modals/link-edit-modal";
 import { QRCodeModal } from "../modals/qr-code-modal";
@@ -74,6 +74,23 @@ const LinkShowcase = ({ link }: { link: Link }) => {
     }
   };
 
+  const handleLinkEnabling = async () => {
+    const response = await enableLink(link.id);
+    console.log(response);
+    if (response && "id" in response) {
+      toast({
+        title: "Link activated",
+        description: "Your link has been activated.",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "An error occurred while activating your link.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex items-center justify-between px-6 py-4 rounded-md bg-slate-50">
       <div className="flex flex-col gap-2">
@@ -130,6 +147,8 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           handleModal={handleModal}
           handleQRCodeModal={handleQRCodeModal}
           handleDisable={handleLinkDisabling}
+          isLinkActive={!link.disabled}
+          handleEnable={handleLinkEnabling}
         />
 
         <LinkEditModal
