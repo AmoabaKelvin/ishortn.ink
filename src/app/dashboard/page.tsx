@@ -31,7 +31,10 @@ const Dashboard = async () => {
         </h2>
         <Button asChild>
           <Link href="/dashboard/links">
-            Create Link <kbd className="ml-2">⌘K</kbd>
+            Create Link{" "}
+            <kbd className="px-1.5 py-0.5 ml-2 bg-gray-600 rounded-sm shadow-lg hidden md:inline">
+              ⌘<span className="ml-1">K</span>
+            </kbd>
           </Link>
         </Button>
       </div>
