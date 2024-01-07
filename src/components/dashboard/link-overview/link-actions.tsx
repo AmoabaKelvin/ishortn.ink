@@ -12,9 +12,9 @@ type linkActionsProps = {
   handleModal: () => void;
   handleDelete: () => void;
   handleQRCodeModal: () => void;
-  handleDisable: () => void;
-  handleEnable: () => void;
-  isLinkActive: boolean;
+  handleDisable?: () => void;
+  handleEnable?: () => void;
+  isLinkActive?: boolean;
 };
 
 export function LinkActions({
@@ -44,7 +44,7 @@ export function LinkActions({
           {isLinkActive ? (
             <DropdownMenuItem
               className="text-red-500"
-              onClick={() => handleDisable()}
+              onClick={() => handleDisable && handleDisable()}
             >
               <ToggleLeft className="w-4 h-4 mr-2" />
               <span>Deactivate</span>
@@ -52,7 +52,7 @@ export function LinkActions({
           ) : (
             <DropdownMenuItem
               // className="text-green-700"
-              onClick={() => handleEnable()}
+              onClick={() => handleEnable && handleEnable()}
             >
               <ToggleLeft className="w-4 h-4 mr-2" />
               <span>Activate</span>
