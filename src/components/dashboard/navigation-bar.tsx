@@ -4,11 +4,11 @@ import Link from "next/link";
 const NavigationBar = () => {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-xl font-semibold leading-tight text-gray-800">
+      <h2 className="text-xl font-semibold inline-flex leading-tight text-gray-800">
         <Link href="/" className="text-blue-600">
           ishortn.ink
         </Link>{" "}
-        / Dashboard
+        <span className="hidden sm:block ml-2">/ Dashboard</span>
       </h2>
       <div className="flex items-center justify-between space-x-4">
         <div className="flex items-center gap-4">
