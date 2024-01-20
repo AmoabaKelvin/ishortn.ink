@@ -8,14 +8,12 @@ const StatBar = ({ name, clicks, totalClicks }: StatBarProps) => {
   return (
     <div
       key={name}
-      className="relative flex items-center justify-between gap-2 px-1 rounded-md"
+      className="relative flex items-center justify-between gap-2 px-2 py-1 rounded-md"
     >
-      <span className="z-50 text-base font-semibold text-gray-600">{name}</span>
+      <span className="z-50 text-base text-gray-600">{name}</span>
       <div className="flex items-center gap-2">
-        <span className="z-50 text-base font-bold text-black">{clicks}</span>
-        <div className="w-px h-4 bg-gray-300" />
-        <span className="text-sm text-gray-500">
-          {((clicks / totalClicks) * 100).toFixed(0)}%
+        <span className="z-50 text-base font-semibold text-black">
+          {clicks}
         </span>
       </div>
 
