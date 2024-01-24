@@ -104,17 +104,24 @@ linksAPI.get("/:shortLink", async (c) => {
       return c.text("Not Found", 404);
     }
 
-    await prisma.linkVisit.create({
-      data: {
-        linkId: originalLink.id,
-        os: userAgentDetails.os || "Unknown",
-        browser: userAgentDetails.browser || "Unknown",
-        device: userAgentDetails.device,
-        model: userAgentDetails.model,
-        city: ipLocation.city,
-        country: ipLocation.country_name,
-      },
-    });
+    // this should not prevent the user from visiting the link
+
+    try {
+      await prisma.linkVisit.create({
+        data: {
+          linkId: originalLink.id,
+          os: userAgentDetails.os || "Unknown",
+          browser: userAgentDetails.browser || "Unknown",
+          device: userAgentDetails.device,
+          model: userAgentDetails.model,
+          city: ipLocation.city,
+          country: ipLocation.country_name,
+        },
+      });
+    } catch (e) {
+      // do something with the error
+      // todo: do something with the error
+    }
   }
 
   return c.json({ url: originalLink.url });
