@@ -1,4 +1,5 @@
 import {
+  Copy,
   MoreVertical,
   Pencil,
   QrCode,
@@ -24,6 +25,7 @@ type linkActionsProps = {
   isLinkActive?: boolean;
   isLinkStatsPublic?: boolean;
   handleLinkPublicToggle?: (toggle: boolean) => void;
+  copyPublicLinkAnalyticsToClipboard?: () => void;
 };
 
 export function LinkActions({
@@ -35,6 +37,7 @@ export function LinkActions({
   isLinkActive,
   isLinkStatsPublic,
   handleLinkPublicToggle,
+  copyPublicLinkAnalyticsToClipboard,
 }: linkActionsProps) {
   return (
     <DropdownMenu>
@@ -71,6 +74,15 @@ export function LinkActions({
                   <span>Enable Public Stats</span>
                 </>
               )}
+            </DropdownMenuItem>
+          )}
+
+          {copyPublicLinkAnalyticsToClipboard && isLinkStatsPublic && (
+            <DropdownMenuItem
+              onClick={() => copyPublicLinkAnalyticsToClipboard()}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              <span>Copy Public Stats Link</span>
             </DropdownMenuItem>
           )}
           {handleEnable && (
