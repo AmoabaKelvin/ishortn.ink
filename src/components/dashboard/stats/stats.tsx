@@ -236,7 +236,7 @@ const LinkAnalyticsStats = ({ link }: { link: Link }) => {
       <div className="flex items-center justify-between">
         <h1 className="font-semibold leading-tight text-gray-800 md:text-3xl">
           {/* Link Analytics for{" "} */}
-          <span className="text-slate-600">Details for </span>
+          {/*<span className="text-slate-600">Details for </span>/*/}
           <span className="text-blue-600 cursor-pointer hover:underline">
             ishortn.ink/{link.alias}
           </span>
