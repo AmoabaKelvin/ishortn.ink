@@ -1,4 +1,11 @@
-import { MoreVertical, Pencil, QrCode, ToggleLeft, Trash } from "lucide-react";
+import {
+  MoreVertical,
+  Pencil,
+  QrCode,
+  ToggleLeft,
+  ToggleRight,
+  Trash,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -15,6 +22,8 @@ type linkActionsProps = {
   handleDisable?: () => void;
   handleEnable?: () => void;
   isLinkActive?: boolean;
+  isLinkStatsPublic?: boolean;
+  handleLinkPublicToggle?: (toggle: boolean) => void;
 };
 
 export function LinkActions({
@@ -24,6 +33,8 @@ export function LinkActions({
   handleDisable,
   handleEnable,
   isLinkActive,
+  isLinkStatsPublic,
+  handleLinkPublicToggle,
 }: linkActionsProps) {
   return (
     <DropdownMenu>
@@ -41,22 +52,47 @@ export function LinkActions({
             <QrCode className="w-4 h-4 mr-2" />
             <span>QrCode</span>
           </DropdownMenuItem>
-          {isLinkActive ? (
+          {handleLinkPublicToggle && (
             <DropdownMenuItem
-              className="text-red-500"
-              onClick={() => handleDisable && handleDisable()}
+              className=""
+              onClick={() =>
+                handleLinkPublicToggle &&
+                handleLinkPublicToggle(!isLinkStatsPublic)
+              }
             >
-              <ToggleLeft className="w-4 h-4 mr-2" />
-              <span>Deactivate</span>
+              {isLinkStatsPublic ? (
+                <>
+                  <ToggleLeft className="w-4 h-4 mr-2" />
+                  <span>Disable Public Stats</span>
+                </>
+              ) : (
+                <>
+                  <ToggleRight className="w-4 h-4 mr-2" />
+                  <span>Enable Public Stats</span>
+                </>
+              )}
             </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem
-              // className="text-green-700"
-              onClick={() => handleEnable && handleEnable()}
-            >
-              <ToggleLeft className="w-4 h-4 mr-2" />
-              <span>Activate</span>
-            </DropdownMenuItem>
+          )}
+          {handleEnable && (
+            <>
+              {isLinkActive ? (
+                <DropdownMenuItem
+                  className="text-red-500"
+                  onClick={() => handleDisable && handleDisable()}
+                >
+                  <ToggleLeft className="w-4 h-4 mr-2" />
+                  <span>Deactivate</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  // className="text-green-700"
+                  onClick={() => handleEnable && handleEnable()}
+                >
+                  <ToggleLeft className="w-4 h-4 mr-2" />
+                  <span>Activate</span>
+                </DropdownMenuItem>
+              )}
+            </>
           )}
           <DropdownMenuItem className="text-red-500" onClick={handleDelete}>
             <Trash className="w-4 h-4 mr-2" />

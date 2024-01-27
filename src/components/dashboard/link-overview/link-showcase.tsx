@@ -9,7 +9,12 @@ import { useRouter } from "next/navigation";
 
 import { Prisma } from "@prisma/client";
 
-import { deleteLink, disableLink, enableLink } from "@/actions/link-actions";
+import {
+  deleteLink,
+  disableLink,
+  enableLink,
+  toggleLinkStats,
+} from "@/actions/link-actions";
 import { useState } from "react";
 import { LinkEditModal } from "../modals/link-edit-modal";
 import { QRCodeModal } from "../modals/qr-code-modal";
@@ -91,6 +96,17 @@ const LinkShowcase = ({ link }: { link: Link }) => {
     }
   };
 
+  const handleLinkPublicToggle = async (toggle: boolean) => {
+    const response = await toggleLinkStats(link.id, toggle);
+
+    if (response && "id" in response) {
+      toast({
+        title: "Public Stats updated",
+        description: "Public stats setting has been updated",
+      });
+    }
+  };
+
   return (
     <div className="flex items-center justify-between px-6 py-4 rounded-md bg-slate-50">
       <div className="flex flex-col gap-2">
@@ -149,6 +165,8 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           handleDisable={handleLinkDisabling}
           isLinkActive={!link.disabled}
           handleEnable={handleLinkEnabling}
+          handleLinkPublicToggle={handleLinkPublicToggle}
+          isLinkStatsPublic={link.publicStats}
         />
 
         <LinkEditModal

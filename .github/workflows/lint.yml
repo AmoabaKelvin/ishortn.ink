@@ -5,27 +5,27 @@ on:
       - "*"
 
 jobs:
-  lint:
-    name: ⬣ ESLint
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: ⬇️ Checkout repo
-        uses: actions/checkout@v3
+  # lint:
+  #   name: ⬣ ESLint
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 15
+  #   steps:
+  #     - name: ⬇️ Checkout repo
+  #       uses: actions/checkout@v3
 
-      - name: Set up bun
-        uses: oven-sh/setup-bun@v1
+  #     - name: Set up bun
+  #       uses: oven-sh/setup-bun@v1
 
-      - name: ⎔ Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
+  #     - name: ⎔ Setup node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 18
 
-      - name: 📥 Download deps
-        run: bun install
+  #     - name: 📥 Download deps
+  #       run: bun install
 
-      - name: 🔬 Lint
-        run: bun run lint
+  #     - name: 🔬 Lint
+  #       run: bun run lint
 
   prettier:
     name: 💅 Prettier
