@@ -1,17 +1,18 @@
 "use server";
 
+import { env } from "@/env.mjs";
 import { auth } from "@clerk/nextjs";
 import { Unkey } from "@unkey/api";
 import Link from "next/link";
 import ApiKeyCard from "./api-key-card";
 import CreateAPIKey from "./create-key";
 
-const unkey = new Unkey({ token: process.env.UNKEY_TOKEN! });
+const unkey = new Unkey({ token: env.UNKEY_TOKEN });
 
 async function getUserKey(userID: string) {
   const keys = await unkey.apis.listKeys({
     ownerId: String(userID),
-    apiId: process.env.UNKEY_API_ID!,
+    apiId: env.UNKEY_API_ID,
   });
   return keys;
 }

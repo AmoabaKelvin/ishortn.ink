@@ -4,11 +4,11 @@ import Link from "next/link";
 const NavigationBar = () => {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-xl font-semibold inline-flex leading-tight text-gray-800">
+      <h2 className="inline-flex text-xl font-semibold leading-tight text-gray-800">
         <Link href="/" className="text-blue-600">
           ishortn.ink
         </Link>{" "}
-        <span className="hidden sm:block ml-2">/ Dashboard</span>
+        <span className="hidden ml-2 sm:block">/ Dashboard</span>
       </h2>
       <div className="flex items-center justify-between space-x-4">
         <div className="flex items-center gap-4">
@@ -21,10 +21,16 @@ const NavigationBar = () => {
               alt="Discord"
             />
           </Link>
-          <Link href="https://ishortn.ink/feedback" target="_blank">
-            <span className="text-sm font-medium text-gray-600 hover:text-gray-800">
-              Feedback
-            </span>
+          <Link
+            href="https://github.com/AmoabaKelvin/ishortn.ink"
+            target="_blank"
+          >
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/GitHub_Invertocat_Logo.svg/600px-GitHub_Invertocat_Logo.svg.png"
+              width={20}
+              height={20}
+              alt="GitHub"
+            />
           </Link>
         </div>
         <UserButton />
