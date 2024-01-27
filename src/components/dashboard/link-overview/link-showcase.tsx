@@ -107,6 +107,15 @@ const LinkShowcase = ({ link }: { link: Link }) => {
     }
   };
 
+  const copyPublicLinkAnalyticsToClipboard = () => {
+    window.navigator.clipboard.writeText(
+      "https://ishortn.ink/analytics/" + link.alias,
+    );
+    toast({
+      title: "Public Stats Link Copied",
+    });
+  };
+
   return (
     <div className="flex items-center justify-between px-6 py-4 rounded-md bg-slate-50">
       <div className="flex flex-col gap-2">
@@ -167,6 +176,9 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           handleEnable={handleLinkEnabling}
           handleLinkPublicToggle={handleLinkPublicToggle}
           isLinkStatsPublic={link.publicStats}
+          copyPublicLinkAnalyticsToClipboard={
+            copyPublicLinkAnalyticsToClipboard
+          }
         />
 
         <LinkEditModal
