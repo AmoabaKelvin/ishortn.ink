@@ -89,6 +89,7 @@ export default async function middleware(
       "/apple-app-site-association",
       "/.well-known/assetlinks.json",
       "/:shortenedLink",
+      "/analytics/:shortenedLink",
     ],
 
     ignoredRoutes: ["/.well-known/assetlinks.json"],
