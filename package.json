@@ -69,7 +69,7 @@
     "ua-parser-js": "^1.0.37",
     "use-debounce": "^10.0.0",
     "yup": "^1.3.2",
-    "zod": "^3.22.2"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "husky": "^8.0.0",
