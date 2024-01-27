@@ -227,3 +227,40 @@ export const enableLink = async (id: number) => {
   revalidatePath("/dashboard");
   return enabledLink;
 };
+
+export const toggleLinkStats = async (id: number, toggle: boolean) => {
+  const { userId } = auth();
+
+  if (!userId) {
+    return;
+  }
+
+  const link = await prisma.link.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!link) {
+    return {
+      error: "Link not found",
+    };
+  }
+
+  if (link.userId !== userId) {
+    return {
+      error: "You are not authorized to enable this link",
+    };
+  }
+
+  const enabledLink = prisma.link.update({
+    where: {
+      id,
+    },
+    data: {
+      publicStats: toggle,
+    },
+  });
+  revalidatePath("/dashboard");
+  return enabledLink;
+};
