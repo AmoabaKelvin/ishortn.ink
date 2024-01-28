@@ -25,6 +25,45 @@ type Link = Prisma.LinkGetPayload<{
   };
 }>;
 
+// Function to handle the response check
+const checkResponse = (response: any) => {
+  return response && "id" in response;
+};
+
+const showToast = (
+  action: "activated" | "deactivated" | "deleted",
+  success: boolean,
+) => {
+  const titles = {
+    activated: "Link activated",
+    deactivated: "Link deactivated",
+    deleted: "Link deleted",
+  };
+  const descriptions = {
+    activated: "Your link has been activated.",
+    deactivated: "Your link has been deactivated.",
+    deleted: "Your link has been deleted.",
+  };
+  const errorMessages = {
+    activated: "An error occurred while activating your link.",
+    deactivated: "An error occurred while deactivating your link.",
+    deleted: "An error occurred while deleting your link.",
+  };
+
+  if (success) {
+    toast({
+      title: titles[action],
+      description: descriptions[action],
+    });
+  } else {
+    toast({
+      title: "Error",
+      description: errorMessages[action],
+      variant: "destructive",
+    });
+  }
+};
+
 const LinkShowcase = ({ link }: { link: Link }) => {
   const { toast } = useToast();
   const router = useRouter();
