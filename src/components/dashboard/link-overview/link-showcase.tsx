@@ -157,7 +157,8 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           <span className="mx-1 text-slate-300">•</span>
           <span className="text-gray-900 cursor-pointer hover:underline">
             {/* check if the length is over 60 chars, if it is, splice it and show ... */}
-            {link.url.length > 60 ? link.url.slice(0, 30) + "..." : link.url}
+            {/* {link.url.length > 60 ? link.url.slice(0, 30) + "..." : link.url} */}
+            {link.url}
           </span>
         </p>
       </div>
