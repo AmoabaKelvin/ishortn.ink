@@ -4,7 +4,7 @@ import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
 import { Badge } from "@/components/ui/badge";
 import { Copy } from "lucide-react";
 
-import { useToast } from "@/components/ui/use-toast";
+import { toast, useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 
 import { Prisma } from "@prisma/client";
@@ -86,53 +86,17 @@ const LinkShowcase = ({ link }: { link: Link }) => {
 
   const handleLinkDeletion = async () => {
     const response = await deleteLink(link.id);
-    console.log(response);
-    if (response && "id" in response) {
-      toast({
-        title: "Link deleted",
-        description: "Your link has been deleted.",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "An error occurred while deleting your link.",
-        variant: "destructive",
-      });
-    }
+    showToast("deleted", checkResponse(response));
   };
 
   const handleLinkDisabling = async () => {
     const response = await disableLink(link.id);
-    console.log(response);
-    if (response && "id" in response) {
-      toast({
-        title: "Link deactivated",
-        description: "Your link has been deactivated.",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "An error occurred while deactivating your link.",
-        variant: "destructive",
-      });
-    }
+    showToast("deactivated", checkResponse(response));
   };
 
   const handleLinkEnabling = async () => {
     const response = await enableLink(link.id);
-    console.log(response);
-    if (response && "id" in response) {
-      toast({
-        title: "Link activated",
-        description: "Your link has been activated.",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "An error occurred while activating your link.",
-        variant: "destructive",
-      });
-    }
+    showToast("activated", checkResponse(response));
   };
 
   const handleLinkPublicToggle = async (toggle: boolean) => {
@@ -192,7 +156,8 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           </span>
           <span className="mx-1 text-slate-300">•</span>
           <span className="text-gray-900 cursor-pointer hover:underline">
-            {link.url}
+            {/* check if the length is over 60 chars, if it is, splice it and show ... */}
+            {link.url.length > 60 ? link.url.slice(0, 30) + "..." : link.url}
           </span>
         </p>
       </div>
