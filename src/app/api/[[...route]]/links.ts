@@ -170,3 +170,47 @@ linksAPI.post("/", async (c) => {
     }),
   );
 });
+
+// helpers
+const getUserIP = (req: HonoRequest) => {
+  let forwardedFor = req.raw.headers.get("x-forwarded-for");
+  let realIp = req.raw.headers.get("x-real-ip");
+
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  if (realIp) {
+    return realIp.trim();
+  }
+
+  return null;
+};
+
+const parseUserAgent = (req: HonoRequest) => {
+  // sometimes the device type is not detected correctly,
+  // that is, you can get an os name of Mac OS and a device type of undefined
+  // so we have to manually map the os name to the device type
+  const deviceTypeMap = {
+    iOS: "Mobile",
+    Android: "Mobile",
+    "Mac OS": "Desktop",
+    Windows: "Desktop",
+  };
+
+  const ua = new UAParser(req.raw.headers.get("user-agent")!);
+
+  const os = ua.getOS().name;
+  const browser = ua.getBrowser().name;
+  const device =
+    (ua.getDevice().type ?? deviceTypeMap[os as keyof typeof deviceTypeMap]) ||
+    "Unknown";
+  const model = ua.getDevice().model;
+
+  return {
+    os,
+    browser,
+    device,
+    model,
+  };
+};
