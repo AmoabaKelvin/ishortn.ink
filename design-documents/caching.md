@@ -34,4 +34,4 @@ be redirecting users or using outdated links.
 
 ### Cache eviction strategy:
 
-We will be using the **LRU (Least Recently Used)** strategy for our cache eviction, this is because we want to keep the most frequently used links in the cache and remove the least frequently used links from the cache. This will ensure that we always have the most frequently used links in the cache and we will not be wasting space in the cache.
+We will be using the **LFU (Least Frequently Used)** strategy for our cache eviction, this is because we want to keep the most frequently used links in the cache and remove the least frequently used links from the cache. This will ensure that we always have the most frequently used links in the cache and we will not be wasting space in the cache.
