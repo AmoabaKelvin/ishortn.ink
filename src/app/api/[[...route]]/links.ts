@@ -3,50 +3,12 @@ import { Hono, HonoRequest } from "hono";
 import { UAParser } from "ua-parser-js";
 import { generateShortUrl } from "../utils/links";
 
+import {
+  addLinkToRedisCache,
+  retrieveLinkFromRedisCache,
+} from "../utils/redis-cache";
+
 export const linksAPI = new Hono();
-
-const getUserIP = (req: HonoRequest) => {
-  let forwardedFor = req.raw.headers.get("x-forwarded-for");
-  let realIp = req.raw.headers.get("x-real-ip");
-
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
-  }
-
-  if (realIp) {
-    return realIp.trim();
-  }
-
-  return null;
-};
-
-const parseUserAgent = (req: HonoRequest) => {
-  // sometimes the device type is not detected correctly,
-  // that is, you can get an os name of Mac OS and a device type of undefined
-  // so we have to manually map the os name to the device type
-  const deviceTypeMap = {
-    iOS: "Mobile",
-    Android: "Mobile",
-    "Mac OS": "Desktop",
-    Windows: "Desktop",
-  };
-
-  const ua = new UAParser(req.raw.headers.get("user-agent")!);
-
-  const os = ua.getOS().name;
-  const browser = ua.getBrowser().name;
-  const device =
-    (ua.getDevice().type ?? deviceTypeMap[os as keyof typeof deviceTypeMap]) ||
-    "Unknown";
-  const model = ua.getDevice().model;
-
-  return {
-    os,
-    browser,
-    device,
-    model,
-  };
-};
 
 linksAPI.get("/:shortLink", async (c) => {
   const defaultIPDetailsWhenWeAreInDevelopment = {
@@ -58,11 +20,7 @@ linksAPI.get("/:shortLink", async (c) => {
 
   const alias = c.req.param("shortLink");
 
-  const originalLink = await prisma.link.findUnique({
-    where: {
-      alias: alias,
-    },
-  });
+  const originalLink = await getLinkFromRedisCacheOrDatabase(alias);
 
   if (!originalLink || originalLink.disabled) {
     return c.text("Not Found", 404);
@@ -170,3 +128,72 @@ linksAPI.post("/", async (c) => {
     }),
   );
 });
+
+// helpers
+const getUserIP = (req: HonoRequest) => {
+  let forwardedFor = req.raw.headers.get("x-forwarded-for");
+  let realIp = req.raw.headers.get("x-real-ip");
+
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  if (realIp) {
+    return realIp.trim();
+  }
+
+  return null;
+};
+
+const parseUserAgent = (req: HonoRequest) => {
+  // sometimes the device type is not detected correctly,
+  // that is, you can get an os name of Mac OS and a device type of undefined
+  // so we have to manually map the os name to the device type
+  const deviceTypeMap = {
+    iOS: "Mobile",
+    Android: "Mobile",
+    "Mac OS": "Desktop",
+    Windows: "Desktop",
+  };
+
+  const ua = new UAParser(req.raw.headers.get("user-agent")!);
+
+  const os = ua.getOS().name;
+  const browser = ua.getBrowser().name;
+  const device =
+    (ua.getDevice().type ?? deviceTypeMap[os as keyof typeof deviceTypeMap]) ||
+    "Unknown";
+  const model = ua.getDevice().model;
+
+  return {
+    os,
+    browser,
+    device,
+    model,
+  };
+};
+const getLinkFromRedisCacheOrDatabase = async (alias: string) => {
+  // this will try to retrieve the link from the redis cache
+  // if it is not found, it will retrieve it from the database
+  // and then add it to the redis cache
+  const retrievedLink = await retrieveLinkFromRedisCache(alias);
+
+  if (retrievedLink) {
+    console.log("Cache hit");
+    return retrievedLink;
+  }
+
+  const originalLink = await prisma.link.findUnique({
+    where: {
+      alias: alias,
+    },
+  });
+
+  if (!originalLink) {
+    return null;
+  }
+
+  await addLinkToRedisCache(originalLink);
+
+  return originalLink;
+};

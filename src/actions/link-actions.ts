@@ -6,6 +6,10 @@ import { auth } from "@clerk/nextjs";
 import { Prisma } from "@prisma/client";
 
 import { generateShortUrl } from "@/app/api/utils/links";
+import {
+  addLinkToRedisCache,
+  deleteLinkFromRedisCache,
+} from "@/app/api/utils/redis-cache";
 import prisma from "@/db";
 
 const authenticateAndGetUserId = () => {
@@ -48,6 +52,11 @@ export const createLink = async (link: Prisma.LinkCreateInput) => {
       },
     },
   });
+
+  // write-through cache pattern
+  // ensures that the cache is always up to date
+  await addLinkToRedisCache(await createdLink);
+
   revalidatePath("/dashboard");
   return createdLink;
 };
@@ -71,6 +80,9 @@ export const quickLinkShorten = async (url: string) => {
     },
   });
   revalidatePath("/dashboard");
+
+  await addLinkToRedisCache(await createdLink);
+
   return createdLink;
 };
 
@@ -113,6 +125,9 @@ export const deleteLink = async (id: number) => {
     },
   });
   revalidatePath("/dashboard");
+
+  await deleteLinkFromRedisCache(link.alias);
+
   return deletedLink;
 };
 
@@ -151,6 +166,10 @@ export const updateLink = async (link: Prisma.LinkUpdateInput, id: number) => {
     },
   });
   revalidatePath("/dashboard");
+
+  // delete the old link from the cache and add the new one
+  await deleteLinkFromRedisCache(existingLink.alias);
+  await addLinkToRedisCache(await updatedLink);
   return updatedLink;
 };
 
@@ -188,6 +207,10 @@ export const disableLink = async (id: number) => {
     },
   });
   revalidatePath("/dashboard");
+
+  await deleteLinkFromRedisCache(link.alias);
+  await addLinkToRedisCache(await disabledLink);
+
   return disabledLink;
 };
 
@@ -225,6 +248,10 @@ export const enableLink = async (id: number) => {
     },
   });
   revalidatePath("/dashboard");
+
+  await deleteLinkFromRedisCache(link.alias);
+  await addLinkToRedisCache(await enabledLink);
+
   return enabledLink;
 };
 

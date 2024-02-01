@@ -7,6 +7,8 @@ export const env = createEnv({
     WEBHOOK_SECRET: z.string().min(1),
     UNKEY_API_ID: z.string().min(1),
     UNKEY_TOKEN: z.string().min(1),
+    UPSTASH_TOKEN: z.string().min(1),
+    UPSTASH_URL: z.string().min(1)
   },
 
   clientPrefix: "NEXT_PUBLIC_",
@@ -24,6 +26,8 @@ export const env = createEnv({
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
     UNKEY_API_ID: process.env.UNKEY_API_ID,
     UNKEY_TOKEN: process.env.UNKEY_TOKEN,
+    UPSTASH_TOKEN: process.env.UPSTASH_TOKEN,
+    UPSTASH_URL: process.env.UPSTASH_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
