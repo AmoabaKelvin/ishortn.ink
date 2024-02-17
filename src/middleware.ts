@@ -90,6 +90,7 @@ export default async function middleware(
       "/.well-known/assetlinks.json",
       "/:shortenedLink",
       "/analytics/:shortenedLink",
+      "/changelog",
     ],
 
     ignoredRoutes: ["/.well-known/assetlinks.json"],
