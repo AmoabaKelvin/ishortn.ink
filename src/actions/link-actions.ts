@@ -1,5 +1,6 @@
 "use server";
 
+import prisma from "@/db";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@clerk/nextjs";
@@ -10,7 +11,7 @@ import {
   addLinkToRedisCache,
   deleteLinkFromRedisCache,
 } from "@/app/api/utils/redis-cache";
-import prisma from "@/db";
+import { formatLinkAlias } from "@/lib/link-utils";
 
 const authenticateAndGetUserId = () => {
   const { userId } = auth();
@@ -44,7 +45,7 @@ export const createLink = async (link: Prisma.LinkCreateInput) => {
   const createdLink = prisma.link.create({
     data: {
       ...link,
-      alias: link.alias || (await generateShortUrl(link.url)),
+      alias: formatLinkAlias(link.alias) || (await generateShortUrl(link.url)),
       User: {
         connect: {
           id: userId,
