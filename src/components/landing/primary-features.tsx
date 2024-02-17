@@ -14,25 +14,26 @@ import screenshotHomeScreen from "../../../public/images/screenshots/home-screen
 
 const features = [
   {
-    title: "Create Agent",
-    description:
-      "Create a scraping agent by specifying the site you want to scrape and the fields you need",
+    title: "Link Shortening",
+    description: "Create personalized links that match your brand",
     image: screenshotHomeScreen,
   },
   {
-    title: "Review Preliminary Data",
-    description: "The agent fetches initial data for you to review and approve",
+    title: "Link Analytics",
+    description:
+      "Track link analytics and measure your growth. We include everything you need to know ranging from clicks, countried, devices, and more.",
     image: analyticsScreenShot,
   },
   {
-    title: "Track Agent Progress",
-    description: "Track agent progress from your dashboard",
+    title: "Dynamic Links",
+    description:
+      "Create links that direct users to any location within your app. Perfect for sharing content in your app.",
     image: linkShorteningScreenShot,
   },
 
   {
-    title: "Dynamic Links",
-    description: "Create dynamic links to share your data with others",
+    title: "QR Codes",
+    description: "Generate high-quality QR codes for your links",
     image: dynamicLinksScreenShot,
   },
 ];
