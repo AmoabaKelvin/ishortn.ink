@@ -53,6 +53,7 @@
     "geist": "^1.2.2",
     "gray-matter": "^4.0.3",
     "hono": "^3.11.4",
+    "js-yaml": "^4.1.0",
     "lucide-react": "^0.276.0",
     "next": "latest",
     "postcss": "8.4.31",
