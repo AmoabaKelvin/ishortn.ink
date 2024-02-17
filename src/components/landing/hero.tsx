@@ -5,9 +5,9 @@ import Link from "next/link";
 export function Hero() {
   return (
     <Container className="min-h-screen pt-20 pb-16 text-center lg:pt-32">
-      <h1 className="max-w-4xl mx-auto text-5xl font-medium tracking-tight font-display text-slate-900 sm:text-7xl">
+      <h1 className="max-w-4xl mx-auto text-5xl font-bold tracking-tight md:mt-10 font-display text-slate-900 sm:text-7xl">
         Dynamic Links and Link Shortening
-        <span className="relative whitespace-nowrap text-velaGreen2">
+        <span className="relative whitespace-nowrap">
           <svg
             aria-hidden="true"
             viewBox="0 0 418 42"
