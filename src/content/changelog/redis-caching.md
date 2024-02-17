@@ -1,6 +1,6 @@
 ---
 title: Redis Caching for Faster Link Redirection
-dateReleased: '2024-01-31'
+dateReleased: "2024-01-31"
 ---
 
 We have added Redis caching to iShortn to make link redirection faster. Redis is an in-memory data store that can be used as a cache. It is used to store the most frequently accessed data in memory, which makes it faster to access.
