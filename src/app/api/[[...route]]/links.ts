@@ -67,7 +67,9 @@ linksAPI.get("/:shortLink", async (c) => {
     try {
       await prisma.linkVisit.create({
         data: {
-          linkId: originalLink.id,
+          // sometimes the linkId can either be a string or a number depending on where
+          // it was obtained from (redis or the database) so we have to convert it to a number
+          linkId: Number(originalLink.id),
           os: userAgentDetails.os || "Unknown",
           browser: userAgentDetails.browser || "Unknown",
           device: userAgentDetails.device,
