@@ -6,36 +6,41 @@ import backgroundImage from "../../../public/images/background-faqs.jpg";
 const faqs = [
   [
     {
-      question: "What features are included?",
+      question: "What is URL shortening, and why do I need it?",
       answer:
-        "Running periodically, downloading results in various formats, data validation, and data visualization are all included in the VelaData subscription.",
+        "URL shortening is a technique that converts a long URL into a shorter, more manageable one. It's useful for sharing links on social media, in emails, or on printed materials where space is limited.",
     },
     {
-      question: "Can I get a refund just in case?",
+      question: "Can I customize the shortened URLs?",
       answer:
-        "Absolutely. We offer a refund policy to ensure your satisfaction. If, for any reason, you're not satisfied with our product within the specified refund period, you can request a refund.",
+        "Yes, we offer a customization feature that allows you to create branded, memorable short URLs. You can choose a custom alias for your links.",
     },
     {
-      question: "Do you offer email support?",
+      question: "Can I track shortened URLs performace?",
       answer:
-        "Yes, we provide email support. If you have any questions, encounter issues, or need assistance, our dedicated support team is here to help.",
+        "Yes, our service provides detailed analytics that track the number of clicks, geographic location of users, device types, browsers and more, so you can measure the effectiveness of your links.",
     },
   ],
   [
     {
-      question: "Are the updates free for life?",
+      question: "Is there a limit to the number of URLs I can shorten?",
       answer:
-        "Yes, updates are free for life. When you purchase your subscription, you'll have access to all future updates at no additional cost.",
+        "No, there's no limit. You can shorten as many URLs as you need, whether it's one or a thousand.",
     },
     {
-      question: "Can I set it up to run periodically?",
+      question: "What is a QR code?",
       answer:
-        "Yes, you can set up the tool to run periodically. Veladata offers the flexibility to schedule automated data extraction and analysis at your preferred intervals.",
+        "A QR (Quick Response) code is a type of barcode that can store lots of information, from URLs, WiFi passwords, and more. They're often used in marketing and advertising to help customers find more information about a product or service.",
     },
     {
-      question: "How do I receive the data?",
+      question: "What other features can I expect in the future?",
       answer:
-        "You can use the VelaData dashboard where you can log in to view and interact with the collected data. It can also be downloaded in formats like CSV, Excel, or PDF. It can also be emailed to you at specified intervals. It can also be sent to your cloud storage like AWS S3, Google Cloud Storage, or Azure Blob Storage.",
+        "We're constantly working on improving our service. In the future, you can expect additional features such as link expiration, password protection, and more integrations.",
+    },
+    {
+      question: "How do I get started with your service?",
+      answer:
+        "It's easy to get started. Simply sign up for an account, and you can start shortening URLs (with link tracking) and generating QR codes right away.",
     },
   ],
 ];
@@ -59,11 +64,11 @@ export function Faqs() {
         <div className="max-w-2xl mx-auto lg:mx-0">
           <h2
             id="faq-title"
-            className="text-3xl tracking-tight font-display text-slate-900 sm:text-4xl"
+            className="text-3xl tracking-tight font-display text-slate-800 sm:text-4xl"
           >
             Frequently asked questions
           </h2>
-          <p className="mt-4 text-lg tracking-tight text-slate-700">
+          <p className="mt-4 sub_linner_features text-slate-700">
             If you can’t find what you’re looking for, email our support team
             and someone will get back to you.
           </p>
@@ -77,10 +82,10 @@ export function Faqs() {
               <ul role="list" className="flex flex-col gap-y-8">
                 {column.map((faq, faqIndex) => (
                   <li key={faqIndex}>
-                    <h3 className="text-lg leading-7 font-display text-slate-900">
-                      {faq.question}
-                    </h3>
-                    <p className="mt-4 text-sm text-slate-700">{faq.answer}</p>
+                    <h3 className="text-lg leading-7 ">{faq.question}</h3>
+                    <p className="mt-4 sub_linner_features text-slate-700">
+                      {faq.answer}
+                    </p>
                   </li>
                 ))}
               </ul>

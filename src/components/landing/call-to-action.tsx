@@ -1,7 +1,6 @@
-import { Container } from "@/components/landing/container";
-import { Button } from "@/components/ui/button";
-
+import { Container } from "@/lib/exports";
 import Link from "next/link";
+import { Button } from "../ui/button";
 
 export function CallToAction() {
   return (
@@ -11,17 +10,15 @@ export function CallToAction() {
     >
       <Container className="relative">
         <div className="max-w-lg mx-auto text-center">
-          <h2 className="text-3xl tracking-tight text-white font-display sm:text-4xl">
-            Get started today
+          <h2 className="text-3xl tracking-tight text-white sm:text-4xl">
+            Ready to Dive in?
           </h2>
-          <p className="mt-4 text-lg tracking-tight text-white">
-            Collect web data 100x faster
+          <p className="mt-4 sub_linner text-white">
+            Create an account to get started today
           </p>
-          <Link href="dashboard">
-            <Button variant="outline" className="mt-10">
-              Get Started
-            </Button>
-          </Link>
+          <Button asChild variant="outline" className="mt-10">
+            <Link href="dashboard">Get Started</Link>
+          </Button>
         </div>
       </Container>
     </section>

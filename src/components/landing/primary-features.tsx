@@ -5,12 +5,13 @@ import clsx from "clsx";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-import { Container } from "./container";
-
-import analyticsScreenShot from "../../../public/images/screenshots/analytics.png";
-import linkShorteningScreenShot from "../../../public/images/screenshots/create-link.png";
-import dynamicLinksScreenShot from "../../../public/images/screenshots/dynamic-links-create.png";
-import screenshotHomeScreen from "../../../public/images/screenshots/home-screen.png";
+import {
+  screenshotHomeScreen,
+  analyticsScreenShot,
+  linkShorteningScreenShot,
+  dynamicLinksScreenShot,
+  Container,
+} from "@/lib/exports";
 
 const features = [
   {
@@ -67,10 +68,11 @@ export function PrimaryFeatures() {
       <Container className="relative">
         <div className="max-w-2xl md:mx-auto md:text-center xl:max-w-none">
           <h2 className="text-3xl tracking-tight text-white font-display sm:text-4xl md:text-5xl">
-            Unlike any scraper out there
+            Shorten, Track, Analyze, & More
           </h2>
-          <p className="mt-6 text-lg tracking-tight text-blue-100">
-            100x faster. Designed to perfection. Simple for anyone to use.
+          <p className="max-w-xl mx-auto mt-6 sub_linner text-blue-100">
+            Shorten links 100x faster, track clicks with granular detail, and
+            create links that perfectly reflect your brand.
           </p>
         </div>
         <Tab.Group
@@ -107,7 +109,7 @@ export function PrimaryFeatures() {
                       </h3>
                       <p
                         className={clsx(
-                          "mt-2 hidden text-sm lg:block",
+                          "mt-2 hidden text-sm lg:block sub_linner_features",
                           selectedIndex === featureIndex
                             ? "text-white"
                             : "text-blue-100 group-hover:text-white",
@@ -124,7 +126,7 @@ export function PrimaryFeatures() {
                   <Tab.Panel key={feature.title} unmount={false}>
                     <div className="relative sm:px-6 lg:hidden">
                       <div className="absolute -inset-x-4 bottom-[-4.25rem] top-[-6.5rem] bg-white/10 ring-1 ring-inset ring-white/10 sm:inset-x-0 sm:rounded-t-xl" />
-                      <p className="relative max-w-2xl mx-auto text-base text-white sm:text-center">
+                      <p className="relative max-w-2xl mx-auto text-base text-white  sm:text-center">
                         {feature.description}
                       </p>
                     </div>
