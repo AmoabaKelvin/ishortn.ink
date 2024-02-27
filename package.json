@@ -10,7 +10,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier -c \"**/*.{ts,tsx,md}\"",
     "postinstall": "prisma generate",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "email": "email dev"
   },
   "lint-staged": {
     "*.tsx": [
@@ -32,6 +33,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-toast": "^1.1.5",
+    "@react-email/components": "0.0.15",
     "@t3-oss/env-core": "^0.8.0",
     "@types/node": "20.4.5",
     "@types/react": "18.2.17",
@@ -64,8 +66,10 @@
     "react-chartjs-2": "^5.2.0",
     "react-day-picker": "^8.9.1",
     "react-dom": "latest",
+    "react-email": "^2.1.0",
     "react-hot-toast": "^2.4.1",
     "react-markdown": "^9.0.1",
+    "resend": "^3.2.0",
     "svix": "^1.13.0",
     "tailwind-merge": "^1.14.0",
     "tailwindcss": "3.3.3",
