@@ -2,8 +2,11 @@ import { env } from "@/env.mjs";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
-
+import WelcomeEmail from "../../../../../emails/welcome-email";
+import { Resend } from "resend";
 import prisma from "@/db";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   // You can find this in the Clerk Dashboard -> Webhooks -> choose the webhook
@@ -75,6 +78,19 @@ export async function POST(req: Request) {
       imageUrl: userInfo.avatarUrl,
     },
   });
+
+  const { data, error } = await resend.emails.send({
+    from: "kelvin@ishortn.ink",
+    to: userInfo.email,
+    subject: "Welcome to iShortn",
+    react: WelcomeEmail({
+      userFirstname: userInfo.name.split(" ")[0],
+    }),
+  });
+
+  if (error) {
+    console.error("Error sending email:", error);
+  }
 
   // Return a 201 status code
 
