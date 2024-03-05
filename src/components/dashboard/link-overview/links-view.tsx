@@ -18,7 +18,8 @@ const LinksView = ({ links }: { links: Link[] }) => {
   const [search, setSearch] = useState("");
 
   const filteredLinks = links.filter((link) =>
-    link.url.toLowerCase().includes(search.toLowerCase()),
+    // link.url.toLowerCase().includes(search.toLowerCase()),
+    link.alias.toLowerCase().includes(search.toLowerCase()),
   );
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
