@@ -129,6 +129,16 @@ input[type="color"] {
   background-repeat: no-repeat;
   transition: background-size 0.5s ease-in-out;
 }
+/* animated tabs styles */
+.no-visible-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.no-visible-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
 .link-underline-black {
   background-image: linear-gradient(transparent, transparent),
@@ -151,6 +161,10 @@ input[type="color"] {
 
 .button_black {
   @apply bg-zinc-800;
+}
+
+.screenshot {
+  @apply w-full overflow-hidden relative h-full rounded-2xl p-10 sub_linner_features font-bold bg-gradient-to-br from-zinc-700 to-zinc-950;
 }
 
 /* .button_text {
