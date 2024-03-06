@@ -13,6 +13,11 @@ import linkShorteningScreenShot from "../../public/images/screenshots/create-lin
 import dynamicLinksScreenShot from "../../public/images/screenshots/dynamic-links-create.png";
 import screenshotHomeScreen from "../../public/images/screenshots/home-screen.png";
 
+import { TracingBeam } from "@/components/ui/tracing-beams";
+
+import { SparklesCore } from "@/components/landing/sparkles";
+import { Tabs } from "@/components/ui/animated-tabs";
+
 export {
   Container,
   Hero,
@@ -23,6 +28,9 @@ export {
   CallToAction,
   PrimaryFeatures,
   Illustrations,
+  SparklesCore,
+  TracingBeam,
+  Tabs,
   analyticsScreenShot,
   linkShorteningScreenShot,
   dynamicLinksScreenShot,
