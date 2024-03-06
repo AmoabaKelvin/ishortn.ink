@@ -2,6 +2,7 @@ import Image from "next/image";
 
 import { Container } from "@/components/landing/container";
 import backgroundImage from "../../../public/images/background-faqs.jpg";
+import { TracingBeam } from "@/lib/exports";
 
 const faqs = [
   [
@@ -52,47 +53,50 @@ export function Faqs() {
       aria-labelledby="faq-title"
       className="relative py-20 overflow-hidden bg-slate-50 sm:py-32"
     >
-      <Image
-        className="absolute left-1/2 top-0 max-w-none -translate-y-1/4 translate-x-[-30%]"
-        src={backgroundImage}
-        alt=""
-        width={1558}
-        height={946}
-        unoptimized
-      />
-      <Container className="relative">
-        <div className="max-w-2xl mx-auto lg:mx-0">
-          <h2
-            id="faq-title"
-            className="text-3xl tracking-tight font-display text-slate-800 sm:text-4xl"
+      <TracingBeam className="">
+        <Image
+          className="absolute left-1/2 top-0 max-w-none -translate-y-1/4 translate-x-[-30%]"
+          src={backgroundImage}
+          alt=""
+          width={1558}
+          height={946}
+          unoptimized
+        />
+
+        <Container className="relative">
+          <div className="max-w-2xl mx-auto lg:mx-0">
+            <h2
+              id="faq-title"
+              className="text-3xl tracking-tight font-display text-slate-800 sm:text-4xl"
+            >
+              Frequently asked questions
+            </h2>
+            <p className="mt-4 sub_linner_features text-slate-700">
+              If you can’t find what you’re looking for, email our support team
+              and someone will get back to you.
+            </p>
+          </div>
+          <ul
+            role="list"
+            className="grid max-w-2xl grid-cols-1 gap-8 mx-auto mt-16 lg:max-w-none lg:grid-cols-2"
           >
-            Frequently asked questions
-          </h2>
-          <p className="mt-4 sub_linner_features text-slate-700">
-            If you can’t find what you’re looking for, email our support team
-            and someone will get back to you.
-          </p>
-        </div>
-        <ul
-          role="list"
-          className="grid max-w-2xl grid-cols-1 gap-8 mx-auto mt-16 lg:max-w-none lg:grid-cols-2"
-        >
-          {faqs.map((column, columnIndex) => (
-            <li key={columnIndex}>
-              <ul role="list" className="flex flex-col gap-y-8">
-                {column.map((faq, faqIndex) => (
-                  <li key={faqIndex}>
-                    <h3 className="text-lg leading-7 ">{faq.question}</h3>
-                    <p className="mt-4 sub_linner_features text-slate-700">
-                      {faq.answer}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      </Container>
+            {faqs.map((column, columnIndex) => (
+              <li key={columnIndex}>
+                <ul role="list" className="flex flex-col gap-y-8">
+                  {column.map((faq, faqIndex) => (
+                    <li key={faqIndex}>
+                      <h3 className="text-lg leading-7 ">{faq.question}</h3>
+                      <p className="mt-4 sub_linner_features text-slate-700">
+                        {faq.answer}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      </TracingBeam>
     </section>
   );
 }
