@@ -18,21 +18,18 @@ const LinksView = ({ links }: { links: Link[] }) => {
   const [search, setSearch] = useState("");
 
   const filteredLinks = links.filter((link) =>
-    // link.url.toLowerCase().includes(search.toLowerCase()),
     link.alias.toLowerCase().includes(search.toLowerCase()),
   );
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-  };
 
   return (
     <main>
       <Input
         type="text"
-        placeholder="Search for a link"
+        placeholder="Search for a link by alias"
         value={search}
-        onChange={(e) => handleSearch(e)}
+        onChange={(e) => {
+          setSearch(e.target.value);
+        }}
       />
       <div className="flex flex-col gap-5 mt-6">
         {filteredLinks.map((link) => (
