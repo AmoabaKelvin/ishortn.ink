@@ -1,13 +1,10 @@
 "use client";
 
-import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
-import { Badge } from "@/components/ui/badge";
-import { Copy } from "lucide-react";
-
-import { toast, useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
-
 import { Prisma } from "@prisma/client";
+import { formatDistance } from "date-fns";
+import { Copy } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import {
   deleteLink,
@@ -15,7 +12,11 @@ import {
   enableLink,
   toggleLinkStats,
 } from "@/actions/link-actions";
-import { useState } from "react";
+import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
+import { Badge } from "@/components/ui/badge";
+import { toast, useToast } from "@/components/ui/use-toast";
+
+import useClipboard from "@/hooks/use-clipboard";
 import { LinkEditModal } from "../modals/link-edit-modal";
 import { QRCodeModal } from "../modals/qr-code-modal";
 
@@ -25,7 +26,6 @@ type Link = Prisma.LinkGetPayload<{
   };
 }>;
 
-// Function to handle the response check
 const checkResponse = (response: any) => {
   return response && "id" in response;
 };
@@ -39,11 +39,13 @@ const showToast = (
     deactivated: "Link deactivated",
     deleted: "Link deleted",
   };
+
   const descriptions = {
     activated: "Your link has been activated.",
     deactivated: "Your link has been deactivated.",
     deleted: "Your link has been deleted.",
   };
+
   const errorMessages = {
     activated: "An error occurred while activating your link.",
     deactivated: "An error occurred while deactivating your link.",
@@ -66,23 +68,17 @@ const showToast = (
 
 const LinkShowcase = ({ link }: { link: Link }) => {
   const { toast } = useToast();
+  const { writeToClipboard } = useClipboard(() => {
+    toast({
+      title: "Link Copied",
+      description: "The link has been copied to your clipboard",
+    });
+  });
+
   const router = useRouter();
 
   const [openModal, setOpenModal] = useState(false);
   const [qrModal, setQrModal] = useState(false);
-
-  const daysSinceToday = Math.floor(
-    (new Date().getTime() - new Date(link.createdAt).getTime()) /
-      (1000 * 60 * 60 * 24),
-  );
-
-  const handleModal = () => {
-    setOpenModal(!openModal);
-  };
-
-  const handleQRCodeModal = () => {
-    setQrModal(!qrModal);
-  };
 
   const handleLinkDeletion = async () => {
     const response = await deleteLink(link.id);
@@ -110,15 +106,6 @@ const LinkShowcase = ({ link }: { link: Link }) => {
     }
   };
 
-  const copyPublicLinkAnalyticsToClipboard = () => {
-    window.navigator.clipboard.writeText(
-      "https://ishortn.ink/analytics/" + link.alias,
-    );
-    toast({
-      title: "Public Stats Link Copied",
-    });
-  };
-
   return (
     <div className="flex items-center justify-between px-6 py-4 rounded-md bg-slate-50">
       <div className="flex flex-col gap-2">
@@ -127,7 +114,6 @@ const LinkShowcase = ({ link }: { link: Link }) => {
             className="flex items-center text-blue-600 cursor-pointer hover:underline"
             onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
           >
-            {/* <span className="inline-block w-2 h-2 mr-2 bg-blue-300 rounded-full animate-pulse"></span> */}
             {link.disabled ? (
               <span className="inline-block w-2 h-2 mr-2 bg-red-300 rounded-full animate-pulse"></span>
             ) : (
@@ -139,25 +125,19 @@ const LinkShowcase = ({ link }: { link: Link }) => {
             <Copy
               className="w-3 h-3"
               onClick={() => {
-                window.navigator.clipboard.writeText(
-                  `ishortn.ink/${link.alias}`,
-                );
-                toast({
-                  description: "The link has been copied to your clipboard",
-                });
+                writeToClipboard(`ishortn.ink/${link.alias}`);
               }}
             />
           </div>
         </div>
         <p className="text-sm text-gray-500">
           <span>
-            {/* Only show the days since today */}
-            {daysSinceToday === 0 ? "Today" : `${daysSinceToday}d`}
+            {formatDistance(new Date(link.createdAt), new Date(), {
+              addSuffix: true,
+            })}
           </span>
           <span className="mx-1 text-slate-300">•</span>
           <span className="text-gray-900 cursor-pointer hover:underline">
-            {/* check if the length is over 60 chars, if it is, splice it and show ... */}
-            {/* {link.url.length > 60 ? link.url.slice(0, 30) + "..." : link.url} */}
             {link.url}
           </span>
         </p>
@@ -174,15 +154,15 @@ const LinkShowcase = ({ link }: { link: Link }) => {
 
         <LinkActions
           handleDelete={handleLinkDeletion}
-          handleModal={handleModal}
-          handleQRCodeModal={handleQRCodeModal}
+          handleModal={() => setOpenModal(!openModal)}
+          handleQRCodeModal={() => setQrModal(!qrModal)}
           handleDisable={handleLinkDisabling}
           isLinkActive={!link.disabled}
           handleEnable={handleLinkEnabling}
           handleLinkPublicToggle={handleLinkPublicToggle}
           isLinkStatsPublic={link.publicStats}
-          copyPublicLinkAnalyticsToClipboard={
-            copyPublicLinkAnalyticsToClipboard
+          copyPublicLinkAnalyticsToClipboard={() =>
+            writeToClipboard(`ishortn.ink/analytics/${link.alias}`)
           }
         />
 
