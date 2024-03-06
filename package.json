@@ -47,7 +47,7 @@
     "chart.js": "^4.4.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
-    "date-fns": "^2.30.0",
+    "date-fns": "^3.3.1",
     "eslint": "8.46.0",
     "eslint-config-next": "latest",
     "formik": "^2.4.5",
