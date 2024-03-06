@@ -23,7 +23,7 @@ export function Hero() {
         <div className="flex justify-center mt-10 gap-x-6">
           <TryOutNow />
           <Button asChild variant="outline" className="flex gap-2">
-            <Link href={"#"}>Get Started</Link>
+            <Link href={"/auth/sign-up"}>Get Started</Link>
           </Button>
         </div>
       </Container>

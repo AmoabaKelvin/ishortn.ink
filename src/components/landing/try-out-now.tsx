@@ -25,19 +25,16 @@ export function TryOutNow() {
   return (
     <>
       <Button
-        asChild
         className="button_black button_text flex flex-row gap-2"
         variant="default"
         onClick={() => {
           setOpen(true);
         }}
       >
-        <Link href="/">
-          Try now{" "}
-          <span className="hidden lg:block m-auto text-xs bg-gradient-to-r from-slate-400 to-slate-100 bg-clip-text text-transparent">
-            ⌘S
-          </span>
-        </Link>
+        Try now{" "}
+        <span className="hidden lg:block m-auto text-xs bg-gradient-to-r from-slate-400 to-slate-100 bg-clip-text text-transparent">
+          ⌘S
+        </span>
       </Button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
