@@ -1,10 +1,10 @@
-import { Button } from "@/components/ui/button";
 import { auth } from "@clerk/nextjs";
+import Link from "next/link";
 
 import LinksView from "@/components/dashboard/link-overview/links-view";
 import QuickShortenForm from "@/components/forms/dashboard/links/quick-shorten";
+import { Button } from "@/components/ui/button";
 import prisma from "@/db";
-import Link from "next/link";
 
 const getUserLinks = async () => {
   const { userId } = auth();
@@ -24,7 +24,6 @@ const Dashboard = async () => {
   const links = await getUserLinks();
   return (
     <main className="flex flex-col gap-10">
-      {/* <TabSwitcher /> */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold leading-tight text-gray-800">
           Links
@@ -83,16 +82,6 @@ const Dashboard = async () => {
               </div>
             </div>
           </div>
-
-          {/* buy me a coffee button */}
-          <a href="https://www.buymeacoffee.com/kelvinamoaba">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://img.buymeacoffee.com/button-api/?text=Help keep the servers alive&emoji=&slug=kelvinamoaba&button_colour=5F7FFF&font_colour=ffffff&font_family=Inter&outline_colour=000000&coffee_colour=FFDD00"
-              className="w-full h-12"
-              alt="Buy Me A Coffee"
-            />
-          </a>
         </div>
         <div className="col-span-11 md:col-span-7">
           <LinksView links={links} />
