@@ -49,7 +49,6 @@ export function LinkActions({
           <DropdownMenuItem onClick={() => handleModal()}>
             <Pencil className="w-4 h-4 mr-2" />
             <span>Edit</span>
-            {/* <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleQRCodeModal()}>
             <QrCode className="w-4 h-4 mr-2" />
@@ -57,7 +56,6 @@ export function LinkActions({
           </DropdownMenuItem>
           {handleLinkPublicToggle && (
             <DropdownMenuItem
-              className=""
               onClick={() =>
                 handleLinkPublicToggle &&
                 handleLinkPublicToggle(!isLinkStatsPublic)
