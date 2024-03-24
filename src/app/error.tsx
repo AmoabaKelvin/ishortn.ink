@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import React from "react";
+
 import { LinkShortenerAndQRGenerator } from "@/components/forms/link-shortener-and-qr-generator";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 const LinkNotFoundErrorPage = () => {
   return (

@@ -1,8 +1,10 @@
-import prisma from "@/db";
-import { generateShortLinkForProject } from "@/lib/utils";
 import { Hono } from "hono";
 import { validator } from "hono/validator";
 import { z } from "zod";
+
+import prisma from "@/db";
+import { generateShortLinkForProject } from "@/lib/utils";
+
 import { Variables } from "./route";
 
 export const dynamicLinksAPI = new Hono<{ Variables: Variables }>();

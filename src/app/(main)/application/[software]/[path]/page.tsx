@@ -1,7 +1,9 @@
-import prisma from "@/db";
 import { Metadata, ResolvingMetadata } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+
+import prisma from "@/db";
+
 import PageRenderer from "./page-renderer";
 
 interface PageProps {

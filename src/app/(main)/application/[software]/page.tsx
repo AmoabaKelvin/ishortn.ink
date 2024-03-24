@@ -1,6 +1,7 @@
-import prisma from "@/db";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+
+import prisma from "@/db";
 
 const RedirectionPage = async ({
   params,

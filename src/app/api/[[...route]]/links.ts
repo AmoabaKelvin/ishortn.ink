@@ -1,8 +1,9 @@
-import prisma from "@/db";
 import { Hono, HonoRequest } from "hono";
 import { UAParser } from "ua-parser-js";
-import { generateShortUrl } from "../utils/links";
 
+import prisma from "@/db";
+
+import { generateShortUrl } from "../utils/links";
 import {
   addLinkToRedisCache,
   retrieveLinkFromRedisCache,

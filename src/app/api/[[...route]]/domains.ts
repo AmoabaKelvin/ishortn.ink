@@ -1,5 +1,6 @@
-import prisma from "@/db";
 import { Hono } from "hono";
+
+import prisma from "@/db";
 
 export const domainsAPI = new Hono();
 

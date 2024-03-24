@@ -1,10 +1,12 @@
+import { headers } from "next/headers";
+import { Resend } from "resend";
+import { Webhook } from "svix";
+
+import prisma from "@/db";
 import { env } from "@/env.mjs";
 import { WebhookEvent } from "@clerk/nextjs/server";
-import { headers } from "next/headers";
-import { Webhook } from "svix";
+
 import WelcomeEmail from "../../../../../emails/welcome-email";
-import { Resend } from "resend";
-import prisma from "@/db";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

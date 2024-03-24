@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useTransition } from "react";
+
 import { createAPIKey, revalidatePathForDashboard } from "@/actions/api-keys";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState, useTransition } from "react";
 
 const CreateAPIKey = () => {
   const [loading, startTransition] = useTransition();
