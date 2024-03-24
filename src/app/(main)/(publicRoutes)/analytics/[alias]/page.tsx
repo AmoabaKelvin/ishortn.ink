@@ -1,6 +1,7 @@
+import { Link } from "lucide-react";
+
 import LinkAnalyticsStats from "@/components/dashboard/stats/stats";
 import prisma from "@/db";
-import { Link } from "lucide-react";
 
 const LinkAnalytics = async ({ params }: { params: { alias: string } }) => {
   const linkStats = await prisma.link.findUnique({

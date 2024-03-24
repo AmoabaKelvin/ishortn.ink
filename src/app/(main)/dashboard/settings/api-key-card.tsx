@@ -1,8 +1,9 @@
 "use client";
 
+import { useTransition } from "react";
+
 import { revokeAPIKey } from "@/actions/api-keys";
 import { Button } from "@/components/ui/button";
-import { useTransition } from "react";
 
 const ApiKeyCard = ({
   start,

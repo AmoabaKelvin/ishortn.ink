@@ -1,7 +1,8 @@
+import Link from "next/link";
+
 import DynamicLinksForm from "@/components/forms/dashboard/links/dynamic-link-child-form";
 import prisma from "@/db";
 import { auth } from "@clerk/nextjs";
-import Link from "next/link";
 
 const DynamicLinkCreatePage = async ({
   searchParams,

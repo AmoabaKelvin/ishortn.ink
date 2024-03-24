@@ -1,8 +1,9 @@
-import { verifyKey } from "@unkey/api";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { prettyJSON } from "hono/pretty-json";
 import { handle } from "hono/vercel";
+
+import { verifyKey } from "@unkey/api";
 
 import { domainsAPI } from "./domains";
 import { dynamicLinksAPI } from "./dynamic-links";

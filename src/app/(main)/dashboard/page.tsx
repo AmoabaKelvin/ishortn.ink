@@ -1,10 +1,10 @@
-import { Button } from "@/components/ui/button";
-import { auth } from "@clerk/nextjs";
+import Link from "next/link";
 
 import LinksView from "@/components/dashboard/link-overview/links-view";
 import QuickShortenForm from "@/components/forms/dashboard/links/quick-shorten";
+import { Button } from "@/components/ui/button";
 import prisma from "@/db";
-import Link from "next/link";
+import { auth } from "@clerk/nextjs";
 
 const getUserLinks = async () => {
   const { userId } = auth();
