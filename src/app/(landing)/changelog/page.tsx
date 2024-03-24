@@ -1,10 +1,11 @@
-import { Button } from "@/components/ui/button";
-import { currentUser } from "@clerk/nextjs";
 import fs from "fs";
 import { GeistMono } from "geist/font/mono";
 import matter from "gray-matter";
 import Link from "next/link";
 import Markdown from "react-markdown";
+
+import { Button } from "@/components/ui/button";
+import { currentUser } from "@clerk/nextjs";
 
 const getChangeLogsFromDirectory = () => {
   const files = fs.readdirSync(process.cwd() + "/src/content/changelog");

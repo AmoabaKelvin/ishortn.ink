@@ -1,15 +1,17 @@
 "use client";
+
+import { motion, useAnimation, useInView } from "framer-motion";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef } from "react";
+
 import { LinkShortenerAndQRGenerator } from "@/components/forms/link-shortener-and-qr-generator";
 import { FrequentlyAskedQuestions } from "@/components/landing-page/faq";
 import PageFooter from "@/components/landing-page/footer";
 import LandingPageNav from "@/components/landing-page/nav-bar";
-import Image from "next/image";
-import { useEffect, useRef } from "react";
-import landingImage from "../../public/images/home-image-removebg.png";
-
 import { Button } from "@/components/ui/button";
-import { motion, useAnimation, useInView } from "framer-motion";
-import Link from "next/link";
+
+import landingImage from "../../../public/images/home-image-removebg.png";
 
 export default function Home() {
   const tryOutRef = useRef<HTMLDivElement | null>(null);
