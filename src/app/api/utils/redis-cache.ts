@@ -1,5 +1,6 @@
-import { env } from "@/env.mjs";
 import { Redis } from "@upstash/redis";
+
+import { env } from "@/env.mjs";
 
 import type { Link } from "@prisma/client";
 const redis = new Redis({

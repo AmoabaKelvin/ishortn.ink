@@ -1,20 +1,20 @@
+import { Label } from "@radix-ui/react-label";
+import { useFormik } from "formik";
+import { AnimatePresence, motion } from "framer-motion";
+import QRCode from "qrcode.react";
+import React, { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@radix-ui/react-label";
-import React, { useState } from "react";
-import QRCode from "qrcode.react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-import { useFormik } from "formik";
 
 interface UrlShortnerInputs {
   content: string;

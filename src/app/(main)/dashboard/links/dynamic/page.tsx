@@ -1,10 +1,10 @@
+import { auth } from "@clerk/nextjs";
 import Link from "next/link";
 
 import DynamicLinksView from "@/components/dashboard/dynamic-links/dynamic-links-view";
 import DynamicLinkProjectCard from "@/components/dashboard/dynamic-links/project-card";
 import { Button } from "@/components/ui/button";
 import prisma from "@/db";
-import { auth } from "@clerk/nextjs";
 
 const DynamicLinksDashboard = async () => {
   const dynamicLinksProjects = await prisma.dynamicLink.findMany({

@@ -1,13 +1,13 @@
 import "@/styles/globals.css";
 
+import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/react";
 import { Nunito_Sans } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "react-hot-toast";
 
 import ClientProvider from "@/components/providers/client-provider";
 import { Toaster as ShadToaster } from "@/components/ui/toaster";
-import { ClerkProvider } from "@clerk/nextjs";
-import { Analytics } from "@vercel/analytics/react";
 
 import type { Metadata } from "next";
 const nunito = Nunito_Sans({ subsets: ["latin"] });

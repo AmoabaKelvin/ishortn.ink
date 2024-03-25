@@ -2,14 +2,13 @@
 
 import { useFormik } from "formik";
 import { useTransition } from "react";
+import * as yup from "yup";
 
 import { quickLinkShorten } from "@/actions/link-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-
-import * as yup from "yup";
 
 const QuickShortenForm = () => {
   const { toast } = useToast();

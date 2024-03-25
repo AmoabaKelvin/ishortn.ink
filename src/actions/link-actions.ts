@@ -1,9 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { auth } from "@clerk/nextjs";
 import { Prisma } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 import { generateShortUrl } from "@/app/api/utils/links";
 import {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Prisma } from "@prisma/client";
 import {
   BarElement,
   CategoryScale,
@@ -10,14 +10,13 @@ import {
   Title,
   Tooltip,
 } from "chart.js";
-
+import { useState } from "react";
 import { Bar } from "react-chartjs-2";
 
 import StatBar from "@/components/dashboard/stats/stat-bar";
 import StatsSection from "@/components/dashboard/stats/stats-section";
 import StatsSwitcher from "@/components/dashboard/stats/stats-switcher";
-import { Prisma } from "@prisma/client";
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type Link = Prisma.LinkGetPayload<{
   include: {

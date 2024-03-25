@@ -1,15 +1,14 @@
 "use client";
 
-import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
-import { Copy } from "lucide-react";
-
-import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
-
 import { Prisma } from "@prisma/client";
+import { Copy } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { deleteDynamicLinkChildLink } from "@/actions/dynamic-links-actions";
-import { useState } from "react";
+import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
+import { useToast } from "@/components/ui/use-toast";
+
 import { QRCodeModal } from "../modals/qr-code-modal";
 
 type Link = Prisma.DynamicLinkGetPayload<{
