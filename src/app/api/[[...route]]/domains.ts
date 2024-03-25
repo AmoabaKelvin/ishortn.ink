@@ -21,5 +21,5 @@ domainsAPI.get("/", async (c) => {
     return c.text("Not Found", 404);
   }
 
-  return c.json({ link });
+  return c.json(JSON.stringify(link));
 });

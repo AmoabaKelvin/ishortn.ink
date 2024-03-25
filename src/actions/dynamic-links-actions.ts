@@ -1,10 +1,11 @@
 "use server";
 
-import prisma from "@/db";
-import { generateShortLinkForProject } from "@/lib/utils";
 import { auth } from "@clerk/nextjs";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+
+import prisma from "@/db";
+import { generateShortLinkForProject } from "@/lib/utils";
 
 type DynamicLinkCreateInput = Omit<Prisma.DynamicLinkCreateInput, "user">;
 

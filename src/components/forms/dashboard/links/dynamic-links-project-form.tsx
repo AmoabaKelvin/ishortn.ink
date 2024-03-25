@@ -1,21 +1,19 @@
 "use client";
 
+import { Prisma } from "@prisma/client";
+import { useFormik } from "formik";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import * as Yup from "yup";
+
+import { createDynamicLink } from "@/actions/dynamic-links-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-
-import { useFormik } from "formik";
-import * as Yup from "yup";
-
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
-import { useTransition } from "react";
-
-import { createDynamicLink } from "@/actions/dynamic-links-actions";
 import { subdomainsThatAreNotAllowed } from "@/lib/constants";
-import { Prisma } from "@prisma/client";
-import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 type FormFields = Omit<Prisma.DynamicLinkCreateInput, "user" | "childLinks">;
 

@@ -1,13 +1,9 @@
 "use client";
 
-import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
-import { Badge } from "@/components/ui/badge";
-import { Copy } from "lucide-react";
-
-import { toast, useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
-
 import { Prisma } from "@prisma/client";
+import { Copy } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import {
   deleteLink,
@@ -15,7 +11,10 @@ import {
   enableLink,
   toggleLinkStats,
 } from "@/actions/link-actions";
-import { useState } from "react";
+import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
+import { Badge } from "@/components/ui/badge";
+import { toast, useToast } from "@/components/ui/use-toast";
+
 import { LinkEditModal } from "../modals/link-edit-modal";
 import { QRCodeModal } from "../modals/qr-code-modal";
 

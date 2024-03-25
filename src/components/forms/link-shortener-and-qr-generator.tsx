@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import LinkShortenerTab from "./_tabs/link-shortener-tab";
 import QRGenerationTab from "./_tabs/qr-generation-tab";
 

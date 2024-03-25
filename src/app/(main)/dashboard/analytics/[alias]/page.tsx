@@ -1,6 +1,7 @@
+import { auth } from "@clerk/nextjs";
+
 import LinkAnalyticsStats from "@/components/dashboard/stats/stats";
 import prisma from "@/db";
-import { auth } from "@clerk/nextjs";
 
 const LinkAnalytics = async ({ params }: { params: { alias: string } }) => {
   const linkStats = await prisma.link.findUnique({

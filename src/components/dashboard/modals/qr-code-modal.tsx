@@ -1,6 +1,5 @@
-import { useRef } from "react";
-
 import QRCode from "qrcode.react";
+import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import {

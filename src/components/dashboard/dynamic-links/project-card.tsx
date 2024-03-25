@@ -1,5 +1,11 @@
 "use client";
 
+import { Prisma } from "@prisma/client";
+import { Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useState, useTransition } from "react";
+
+import { deleteDynamicLinkProject } from "@/actions/dynamic-links-actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,12 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Prisma } from "@prisma/client";
-import { Trash2 } from "lucide-react";
-import Link from "next/link";
-import { useState, useTransition } from "react";
-
-import { deleteDynamicLinkProject } from "@/actions/dynamic-links-actions";
 
 type Link = Prisma.DynamicLinkGetPayload<{}>;
 
