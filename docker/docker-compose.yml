@@ -6,10 +6,10 @@ services:
     image: mysql:latest
     container_name: ishortn_db
     environment:
-      - MYSQL_ROOT_PASSWORD: root
-      - MYSQL_DATABASE: ishortn
-      - MYSQL_USER: ishortn
-      - MYSQL_PASSWORD: ishortn
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=ishortn
+      - MYSQL_USER=ishortn
+      - MYSQL_PASSWORD=ishortn
     ports:
       - "3306:3306"
     volumes:
