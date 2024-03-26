@@ -1,73 +1,57 @@
-# Table of Contents
+<h1 align="center">iShortn</h1>
 
-- [What is ishortn?](#what-is-ishortn)
-- [Features and Roadmap](#features-and-roadmap)
-- [How do I keep the servers running?](#how-do-i-keep-the-servers-running)
+<p align="center">
+  An open-soure Dynamic links and URL shortener with incredible analytics.
+</p>
 
-## Contributing to ishortn
+<p align="center">
+  <a href="#introduction"><strong>Introduction</strong></a> ·
+  <a href="#tech-stack"><strong>Tech Stack</strong></a> ·
+  <a href="#self-hosting"><strong>Self-hosting</strong></a> ·
+  <a href="#contributing"><strong>Contributing</strong></a>
+</p>
 
-- [Reporting issues and suggesting features](#reporting-issues-and-suggesting-features)
-- [Coding contributions](#coding-contributions)
-- [Documentation and translations](#documentation-and-translations)
-- [Other ways to contribute](#other-ways-to-contribute)
+<br/>
 
-## Additional Resources
+## Introduction
 
-- [Official Discord Server](https://discord.gg/S66ZvMzkU4)
-- [Buy Me a Coffee](https://www.buymeacoffee.com/kelvinamoaba)
-- [Website](https://ishortn.ink)
+iShortn is an open-source Dynamic links and URL shortener with incredible analytics. The main goal of this project is to provide a simple and easy-to-use URL shortener with analytics and custom short links and also provide a Dynamic links service for your apps.
 
-## What is ishortn?
+## Tech Stack
 
-[ishortn](https://ishortn.ink) is a Dynamic Links and URL shortener that allows you to shorten links, track the clicks, and get analytics on your links. It is a free and open source project that is built with Next.js, Tailwind CSS, and other awesome technologies.
-
-I integrated the dynamic linking feature into this project since firebase is going to be shutting down the service in August of 2025.
-This has led to the panic of many projects that rely on the service, and alternatives to the firebase dynamic linking service are quite expensive.
-
-I hope this project can help those who are in need of a dynamic linking service.
-
-## Features and Roadmap
-
-- Dynamic Links (Apple universal links & Android app links)
-- Link shortening
-- Link analytics (clicks, countries, devices, browsers, cities)
-- Link expiration
-- Link QR code generation
-- Link password protection (coming soon)
-- Geo targeting (coming soon)
-
-Not all features are available yet, but they are coming soon. If you would like to request a feature, please open an issue on the [Github repository](https://github.com/AmoabaKelvin/ishortn/issues) or send me an email at [kel.amoaba@gmail.com](mailto:kel.amoaba@gmail.com).
-
-## How do I keep the servers running?
-
-Since this is a free project, we rely a lot on donations to cover things like database and server costs.
-So if you would like to help out, you can donate to my [Buy Me a Coffee](https://www.buymeacoffee.com/kelvinamoaba) page.
-This will go a long way to keep the servers buzzing and the project alive.
+- [Next.js](https://nextjs.org/) – framework
+- [TypeScript](https://www.typescriptlang.org/) – language
+- [Tailwind](https://tailwindcss.com/) – CSS
+- [MySQL](https://www.mysql.com/) – database
+- [Prisma](https://www.prisma.io/) – ORM
+- [Redis](https://redis.io/) – cache
+- [Clerk](https://clerk.dev/) – authentication
+- [Vercel](https://vercel.com/) – deployment
 
 ## Contributing
 
-We welcome contributions from the community to help make ishortn even better! Here are some ways you can get involved:
+Here's how you can contribute:
 
-### Reporting issues and suggesting features
+- [Open an issue](https://github.com/AmoabaKelvin/ishortn.ink/issues) to report bugs or request features.
+- Make a [pull request](https://github.com/AmoabaKelvin/ishortn.ink/pull) to add new features, fix bugs, or improve documentation.
 
-Found a bug? Missing a feature? Let us know by opening an issue on the [Github repository](https://github.com/AmoabaKelvin/ishortn/issues). Be as detailed as possible in your description to help us understand and address the issue effectively.
-Have a great idea for a new feature? We're always open to suggestions! Share your thoughts by opening an issue and starting a discussion.
+## Roadmap
 
-### Coding contributions
+- [x] Dynamic Links
+- [x] Dynamic Links API
+- [x] Custom Short Links
+- [x] Link Analytics
+- [x] Link Expiry
+- [ ] Downloadable Analytics Reports
+- [x] Custom Links Metadata
+- [ ] Links API
+- [ ] Upload to shorten links
+- [ ] Link password protection
+- [x] QR Code Generation
+- [ ] Geo Targeting
 
-If you're a developer, we'd appreciate your help with bug fixes, new features, and improvements to the existing codebase. This was quickly hacked up so you might spot areas that can benifit from some nice bits of code. We regard highly nice and readeable code 💗
+And many more... Feel free to suggest more features.
 
-### Documentation and translations
+## Support
 
-We always strive to have clear and comprehensive documentation for ishortn. If you find any areas that could be improved, please let us know or feel free to submit a pull request with your suggested changes.
-If you're fluent in another language, you can help us translate the documentation and user interface to make ishortn accessible to a wider audience.
-
-## Other ways to contribute:
-
-- Spread the word about ishortn! Share it with your friends, colleagues, and on social media.
-- Star the project on Github to show your support.
-- Donate to support the project's ongoing development and server costs. You can make a donation through the Buy Me a Coffee: https://www.buymeacoffee.com/kelvinamoaba page.
-
-We value your contributions and appreciate your commitment to making ishortn a better project.
-
-Thank you for being a part of the community!
+You can support this project by giving it a star, sharing it with your friends, or contributing to it or even [buying me a coffee](https://www.buymeacoffee.com/kelvinamoaba).
