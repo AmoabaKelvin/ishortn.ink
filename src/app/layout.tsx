@@ -1,13 +1,13 @@
 import "@/styles/globals.css";
 
 import { ClerkProvider } from "@clerk/nextjs";
-import { Analytics } from "@vercel/analytics/react";
 import { Nunito_Sans } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "react-hot-toast";
 
 import ClientProvider from "@/components/providers/client-provider";
 import { Toaster as ShadToaster } from "@/components/ui/toaster";
+import { env } from "@/env.mjs";
 
 import type { Metadata } from "next";
 const nunito = Nunito_Sans({ subsets: ["latin"] });
@@ -111,14 +111,13 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <Script type="text/javascript" id="ms_clarity">
-        {`(function(c,l,a,r,i,t,y){
-        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-    })(window, document, "clarity", "script", "iv16reka4j")`}
-        ;
-      </Script>
+      {env.UMAMI_TRACKING_ID && (
+        <Script
+          defer
+          src="http://umami.kelvinamoaba.live/script.js"
+          data-website-id={env.UMAMI_TRACKING_ID}
+        />
+      )}
 
       <html lang="en">
         <body className={nunito.className}>
@@ -126,7 +125,6 @@ export default function RootLayout({
           <ShadToaster />
           <ClientProvider />
           {children}
-          <Analytics />
         </body>
       </html>
     </ClerkProvider>
