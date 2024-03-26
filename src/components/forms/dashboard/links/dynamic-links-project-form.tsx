@@ -5,13 +5,13 @@ import { useFormik } from "formik";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { toast } from "sonner";
 import * as Yup from "yup";
 
 import { createDynamicLink } from "@/actions/dynamic-links-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
 import { subdomainsThatAreNotAllowed } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -23,17 +23,8 @@ interface FormProps {
 }
 
 const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
-  const { toast } = useToast();
   const [loading, startTransition] = useTransition();
   const router = useRouter();
-
-  const showToast = (title: string, description: string) => {
-    toast({
-      title,
-      description,
-      variant: "destructive",
-    });
-  };
 
   const formik = useFormik<FormFields>({
     initialValues: {
@@ -76,44 +67,34 @@ const DynamicLinksForm = ({ initialValues, projectId }: FormProps) => {
           values.playStoreUrl;
 
         if (isIOSPartiallyFilled && !isIOSCompletelyFilled) {
-          showToast(
-            "Uh oh!",
-            "Apple configuration fields are partially filled. Please fill all fields or leave all fields empty",
-          );
+          toast.error("Please fill configuration", {
+            description:
+              "Apple configuration fields are partially filled. Please fill all fields or leave all fields empty",
+          });
           return;
         }
 
         if (isAndroidPartiallyFilled && !isAndroidCompletelyFilled) {
-          showToast(
-            "Uh oh!",
-            "Android fields are partially filled. Please fill all fields or leave all fields empty",
-          );
+          toast.error("Please fill configuration", {
+            description:
+              "Android fields are partially filled. Please fill all fields or leave all fields empty",
+          });
           return;
         } else if (!isIOSPartiallyFilled && !isAndroidPartiallyFilled) {
-          showToast(
-            "Uh oh!",
-            "Please fill at least one of the platform fields",
-          );
+          toast.error("Please fill configuration", {
+            description: "Please fill at least one of the platform fields",
+          });
           return;
         }
 
         const response = await createDynamicLink(values, projectId);
 
         if (response && "error" in response) {
-          toast({
-            title: "Uh oh!",
-            description: "Could not create link",
-            variant: "destructive",
-          });
+          toast.error("Could not create link");
         }
 
         if (response && "id" in response) {
-          toast({
-            title: "Success",
-            description: `Link ${
-              projectId ? "updated" : "created"
-            } successfully`,
-          });
+          toast.success("Link created successfully");
         }
         formik.resetForm();
         router.push("/dashboard/links/dynamic");

@@ -3,10 +3,9 @@ import "@/styles/globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Nunito_Sans } from "next/font/google";
 import Script from "next/script";
-import { Toaster } from "react-hot-toast";
 
 import ClientProvider from "@/components/providers/client-provider";
-import { Toaster as ShadToaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env.mjs";
 
 import type { Metadata } from "next";
@@ -122,7 +121,6 @@ export default function RootLayout({
       <html lang="en">
         <body className={nunito.className}>
           <Toaster />
-          <ShadToaster />
           <ClientProvider />
           {children}
         </body>

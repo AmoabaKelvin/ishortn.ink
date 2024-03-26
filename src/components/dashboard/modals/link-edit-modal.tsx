@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { useFormik } from "formik";
 import { Loader2 } from "lucide-react";
 import { useTransition } from "react";
+import { toast } from "sonner";
 
 import { updateLink } from "@/actions/link-actions";
 import { LinkExpirationDatePicker } from "@/components/forms/dashboard/links/date-picker";
@@ -23,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
 type LinkEditModalProps = {
@@ -40,7 +40,6 @@ export function LinkEditModal({
   linkId,
 }: LinkEditModalProps) {
   const [loading, startTransition] = useTransition();
-  const { toast } = useToast();
   const formik = useFormik({
     initialValues: {
       ...link,
@@ -50,10 +49,7 @@ export function LinkEditModal({
         const response = await updateLink(values, linkId);
         if (response && "id" in response) {
           setOpen(false);
-          toast({
-            title: "Link updated",
-            description: "Your link has been updated.",
-          });
+          toast.success("Your link has been updated.");
         }
       });
     },

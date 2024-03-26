@@ -5,6 +5,7 @@ import { useFormik } from "formik";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
 import * as Yup from "yup";
 
@@ -20,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
 import { cn, fullUrlRegex } from "@/lib/utils";
 
 import { LinkExpirationDatePicker } from "./date-picker";
@@ -32,7 +32,6 @@ const LinkEditForm = () => {
   const [loading, startTransition] = useTransition();
   const router = useRouter();
   const [destinationURL, setDestinationURL] = useState<string>("");
-  const { toast } = useToast();
   const [metaData, setMetaData] = useState<Record<string, string>>({
     title: "",
     description: "",
@@ -69,16 +68,11 @@ const LinkEditForm = () => {
         const response = await createLink(values);
 
         if (response && "error" in response) {
-          toast({
-            title: "Uh oh!",
+          toast.error("Uh oh!", {
             description: response.error,
-            variant: "destructive",
           });
         } else {
-          toast({
-            title: "Success",
-            description: "Link created successfully",
-          });
+          toast.success("Link created successfully");
           router.push("/dashboard/");
         }
       });

@@ -1,9 +1,10 @@
 "use client";
 
 import { Prisma } from "@prisma/client";
-import { Copy } from "lucide-react";
+import { BarChart3, ClipboardList, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import {
   deleteLink,
@@ -13,7 +14,6 @@ import {
 } from "@/actions/link-actions";
 import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
 import { Badge } from "@/components/ui/badge";
-import { toast, useToast } from "@/components/ui/use-toast";
 
 import { LinkEditModal } from "../modals/link-edit-modal";
 import { QRCodeModal } from "../modals/qr-code-modal";
@@ -50,21 +50,15 @@ const showToast = (
   };
 
   if (success) {
-    toast({
-      title: titles[action],
+    toast.success(titles[action], {
       description: descriptions[action],
     });
   } else {
-    toast({
-      title: "Error",
-      description: errorMessages[action],
-      variant: "destructive",
-    });
+    toast.error(errorMessages[action]);
   }
 };
 
 const LinkShowcase = ({ link }: { link: Link }) => {
-  const { toast } = useToast();
   const router = useRouter();
 
   const [openModal, setOpenModal] = useState(false);
@@ -102,9 +96,9 @@ const LinkShowcase = ({ link }: { link: Link }) => {
     const response = await toggleLinkStats(link.id, toggle);
 
     if (response && "id" in response) {
-      toast({
-        title: "Public Stats updated",
+      toast.success("Public Stats updated", {
         description: "Public stats setting has been updated",
+        icon: <BarChart3 className="w-4 h-4" />,
       });
     }
   };
@@ -113,8 +107,8 @@ const LinkShowcase = ({ link }: { link: Link }) => {
     window.navigator.clipboard.writeText(
       "https://ishortn.ink/analytics/" + link.alias,
     );
-    toast({
-      title: "Public Stats Link Copied",
+    toast.success("Public Stats Link Copied", {
+      icon: <ClipboardList className="w-4 h-4" />,
     });
   };
 
@@ -141,8 +135,8 @@ const LinkShowcase = ({ link }: { link: Link }) => {
                 window.navigator.clipboard.writeText(
                   `ishortn.ink/${link.alias}`,
                 );
-                toast({
-                  description: "The link has been copied to your clipboard",
+                toast.success("Link copied to clipboard", {
+                  icon: <ClipboardList />,
                 });
               }}
             />
@@ -155,8 +149,6 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           </span>
           <span className="mx-1 text-slate-300">•</span>
           <span className="text-gray-900 cursor-pointer hover:underline">
-            {/* check if the length is over 60 chars, if it is, splice it and show ... */}
-            {/* {link.url.length > 60 ? link.url.slice(0, 30) + "..." : link.url} */}
             {link.url}
           </span>
         </p>
