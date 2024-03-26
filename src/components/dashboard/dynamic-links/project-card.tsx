@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { deleteDynamicLinkProject } from "@/actions/dynamic-links-actions";
 import { Button } from "@/components/ui/button";
@@ -14,34 +15,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
 
 type Link = Prisma.DynamicLinkGetPayload<{}>;
 
 const DynamicLinkProjectCard = ({ link }: { link: Link }) => {
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [loading, startTransition] = useTransition();
-  const { toast } = useToast();
 
   const handleProjectDeletion = async () => {
     startTransition(async () => {
       const response = await deleteDynamicLinkProject(link.id);
       if (response && "id" in response) {
         setOpenDeleteModal(false);
-        toast({
-          title: "Project deleted",
-          description: "Your project has been deleted.",
+        toast.success("Your project has been deleted", {
+          icon: <Trash2 className="w-4 h-4" />,
         });
       } else {
-        toast({
-          title: "Something went wrong",
-          description: "Your project could not be deleted.",
-          variant: "destructive",
-        });
+        toast.error("An error occurred while deleting your project.");
       }
     });
-
-    return;
   };
 
   return (

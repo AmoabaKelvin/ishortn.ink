@@ -2,16 +2,15 @@
 
 import { useFormik } from "formik";
 import { useTransition } from "react";
+import { toast } from "sonner";
 import * as yup from "yup";
 
 import { quickLinkShorten } from "@/actions/link-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
 
 const QuickShortenForm = () => {
-  const { toast } = useToast();
   const [loading, startTransition] = useTransition();
 
   const formik = useFormik({
@@ -26,16 +25,9 @@ const QuickShortenForm = () => {
         const response = await quickLinkShorten(values.url);
 
         if (response && "id" in response) {
-          toast({
-            title: "Link shortened",
-            description: "Your link has been shortened.",
-          });
+          toast.success("Your link has been shortened.");
         } else {
-          toast({
-            title: "Error",
-            description: "An error occurred while shortening your link.",
-            variant: "destructive",
-          });
+          toast.error("An error occurred while shortening your link.");
         }
 
         formik.resetForm();

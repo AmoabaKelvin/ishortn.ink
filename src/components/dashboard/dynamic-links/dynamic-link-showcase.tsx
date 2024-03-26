@@ -1,13 +1,13 @@
 "use client";
 
 import { Prisma } from "@prisma/client";
-import { Copy } from "lucide-react";
+import { ClipboardList, Copy, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { deleteDynamicLinkChildLink } from "@/actions/dynamic-links-actions";
 import { LinkActions } from "@/components/dashboard/link-overview/link-actions";
-import { useToast } from "@/components/ui/use-toast";
 
 import { QRCodeModal } from "../modals/qr-code-modal";
 
@@ -18,10 +18,7 @@ type Link = Prisma.DynamicLinkGetPayload<{
 }>;
 
 const DynamicLinksShowCase = ({ link }: { link: Link }) => {
-  const { toast } = useToast();
   const router = useRouter();
-
-  const [openModal, setOpenModal] = useState(false);
   const [qrModal, setQrModal] = useState(false);
 
   const daysSinceToday = Math.floor(
@@ -40,16 +37,11 @@ const DynamicLinksShowCase = ({ link }: { link: Link }) => {
   const handleLinkDeletion = async (id: number) => {
     const response = await deleteDynamicLinkChildLink(id);
     if (response && "id" in response) {
-      toast({
-        title: "Link deleted",
-        description: "Your link has been deleted.",
+      toast.message("Your link has been deleted.", {
+        icon: <Trash2 className="w-4 h-4" />,
       });
     } else {
-      toast({
-        title: "Error",
-        description: "An error occurred while deleting your link.",
-        variant: "destructive",
-      });
+      toast.error("An error occurred while deleting your link.");
     }
   };
 
@@ -73,8 +65,8 @@ const DynamicLinksShowCase = ({ link }: { link: Link }) => {
                     window.navigator.clipboard.writeText(
                       `https://${link.subdomain}.ishortn.ink/${childLink.shortLink}`,
                     );
-                    toast({
-                      description: "The link has been copied to your clipboard",
+                    toast.success("Link copied to clipboard", {
+                      icon: <ClipboardList className="w-4 h-4" />,
                     });
                   }}
                 />

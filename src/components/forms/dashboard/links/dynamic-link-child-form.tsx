@@ -5,6 +5,7 @@ import { useFormik } from "formik";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import * as Yup from "yup";
 
 import { createDynamicLinkChildLink } from "@/actions/dynamic-links-actions";
@@ -20,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
 import LinkPreviewComponent from "./link-preview-component";
@@ -42,20 +42,11 @@ const DynamicLinksForm = ({
   selectedProject: selectedProjectId,
   selectedLinkID,
 }: FormProps) => {
-  const { toast } = useToast();
   const router = useRouter();
   const [loading, startTransition] = useTransition();
   const [selectedProject, setSelectedProject] = useState<number | null>(
     selectedProjectId || null,
   );
-
-  const showToastNotification = (title: string, description: string) => {
-    toast({
-      title,
-      description,
-      variant: "destructive",
-    });
-  };
 
   const handleShortLinkValidation = async (value: string) => {
     if (!selectedProject || !value) {
@@ -95,11 +86,7 @@ const DynamicLinksForm = ({
     onSubmit: (values) => {
       startTransition(async () => {
         if (!selectedProject) {
-          toast({
-            title: "Uh oh!",
-            description: "Please select a project",
-            variant: "destructive",
-          });
+          toast.error("Please select a project");
           return;
         }
 
@@ -111,15 +98,11 @@ const DynamicLinksForm = ({
 
         if (response) {
           if ("error" in response) {
-            showToastNotification("Uh oh!", "Could not create link");
+            toast.error("Could not create link");
           } else if ("alreadyExists" in response) {
-            showToastNotification(
-              "Uh oh!",
-              "You already have the same link in this project",
-            );
+            toast.error("You already have the same link in this project");
           } else if ("id" in response) {
-            showToastNotification(
-              "Success",
+            toast.success(
               `Link ${selectedLinkID ? "updated" : "created"} successfully`,
             );
           }
