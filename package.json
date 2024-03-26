@@ -57,6 +57,7 @@
     "js-yaml": "^4.1.0",
     "lucide-react": "^0.276.0",
     "next": "latest",
+    "next-themes": "^0.3.0",
     "postcss": "8.4.31",
     "prettier": "^3.0.3",
     "prisma": "^5.3.1",
