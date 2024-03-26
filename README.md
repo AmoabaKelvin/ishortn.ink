@@ -36,6 +36,7 @@ Here's how you can contribute:
 - Make a [pull request](https://github.com/AmoabaKelvin/ishortn.ink/pull) to add new features, fix bugs, or improve documentation.
 
 ## Roadmap
+
 - [x] Dynamic Links
 - [x] Dynamic Links API
 - [x] Custom Short Links
@@ -51,6 +52,6 @@ Here's how you can contribute:
 
 And many more... Feel free to suggest more features.
 
-
 ## Support
+
 You can support this project by giving it a star, sharing it with your friends, or contributing to it or even [buying me a coffee](https://www.buymeacoffee.com/kelvinamoaba).
