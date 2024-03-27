@@ -10,6 +10,7 @@ export const env = createEnv({
     UPSTASH_TOKEN: z.string().min(1),
     UPSTASH_URL: z.string().min(1),
     UMAMI_TRACKING_ID: z.string().optional(),
+    HOST: z.string().min(1),
   },
 
   clientPrefix: "NEXT_PUBLIC_",
@@ -30,6 +31,7 @@ export const env = createEnv({
     UPSTASH_TOKEN: process.env.UPSTASH_TOKEN,
     UPSTASH_URL: process.env.UPSTASH_URL,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,
+    HOST: process.env.HOST,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
