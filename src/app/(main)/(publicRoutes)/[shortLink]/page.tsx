@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
+import { env } from "@/env.mjs";
+
 const RedirectionPage = async ({
   params,
 }: {
@@ -8,7 +10,7 @@ const RedirectionPage = async ({
 }) => {
   const { shortLink } = params;
 
-  const response = await fetch(`http://ishortn.ink/api/links/${shortLink}`, {
+  const response = await fetch(`${env.HOST}/api/links/${shortLink}`, {
     headers: new Headers(headers()),
     cache: "no-cache",
   });
