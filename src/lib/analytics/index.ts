@@ -14,6 +14,8 @@ const getGeolocationDetails = async (req: HonoRequest) => {
     ? nextRequest.geo
     : DEFAULT_GEOLOCATION_FOR_LOCALHOST;
 
+  console.log("geolocationDetails", geolocationDetails);
+
   return {
     city: geolocationDetails?.city ?? "Unknown",
     country: geolocationDetails?.country ?? "Unknown",
