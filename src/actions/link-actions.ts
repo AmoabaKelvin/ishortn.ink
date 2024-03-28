@@ -4,12 +4,9 @@ import { auth } from "@clerk/nextjs";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-import { generateShortUrl } from "@/app/api/utils/links";
-import {
-  addLinkToRedisCache,
-  deleteLinkFromRedisCache,
-} from "@/app/api/utils/redis-cache";
 import prisma from "@/db";
+import { addLinkToCache, deleteLinkFromCache } from "@/lib/cache";
+import { generateShortLink } from "@/lib/links";
 
 const authenticateAndGetUserId = () => {
   const { userId } = auth();
@@ -43,7 +40,7 @@ export const createLink = async (link: Prisma.LinkCreateInput) => {
   const createdLink = prisma.link.create({
     data: {
       ...link,
-      alias: link.alias || (await generateShortUrl(link.url)),
+      alias: link.alias || (await generateShortLink()),
       User: {
         connect: {
           id: userId,
@@ -54,7 +51,7 @@ export const createLink = async (link: Prisma.LinkCreateInput) => {
 
   // write-through cache pattern
   // ensures that the cache is always up to date
-  await addLinkToRedisCache(await createdLink);
+  await addLinkToCache(await createdLink);
 
   revalidatePath("/dashboard");
   return createdLink;
@@ -70,7 +67,7 @@ export const quickLinkShorten = async (url: string) => {
   const createdLink = prisma.link.create({
     data: {
       url,
-      alias: await generateShortUrl(url),
+      alias: await generateShortLink(),
       User: {
         connect: {
           id: userId,
@@ -80,7 +77,7 @@ export const quickLinkShorten = async (url: string) => {
   });
   revalidatePath("/dashboard");
 
-  await addLinkToRedisCache(await createdLink);
+  await addLinkToCache(await createdLink);
 
   return createdLink;
 };
@@ -125,7 +122,7 @@ export const deleteLink = async (id: number) => {
   });
   revalidatePath("/dashboard");
 
-  await deleteLinkFromRedisCache(link.alias);
+  await deleteLinkFromCache(link.alias);
 
   return deletedLink;
 };
@@ -167,8 +164,8 @@ export const updateLink = async (link: Prisma.LinkUpdateInput, id: number) => {
   revalidatePath("/dashboard");
 
   // delete the old link from the cache and add the new one
-  await deleteLinkFromRedisCache(existingLink.alias);
-  await addLinkToRedisCache(await updatedLink);
+  await deleteLinkFromCache(existingLink.alias);
+  await addLinkToCache(await updatedLink);
   return updatedLink;
 };
 
@@ -207,8 +204,8 @@ export const disableLink = async (id: number) => {
   });
   revalidatePath("/dashboard");
 
-  await deleteLinkFromRedisCache(link.alias);
-  await addLinkToRedisCache(await disabledLink);
+  await deleteLinkFromCache(link.alias);
+  await addLinkToCache(await disabledLink);
 
   return disabledLink;
 };
@@ -248,8 +245,8 @@ export const enableLink = async (id: number) => {
   });
   revalidatePath("/dashboard");
 
-  await deleteLinkFromRedisCache(link.alias);
-  await addLinkToRedisCache(await enabledLink);
+  await deleteLinkFromCache(link.alias);
+  await addLinkToCache(await enabledLink);
 
   return enabledLink;
 };
