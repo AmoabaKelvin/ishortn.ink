@@ -54,7 +54,9 @@ linksAPI.get("/:shortLink", async (c) => {
         country,
       },
     });
-  } catch (e) {}
+  } catch (e) {
+    console.log(e);
+  }
 
   return c.json({ url: originalLink.url });
 });
