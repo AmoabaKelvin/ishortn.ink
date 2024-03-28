@@ -10,7 +10,9 @@ const RedirectionPage = async ({
 }) => {
   const { shortLink } = params;
 
-  const response = await fetch(`${env.HOST}/api/links/${shortLink}`, {
+  const url = env.VERCEL_URL ? `https://${env.VERCEL_URL}` : env.HOST;
+
+  const response = await fetch(`${url}/api/links/${shortLink}`, {
     headers: new Headers(headers()),
     cache: "no-cache",
   });
