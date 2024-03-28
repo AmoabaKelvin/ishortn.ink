@@ -114,7 +114,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
 
   return (
     <div className="flex items-center justify-between px-6 py-4 rounded-md bg-slate-50">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2" style={{width:"100%"}}>
         <div className="flex items-center gap-3">
           <p
             className="flex items-center text-blue-600 cursor-pointer hover:underline"
@@ -148,7 +148,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
             {daysSinceToday === 0 ? "Today" : `${daysSinceToday}d`}
           </span>
           <span className="mx-1 text-slate-300">•</span>
-          <span className="text-gray-900 cursor-pointer hover:underline">
+          <span className="text-gray-900 cursor-pointer hover:underline" style={{width: '100%', overflowWrap: 'break-word' }}>
             {link.url}
           </span>
         </p>
