@@ -2,8 +2,9 @@ import { ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import * as z from "zod";
 
-import { generateShortUrl } from "@/app/api/utils/links";
 import prisma from "@/db";
+
+import { generateShortLink } from "./links";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -77,7 +78,7 @@ export const generateShortLinkForProject = async (
   longURL: string,
   projectID: number,
 ): Promise<string> => {
-  const generatedShortLink = await generateShortUrl(longURL);
+  const generatedShortLink = await generateShortLink();
 
   // now we check if the url is already in the project, if so, we generate a new one
   const isAvailable = await checkShortURLIsAvailableForProject(
