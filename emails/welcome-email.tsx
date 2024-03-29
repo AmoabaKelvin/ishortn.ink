@@ -35,7 +35,9 @@ export const WelcomeEmail = ({ userFirstname }: WelcomeEmailProps) => (
           alt="iShortn"
           style={logo}
         />
-        <Text style={paragraph}>Hi {userFirstname ? userFirstname : 'there'},</Text>
+        <Text style={paragraph}>
+          Hi {userFirstname ? userFirstname : "there"},
+        </Text>
         <Text style={paragraph}>Welcome and signing up to iShortn!</Text>
         <Text style={paragraph}>
           It&apos;s great to have you onboard our fleet of users. Just incase
