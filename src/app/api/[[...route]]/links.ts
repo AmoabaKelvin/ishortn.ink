@@ -14,7 +14,11 @@ export const linksAPI = new Hono();
 linksAPI.get("/:shortLink", async (c) => {
   const alias = c.req.param("shortLink");
 
+  console.log("Retrieving link with alias", alias);
+
   const originalLink = await retrieveLinkFromCacheOrDatabase(alias);
+
+  console.log("Retrieved link", originalLink);
 
   if (!originalLink || originalLink.disabled) {
     return c.text("Not Found", 404);

@@ -60,7 +60,10 @@ export const hasLinkExceededSpecifiedDate = async (
 };
 
 export const retrieveLinkFromCacheOrDatabase = async (alias: string) => {
+  console.log("We are in the utils file");
   const link = await retrieveLinkFromCache(alias);
+
+  console.log("Link from cache", link);
 
   if (link) return link;
 
@@ -70,8 +73,11 @@ export const retrieveLinkFromCacheOrDatabase = async (alias: string) => {
     },
   });
 
+  console.log("Link from database", retrievedLink);
+
   if (retrievedLink) {
     await addLinkToCache(retrievedLink);
+    return retrievedLink;
   }
 
   return retrievedLink;
