@@ -34,7 +34,7 @@ export const env = createEnv({
     UPSTASH_URL: process.env.UPSTASH_URL,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,
     HOST: process.env.HOST,
-    VERCEL_URL: process.env.VERCEL,
+    VERCEL_URL: process.env.VERCEL_URL,
     GEOLOCATION_API_KEY: process.env.GEOLOCATION_API_KEY,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
