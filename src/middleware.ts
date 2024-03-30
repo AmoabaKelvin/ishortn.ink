@@ -1,6 +1,7 @@
 import { authMiddleware } from "@clerk/nextjs";
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
-import { env } from "process";
+
+import { env } from "./env.mjs";
 
 export const getValidSubdomain = (host?: string | null) => {
   let subdomain: string | null = null;
@@ -38,7 +39,7 @@ export default async function middleware(
     console.log(subdomain);
 
     const response = await fetch(
-      env.NEXT_PUBLIC_ROOT_DOMAIN + `/api/domains?subdomain=${subdomain}`,
+      env.HOST + `/api/domains?subdomain=${subdomain}`,
     );
 
     const responseJson = await response.json();
