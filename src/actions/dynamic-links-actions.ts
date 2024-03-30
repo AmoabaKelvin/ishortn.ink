@@ -5,7 +5,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import prisma from "@/db";
-import { generateShortLinkForProject } from "@/lib/utils";
+import { generateShortLinkForProject } from "@/lib/utils/links/dynamic";
 
 type DynamicLinkCreateInput = Omit<Prisma.DynamicLinkCreateInput, "user">;
 

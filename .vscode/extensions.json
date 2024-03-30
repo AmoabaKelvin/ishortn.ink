@@ -1,5 +1,9 @@
 {
   "recommendations": [
-    "mike-co.import-sorter"
+    "mike-co.import-sorter",
+    "heybourn.headwind",
+    "esbenp.prettier-vscode",
+    "prisma.prisma",
+    "bradlc.vscode-tailwindcss"
   ]
 }

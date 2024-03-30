@@ -3,7 +3,7 @@ import { validator } from "hono/validator";
 import { z } from "zod";
 
 import prisma from "@/db";
-import { generateShortLinkForProject } from "@/lib/utils";
+import { generateShortLinkForProject } from "@/lib/utils/links/dynamic";
 
 import { Variables } from "./route";
 

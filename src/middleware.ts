@@ -16,7 +16,7 @@ export const getValidSubdomain = (host?: string | null) => {
       subdomain = candidate;
     }
   }
-  if (host && host.includes("ngrok-free.app")) {
+  if (host && host.includes("serveo.net")) {
     return null;
   }
 

@@ -1,0 +1,8 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "always",
+    "source.fixAll.eslint": "always",
+    "source.organizeImports": "always",
+  },
+  "importSorter.generalConfiguration.configurationFilePath": "./import-sorter.json",
+}
