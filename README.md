@@ -45,6 +45,7 @@ Here's how you can contribute:
 - [ ] Downloadable Analytics Reports
 - [x] Custom Links Metadata
 - [ ] Links API
+- [ ] CSV file upload for link creation
 - [ ] Upload to shorten links
 - [ ] Link password protection
 - [x] QR Code Generation
