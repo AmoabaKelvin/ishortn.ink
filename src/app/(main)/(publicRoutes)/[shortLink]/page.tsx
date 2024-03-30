@@ -17,7 +17,7 @@ const RedirectionPage = async ({
     cache: "no-cache",
   });
 
-  const data = await response.json();
+  const data = JSON.parse(await response.json());
 
   if (response.status === 200) {
     redirect(data.url);
