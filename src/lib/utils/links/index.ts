@@ -62,7 +62,9 @@ export const hasLinkExceededSpecifiedDate = async (
 export const retrieveLinkFromCacheOrDatabase = async (alias: string) => {
   const link = await retrieveLinkFromCache(alias);
 
-  if (link) return link;
+  if (link?.url) {
+    return link;
+  }
 
   const retrievedLink = await prisma.link.findFirst({
     where: {
