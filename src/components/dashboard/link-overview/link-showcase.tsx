@@ -3,7 +3,7 @@
 import { Prisma } from "@prisma/client";
 import { BarChart3, ClipboardList, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 import { toast } from "sonner";
 
@@ -68,19 +68,19 @@ const LinkShowcase = ({ link }: { link: Link }) => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768); 
+      setIsMobile(window.innerWidth <= 768);
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
   let displayUrl = link.url;
 
-  if (isMobile && link.url.length>20) {
+  if (isMobile && link.url.length > 20) {
     displayUrl = link.url.substring(0, 20) + "...";
   }
 
@@ -169,7 +169,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           </span>
           <span className="mx-1 text-slate-300">•</span>
           <span className="text-gray-900 cursor-pointer hover:underline">
-            {displayUrl} 
+            {displayUrl}
           </span>
         </p>
       </div>
