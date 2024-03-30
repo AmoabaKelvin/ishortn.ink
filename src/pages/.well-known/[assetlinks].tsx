@@ -2,11 +2,11 @@
 // so we had to create a page for this using the pages directory because the app
 // directory could not send the json back to the client.
 
-import { getValidSubdomain } from "../../lib/utils";
-
-import prisma from "../../../prisma/db";
-
 import React from "react";
+
+// import prisma from "@/db";
+import prisma from "../../../prisma/db";
+import { getValidSubdomain } from "../../lib/utils";
 
 const AssertLinksPage = () => {
   return <div>AssertLinksPage</div>;
