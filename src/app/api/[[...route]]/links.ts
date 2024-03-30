@@ -1,24 +1,20 @@
 import { Hono } from "hono";
 
 import prisma from "@/db";
-import { getDeviceAndGeolocationDetails } from "@/lib/analytics";
+import { getDeviceAndGeolocationDetails } from "@/lib/utils/analytics";
 import {
   generateShortLink,
   hasLinkExceededSpecifiedClicks,
   hasLinkExceededSpecifiedDate,
   retrieveLinkFromCacheOrDatabase,
-} from "@/lib/links";
+} from "@/lib/utils/links";
 
 export const linksAPI = new Hono();
 
 linksAPI.get("/:shortLink", async (c) => {
   const alias = c.req.param("shortLink");
 
-  console.log("Retrieving link with alias", alias);
-
   const originalLink = await retrieveLinkFromCacheOrDatabase(alias);
-
-  console.log("Retrieved link", originalLink);
 
   if (!originalLink || originalLink.disabled) {
     return c.text("Not Found", 404);

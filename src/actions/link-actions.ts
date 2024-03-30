@@ -5,8 +5,8 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import prisma from "@/db";
-import { addLinkToCache, deleteLinkFromCache } from "@/lib/cache";
-import { generateShortLink } from "@/lib/links";
+import { addLinkToCache, deleteLinkFromCache } from "@/lib/utils/cache";
+import { generateShortLink } from "@/lib/utils/links";
 
 const authenticateAndGetUserId = () => {
   const { userId } = auth();

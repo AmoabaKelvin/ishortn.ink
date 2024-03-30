@@ -4,7 +4,7 @@ import * as z from "zod";
 
 import prisma from "@/db";
 
-import { generateShortLink } from "./links";
+import { generateShortLink } from "./utils/links";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
