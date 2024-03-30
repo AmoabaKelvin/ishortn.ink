@@ -3,8 +3,7 @@
 import { Prisma } from "@prisma/client";
 import { BarChart3, ClipboardList, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
-
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -80,8 +79,8 @@ const LinkShowcase = ({ link }: { link: Link }) => {
 
   let displayUrl = link.url;
 
-  if (isMobile && link.url.length > 20) {
-    displayUrl = link.url.substring(0, 20) + "...";
+  if (isMobile && link.url.length > 40) {
+    displayUrl = link.url.substring(0, 30) + "...";
   }
 
   const daysSinceToday = Math.floor(
