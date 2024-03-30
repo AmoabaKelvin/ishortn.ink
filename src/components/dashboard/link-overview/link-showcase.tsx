@@ -3,7 +3,8 @@
 import { Prisma } from "@prisma/client";
 import { BarChart3, ClipboardList, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
+
 import { toast } from "sonner";
 
 import {
@@ -63,6 +64,25 @@ const LinkShowcase = ({ link }: { link: Link }) => {
 
   const [openModal, setOpenModal] = useState(false);
   const [qrModal, setQrModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768); // Initially check screen width
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768); 
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  let displayUrl = link.url;
+
+  if (isMobile && link.url.length>20) {
+    displayUrl = link.url.substring(0, 20) + "...";
+  }
 
   const daysSinceToday = Math.floor(
     (new Date().getTime() - new Date(link.createdAt).getTime()) /
@@ -149,7 +169,7 @@ const LinkShowcase = ({ link }: { link: Link }) => {
           </span>
           <span className="mx-1 text-slate-300">•</span>
           <span className="text-gray-900 cursor-pointer hover:underline">
-            {link.url}
+            {displayUrl} 
           </span>
         </p>
       </div>
