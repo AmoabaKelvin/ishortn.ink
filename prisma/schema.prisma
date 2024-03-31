@@ -36,6 +36,7 @@ model User {
   imageUrl     String?
   links        Link[]
   dynamicLinks DynamicLink[]
+  Token        Token[]
 }
 
 model LinkVisit {
@@ -87,4 +88,14 @@ model DynamicLinkChildLink {
   createdFromUI       Boolean     @default(false)
 
   @@index([dynamicLinkId])
+}
+
+model Token {
+  id        Int      @id @default(autoincrement())
+  token     String   @db.Text
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
