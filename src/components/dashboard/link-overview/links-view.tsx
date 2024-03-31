@@ -33,7 +33,10 @@ const LinksView = ({ links }: { links: Link[] }) => {
         value={search}
         onChange={(e) => handleSearch(e)}
       />
-      <ScrollArea className="flex flex-col gap-5 mt-6 w-fit h-[30rem]">
+      <ScrollArea
+        className="flex flex-col  w-fit h-[30rem]
+"
+      >
         {filteredLinks.map((link) => (
           <LinkShowcase key={link.id} link={link} />
         ))}
