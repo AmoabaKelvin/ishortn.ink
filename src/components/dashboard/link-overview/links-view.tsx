@@ -32,7 +32,7 @@ const LinksView = ({ links }: { links: Link[] }) => {
     <main>
       <Input
         type="text"
-        placeholder="Search for a link by alias, date or by url"
+        placeholder="Search for a link by alias or url"
         value={search}
         onChange={(e) => handleSearch(e)}
       />
