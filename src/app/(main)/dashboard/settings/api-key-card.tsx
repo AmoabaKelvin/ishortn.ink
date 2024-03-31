@@ -12,7 +12,7 @@ const ApiKeyCard = ({
 }: {
   start: string;
   createdAt: number;
-  keyID: string;
+  keyID: number;
 }) => {
   const [loading, startTransition] = useTransition();
 
