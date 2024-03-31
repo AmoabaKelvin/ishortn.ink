@@ -4,22 +4,24 @@ import { Prisma } from "@prisma/client";
 import { useFormik } from "formik";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Papa from 'papaparse';
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
+
 import * as Yup from "yup";
 
-import { createLink } from "@/actions/link-actions";
+import { createLink, quickLinkShorten } from "@/actions/link-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
 import { cn, fullUrlRegex } from "@/lib/utils";
 
@@ -97,6 +99,61 @@ const LinkEditForm = () => {
     }
   }, [debouncedDestinationURL, formik.errors]);
 
+  interface CSVRow {
+    links: string;
+  } 
+  function isURL(str: string): boolean {
+    const urlRegex = /^(?:https?|ftp):\/\/(?:\w+\.?)+/i;
+    return urlRegex.test(str);
+}
+  const handleCSV = (event:React.ChangeEvent<HTMLInputElement>) => {
+    const file=event.target.files?.[0];
+    if(file){
+      console.log(file.type)
+      if(file.type==='text/csv'){
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const csvText = e.target?.result as string;
+          const parsedData = Papa.parse<CSVRow>(csvText, { header: true });
+          const linksColumn = parsedData.data.map((row: CSVRow) => row.links)
+          console.log(linksColumn);
+          // linksCol is a array of all links, now shorten it
+          window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'smooth' 
+        });
+          startTransition(async () => {
+            try {
+                const shortenPromises = linksColumn.map(async (link) => {
+                  if (!isURL(link)) {
+                    toast.error(`Invalid URL: ${link}`);
+                    return false; 
+                }
+                    const response = await quickLinkShorten(link);
+                    if (response && "id" in response) {
+                        return true; 
+                    } else {
+                        throw new Error("An error occurred while shortening your link.");
+                    }
+                });
+        
+                await Promise.all(shortenPromises);
+        
+                toast.success("Your links have been shortened.");
+                router.push("/dashboard/");
+            } catch (error) {
+                const errorMessage = (error as Error).message;
+                toast.error(errorMessage || "An error occurred while shortening your links.");
+            }
+        });
+        
+        } 
+        
+        reader.readAsText(file);
+      }
+    }
+  }
+
   return (
     <>
       {/* TODO: UNCOMMENT LATER WHEN EVERYTHING IS STABLE */}
@@ -110,10 +167,19 @@ const LinkEditForm = () => {
 
       <section className="grid grid-cols-1 gap-5 mt-6 md:grid-cols-11">
         <div className="flex flex-col col-span-5 gap-4">
+
           <div className="flex flex-col gap-1">
-            <h1 className="text-2xl">Create your Link</h1>
+            <div className="options" style={{display:"flex",flexDirection:"row",justifyContent:"space-between"}}>
+            <h1 className="text-2xl">Create your Link </h1>
+            <h1 className="text-2xl">Or</h1>
+            <button className="border border-white-900 border-2 px-3 py-2" onClick={()=>{
+              document.getElementById('inputCSV')?.click();
+            }}> Upload CSV</button>
+            <input type="file" id="inputCSV" style={{display:"none"}} onChange={handleCSV}></input>
+            </div>
             <p className="text-sm text-gray-500">
               Create your link and customize it with optional settings
+              
             </p>
           </div>
 
