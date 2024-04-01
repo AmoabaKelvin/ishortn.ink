@@ -53,8 +53,8 @@ const Dashboard = async () => {
               </p>
             </div>
             <div>
-              <CsvShortenForm/>
-            
+              <CsvShortenForm />
+
               <QuickShortenForm />
             </div>
           </div>
