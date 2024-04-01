@@ -21,7 +21,7 @@ app.use(
     origin: "*",
     allowMethods: ["GET", "POST"],
     allowHeaders: ["x-ishortn-key", "Content-Type"],
-  })
+  }),
 );
 app.use("*", prettyJSON());
 

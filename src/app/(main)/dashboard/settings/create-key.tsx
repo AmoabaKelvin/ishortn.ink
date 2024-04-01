@@ -5,11 +5,11 @@ import { useState, useTransition } from "react";
 import { createAPIKey, revalidatePathForDashboard } from "@/actions/api-keys";
 import { Button } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 
 const CreateAPIKey = () => {
