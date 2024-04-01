@@ -10,9 +10,6 @@ import { useTransition } from "react";
 
 const CsvShortenForm = () => {
   const [loading, startTransition] = useTransition();
-  interface CSVRow {
-    links: string;
-  }
   function isURL(str: string): boolean {
     const urlRegex = /^(?:https?|ftp):\/\/(?:\w+\.?)+/i;
     return urlRegex.test(str);
@@ -64,6 +61,8 @@ const CsvShortenForm = () => {
         };
 
         reader.readAsText(file);
+      } else {
+        toast.error("Please upload a CSV file");
       }
     }
   };
@@ -71,9 +70,9 @@ const CsvShortenForm = () => {
   return (
     <>
       <Button
-        className="border border-white-900 border-2 mt-2 px-3 py-2 w-full"
+        className="border border-white-900 border-2 mb-3 px-3 py-2 w-full"
         onClick={() => {
-          toast.success("CSV File must have a column 'Links'")
+          toast.success("CSV File must have a column 'Links'");
           document.getElementById("inputCSV")?.click();
         }}
       >
@@ -83,7 +82,7 @@ const CsvShortenForm = () => {
       <input
         type="file"
         id="inputCSV"
-        style={{ display: "none" }}
+        className="hidden"
         onChange={handleCSV}
       ></input>
     </>

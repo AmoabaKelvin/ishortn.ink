@@ -45,6 +45,7 @@ const Dashboard = async () => {
         <div className="flex flex-col w-full col-span-11 gap-4 md:col-span-4 ">
           <div className="p-6 rounded-md bg-gray-50 h-max">
             <div>
+              <CsvShortenForm />
               <h1 className="text-xl font-semibold leading-tight text-gray-800">
                 Quick Shorten
               </h1>
@@ -53,8 +54,6 @@ const Dashboard = async () => {
               </p>
             </div>
             <div>
-              <CsvShortenForm />
-
               <QuickShortenForm />
             </div>
           </div>
