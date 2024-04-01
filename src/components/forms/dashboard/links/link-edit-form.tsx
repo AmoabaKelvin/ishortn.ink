@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { useFormik } from "formik";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Papa from 'papaparse';
+import Papa from "papaparse";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
@@ -16,12 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { cn, fullUrlRegex } from "@/lib/utils";
 
@@ -53,11 +53,11 @@ const LinkEditForm = () => {
         .matches(fullUrlRegex, "Please enter a valid URL"),
       alias: Yup.string().matches(
         /^[a-zA-Z0-9-_]+$/,
-        "Only letters, numbers, dashes and underscores are allowed",
+        "Only letters, numbers, dashes and underscores are allowed"
       ),
       disableLinkAfterClicks: Yup.number().min(
         0,
-        "Number of clicks must be greater than or equal to 0",
+        "Number of clicks must be greater than or equal to 0"
       ),
     }),
     onSubmit: async (values) => {
@@ -86,7 +86,7 @@ const LinkEditForm = () => {
   useEffect(() => {
     const getOGData = async () => {
       const response = await fetch(
-        `https://api.dub.co/metatags?url=${debouncedDestinationURL}`,
+        `https://api.dub.co/metatags?url=${debouncedDestinationURL}`
       );
       const data = await response.json();
       setMetaData(data);
@@ -101,58 +101,61 @@ const LinkEditForm = () => {
 
   interface CSVRow {
     links: string;
-  } 
+  }
   function isURL(str: string): boolean {
     const urlRegex = /^(?:https?|ftp):\/\/(?:\w+\.?)+/i;
     return urlRegex.test(str);
-}
-  const handleCSV = (event:React.ChangeEvent<HTMLInputElement>) => {
-    const file=event.target.files?.[0];
-    if(file){
-      console.log(file.type)
-      if(file.type==='text/csv'){
+  }
+  const handleCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      console.log(file.type);
+      if (file.type === "text/csv") {
         const reader = new FileReader();
         reader.onload = (e) => {
           const csvText = e.target?.result as string;
           const parsedData = Papa.parse<CSVRow>(csvText, { header: true });
-          const linksColumn = parsedData.data.map((row: CSVRow) => row.links)
+          const linksColumn = parsedData.data.map((row: CSVRow) => row.links);
           console.log(linksColumn);
           // linksCol is a array of all links, now shorten it
           window.scrollTo({
             top: document.body.scrollHeight,
-            behavior: 'smooth' 
-        });
+            behavior: "smooth",
+          });
           startTransition(async () => {
             try {
-                const shortenPromises = linksColumn.map(async (link) => {
-                  if (!isURL(link)) {
-                    toast.error(`Invalid URL: ${link}`);
-                    return false; 
+              const shortenPromises = linksColumn.map(async (link) => {
+                if (!isURL(link)) {
+                  toast.error(`Invalid URL: ${link}`);
+                  return false;
                 }
-                    const response = await quickLinkShorten(link);
-                    if (response && "id" in response) {
-                        return true; 
-                    } else {
-                        throw new Error("An error occurred while shortening your link.");
-                    }
-                });
-        
-                await Promise.all(shortenPromises);
-        
-                toast.success("Your links have been shortened.");
-                router.push("/dashboard/");
+                const response = await quickLinkShorten(link);
+                if (response && "id" in response) {
+                  return true;
+                } else {
+                  throw new Error(
+                    "An error occurred while shortening your link."
+                  );
+                }
+              });
+
+              await Promise.all(shortenPromises);
+
+              toast.success("Your links have been shortened.");
+              router.push("/dashboard/");
             } catch (error) {
-                const errorMessage = (error as Error).message;
-                toast.error(errorMessage || "An error occurred while shortening your links.");
+              const errorMessage = (error as Error).message;
+              toast.error(
+                errorMessage || "An error occurred while shortening your links."
+              );
             }
-        });
-        
-        } 
-        
+          });
+        };
+
         reader.readAsText(file);
       }
     }
-  }
+  };
 
   return (
     <>
@@ -167,19 +170,35 @@ const LinkEditForm = () => {
 
       <section className="grid grid-cols-1 gap-5 mt-6 md:grid-cols-11">
         <div className="flex flex-col col-span-5 gap-4">
-
           <div className="flex flex-col gap-1">
-            <div className="options" style={{display:"flex",flexDirection:"row",justifyContent:"space-between"}}>
-            <h1 className="text-2xl">Create your Link </h1>
-            <h1 className="text-2xl">Or</h1>
-            <button className="border border-white-900 border-2 px-3 py-2" onClick={()=>{
-              document.getElementById('inputCSV')?.click();
-            }}> Upload CSV</button>
-            <input type="file" id="inputCSV" style={{display:"none"}} onChange={handleCSV}></input>
+            <div
+              className="options"
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                justifyContent: "space-between",
+              }}
+            >
+              <h1 className="text-2xl">Create your Link </h1>
+              <h1 className="text-2xl">Or</h1>
+              <Button
+                className="border border-white-900 border-2 px-3 py-2"
+                onClick={() => {
+                  document.getElementById("inputCSV")?.click();
+                }}
+              >
+                {" "}
+                Upload CSV
+              </Button>
+              <input
+                type="file"
+                id="inputCSV"
+                style={{ display: "none" }}
+                onChange={handleCSV}
+              ></input>
             </div>
             <p className="text-sm text-gray-500">
               Create your link and customize it with optional settings
-              
             </p>
           </div>
 
@@ -218,7 +237,7 @@ const LinkEditForm = () => {
                   placeholder="example"
                   className={cn(
                     "flex-grow rounded-tl-none rounded-bl-none",
-                    formik.errors.alias && "border-red-500",
+                    formik.errors.alias && "border-red-500"
                   )}
                   {...formik.getFieldProps("alias")}
                 />
@@ -261,7 +280,7 @@ const LinkEditForm = () => {
                 type="number"
                 min={0}
                 className={cn(
-                  formik.errors.disableLinkAfterClicks && "border-red-500",
+                  formik.errors.disableLinkAfterClicks && "border-red-500"
                 )}
                 {...formik.getFieldProps("disableLinkAfterClicks")}
               />
