@@ -37,7 +37,7 @@ const QuickShortenForm = () => {
 
   return (
     <form className="mt-4" onSubmit={formik.handleSubmit}>
-      <Label htmlFor="url"> Paste URL</Label>
+      <Label htmlFor="url">URL</Label>
       <Input
         id="url"
         type="url"
