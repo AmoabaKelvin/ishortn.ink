@@ -73,6 +73,7 @@ const CsvShortenForm = () => {
       <Button
         className="border border-white-900 border-2 mt-2 px-3 py-2 w-full"
         onClick={() => {
+          toast.success("CSV File must have a column 'Links'")
           document.getElementById("inputCSV")?.click();
         }}
       >
