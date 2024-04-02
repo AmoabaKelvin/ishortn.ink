@@ -5,12 +5,10 @@ import Link from "next/link";
 import { LinkShortenerAndQRGenerator } from "@/components/forms/link-shortener-and-qr-generator";
 import { Button } from "@/components/ui/button";
 
-import { LandingPageBanner } from "./(landing)/banner";
-
 const LinkNotFoundErrorPage = () => {
   return (
     <>
-      <LandingPageBanner />
+      {/* <LandingPageBanner /> */}
       <div className="flex flex-col items-center justify-center h-screen">
         <h1 className="text-5xl font-ocean">
           Hmmm, we couldn&apos;t find that link :(

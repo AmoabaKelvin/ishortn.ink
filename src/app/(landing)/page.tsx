@@ -12,7 +12,6 @@ import LandingPageNav from "@/components/landing-page/nav-bar";
 import { Button } from "@/components/ui/button";
 
 import landingImage from "../../../public/images/home-image-removebg.png";
-import { LandingPageBanner } from "./banner";
 
 export default function Home() {
   const tryOutRef = useRef<HTMLDivElement | null>(null);
@@ -38,7 +37,7 @@ export default function Home() {
 
   return (
     <div className="h-full gradient">
-      <LandingPageBanner />
+      {/* <LandingPageBanner /> */}
       <LandingPageNav />
       <main className="flex flex-col items-center min-h-screen p-4 md:p-28">
         <section className="flex flex-col w-full gap-6 md:flex-row">
