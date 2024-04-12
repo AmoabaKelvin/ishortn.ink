@@ -5,6 +5,7 @@ import React, { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 
+import DashboardEmptyState from "../empty-state";
 import LinkShowcase from "./link-showcase";
 
 type Link = Prisma.LinkGetPayload<{
@@ -25,18 +26,22 @@ const LinksView = ({ links }: { links: Link[] }) => {
   };
 
   return (
-    <main>
+    <main className="h-full">
       <Input
         type="text"
         placeholder="Search for a link"
         value={search}
         onChange={(e) => handleSearch(e)}
       />
-      <div className="flex flex-col gap-5 mt-6">
-        {filteredLinks.map((link) => (
-          <LinkShowcase key={link.id} link={link} />
-        ))}
-      </div>
+      {links.length === 0 ? (
+        <DashboardEmptyState />
+      ) : (
+        <div className="flex flex-col gap-5 mt-6">
+          {filteredLinks.map((link) => (
+            <LinkShowcase key={link.id} link={link} />
+          ))}
+        </div>
+      )}
     </main>
   );
 };
