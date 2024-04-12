@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs";
 import Link from "next/link";
 
 import LinksView from "@/components/dashboard/link-overview/links-view";
+import CsvShortenForm from "@/components/forms/dashboard/links/csv-shorten";
 import QuickShortenForm from "@/components/forms/dashboard/links/quick-shorten";
 import { Button } from "@/components/ui/button";
 import prisma from "@/db";
@@ -44,6 +45,7 @@ const Dashboard = async () => {
         <div className="flex flex-col w-full col-span-11 gap-4 md:col-span-4 ">
           <div className="p-6 rounded-md bg-gray-50 h-max">
             <div>
+              <CsvShortenForm />
               <h1 className="text-xl font-semibold leading-tight text-gray-800">
                 Quick Shorten
               </h1>

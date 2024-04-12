@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
+
 import * as Yup from "yup";
 
 import { createLink } from "@/actions/link-actions";
@@ -51,11 +52,11 @@ const LinkEditForm = () => {
         .matches(fullUrlRegex, "Please enter a valid URL"),
       alias: Yup.string().matches(
         /^[a-zA-Z0-9-_]+$/,
-        "Only letters, numbers, dashes and underscores are allowed",
+        "Only letters, numbers, dashes and underscores are allowed"
       ),
       disableLinkAfterClicks: Yup.number().min(
         0,
-        "Number of clicks must be greater than or equal to 0",
+        "Number of clicks must be greater than or equal to 0"
       ),
     }),
     onSubmit: async (values) => {
@@ -84,7 +85,7 @@ const LinkEditForm = () => {
   useEffect(() => {
     const getOGData = async () => {
       const response = await fetch(
-        `https://api.dub.co/metatags?url=${debouncedDestinationURL}`,
+        `https://api.dub.co/metatags?url=${debouncedDestinationURL}`
       );
       const data = await response.json();
       setMetaData(data);
@@ -111,7 +112,9 @@ const LinkEditForm = () => {
       <section className="grid grid-cols-1 gap-5 mt-6 md:grid-cols-11">
         <div className="flex flex-col col-span-5 gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-2xl">Create your Link</h1>
+            <div className="flex justify-between">
+              <h1 className="text-2xl">Create your Link </h1>
+            </div>
             <p className="text-sm text-gray-500">
               Create your link and customize it with optional settings
             </p>
@@ -152,7 +155,7 @@ const LinkEditForm = () => {
                   placeholder="example"
                   className={cn(
                     "flex-grow rounded-tl-none rounded-bl-none",
-                    formik.errors.alias && "border-red-500",
+                    formik.errors.alias && "border-red-500"
                   )}
                   {...formik.getFieldProps("alias")}
                 />
@@ -195,7 +198,7 @@ const LinkEditForm = () => {
                 type="number"
                 min={0}
                 className={cn(
-                  formik.errors.disableLinkAfterClicks && "border-red-500",
+                  formik.errors.disableLinkAfterClicks && "border-red-500"
                 )}
                 {...formik.getFieldProps("disableLinkAfterClicks")}
               />
