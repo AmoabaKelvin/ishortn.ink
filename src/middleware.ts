@@ -80,6 +80,28 @@ export default async function middleware(
     return NextResponse.rewrite(url);
   }
 
+  const domainsThatShouldNotRedirect = [
+    "dashboard",
+    "analytics",
+    "application",
+  ];
+
+  const paths = url.pathname.split("/");
+  // check if the path is a domain that should not redirect, and it is also not an asset file, like favicon.ico, etc.
+  if (
+    url.pathname.split("/").length == 2 &&
+    !domainsThatShouldNotRedirect.includes(paths[1]) &&
+    !paths[1].includes(".")
+  ) {
+    console.log("Performing redirection in middleware");
+    const response = await fetch(
+      env.HOST + `/api/links/${url.pathname.split("/")[1]}`,
+    );
+    const responseJson = await response.json();
+    console.log(responseJson);
+    return NextResponse.redirect(responseJson.url);
+  }
+
   return authMiddleware({
     publicRoutes: [
       "/api/webhook/clerk",
