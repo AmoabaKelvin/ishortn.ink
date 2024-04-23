@@ -84,13 +84,15 @@ export default async function middleware(
   // split url and if there are exactly two parts, and then the part is not the
   // in the domainsThatShouldNotRedirect array, then we redirect to the destination link
   const domainsThatShouldNotRedirect = [
+    "/",
     "dashboard",
     "application",
     "analytics",
   ];
   if (
     url.pathname.split("/").length === 2 &&
-    !domainsThatShouldNotRedirect.includes(url.pathname.split("/")[1])
+    !domainsThatShouldNotRedirect.includes(url.pathname.split("/")[1]) &&
+    !url.pathname.includes(".")
   ) {
     console.log("doing the necessary things in the middleware");
     const response = await fetch(
