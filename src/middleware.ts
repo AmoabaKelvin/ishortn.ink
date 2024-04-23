@@ -91,7 +91,8 @@ export default async function middleware(
   if (
     url.pathname.split("/").length == 2 &&
     !domainsThatShouldNotRedirect.includes(paths[1]) &&
-    !paths[1].includes(".")
+    !paths[1].includes(".") &&
+    !paths[1].startsWith("_")
   ) {
     console.log("Performing redirection in middleware");
     const response = await fetch(
