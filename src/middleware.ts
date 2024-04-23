@@ -94,6 +94,7 @@ export default async function middleware(
     !paths[1].includes(".") &&
     !paths[1].startsWith("_")
   ) {
+    console.log(paths);
     console.log("Performing redirection in middleware");
     const response = await fetch(
       env.HOST + `/api/links/${url.pathname.split("/")[1]}`,
