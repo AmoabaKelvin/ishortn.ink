@@ -10,7 +10,7 @@ const RedirectionPage = async ({
 }) => {
   const { shortLink } = params;
 
-  const url = env.VERCEL_URL ? `https://ishortn.ink` : env.HOST;
+  const url = env.VERCEL_URL ? `https://www.ishortn.ink` : env.HOST;
 
   const response = await fetch(`${url}/api/links/${shortLink}`, {
     headers: new Headers(headers()),
