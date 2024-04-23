@@ -80,29 +80,6 @@ export default async function middleware(
     return NextResponse.rewrite(url);
   }
 
-  // redirecting to destination link
-  // split url and if there are exactly two parts, and then the part is not the
-  // in the domainsThatShouldNotRedirect array, then we redirect to the destination link
-  const domainsThatShouldNotRedirect = [
-    "/",
-    "dashboard",
-    "application",
-    "analytics",
-  ];
-  if (
-    url.pathname.split("/").length === 2 &&
-    !domainsThatShouldNotRedirect.includes(url.pathname.split("/")[1]) &&
-    !url.pathname.includes(".")
-  ) {
-    console.log("doing the necessary things in the middleware");
-    const response = await fetch(
-      env.HOST + `/api/links/${url.pathname.split("/")[1]}`,
-    );
-    const responseJson = await response.json();
-    console.log(responseJson);
-    return NextResponse.redirect(responseJson.url);
-  }
-
   return authMiddleware({
     publicRoutes: [
       "/api/webhook/clerk",
