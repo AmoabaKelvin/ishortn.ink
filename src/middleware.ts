@@ -100,6 +100,11 @@ export default async function middleware(
     const response = await fetch(
       env.HOST + `/api/links/${url.pathname.split("/")[1]}`,
     );
+
+    if (!response.ok) {
+      return;
+    }
+
     const responseJson = await response.json();
     console.log(responseJson);
     return NextResponse.redirect(responseJson.url);
