@@ -1,8 +1,9 @@
-import { verifyKey } from "@unkey/api";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { prettyJSON } from "hono/pretty-json";
 import { handle } from "hono/vercel";
+
+import { verifyToken } from "@/lib/utils/tokens";
 
 import { domainsAPI } from "./domains";
 import { dynamicLinksAPI } from "./dynamic-links";
@@ -25,17 +26,19 @@ app.use(
 app.use("*", prettyJSON());
 
 app.use("/dynamic-links/*", async (c, next) => {
-  const authorizationKey = c.req.raw.headers.get("x-ishortn-key");
-  if (!authorizationKey) {
+  const token = c.req.raw.headers.get("x-ishortn-key");
+  if (!token) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const { error, result } = await verifyKey(authorizationKey);
+  const result = await verifyToken(token);
 
-  if (error) return c.text(error.message, 500);
-  if (!result.valid) return c.text("Unauthorized", 401);
+  if (!result) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
 
-  c.set("userID", result.ownerId as string);
+  c.set("userID", result.userId);
+
   await next();
 });
 

@@ -1,36 +1,30 @@
 "use server";
 
 import { auth } from "@clerk/nextjs";
-import { Unkey } from "@unkey/api";
 import { revalidatePath } from "next/cache";
 
-import { env } from "@/env.mjs";
-
-const unkey = new Unkey({ token: env.UNKEY_TOKEN });
-
-export const getUserAPIKeys = async () => {
-  const { userId } = auth();
-  const key = await unkey.apis.listKeys({
-    apiId: env.UNKEY_API_ID,
-    ownerId: userId!,
-  });
-  return key;
-};
+import prisma from "@/db";
+import { generateHashedToken, generateToken } from "@/lib/utils/tokens";
 
 export const createAPIKey = async () => {
   const { userId } = auth();
-  const key = await unkey.keys.create({
-    apiId: env.UNKEY_API_ID,
-    prefix: "ishortn",
-    ownerId: userId!,
+  const token = generateToken();
+
+  await prisma.token.create({
+    data: {
+      token: await generateHashedToken(token),
+      userId: userId!,
+    },
   });
-  // revalidatePath("/dashboard/settings");
-  return key;
+
+  return token;
 };
 
-export const revokeAPIKey = async (keyId: string) => {
-  const key = await unkey.keys.delete({
-    keyId,
+export const revokeAPIKey = async (keyId: number) => {
+  const key = await prisma.token.delete({
+    where: {
+      id: keyId,
+    },
   });
   revalidatePath("/dashboard/settings");
   return key;

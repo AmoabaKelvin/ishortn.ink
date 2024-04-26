@@ -39,8 +39,6 @@
     "@types/react": "18.2.17",
     "@types/react-dom": "18.2.7",
     "@types/ua-parser-js": "^0.7.39",
-    "@unkey/api": "^0.13.1",
-    "@vercel/edge": "^1.1.1",
     "autoprefixer": "10.4.14",
     "axios": "^1.5.0",
     "chart.js": "^4.4.0",

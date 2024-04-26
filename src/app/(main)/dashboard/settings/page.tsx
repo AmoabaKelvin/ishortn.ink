@@ -1,30 +1,25 @@
 "use server";
 
 import { auth } from "@clerk/nextjs";
-import { Unkey } from "@unkey/api";
 import Link from "next/link";
 
-import { env } from "@/env.mjs";
+import prisma from "@/db";
 
 import ApiKeyCard from "./api-key-card";
 import CreateAPIKey from "./create-key";
 
-const unkey = new Unkey({ token: env.UNKEY_TOKEN });
-
-async function getUserKey(userID: string) {
-  const keys = await unkey.apis.listKeys({
-    ownerId: String(userID),
-    apiId: env.UNKEY_API_ID,
+async function getUserToken(userID: string) {
+  const keys = await prisma.token.findFirst({
+    where: {
+      userId: userID,
+    },
   });
+
   return keys;
 }
 
 const SettingsPage = async () => {
-  const keys = await getUserKey(auth().userId!);
-
-  if (keys.error) {
-    return <div>Something went wrong. Please contact us.</div>;
-  }
+  const keys = await getUserToken(auth().userId!);
 
   return (
     <div>
@@ -41,11 +36,11 @@ const SettingsPage = async () => {
           </Link>
         </p>
 
-        {keys.result?.keys.length > 0 ? (
+        {keys ? (
           <ApiKeyCard
-            start={keys.result?.keys[0].start!}
-            createdAt={keys.result?.keys[0].createdAt!}
-            keyID={keys.result?.keys[0].id!}
+            start={keys.token.slice(0, 7)}
+            createdAt={keys.createdAt.getTime()}
+            keyID={keys.id}
           />
         ) : (
           <CreateAPIKey />

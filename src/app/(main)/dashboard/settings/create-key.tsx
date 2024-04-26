@@ -20,14 +20,14 @@ const CreateAPIKey = () => {
     startTransition(async () => {
       const key = await createAPIKey();
 
-      if (key.result?.key) {
-        setKey(key.result?.key);
+      if (key) {
+        setKey(key);
       }
     });
   };
 
   const handleRevalidation = async () => {
-    await revalidatePathForDashboard();
+    revalidatePathForDashboard();
   };
 
   return (
@@ -56,9 +56,6 @@ const CreateAPIKey = () => {
               {key}
             </code>
           </div>
-          {/* <DialogFooter>
-            <Button type="submit">Save changes</Button>
-          </DialogFooter> */}
         </DialogContent>
       </Dialog>
     </div>
