@@ -80,7 +80,7 @@ linksAPI.post("/", async (c) => {
     return c.json(
       JSON.stringify({
         url: `https://ishortn.ink/${existingLink.alias}`,
-      })
+      }),
     );
   }
 
@@ -88,7 +88,7 @@ linksAPI.post("/", async (c) => {
     return c.json(
       JSON.stringify({
         url: `https://ishortn.ink/${alias}`,
-      })
+      }),
     );
   }
 
@@ -108,6 +108,6 @@ linksAPI.post("/", async (c) => {
   return c.json(
     JSON.stringify({
       url: `https://ishortn.ink/${link.alias}`,
-    })
+    }),
   );
 });

@@ -52,11 +52,11 @@ const LinkEditForm = () => {
         .matches(fullUrlRegex, "Please enter a valid URL"),
       alias: Yup.string().matches(
         /^[a-zA-Z0-9-_]+$/,
-        "Only letters, numbers, dashes and underscores are allowed"
+        "Only letters, numbers, dashes and underscores are allowed",
       ),
       disableLinkAfterClicks: Yup.number().min(
         0,
-        "Number of clicks must be greater than or equal to 0"
+        "Number of clicks must be greater than or equal to 0",
       ),
     }),
     onSubmit: async (values) => {
@@ -94,7 +94,7 @@ const LinkEditForm = () => {
   useEffect(() => {
     const getOGData = async () => {
       const response = await fetch(
-        `https://api.dub.co/metatags?url=${debouncedDestinationURL}`
+        `https://api.dub.co/metatags?url=${debouncedDestinationURL}`,
       );
       const data = await response.json();
       setMetaData(data);
@@ -162,7 +162,7 @@ const LinkEditForm = () => {
                   placeholder="example"
                   className={cn(
                     "flex-grow rounded-tl-none rounded-bl-none",
-                    formik.errors.alias && "border-red-500"
+                    formik.errors.alias && "border-red-500",
                   )}
                   {...formik.getFieldProps("alias")}
                 />
@@ -205,7 +205,7 @@ const LinkEditForm = () => {
                 type="number"
                 min={0}
                 className={cn(
-                  formik.errors.disableLinkAfterClicks && "border-red-500"
+                  formik.errors.disableLinkAfterClicks && "border-red-500",
                 )}
                 {...formik.getFieldProps("disableLinkAfterClicks")}
               />
