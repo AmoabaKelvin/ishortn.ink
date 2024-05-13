@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { errorMessages } from "@/lib/constants";
 import { cn, fullUrlRegex } from "@/lib/utils";
 
 import { LinkExpirationDatePicker } from "./date-picker";
@@ -51,15 +52,14 @@ const LinkEditForm = () => {
         .matches(fullUrlRegex, "Please enter a valid URL"),
       alias: Yup.string().matches(
         /^[a-zA-Z0-9-_]+$/,
-        "Only letters, numbers, dashes and underscores are allowed",
+        "Only letters, numbers, dashes and underscores are allowed"
       ),
       disableLinkAfterClicks: Yup.number().min(
         0,
-        "Number of clicks must be greater than or equal to 0",
+        "Number of clicks must be greater than or equal to 0"
       ),
     }),
     onSubmit: async (values) => {
-      console.log(values);
       startTransition(async () => {
         // if disableLinkAfterClicks is 0, set it to null
         if (values.disableLinkAfterClicks === 0) {
@@ -68,6 +68,16 @@ const LinkEditForm = () => {
         const response = await createLink(values);
 
         if (response && "error" in response) {
+          if (response?.error === errorMessages.UNSAFE) {
+            toast(response.error, {
+              action: {
+                label: "Support",
+                onClick: () => window.open("mailto:info@ishortn.ink"),
+              },
+            });
+            return;
+          }
+
           toast.error("Uh oh!", {
             description: response.error,
           });
@@ -84,7 +94,7 @@ const LinkEditForm = () => {
   useEffect(() => {
     const getOGData = async () => {
       const response = await fetch(
-        `https://api.dub.co/metatags?url=${debouncedDestinationURL}`,
+        `https://api.dub.co/metatags?url=${debouncedDestinationURL}`
       );
       const data = await response.json();
       setMetaData(data);
@@ -152,7 +162,7 @@ const LinkEditForm = () => {
                   placeholder="example"
                   className={cn(
                     "flex-grow rounded-tl-none rounded-bl-none",
-                    formik.errors.alias && "border-red-500",
+                    formik.errors.alias && "border-red-500"
                   )}
                   {...formik.getFieldProps("alias")}
                 />
@@ -195,7 +205,7 @@ const LinkEditForm = () => {
                 type="number"
                 min={0}
                 className={cn(
-                  formik.errors.disableLinkAfterClicks && "border-red-500",
+                  formik.errors.disableLinkAfterClicks && "border-red-500"
                 )}
                 {...formik.getFieldProps("disableLinkAfterClicks")}
               />

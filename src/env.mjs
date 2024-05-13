@@ -12,6 +12,7 @@ export const env = createEnv({
     HOST: z.string().min(1).default("http://localhost:3000"),
     VERCEL_URL: z.string().optional(),
     GEOLOCATION_API_KEY: z.string().optional(),
+    GOOGLE_SAFE_BROWSING_API_KEY: z.string().optional()
   },
 
   clientPrefix: "NEXT_PUBLIC_",
@@ -34,6 +35,7 @@ export const env = createEnv({
     HOST: process.env.HOST,
     VERCEL_URL: process.env.VERCEL_URL,
     GEOLOCATION_API_KEY: process.env.GEOLOCATION_API_KEY,
+    GOOGLE_SAFE_BROWSING_API_KEY: process.env.GOOGLE_SAFE_BROWSING_API_KEY,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,

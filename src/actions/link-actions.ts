@@ -5,8 +5,10 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import prisma from "@/db";
+import { errorMessages } from "@/lib/constants";
 import { addLinkToCache, deleteLinkFromCache } from "@/lib/utils/cache";
 import { generateShortLink } from "@/lib/utils/links";
+import { validateUrl } from "@/lib/utils/links/validation";
 
 const authenticateAndGetUserId = () => {
   const { userId } = auth();
@@ -37,6 +39,14 @@ export const createLink = async (link: Prisma.LinkCreateInput) => {
     };
   }
 
+  const isLinkSafe = await validateUrl(link.url);
+
+  if (!isLinkSafe) {
+    return {
+      error: errorMessages.UNSAFE,
+    };
+  }
+
   const createdLink = prisma.link.create({
     data: {
       ...link,
@@ -62,6 +72,14 @@ export const quickLinkShorten = async (url: string) => {
 
   if (!userId) {
     return;
+  }
+
+  const isLinkSafe = await validateUrl(url);
+
+  if (!isLinkSafe) {
+    return {
+      error: errorMessages.UNSAFE,
+    };
   }
 
   const createdLink = prisma.link.create({
@@ -98,7 +116,7 @@ export const deleteLink = async (id: number) => {
 
   if (!link) {
     return {
-      error: "Link not found",
+      error: errorMessages.NOT_FOUND,
     };
   }
 
@@ -143,13 +161,13 @@ export const updateLink = async (link: Prisma.LinkUpdateInput, id: number) => {
 
   if (!existingLink) {
     return {
-      error: "Link not found",
+      error: errorMessages.NOT_FOUND,
     };
   }
 
   if (existingLink.userId !== userId) {
     return {
-      error: "You are not authorized to update this link",
+      error: errorMessages.UNAUTHORIZED,
     };
   }
 
@@ -184,13 +202,13 @@ export const disableLink = async (id: number) => {
 
   if (!link) {
     return {
-      error: "Link not found",
+      error: errorMessages.NOT_FOUND,
     };
   }
 
   if (link.userId !== userId) {
     return {
-      error: "You are not authorized to disable this link",
+      error: errorMessages.UNAUTHORIZED,
     };
   }
 
@@ -225,13 +243,13 @@ export const enableLink = async (id: number) => {
 
   if (!link) {
     return {
-      error: "Link not found",
+      error: errorMessages.NOT_FOUND,
     };
   }
 
   if (link.userId !== userId) {
     return {
-      error: "You are not authorized to enable this link",
+      error: errorMessages.UNAUTHORIZED,
     };
   }
 
@@ -266,13 +284,13 @@ export const toggleLinkStats = async (id: number, toggle: boolean) => {
 
   if (!link) {
     return {
-      error: "Link not found",
+      error: errorMessages.NOT_FOUND,
     };
   }
 
   if (link.userId !== userId) {
     return {
-      error: "You are not authorized to enable this link",
+      error: errorMessages.UNAUTHORIZED,
     };
   }
 

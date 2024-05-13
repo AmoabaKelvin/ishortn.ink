@@ -8,6 +8,7 @@ import {
   hasLinkExceededSpecifiedDate,
   retrieveLinkFromCacheOrDatabase,
 } from "@/lib/utils/links";
+import { validateUrl } from "@/lib/utils/links/validation";
 
 export const linksAPI = new Hono();
 
@@ -79,7 +80,7 @@ linksAPI.post("/", async (c) => {
     return c.json(
       JSON.stringify({
         url: `https://ishortn.ink/${existingLink.alias}`,
-      }),
+      })
     );
   }
 
@@ -87,8 +88,14 @@ linksAPI.post("/", async (c) => {
     return c.json(
       JSON.stringify({
         url: `https://ishortn.ink/${alias}`,
-      }),
+      })
     );
+  }
+
+  const isLinkSafe = await validateUrl(url);
+
+  if (!isLinkSafe) {
+    return c.text("Unsafe URL", 400);
   }
 
   const link = await prisma.link.create({
@@ -101,6 +108,6 @@ linksAPI.post("/", async (c) => {
   return c.json(
     JSON.stringify({
       url: `https://ishortn.ink/${link.alias}`,
-    }),
+    })
   );
 });
