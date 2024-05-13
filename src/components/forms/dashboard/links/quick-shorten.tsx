@@ -9,6 +9,7 @@ import { quickLinkShorten } from "@/actions/link-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { errorMessages } from "@/lib/constants";
 
 const QuickShortenForm = () => {
   const [loading, startTransition] = useTransition();
@@ -27,7 +28,17 @@ const QuickShortenForm = () => {
         if (response && "id" in response) {
           toast.success("Your link has been shortened.");
         } else {
-          toast.error("An error occurred while shortening your link.");
+          if (response?.error === errorMessages.UNSAFE) {
+            toast(response.error, {
+              action: {
+                label: "Support",
+                onClick: () => window.open("mailto:info@ishortn.ink"),
+              },
+            });
+            return;
+          }
+
+          toast.error(response?.error);
         }
 
         formik.resetForm();
