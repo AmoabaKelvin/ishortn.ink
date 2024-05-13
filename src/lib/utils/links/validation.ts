@@ -3,8 +3,8 @@ import { env } from "@/env.mjs";
 const formRequestBody = (url: string) => {
   return {
     client: {
-      clientId: "your-client-id",
-      clientVersion: "1.0",
+      clientId: "ishortn",
+      clientVersion: "1.0.0",
     },
     threatInfo: {
       threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
