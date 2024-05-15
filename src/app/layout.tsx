@@ -113,7 +113,7 @@ export default function RootLayout({
       {env.UMAMI_TRACKING_ID && (
         <Script
           defer
-          src="https://umami.kelvinamoaba.live/script.js"
+          src={env.UMAMI_URL}
           data-website-id={env.UMAMI_TRACKING_ID}
         />
       )}
