@@ -17,8 +17,12 @@ type Link = Prisma.LinkGetPayload<{
 const LinksView = ({ links }: { links: Link[] }) => {
   const [search, setSearch] = useState("");
 
-  const filteredLinks = links.filter((link) =>
-    link.alias.toLowerCase().includes(search.toLowerCase()),
+  const filteredLinks = links.filter(
+    (link) =>
+      link.alias.toLowerCase().includes(search.toLowerCase()) ||
+      link.url.toLocaleLowerCase().includes(search.toLowerCase()),
+    // sort by date
+    // link.createdAt.getFullYear().toString().includes(search.toLowerCase())
   );
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,7 +33,7 @@ const LinksView = ({ links }: { links: Link[] }) => {
     <main className="h-full">
       <Input
         type="text"
-        placeholder="Search for a link"
+        placeholder="Search for a link by alias or url"
         value={search}
         onChange={(e) => handleSearch(e)}
       />
