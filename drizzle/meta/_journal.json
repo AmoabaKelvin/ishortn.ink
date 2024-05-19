@@ -1,0 +1,13 @@
+{
+  "version": "6",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1716044549285,
+      "tag": "0000_sturdy_spirit",
+      "breakpoints": true
+    }
+  ]
+}

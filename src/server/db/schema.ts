@@ -1,108 +1,165 @@
 import { relations } from "drizzle-orm";
 import {
-  pgTableCreator,
-  serial,
   boolean,
+  datetime,
   index,
+  int,
+  mysqlTable,
+  serial,
   text,
   timestamp,
   varchar,
-} from "drizzle-orm/pg-core";
-import { DATABASE_PREFIX as prefix } from "@/lib/constants";
+} from "drizzle-orm/mysql-core";
 
-export const pgTable = pgTableCreator((name) => `${prefix}_${name}`);
-
-export const users = pgTable(
-  "users",
+export const user = mysqlTable(
+  "User",
   {
-    id: varchar("id", { length: 21 }).primaryKey(),
-    discordId: varchar("discord_id", { length: 255 }).unique(),
-    email: varchar("email", { length: 255 }).unique().notNull(),
-    emailVerified: boolean("email_verified").default(false).notNull(),
-    hashedPassword: varchar("hashed_password", { length: 255 }),
-    avatar: varchar("avatar", { length: 255 }),
-    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 191 }),
-    stripePriceId: varchar("stripe_price_id", { length: 191 }),
-    stripeCustomerId: varchar("stripe_customer_id", { length: 191 }),
-    stripeCurrentPeriodEnd: timestamp("stripe_current_period_end"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" }).$onUpdate(() => new Date()),
+    id: varchar("id", {
+      length: 32,
+    }).primaryKey(), // 32 chars is the length of clerk user id
+    name: varchar("name", { length: 255 }),
+    email: varchar("email", { length: 255 }).unique(),
+    createdAt: timestamp("createdAt").defaultNow(),
+    imageUrl: text("imageUrl"),
   },
-  (t) => ({
-    emailIdx: index("user_email_idx").on(t.email),
-    discordIdx: index("user_discord_idx").on(t.discordId),
+  (table) => ({
+    userIdx: index("userId_idx").on(table.id),
   }),
 );
 
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-
-export const sessions = pgTable(
-  "sessions",
-  {
-    id: varchar("id", { length: 255 }).primaryKey(),
-    userId: varchar("user_id", { length: 21 }).notNull(),
-    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
-  },
-  (t) => ({
-    userIdx: index("session_user_idx").on(t.userId),
-  }),
-);
-
-export const emailVerificationCodes = pgTable(
-  "email_verification_codes",
+export const link = mysqlTable(
+  "Link",
   {
     id: serial("id").primaryKey(),
-    userId: varchar("user_id", { length: 21 }).unique().notNull(),
-    email: varchar("email", { length: 255 }).notNull(),
-    code: varchar("code", { length: 8 }).notNull(),
-    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+    url: text("url"),
+    alias: varchar("alias", {
+      length: 20,
+    }).unique(),
+    createdAt: timestamp("createdAt").defaultNow(),
+    disableLinkAfterClicks: int("disableLinkAfterClicks"),
+    disableLinkAfterDate: datetime("disableLinkAfterDate"),
+    disabled: boolean("disabled").default(false),
+    publicStats: boolean("publicStats").default(false),
+    userId: varchar("userId", {
+      length: 32,
+    }).notNull(),
   },
-  (t) => ({
-    userIdx: index("verification_code_user_idx").on(t.userId),
-    emailIdx: index("verification_code_email_idx").on(t.email),
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
   }),
 );
 
-export const passwordResetTokens = pgTable(
-  "password_reset_tokens",
+export const linkVisit = mysqlTable(
+  "LinkVisit",
   {
-    id: varchar("id", { length: 40 }).primaryKey(),
-    userId: varchar("user_id", { length: 21 }).notNull(),
-    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    device: varchar("device", { length: 255 }),
+    browser: varchar("browser", { length: 255 }),
+    os: varchar("os", { length: 255 }),
+    model: varchar("model", { length: 255 }).default(""),
+    country: varchar("country", { length: 255 }),
+    city: varchar("city", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow(),
   },
-  (t) => ({
-    userIdx: index("password_token_user_idx").on(t.userId),
+  (table) => ({
+    linkIdIdx: index("linkId_idx").on(table.linkId),
   }),
 );
 
-export const posts = pgTable(
-  "posts",
+export const token = mysqlTable(
+  "Token",
   {
-    id: varchar("id", { length: 15 }).primaryKey(),
-    userId: varchar("user_id", { length: 255 }).notNull(),
-    title: varchar("title", { length: 255 }).notNull(),
-    excerpt: varchar("excerpt", { length: 255 }).notNull(),
-    content: text("content").notNull(),
-    status: varchar("status", { length: 10, enum: ["draft", "published"] })
-      .default("draft")
-      .notNull(),
-    tags: varchar("tags", { length: 255 }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date" }).$onUpdate(() => new Date()),
+    id: serial("id").primaryKey(),
+    token: text("token"),
+    createdAt: timestamp("createdAt").defaultNow(),
+    userId: varchar("userId", { length: 32 }).notNull(),
   },
-  (t) => ({
-    userIdx: index("post_user_idx").on(t.userId),
-    createdAtIdx: index("post_created_at_idx").on(t.createdAt),
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
   }),
 );
 
-export const postRelations = relations(posts, ({ one }) => ({
-  user: one(users, {
-    fields: [posts.userId],
-    references: [users.id],
+// Define relations
+export const linkRelations = relations(link, ({ one, many }) => ({
+  user: one(user, {
+    fields: [link.userId],
+    references: [user.id],
+  }),
+  linkVisits: many(linkVisit),
+}));
+
+export const userRelations = relations(user, ({ many, one }) => ({
+  links: many(link),
+  tokens: one(token, {
+    fields: [user.id],
+    references: [token.userId],
   }),
 }));
 
-export type Post = typeof posts.$inferSelect;
-export type NewPost = typeof posts.$inferInsert;
+export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
+  link: one(link, {
+    fields: [linkVisit.linkId],
+    references: [link.id],
+  }),
+}));
+
+export const tokenRelations = relations(token, ({ one }) => ({
+  user: one(user, {
+    fields: [token.userId],
+    references: [user.id],
+  }),
+}));
+
+export type Link = typeof link.$inferSelect;
+export type NewLink = typeof link.$inferInsert;
+
+export type User = typeof user.$inferSelect;
+export type NewUser = typeof user.$inferInsert;
+
+export type LinkVisit = typeof linkVisit.$inferSelect;
+export type NewLinkVisit = typeof linkVisit.$inferInsert;
+
+export type Token = typeof token.$inferSelect;
+export type NewToken = typeof token.$inferInsert;
+
+// DynamicLink model
+// export const dynamicLink = mysqlTable(
+//   "DynamicLink",
+//   {
+//     id: serial("id").primaryKey(),
+//     name: varchar("name"),
+//     subdomain: varchar("subdomain").unique(),
+//     createdAt: datetime("createdAt").defaultNow(),
+//     playStoreUrl: varchar("playStoreUrl").default(""),
+//     appStoreUrl: varchar("appStoreUrl").default(""),
+//     iosTeamId: varchar("iosTeamId").default(""),
+//     iosBundleId: varchar("iosBundleId").default(""),
+//     androidPackageName: varchar("androidPackageName").default(""),
+//     androidSha256Fingerprint: varchar("androidSha256Fingerprint").default(""),
+//     userId: varchar("userId").references(() => user.id),
+//   },
+//   (table) => ({
+//     userIdIdx: index("userId_idx").on(table.userId),
+//   }),
+// );
+
+// // DynamicLinkChildLink model
+// export const dynamicLinkChildLink = mysqlTable(
+//   "DynamicLinkChildLink",
+//   {
+//     id: serial("id").primaryKey(),
+//     dynamicLinkId: int("dynamicLinkId").references(() => dynamicLink.id),
+//     createdAt: datetime("createdAt").defaultNow(),
+//     metaDataTitle: varchar("metaDataTitle").default(""),
+//     metaDataDescription: varchar("metaDataDescription").default(""),
+//     metaDataImageUrl: text("metaDataImageUrl"),
+//     shortLink: varchar("shortLink"),
+//     link: text("link"),
+//     fallbackLink: text("fallbackLink"),
+//     createdFromUI: boolean("createdFromUI").default(false),
+//   },
+//   (table) => ({
+//     dynamicLinkIdIdx: index("dynamicLinkId_idx").on(table.dynamicLinkId),
+//   }),
+// );

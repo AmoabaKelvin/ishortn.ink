@@ -7,13 +7,14 @@
  * need to use are documented accordingly near the end.
  */
 
-import { uncachedValidateRequest } from "@/lib/auth/validate-request";
-import { stripe } from "@/lib/stripe";
-import { db } from "@/server/db";
-import { initTRPC, TRPCError, type inferAsyncReturnType } from "@trpc/server";
+import type { getAuth } from "@clerk/nextjs/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { db } from "@/server/db";
+
+import type { inferAsyncReturnType } from "@trpc/server";
 /**
  * 1. CONTEXT
  *
@@ -26,14 +27,14 @@ import { ZodError } from "zod";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const { session, user } = await uncachedValidateRequest();
+export const createTRPCContext = async (opts: {
+  auth: ReturnType<typeof getAuth>;
+  headers: Headers;
+}) => {
   return {
-    session,
-    user,
     db,
+    ...opts,
     headers: opts.headers,
-    stripe: stripe,
   };
 };
 
@@ -89,20 +90,26 @@ export const publicProcedure = t.procedure;
  * @see https://trpc.io/docs/procedures
  */
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.session || !ctx.user) {
+  if (!ctx.auth.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
   return next({
     ctx: {
-      // infers the `session` and `user` as non-nullable
-      session: { ...ctx.session },
-      user: { ...ctx.user },
+      auth: ctx.auth,
     },
   });
 });
 
 export type TRPCContext = inferAsyncReturnType<typeof createTRPCContext>;
 export type ProtectedTRPCContext = TRPCContext & {
-  user: NonNullable<TRPCContext["user"]>;
-  session: NonNullable<TRPCContext["session"]>;
+  auth: WithoutNull<TRPCContext["auth"]>;
+};
+
+export type PublicTRPCContext = {
+  db: TRPCContext["db"];
+  headers: TRPCContext["headers"];
+};
+
+type WithoutNull<T> = {
+  [K in keyof T]: Exclude<T[K], null>;
 };

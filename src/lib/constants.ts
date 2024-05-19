@@ -10,3 +10,8 @@ export enum Paths {
   VerifyEmail = "/verify-email",
   ResetPassword = "/reset-password",
 }
+
+export const LOCAL_DEVELOPMENT_GEOLOCATION_DATA = {
+  country: "United States",
+  city: "New York",
+};

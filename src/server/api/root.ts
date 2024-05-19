@@ -1,12 +1,10 @@
-import { postRouter } from "./routers/post/post.procedure";
-import { stripeRouter } from "./routers/stripe/stripe.procedure";
+import { linkRouter } from "./routers/link/link.procedure";
 import { userRouter } from "./routers/user/user.procedure";
 import { createTRPCRouter } from "./trpc";
 
 export const appRouter = createTRPCRouter({
   user: userRouter,
-  post: postRouter,
-  stripe: stripeRouter,
+  link: linkRouter,
 });
 
 export type AppRouter = typeof appRouter;

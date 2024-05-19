@@ -1,31 +1,11 @@
-import postgres from "postgres";
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
+import "dotenv/config";
 
-import { env } from "@/env";
-import * as schema from "./schema";
+import { migrate } from "drizzle-orm/mysql2/migrator";
 
-export async function runMigrate() {
-  const connection = postgres(env.DATABASE_URL);
-  const db = drizzle(connection, { schema });
+import { connection, db } from "./index";
 
-  console.log("⏳ Running migrations...");
+// This will run migrations on the database, skipping the ones already applied
+await migrate(db, { migrationsFolder: "./drizzle" });
 
-  const start = Date.now();
-
-  await migrate(db, { migrationsFolder: "drizzle" });
-
-  await connection.end();
-
-  const end = Date.now();
-
-  console.log(`✅ Migrations completed in ${end - start}ms`);
-
-  process.exit(0);
-}
-
-runMigrate().catch((err) => {
-  console.error("❌ Migration failed");
-  console.error(err);
-  process.exit(1);
-});
+// Don't forget to close the connection, otherwise the script will hang
+await connection.end();
