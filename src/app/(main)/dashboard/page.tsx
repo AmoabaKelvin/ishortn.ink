@@ -1,6 +1,11 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { env } from "@/env";
+
+import { DashboardSidebar } from "./_components/dashboard-sidebar";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
@@ -22,9 +27,16 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold md:text-4xl">Posts</h1>
-        <p className="text-sm text-muted-foreground">Manage your posts here</p>
+      <div className="flex items-center justify-between px-6">
+        <h2 className="text-xl font-semibold leading-tight text-gray-800">Links</h2>
+        <Button asChild>
+          <Link href="/dashboard/links">Shorten Link</Link>
+        </Button>
+      </div>
+
+      <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-11">
+        <DashboardSidebar numberOfClicks={0} numberOfLinks={0} />
+        <div className="col-span-11 md:col-span-7">Something else</div>
       </div>
     </div>
   );

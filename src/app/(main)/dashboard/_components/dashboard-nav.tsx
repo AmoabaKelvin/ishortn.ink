@@ -1,52 +1,41 @@
-"use client";
-
+import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { FileTextIcon, CreditCard, GearIcon } from "@/components/icons";
 
-import { cn } from "@/lib/utils";
-
-const items = [
-  {
-    title: "Posts",
-    href: "/dashboard",
-    icon: FileTextIcon,
-  },
-
-  {
-    title: "Billing",
-    href: "/dashboard/billing",
-    icon: CreditCard,
-  },
-  {
-    title: "Settings",
-    href: "/dashboard/settings",
-    icon: GearIcon,
-  },
-];
-
-interface Props {
-  className?: string;
-}
-
-export function DashboardNav({ className }: Props) {
-  const path = usePathname();
-
+const DashboardNav = () => {
   return (
-    <nav className={cn(className)}>
-      {items.map((item) => (
-        <Link href={item.href} key={item.href}>
-          <span
-            className={cn(
-              "group flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-              path === item.href ? "bg-accent" : "transparent",
-            )}
-          >
-            <item.icon className="mr-2 h-4 w-4" />
-            <span>{item.title}</span>
-          </span>
-        </Link>
-      ))}
-    </nav>
+    <div className="flex items-center justify-between">
+      <h2 className="inline-flex text-xl font-semibold leading-tight text-gray-800">
+        <Link href="/" className="text-blue-600 dark:text-blue-500">
+          ishortn.ink
+        </Link>{" "}
+        <span className="ml-2 hidden sm:block">/ Dashboard</span>
+      </h2>
+      <div className="flex items-center justify-between space-x-4">
+        <div className="flex items-center gap-4">
+          <Link href="https://discord.gg/S66ZvMzkU4" target="_blank">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"
+              width={20}
+              height={20}
+              alt="Discord"
+            />
+          </Link>
+          <Link href="https://github.com/AmoabaKelvin/ishortn.ink" target="_blank">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/GitHub_Invertocat_Logo.svg/600px-GitHub_Invertocat_Logo.svg.png"
+              width={20}
+              height={20}
+              alt="GitHub"
+            />
+          </Link>
+        </div>
+        <UserButton />
+      </div>
+      {/* <LogoutButton /> */}
+    </div>
   );
-}
+};
+
+export { DashboardNav };

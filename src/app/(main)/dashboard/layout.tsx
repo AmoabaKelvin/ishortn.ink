@@ -1,5 +1,8 @@
+import { cn } from "@/lib/utils";
+import { satoshi } from "@/styles/fonts";
+
 import { DashboardNav } from "./_components/dashboard-nav";
-import { VerificiationWarning } from "./_components/verificiation-warning";
+import { TabSwitcher } from "./_components/tab-switcher";
 
 interface Props {
   children: React.ReactNode;
@@ -7,14 +10,15 @@ interface Props {
 
 export default function DashboardLayout({ children }: Props) {
   return (
-    <div className="container min-h-[calc(100vh-180px)] px-2 pt-6 md:px-4">
-      <div className="flex flex-col gap-6 md:flex-row lg:gap-10">
-        <DashboardNav className="flex flex-shrink-0 gap-2 md:w-48 md:flex-col lg:w-80" />
-        <main className="w-full space-y-4">
-          <VerificiationWarning />
-          <div>{children}</div>
-        </main>
-      </div>
+    <div
+      className={cn(
+        "mx-auto min-h-[calc(100vh-180px)] max-w-7xl px-4 py-10 text-black sm:px-6 lg:px-8",
+        satoshi.className,
+      )}
+    >
+      <DashboardNav />
+      <TabSwitcher className="mt-7" />
+      <div className="mt-7 py-4 ">{children}</div>
     </div>
   );
 }

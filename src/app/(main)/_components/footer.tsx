@@ -1,8 +1,9 @@
 import { CodeIcon } from "@radix-ui/react-icons";
-import { ThemeToggle } from "@/components/theme-toggle";
 
-const githubUrl = "https://github.com/iamtouha/next-lucia-auth";
-const twitterUrl = "https://twitter.com/iamtouha";
+// import { ThemeToggle } from "@/components/theme-toggle";
+
+const githubUrl = "https://github.com/AmoabaKelvin/ishortn.ink";
+const twitterUrl = "https://twitter.com/kelamoaba";
 
 export const Footer = () => {
   return (
@@ -12,7 +13,7 @@ export const Footer = () => {
         <p className="text-sm">
           Built by{" "}
           <a className="underline underline-offset-4" href={twitterUrl}>
-            iamtouha
+            Amoaba Kelvin
           </a>
           . Get the source code from{" "}
           <a className="underline underline-offset-4" href={githubUrl}>
@@ -20,9 +21,9 @@ export const Footer = () => {
           </a>
           .
         </p>
-        <div className="ml-auto">
+        {/* <div className="ml-auto">
           <ThemeToggle />
-        </div>
+        </div> */}
       </div>
     </footer>
   );
