@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     default: APP_TITLE,
     template: `%s | ${APP_TITLE}`,
   },
-  description: "Acme - Simple auth with lucia and trpc",
+  description: "iShortn - Link shortening with analytics(without the fuss)",
   icons: [{ rel: "icon", url: "/icon.png" }],
 };
 

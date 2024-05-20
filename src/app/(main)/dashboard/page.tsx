@@ -9,8 +9,8 @@ import { DashboardSidebar } from "./_components/dashboard-sidebar";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
-  title: "Posts",
-  description: "Manage your posts here",
+  title: "Dashboard",
+  description: "Manage your links and view analytics",
 };
 
 interface Props {
