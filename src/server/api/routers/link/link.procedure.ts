@@ -44,4 +44,28 @@ export const linkRouter = createTRPCRouter({
     .mutation(({ ctx, input }) => {
       return services.deleteLink(ctx, input);
     }),
+
+  quickShorten: protectedProcedure
+    .input(inputs.quickLinkShorteningSchema)
+    .mutation(({ ctx, input }) => {
+      return services.shortenLinkWithAutoAlias(ctx, input);
+    }),
+
+  linkVisits: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      }),
+    )
+    .query(({ ctx, input }) => {
+      return services.getLinkVisits(ctx, input);
+    }),
+
+  toggleLinkStatus: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
+    return services.toggleLinkStatus(ctx, input);
+  }),
+
+  togglePublicStats: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
+    return services.togglePublicStats(ctx, input);
+  }),
 });

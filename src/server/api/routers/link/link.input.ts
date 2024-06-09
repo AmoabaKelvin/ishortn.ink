@@ -15,6 +15,10 @@ export const createLinkSchema = z.object({
   disableLinkAfterDate: z.date().optional(),
 });
 
+export const quickLinkShorteningSchema = z.object({
+  url: z.string().url(),
+});
+
 export const updateLinkSchema = createLinkSchema.partial().extend({
   id: z.number(),
   disabled: z.boolean().optional(),
@@ -25,3 +29,5 @@ export type CreateLinkInput = z.infer<typeof createLinkSchema>;
 export type UpdateLinkInput = z.infer<typeof updateLinkSchema>;
 export type GetLinkInput = z.infer<typeof getLinkSchema>;
 export type RetrieveOriginalUrlInput = z.infer<typeof retrieveOriginalUrlSchema>;
+
+export type QuickLinkShorteningInput = z.infer<typeof quickLinkShorteningSchema>;

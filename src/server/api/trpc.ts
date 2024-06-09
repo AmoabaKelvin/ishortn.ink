@@ -110,6 +110,6 @@ export type PublicTRPCContext = {
   headers: TRPCContext["headers"];
 };
 
-type WithoutNull<T> = {
+export type WithoutNull<T> = {
   [K in keyof T]: Exclude<T[K], null>;
 };

@@ -1,24 +1,36 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { api } from "@/trpc/react";
 
-type Inputs = {
-  url: string;
-};
+import { revalidateHomepage } from "../../actions/revalidate-homepage";
 
-const QuickLinkShorteningForm = () => {
+import type { QuickLinkShorteningInput } from "@/server/api/routers/link/link.input";
+
+export function QuickLinkShorteningForm() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
-  } = useForm<Inputs>();
+  } = useForm<QuickLinkShorteningInput>();
 
-  const onSubmit = (data: Inputs) => {
-    console.log(data);
+  const quickLinkShorteningMutation = api.link.quickShorten.useMutation({
+    onSuccess() {
+      toast.success("Link shortened successfully");
+      reset({ url: "" });
+    },
+  });
+
+  const onSubmit = async (data: QuickLinkShorteningInput) => {
+    quickLinkShorteningMutation.mutate(data);
+    await revalidateHomepage();
   };
 
   return (
@@ -34,11 +46,14 @@ const QuickLinkShorteningForm = () => {
         )}
         {...register("url", { required: true })}
       />
-      <Button className="mt-4 w-full" onClick={handleSubmit(onSubmit)}>
+      <Button
+        className="mt-4 w-full"
+        onClick={handleSubmit(onSubmit)}
+        disabled={quickLinkShorteningMutation.isLoading}
+      >
+        {quickLinkShorteningMutation.isLoading && <Loader2 className="mr-2 animate-spin" />}
         Shorten
       </Button>
     </div>
   );
-};
-
-export { QuickLinkShorteningForm };
+}
