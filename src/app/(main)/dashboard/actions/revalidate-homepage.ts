@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 export async function revalidateHomepage() {
-  console.log("Revalidating homepage");
   revalidatePath("/dashboard");
+}
+
+export async function revalidateRoute(path: string) {
+  revalidatePath(path);
 }

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 import { env } from "@/env";
-import { validateRequest } from "@/lib/auth/validate-request";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
@@ -11,12 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default async function BillingPage() {
-  const { user } = await validateRequest();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
   return (
     <div className="grid gap-8">
       <div>

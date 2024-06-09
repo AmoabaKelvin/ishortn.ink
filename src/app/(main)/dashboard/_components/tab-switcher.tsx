@@ -7,9 +7,11 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { name: "Links", href: "/dashboard" },
-  { name: "Dynamic Links", href: "/dashboard/links/dynamic" },
-  { name: "Profile", href: "/dashboard/profile" },
-  { name: "Settings", href: "/dashboard/settings" },
+  { name: "API Keys", href: "/dashboard/tokens" },
+  {
+    name: "Feature Requests",
+    href: "https://docs.google.com/forms/d/e/1FAIpQLSfVfz9c1qkC4aDSjFnMcVnrimKiNOHA2aoQhyxNaMmDjMSNEg/viewform?usp=sf_link",
+  },
 ];
 
 type TabSwitcherProps = {
