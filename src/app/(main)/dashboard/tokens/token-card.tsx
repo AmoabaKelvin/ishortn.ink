@@ -19,7 +19,7 @@ const TokenCard = ({
   const deleteAPIKeyMutation = api.token.delete.useMutation({
     onSuccess: async () => {
       await revalidateRoute("/dashboard/tokens");
-      toast.success("API Key revoked");
+      toast.success("API Token revoked");
     },
   });
 
