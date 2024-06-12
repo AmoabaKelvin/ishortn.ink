@@ -1,7 +1,5 @@
 import { CodeIcon } from "@radix-ui/react-icons";
 
-// import { ThemeToggle } from "@/components/theme-toggle";
-
 const githubUrl = "https://github.com/AmoabaKelvin/ishortn.ink";
 const twitterUrl = "https://twitter.com/kelamoaba";
 

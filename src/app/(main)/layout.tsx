@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Footer } from "./_components/footer";
+import { Footer } from "./footer";
 
 const MainLayout = ({ children }: { children: ReactNode }) => {
   return (
