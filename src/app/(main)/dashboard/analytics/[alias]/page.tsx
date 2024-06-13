@@ -1,7 +1,7 @@
+import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
 import { BarChart } from "./_components/bar-chart";
-import { aggregateVisits } from "./aggregateVisits";
 import { CountriesAndCitiesStats } from "./countries-and-cities-stats";
 import { UserAgentStats } from "./user-agent-stats";
 
