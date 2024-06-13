@@ -16,9 +16,7 @@ function generateToken() {
 }
 
 function hashToken(token: string) {
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
-
-  return token.slice(0, 7) + hash;
+  return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 export const getTokens = async (ctx: ProtectedTRPCContext) => {
