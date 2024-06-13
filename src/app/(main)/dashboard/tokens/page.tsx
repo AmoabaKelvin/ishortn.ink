@@ -25,11 +25,7 @@ export default async function ApiTokenPage() {
         </p>
 
         {tokens.length > 0 ? (
-          <TokenCard
-            start={token!.token!.slice(0, 7)}
-            createdAt={token!.createdAt!.getTime()}
-            keyID={token!.id}
-          />
+          <TokenCard start="******" createdAt={token!.createdAt!.getTime()} keyID={token!.id} />
         ) : (
           <GenerateTokenTrigger />
         )}
