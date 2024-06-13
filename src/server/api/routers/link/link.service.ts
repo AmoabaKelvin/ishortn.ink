@@ -36,8 +36,20 @@ export const getLinks = async (ctx: ProtectedTRPCContext) => {
 };
 
 export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInput) => {
+  if (input.alias) {
+    const aliasExists = await ctx.db
+      .select()
+      .from(link)
+      .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+
+    if (aliasExists.length) {
+      throw new Error("Alias already exists");
+    }
+  }
+
   return await ctx.db.insert(link).values({
     ...input,
+    alias: input.alias ?? (await generateShortLink()),
     userId: ctx.auth.userId,
   });
 };
