@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { api } from "@/trpc/server";
 
-import CreateTokenMutation from "./create-token";
+import GenerateTokenTrigger from "./create-token";
 import TokenCard from "./token-card";
 
 export default async function ApiTokenPage() {
@@ -31,7 +31,7 @@ export default async function ApiTokenPage() {
             keyID={token!.id}
           />
         ) : (
-          <CreateTokenMutation />
+          <GenerateTokenTrigger />
         )}
       </div>
     </div>

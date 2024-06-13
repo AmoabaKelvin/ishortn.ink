@@ -14,7 +14,7 @@ import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../actions/revalidate-homepage";
 
-const CreateTokenMutation = () => {
+const GenerateTokenTrigger = () => {
   const createAPIKeyMutation = api.token.create.useMutation();
   const [key, setKey] = useState<null | string>(null);
 
@@ -66,4 +66,4 @@ const CreateTokenMutation = () => {
   );
 };
 
-export default CreateTokenMutation;
+export default GenerateTokenTrigger;
