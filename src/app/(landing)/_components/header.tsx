@@ -1,23 +1,37 @@
+"use client";
+
+import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
-import { RocketIcon } from "@/components/icons";
-import { APP_TITLE } from "@/lib/constants";
+
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { APP_TITLE } from "@/lib/constants";
 
 const routes = [
   { name: "Home", href: "/" },
   { name: "Features", href: "/#features" },
+  { name: "FAQ", href: "/#faq" },
   {
     name: "Documentation",
     href: "https://www.touha.dev/posts/simple-nextjs-t3-authentication-with-lucia",
   },
 ] as const;
+
+const handleSmoothScroll = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  if (href.startsWith("/#")) {
+    event.preventDefault();
+    const targetId = href.split("#")[1];
+    const targetElement = document.getElementById(targetId!);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+};
 
 export const Header = () => {
   return (
@@ -37,17 +51,16 @@ export const Header = () => {
             <div className="py-1">
               {routes.map(({ name, href }) => (
                 <DropdownMenuItem key={name} asChild>
-                  <Link href={href}>{name}</Link>
+                  <Link href={href} onClick={(e) => handleSmoothScroll(e, href)}>
+                    {name}
+                  </Link>
                 </DropdownMenuItem>
               ))}
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Link
-          className="flex items-center justify-center text-xl font-medium"
-          href="/"
-        >
-          <RocketIcon className="mr-2 h-5 w-5" /> {APP_TITLE}
+        <Link className="flex items-center justify-center text-xl font-bold" href="/">
+          {APP_TITLE}
         </Link>
         <nav className="ml-10 hidden gap-4 sm:gap-6 md:flex">
           {routes.map(({ name, href }) => (
@@ -55,6 +68,7 @@ export const Header = () => {
               key={name}
               className="text-sm font-medium text-muted-foreground/70 transition-colors hover:text-muted-foreground"
               href={href}
+              onClick={(e) => handleSmoothScroll(e, href)}
             >
               {name}
             </Link>
@@ -62,7 +76,7 @@ export const Header = () => {
         </nav>
         <div className="ml-auto">
           <Button asChild variant={"secondary"}>
-            <Link href="/login">Login</Link>
+            <Link href="/sign-in">Login</Link>
           </Button>
         </div>
       </div>
