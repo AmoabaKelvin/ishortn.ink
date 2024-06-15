@@ -5,10 +5,10 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { APP_TITLE } from "@/lib/constants";
 
@@ -18,7 +18,7 @@ const routes = [
   { name: "FAQ", href: "/#faq" },
   {
     name: "Documentation",
-    href: "https://www.touha.dev/posts/simple-nextjs-t3-authentication-with-lucia",
+    href: "https://ishortn.ink/docs",
   },
 ] as const;
 
