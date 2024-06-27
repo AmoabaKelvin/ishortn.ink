@@ -1,6 +1,7 @@
 import { and, count, desc, eq } from "drizzle-orm";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
+import { Cache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { link, linkVisit } from "@/server/db/schema";
 
@@ -12,6 +13,9 @@ import type {
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
+
+const cache = new Cache();
+
 export const getLinks = async (ctx: ProtectedTRPCContext) => {
   const links = await ctx.db
     .select({
@@ -71,6 +75,12 @@ export const retrieveOriginalUrl = async (
   ctx: PublicTRPCContext,
   input: RetrieveOriginalUrlInput,
 ) => {
+  const cachedLink = await cache.get(input.alias);
+
+  if (cachedLink) {
+    return cachedLink;
+  }
+
   const link = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.alias, input.alias),
   });
@@ -78,19 +88,6 @@ export const retrieveOriginalUrl = async (
   if (!link) {
     return null;
   }
-
-  // const insertAnalyticsData = async () => {
-  //   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
-
-  //   await ctx.db.insert(linkVisit).values({
-  //     linkId: link.id,
-  //     ...deviceDetails,
-  //   });
-  // };
-
-  // waitUntil(insertAnalyticsData());
-
-  console.log("headers", ctx.headers);
 
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
 
