@@ -18,6 +18,7 @@ export const env = createEnv({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     RESEND_API_KEY: z.string().optional(),
     WEBHOOK_SECRET: z.string().optional(),
+    REDIS_URL: z.string().url(),
   },
 
   /**
@@ -41,6 +42,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+    REDIS_URL: process.env.REDIS_URL,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },
