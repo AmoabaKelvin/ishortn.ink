@@ -5,7 +5,8 @@ export const retrieveOriginalUrlSchema = z.object({
 });
 
 export const getLinkSchema = z.object({
-  id: z.number(),
+  // id: z.number(),
+  alias: z.string(),
 });
 
 export const createLinkSchema = z.object({
