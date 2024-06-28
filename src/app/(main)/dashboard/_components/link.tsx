@@ -128,11 +128,11 @@ const LinkActions = ({ link }: LinkActionsProps) => {
   };
 
   const handleLinkToggleMutation = async () => {
-    toggleLinkStatusMutation.mutate({ id: link.id });
+    toggleLinkStatusMutation.mutate({ alias: link.alias! });
   };
 
   const handlePublicStatsToggleMutation = async () => {
-    togglePublicStatMutation.mutate({ id: link.id });
+    togglePublicStatMutation.mutate({ alias: link.alias! });
   };
 
   return (
@@ -167,7 +167,7 @@ const LinkActions = ({ link }: LinkActionsProps) => {
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-red-500"
-              onClick={() => deleteLinkMutation.mutate({ id: link.id })}
+              onClick={() => deleteLinkMutation.mutate({ alias: link.alias! })}
             >
               <Trash2Icon className="mr-2 size-4" />
               Delete Link
