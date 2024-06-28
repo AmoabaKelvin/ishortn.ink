@@ -1,9 +1,11 @@
 import "@/styles/globals.css";
 
 import { ClerkProvider } from "@clerk/nextjs";
+import Script from "next/script";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { env } from "@/env";
 import { APP_TITLE } from "@/lib/constants";
 import { fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
+      {env.UMAMI_TRACKING_ID && (
+        <Script
+          defer
+          src={env.UMAMI_URL as string}
+          data-website-id={env.UMAMI_TRACKING_ID as string}
+        />
+      )}
       <html lang="en" suppressHydrationWarning>
         <body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}>
           {/* we ship dark theme later, now light theme */}
