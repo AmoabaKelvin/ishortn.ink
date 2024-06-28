@@ -1,5 +1,6 @@
 "use client";
 
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 
@@ -34,6 +35,8 @@ const handleSmoothScroll = (event: React.MouseEvent<HTMLAnchorElement>, href: st
 };
 
 export const Header = () => {
+  // const { userId } = getAuth();
+
   return (
     <header className="px-2 py-4 lg:py-6">
       <div className="container flex items-center gap-2 p-0">
@@ -75,9 +78,16 @@ export const Header = () => {
           ))}
         </nav>
         <div className="ml-auto">
-          <Button asChild variant={"secondary"}>
-            <Link href="/sign-in">Login</Link>
-          </Button>
+          <SignedOut>
+            <Button asChild variant="secondary">
+              <Link href="/sign-in">Login</Link>
+            </Button>
+          </SignedOut>
+          <SignedIn>
+            <Button asChild variant="secondary">
+              <Link href="/dashboard">Dashboard</Link>
+            </Button>
+          </SignedIn>
         </div>
       </div>
     </header>
