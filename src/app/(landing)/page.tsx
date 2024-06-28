@@ -76,16 +76,7 @@ const HomePage = () => {
             Discover the powerful features that make iShortn the ultimate URL shortening and
             tracking tool.
           </p>
-          {/* <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-            {features.map((feature, i) => (
-              <CardSpotlight
-                key={i}
-                name={feature.name}
-                description={feature.description}
-                logo={<feature.logo className="h-7 w-7" />}
-              />
-            ))}
-          </div> */}
+
           <div className="flex flex-wrap justify-center gap-6">
             {features.map((feature, i) => (
               <div className="w-[300px] max-w-full" key={i}>
