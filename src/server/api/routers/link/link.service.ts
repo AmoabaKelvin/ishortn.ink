@@ -39,6 +39,12 @@ export const getLinks = async (ctx: ProtectedTRPCContext) => {
   return links;
 };
 
+export const getLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
+  return await ctx.db.query.link.findFirst({
+    where: (table, { eq }) => eq(table.alias, input.alias),
+  });
+};
+
 export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInput) => {
   if (input.alias) {
     const aliasExists = await ctx.db

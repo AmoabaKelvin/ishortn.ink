@@ -17,8 +17,7 @@ export const linkRouter = createTRPCRouter({
   }),
 
   get: protectedProcedure.input(inputs.getLinkSchema).query(({ ctx, input }) => {
-    // todo: implement
-    return undefined;
+    return services.getLink(ctx, input);
   }),
 
   create: protectedProcedure.input(inputs.createLinkSchema).mutation(({ ctx, input }) => {
