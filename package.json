@@ -47,6 +47,7 @@
     "drizzle-orm": "^0.30.8",
     "framer-motion": "^11.2.10",
     "install": "^0.13.0",
+    "ioredis": "^5.4.1",
     "lucide-react": "^0.379.0",
     "mysql2": "^3.9.7",
     "nanoid": "^5.0.7",
