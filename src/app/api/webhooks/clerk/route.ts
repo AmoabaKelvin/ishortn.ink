@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   });
 
   const { data, error } = await resend.emails.send({
-    from: "kelvin@ishortn.ink",
+    from: "Kelvin <developer@ishortn.ink>",
     to: userInfo.email!,
     subject: "Welcome to iShortn",
     react: WelcomeEmail({
