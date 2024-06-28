@@ -23,9 +23,9 @@ export class Cache {
     }
   }
 
-  async set(link: NonNullableLink): Promise<boolean> {
+  async set(link: Link): Promise<boolean> {
     try {
-      await this.redis.hset(link.alias, link);
+      await this.redis.hset(link.alias!, link);
       return true;
     } catch (error) {
       return false;
