@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider>
       {env.UMAMI_TRACKING_ID && (
-        <Script defer src={env.UMAMI_URL} data-website-id={env.UMAMI_TRACKING_ID!} />
+        <Script defer src={env.UMAMI_URL} data-website-id={env.UMAMI_TRACKING_ID} />
       )}
       <html lang="en" suppressHydrationWarning>
         <body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}>
