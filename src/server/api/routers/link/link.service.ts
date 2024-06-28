@@ -59,16 +59,28 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
 };
 
 export const updateLink = async (ctx: ProtectedTRPCContext, input: UpdateLinkInput) => {
-  return await ctx.db
+  await ctx.db
     .update(link)
     .set(input)
     .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
+
+  if (input.alias) {
+    await cache.delete(input.alias);
+  }
+
+  const updatedLink = await ctx.db.query.link.findFirst({
+    where: (table, { eq }) => eq(table.id, input.id),
+  });
+
+  await cache.set(updatedLink!);
 };
 
 export const deleteLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
-  return await ctx.db
+  await ctx.db
     .delete(link)
-    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
+    .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+
+  await cache.delete(input.alias);
 };
 
 export const retrieveOriginalUrl = async (
@@ -103,11 +115,23 @@ export const shortenLinkWithAutoAlias = async (
   ctx: ProtectedTRPCContext,
   input: QuickLinkShorteningInput,
 ) => {
-  return await ctx.db.insert(link).values({
+  const insertionResult = await ctx.db.insert(link).values({
     url: input.url,
     alias: await generateShortLink(),
     userId: ctx.auth.userId,
   });
+
+  const insertedLinkId = insertionResult[0].insertId;
+
+  const insertedLink = await ctx.db.query.link.findFirst({
+    where: (table, { eq }) => eq(table.id, insertedLinkId),
+  });
+
+  if (insertedLink) {
+    await cache.set(insertedLink);
+  }
+
+  return link;
 };
 
 export const getLinkVisits = async (ctx: ProtectedTRPCContext, input: { id: string }) => {
@@ -123,7 +147,7 @@ export const getLinkVisits = async (ctx: ProtectedTRPCContext, input: { id: stri
 
 export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.id, input.id),
+    where: (table, { eq }) => eq(table.alias, input.alias),
   });
 
   if (!fetchedLink) {
@@ -135,12 +159,12 @@ export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLink
     .set({
       disabled: !fetchedLink.disabled,
     })
-    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
+    .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
 };
 
 export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.id, input.id),
+    where: (table, { eq }) => eq(table.alias, input.alias),
   });
 
   if (!fetchedLink) {
@@ -152,5 +176,5 @@ export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLin
     .set({
       publicStats: !fetchedLink.publicStats,
     })
-    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
+    .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
 };
