@@ -16,16 +16,10 @@ export const linkRouter = createTRPCRouter({
     return services.getLinks(ctx);
   }),
 
-  get: protectedProcedure
-    .input(
-      z.object({
-        id: z.number(),
-      }),
-    )
-    .query(({ ctx, input }) => {
-      // todo: implement
-      return undefined;
-    }),
+  get: protectedProcedure.input(inputs.getLinkSchema).query(({ ctx, input }) => {
+    // todo: implement
+    return undefined;
+  }),
 
   create: protectedProcedure.input(inputs.createLinkSchema).mutation(({ ctx, input }) => {
     return services.createLink(ctx, input);
@@ -35,15 +29,9 @@ export const linkRouter = createTRPCRouter({
     return services.updateLink(ctx, input);
   }),
 
-  delete: protectedProcedure
-    .input(
-      z.object({
-        id: z.number(),
-      }),
-    )
-    .mutation(({ ctx, input }) => {
-      return services.deleteLink(ctx, input);
-    }),
+  delete: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
+    return services.deleteLink(ctx, input);
+  }),
 
   quickShorten: protectedProcedure
     .input(inputs.quickLinkShorteningSchema)
