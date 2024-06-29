@@ -109,6 +109,11 @@ export const retrieveOriginalUrl = async (
 
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
 
+  console.log(
+    "🚀 ~ file: link.service.ts ~ line 116 ~ retrieveOriginalUrl ~ deviceDetails",
+    deviceDetails,
+  );
+
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,
     ...deviceDetails,
