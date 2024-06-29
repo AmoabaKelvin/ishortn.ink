@@ -94,8 +94,13 @@ export const retrieveOriginalUrl = async (
   input: RetrieveOriginalUrlInput,
 ) => {
   const cachedLink = await cache.get(input.alias);
+  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
 
   if (cachedLink) {
+    await ctx.db.insert(linkVisit).values({
+      linkId: cachedLink.id,
+      ...deviceDetails,
+    });
     return cachedLink;
   }
 
@@ -106,8 +111,6 @@ export const retrieveOriginalUrl = async (
   if (!link) {
     return null;
   }
-
-  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
 
   console.log(
     "🚀 ~ file: link.service.ts ~ line 116 ~ retrieveOriginalUrl ~ deviceDetails",
