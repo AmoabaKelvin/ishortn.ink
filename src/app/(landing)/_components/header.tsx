@@ -6,10 +6,10 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { APP_TITLE } from "@/lib/constants";
 
@@ -80,7 +80,7 @@ export const Header = () => {
         <div className="ml-auto">
           <SignedOut>
             <Button asChild variant="secondary">
-              <Link href="/sign-in">Login</Link>
+              <Link href="/auth/sign-in">Login</Link>
             </Button>
           </SignedOut>
           <SignedIn>

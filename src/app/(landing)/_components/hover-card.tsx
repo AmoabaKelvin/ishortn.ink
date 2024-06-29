@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import React, { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -69,8 +70,8 @@ const CardSpotlight = (props: FeaturesProps) => {
         </CardDescription>
 
         <CardFooter className="w-full p-0">
-          <Button className="mt-6 w-full" size="sm" variant="secondary">
-            Learn More
+          <Button className="mt-6 w-full" size="sm" variant="secondary" asChild>
+            <Link href="/dashboard">Learn More</Link>
           </Button>
         </CardFooter>
       </CardHeader>

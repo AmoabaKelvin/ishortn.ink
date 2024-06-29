@@ -1,5 +1,5 @@
 import { SignIn } from "@clerk/nextjs";
 
 export default function Page() {
-  return <SignIn path="/sign-in" />;
+  return <SignIn path="/auth/sign-in" />;
 }
