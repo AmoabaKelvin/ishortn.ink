@@ -98,7 +98,7 @@ export const retrieveOriginalUrl = async (
 
   console.log("Log is", cachedLink, typeof cachedLink?.id);
 
-  if (cachedLink) {
+  if (cachedLink?.alias) {
     await ctx.db.insert(linkVisit).values({
       linkId: cachedLink.id,
       ...deviceDetails,
