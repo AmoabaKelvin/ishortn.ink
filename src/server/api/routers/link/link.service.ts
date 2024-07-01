@@ -96,6 +96,8 @@ export const retrieveOriginalUrl = async (
   const cachedLink = await cache.get(input.alias);
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
 
+  console.log("Log is", cachedLink, typeof cachedLink?.id);
+
   if (cachedLink) {
     await ctx.db.insert(linkVisit).values({
       linkId: cachedLink.id,
