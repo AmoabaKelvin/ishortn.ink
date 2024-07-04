@@ -108,7 +108,7 @@ const HomePage = () => {
           </Link>{" "}
           about iShortn.
         </p>
-        <div className="relative flex h-[20rem] flex-col items-center justify-center overflow-hidden rounded-md antialiased dark:bg-black">
+        <div className="relative flex h-[20rem] flex-col items-center justify-center overflow-hidden rounded-md antialiased">
           <InfiniteMovingCards items={testimonials} direction="right" speed="slow" />
         </div>
       </section>

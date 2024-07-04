@@ -40,8 +40,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
-            enableSystem={false}
-            forcedTheme="light"
+            enableSystem
+            // forcedTheme="light"
             disableTransitionOnChange
           >
             <TRPCReactProvider>{children}</TRPCReactProvider>

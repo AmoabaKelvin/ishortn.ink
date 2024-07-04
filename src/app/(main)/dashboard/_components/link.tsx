@@ -39,7 +39,7 @@ const Link = ({ link }: LinkProps) => {
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
 
   return (
-    <div className="flex items-center justify-between rounded-md bg-gray-100 px-6 py-4">
+    <div className="flex items-center justify-between rounded-md bg-gray-100/65 px-6 py-4 dark:bg-[#1B1B1B]">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div
@@ -50,7 +50,7 @@ const Link = ({ link }: LinkProps) => {
             ishortn.ink/{link.alias}
           </div>
           <div
-            className="hover:animate-wiggle-more flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-white "
+            className="hover:animate-wiggle-more flex h-6 w-6 cursor-pointer items-center justify-center rounded-full"
             onClick={async () => {
               await copyToClipboard(`https://ishortn.ink/${link.alias}`);
             }}
@@ -58,16 +58,16 @@ const Link = ({ link }: LinkProps) => {
             <Copy className="h-3 w-3" />
           </div>
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm">
           <span>{daysSinceLinkCreation === 0 ? "Today" : `${daysSinceLinkCreation}d`}</span>
-          <span className="mx-1 text-slate-300">•</span>
-          <span className="cursor-pointer text-gray-900 hover:underline">{link.url}</span>
+          <span className="mx-1">•</span>
+          <span className="cursor-pointer hover:underline">{link.url}</span>
         </p>
       </div>
       <div className="flex items-center gap-2">
         <Badge
           variant="secondary"
-          className="rounded-md bg-slate-200 transition-all duration-500 hover:scale-110"
+          className="rounded-md bg-card transition-all duration-500 hover:scale-110"
         >
           {link.totalClicks}
           <span className="ml-0.5 hidden md:inline">visits</span>

@@ -27,7 +27,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between px-6">
-        <h2 className="text-xl font-semibold leading-tight text-gray-800">Links</h2>
+        <h2 className="text-xl font-semibold leading-tight">Links</h2>
         <Button asChild>
           <Link href="/dashboard/link/new">Shorten Link</Link>
         </Button>

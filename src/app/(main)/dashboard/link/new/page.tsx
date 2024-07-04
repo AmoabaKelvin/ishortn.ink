@@ -9,22 +9,22 @@ import { useDebounce } from "use-debounce";
 
 import { Button } from "@/components/ui/button";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
@@ -88,8 +88,10 @@ export default function CreateLinkPage() {
   return (
     <section className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-11">
       <div className="md:col-span-5">
-        <h2 className="text-2xl font-semibold text-gray-900">Create a new link</h2>
-        <p className="mt-1 text-sm text-gray-500">Create a new link to share with your audience.</p>
+        <h2 className="text-2xl font-semibold">Create a new link</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Create a new link to share with your audience.
+        </p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
@@ -121,7 +123,7 @@ export default function CreateLinkPage() {
                   <FormControl>
                     <section className="flex items-center">
                       <Select>
-                        <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-50">
+                        <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-100/65 dark:bg-[#1B1B1B]">
                           <SelectValue placeholder="ishortn.ink" />
                         </SelectTrigger>
                         <SelectContent>
@@ -144,9 +146,9 @@ export default function CreateLinkPage() {
 
             {/* horizontal line with optional settings */}
             <div className="flex items-center gap-4">
-              <div className="flex-grow border-t border-gray-200" />
-              <span className="text-gray-500">Optional Settings</span>
-              <div className="flex-grow border-t border-gray-200" />
+              <div className="border-1 flex-grow border-t" />
+              <span className="text-muted-foreground">Optional Settings</span>
+              <div className="border-1 flex-grow border-t" />
             </div>
 
             <FormField
@@ -198,7 +200,7 @@ export default function CreateLinkPage() {
       <div className="mt-4 flex flex-col gap-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl">How users see your link</h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             This is how your link will be displayed to users on social platforms
           </p>
         </div>
@@ -228,7 +230,7 @@ function LinkPreviewComponent({
   favicon: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-white p-5">
+    <div className="flex flex-col gap-2 rounded-lg border bg-white/65 p-5 dark:bg-[#1B1B1B]">
       <div className="flex items-center font-semibold">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -239,7 +241,7 @@ function LinkPreviewComponent({
         {metaTitle || "Title"}
       </div>
       <span className="text-sm">{metaDescription || "Description"}</span>
-      <span className="text-sm text-slate-500">
+      <span className="text-sm text-muted-foreground">
         {destinationURL?.replace(/(^\w+:|^)\/\//, "").split("/")[0]}
       </span>
       {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -6,12 +6,13 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { APP_TITLE } from "@/lib/constants";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const routes = [
   { name: "Home", href: "/" },
@@ -77,7 +78,8 @@ export const Header = () => {
             </Link>
           ))}
         </nav>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center">
+          <ThemeToggle />
           <SignedOut>
             <Button asChild variant="secondary">
               <Link href="/auth/sign-in">Login</Link>
