@@ -9,7 +9,9 @@ import { InfiniteMovingCards } from "./_components/infinite-moving-cards";
 
 import type { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "iShortn",
+  title: {
+    absolute: "iShortn",
+  },
   description: "URL Shortener with analytics, custom domains, and password protection.",
 };
 
