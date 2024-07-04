@@ -47,6 +47,10 @@ export const getLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) =>
 
 export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInput) => {
   if (input.alias) {
+    if (input.alias.includes(".")) {
+      throw new Error("Cannot include periods in alias");
+    }
+
     const aliasExists = await ctx.db
       .select()
       .from(link)
