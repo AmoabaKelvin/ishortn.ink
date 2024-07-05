@@ -198,3 +198,17 @@ export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLin
     })
     .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
 };
+
+export const resetLinkStatistics = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
+  const fetchedLink = await ctx.db.query.link.findFirst({
+    where: (table, { eq }) => eq(table.alias, input.alias),
+  });
+
+  if (!fetchedLink) {
+    return null;
+  }
+
+  await ctx.db.delete(linkVisit).where(eq(linkVisit.linkId, fetchedLink.id));
+
+  return fetchedLink;
+};
