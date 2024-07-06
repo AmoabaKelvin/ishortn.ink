@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: Props) {
   return (
     <div
       className={cn(
-        "mx-auto min-h-[calc(100vh-180px)] max-w-7xl px-4 py-10 text-black sm:px-6 lg:px-8",
+        "mx-auto min-h-[calc(100vh-180px)] max-w-[1180px] px-4 py-10 text-black sm:px-6 lg:px-8",
         satoshi.className,
       )}
     >

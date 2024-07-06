@@ -8,6 +8,27 @@
       "when": 1716044549285,
       "tag": "0000_sturdy_spirit",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1720263894121,
+      "tag": "0001_daffy_leech",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1720264835003,
+      "tag": "0002_last_ares",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1720266629253,
+      "tag": "0003_red_maverick",
+      "breakpoints": true
     }
   ]
 }

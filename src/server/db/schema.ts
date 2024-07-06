@@ -27,6 +27,32 @@ export const user = mysqlTable(
   }),
 );
 
+export const subscription = mysqlTable(
+  "Subscription",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", {
+      length: 32,
+    })
+      .notNull()
+      .unique(),
+    orderId: int("orderId").default(0),
+    subscriptionId: int("subscriptionId").default(0),
+    customerId: int("customerId").default(0),
+    renewsAt: datetime("renewsAt"),
+    createdAt: timestamp("createdAt"),
+    endsAt: datetime("endsAt"),
+    status: varchar("status", { length: 255 }).default(""),
+
+    // details about the payment to show in the dashboard
+    cardBrand: varchar("cardBrand", { length: 255 }).default(""),
+    cardLastFour: varchar("cardLastFour", { length: 4 }).default(""),
+  },
+  (table) => ({
+    userIdx: index("userId_idx").on(table.userId),
+  }),
+);
+
 export const link = mysqlTable(
   "Link",
   {
@@ -107,6 +133,13 @@ export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
 export const tokenRelations = relations(token, ({ one }) => ({
   user: one(user, {
     fields: [token.userId],
+    references: [user.id],
+  }),
+}));
+
+export const subscriptionRelations = relations(subscription, ({ one }) => ({
+  user: one(user, {
+    fields: [subscription.userId],
     references: [user.id],
   }),
 }));
