@@ -14,6 +14,12 @@ const DashboardNav = () => {
       </h2>
       <div className="flex items-center justify-between space-x-4">
         <div className="flex items-center gap-4">
+          <Link
+            href="https://docs.google.com/forms/d/e/1FAIpQLSfVfz9c1qkC4aDSjFnMcVnrimKiNOHA2aoQhyxNaMmDjMSNEg/viewform?usp=sf_link"
+            className="text-sm"
+          >
+            Feature Requests
+          </Link>
           <Link href="https://discord.gg/S66ZvMzkU4" target="_blank">
             <DiscordLogoIcon className="size-5" />
           </Link>

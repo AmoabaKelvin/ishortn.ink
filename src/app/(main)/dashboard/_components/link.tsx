@@ -1,31 +1,34 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 "use client";
 
-import { Copy, MoreVertical, Pencil, PowerCircle, QrCode, Trash2Icon, Unlink } from "lucide-react";
+import {
+  Copy,
+  MoreVertical,
+  Pencil,
+  PowerCircle,
+  QrCode,
+  RotateCcwIcon,
+  Trash2Icon,
+  Unlink,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import QRCode from "qrcode.react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { copyToClipboard, daysSinceDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { revalidateHomepage } from "../actions/revalidate-homepage";
+import { QRCodeModal } from "./qrcode-modal";
 import UpdateLinkModal from "./update-link-modal";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -67,7 +70,8 @@ const Link = ({ link }: LinkProps) => {
       <div className="flex items-center gap-2">
         <Badge
           variant="secondary"
-          className="rounded-md bg-card transition-all duration-500 hover:scale-110"
+          className="rounded-md bg-slate-200 transition-all duration-500 hover:scale-110 hover:cursor-pointer"
+          onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
         >
           {link.totalClicks}
           <span className="ml-0.5 hidden md:inline">visits</span>
@@ -78,7 +82,6 @@ const Link = ({ link }: LinkProps) => {
     </div>
   );
 };
-
 export default Link;
 
 function LinkStatus({ disabled }: { disabled: boolean }) {
@@ -119,6 +122,14 @@ const LinkActions = ({ link }: LinkActionsProps) => {
   const deleteLinkMutation = api.link.delete.useMutation({
     onSuccess: async () => {
       toast.success("Link deleted successfully");
+      await revalidateHomepage();
+    },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+  const resetLinksMutation = api.link.resetLinkStatistics.useMutation({
+    onSuccess: async () => {
+      toast.success("Link statistics reset successfully");
       await revalidateHomepage();
     },
   });
@@ -165,6 +176,16 @@ const LinkActions = ({ link }: LinkActionsProps) => {
               <Unlink className="mr-2 size-4" />
               {isLinkActive ? "Deactivate" : "Activate"} Link
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-red-500 hover:cursor-pointer"
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+              onClick={() => resetLinksMutation.mutate({ alias: link.alias! })}
+            >
+              <RotateCcwIcon className="mr-2 size-4" />
+              Reset Statistics
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-500"
               onClick={() => deleteLinkMutation.mutate({ alias: link.alias! })}
@@ -185,51 +206,3 @@ const LinkActions = ({ link }: LinkActionsProps) => {
     </>
   );
 };
-
-type QRCodeModalProps = {
-  open: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  destinationUrl: string;
-};
-
-function QRCodeModal({ open, setOpen, destinationUrl }: QRCodeModalProps) {
-  const qrCodeCanvasRef = useRef(null);
-
-  const handleQRCodeDownload = () => {
-    if (!destinationUrl) return;
-    const canvas = document.getElementById("qr-gen") as HTMLCanvasElement;
-    const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
-    const downloadLink = document.createElement("a");
-    downloadLink.href = pngUrl;
-    downloadLink.download = `qrcode.png`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>QR Code</DialogTitle>
-          <DialogDescription>Here is your QR Code for the link.</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col items-center">
-          <QRCode
-            id="qr-gen"
-            value={destinationUrl}
-            size={300}
-            level={"H"}
-            includeMargin={true}
-            ref={qrCodeCanvasRef}
-          />
-
-          {/* Deactivate after Number of clicks */}
-          <Button className="mt-4" onClick={handleQRCodeDownload}>
-            Download Image
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}

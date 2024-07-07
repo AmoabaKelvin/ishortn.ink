@@ -21,6 +21,9 @@ interface Props {
 
 export default async function DashboardPage({ searchParams }: Props) {
   const links = await api.link.list.query();
+  const subscriptions = await api.subscriptions.get.query();
+
+  const userHasProPlan = subscriptions?.status === "active";
 
   const totalClicks = links.reduce((acc, link) => acc + link.totalClicks, 0);
 
@@ -34,7 +37,11 @@ export default async function DashboardPage({ searchParams }: Props) {
       </div>
 
       <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-11">
-        <DashboardSidebar numberOfClicks={totalClicks} numberOfLinks={links.length} />
+        <DashboardSidebar
+          numberOfClicks={totalClicks}
+          numberOfLinks={links.length}
+          userHasProPlan={userHasProPlan}
+        />
         <div className="col-span-11 md:col-span-7">
           <Links links={links} />
         </div>

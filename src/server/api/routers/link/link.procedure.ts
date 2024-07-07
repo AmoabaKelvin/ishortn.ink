@@ -55,4 +55,8 @@ export const linkRouter = createTRPCRouter({
   togglePublicStats: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
     return services.togglePublicStats(ctx, input);
   }),
+
+  resetLinkStatistics: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
+    return services.resetLinkStatistics(ctx, input);
+  }),
 });
