@@ -109,7 +109,7 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
                   <FormControl>
                     <section className="flex items-center">
                       <Select>
-                        <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-50">
+                        <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-gray-100/65 dark:bg-[#0a1013]">
                           <SelectValue placeholder="ishortn.ink" />
                         </SelectTrigger>
                         <SelectContent>
@@ -132,9 +132,9 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
 
             {/* horizontal line with optional settings */}
             <div className="flex items-center gap-4">
-              <div className="flex-grow border-t border-gray-200" />
-              <span className="text-gray-500">Optional Settings</span>
-              <div className="flex-grow border-t border-gray-200" />
+              <div className="border-1 flex-grow border-t" />
+              <span className="text-muted-foreground">Optional Settings</span>
+              <div className="border-1 flex-grow border-t" />
             </div>
 
             <FormField
