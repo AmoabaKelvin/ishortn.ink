@@ -123,7 +123,7 @@ export default function CreateLinkPage() {
                   <FormControl>
                     <section className="flex items-center">
                       <Select>
-                        <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-100/65 dark:bg-[#1B1B1B]">
+                        <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-100/65 dark:bg-[#0a1013]">
                           <SelectValue placeholder="ishortn.ink" />
                         </SelectTrigger>
                         <SelectContent>
@@ -199,7 +199,7 @@ export default function CreateLinkPage() {
       </div>
       <div className="mt-4 flex flex-col gap-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl">How users see your link</h1>
+          <h1 className="text-2xl text-foreground">How users see your link</h1>
           <p className="text-sm text-muted-foreground">
             This is how your link will be displayed to users on social platforms
           </p>
@@ -230,7 +230,7 @@ function LinkPreviewComponent({
   favicon: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-white/65 p-5 dark:bg-[#1B1B1B]">
+    <div className="flex flex-col gap-2 rounded-lg border bg-white/65 p-5 dark:bg-[#0a1013]">
       <div className="flex items-center font-semibold">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -240,7 +240,7 @@ function LinkPreviewComponent({
         />
         {metaTitle || "Title"}
       </div>
-      <span className="text-sm">{metaDescription || "Description"}</span>
+      <span className="text-sm text-foreground">{metaDescription || "Description"}</span>
       <span className="text-sm text-muted-foreground">
         {destinationURL?.replace(/(^\w+:|^)\/\//, "").split("/")[0]}
       </span>

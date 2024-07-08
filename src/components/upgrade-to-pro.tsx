@@ -43,16 +43,17 @@ export function UpgradeToPro() {
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          className="flex justify-between py-6"
+          className="flex justify-between py-6  hover:bg-gray-100/65 dark:hover:bg-[#0a1013]"
           variant="outline"
           data-umami-event="Clicked on Upgrade to Pro on Dashboard"
         >
           <div>
-            <span className="text-gray-600">Upgrade to</span>
+            <span className="text-muted-foreground">Upgrade to</span>
             <span className="mx-2 rounded-md bg-blue-500 px-2 py-1 text-white">PRO</span>
           </div>
-          <button className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white">
-            <ArrowUpRightIcon className="h-4 w-4 text-gray-600" />
+          <button className="border-1 flex h-8 w-8 items-center justify-center rounded-full border bg-white dark:bg-[#0a1013]">
+            <ArrowUpRightIcon className="h-4 w-4 text-foreground" />
+            <span className="sr-only">Upgrade to Pro</span>
           </button>
         </Button>
       </DialogTrigger>

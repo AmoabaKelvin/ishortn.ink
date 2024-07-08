@@ -25,7 +25,7 @@ const TabSwitcher = ({ className }: TabSwitcherProps) => {
   return (
     <div
       className={cn(
-        "flex items-center border-b border-gray-200 text-center text-sm font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400",
+        "border-1 flex items-center border-b  text-center text-sm font-medium text-muted-foreground",
         className,
       )}
     >

@@ -34,8 +34,8 @@ export function QuickLinkShorteningForm() {
   };
 
   return (
-    <div className="rounded-md bg-gray-100/65 p-6 dark:bg-[#1B1B1B]">
-      <h1 className="text-xl font-semibold leading-tight">Quick Shorten</h1>
+    <div className="rounded-md bg-gray-100/65 p-6 dark:bg-[#0a1013]">
+      <h1 className="text-xl font-semibold leading-tight text-foreground">Quick Shorten</h1>
       <p className="text-sm text-muted-foreground">Shorten a link quickly without any settings</p>
       <Input
         type="url"

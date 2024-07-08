@@ -42,7 +42,7 @@ const Link = ({ link }: LinkProps) => {
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
 
   return (
-    <div className="flex items-center justify-between rounded-md bg-gray-100/65 px-6 py-4 dark:bg-[#1B1B1B]">
+    <div className="flex items-center justify-between rounded-md bg-gray-100/65 px-6 py-4 dark:bg-[#0a1013]">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div
@@ -58,10 +58,10 @@ const Link = ({ link }: LinkProps) => {
               await copyToClipboard(`https://ishortn.ink/${link.alias}`);
             }}
           >
-            <Copy className="h-3 w-3" />
+            <Copy className="h-3 w-3 text-foreground" />
           </div>
         </div>
-        <p className="text-sm">
+        <p className="text-sm text-foreground">
           <span>{daysSinceLinkCreation === 0 ? "Today" : `${daysSinceLinkCreation}d`}</span>
           <span className="mx-1">•</span>
           <span className="cursor-pointer hover:underline">{link.url}</span>
@@ -70,7 +70,7 @@ const Link = ({ link }: LinkProps) => {
       <div className="flex items-center gap-2">
         <Badge
           variant="secondary"
-          className="rounded-md bg-slate-200 transition-all duration-500 hover:scale-110 hover:cursor-pointer"
+          className="rounded-md transition-all duration-500 hover:scale-110 hover:cursor-pointer"
           onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
         >
           {link.totalClicks}
@@ -152,7 +152,7 @@ const LinkActions = ({ link }: LinkActionsProps) => {
         <DropdownMenuTrigger>
           <MoreVertical className="size-4 cursor-pointer" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent className="bg-gray-100/65 dark:bg-[#0a1013]">
           <DropdownMenuGroup>
             <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
               <Pencil className="mr-2 size-4" />

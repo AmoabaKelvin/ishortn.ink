@@ -4,7 +4,6 @@
 
 @layer base {
   :root {
-    --ishortnbackground: #ffffff;
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -28,7 +27,6 @@
   }
 
   .dark {
-    --ishortnbackground: #0b1215;
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -56,7 +54,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-ishortnbackground text-foreground;
+    @apply bg-white text-foreground dark:bg-[#0b1215];
   }
 }
 
