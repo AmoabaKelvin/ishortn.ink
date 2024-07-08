@@ -1,15 +1,15 @@
 "use client";
 
 import {
-  Copy,
-  KeyRound,
-  MoreVertical,
-  Pencil,
-  PowerCircle,
-  QrCode,
-  RotateCcwIcon,
-  Trash2Icon,
-  Unlink,
+	Copy,
+	KeyRound,
+	MoreVertical,
+	Pencil,
+	PowerCircle,
+	QrCode,
+	RotateCcwIcon,
+	Trash2Icon,
+	Unlink,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,12 +17,12 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { copyToClipboard, daysSinceDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -125,28 +125,34 @@ const LinkActions = ({ link }: LinkActionsProps) => {
 
   const deleteLinkMutation = api.link.delete.useMutation({
     onSuccess: async () => {
-      toast.success("Link deleted successfully");
       await revalidateHomepage();
     },
   });
 
   const resetLinksMutation = api.link.resetLinkStatistics.useMutation({
     onSuccess: async () => {
-      toast.success("Link statistics reset successfully");
       await revalidateHomepage();
     },
   });
 
   const copyPublicStatsLink = async () => {
-    await copyToClipboard(`https://ishortn.ink/${link.alias}/stats`);
+    await copyToClipboard(`https://ishortn.ink/analytics/${link.alias}/`);
   };
 
   const handleLinkToggleMutation = async () => {
-    toggleLinkStatusMutation.mutate({ alias: link.alias! });
+    toast.promise(toggleLinkStatusMutation.mutateAsync({ alias: link.alias! }), {
+      loading: "Toggling Link Status...",
+      success: "Link status toggled successfully",
+      error: "Failed to toggle Link Status",
+    });
   };
 
   const handlePublicStatsToggleMutation = async () => {
-    togglePublicStatMutation.mutate({ alias: link.alias! });
+    toast.promise(togglePublicStatMutation.mutateAsync({ alias: link.alias! }), {
+      loading: "Toggling Public Stats...",
+      success: "Public Stats toggled successfully",
+      error: "Failed to toggle Public Stats",
+    });
   };
 
   return (
@@ -195,7 +201,13 @@ const LinkActions = ({ link }: LinkActionsProps) => {
             )}
             <DropdownMenuItem
               className="text-red-500 hover:cursor-pointer"
-              onClick={() => resetLinksMutation.mutate({ alias: link.alias! })}
+              onClick={() => {
+                toast.promise(resetLinksMutation.mutateAsync({ alias: link.alias! }), {
+                  loading: "Resetting Statistics...",
+                  success: "Link statistics reset successfully",
+                  error: "Failed to reset Link Statistics",
+                });
+              }}
             >
               <RotateCcwIcon className="mr-2 size-4" />
               Reset Statistics
@@ -203,7 +215,13 @@ const LinkActions = ({ link }: LinkActionsProps) => {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-500"
-              onClick={() => deleteLinkMutation.mutate({ alias: link.alias! })}
+              onClick={() => {
+                toast.promise(deleteLinkMutation.mutateAsync({ alias: link.alias! }), {
+                  loading: "Deleting Link...",
+                  success: "Link deleted successfully",
+                  error: "Failed to delete Link",
+                });
+              }}
             >
               <Trash2Icon className="mr-2 size-4" />
               Delete Link
