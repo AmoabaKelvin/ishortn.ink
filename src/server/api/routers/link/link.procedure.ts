@@ -59,4 +59,16 @@ export const linkRouter = createTRPCRouter({
   resetLinkStatistics: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
     return services.resetLinkStatistics(ctx, input);
   }),
+
+  verifyLinkPassword: protectedProcedure
+    .input(inputs.verifyLinkPasswordSchema)
+    .mutation(({ ctx, input }) => {
+      return services.verifyLinkPassword(ctx, input);
+    }),
+
+  changeLinkPassword: protectedProcedure
+    .input(inputs.verifyLinkPasswordSchema)
+    .mutation(({ ctx, input }) => {
+      return services.changeLinkPassword(ctx, input);
+    }),
 });

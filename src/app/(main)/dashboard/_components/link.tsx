@@ -1,14 +1,15 @@
 "use client";
 
 import {
-	Copy,
-	MoreVertical,
-	Pencil,
-	PowerCircle,
-	QrCode,
-	RotateCcwIcon,
-	Trash2Icon,
-	Unlink,
+  Copy,
+  KeyRound,
+  MoreVertical,
+  Pencil,
+  PowerCircle,
+  QrCode,
+  RotateCcwIcon,
+  Trash2Icon,
+  Unlink,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,17 +17,19 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { copyToClipboard, daysSinceDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { revalidateHomepage } from "../actions/revalidate-homepage";
+import { ChangeLinkPasswordModal } from "./change-link-password-modal";
+import { LinkSecurityStatusTooltip } from "./link-security-status-tooltip";
 import { QRCodeModal } from "./qrcode-modal";
 import UpdateLinkModal from "./update-link-modal";
 
@@ -49,6 +52,7 @@ const Link = ({ link }: LinkProps) => {
             onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
           >
             <LinkStatus disabled={link.disabled!} />
+            <LinkSecurityStatusTooltip link={link} />
             ishortn.ink/{link.alias}
           </div>
           <div
@@ -102,6 +106,7 @@ type LinkActionsProps = {
 const LinkActions = ({ link }: LinkActionsProps) => {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [qrModal, setQrModal] = useState(false);
+  const [openChangePasswordModal, setOpenChangePasswordModal] = useState(false);
   const isPublicStatsEnabled = link.publicStats!;
   const isLinkActive = !link.disabled!;
 
@@ -175,6 +180,19 @@ const LinkActions = ({ link }: LinkActionsProps) => {
               {isLinkActive ? "Deactivate" : "Activate"} Link
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            {/* <DropdownMenuSeparator /> */}
+            {link.passwordHash && (
+              <>
+                <DropdownMenuItem
+                  className="text-red-500"
+                  onClick={() => setOpenChangePasswordModal(true)}
+                >
+                  <KeyRound className="mr-2 size-4" />
+                  Change Password
+                </DropdownMenuItem>
+                {/* <DropdownMenuSeparator /> */}
+              </>
+            )}
             <DropdownMenuItem
               className="text-red-500 hover:cursor-pointer"
               onClick={() => resetLinksMutation.mutate({ alias: link.alias! })}
@@ -199,6 +217,11 @@ const LinkActions = ({ link }: LinkActionsProps) => {
         open={qrModal}
         setOpen={setQrModal}
         destinationUrl={`https://ishortn.ink/${link.alias}`}
+      />
+      <ChangeLinkPasswordModal
+        open={openChangePasswordModal}
+        setOpen={setOpenChangePasswordModal}
+        alias={link.alias!}
       />
     </>
   );

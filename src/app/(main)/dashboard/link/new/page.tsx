@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -9,22 +10,22 @@ import { useDebounce } from "use-debounce";
 
 import { Button } from "@/components/ui/button";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
@@ -42,6 +43,8 @@ export default function CreateLinkPage() {
     image: "",
     favicon: "",
   });
+
+  const userSubscription = api.subscriptions.get.useQuery();
 
   const form = useForm<z.infer<typeof createLinkSchema>>({
     resolver: zodResolver(createLinkSchema),
@@ -61,6 +64,9 @@ export default function CreateLinkPage() {
   });
 
   async function onSubmit(values: z.infer<typeof createLinkSchema>) {
+    if (values.password) {
+      posthog.capture("$create_link_with_password");
+    }
     await formUpdateMutation.mutateAsync(values);
   }
 
@@ -86,18 +92,20 @@ export default function CreateLinkPage() {
   }, [debouncedUrl]);
 
   return (
-    <section className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-11">
+    <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       <div className="md:col-span-5">
         <h2 className="text-2xl font-semibold text-gray-900">Create a new link</h2>
         <p className="mt-1 text-sm text-gray-500">Create a new link to share with your audience.</p>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-5 space-y-5">
             <FormField
               control={form.control}
               name="url"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Destination URL</FormLabel>
+                  <FormLabel>
+                    Destination URL <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="https://site.com"
@@ -181,6 +189,36 @@ export default function CreateLinkPage() {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              disabled={userSubscription?.data?.status !== "active"}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  {/* <FormDescription>
+                    You need to be on a <b>pro plan</b> to create password protected links
+                  </FormDescription> */}
+
+                  {!userSubscription.isLoading && userSubscription.data?.status !== "active" && (
+                    <FormDescription>
+                      You need to be on a <b>pro plan</b> to create password protected links
+                    </FormDescription>
+                  )}
+
+                  <FormControl>
+                    <Input {...field} type="password" />
+                  </FormControl>
+                  <FormDescription>
+                    Set a password to protect your link. Users will be prompted to enter the
+                    password before being redirected
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <Button
               type="submit"
               className="mt-10 w-full"
