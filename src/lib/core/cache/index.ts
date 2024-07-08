@@ -55,5 +55,6 @@ function convertToLink(link: Record<string, string>): Link | null {
     disableLinkAfterDate: link.disableLinkAfterDate ? new Date(link.disableLinkAfterDate) : null,
     disabled: link.disabled === "true",
     publicStats: link.publicStats === "true",
+    passwordHash: link.passwordHash!,
   };
 }
