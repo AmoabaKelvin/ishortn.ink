@@ -2,11 +2,21 @@ import crypto from "crypto";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { token } from "@/server/db/schema";
+import { subscription, token } from "@/server/db/schema";
 
 export async function validateAndGetToken(apiKey: string | null) {
   if (!apiKey) return null;
   const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
   const existingToken = await db.select().from(token).where(eq(token.token, hash));
-  return existingToken.length ? existingToken[0] : null;
+
+  if (!existingToken.length) return null;
+
+  const userSubscription = await db
+    .select()
+    .from(subscription)
+    .where(eq(subscription.userId, existingToken[0]!.userId));
+
+  const data = { ...existingToken[0]!, subscription: userSubscription[0] };
+
+  return data;
 }
