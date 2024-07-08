@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpRightIcon, CheckIcon, Loader2 } from "lucide-react";
+import posthog from "posthog-js";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +46,9 @@ export function UpgradeToPro() {
         <Button
           className="flex justify-between py-6"
           variant="outline"
-          data-umami-event="Clicked on Upgrade to Pro on Dashboard"
+          onClick={() => {
+            posthog.capture("upgrade_to_pro_clicked");
+          }}
         >
           <div>
             <span className="text-gray-600">Upgrade to</span>

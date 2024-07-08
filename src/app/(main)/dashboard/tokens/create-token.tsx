@@ -1,14 +1,15 @@
 "use client";
 
+import posthog from "posthog-js";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
 
@@ -25,6 +26,7 @@ const GenerateTokenTrigger = () => {
       })
       .then(async (results) => {
         setKey(results[0]!.token);
+        posthog.capture("api_key_created");
       })
       .catch(() => {
         // noop

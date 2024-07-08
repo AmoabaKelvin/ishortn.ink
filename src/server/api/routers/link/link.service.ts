@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { and, count, desc, eq } from "drizzle-orm";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
@@ -28,6 +29,7 @@ export const getLinks = async (ctx: ProtectedTRPCContext) => {
       disabled: link.disabled,
       publicStats: link.publicStats,
       userId: link.userId,
+      passwordHash: link.passwordHash,
       totalClicks: count(linkVisit.id),
     })
     .from(link)
@@ -61,10 +63,25 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
     }
   }
 
+  // check if the user entered a password
+  if (input.password) {
+    const userSubscription = await ctx.db.query.subscription.findFirst({
+      where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+    });
+
+    if (userSubscription?.status !== "active") {
+      throw new Error("You need to upgrade to a pro plan to use password protection");
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, 10);
+    input.password = passwordHash;
+  }
+
   return await ctx.db.insert(link).values({
     ...input,
     alias: input.alias ?? (await generateShortLink()),
     userId: ctx.auth.userId,
+    passwordHash: input.password,
   });
 };
 
@@ -123,10 +140,13 @@ export const retrieveOriginalUrl = async (
     deviceDetails,
   );
 
-  await ctx.db.insert(linkVisit).values({
-    linkId: link.id,
-    ...deviceDetails,
-  });
+  // only log as a visit if the link is not password protected
+  if (!link.passwordHash) {
+    await ctx.db.insert(linkVisit).values({
+      linkId: link.id,
+      ...deviceDetails,
+    });
+  }
 
   return link;
 };
@@ -211,4 +231,52 @@ export const resetLinkStatistics = async (ctx: ProtectedTRPCContext, input: GetL
   await ctx.db.delete(linkVisit).where(eq(linkVisit.linkId, fetchedLink.id));
 
   return fetchedLink;
+};
+
+export const verifyLinkPassword = async (
+  ctx: PublicTRPCContext,
+  input: { alias: string; password: string },
+) => {
+  const link = await ctx.db.query.link.findFirst({
+    where: (table, { eq }) => eq(table.alias, input.alias),
+  });
+
+  if (!link?.passwordHash) {
+    return null;
+  }
+
+  const isPasswordCorrect = await bcrypt.compare(input.password, link.passwordHash);
+
+  if (!isPasswordCorrect) {
+    return null;
+  }
+
+  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+
+  await ctx.db.insert(linkVisit).values({
+    linkId: link.id,
+    ...deviceDetails,
+  });
+
+  return link;
+};
+
+export const changeLinkPassword = async (
+  ctx: ProtectedTRPCContext,
+  input: { alias: string; password: string },
+) => {
+  const passwordHash = await bcrypt.hash(input.password, 10);
+
+  await ctx.db
+    .update(link)
+    .set({
+      passwordHash,
+    })
+    .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+
+  const updatedLink = await ctx.db.query.link.findFirst({
+    where: (table, { eq }) => eq(table.alias, input.alias),
+  });
+
+  return updatedLink;
 };

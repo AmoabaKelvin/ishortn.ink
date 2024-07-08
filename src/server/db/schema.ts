@@ -69,6 +69,7 @@ export const link = mysqlTable(
     userId: varchar("userId", {
       length: 32,
     }).notNull(),
+    passwordHash: text("passwordHash"),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
