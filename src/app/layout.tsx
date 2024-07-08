@@ -11,6 +11,8 @@ import { fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { TRPCReactProvider } from "@/trpc/react";
 
+import { CSPostHogProvider } from "./providers";
+
 import type { Metadata, Viewport } from "next";
 export const metadata: Metadata = {
   title: {
@@ -51,19 +53,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }}
       />
       <html lang="en" suppressHydrationWarning>
-        <body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}>
-          {/* we ship dark theme later, now light theme */}
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            // forcedTheme="light"
-            disableTransitionOnChange
+
+        <CSPostHogProvider>
+          <body
+            className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}
+
           >
-            <TRPCReactProvider>{children}</TRPCReactProvider>
-            <Toaster />
-          </ThemeProvider>
-        </body>
+            
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              disableTransitionOnChange
+            >
+              <TRPCReactProvider>{children}</TRPCReactProvider>
+              <Toaster />
+            </ThemeProvider>
+          </body>
+        </CSPostHogProvider>
       </html>
     </ClerkProvider>
   );

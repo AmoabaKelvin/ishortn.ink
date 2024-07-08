@@ -2,14 +2,17 @@
 "use client";
 
 import {
-  Copy,
-  MoreVertical,
-  Pencil,
-  PowerCircle,
-  QrCode,
-  RotateCcwIcon,
-  Trash2Icon,
-  Unlink,
+
+	Copy,
+	KeyRound,
+	MoreVertical,
+	Pencil,
+	PowerCircle,
+	QrCode,
+	RotateCcwIcon,
+	Trash2Icon,
+	Unlink,
+
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -28,6 +31,8 @@ import { copyToClipboard, daysSinceDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { revalidateHomepage } from "../actions/revalidate-homepage";
+import { ChangeLinkPasswordModal } from "./change-link-password-modal";
+import { LinkSecurityStatusTooltip } from "./link-security-status-tooltip";
 import { QRCodeModal } from "./qrcode-modal";
 import UpdateLinkModal from "./update-link-modal";
 
@@ -50,6 +55,7 @@ const Link = ({ link }: LinkProps) => {
             onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
           >
             <LinkStatus disabled={link.disabled!} />
+            <LinkSecurityStatusTooltip link={link} />
             ishortn.ink/{link.alias}
           </div>
           <div
@@ -103,6 +109,7 @@ type LinkActionsProps = {
 const LinkActions = ({ link }: LinkActionsProps) => {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [qrModal, setQrModal] = useState(false);
+  const [openChangePasswordModal, setOpenChangePasswordModal] = useState(false);
   const isPublicStatsEnabled = link.publicStats!;
   const isLinkActive = !link.disabled!;
 
@@ -121,7 +128,6 @@ const LinkActions = ({ link }: LinkActionsProps) => {
 
   const deleteLinkMutation = api.link.delete.useMutation({
     onSuccess: async () => {
-      toast.success("Link deleted successfully");
       await revalidateHomepage();
     },
   });
@@ -129,21 +135,28 @@ const LinkActions = ({ link }: LinkActionsProps) => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
   const resetLinksMutation = api.link.resetLinkStatistics.useMutation({
     onSuccess: async () => {
-      toast.success("Link statistics reset successfully");
       await revalidateHomepage();
     },
   });
 
   const copyPublicStatsLink = async () => {
-    await copyToClipboard(`https://ishortn.ink/${link.alias}/stats`);
+    await copyToClipboard(`https://ishortn.ink/analytics/${link.alias}/`);
   };
 
   const handleLinkToggleMutation = async () => {
-    toggleLinkStatusMutation.mutate({ alias: link.alias! });
+    toast.promise(toggleLinkStatusMutation.mutateAsync({ alias: link.alias! }), {
+      loading: "Toggling Link Status...",
+      success: "Link status toggled successfully",
+      error: "Failed to toggle Link Status",
+    });
   };
 
   const handlePublicStatsToggleMutation = async () => {
-    togglePublicStatMutation.mutate({ alias: link.alias! });
+    toast.promise(togglePublicStatMutation.mutateAsync({ alias: link.alias! }), {
+      loading: "Toggling Public Stats...",
+      success: "Public Stats toggled successfully",
+      error: "Failed to toggle Public Stats",
+    });
   };
 
   return (
@@ -177,10 +190,30 @@ const LinkActions = ({ link }: LinkActionsProps) => {
               {isLinkActive ? "Deactivate" : "Activate"} Link
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            {/* <DropdownMenuSeparator /> */}
+            {link.passwordHash && (
+              <>
+                <DropdownMenuItem
+                  className="text-red-500"
+                  onClick={() => setOpenChangePasswordModal(true)}
+                >
+                  <KeyRound className="mr-2 size-4" />
+                  Change Password
+                </DropdownMenuItem>
+                {/* <DropdownMenuSeparator /> */}
+              </>
+            )}
             <DropdownMenuItem
               className="text-red-500 hover:cursor-pointer"
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-              onClick={() => resetLinksMutation.mutate({ alias: link.alias! })}
+
+              onClick={() => {
+                toast.promise(resetLinksMutation.mutateAsync({ alias: link.alias! }), {
+                  loading: "Resetting Statistics...",
+                  success: "Link statistics reset successfully",
+                  error: "Failed to reset Link Statistics",
+                });
+              }}
+
             >
               <RotateCcwIcon className="mr-2 size-4" />
               Reset Statistics
@@ -188,7 +221,13 @@ const LinkActions = ({ link }: LinkActionsProps) => {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-500"
-              onClick={() => deleteLinkMutation.mutate({ alias: link.alias! })}
+              onClick={() => {
+                toast.promise(deleteLinkMutation.mutateAsync({ alias: link.alias! }), {
+                  loading: "Deleting Link...",
+                  success: "Link deleted successfully",
+                  error: "Failed to delete Link",
+                });
+              }}
             >
               <Trash2Icon className="mr-2 size-4" />
               Delete Link
@@ -202,6 +241,11 @@ const LinkActions = ({ link }: LinkActionsProps) => {
         open={qrModal}
         setOpen={setQrModal}
         destinationUrl={`https://ishortn.ink/${link.alias}`}
+      />
+      <ChangeLinkPasswordModal
+        open={openChangePasswordModal}
+        setOpen={setOpenChangePasswordModal}
+        alias={link.alias!}
       />
     </>
   );

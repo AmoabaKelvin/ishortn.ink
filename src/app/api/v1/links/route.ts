@@ -1,10 +1,11 @@
+import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { generateShortLink } from "@/lib/core/links";
 import { db } from "@/server/db";
-import { link, token } from "@/server/db/schema";
+import { link, subscription, token } from "@/server/db/schema";
 
 import type { NextRequest } from "next/server";
 
@@ -27,11 +28,24 @@ export async function POST(request: Request) {
     return new Response("Alias already exists", { status: 400 });
   }
 
-  const newLink = await createNewLink(input.data, token.userId);
-  return new Response(JSON.stringify(newLink), {
-    status: 201,
-    headers: { "Content-Type": "application/json" },
-  });
+  // const newLink = await createNewLink(input.data, token.userId, token.subscription?.status);
+  // return new Response(JSON.stringify(newLink), {
+  //   status: 201,
+  //   headers: { "Content-Type": "application/json" },
+  // });
+
+  try {
+    const newLink = await createNewLink(input.data, token.userId, token.subscription?.status);
+    return new Response(JSON.stringify(newLink), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Response(error.message, { status: 400 });
+    }
+    return new Response("An error occurred", { status: 400 });
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -59,26 +73,36 @@ const shortenLinkSchema = z.object({
   expiresAt: z.string().optional(),
   expiresAfter: z.number().optional(),
   alias: z.string().optional(),
+  password: z.string().optional(),
 });
-
-async function validateAndGetToken(apiKey: string | null) {
-  if (!apiKey) return null;
-  const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
-  const existingToken = await db.select().from(token).where(eq(token.token, hash));
-  return existingToken.length ? existingToken[0] : null;
-}
 
 async function checkLinkAliasCollision(alias: string) {
   const existingLink = await db.select().from(link).where(eq(link.alias, alias));
   return existingLink.length > 0;
 }
 
-async function createNewLink(data: z.infer<typeof shortenLinkSchema>, userId: string) {
+async function createNewLink(
+  data: z.infer<typeof shortenLinkSchema>,
+  userId: string,
+  subStatus: string | undefined | null,
+) {
+  // check if there is a password
+
+  if (data.password) {
+    if (subStatus !== "active" || subStatus === undefined) {
+      throw new Error("You need to upgrade to a pro plan to use password protection");
+    }
+
+    const hashedPassword = bcrypt.hashSync(data.password, 10);
+    data.password = hashedPassword;
+  }
+
   const newLinkData = {
     url: data.url,
     alias: data.alias ?? (await generateShortLink()),
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
+    passwordHash: data.password,
     userId,
   };
 
@@ -92,6 +116,7 @@ async function createNewLink(data: z.infer<typeof shortenLinkSchema>, userId: st
     alias: retrievedLink[0]!.alias,
     expiresAt: retrievedLink[0]!.disableLinkAfterDate,
     expiresAfter: retrievedLink[0]!.disableLinkAfterClicks,
+    isProtected: !!retrievedLink[0]!.passwordHash,
   };
 }
 
@@ -105,4 +130,23 @@ async function getLinkByAlias(alias: string) {
     expiresAt: retrievedLink[0]!.disableLinkAfterDate,
     expiresAfter: retrievedLink[0]!.disableLinkAfterClicks,
   };
+}
+
+async function validateAndGetToken(apiKey: string | null) {
+  if (!apiKey) return null;
+  const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
+  const existingToken = await db.select().from(token).where(eq(token.token, hash));
+
+  if (!existingToken.length) return null;
+
+  const userSubscription = await db
+    .select()
+    .from(subscription)
+    .where(eq(subscription.userId, existingToken[0]!.userId));
+
+  // add the user subscription to the token object
+  // existingToken[0]!.subscription = userSubscription[0];
+  const data = { ...existingToken[0]!, subscription: userSubscription[0] };
+
+  return data;
 }

@@ -14,6 +14,7 @@ export const createLinkSchema = z.object({
   alias: z.string().optional(),
   disableLinkAfterClicks: z.number().optional(),
   disableLinkAfterDate: z.date().optional(),
+  password: z.string().optional(),
 });
 
 export const quickLinkShorteningSchema = z.object({
@@ -24,6 +25,11 @@ export const updateLinkSchema = createLinkSchema.partial().extend({
   id: z.number(),
   disabled: z.boolean().optional(),
   publicStats: z.boolean().optional(),
+});
+
+export const verifyLinkPasswordSchema = z.object({
+  alias: z.string(),
+  password: z.string(),
 });
 
 export type CreateLinkInput = z.infer<typeof createLinkSchema>;

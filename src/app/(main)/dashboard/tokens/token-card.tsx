@@ -1,5 +1,6 @@
 "use client";
 
+import posthog from "posthog-js";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ const TokenCard = ({
   const deleteAPIKeyMutation = api.token.delete.useMutation({
     onSuccess: async () => {
       await revalidateRoute("/dashboard/tokens");
+      posthog.capture("api_key_revoked");
       toast.success("API Token revoked");
     },
   });
