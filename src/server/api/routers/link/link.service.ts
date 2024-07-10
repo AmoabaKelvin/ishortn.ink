@@ -278,5 +278,7 @@ export const changeLinkPassword = async (
     where: (table, { eq }) => eq(table.alias, input.alias),
   });
 
+  await cache.delete(input.alias);
+
   return updatedLink;
 };
