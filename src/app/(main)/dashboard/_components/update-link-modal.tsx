@@ -197,7 +197,7 @@ export function LinkExpirationDatePicker({ setSeletectedDate }: LinkExpirationDa
         <Button
           variant={"outline"}
           className={cn(
-            "w-full justify-start text-left font-normal",
+            "w-full justify-start text-left font-normal hover:bg-background dark:hover:bg-[#0a1013]",
             !date && "text-muted-foreground",
           )}
         >

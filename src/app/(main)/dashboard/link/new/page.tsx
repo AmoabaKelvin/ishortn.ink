@@ -199,10 +199,6 @@ export default function CreateLinkPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  {/* <FormDescription>
-                    You need to be on a <b>pro plan</b> to create password protected links
-                  </FormDescription> */}
-
                   {!userSubscription.isLoading && userSubscription.data?.status !== "active" && (
                     <FormDescription>
                       You need to be on a <b>pro plan</b> to create password protected links
@@ -233,7 +229,7 @@ export default function CreateLinkPage() {
         </Form>
       </div>
       <div className="hidden items-center justify-center md:flex">
-        <div className="h-screen border-r border-gray-200" />
+        <div className="h-screen border-r border-border" />
       </div>
       <div className="mt-4 flex flex-col gap-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">

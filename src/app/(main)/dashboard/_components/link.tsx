@@ -2,17 +2,15 @@
 "use client";
 
 import {
-
-	Copy,
-	KeyRound,
-	MoreVertical,
-	Pencil,
-	PowerCircle,
-	QrCode,
-	RotateCcwIcon,
-	Trash2Icon,
-	Unlink,
-
+  Copy,
+  KeyRound,
+  MoreVertical,
+  Pencil,
+  PowerCircle,
+  QrCode,
+  RotateCcwIcon,
+  Trash2Icon,
+  Unlink,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -51,7 +49,7 @@ const Link = ({ link }: LinkProps) => {
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div
-            className="flex cursor-pointer items-center text-blue-600 hover:underline"
+            className="flex cursor-pointer items-center text-blue-600 hover:underline dark:text-blue-500"
             onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
           >
             <LinkStatus disabled={link.disabled!} />
@@ -59,7 +57,7 @@ const Link = ({ link }: LinkProps) => {
             ishortn.ink/{link.alias}
           </div>
           <div
-            className="hover:animate-wiggle-more flex h-6 w-6 cursor-pointer items-center justify-center rounded-full"
+            className="hover:animate-wiggle-more flex h-6 w-6 cursor-pointer items-center  justify-center rounded-full bg-gray-200 dark:bg-[#0f191d]"
             onClick={async () => {
               await copyToClipboard(`https://ishortn.ink/${link.alias}`);
             }}
@@ -76,7 +74,7 @@ const Link = ({ link }: LinkProps) => {
       <div className="flex items-center gap-2">
         <Badge
           variant="secondary"
-          className="rounded-md transition-all duration-500 hover:scale-110 hover:cursor-pointer"
+          className="rounded-md bg-gray-200 transition-all duration-500 hover:scale-110 hover:cursor-pointer dark:bg-[#0f191d]"
           onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
         >
           {link.totalClicks}
@@ -94,7 +92,7 @@ function LinkStatus({ disabled }: { disabled: boolean }) {
   return (
     <div className={`flex items-center gap-2 ${disabled ? "text-red-500" : "text-blue-500"}`}>
       {disabled ? (
-        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-300"></span>
+        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-300 dark:bg-red-400"></span>
       ) : (
         <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-300"></span>
       )}
@@ -205,7 +203,6 @@ const LinkActions = ({ link }: LinkActionsProps) => {
             )}
             <DropdownMenuItem
               className="text-red-500 hover:cursor-pointer"
-
               onClick={() => {
                 toast.promise(resetLinksMutation.mutateAsync({ alias: link.alias! }), {
                   loading: "Resetting Statistics...",
@@ -213,7 +210,6 @@ const LinkActions = ({ link }: LinkActionsProps) => {
                   error: "Failed to reset Link Statistics",
                 });
               }}
-
             >
               <RotateCcwIcon className="mr-2 size-4" />
               Reset Statistics
