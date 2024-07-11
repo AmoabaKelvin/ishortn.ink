@@ -36,6 +36,13 @@
       "when": 1720425773053,
       "tag": "0004_keen_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1720564044343,
+      "tag": "0005_normal_sentinel",
+      "breakpoints": true
     }
   ]
 }

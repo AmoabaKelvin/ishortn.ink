@@ -1,14 +1,15 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
-  datetime,
-  index,
-  int,
-  mysqlTable,
-  serial,
-  text,
-  timestamp,
-  varchar,
+	boolean,
+	datetime,
+	index,
+	int,
+	mysqlEnum,
+	mysqlTable,
+	serial,
+	text,
+	timestamp,
+	varchar,
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -107,6 +108,30 @@ export const token = mysqlTable(
   }),
 );
 
+// QRCODE
+export const qrcode = mysqlTable(
+  "QrCode",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId"), // we will create a short link for whatever destination url the user provides
+    qrCode: text("qrCode"), // the qr code image: will be stored as a base64 string
+    title: varchar("title", { length: 255 }).default(""),
+    createdAt: timestamp("createdAt").defaultNow(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+
+    // we need to store the presets for the qrcode in order to view the previous styles used when modifying the qrcode
+    // the presets will be stored as a JSON string
+    qrPatternType: mysqlEnum("qrPatternType", ["dots", "squares", "fluid"]),
+    qrForegroundColor: varchar("qrForegroundColor", { length: 255 }).default("#000000"),
+    qrEyesColor: varchar("qrEyesColor", { length: 255 }).default("#000000"),
+    qrEyesBorderRadius: int("qrEyesBorderRadius").default(0),
+  },
+  (table) => ({
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+    userIdIdx: index("userId_idx").on(table.userId),
+  }),
+);
+
 // Define relations
 export const linkRelations = relations(link, ({ one, many }) => ({
   user: one(user, {
@@ -122,6 +147,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
     fields: [user.id],
     references: [token.userId],
   }),
+  qrcodes: many(qrcode),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -145,6 +171,17 @@ export const subscriptionRelations = relations(subscription, ({ one }) => ({
   }),
 }));
 
+export const qrcodeRelations = relations(qrcode, ({ one }) => ({
+  user: one(user, {
+    fields: [qrcode.userId],
+    references: [user.id],
+  }),
+  link: one(link, {
+    fields: [qrcode.linkId],
+    references: [link.id],
+  }),
+}));
+
 export type Link = typeof link.$inferSelect;
 export type NewLink = typeof link.$inferInsert;
 
@@ -156,6 +193,12 @@ export type NewLinkVisit = typeof linkVisit.$inferInsert;
 
 export type Token = typeof token.$inferSelect;
 export type NewToken = typeof token.$inferInsert;
+
+export type Subscription = typeof subscription.$inferSelect;
+export type NewSubscription = typeof subscription.$inferInsert;
+
+export type QrCode = typeof qrcode.$inferSelect;
+export type NewQrCode = typeof qrcode.$inferInsert;
 
 // DynamicLink model
 // export const dynamicLink = mysqlTable(
