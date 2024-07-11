@@ -5,10 +5,9 @@ import { env } from "@/env";
 
 import * as schema from "./schema";
 
-export const connection = await mysql.createConnection({
+export const connection = mysql.createPool({
   uri: env.DATABASE_URL,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 1000,
+  connectionLimit: 20,
 });
 
 export const db = drizzle(connection, { schema, mode: "default" });
