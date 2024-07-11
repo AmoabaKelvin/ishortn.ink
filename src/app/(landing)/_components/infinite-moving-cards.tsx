@@ -87,7 +87,7 @@ export const InfiniteMovingCards = ({
       >
         {items.map((item, idx) => (
           <li
-            className="relative w-[350px] max-w-full flex-shrink-0 rounded-2xl border border-b-0 border-gray-300 bg-white px-8 py-6 shadow-lg md:w-[450px]"
+            className="bg-ishortnbackground relative w-[350px] max-w-full flex-shrink-0 rounded-2xl border  border-b-0 px-8 py-6 shadow-lg md:w-[450px]"
             key={item.name}
           >
             <blockquote>
@@ -95,9 +95,7 @@ export const InfiniteMovingCards = ({
                 aria-hidden="true"
                 className="user-select-none -z-1 h-[calc(100% + 4px)] w-[calc(100% + 4px)] pointer-events-none absolute -left-0.5 -top-0.5"
               ></div>
-              <span className="relative z-20 text-sm font-normal leading-[1.6] text-gray-800">
-                {item.quote}
-              </span>
+              <span className="relative z-20 text-sm font-normal leading-[1.6]">{item.quote}</span>
               <div className="relative z-20 mt-6 flex flex-row items-center">
                 <span className="flex flex-col gap-1">
                   <span className="text-sm font-normal leading-[1.6] text-blue-500">

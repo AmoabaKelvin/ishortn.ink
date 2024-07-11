@@ -53,16 +53,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }}
       />
       <html lang="en" suppressHydrationWarning>
+
         <CSPostHogProvider>
           <body
             className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}
+
           >
-            {/* we ship dark theme later, now light theme */}
+            
             <ThemeProvider
               attribute="class"
               defaultTheme="system"
-              enableSystem={false}
-              forcedTheme="light"
               disableTransitionOnChange
             >
               <TRPCReactProvider>{children}</TRPCReactProvider>

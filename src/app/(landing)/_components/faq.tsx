@@ -18,7 +18,7 @@ export function FAQ({ faqs }: FAQProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-10 text-gray-800 md:py-16">
+    <div className="mx-auto w-full max-w-4xl px-5 py-10 md:py-16">
       {/* <h1 className="mb-10 text-center text-4xl font-bold text-gray-600">
         Frequently Asked Questions
       </h1> */}
@@ -26,7 +26,7 @@ export function FAQ({ faqs }: FAQProps) {
         {faqs.map((faq, index) => (
           <motion.div
             key={index}
-            className="rounded-lg border border-gray-200 p-5 shadow-md"
+            className="border-1 rounded-lg border p-5 shadow-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
@@ -35,13 +35,13 @@ export function FAQ({ faqs }: FAQProps) {
               className="flex cursor-pointer items-center justify-between"
               onClick={() => toggleFAQ(index)}
             >
-              <h2 className="text-lg font-semibold text-gray-700">{faq.question}</h2>
+              <h2 className="text-lg font-semibold">{faq.question}</h2>
               <motion.span
                 animate={{ rotate: activeIndex === index ? 180 : 0 }}
                 transition={{ duration: 0.3 }}
               >
                 <svg
-                  className="h-6 w-6 text-gray-700"
+                  className="h-6 w-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -63,7 +63,7 @@ export function FAQ({ faqs }: FAQProps) {
                 transition={{ duration: 0.3 }}
                 className="mt-4 overflow-hidden"
               >
-                <p className="text-gray-600">{faq.answer}</p>
+                <p className="text-muted-foreground">{faq.answer}</p>
               </motion.div>
             )}
           </motion.div>

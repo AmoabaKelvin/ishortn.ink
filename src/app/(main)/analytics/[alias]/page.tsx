@@ -19,12 +19,12 @@ export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPagePr
   if (link?.publicStats === false) {
     return (
       <div className="mt-20 flex flex-col items-center justify-center md:mt-20">
-        <h1 className="mb-10 text-3xl">iShortn</h1>
-        <p className="text-2xl font-bold">Link not found</p>
-        <p className="text-gray-500">
+        <h1 className="mb-10 text-3xl text-foreground">iShortn</h1>
+        <p className="text-2xl font-bold text-foreground">Link not found</p>
+        <p className="text-muted-foreground">
           This link <b className="text-bold">does not have</b> public stats enabled.
         </p>
-        <p className="text-center text-gray-500">
+        <p className="text-center text-muted-foreground">
           If you know the owner of this link, ask them to enable public stats.
         </p>
 

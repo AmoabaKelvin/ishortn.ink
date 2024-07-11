@@ -6,19 +6,19 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/react";
@@ -48,8 +48,10 @@ function Billing({ subscriptions }: BillingPageProps) {
     <div>
       {/* page header, with title and subtext */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Billing</h1>
-        <p className="mt-2 text-gray-500">Manage your subscription and billing information.</p>
+        <h1 className="text-3xl font-bold text-foreground">Billing</h1>
+        <p className="mt-2 text-muted-foreground">
+          Manage your subscription and billing information.
+        </p>
       </div>
       <Separator />
       {/* show  information about current plan */}

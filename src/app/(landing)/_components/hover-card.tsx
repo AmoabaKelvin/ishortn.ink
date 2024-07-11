@@ -52,22 +52,20 @@ const CardSpotlight = (props: FeaturesProps) => {
       onBlur={handleBlur}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative overflow-hidden rounded-xl border bg-white dark:border-gray-800 dark:bg-gradient-to-r dark:from-black dark:to-neutral-950 dark:shadow-2xl"
+      className="bg-ishortnbackground relative overflow-hidden rounded-xl border dark:bg-gradient-to-r dark:shadow-2xl"
     >
       <div
         className="pointer-events-none absolute -inset-px opacity-0 transition duration-300"
         style={{
           opacity,
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(255,182,255,.1), transparent 40%)`,
+          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(120,119,198,0.3), transparent 30%)`,
         }}
       />
       <CardHeader className="pb-6">
         <CardTitle className="flex items-center gap-2 text-lg">
           {props.logo} {props.name}
         </CardTitle>
-        <CardDescription className="pt-6 leading-7 text-black/70">
-          {props.description}
-        </CardDescription>
+        <CardDescription className="pt-6 leading-7">{props.description}</CardDescription>
 
         <CardFooter className="w-full p-0">
           <Button className="mt-6 w-full" size="sm" variant="secondary" asChild>

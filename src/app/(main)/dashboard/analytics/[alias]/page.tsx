@@ -20,7 +20,7 @@ export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPagePr
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="cursor-pointer font-semibold leading-tight text-blue-600 hover:underline md:text-3xl">
+      <h1 className="cursor-pointer font-semibold leading-tight text-blue-600 hover:underline dark:text-blue-500 md:text-3xl">
         ishortn.ink/{params.alias}
       </h1>
 
