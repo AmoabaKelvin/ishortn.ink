@@ -1,31 +1,73 @@
 "use client";
 
+import QrCodeWithLogo from "qrcode-with-logos";
 // import QRCode as Q from "q";
-import { useCallback, useState } from "react";
-import { QRCode } from "react-qrcode-logo";
+import { useCallback, useEffect, useState } from "react";
 
+// import { QRCode } from "react-qrcode-logo";
 // import QrCode from "qrcode-with-logos"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
+import type { CornerType } from "qrcode-with-logos/types/src/core/types";
 const presetColors = ["#198639", "#34A853", "#E55934", "#2D2E33", "#000000", "#FFD600", "#FF585D"];
+
+type PatternStyle =
+  | "square"
+  | "diamond"
+  | "star"
+  | "fluid"
+  | "rounded"
+  | "tile"
+  | "stripe"
+  | "fluid-line"
+  | "stripe-column";
+
+type CornerStyle =
+  | "circle"
+  | "circle-diamond"
+  | "square"
+  | "square-diamond"
+  | "rounded-circle"
+  | "rounded"
+  | "circle-star";
+
+const cornerStyles: CornerStyle[] = [
+  "circle",
+  "circle-diamond",
+  "square",
+  "square-diamond",
+  "rounded-circle",
+  "rounded",
+  "circle-star",
+];
+
+const patternStyles: PatternStyle[] = [
+  "square",
+  "diamond",
+  "star",
+  "fluid",
+  "rounded",
+  "tile",
+  "stripe",
+  "fluid-line",
+  "stripe-column",
+];
 
 function QRCodeCreationPage() {
   const [qrContentType, setQrContentType] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState("#198639");
-  const [backgroundColor, setBackgroundColor] = useState("#FFFFFF");
-  const [patternStyle, setPatternStyle] = useState<"dots" | "squares" | "fluid">("dots");
-  const [cornerRadius, setCornerRadius] = useState(20);
-  const [logoWidth, setLogoWidth] = useState(60);
+  const [patternStyle, setPatternStyle] = useState<PatternStyle>("diamond");
+  const [cornerStyle, setCornerStyle] = useState<CornerStyle>("square");
+  const [enteredContent, setEnteredContent] = useState<string>("");
   const [logoImage, setLogoImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +116,39 @@ function QRCodeCreationPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const qrCodeConfig = {
+      content: enteredContent || "https://ishortn.ink",
+      width: 1000,
+      canvas: document.getElementById("canvas") as HTMLCanvasElement,
+      dotsOptions: {
+        type: patternStyle,
+        color: selectedColor,
+      },
+      cornersOptions: {
+        type: cornerStyle as CornerType,
+        color: selectedColor,
+      },
+      nodeQrCodeOptions: {
+        margin: 20,
+        color: {
+          dark: "#fafafa",
+        },
+      },
+    };
+
+    // Conditionally add the logo property if an image has been uploaded
+    if (logoImage) {
+      Object.assign(qrCodeConfig, {
+        logo: {
+          src: logoImage,
+        },
+      });
+    }
+
+    new QrCodeWithLogo(qrCodeConfig);
+  });
+
   return (
     <div className="flex flex-col md:flex-row">
       <div className="w-full md:w-[50%] md:border-r-2 md:pr-16">
@@ -81,7 +156,6 @@ function QRCodeCreationPage() {
 
         {/* type: link or plain text */}
         <div className="mb-9">
-          <span className="text-lg">Select content type</span>
           <div className="mt-4 flex flex-wrap items-center gap-4">
             <Select onValueChange={(value) => setQrContentType(value)}>
               <SelectTrigger className="">
@@ -93,7 +167,15 @@ function QRCodeCreationPage() {
               </SelectContent>
             </Select>
 
-            {qrContentType && <Input className="mt-3" />}
+            {qrContentType && (
+              <Input
+                className="mt-3"
+                value={enteredContent}
+                onChange={(e) => {
+                  setEnteredContent(e.target.value);
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -101,17 +183,39 @@ function QRCodeCreationPage() {
         <div className="mt-3 flex flex-col gap-8">
           <div>
             <span className="text-lg">Select pattern style</span>
-            <div className="mt-4 flex flex-wrap items-center gap-4">
+            <div className="mt-1 flex flex-wrap items-center gap-4">
               <Select
-                onValueChange={(value) => setPatternStyle(value as "dots" | "squares" | "fluid")}
+                defaultValue="diamond"
+                onValueChange={(value) => setPatternStyle(value as PatternStyle)}
               >
-                <SelectTrigger className="">
+                <SelectTrigger>
                   <SelectValue placeholder="Select pattern style" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dots">Dots</SelectItem>
-                  <SelectItem value="squares">Squares</SelectItem>
-                  <SelectItem value="fluid">Fluid</SelectItem>
+                  {patternStyles.map((style) => (
+                    <SelectItem key={style} value={style}>
+                      {style}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <span className="mt-5 inline-block text-lg">Select corner style</span>
+            <div className="mt-1 flex flex-wrap items-center gap-4">
+              <Select
+                defaultValue="square"
+                onValueChange={(value) => setCornerStyle(value as CornerStyle)}
+              >
+                <SelectTrigger className="">
+                  <SelectValue placeholder="Select corner style" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cornerStyles.map((style) => (
+                    <SelectItem key={style} value={style}>
+                      {style}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -132,17 +236,6 @@ function QRCodeCreationPage() {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div>
-            <span className="text-lg">Corner roundness</span>
-            <Slider
-              defaultValue={[cornerRadius]}
-              max={100}
-              step={1}
-              className="mt-3"
-              onValueChange={(value) => setCornerRadius(value[0]!)}
-            />
           </div>
         </div>
 
@@ -176,46 +269,12 @@ function QRCodeCreationPage() {
             </div>
           </div>
         </div>
-        {logoImage && (
-          <div className="mt-6">
-            <span className="block text-lg">Logo size</span>
-            <span className="text-sm text-muted-foreground">
-              QRCode might not be scannable if the logo is too big
-            </span>
-            <Slider
-              defaultValue={[logoWidth]}
-              min={20}
-              max={150}
-              step={1}
-              className="mt-3"
-              onValueChange={(value) => setLogoWidth(value[0]!)}
-            />
-            <p className="mt-2 text-sm text-muted-foreground">Logo width: {logoWidth}px</p>
-          </div>
-        )}
+
+        <Button className="mt-6 w-full">Generate QR Code</Button>
       </div>
       <div className="flex w-full flex-col items-center md:w-[50%]">
         <h1 className="text-2xl font-bold">Preview</h1>
-        <div className="relative">
-          <QRCode
-            value="https://ishortn.ink"
-            size={280}
-            fgColor={selectedColor}
-            bgColor={backgroundColor}
-            qrStyle={patternStyle}
-            logoImage={logoImage ?? "undefined"}
-            // logoWidth={100}
-            logoWidth={logoWidth}
-            // logoHeight={60}
-            quietZone={10}
-            removeQrCodeBehindLogo={true}
-            eyeRadius={cornerRadius}
-          />
-          <div className="absolute bottom-0 right-0 rounded-tl-md bg-white p-1 text-xs">
-            iShortn.ink
-          </div>
-        </div>
-
+        <canvas id="canvas" className="max-w-xs" />
         <div className="mt-4 flex gap-4">
           <Button className="w-[135px]">Download</Button>
           <Button className="w-[135px]">Reset</Button>
