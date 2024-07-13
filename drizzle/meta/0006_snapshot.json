@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "ccfb8e22-6598-4ce8-8e06-27ef09d48341",
-  "prevId": "9d1378a7-fa09-4e23-9f8d-dac994f6261d",
+  "id": "95c2eced-5f22-417a-bf8f-35066b422b4e",
+  "prevId": "ccfb8e22-6598-4ce8-8e06-27ef09d48341",
   "tables": {
     "Link": {
       "name": "Link",
@@ -209,7 +209,7 @@
         },
         "qrCode": {
           "name": "qrCode",
-          "type": "text",
+          "type": "longtext",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

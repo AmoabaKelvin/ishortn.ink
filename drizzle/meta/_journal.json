@@ -40,8 +40,29 @@
     {
       "idx": 5,
       "version": "5",
-      "when": 1720564044343,
-      "tag": "0005_normal_sentinel",
+      "when": 1720775431986,
+      "tag": "0005_lucky_nemesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1720776019133,
+      "tag": "0006_fast_ghost_rider",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1720778038970,
+      "tag": "0007_parched_absorbing_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1720859516090,
+      "tag": "0008_optimal_black_queen",
       "breakpoints": true
     }
   ]
