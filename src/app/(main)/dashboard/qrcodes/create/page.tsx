@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../../actions/revalidate-homepage";
+import { checkIfUserCanCreateMoreQRCodes } from "../utils";
 import QRCodeContent from "./qr-content";
 import QRCodeCustomization from "./qr-customization";
 import { isValidUrlAndNotIshortn } from "./utils";
@@ -20,9 +21,7 @@ function QRCodeCreationPage() {
   const router = useRouter();
   const userSubDetails = api.subscriptions.get.useQuery().data;
 
-  const canCreateMoreQRCodes =
-    userSubDetails?.status === "active" ||
-    (userSubDetails?.user.qrCodeCount && userSubDetails.user.qrCodeCount < 3);
+  const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(userSubDetails!);
 
   const qrCodeCreateMutation = api.qrCode.create.useMutation({
     onSuccess: async (data) => {
@@ -164,11 +163,7 @@ function QRCodeCreationPage() {
           setSelectedColor={setSelectedColor}
           setLogoImage={setLogoImage}
         />
-        <Button
-          className="mt-6 w-full"
-          onClick={handleSaveQRCode}
-          disabled={!!canCreateMoreQRCodes}
-        >
+        <Button className="mt-6 w-full" onClick={handleSaveQRCode} disabled={!canCreateMoreQRCodes}>
           Generate QR Code
         </Button>
       </div>

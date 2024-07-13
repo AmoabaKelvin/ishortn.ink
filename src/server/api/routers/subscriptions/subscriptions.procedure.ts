@@ -11,6 +11,17 @@ export const subscriptionsRouter = createTRPCRouter({
       },
     });
 
+    if (!subscriptions) {
+      const user = await ctx.db.query.user.findFirst({
+        where: (table, { eq }) => eq(table.id, ctx.auth.userId),
+      });
+
+      return {
+        status: "inactive",
+        user,
+      };
+    }
+
     return subscriptions;
   }),
 });
