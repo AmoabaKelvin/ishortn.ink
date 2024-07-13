@@ -192,7 +192,7 @@ export default function CreateLinkPage() {
 
             <FormField
               control={form.control}
-              disabled={userSubscription?.data?.subscriptions.status !== "active"}
+              disabled={userSubscription?.data?.subscriptions?.status !== "active"}
               name="password"
               render={({ field }) => (
                 <FormItem>
@@ -202,7 +202,7 @@ export default function CreateLinkPage() {
                   </FormDescription> */}
 
                   {!userSubscription.isLoading &&
-                    userSubscription.data?.subscriptions.status !== "active" && (
+                    userSubscription.data?.subscriptions?.status !== "active" && (
                       <FormDescription>
                         You need to be on a <b>pro plan</b> to create password protected links
                       </FormDescription>
