@@ -35,6 +35,7 @@ export const createQrCode = async (ctx: ProtectedTRPCContext, input: QRCodeInput
     linkId = link.id;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const insertionResult = await ctx.db.insert(qrcode).values({
     userId: ctx.auth.userId,
     title: input.title,
@@ -44,7 +45,9 @@ export const createQrCode = async (ctx: ProtectedTRPCContext, input: QRCodeInput
     patternStyle: input.patternStyle,
     qrCode: input.qrCodeBase64,
     linkId: linkId ?? 0,
-  });
+    contentType: input.wasShortened ? "link" : "text",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
 
   const insertedQrCodeId = insertionResult[0].insertId;
 
