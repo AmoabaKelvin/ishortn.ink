@@ -21,7 +21,7 @@ function QRCodeCreationPage() {
   const router = useRouter();
   const userSubDetails = api.subscriptions.get.useQuery().data;
 
-  const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(userSubDetails!);
+  const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(userSubDetails);
 
   const qrCodeCreateMutation = api.qrCode.create.useMutation({
     onSuccess: async (data) => {

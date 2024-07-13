@@ -31,7 +31,9 @@ type BillingPageProps = {
 };
 
 function Billing({ subscriptions }: BillingPageProps) {
-  const hasActiveSubscription = subscriptions?.status === "active";
+  const userSubcription = subscriptions?.subscriptions;
+
+  const hasActiveSubscription = userSubcription?.status === "active";
 
   const getCheckoutUrlMutation = api.lemonsqueezy.createCheckoutUrl.useMutation();
 
@@ -75,14 +77,18 @@ function Billing({ subscriptions }: BillingPageProps) {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Card ending in</span>
                     <span className="text-sm font-bold">
-                      {subscriptions.cardLastFour ?? "****"}
+                      {/* {subscriptions.cardLastFour ?? "****"} */}
+                      {userSubcription?.cardLastFour ?? "****"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Next payment</span>
                     <span className="text-sm font-bold">
+                      {/* {hasActiveSubscription
+                        ? new Date(subscriptions.renewsAt).toDateString()
+                        : "-"} */}
                       {hasActiveSubscription
-                        ? new Date(subscriptions.renewsAt!).toDateString()
+                        ? new Date(userSubcription.renewsAt!).toDateString()
                         : "-"}
                     </span>
                   </div>

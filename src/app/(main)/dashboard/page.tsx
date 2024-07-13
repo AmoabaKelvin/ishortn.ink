@@ -21,7 +21,8 @@ interface Props {
 
 export default async function DashboardPage({ searchParams }: Props) {
   const links = await api.link.list.query();
-  const subscriptions = await api.subscriptions.get.query();
+  const userSubscription = await api.subscriptions.get.query();
+  const subscriptions = userSubscription?.subscriptions;
 
   const userHasProPlan = subscriptions?.status === "active";
 
