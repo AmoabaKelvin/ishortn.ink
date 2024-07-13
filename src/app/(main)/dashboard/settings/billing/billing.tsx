@@ -6,19 +6,19 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
 } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/react";
@@ -246,14 +246,12 @@ const planBenfits = {
     "Custom alias",
     "Basic analytics",
     "30 days of analytics data retention",
-    "Up to 3 QR Codes",
     "API access with limits",
   ],
   pro: [
     "Custom domains for link shortening",
     "Advanced analytics",
     "Unlimited tracked links",
-    "Unlimited QR Codes",
     "1 year of analytics data retention",
     "Password-protected links",
     "Bulk link creation via CSV",

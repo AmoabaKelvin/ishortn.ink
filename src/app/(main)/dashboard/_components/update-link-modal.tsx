@@ -10,30 +10,30 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
@@ -75,12 +75,7 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
 
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<Omit<typeof updateLinkSchema, "id">>) {
-    // await formUpdateMutation.mutateAsync(values);
-    toast.promise(formUpdateMutation.mutateAsync(values), {
-      loading: "Updating link...",
-      success: "Link updated successfully",
-      error: "Failed to update link",
-    });
+    await formUpdateMutation.mutateAsync(values);
   }
 
   return (

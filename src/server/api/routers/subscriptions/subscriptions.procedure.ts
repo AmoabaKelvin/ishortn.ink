@@ -6,9 +6,6 @@ export const subscriptionsRouter = createTRPCRouter({
 
     const subscriptions = await ctx.db.query.subscription.findFirst({
       where: (table, { eq }) => eq(table.userId, user),
-      with: {
-        user: true,
-      },
     });
 
     return subscriptions;

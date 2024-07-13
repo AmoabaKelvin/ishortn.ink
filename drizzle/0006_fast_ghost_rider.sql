@@ -1,1 +1,0 @@
-ALTER TABLE `QrCode` MODIFY COLUMN `qrCode` longtext;

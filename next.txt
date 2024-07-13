@@ -1,8 +1,0 @@
-got to the point where we show the change password in the ui
-
-todo:
-- add the change password form modal
-- add the change password form validation
-- ensure everything works
-- add the change password api
-- ensure everything works
