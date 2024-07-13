@@ -11,7 +11,7 @@ export const createQrCode = async (ctx: ProtectedTRPCContext, input: QRCodeInput
       subscriptions: true,
     },
   });
-  const hasSubscription = userRecord?.subscriptions.status === "active";
+  const hasSubscription = userRecord?.subscriptions && userRecord.subscriptions.status === "active";
 
   // if the user has no subscription and they have 3 qr codes already, throw an error
   if (!hasSubscription && userRecord?.qrCodeCount && userRecord.qrCodeCount >= 3) {
