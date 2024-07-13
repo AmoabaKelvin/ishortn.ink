@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -35,11 +36,27 @@ const Links = ({ links }: LinksProps) => {
         onChange={(event) => setSearchQuery(event.target.value)}
       />
 
-      <div className="mt-6 space-y-2 first:mt-0">
+      {/* <div className="mt-6 space-y-2 first:mt-0">
         {filteredLinks.map((link) => (
           <Link key={link.id} link={link} />
         ))}
-      </div>
+      </div> */}
+
+      <motion.div className="mt-6 space-y-2 first:mt-0">
+        <AnimatePresence>
+          {filteredLinks.map((link, index) => (
+            <motion.div
+              key={link.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+            >
+              <Link link={link} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
     </>
   );
 };

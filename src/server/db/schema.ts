@@ -1,14 +1,16 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
-  datetime,
-  index,
-  int,
-  mysqlTable,
-  serial,
-  text,
-  timestamp,
-  varchar,
+	boolean,
+	datetime,
+	index,
+	int,
+	longtext,
+	mysqlEnum,
+	mysqlTable,
+	serial,
+	text,
+	timestamp,
+	varchar,
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -21,6 +23,7 @@ export const user = mysqlTable(
     email: varchar("email", { length: 255 }).unique(),
     createdAt: timestamp("createdAt").defaultNow(),
     imageUrl: text("imageUrl"),
+    qrCodeCount: int("qrCodeCount").default(0),
   },
   (table) => ({
     userIdx: index("userId_idx").on(table.id),
@@ -107,6 +110,53 @@ export const token = mysqlTable(
   }),
 );
 
+export const qrcode = mysqlTable(
+  "QrCode",
+  {
+    id: serial("id").primaryKey(),
+    qrCode: longtext("qrCode"), // the qr code image: will be stored as a base64 string
+    title: varchar("title", { length: 255 }).default(""),
+    createdAt: timestamp("createdAt").defaultNow(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    linkId: int("linkId").default(0), // the link that the qrcode is associated with (if any)
+
+    // we need to store the presets for the qrcode in order to view the previous styles used when modifying the qrcode
+    // the presets will be stored as a JSON string
+    contentType: mysqlEnum("contentType", ["link", "text"]).notNull(),
+    content: text("content").notNull(),
+
+    // Pattern style
+    patternStyle: mysqlEnum("patternStyle", [
+      "square",
+      "diamond",
+      "star",
+      "fluid",
+      "rounded",
+      "tile",
+      "stripe",
+      "fluid-line",
+      "stripe-column",
+    ]).notNull(),
+
+    // Corner style
+    cornerStyle: mysqlEnum("cornerStyle", [
+      "circle",
+      "circle-diamond",
+      "square",
+      "square-diamond",
+      "rounded-circle",
+      "rounded",
+      "circle-star",
+    ]).notNull(),
+
+    // Color
+    color: varchar("color", { length: 7 }).notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+  }),
+);
+
 // Define relations
 export const linkRelations = relations(link, ({ one, many }) => ({
   user: one(user, {
@@ -121,6 +171,11 @@ export const userRelations = relations(user, ({ many, one }) => ({
   tokens: one(token, {
     fields: [user.id],
     references: [token.userId],
+  }),
+  qrcodes: many(qrcode),
+  subscriptions: one(subscription, {
+    fields: [user.id],
+    references: [subscription.userId],
   }),
 }));
 
@@ -145,6 +200,17 @@ export const subscriptionRelations = relations(subscription, ({ one }) => ({
   }),
 }));
 
+export const qrcodeRelations = relations(qrcode, ({ one }) => ({
+  user: one(user, {
+    fields: [qrcode.userId],
+    references: [user.id],
+  }),
+  link: one(link, {
+    fields: [qrcode.linkId],
+    references: [link.id],
+  }),
+}));
+
 export type Link = typeof link.$inferSelect;
 export type NewLink = typeof link.$inferInsert;
 
@@ -156,6 +222,12 @@ export type NewLinkVisit = typeof linkVisit.$inferInsert;
 
 export type Token = typeof token.$inferSelect;
 export type NewToken = typeof token.$inferInsert;
+
+export type Subscription = typeof subscription.$inferSelect;
+export type NewSubscription = typeof subscription.$inferInsert;
+
+export type QrCode = typeof qrcode.$inferSelect;
+export type NewQrCode = typeof qrcode.$inferInsert;
 
 // DynamicLink model
 // export const dynamicLink = mysqlTable(
