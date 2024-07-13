@@ -11,7 +11,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
     configureLemonSqueezy();
 
     const userId = ctx.auth.userId;
-    const variantId = 441105;
+    const variantId = Number(process.env.LEMONSQUEEZY_VARIANT_ID!);
 
     const user = await ctx.db.query.user.findFirst({
       where: (table, { eq }) => eq(table.id, userId),
