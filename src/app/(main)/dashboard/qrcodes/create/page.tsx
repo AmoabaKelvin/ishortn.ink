@@ -164,7 +164,11 @@ function QRCodeCreationPage() {
           setSelectedColor={setSelectedColor}
           setLogoImage={setLogoImage}
         />
-        <Button className="mt-6 w-full" onClick={handleSaveQRCode} disabled={!canCreateMoreQRCodes}>
+        <Button
+          className="mt-6 w-full"
+          onClick={handleSaveQRCode}
+          disabled={!!canCreateMoreQRCodes}
+        >
           Generate QR Code
         </Button>
       </div>
