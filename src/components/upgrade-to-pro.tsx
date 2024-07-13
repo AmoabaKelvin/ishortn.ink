@@ -18,6 +18,7 @@ import { api } from "@/trpc/react";
 
 const proPlanBenefits = [
   "Custom domains for link shortening",
+  "Unlimited advanced QR codes",
   "Advanced analytics",
   "Unlimited tracked links",
   "1 year of analytics data retention",
