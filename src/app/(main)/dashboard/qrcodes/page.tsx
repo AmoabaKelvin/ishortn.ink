@@ -6,17 +6,7 @@ import { api } from "@/trpc/server";
 import EmptyState from "./empty-state";
 import QRCodeDisplay from "./qrcode-card";
 import UpgradeText from "./upgrade-text";
-
-import type { RouterOutputs } from "@/trpc/shared";
-
-export function checkIfUserCanCreateMoreQRCodes(subDetails: RouterOutputs["subscriptions"]["get"]) {
-  if (subDetails && subDetails.status === "active") {
-    return true;
-  }
-
-  const currentQrCodeCount = subDetails?.user?.qrCodeCount;
-  return currentQrCodeCount && currentQrCodeCount < 3;
-}
+import { checkIfUserCanCreateMoreQRCodes } from "./utils";
 
 async function QRCodePage() {
   const userCodes = await api.qrCode.list.query();
