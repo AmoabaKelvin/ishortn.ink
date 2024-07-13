@@ -171,7 +171,7 @@ export const shortenLinkWithAutoAlias = async (
     await cache.set(insertedLink);
   }
 
-  return insertedLink;
+  return link;
 };
 
 export const getLinkVisits = async (ctx: ProtectedTRPCContext, input: { id: string }) => {

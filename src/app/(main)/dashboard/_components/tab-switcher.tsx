@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { name: "Links", href: "/dashboard" },
-  { name: "QR Codes", href: "/dashboard/qrcodes" },
   { name: "API Keys", href: "/dashboard/tokens" },
   { name: "Billing", href: "/dashboard/settings/billing" },
   // {
