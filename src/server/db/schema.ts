@@ -4,6 +4,7 @@ import {
 	datetime,
 	index,
 	int,
+	longtext,
 	mysqlEnum,
 	mysqlTable,
 	serial,
@@ -22,6 +23,7 @@ export const user = mysqlTable(
     email: varchar("email", { length: 255 }).unique(),
     createdAt: timestamp("createdAt").defaultNow(),
     imageUrl: text("imageUrl"),
+    qrCodeCount: int("qrCodeCount").default(0),
   },
   (table) => ({
     userIdx: index("userId_idx").on(table.id),
@@ -108,26 +110,49 @@ export const token = mysqlTable(
   }),
 );
 
-// QRCODE
 export const qrcode = mysqlTable(
   "QrCode",
   {
     id: serial("id").primaryKey(),
-    linkId: int("linkId"), // we will create a short link for whatever destination url the user provides
-    qrCode: text("qrCode"), // the qr code image: will be stored as a base64 string
+    qrCode: longtext("qrCode"), // the qr code image: will be stored as a base64 string
     title: varchar("title", { length: 255 }).default(""),
     createdAt: timestamp("createdAt").defaultNow(),
     userId: varchar("userId", { length: 32 }).notNull(),
+    linkId: int("linkId").default(0), // the link that the qrcode is associated with (if any)
 
     // we need to store the presets for the qrcode in order to view the previous styles used when modifying the qrcode
     // the presets will be stored as a JSON string
-    qrPatternType: mysqlEnum("qrPatternType", ["dots", "squares", "fluid"]),
-    qrForegroundColor: varchar("qrForegroundColor", { length: 255 }).default("#000000"),
-    qrEyesColor: varchar("qrEyesColor", { length: 255 }).default("#000000"),
-    qrEyesBorderRadius: int("qrEyesBorderRadius").default(0),
+    contentType: mysqlEnum("contentType", ["link", "text"]).notNull(),
+    content: text("content").notNull(),
+
+    // Pattern style
+    patternStyle: mysqlEnum("patternStyle", [
+      "square",
+      "diamond",
+      "star",
+      "fluid",
+      "rounded",
+      "tile",
+      "stripe",
+      "fluid-line",
+      "stripe-column",
+    ]).notNull(),
+
+    // Corner style
+    cornerStyle: mysqlEnum("cornerStyle", [
+      "circle",
+      "circle-diamond",
+      "square",
+      "square-diamond",
+      "rounded-circle",
+      "rounded",
+      "circle-star",
+    ]).notNull(),
+
+    // Color
+    color: varchar("color", { length: 7 }).notNull(),
   },
   (table) => ({
-    linkIdIdx: index("linkId_idx").on(table.linkId),
     userIdIdx: index("userId_idx").on(table.userId),
   }),
 );
@@ -148,6 +173,10 @@ export const userRelations = relations(user, ({ many, one }) => ({
     references: [token.userId],
   }),
   qrcodes: many(qrcode),
+  subscriptions: one(subscription, {
+    fields: [user.id],
+    references: [subscription.userId],
+  }),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
