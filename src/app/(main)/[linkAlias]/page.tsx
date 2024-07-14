@@ -16,6 +16,9 @@ const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
 
   const domain = headersList.get("x-forwarded-host") ?? headersList.get("host");
 
+  console.log("Domain is", domain);
+  console.log("Alias is", params.linkAlias);
+
   const link = await api.link.retrieveOriginalUrl.query({
     alias: params.linkAlias,
     domain: domain!,
