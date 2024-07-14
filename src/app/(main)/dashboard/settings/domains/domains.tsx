@@ -1,9 +1,9 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+import CloudflareIssuesCard from "./cloudflare-issue-card";
 import DomainCard from "./domain-card";
 
 import type { RouterOutputs } from "@/trpc/shared";
-
 type ListDomainsProps = {
   domains: RouterOutputs["customDomain"]["list"];
 };
@@ -11,6 +11,7 @@ type ListDomainsProps = {
 export default function ListDomains({ domains }: ListDomainsProps) {
   return (
     <div>
+      <CloudflareIssuesCard />
       <div className="mt-3 flex flex-col gap-3">
         {domains.map((domain) => (
           <DomainCard key={domain.id} domain={domain} />
