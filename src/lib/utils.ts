@@ -71,3 +71,8 @@ export function daysSinceDate(date: Date) {
   const diff = now.getTime() - date.getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
+
+export function removeUrlProtocol(url: string) {
+  // remove all http, https, www from url
+  return url.replace(/(https?:\/\/)?(www\.)?/i, "");
+}

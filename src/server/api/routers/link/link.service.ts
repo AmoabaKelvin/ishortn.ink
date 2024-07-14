@@ -201,9 +201,12 @@ export const shortenLinkWithAutoAlias = async (
   return insertedLink;
 };
 
-export const getLinkVisits = async (ctx: ProtectedTRPCContext, input: { id: string }) => {
+export const getLinkVisits = async (
+  ctx: ProtectedTRPCContext,
+  input: { id: string; domain: string },
+) => {
   const link = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, input.id),
+    where: (table, { eq, and }) => and(eq(table.alias, input.id), eq(table.domain, input.domain)),
     with: {
       linkVisits: true,
     },
