@@ -21,7 +21,7 @@ const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
 
   const link = await api.link.retrieveOriginalUrl.query({
     alias: params.linkAlias,
-    domain: domain!,
+    domain: domain!.replace("http://", "").replace("https://", "").replace("www.", ""),
   });
 
   if (!link) return notFound();
