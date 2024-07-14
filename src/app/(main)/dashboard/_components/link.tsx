@@ -34,7 +34,7 @@ const Link = ({ link }: LinkProps) => {
           <div
             className="hover:animate-wiggle-more flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-white "
             onClick={async () => {
-              await copyToClipboard(`https://ishortn.ink/${link.alias}`);
+              await copyToClipboard(`https://${link.domain}/${link.alias}`);
             }}
           >
             <Copy className="h-3 w-3" />
