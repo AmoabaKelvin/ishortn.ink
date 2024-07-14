@@ -39,8 +39,8 @@ const CloudflareIssuesCard = () => {
             <ol className="list-inside list-decimal">
               <li>In your Cloudflare dashboard, add the provided record.</li>
               <li>
-                Set the Proxy status to "DNS only". This ensures DNS queries are directed to Vercel
-                for handling instead of Cloudflare.
+                Set the Proxy status to "DNS only". This ensures DNS queries are redirected to
+                iShortn DNS servers for handling instead of Cloudflare.
               </li>
             </ol>
           </p>
