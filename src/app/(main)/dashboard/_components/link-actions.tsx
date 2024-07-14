@@ -1,26 +1,26 @@
 "use client";
 
 import {
-  Copy,
-  KeyRound,
-  MoreVertical,
-  Pencil,
-  PowerCircle,
-  QrCode,
-  RotateCcwIcon,
-  Trash2Icon,
-  Unlink,
+	Copy,
+	KeyRound,
+	MoreVertical,
+	Pencil,
+	PowerCircle,
+	QrCode,
+	RotateCcwIcon,
+	Trash2Icon,
+	Unlink,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -69,7 +69,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   });
 
   const copyPublicStatsLink = async () => {
-    await copyToClipboard(`https://ishortn.ink/analytics/${link.alias}/`);
+    await copyToClipboard(`https://ishortn.ink/analytics/${link.alias}?domain=${link.domain}`);
   };
 
   const handleLinkToggleMutation = async () => {
