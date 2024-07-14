@@ -73,7 +73,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   };
 
   const handleLinkToggleMutation = async () => {
-    toast.promise(toggleLinkStatusMutation.mutateAsync({ alias: link.alias! }), {
+    toast.promise(toggleLinkStatusMutation.mutateAsync({ id: link.id }), {
       loading: "Toggling Link Status...",
       success: "Link status toggled successfully",
       error: "Failed to toggle Link Status",
@@ -81,7 +81,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   };
 
   const handlePublicStatsToggleMutation = async () => {
-    toast.promise(togglePublicStatMutation.mutateAsync({ alias: link.alias! }), {
+    toast.promise(togglePublicStatMutation.mutateAsync({ id: link.id }), {
       loading: "Toggling Public Stats...",
       success: "Public Stats toggled successfully",
       error: "Failed to toggle Public Stats",
@@ -139,7 +139,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
             <DropdownMenuItem
               className="text-red-500 hover:cursor-pointer"
               onClick={() => {
-                toast.promise(resetLinksMutation.mutateAsync({ alias: link.alias! }), {
+                toast.promise(resetLinksMutation.mutateAsync({ id: link.id }), {
                   loading: "Resetting Statistics...",
                   success: "Link statistics reset successfully",
                   error: "Failed to reset Link Statistics",
@@ -153,7 +153,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
             <DropdownMenuItem
               className="text-red-500"
               onClick={() => {
-                toast.promise(deleteLinkMutation.mutateAsync({ alias: link.alias! }), {
+                toast.promise(deleteLinkMutation.mutateAsync({ id: link.id }), {
                   loading: "Deleting Link...",
                   success: "Link deleted successfully",
                   error: "Failed to delete Link",
@@ -176,7 +176,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
       <ChangeLinkPasswordModal
         open={openChangePasswordModal}
         setOpen={setOpenChangePasswordModal}
-        alias={link.alias!}
+        id={link.id}
         hasPassword={!!link.passwordHash}
       />
     </>

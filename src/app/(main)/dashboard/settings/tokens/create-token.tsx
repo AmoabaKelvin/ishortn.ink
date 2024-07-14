@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
 
-import { revalidateRoute } from "../actions/revalidate-homepage";
+import { revalidateRoute } from "../../actions/revalidate-homepage";
 
 const GenerateTokenTrigger = () => {
   const createAPIKeyMutation = api.token.create.useMutation();

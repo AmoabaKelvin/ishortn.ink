@@ -2,11 +2,13 @@ import { z } from "zod";
 
 export const retrieveOriginalUrlSchema = z.object({
   alias: z.string(),
+  domain: z.string(),
 });
 
 export const getLinkSchema = z.object({
-  // id: z.number(),
-  alias: z.string(),
+  id: z.number(),
+  // alias: z.string(),
+  // domain: z.string(),
 });
 
 export const createLinkSchema = z.object({
@@ -15,6 +17,7 @@ export const createLinkSchema = z.object({
   disableLinkAfterClicks: z.number().optional(),
   disableLinkAfterDate: z.date().optional(),
   password: z.string().optional(),
+  domain: z.string().optional(),
 });
 
 export const quickLinkShorteningSchema = z.object({
@@ -28,7 +31,7 @@ export const updateLinkSchema = createLinkSchema.partial().extend({
 });
 
 export const verifyLinkPasswordSchema = z.object({
-  alias: z.string(),
+  id: z.number(),
   password: z.string(),
 });
 

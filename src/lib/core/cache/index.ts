@@ -2,10 +2,7 @@ import { Redis } from "ioredis";
 
 import { env } from "@/env";
 
-import type { WithoutNull } from "@/server/api/trpc";
 import type { Link } from "@/server/db/schema";
-
-type NonNullableLink = WithoutNull<Link>;
 
 export class Cache {
   private redis: Redis;
@@ -23,9 +20,9 @@ export class Cache {
     }
   }
 
-  async set(link: Link): Promise<boolean> {
+  async set(cacheKey: string, link: Link): Promise<boolean> {
     try {
-      await this.redis.hset(link.alias!, link);
+      await this.redis.hset(cacheKey, link);
       return true;
     } catch (error) {
       return false;
@@ -56,5 +53,6 @@ function convertToLink(link: Record<string, string>): Link | null {
     disabled: link.disabled === "true",
     publicStats: link.publicStats === "true",
     passwordHash: link.passwordHash!,
+    domain: link.domain!,
   };
 }
