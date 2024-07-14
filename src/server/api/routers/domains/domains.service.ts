@@ -3,11 +3,11 @@ import { eq, inArray } from "drizzle-orm";
 
 import { customDomain, link, linkVisit } from "@/server/db/schema";
 
-import type { VercelConfigResponse } from "./domains.procedure";
 import { addDomainToVercelProject, deleteDomainFromVercelProject } from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 import type { CreateCustomDomainInput } from "./domains.input";
+import type { VercelConfigResponse } from "./domains.procedure";
 export async function addDomainToUserAccount(
   ctx: ProtectedTRPCContext,
   input: CreateCustomDomainInput,
@@ -54,7 +54,6 @@ export async function addDomainToUserAccount(
       return challenge;
     });
 
-    console.log("Response from domain addition", response);
     let wellConfigured;
 
     if (response.verified) {
@@ -71,8 +70,6 @@ export async function addDomainToUserAccount(
       );
 
       const data = (await response.json()) as VercelConfigResponse;
-
-      console.log("Config data", data);
 
       if (data.misconfigured) {
         wellConfigured = false;
