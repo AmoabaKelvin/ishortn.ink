@@ -53,6 +53,8 @@ export async function addDomainToUserAccount(
       return challenge;
     });
 
+    console.log("Response from domain addition", response);
+
     await ctx.db.insert(customDomain).values({
       userId,
       domain: domain,
