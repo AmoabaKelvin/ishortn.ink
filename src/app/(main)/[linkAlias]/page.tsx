@@ -24,7 +24,7 @@ const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
   if (!link) return notFound();
 
   if (link.passwordHash) {
-    return <LinkPasswordVerification alias={params.linkAlias} />;
+    return <LinkPasswordVerification id={link.id} />;
   }
 
   redirect(link.url!);
