@@ -20,6 +20,17 @@ export const linkRouter = createTRPCRouter({
     return services.getLink(ctx, input);
   }),
 
+  getLinkByAlias: publicProcedure
+    .input(
+      z.object({
+        alias: z.string(),
+        domain: z.string(),
+      }),
+    )
+    .query(({ ctx, input }) => {
+      return services.getLinkByAlias(input);
+    }),
+
   create: protectedProcedure.input(inputs.createLinkSchema).mutation(({ ctx, input }) => {
     return services.createLink(ctx, input);
   }),

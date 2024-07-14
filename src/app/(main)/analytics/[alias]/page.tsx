@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 
 import { aggregateVisits } from "@/lib/core/analytics";
@@ -14,7 +15,12 @@ type LinksAnalyticsPageProps = {
 };
 
 export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPageProps) {
-  const link = await api.link.get.query({ alias: params.alias });
+  const headerList = headers();
+
+  const domain = headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "ishortn.ink";
+
+  const obtainedLink = await api.link.getLinkByAlias.query({ alias: params.alias, domain: domain });
+  const link = obtainedLink[0];
 
   if (link?.publicStats === false) {
     return (

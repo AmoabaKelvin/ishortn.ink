@@ -4,6 +4,7 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { Cache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { db } from "@/server/db";
 import { link, linkVisit } from "@/server/db/schema";
 
 import type { ProtectedTRPCContext, PublicTRPCContext } from "../../trpc";
@@ -14,7 +15,6 @@ import type {
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
-
 const cache = new Cache();
 
 function constructCacheKey(domain: string, alias: string) {
@@ -50,6 +50,13 @@ export const getLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) =>
   return await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
+};
+
+export const getLinkByAlias = async (input: { alias: string; domain: string }) => {
+  return db
+    .select()
+    .from(link)
+    .where(and(eq(link.domain, input.domain), eq(link.alias, input.alias)));
 };
 
 export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInput) => {
