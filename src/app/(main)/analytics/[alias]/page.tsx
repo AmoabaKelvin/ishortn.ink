@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 
 import { aggregateVisits } from "@/lib/core/analytics";
@@ -15,12 +14,11 @@ type LinksAnalyticsPageProps = {
   params: {
     alias: string;
   };
+  searchParams: Record<string, string | string[] | undefined>;
 };
 
-export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPageProps) {
-  const headerList = headers();
-
-  const domain = headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "ishortn.ink";
+export default async function LinkAnalyticsPage({ params, searchParams }: LinksAnalyticsPageProps) {
+  const domain = (searchParams?.domain as string) ?? "ishortn.ink";
 
   const obtainedLink = await api.link.getLinkByAlias.query({ alias: params.alias, domain: domain });
   const link = obtainedLink[0];

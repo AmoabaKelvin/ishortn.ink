@@ -25,7 +25,7 @@ const Link = ({ link }: LinkProps) => {
         <div className="flex items-center gap-3">
           <div
             className="flex cursor-pointer items-center text-blue-600 hover:underline"
-            onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
+            onClick={() => router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`)}
           >
             <LinkStatus disabled={link.disabled!} />
             <LinkSecurityStatusTooltip link={link} />
