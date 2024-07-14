@@ -2,10 +2,13 @@ import { headers } from "next/headers";
 import Link from "next/link";
 
 import { aggregateVisits } from "@/lib/core/analytics";
+import { removeUrlProtocol } from "@/lib/utils";
 import { api } from "@/trpc/server";
 
 import { BarChart } from "../../dashboard/analytics/[alias]/_components/bar-chart";
-import { CountriesAndCitiesStats } from "../../dashboard/analytics/[alias]/countries-and-cities-stats";
+import {
+	CountriesAndCitiesStats,
+} from "../../dashboard/analytics/[alias]/countries-and-cities-stats";
 import { UserAgentStats } from "../../dashboard/analytics/[alias]/user-agent-stats";
 
 type LinksAnalyticsPageProps = {
@@ -45,6 +48,7 @@ export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPagePr
 
   const linkVisits = await api.link.linkVisits.query({
     id: params.alias,
+    domain: removeUrlProtocol(domain),
   });
 
   const aggregatedVisits = aggregateVisits(linkVisits);
