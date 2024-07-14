@@ -29,7 +29,7 @@ const Link = ({ link }: LinkProps) => {
           >
             <LinkStatus disabled={link.disabled!} />
             <LinkSecurityStatusTooltip link={link} />
-            ishortn.ink/{link.alias}
+            {link.domain}/{link.alias}
           </div>
           <div
             className="hover:animate-wiggle-more flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-white "

@@ -17,12 +17,17 @@ import type {
 
 const cache = new Cache();
 
+function constructCacheKey(domain: string, alias: string) {
+  return `${domain}:${alias}`;
+}
+
 export const getLinks = async (ctx: ProtectedTRPCContext) => {
   const links = await ctx.db
     .select({
       id: link.id,
       url: link.url,
       alias: link.alias,
+      domain: link.domain,
       createdAt: link.createdAt,
       disableLinkAfterClicks: link.disableLinkAfterClicks,
       disableLinkAfterDate: link.disableLinkAfterDate,
@@ -43,7 +48,7 @@ export const getLinks = async (ctx: ProtectedTRPCContext) => {
 
 export const getLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
   return await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, input.alias),
+    where: (table, { eq }) => eq(table.id, input.id),
   });
 };
 
@@ -53,17 +58,23 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
       throw new Error("Cannot include periods in alias");
     }
 
+    const domain = input.domain ?? "ishortn.ink";
+
+    // const aliasExists = await ctx.db
+    //   .select()
+    //   .from(link)
+    //   .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+
     const aliasExists = await ctx.db
       .select()
       .from(link)
-      .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+      .where(and(eq(link.alias, input.alias), eq(link.domain, domain)));
 
     if (aliasExists.length) {
       throw new Error("Alias already exists");
     }
   }
 
-  // check if the user entered a password
   if (input.password) {
     const userSubscription = await ctx.db.query.subscription.findFirst({
       where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
@@ -77,11 +88,14 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
     input.password = passwordHash;
   }
 
+  const domain = input.domain ?? "ishortn.ink";
+
   return await ctx.db.insert(link).values({
     ...input,
     alias: input.alias ?? (await generateShortLink()),
     userId: ctx.auth.userId,
     passwordHash: input.password,
+    domain,
   });
 };
 
@@ -99,21 +113,30 @@ export const updateLink = async (ctx: ProtectedTRPCContext, input: UpdateLinkInp
     where: (table, { eq }) => eq(table.id, input.id),
   });
 
-  await cache.set(updatedLink!);
+  await cache.set(constructCacheKey(updatedLink!.domain, updatedLink!.alias!), updatedLink!);
 };
 
 export const deleteLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
-  await ctx.db
-    .delete(link)
-    .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+  const linkToDelete = await ctx.db.query.link.findFirst({
+    where: (table, { eq }) => eq(table.id, input.id),
+  });
 
-  await cache.delete(input.alias);
+  if (!linkToDelete) {
+    return null;
+  }
+
+  await cache.delete(constructCacheKey(linkToDelete.domain, linkToDelete.alias!));
+
+  await ctx.db.delete(link).where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 };
 
 export const retrieveOriginalUrl = async (
   ctx: PublicTRPCContext,
   input: RetrieveOriginalUrlInput,
 ) => {
+  const { alias, domain } = input;
+  const cacheKey = `${domain}:${alias}`;
+
   const cachedLink = await cache.get(input.alias);
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
 
@@ -128,17 +151,12 @@ export const retrieveOriginalUrl = async (
   }
 
   const link = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, input.alias),
+    where: (table, { eq, and }) => and(eq(table.alias, input.alias), eq(table.domain, domain)),
   });
 
   if (!link) {
     return null;
   }
-
-  console.log(
-    "🚀 ~ file: link.service.ts ~ line 116 ~ retrieveOriginalUrl ~ deviceDetails",
-    deviceDetails,
-  );
 
   // only log as a visit if the link is not password protected
   if (!link.passwordHash) {
@@ -147,6 +165,8 @@ export const retrieveOriginalUrl = async (
       ...deviceDetails,
     });
   }
+
+  await cache.set(cacheKey, link);
 
   return link;
 };
@@ -168,7 +188,7 @@ export const shortenLinkWithAutoAlias = async (
   });
 
   if (insertedLink) {
-    await cache.set(insertedLink);
+    await cache.set(constructCacheKey(insertedLink.domain, insertedLink.alias!), insertedLink);
   }
 
   return insertedLink;
@@ -187,7 +207,7 @@ export const getLinkVisits = async (ctx: ProtectedTRPCContext, input: { id: stri
 
 export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, input.alias),
+    where: (table, { eq }) => eq(table.id, input.id),
   });
 
   if (!fetchedLink) {
@@ -199,12 +219,12 @@ export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLink
     .set({
       disabled: !fetchedLink.disabled,
     })
-    .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 };
 
 export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, input.alias),
+    where: (table, { eq }) => eq(table.id, input.id),
   });
 
   if (!fetchedLink) {
@@ -216,12 +236,12 @@ export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLin
     .set({
       publicStats: !fetchedLink.publicStats,
     })
-    .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 };
 
 export const resetLinkStatistics = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, input.alias),
+    where: (table, { eq }) => eq(table.id, input.id),
   });
 
   if (!fetchedLink) {
@@ -235,10 +255,10 @@ export const resetLinkStatistics = async (ctx: ProtectedTRPCContext, input: GetL
 
 export const verifyLinkPassword = async (
   ctx: PublicTRPCContext,
-  input: { alias: string; password: string },
+  input: { id: number; password: string },
 ) => {
   const link = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, input.alias),
+    where: (table, { eq }) => eq(table.id, input.id),
   });
 
   if (!link?.passwordHash) {
@@ -263,7 +283,7 @@ export const verifyLinkPassword = async (
 
 export const changeLinkPassword = async (
   ctx: ProtectedTRPCContext,
-  input: { alias: string; password: string },
+  input: { id: number; password: string },
 ) => {
   const passwordHash = await bcrypt.hash(input.password, 10);
 
@@ -272,13 +292,25 @@ export const changeLinkPassword = async (
     .set({
       passwordHash,
     })
-    .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
+    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 
   const updatedLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, input.alias),
+    where: (table, { eq }) => eq(table.id, input.id),
   });
 
-  await cache.delete(input.alias);
+  await cache.delete(constructCacheKey(updatedLink!.domain, updatedLink!.alias!));
 
   return updatedLink;
+};
+
+export const checkAliasAvailability = async (
+  ctx: PublicTRPCContext,
+  input: { alias: string; domain: string },
+) => {
+  const existingLink = await ctx.db.query.link.findFirst({
+    where: (table, { eq, and }) =>
+      and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
+  });
+
+  return { isAvailable: !existingLink };
 };

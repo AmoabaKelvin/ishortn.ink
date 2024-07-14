@@ -33,10 +33,14 @@ import { api } from "@/trpc/react";
 import { LinkExpirationDatePicker } from "../../_components/update-link-modal";
 import { revalidateHomepage } from "../../actions/revalidate-homepage";
 
+import type { CustomDomain } from "@/server/db/schema";
 import type { z } from "zod";
 export default function CreateLinkPage() {
   const router = useRouter();
   const [destinationURL, setDestinationURL] = useState<string | undefined>();
+  // const [alias, setAlias] = useState("");
+  // const debouncedAlias = useDebounce(alias, 500);
+  const [userDomains, setUserDomains] = useState<CustomDomain[]>([]);
   const [metaData, setMetaData] = useState({
     title: "",
     description: "",
@@ -45,12 +49,15 @@ export default function CreateLinkPage() {
   });
 
   const userSubscription = api.subscriptions.get.useQuery();
+  const customDomainsQuery = api.customDomain.list.useQuery();
 
   const form = useForm<z.infer<typeof createLinkSchema>>({
     resolver: zodResolver(createLinkSchema),
   });
 
   const [debouncedUrl] = useDebounce(destinationURL, 500);
+  const [debouncedAlias] = useDebounce(form.watch("alias"), 500);
+  const selectedDomain = form.watch("domain") ?? "ishortn.ink";
 
   const formUpdateMutation = api.link.create.useMutation({
     onSuccess: async () => {
@@ -62,6 +69,39 @@ export default function CreateLinkPage() {
       toast.error(error.message);
     },
   });
+
+  const checkAliasAvailability = api.link.checkAliasAvailability.useQuery(
+    { alias: debouncedAlias!, domain: selectedDomain },
+    {
+      // enabled: debouncedAlias!.length > 0,
+      // debouncedAlias can be undefined
+      enabled: !!debouncedAlias,
+      onSuccess: (data) => {
+        if (!data.isAvailable) {
+          form.setError("alias", {
+            type: "manual",
+            message: "Alias is already taken",
+          });
+        } else {
+          form.clearErrors("alias");
+        }
+      },
+    },
+  );
+
+  useEffect(() => {
+    if (customDomainsQuery.data) {
+      setUserDomains(customDomainsQuery.data);
+    }
+  }, [customDomainsQuery.data]);
+
+  useEffect(() => {
+    if (debouncedAlias) {
+      void checkAliasAvailability.refetch();
+    } else {
+      form.clearErrors("alias");
+    }
+  }, [debouncedAlias, selectedDomain]);
 
   async function onSubmit(values: z.infer<typeof createLinkSchema>) {
     if (values.password) {
@@ -128,13 +168,26 @@ export default function CreateLinkPage() {
                   <FormLabel>Link Alias</FormLabel>
                   <FormControl>
                     <section className="flex items-center">
-                      <Select>
+                      <Select
+                        onValueChange={(value) => {
+                          form.setValue("domain", value);
+                        }}
+                      >
                         <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-50">
                           <SelectValue placeholder="ishortn.ink" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
                             <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
+                            {userDomains.length > 0 && (
+                              <>
+                                {userDomains.map((domain) => (
+                                  <SelectItem key={domain.id} value={domain.domain!}>
+                                    {domain.domain}
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
                           </SelectGroup>
                         </SelectContent>
                       </Select>

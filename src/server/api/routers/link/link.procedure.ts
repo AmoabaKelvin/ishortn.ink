@@ -71,4 +71,10 @@ export const linkRouter = createTRPCRouter({
     .mutation(({ ctx, input }) => {
       return services.changeLinkPassword(ctx, input);
     }),
+
+  checkAliasAvailability: publicProcedure
+    .input(z.object({ alias: z.string(), domain: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return services.checkAliasAvailability(ctx, input);
+    }),
 });
