@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
@@ -12,8 +14,13 @@ type LinksAnalyticsPageProps = {
 };
 
 export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPageProps) {
+  const headersList = headers();
+
+  const domain = headersList.get("x-forwarded-host") ?? headersList.get("host") ?? "ishortn.ink";
+
   const linkVisits = await api.link.linkVisits.query({
     id: params.alias,
+    domain,
   });
 
   const aggregatedVisits = aggregateVisits(linkVisits);
