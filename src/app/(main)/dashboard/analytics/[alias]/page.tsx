@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
