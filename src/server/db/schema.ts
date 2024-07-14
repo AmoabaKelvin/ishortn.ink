@@ -1,16 +1,17 @@
 import { relations } from "drizzle-orm";
 import {
-	boolean,
-	datetime,
-	index,
-	int,
-	longtext,
-	mysqlEnum,
-	mysqlTable,
-	serial,
-	text,
-	timestamp,
-	varchar,
+  boolean,
+  datetime,
+  index,
+  int,
+  json,
+  longtext,
+  mysqlEnum,
+  mysqlTable,
+  serial,
+  text,
+  timestamp,
+  varchar,
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -63,7 +64,8 @@ export const link = mysqlTable(
     url: text("url"),
     alias: varchar("alias", {
       length: 20,
-    }).unique(),
+    }),
+    domain: varchar("domain", { length: 255 }).notNull().default("ishortn.ink"),
     createdAt: timestamp("createdAt").defaultNow(),
     disableLinkAfterClicks: int("disableLinkAfterClicks"),
     disableLinkAfterDate: datetime("disableLinkAfterDate"),
@@ -76,6 +78,7 @@ export const link = mysqlTable(
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
+    aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
   }),
 );
 
@@ -166,6 +169,21 @@ export const linkRelations = relations(link, ({ one, many }) => ({
   linkVisits: many(linkVisit),
 }));
 
+export const customDomain = mysqlTable(
+  "CustomDomain",
+  {
+    id: serial("id").primaryKey(),
+    domain: varchar("domain", { length: 255 }).unique(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+    status: mysqlEnum("status", ["pending", "active", "invalid"]).default("pending"),
+    verificationDetails: json("verificationDetails"),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+  }),
+);
+
 export const userRelations = relations(user, ({ many, one }) => ({
   links: many(link),
   tokens: one(token, {
@@ -177,6 +195,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
     fields: [user.id],
     references: [subscription.userId],
   }),
+  customDomains: many(customDomain),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -211,6 +230,16 @@ export const qrcodeRelations = relations(qrcode, ({ one }) => ({
   }),
 }));
 
+export const customDomainRelations = relations(customDomain, ({ one }) => ({
+  user: one(user, {
+    fields: [customDomain.userId],
+    references: [user.id],
+  }),
+}));
+
+export type CustomDomain = typeof customDomain.$inferSelect;
+export type NewCustomDomain = typeof customDomain.$inferInsert;
+
 export type Link = typeof link.$inferSelect;
 export type NewLink = typeof link.$inferInsert;
 
@@ -228,44 +257,3 @@ export type NewSubscription = typeof subscription.$inferInsert;
 
 export type QrCode = typeof qrcode.$inferSelect;
 export type NewQrCode = typeof qrcode.$inferInsert;
-
-// DynamicLink model
-// export const dynamicLink = mysqlTable(
-//   "DynamicLink",
-//   {
-//     id: serial("id").primaryKey(),
-//     name: varchar("name"),
-//     subdomain: varchar("subdomain").unique(),
-//     createdAt: datetime("createdAt").defaultNow(),
-//     playStoreUrl: varchar("playStoreUrl").default(""),
-//     appStoreUrl: varchar("appStoreUrl").default(""),
-//     iosTeamId: varchar("iosTeamId").default(""),
-//     iosBundleId: varchar("iosBundleId").default(""),
-//     androidPackageName: varchar("androidPackageName").default(""),
-//     androidSha256Fingerprint: varchar("androidSha256Fingerprint").default(""),
-//     userId: varchar("userId").references(() => user.id),
-//   },
-//   (table) => ({
-//     userIdIdx: index("userId_idx").on(table.userId),
-//   }),
-// );
-
-// // DynamicLinkChildLink model
-// export const dynamicLinkChildLink = mysqlTable(
-//   "DynamicLinkChildLink",
-//   {
-//     id: serial("id").primaryKey(),
-//     dynamicLinkId: int("dynamicLinkId").references(() => dynamicLink.id),
-//     createdAt: datetime("createdAt").defaultNow(),
-//     metaDataTitle: varchar("metaDataTitle").default(""),
-//     metaDataDescription: varchar("metaDataDescription").default(""),
-//     metaDataImageUrl: text("metaDataImageUrl"),
-//     shortLink: varchar("shortLink"),
-//     link: text("link"),
-//     fallbackLink: text("fallbackLink"),
-//     createdFromUI: boolean("createdFromUI").default(false),
-//   },
-//   (table) => ({
-//     dynamicLinkIdIdx: index("dynamicLinkId_idx").on(table.dynamicLinkId),
-//   }),
-// );

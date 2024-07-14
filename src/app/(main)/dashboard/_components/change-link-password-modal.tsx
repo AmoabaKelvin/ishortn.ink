@@ -19,7 +19,7 @@ type ChangePasswordModalProps = {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 
-  alias: string;
+  id: number;
   hasPassword: boolean;
 };
 
@@ -40,7 +40,7 @@ const getComponentMessages = (hasPassword: boolean) => {
 export function ChangeLinkPasswordModal({
   open,
   setOpen,
-  alias,
+  id,
   hasPassword,
 }: ChangePasswordModalProps) {
   const [newPassword, setNewPassword] = useState("");
@@ -59,7 +59,7 @@ export function ChangeLinkPasswordModal({
   const handlePasswordChange = async () => {
     if (!newPassword) return;
 
-    toast.promise(changePasswordMutation.mutateAsync({ alias, password: newPassword }), {
+    toast.promise(changePasswordMutation.mutateAsync({ id, password: newPassword }), {
       loading: componentMessages.loading,
       success: componentMessages.loadingSuccess,
       error: componentMessages.loadingError,

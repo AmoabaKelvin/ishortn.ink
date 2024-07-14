@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
 
-export const LinkPasswordVerification = ({ alias }: { alias: string }) => {
+export const LinkPasswordVerification = ({ id }: { id: number }) => {
   const verifyPasswordMutation = api.link.verifyLinkPassword.useMutation();
   const router = useRouter();
 
@@ -18,7 +18,7 @@ export const LinkPasswordVerification = ({ alias }: { alias: string }) => {
     const password = formData.get("password") as string;
 
     const result = await verifyPasswordMutation.mutateAsync({
-      alias,
+      id,
       password,
     });
 
