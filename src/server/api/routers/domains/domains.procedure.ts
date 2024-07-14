@@ -139,7 +139,7 @@ export const customDomainRouter = createTRPCRouter({
     }),
 });
 
-type VercelConfigResponse = {
+export type VercelConfigResponse = {
   configuredBy: string | null;
   nameservers: string[];
   serviceType: string;
