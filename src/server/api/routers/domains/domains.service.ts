@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 
 import { customDomain, link, linkVisit } from "@/server/db/schema";
 
+import type { VercelConfigResponse } from "./domains.procedure";
 import { addDomainToVercelProject, deleteDomainFromVercelProject } from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
@@ -54,11 +55,36 @@ export async function addDomainToUserAccount(
     });
 
     console.log("Response from domain addition", response);
+    let wellConfigured;
+
+    if (response.verified) {
+      // the domain is verified so let's check if it's misconfigured
+      const response = await fetch(
+        `https://api.vercel.com/v6/domains/${domain}/config?teamId=${process.env.TEAM_ID_VERCEL}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const data = (await response.json()) as VercelConfigResponse;
+
+      console.log("Config data", data);
+
+      if (data.misconfigured) {
+        wellConfigured = false;
+      } else {
+        wellConfigured = true;
+      }
+    }
 
     await ctx.db.insert(customDomain).values({
       userId,
       domain: domain,
-      status: response.verified ? "active" : "pending",
+      status: wellConfigured ? "active" : "pending",
       verificationDetails: verificationDetails,
     });
   } catch (error) {
