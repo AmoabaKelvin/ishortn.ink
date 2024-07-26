@@ -53,6 +53,7 @@ export const linkRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
+        domain: z.string(),
       }),
     )
     .query(({ ctx, input }) => {

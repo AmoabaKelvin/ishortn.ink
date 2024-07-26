@@ -1,23 +1,24 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 
 import { aggregateVisits } from "@/lib/core/analytics";
+import { removeUrlProtocol } from "@/lib/utils";
 import { api } from "@/trpc/server";
 
 import { BarChart } from "../../dashboard/analytics/[alias]/_components/bar-chart";
-import { CountriesAndCitiesStats } from "../../dashboard/analytics/[alias]/countries-and-cities-stats";
+import {
+	CountriesAndCitiesStats,
+} from "../../dashboard/analytics/[alias]/countries-and-cities-stats";
 import { UserAgentStats } from "../../dashboard/analytics/[alias]/user-agent-stats";
 
 type LinksAnalyticsPageProps = {
   params: {
     alias: string;
   };
+  searchParams: Record<string, string | string[] | undefined>;
 };
 
-export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPageProps) {
-  const headerList = headers();
-
-  const domain = headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "ishortn.ink";
+export default async function LinkAnalyticsPage({ params, searchParams }: LinksAnalyticsPageProps) {
+  const domain = (searchParams?.domain as string) ?? "ishortn.ink";
 
   const obtainedLink = await api.link.getLinkByAlias.query({ alias: params.alias, domain: domain });
   const link = obtainedLink[0];
@@ -43,11 +44,12 @@ export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPagePr
     );
   }
 
-  const linkVisits = await api.link.linkVisits.query({
+  const { totalVisits, uniqueVisits } = await api.link.linkVisits.query({
     id: params.alias,
+    domain: removeUrlProtocol(domain),
   });
 
-  const aggregatedVisits = aggregateVisits(linkVisits);
+  const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -56,14 +58,18 @@ export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPagePr
       </h1>
 
       <div className="mt-5 h-[500px]">
-        <BarChart clicksPerDate={aggregatedVisits.clicksPerDate} className="h-96" />
+        <BarChart
+          clicksPerDate={aggregatedVisits.clicksPerDate}
+          className="h-96"
+          uniqueClicksPerDate={aggregatedVisits.uniqueClicksPerDate ?? {}}
+        />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-10">
         <CountriesAndCitiesStats
           citiesRecords={aggregatedVisits.clicksPerCity}
           countriesRecords={aggregatedVisits.clicksPerCountry}
-          totalClicks={linkVisits.length}
+          totalClicks={totalVisits.length}
         />
 
         <UserAgentStats
@@ -71,7 +77,7 @@ export default async function LinkAnalyticsPage({ params }: LinksAnalyticsPagePr
           clicksPerDevice={aggregatedVisits.clicksPerDevice}
           clicksPerModel={aggregatedVisits.clicksPerModel}
           clicksPerOS={aggregatedVisits.clicksPerOS}
-          totalClicks={linkVisits.length}
+          totalClicks={totalVisits.length}
         />
       </div>
     </div>

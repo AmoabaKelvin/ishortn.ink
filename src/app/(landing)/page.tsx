@@ -2,6 +2,7 @@ import { BarChartHorizontal, Blocks, Brush, LinkIcon, QrCode } from "lucide-reac
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Paths } from "@/lib/constants";
 
 import { FAQ } from "./_components/faq";
 import CardSpotlight from "./_components/hover-card";
@@ -64,7 +65,7 @@ const HomePage = () => {
           </p>
           <div className="flex justify-center gap-4">
             <Button asChild className="px-10 py-6">
-              <Link href="/login">Get Started for free</Link>
+              <Link href={Paths.Login}>Get Started for free</Link>
             </Button>
           </div>
         </div>

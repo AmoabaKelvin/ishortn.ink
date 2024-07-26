@@ -1,17 +1,17 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
-  datetime,
-  index,
-  int,
-  json,
-  longtext,
-  mysqlEnum,
-  mysqlTable,
-  serial,
-  text,
-  timestamp,
-  varchar,
+	boolean,
+	datetime,
+	index,
+	int,
+	json,
+	longtext,
+	mysqlEnum,
+	mysqlTable,
+	serial,
+	text,
+	timestamp,
+	varchar,
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -100,6 +100,21 @@ export const linkVisit = mysqlTable(
   }),
 );
 
+export const uniqueLinkVisit = mysqlTable(
+  "UniqueLinkVisit",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    ipHash: varchar("ipHash", { length: 255 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+    ipHashIdx: index("ipHash_idx").on(table.ipHash),
+    uniqueVisitIdx: index("unique_visit_idx").on(table.linkId, table.ipHash),
+  }),
+);
+
 export const token = mysqlTable(
   "Token",
   {
@@ -167,6 +182,7 @@ export const linkRelations = relations(link, ({ one, many }) => ({
     references: [user.id],
   }),
   linkVisits: many(linkVisit),
+  uniqueLinkVisits: many(uniqueLinkVisit),
 }));
 
 export const customDomain = mysqlTable(
@@ -237,6 +253,10 @@ export const customDomainRelations = relations(customDomain, ({ one }) => ({
   }),
 }));
 
+export const uniqueLinkVisitRelations = relations(uniqueLinkVisit, ({ one }) => ({
+  link: one(link, { fields: [uniqueLinkVisit.linkId], references: [link.id] }),
+}));
+
 export type CustomDomain = typeof customDomain.$inferSelect;
 export type NewCustomDomain = typeof customDomain.$inferInsert;
 
@@ -248,6 +268,8 @@ export type NewUser = typeof user.$inferInsert;
 
 export type LinkVisit = typeof linkVisit.$inferSelect;
 export type NewLinkVisit = typeof linkVisit.$inferInsert;
+export type UniqueLinkVisit = typeof uniqueLinkVisit.$inferSelect;
+export type NewUniqueLinkVisit = typeof uniqueLinkVisit.$inferInsert;
 
 export type Token = typeof token.$inferSelect;
 export type NewToken = typeof token.$inferInsert;

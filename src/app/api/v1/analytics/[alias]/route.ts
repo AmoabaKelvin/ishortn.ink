@@ -16,6 +16,7 @@ export async function GET(request: Request, { params }: { params: { alias: strin
     where: (table, { eq }) => eq(table.alias, alias),
     with: {
       linkVisits: true,
+      uniqueLinkVisits: true,
     },
   });
 
@@ -27,7 +28,7 @@ export async function GET(request: Request, { params }: { params: { alias: strin
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const aggregatedVisits = aggregateVisits(link.linkVisits);
+  const aggregatedVisits = aggregateVisits(link.linkVisits, link.uniqueLinkVisits);
 
   return Response.json(aggregatedVisits);
 }

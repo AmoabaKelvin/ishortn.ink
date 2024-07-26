@@ -13,15 +13,12 @@ type LinkRedirectionPageProps = {
 
 const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
   const headersList = headers();
-
-  const domain = headersList.get("x-forwarded-host") ?? headersList.get("host");
-
-  console.log("Domain is", domain);
-  console.log("Alias is", params.linkAlias);
+  const incomingDomain = headersList.get("x-forwarded-host") ?? headersList.get("host");
+  const domain = process.env.VERCEL_URL ? incomingDomain : "ishortn.ink"; // if we're on vercel, use the incoming domain else use the default domain
 
   const link = await api.link.retrieveOriginalUrl.query({
     alias: params.linkAlias,
-    domain: domain!,
+    domain: domain!.replace("http://", "").replace("https://", "").replace("www.", ""),
   });
 
   if (!link) return notFound();

@@ -4,11 +4,9 @@ export const EMAIL_SENDER = '"Acme" <noreply@acme.com>';
 
 export enum Paths {
   Home = "/",
-  Login = "/login",
-  Signup = "/signup",
+  Login = "auth/sign-in",
+  Signup = "/auth/sign-up",
   Dashboard = "/dashboard",
-  VerifyEmail = "/verify-email",
-  ResetPassword = "/reset-password",
 }
 
 export const LOCAL_DEVELOPMENT_GEOLOCATION_DATA = {
