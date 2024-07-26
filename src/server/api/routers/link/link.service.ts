@@ -1,12 +1,14 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { and, count, desc, eq } from "drizzle-orm";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { Cache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { db } from "@/server/db";
-import { link, linkVisit } from "@/server/db/schema";
+import { link, linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
+import type { Link } from "@/server/db/schema";
 import type { ProtectedTRPCContext, PublicTRPCContext } from "../../trpc";
 import type {
   CreateLinkInput,
@@ -15,6 +17,7 @@ import type {
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
+
 const cache = new Cache();
 
 function constructCacheKey(domain: string, alias: string) {
@@ -144,36 +147,49 @@ export const retrieveOriginalUrl = async (
   const { alias, domain } = input;
   const cacheKey = `${domain}:${alias}`;
 
-  const cachedLink = await cache.get(input.alias);
-  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+  let link: Link | undefined | null = await cache.get(input.alias);
 
-  console.log("Log is", cachedLink, typeof cachedLink?.id);
+  console.log("Link is cached", link);
 
-  if (cachedLink?.alias) {
-    await ctx.db.insert(linkVisit).values({
-      linkId: cachedLink.id,
-      ...deviceDetails,
+  if (!link?.alias) {
+    link = await ctx.db.query.link.findFirst({
+      where: (table, { eq, and }) => and(eq(table.alias, input.alias), eq(table.domain, domain)),
     });
-    return cachedLink;
+
+    if (!link) {
+      return null;
+    }
   }
 
-  const link = await ctx.db.query.link.findFirst({
-    where: (table, { eq, and }) => and(eq(table.alias, input.alias), eq(table.domain, domain)),
-  });
+  // const linkOwnerSubscription = await ctx.db.query.subscription.findFirst({
+  //   where: (table, { eq }) => eq(table.userId, link.userId),
+  // });
+  // const linkOwnerHasProPlan = linkOwnerSubscription?.status === "active";
 
-  if (!link) {
-    return null;
-  }
-
-  // only log as a visit if the link is not password protected
+  // record the visit for both cached and non-cached links, unless the link is password protected
   if (!link.passwordHash) {
+    const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
     await ctx.db.insert(linkVisit).values({
       linkId: link.id,
       ...deviceDetails,
     });
-  }
 
-  await cache.set(cacheKey, link);
+    const ipHash = crypto
+      .createHash("sha256")
+      .update(ctx.headers.get("x-forwarded-for") ?? "")
+      .digest("hex");
+
+    const existingLinkVisit = await ctx.db.query.uniqueLinkVisit.findFirst({
+      where: (table, { eq, and }) => and(eq(table.linkId, link.id), eq(table.ipHash, ipHash)),
+    });
+
+    if (!existingLinkVisit) {
+      await ctx.db.insert(uniqueLinkVisit).values({
+        linkId: link.id,
+        ipHash,
+      });
+    }
+  }
 
   return link;
 };
@@ -205,14 +221,34 @@ export const getLinkVisits = async (
   ctx: ProtectedTRPCContext,
   input: { id: string; domain: string },
 ) => {
+  console.log("input", input);
+  // const link = await ctx.db.query.link.findFirst({
+  //   where: (table, { eq, and }) => and(eq(table.alias, input.id), eq(table.domain, input.domain)),
+  //   with: {
+  //     linkVisits: true,
+  //   },
+  // });
+
   const link = await ctx.db.query.link.findFirst({
     where: (table, { eq, and }) => and(eq(table.alias, input.id), eq(table.domain, input.domain)),
     with: {
       linkVisits: true,
+      uniqueLinkVisits: true,
     },
   });
 
-  return link?.linkVisits ?? [];
+  if (!link?.linkVisits) {
+    return { totalVisits: [] };
+  }
+
+  if (!link?.linkVisits) {
+    return { totalVisits: [], uniqueVisits: [] };
+  }
+
+  const totalVisits = link.linkVisits;
+  const uniqueVisits = link.uniqueLinkVisits;
+
+  return { totalVisits, uniqueVisits };
 };
 
 export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
@@ -282,6 +318,20 @@ export const verifyLinkPassword = async (
   }
 
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+  const ipHash = crypto
+    .createHash("sha256")
+    .update(ctx.headers.get("x-forwarded-for") ?? "")
+    .digest("hex");
+  const existingLinkVisit = await ctx.db.query.uniqueLinkVisit.findFirst({
+    where: (table, { eq, and }) => and(eq(table.linkId, link.id), eq(table.ipHash, ipHash)),
+  });
+
+  if (!existingLinkVisit) {
+    await ctx.db.insert(uniqueLinkVisit).values({
+      linkId: link.id,
+      ipHash,
+    });
+  }
 
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,
