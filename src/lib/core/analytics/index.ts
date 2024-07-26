@@ -4,6 +4,7 @@ import { env } from "@/env";
 import { LOCAL_DEVELOPMENT_GEOLOCATION_DATA } from "@/lib/constants";
 
 import type { RouterOutputs } from "@/trpc/shared";
+
 import type { GeolocationAPIResponseType } from "./types";
 
 const getGeolocationDetailsFromAPI = async (ip: string) => {
@@ -75,60 +76,41 @@ export const retrieveDeviceAndGeolocationData = async (headers: Headers) => {
   };
 };
 
-export const aggregateVisits = (linkVisits: RouterOutputs["link"]["linkVisits"]) => {
+function safeIncrement<T extends string>(record: Record<T, number>, key: T): void {
+  record[key] = (record[key] || 0) + 1;
+}
+
+type AggregateVisitsParams = {
+  visits: RouterOutputs["link"]["linkVisits"]["totalVisits"];
+  uniqueVisits: RouterOutputs["link"]["linkVisits"]["uniqueVisits"];
+};
+
+export const aggregateVisits = (
+  visits: AggregateVisitsParams["visits"],
+  uniqueVisits: AggregateVisitsParams["uniqueVisits"],
+) => {
   const clicksPerDate: Record<string, number> = {};
-  const clicksPerCity: Record<string, number> = {};
+  const uniqueClicksPerDate: Record<string, number> = {};
   const clicksPerCountry: Record<string, number> = {};
+  const clicksPerCity: Record<string, number> = {};
   const clicksPerDevice: Record<string, number> = {};
   const clicksPerOS: Record<string, number> = {};
   const clicksPerBrowser: Record<string, number> = {};
   const clicksPerModel: Record<string, number> = {};
 
-  linkVisits.forEach((visit: RouterOutputs["link"]["linkVisits"][number]) => {
-    const date = new Date(visit.createdAt!).toLocaleDateString();
+  visits.forEach((visit) => {
+    const date = new Date(visit.createdAt!).toISOString().split("T")[0];
+    safeIncrement(clicksPerDate, date!);
 
-    if (!clicksPerDate[date]) {
-      clicksPerDate[date] = 0;
-    }
+    if (visit.country) safeIncrement(clicksPerCountry, visit.country);
+    if (visit.city) safeIncrement(clicksPerCity, visit.city);
+    if (visit.device) safeIncrement(clicksPerDevice, visit.device);
+    if (visit.os) safeIncrement(clicksPerOS, visit.os);
+    if (visit.browser) safeIncrement(clicksPerBrowser, visit.browser);
+    if (visit.model) safeIncrement(clicksPerModel, visit.model);
+  });
 
-    clicksPerDate[date] += 1;
-
-    if (!clicksPerCountry[visit.country!]) {
-      clicksPerCountry[visit.country!] = 0;
-    }
-
-    clicksPerCountry[visit.country!] += 1;
-
-    if (!clicksPerCity[visit.city!]) {
-      clicksPerCity[visit.city!] = 0;
-    }
-
-    clicksPerCity[visit.city!] += 1;
-
-    if (!clicksPerDevice[visit.device!]) {
-      clicksPerDevice[visit.device!] = 0;
-    }
-
-    clicksPerDevice[visit.device!] += 1;
-
-    if (!clicksPerOS[visit.os!]) {
-      clicksPerOS[visit.os!] = 0;
-    }
-
-    clicksPerOS[visit.os!] += 1;
-
-    if (!clicksPerBrowser[visit.browser!]) {
-      clicksPerBrowser[visit.browser!] = 0;
-    }
-
-    clicksPerBrowser[visit.browser!] += 1;
-
-    if (!clicksPerModel[visit.model!]) {
-      clicksPerModel[visit.model!] = 0;
-    }
-
-    clicksPerModel[visit.model!] += 1;
-
+  if (!uniqueVisits)
     return {
       clicksPerDate,
       clicksPerCountry,
@@ -138,15 +120,20 @@ export const aggregateVisits = (linkVisits: RouterOutputs["link"]["linkVisits"])
       clicksPerBrowser,
       clicksPerModel,
     };
+
+  uniqueVisits.forEach((uniqueVisit) => {
+    const date = new Date(uniqueVisit.createdAt!).toISOString().split("T")[0];
+    safeIncrement(uniqueClicksPerDate, date!);
   });
 
   return {
     clicksPerDate,
+    uniqueClicksPerDate,
     clicksPerCountry,
     clicksPerCity,
     clicksPerDevice,
     clicksPerOS,
     clicksPerBrowser,
     clicksPerModel,
-  } as const;
+  };
 };
