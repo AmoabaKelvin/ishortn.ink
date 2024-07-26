@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { subDays } from "date-fns";
 import { and, count, desc, eq } from "drizzle-orm";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
@@ -69,11 +70,6 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
     }
 
     const domain = input.domain ?? "ishortn.ink";
-
-    // const aliasExists = await ctx.db
-    //   .select()
-    //   .from(link)
-    //   .where(and(eq(link.alias, input.alias), eq(link.userId, ctx.auth.userId)));
 
     const aliasExists = await ctx.db
       .select()
@@ -161,11 +157,6 @@ export const retrieveOriginalUrl = async (
     }
   }
 
-  // const linkOwnerSubscription = await ctx.db.query.subscription.findFirst({
-  //   where: (table, { eq }) => eq(table.userId, link.userId),
-  // });
-  // const linkOwnerHasProPlan = linkOwnerSubscription?.status === "active";
-
   // record the visit for both cached and non-cached links, unless the link is password protected
   if (!link.passwordHash) {
     const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
@@ -221,34 +212,35 @@ export const getLinkVisits = async (
   ctx: ProtectedTRPCContext,
   input: { id: string; domain: string },
 ) => {
-  console.log("input", input);
-  // const link = await ctx.db.query.link.findFirst({
-  //   where: (table, { eq, and }) => and(eq(table.alias, input.id), eq(table.domain, input.domain)),
-  //   with: {
-  //     linkVisits: true,
-  //   },
-  // });
+  const userSubscription = await ctx.db.query.subscription.findFirst({
+    where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+  });
+  const userHasProPlan = userSubscription?.status === "active";
+
+  const sevenDaysAgo = subDays(new Date(), 7);
 
   const link = await ctx.db.query.link.findFirst({
     where: (table, { eq, and }) => and(eq(table.alias, input.id), eq(table.domain, input.domain)),
     with: {
-      linkVisits: true,
-      uniqueLinkVisits: true,
+      linkVisits: {
+        where: userHasProPlan ? undefined : (visit, { gte }) => gte(visit.createdAt, sevenDaysAgo),
+      },
+      // uniqueLinkVisits: true,
+      uniqueLinkVisits: {
+        where: userHasProPlan ? undefined : (visit, { gte }) => gte(visit.createdAt, sevenDaysAgo),
+      },
     },
   });
 
-  if (!link?.linkVisits) {
-    return { totalVisits: [] };
-  }
-
-  if (!link?.linkVisits) {
+  if (!link) {
     return { totalVisits: [], uniqueVisits: [] };
   }
 
-  const totalVisits = link.linkVisits;
-  const uniqueVisits = link.uniqueLinkVisits;
-
-  return { totalVisits, uniqueVisits };
+  return {
+    totalVisits: link.linkVisits,
+    uniqueVisits: link.uniqueLinkVisits,
+    isProPlan: userHasProPlan,
+  };
 };
 
 export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {

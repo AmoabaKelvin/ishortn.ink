@@ -4,7 +4,12 @@ import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
 
-function UpgradeText() {
+// we can use custom text or the default one
+type UpgradeTextProps = {
+  text?: string;
+};
+
+function UpgradeText({ text }: UpgradeTextProps) {
   const upgradeMutation = api.lemonsqueezy.createCheckoutUrl.useMutation({
     onSuccess: (url) => {
       window.open(url);
@@ -21,7 +26,8 @@ function UpgradeText() {
 
   return (
     <span className="text-blue-600 underline hover:cursor-pointer" onClick={handleUpgrade}>
-      Upgrade your subscription
+      {/* Upgrade your subscription */}
+      {text ?? "Upgrade your subscription"}
     </span>
   );
 }
