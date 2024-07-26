@@ -1,6 +1,7 @@
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
+import UpgradeText from "../../qrcodes/upgrade-text";
 import { BarChart } from "./_components/bar-chart";
 import { CountriesAndCitiesStats } from "./countries-and-cities-stats";
 import { UserAgentStats } from "./user-agent-stats";
@@ -13,7 +14,7 @@ type LinksAnalyticsPageProps = {
 };
 
 export default async function LinkAnalyticsPage({ params, searchParams }: LinksAnalyticsPageProps) {
-  const { totalVisits, uniqueVisits } = await api.link.linkVisits.query({
+  const { totalVisits, uniqueVisits, isProPlan } = await api.link.linkVisits.query({
     id: params.alias,
     domain: (searchParams?.domain as string) ?? "ishortn.ink",
   });
@@ -22,15 +23,25 @@ export default async function LinkAnalyticsPage({ params, searchParams }: LinksA
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="cursor-pointer font-semibold leading-tight text-blue-600 hover:underline md:text-3xl">
-        {searchParams?.domain}/{params.alias}
-      </h1>
+      <div className="flex flex-col items-center justify-between md:flex-row">
+        <h1 className="cursor-pointer font-semibold leading-tight text-blue-600 hover:underline md:text-3xl">
+          {searchParams?.domain}/{params.alias}
+        </h1>
 
-      <div className="mt-5">
+        {!isProPlan && (
+          <div className="mt-2 text-center text-sm text-gray-500">
+            You are viewing limited analytics data (last 7 days).{" "}
+            <UpgradeText text="Upgrade to Pro" /> for full analytics.
+          </div>
+        )}
+      </div>
+
+      <div className="mt-16">
         <BarChart
           clicksPerDate={aggregatedVisits.clicksPerDate}
           uniqueClicksPerDate={aggregatedVisits.uniqueClicksPerDate ?? {}}
           className="h-96"
+          isProPlan={isProPlan}
         />
       </div>
 
