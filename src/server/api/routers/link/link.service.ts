@@ -145,8 +145,6 @@ export const retrieveOriginalUrl = async (
 
   let link: Link | undefined | null = await cache.get(input.alias);
 
-  console.log("Link is cached", link);
-
   if (!link?.alias) {
     link = await ctx.db.query.link.findFirst({
       where: (table, { eq, and }) => and(eq(table.alias, input.alias), eq(table.domain, domain)),
@@ -179,6 +177,13 @@ export const retrieveOriginalUrl = async (
         linkId: link.id,
         ipHash,
       });
+    }
+
+    // log the referrer if it exists
+    if (ctx.headers.get("referer")) {
+      console.log("Referer", ctx.headers.get("referer"));
+    } else {
+      console.log("No referer");
     }
   }
 
