@@ -22,8 +22,6 @@ const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
     domain = "ishortn.ink";
   }
 
-  console.log("Domain", domain);
-
   const link = await api.link.retrieveOriginalUrl.query({
     alias: params.linkAlias,
     domain: domain.replace("http://", "").replace("https://", "").replace("www.", ""),
