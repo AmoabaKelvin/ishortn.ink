@@ -145,7 +145,7 @@ export const retrieveOriginalUrl = async (
   const { alias, domain } = input;
   const cacheKey = `${domain}:${alias}`;
 
-  let link: Link | undefined | null = await cache.get(input.alias);
+  let link: Link | undefined | null = await cache.get(cacheKey);
 
   if (!link?.alias) {
     link = await ctx.db.query.link.findFirst({
@@ -156,10 +156,6 @@ export const retrieveOriginalUrl = async (
       return null;
     }
   }
-
-  // if (!link.passwordHash) {
-  //   waitUntil(logAnalytics(ctx, link));
-  // }
 
   waitUntil(logAnalytics(ctx, link));
 

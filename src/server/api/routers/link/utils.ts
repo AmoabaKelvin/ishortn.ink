@@ -1,11 +1,14 @@
 import crypto from "crypto";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
+import { Cache } from "@/lib/core/cache";
 import { parseReferrer } from "@/lib/utils";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
 import type { Link } from "@/server/db/schema";
 import type { PublicTRPCContext } from "../../trpc";
+
+const cache = new Cache();
 
 export async function logAnalytics(ctx: PublicTRPCContext, link: Link) {
   if (link.passwordHash) {
@@ -35,4 +38,6 @@ export async function logAnalytics(ctx: PublicTRPCContext, link: Link) {
       ipHash,
     });
   }
+
+  await cache.set(`${link.domain}:${link.alias}`, link);
 }
