@@ -1,13 +1,14 @@
 "use client";
 
-import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, BarChart as RechartsBarChart, XAxis } from "recharts";
 
+import { Card } from "@/components/ui/card";
 import {
-	ChartContainer,
-	ChartLegend,
-	ChartLegendContent,
-	ChartTooltip,
-	ChartTooltipContent,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
 } from "@/components/ui/chart";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
@@ -47,7 +48,7 @@ export function BarChart({
   }));
 
   return (
-    <>
+    <Card className="py-16 transition-transform duration-300 hover:scale-105">
       <ChartContainer config={chartConfig} className="h-96 w-full md:h-full md:min-h-96">
         <RechartsBarChart accessibilityLayer data={chartData}>
           <CartesianGrid vertical={false} />
@@ -64,9 +65,9 @@ export function BarChart({
               });
             }}
           />
-          {isDesktop && (
+          {/* {isDesktop && (
             <YAxis tickLine={false} tickMargin={10} axisLine={false} allowDecimals={false} />
-          )}
+          )} */}
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend content={<ChartLegendContent />} />
           <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
@@ -79,6 +80,6 @@ export function BarChart({
           analytics.
         </div>
       )}
-    </>
+    </Card>
   );
 }

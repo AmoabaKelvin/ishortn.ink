@@ -1,0 +1,1 @@
+ALTER TABLE `LinkVisit` ADD `referer` varchar(255);
