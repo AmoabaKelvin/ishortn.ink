@@ -10,11 +10,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
 import UpgradeText from "../../../qrcodes/upgrade-text";
 
 import type { ChartConfig } from "@/components/ui/chart";
+
 const chartConfig = {
   clicks: {
     label: "Clicks",
@@ -39,7 +39,7 @@ export function BarChart({
   className,
   isProPlan,
 }: BarChartProps) {
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  // const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const chartData = Object.entries(clicksPerDate).map(([date, clicks]) => ({
     date,
@@ -48,7 +48,7 @@ export function BarChart({
   }));
 
   return (
-    <Card className="py-16 transition-transform duration-300 hover:scale-105">
+    <Card className="py-16">
       <ChartContainer config={chartConfig} className="h-96 w-full md:h-full md:min-h-96">
         <RechartsBarChart accessibilityLayer data={chartData}>
           <CartesianGrid vertical={false} />
