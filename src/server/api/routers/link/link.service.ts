@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { subDays } from "date-fns";
@@ -6,9 +7,10 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { Cache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
-import { parseReferrer } from "@/lib/utils";
 import { db } from "@/server/db";
 import { link, linkVisit, uniqueLinkVisit } from "@/server/db/schema";
+
+import { logAnalytics } from "./utils";
 
 import type { Link } from "@/server/db/schema";
 import type { ProtectedTRPCContext, PublicTRPCContext } from "../../trpc";
@@ -155,32 +157,11 @@ export const retrieveOriginalUrl = async (
     }
   }
 
-  // record the visit for both cached and non-cached links, unless the link is password protected
-  if (!link.passwordHash) {
-    const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+  // if (!link.passwordHash) {
+  //   waitUntil(logAnalytics(ctx, link));
+  // }
 
-    await ctx.db.insert(linkVisit).values({
-      linkId: link.id,
-      ...deviceDetails,
-      referer: parseReferrer(ctx.headers.get("referer")),
-    });
-
-    const ipHash = crypto
-      .createHash("sha256")
-      .update(ctx.headers.get("x-forwarded-for") ?? "")
-      .digest("hex");
-
-    const existingLinkVisit = await ctx.db.query.uniqueLinkVisit.findFirst({
-      where: (table, { eq, and }) => and(eq(table.linkId, link.id), eq(table.ipHash, ipHash)),
-    });
-
-    if (!existingLinkVisit) {
-      await ctx.db.insert(uniqueLinkVisit).values({
-        linkId: link.id,
-        ipHash,
-      });
-    }
-  }
+  waitUntil(logAnalytics(ctx, link));
 
   return link;
 };
