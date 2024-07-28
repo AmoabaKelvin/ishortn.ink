@@ -1,8 +1,11 @@
+import { Crown, Fingerprint, Globe, MousePointerClick } from "lucide-react";
+
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
 import UpgradeText from "../../qrcodes/upgrade-text";
 import { BarChart } from "./_components/bar-chart";
+import QuickInfoCard from "./_components/quick-info-card";
 import { CountriesAndCitiesStats } from "./countries-and-cities-stats";
 import { UserAgentStats } from "./user-agent-stats";
 
@@ -14,10 +17,11 @@ type LinksAnalyticsPageProps = {
 };
 
 export default async function LinkAnalyticsPage({ params, searchParams }: LinksAnalyticsPageProps) {
-  const { totalVisits, uniqueVisits, isProPlan } = await api.link.linkVisits.query({
-    id: params.alias,
-    domain: (searchParams?.domain as string) ?? "ishortn.ink",
-  });
+  const { totalVisits, uniqueVisits, topCountry, referers, topReferrer, isProPlan } =
+    await api.link.linkVisits.query({
+      id: params.alias,
+      domain: (searchParams?.domain as string) ?? "ishortn.ink",
+    });
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
 
@@ -36,7 +40,27 @@ export default async function LinkAnalyticsPage({ params, searchParams }: LinksA
         )}
       </div>
 
-      <div className="mt-16">
+      {/* quick info cards */}
+      <div className="mt-5 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-4">
+        <QuickInfoCard
+          title="Total Visits"
+          value={totalVisits.length}
+          icon={<MousePointerClick className="size-4" />}
+        />
+        <QuickInfoCard
+          title="Unique Visits"
+          value={uniqueVisits.length}
+          icon={<Fingerprint className="size-4" />}
+        />
+        <QuickInfoCard title="Top Country" value={topCountry} icon={<Globe className="size-4" />} />
+        <QuickInfoCard
+          title="Top Referrer"
+          value={topReferrer}
+          icon={<Crown className="size-4" />}
+        />
+      </div>
+
+      <div className="mt-10 md:mt-14">
         <BarChart
           clicksPerDate={aggregatedVisits.clicksPerDate}
           uniqueClicksPerDate={aggregatedVisits.uniqueClicksPerDate ?? {}}
@@ -45,7 +69,7 @@ export default async function LinkAnalyticsPage({ params, searchParams }: LinksA
         />
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-10">
+      <div className="mt-5 grid grid-cols-1 gap-4 md:mt-14 md:grid-cols-10">
         <CountriesAndCitiesStats
           citiesRecords={aggregatedVisits.clicksPerCity}
           countriesRecords={aggregatedVisits.clicksPerCountry}

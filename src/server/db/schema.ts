@@ -1,17 +1,17 @@
 import { relations } from "drizzle-orm";
 import {
-	boolean,
-	datetime,
-	index,
-	int,
-	json,
-	longtext,
-	mysqlEnum,
-	mysqlTable,
-	serial,
-	text,
-	timestamp,
-	varchar,
+  boolean,
+  datetime,
+  index,
+  int,
+  json,
+  longtext,
+  mysqlEnum,
+  mysqlTable,
+  serial,
+  text,
+  timestamp,
+  varchar,
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -91,6 +91,7 @@ export const linkVisit = mysqlTable(
     browser: varchar("browser", { length: 255 }),
     os: varchar("os", { length: 255 }),
     model: varchar("model", { length: 255 }).default(""),
+    referer: varchar("referer", { length: 255 }),
     country: varchar("country", { length: 255 }),
     city: varchar("city", { length: 255 }),
     createdAt: timestamp("createdAt").defaultNow(),

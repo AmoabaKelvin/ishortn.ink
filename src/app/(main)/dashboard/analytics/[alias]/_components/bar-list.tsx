@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type BarListProps = {
@@ -41,13 +42,13 @@ type BarListTitleProps = {
 
 function BarListTitle({ title, description, children }: BarListTitleProps) {
   return (
-    <div className="flex h-max flex-col gap-4 rounded-md bg-gray-100 p-6 md:col-span-5">
+    <Card className="flex h-max flex-col gap-4 rounded-md  p-6 md:col-span-5">
       <div>
         <h1 className="text-xl font-semibold leading-tight text-gray-800">{title}</h1>
         <p className="text-sm text-gray-500">{description}</p>
       </div>
       <div className="flex flex-col gap-3">{children}</div>
-    </div>
+    </Card>
   );
 }
 

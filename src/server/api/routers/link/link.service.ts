@@ -6,6 +6,7 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { Cache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { parseReferrer } from "@/lib/utils";
 import { db } from "@/server/db";
 import { link, linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
@@ -18,7 +19,6 @@ import type {
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
-
 const cache = new Cache();
 
 function constructCacheKey(domain: string, alias: string) {
@@ -158,9 +158,11 @@ export const retrieveOriginalUrl = async (
   // record the visit for both cached and non-cached links, unless the link is password protected
   if (!link.passwordHash) {
     const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+
     await ctx.db.insert(linkVisit).values({
       linkId: link.id,
       ...deviceDetails,
+      referer: parseReferrer(ctx.headers.get("referer")),
     });
 
     const ipHash = crypto
@@ -177,13 +179,6 @@ export const retrieveOriginalUrl = async (
         linkId: link.id,
         ipHash,
       });
-    }
-
-    // log the referrer if it exists
-    if (ctx.headers.get("referer")) {
-      console.log("Referer", ctx.headers.get("referer"));
-    } else {
-      console.log("No referer");
     }
   }
 
@@ -241,9 +236,30 @@ export const getLinkVisits = async (
     return { totalVisits: [], uniqueVisits: [] };
   }
 
+  const countryVisits = link.linkVisits.reduce(
+    (acc, visit) => {
+      acc[visit.country!] = (acc[visit.country!] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  const topCountry = Object.entries(countryVisits).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+
+  const referrerVisits = link.linkVisits.reduce(
+    (acc, visit) => {
+      acc[visit.referer!] = (acc[visit.referer!] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  const topReferrer = Object.entries(referrerVisits).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+
   return {
     totalVisits: link.linkVisits,
     uniqueVisits: link.uniqueLinkVisits,
+    topCountry,
+    referers: referrerVisits,
+    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
     isProPlan: userHasProPlan,
   };
 };
