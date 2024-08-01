@@ -42,3 +42,5 @@ yarn-error.log*
 *.tsbuildinfo
 
 .idea/
+# Sentry Config File
+.env.sentry-build-plugin

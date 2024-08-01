@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { env } from "@/env";
+import { env } from "@/env.mjs";
 import { api } from "@/trpc/server";
 
 import { DashboardSidebar } from "./_components/dashboard-sidebar";
