@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { Resend } from "resend";
 import { Webhook } from "svix";
 
-import { env } from "@/env";
+import { env } from "@/env.mjs";
 import WelcomeEmail from "@/lib/email/templates/welcome-email";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";

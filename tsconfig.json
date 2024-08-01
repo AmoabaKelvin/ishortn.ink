@@ -45,7 +45,8 @@
     "**/*.js",
     ".next/types/**/*.ts",
     // include the .d.ts files
-    "**/*.d.ts"
+    "**/*.d.ts",
+    "src/env.mjs"
   ],
   "exclude": [
     "node_modules"

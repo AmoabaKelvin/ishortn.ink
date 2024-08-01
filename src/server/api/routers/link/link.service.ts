@@ -2,7 +2,7 @@ import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { subDays } from "date-fns";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { Cache } from "@/lib/core/cache";
@@ -17,17 +17,24 @@ import type { ProtectedTRPCContext, PublicTRPCContext } from "../../trpc";
 import type {
   CreateLinkInput,
   GetLinkInput,
+  ListLinksInput,
   QuickLinkShorteningInput,
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
+
 const cache = new Cache();
 
 function constructCacheKey(domain: string, alias: string) {
   return `${domain}:${alias}`;
 }
 
-export const getLinks = async (ctx: ProtectedTRPCContext) => {
+export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput) => {
+  const { page, pageSize, orderBy, orderDirection } = input;
+
+  const orderColumn = orderBy === "totalClicks" ? count(linkVisit.id) : link.createdAt;
+  const orderFunc = orderDirection === "desc" ? desc : asc;
+
   const links = await ctx.db
     .select({
       id: link.id,
@@ -47,9 +54,22 @@ export const getLinks = async (ctx: ProtectedTRPCContext) => {
     .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
     .where(eq(link.userId, ctx.auth.userId))
     .groupBy(link.id)
-    .orderBy(desc(link.createdAt));
+    .limit(pageSize)
+    .offset((page - 1) * pageSize)
+    .orderBy(orderFunc(orderColumn));
 
-  return links;
+  const totalLinks = await ctx.db
+    .select({ count: count() })
+    .from(link)
+    .where(eq(link.userId, ctx.auth.userId));
+  const parsedTotalLinks = totalLinks?.[0]?.count ?? 0;
+
+  return {
+    links,
+    totalLinks: parsedTotalLinks,
+    currentPage: page,
+    totalPages: Math.ceil(parsedTotalLinks / pageSize),
+  };
 };
 
 export const getLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
