@@ -5,7 +5,7 @@ import Script from "next/script";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { env } from "@/env";
+import { env } from "@/env.mjs";
 import { APP_TITLE } from "@/lib/constants";
 import { fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
