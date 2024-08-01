@@ -12,8 +12,8 @@ export const linkRouter = createTRPCRouter({
       return services.retrieveOriginalUrl(ctx, input);
     }),
 
-  list: protectedProcedure.query(({ ctx }) => {
-    return services.getLinks(ctx);
+  list: protectedProcedure.input(inputs.listLinksSchema).query(({ ctx, input }) => {
+    return services.getLinks(ctx, input);
   }),
 
   get: protectedProcedure.input(inputs.getLinkSchema).query(({ ctx, input }) => {

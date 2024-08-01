@@ -11,7 +11,7 @@ import { LinkSecurityStatusTooltip } from "./link-security-status-tooltip";
 
 import type { RouterOutputs } from "@/trpc/shared";
 type LinkProps = {
-  link: RouterOutputs["link"]["list"][number];
+  link: RouterOutputs["link"]["list"]["links"][number];
 };
 
 const Link = ({ link }: LinkProps) => {
@@ -27,7 +27,7 @@ const Link = ({ link }: LinkProps) => {
             className="flex cursor-pointer items-center text-blue-600 hover:underline"
             onClick={() => router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`)}
           >
-            <LinkStatus disabled={link.disabled!} />
+            <LinkStatus disabled={link.disabled ?? false} />
             <LinkSecurityStatusTooltip link={link} />
             {link.domain}/{link.alias}
           </div>
