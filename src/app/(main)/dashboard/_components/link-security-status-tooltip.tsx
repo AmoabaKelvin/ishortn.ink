@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { RouterOutputs } from "@/trpc/shared";
 
 type LinkSecurityStatusTooltipProps = {
-  link: RouterOutputs["link"]["list"][number];
+  link: RouterOutputs["link"]["list"]["links"][number];
 };
 
 export const LinkSecurityStatusTooltip = ({ link }: LinkSecurityStatusTooltipProps) => {

@@ -20,10 +20,20 @@ interface Props {
 }
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const links = await api.link.list.query();
+  const page = Number.parseInt(searchParams.page as string) || 1;
+  const pageSize = 10;
+  const orderBy = searchParams.orderBy as "createdAt" | "totalClicks";
+  const orderDirection = searchParams.orderDirection as "desc" | "asc";
+
+  const { links, totalLinks, totalPages, currentPage } = await api.link.list.query({
+    page,
+    pageSize,
+    orderBy,
+    orderDirection,
+  });
+
   const userSubscription = await api.subscriptions.get.query();
   const subscriptions = userSubscription?.subscriptions;
-
   const userHasProPlan = subscriptions?.status === "active";
 
   const totalClicks = links.reduce((acc, link) => acc + link.totalClicks, 0);
@@ -40,11 +50,16 @@ export default async function DashboardPage({ searchParams }: Props) {
       <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-11">
         <DashboardSidebar
           numberOfClicks={totalClicks}
-          numberOfLinks={links.length}
+          numberOfLinks={totalLinks}
           userHasProPlan={userHasProPlan}
         />
         <div className="col-span-11 md:col-span-7">
-          <Links links={links} />
+          <Links
+            links={links}
+            totalPages={totalPages}
+            currentPage={currentPage}
+            totalLinks={totalLinks}
+          />
         </div>
       </div>
     </div>

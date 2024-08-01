@@ -7,8 +7,13 @@ export const retrieveOriginalUrlSchema = z.object({
 
 export const getLinkSchema = z.object({
   id: z.number(),
-  // alias: z.string(),
-  // domain: z.string(),
+});
+
+export const listLinksSchema = z.object({
+  page: z.number().min(1).default(1),
+  pageSize: z.number().min(1).max(100).default(10),
+  orderBy: z.enum(["createdAt", "totalClicks"]).default("createdAt"),
+  orderDirection: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const createLinkSchema = z.object({
@@ -41,3 +46,5 @@ export type GetLinkInput = z.infer<typeof getLinkSchema>;
 export type RetrieveOriginalUrlInput = z.infer<typeof retrieveOriginalUrlSchema>;
 
 export type QuickLinkShorteningInput = z.infer<typeof quickLinkShorteningSchema>;
+
+export type ListLinksInput = z.infer<typeof listLinksSchema>;

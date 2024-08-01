@@ -1,26 +1,26 @@
 "use client";
 
 import {
-	Copy,
-	KeyRound,
-	MoreVertical,
-	Pencil,
-	PowerCircle,
-	QrCode,
-	RotateCcwIcon,
-	Trash2Icon,
-	Unlink,
+  Copy,
+  KeyRound,
+  MoreVertical,
+  Pencil,
+  PowerCircle,
+  QrCode,
+  RotateCcwIcon,
+  Trash2Icon,
+  Unlink,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -33,7 +33,7 @@ import UpdateLinkModal from "./update-link-modal";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type LinkActionsProps = {
-  link: RouterOutputs["link"]["list"][number];
+  link: RouterOutputs["link"]["list"]["links"][number];
 };
 
 export const LinkActions = ({ link }: LinkActionsProps) => {

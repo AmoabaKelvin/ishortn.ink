@@ -10,30 +10,30 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
@@ -44,7 +44,7 @@ import { revalidateHomepage } from "../actions/revalidate-homepage";
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
 type LinkEditModalProps = {
-  link: RouterOutputs["link"]["list"][number];
+  link: RouterOutputs["link"]["list"]["links"][number];
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
