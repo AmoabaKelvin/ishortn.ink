@@ -229,8 +229,14 @@ export const getLinkVisits = async (
     },
   });
 
-  if (!link) {
-    return { totalVisits: [], uniqueVisits: [] };
+  if (!link || link?.linkVisits.length === 0) {
+    return {
+      totalVisits: [],
+      uniqueVisits: [],
+      topCountry: "N/A",
+      referers: {},
+      topReferrer: "N/A",
+    };
   }
 
   const countryVisits = link.linkVisits.reduce(
@@ -261,23 +267,6 @@ export const getLinkVisits = async (
   };
 };
 
-export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
-  const fetchedLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.id, input.id),
-  });
-
-  if (!fetchedLink) {
-    return null;
-  }
-
-  return await ctx.db
-    .update(link)
-    .set({
-      disabled: !fetchedLink.disabled,
-    })
-    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
-};
-
 export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
@@ -291,6 +280,23 @@ export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLin
     .update(link)
     .set({
       publicStats: !fetchedLink.publicStats,
+    })
+    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
+};
+
+export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
+  const fetchedLink = await ctx.db.query.link.findFirst({
+    where: (table, { eq }) => eq(table.id, input.id),
+  });
+
+  if (!fetchedLink) {
+    return null;
+  }
+
+  return await ctx.db
+    .update(link)
+    .set({
+      disabled: !fetchedLink.disabled,
     })
     .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 };
