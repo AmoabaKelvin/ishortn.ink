@@ -35,40 +35,46 @@ export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput)
   const orderColumn = orderBy === "totalClicks" ? count(linkVisit.id) : link.createdAt;
   const orderFunc = orderDirection === "desc" ? desc : asc;
 
-  const links = await ctx.db
-    .select({
-      id: link.id,
-      url: link.url,
-      alias: link.alias,
-      domain: link.domain,
-      createdAt: link.createdAt,
-      disableLinkAfterClicks: link.disableLinkAfterClicks,
-      disableLinkAfterDate: link.disableLinkAfterDate,
-      disabled: link.disabled,
-      publicStats: link.publicStats,
-      userId: link.userId,
-      passwordHash: link.passwordHash,
-      totalClicks: count(linkVisit.id),
-    })
-    .from(link)
-    .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
-    .where(eq(link.userId, ctx.auth.userId))
-    .groupBy(link.id)
-    .limit(pageSize)
-    .offset((page - 1) * pageSize)
-    .orderBy(orderFunc(orderColumn));
+  const [totalLinksResult, totalClicksResult, links] = await Promise.all([
+    ctx.db.select({ count: count() }).from(link).where(eq(link.userId, ctx.auth.userId)),
+    ctx.db
+      .select({ totalClicks: count(linkVisit.id) })
+      .from(linkVisit)
+      .innerJoin(link, eq(link.id, linkVisit.linkId))
+      .where(eq(link.userId, ctx.auth.userId)),
+    ctx.db
+      .select({
+        id: link.id,
+        url: link.url,
+        alias: link.alias,
+        domain: link.domain,
+        createdAt: link.createdAt,
+        disableLinkAfterClicks: link.disableLinkAfterClicks,
+        disableLinkAfterDate: link.disableLinkAfterDate,
+        disabled: link.disabled,
+        publicStats: link.publicStats,
+        userId: link.userId,
+        passwordHash: link.passwordHash,
+        totalClicks: count(linkVisit.id).as("total_clicks"),
+      })
+      .from(link)
+      .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
+      .where(eq(link.userId, ctx.auth.userId))
+      .groupBy(link.id)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .orderBy(orderFunc(orderColumn)),
+  ]);
 
-  const totalLinks = await ctx.db
-    .select({ count: count() })
-    .from(link)
-    .where(eq(link.userId, ctx.auth.userId));
-  const parsedTotalLinks = totalLinks?.[0]?.count ?? 0;
+  const totalLinks = totalLinksResult?.[0]?.count ?? 0;
+  const totalClicks = totalClicksResult?.[0]?.totalClicks ?? 0;
 
   return {
     links,
-    totalLinks: parsedTotalLinks,
+    totalLinks,
+    totalClicks,
     currentPage: page,
-    totalPages: Math.ceil(parsedTotalLinks / pageSize),
+    totalPages: Math.ceil(totalLinks / pageSize),
   };
 };
 

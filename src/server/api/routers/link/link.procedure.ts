@@ -5,6 +5,7 @@ import * as inputs from "./link.input";
 import * as services from "./link.service";
 
 import type { PublicTRPCContext } from "../../trpc";
+
 export const linkRouter = createTRPCRouter({
   retrieveOriginalUrl: publicProcedure
     .input(inputs.retrieveOriginalUrlSchema)
