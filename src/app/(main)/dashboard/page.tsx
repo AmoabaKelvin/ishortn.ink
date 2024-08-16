@@ -25,7 +25,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const orderBy = searchParams.orderBy as "createdAt" | "totalClicks";
   const orderDirection = searchParams.orderDirection as "desc" | "asc";
 
-  const { links, totalLinks, totalPages, currentPage } = await api.link.list.query({
+  const { links, totalLinks, totalPages, currentPage, totalClicks } = await api.link.list.query({
     page,
     pageSize,
     orderBy,
@@ -35,8 +35,6 @@ export default async function DashboardPage({ searchParams }: Props) {
   const userSubscription = await api.subscriptions.get.query();
   const subscriptions = userSubscription?.subscriptions;
   const userHasProPlan = subscriptions?.status === "active";
-
-  const totalClicks = links.reduce((acc, link) => acc + link.totalClicks, 0);
 
   return (
     <div>
