@@ -7,11 +7,11 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui/select";
 
 import Link from "./link";
@@ -54,7 +54,10 @@ const Links = (
       setFilteredLinks(links);
     } else {
       const filtered = links.filter((link) => {
-        return link.url!.toLowerCase().includes(searchQuery.toLowerCase());
+        return (
+          link.url!.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          link.alias!.toLowerCase().includes(searchQuery.toLowerCase())
+        );
       });
       setFilteredLinks(filtered);
     }
