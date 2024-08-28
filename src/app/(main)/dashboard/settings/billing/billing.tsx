@@ -109,7 +109,7 @@ function Billing({ subscriptions }: BillingPageProps) {
             </CardHeader>
             <CardContent className="h-full flex-1 space-y-6">
               <div className="text-3xl font-bold">
-                $8
+                $5
                 <span className="text-sm font-normal text-muted-foreground">/month</span>
               </div>
               <div className="space-y-2">
