@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { generateShortLink } from "@/lib/core/links";
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return new Response(input.error.message, { status: 400 });
   }
 
-  if (input.data.alias && (await checkLinkAliasCollision(input.data.alias))) {
+  if (input.data.alias && (await checkLinkAliasCollision(input.data.alias, input.data.domain))) {
     return new Response("Alias already exists", { status: 400 });
   }
 
@@ -47,10 +47,12 @@ const shortenLinkSchema = z.object({
   expiresAfter: z.number().optional(),
   alias: z.string().optional(),
   password: z.string().optional(),
+  domain: z.string().optional(),
 });
 
-async function checkLinkAliasCollision(alias: string) {
-  const existingLink = await db.select().from(link).where(eq(link.alias, alias));
+async function checkLinkAliasCollision(alias: string, domain: string | undefined) {
+  const domainToUse = domain ?? "ishortn.ink";
+  const existingLink = await db.select().from(link).where(and(eq(link.alias, alias), eq(link.domain, domainToUse)));
   return existingLink.length > 0;
 }
 
@@ -76,6 +78,7 @@ async function createNewLink(
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     passwordHash: data.password,
+    domain: data.domain ?? "ishortn.ink",
     userId,
   };
 
@@ -84,7 +87,7 @@ async function createNewLink(
 
   const retrievedLink = await db.select().from(link).where(eq(link.id, newLinkId));
   return {
-    shortLink: `https://ishortn.ink/${retrievedLink[0]!.alias}`,
+    shortLink: `https://${retrievedLink[0]!.domain}/${retrievedLink[0]!.alias}`,
     url: retrievedLink[0]!.url,
     alias: retrievedLink[0]!.alias,
     expiresAt: retrievedLink[0]!.disableLinkAfterDate,

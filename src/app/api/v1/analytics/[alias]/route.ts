@@ -3,9 +3,14 @@ import { db } from "@/server/db";
 
 import { validateAndGetToken } from "../../utils";
 
-export async function GET(request: Request, { params }: { params: { alias: string } }) {
+import type { NextRequest } from "next/server";
+export async function GET(request: NextRequest, { params }: { params: { alias: string } }) {
   const alias = params.alias;
   const apiKey = request.headers.get("x-api-key");
+
+  const searchParams = request.nextUrl.searchParams
+  const query = searchParams.get('domain')
+  const domain = query ?? "ishortn.ink"
 
   const token = await validateAndGetToken(apiKey);
   if (!token) {
@@ -13,7 +18,7 @@ export async function GET(request: Request, { params }: { params: { alias: strin
   }
 
   const link = await db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.alias, alias),
+    where: (table, { eq, and }) => and(eq(table.alias, alias), eq(table.domain, domain)),
     with: {
       linkVisits: true,
       uniqueLinkVisits: true,
