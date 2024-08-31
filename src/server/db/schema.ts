@@ -1,17 +1,17 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
-  datetime,
-  index,
-  int,
-  json,
-  longtext,
-  mysqlEnum,
-  mysqlTable,
-  serial,
-  text,
-  timestamp,
-  varchar,
+	boolean,
+	datetime,
+	index,
+	int,
+	json,
+	longtext,
+	mysqlEnum,
+	mysqlTable,
+	serial,
+	text,
+	timestamp,
+	varchar,
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -75,6 +75,7 @@ export const link = mysqlTable(
       length: 32,
     }).notNull(),
     passwordHash: text("passwordHash"),
+    note: varchar("note", { length: 255 }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),

@@ -37,9 +37,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
+import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
 
-import { revalidateHomepage } from "../actions/revalidate-homepage";
+import { revalidateHomepage } from "../../actions/revalidate-homepage";
 
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
@@ -67,15 +68,14 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
       id: link.id,
       url: link.url!,
       alias: link.alias!,
+      note: link.note ?? undefined,
       disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
     },
   });
   form.setValue("id", link.id);
 
-  // 2. Define a submit handler.
   async function onSubmit(values: z.infer<Omit<typeof updateLinkSchema, "id">>) {
-    // await formUpdateMutation.mutateAsync(values);
     toast.promise(formUpdateMutation.mutateAsync(values), {
       loading: "Updating link...",
       success: "Link updated successfully",
@@ -85,13 +85,13 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className={`sm:max-w-[425px] ${satoshi.className}`}>
         <DialogHeader>
           <DialogTitle>Edit Link</DialogTitle>
           <DialogDescription>Make changes to your link here</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="url"
@@ -129,6 +129,20 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
                         {...field}
                       />
                     </section>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Add a note to your link" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

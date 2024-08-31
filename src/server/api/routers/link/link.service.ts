@@ -56,6 +56,7 @@ export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput)
         userId: link.userId,
         passwordHash: link.passwordHash,
         totalClicks: count(linkVisit.id).as("total_clicks"),
+        note: link.note,
       })
       .from(link)
       .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
@@ -130,6 +131,7 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
     userId: ctx.auth.userId,
     passwordHash: input.password,
     domain,
+    note: input.note,
   });
 };
 

@@ -14,7 +14,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 
-import Link from "./link";
+import Link from "./single-link/link-card";
 
 import type { RouterOutputs } from "@/trpc/shared";
 type LinksProps = {

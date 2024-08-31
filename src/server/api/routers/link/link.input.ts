@@ -23,6 +23,7 @@ export const createLinkSchema = z.object({
   disableLinkAfterDate: z.date().optional(),
   password: z.string().optional(),
   domain: z.string().optional(),
+  note: z.string().optional(),
 });
 
 export const quickLinkShorteningSchema = z.object({
@@ -33,6 +34,7 @@ export const updateLinkSchema = createLinkSchema.partial().extend({
   id: z.number(),
   disabled: z.boolean().optional(),
   publicStats: z.boolean().optional(),
+  note: z.string().optional(),
 });
 
 export const verifyLinkPasswordSchema = z.object({

@@ -46,7 +46,8 @@
     ".next/types/**/*.ts",
     // include the .d.ts files
     "**/*.d.ts",
-    "src/env.mjs"
+    "src/env.mjs",
+    "src/server/db/migrate.mjs"
   ],
   "exclude": [
     "node_modules"

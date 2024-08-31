@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { env } from "@/env.mjs";
 import { api } from "@/trpc/server";
 
+import Links from "./_components/all-links-renderer";
 import { DashboardSidebar } from "./_components/dashboard-sidebar";
-import Links from "./_components/links";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
@@ -38,7 +38,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   return (
     <div>
-      <div className="flex items-center justify-between px-6">
+      <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold leading-tight text-gray-800">Links</h2>
         <Button asChild>
           <Link href="/dashboard/link/new">Shorten Link</Link>

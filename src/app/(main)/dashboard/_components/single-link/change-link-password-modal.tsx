@@ -4,16 +4,16 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
 } from "@/components/ui/dialog";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
 
-import { revalidateHomepage } from "../actions/revalidate-homepage";
+import { revalidateHomepage } from "../../actions/revalidate-homepage";
 
 type ChangePasswordModalProps = {
   open: boolean;
