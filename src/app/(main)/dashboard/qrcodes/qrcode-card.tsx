@@ -1,19 +1,19 @@
 "use client";
 import {
-  BarChart2,
-  Calendar,
-  Download,
-  Link as LinkIcon,
-  PencilLine,
-  Trash2,
-  Type,
+	BarChart2,
+	Calendar,
+	Download,
+	Link as LinkIcon,
+	PencilLine,
+	Trash2,
+	Type,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
 
-import UpdateLinkModal from "../_components/update-link-modal";
+import UpdateLinkModal from "../_components/single-link/update-link-modal";
 import { revalidateRoute } from "../actions/revalidate-homepage";
 
 import type { RouterOutputs } from "@/trpc/shared";

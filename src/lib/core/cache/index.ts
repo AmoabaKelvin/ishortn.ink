@@ -54,5 +54,6 @@ function convertToLink(link: Record<string, string>): Link | null {
     publicStats: link.publicStats === "true",
     passwordHash: link.passwordHash!,
     domain: link.domain!,
+    note: link.note!,
   };
 }

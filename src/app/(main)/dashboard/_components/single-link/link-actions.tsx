@@ -1,33 +1,33 @@
 "use client";
 
 import {
-  Copy,
-  KeyRound,
-  MoreVertical,
-  Pencil,
-  PowerCircle,
-  QrCode,
-  RotateCcwIcon,
-  Trash2Icon,
-  Unlink,
+	Copy,
+	KeyRound,
+	MoreVertical,
+	Pencil,
+	PowerCircle,
+	QrCode,
+	RotateCcwIcon,
+	Trash2Icon,
+	Unlink,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
-import { revalidateHomepage } from "../actions/revalidate-homepage";
+import { revalidateHomepage } from "../../actions/revalidate-homepage";
 import { ChangeLinkPasswordModal } from "./change-link-password-modal";
-import { QRCodeModal } from "./qrcode-modal";
+import { QRCodeModal } from "./link-qrcode-modal";
 import UpdateLinkModal from "./update-link-modal";
 
 import type { RouterOutputs } from "@/trpc/shared";

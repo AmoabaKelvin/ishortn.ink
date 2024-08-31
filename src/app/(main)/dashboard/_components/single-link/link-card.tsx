@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { copyToClipboard, daysSinceDate } from "@/lib/utils";
 
 import { LinkActions } from "./link-actions";
+import { LinkNoteTooltip } from "./link-note-viewer";
 import { LinkSecurityStatusTooltip } from "./link-security-status-tooltip";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -56,6 +57,7 @@ const Link = ({ link }: LinkProps) => {
           <span className="ml-0.5 hidden md:inline">visits</span>
           <span className="ml-0.5 inline md:hidden">v</span>
         </Badge>
+        {link.note && <LinkNoteTooltip note={link.note} />}
         <LinkActions link={link} />
       </div>
     </div>

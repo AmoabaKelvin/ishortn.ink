@@ -10,27 +10,27 @@ import { useDebounce } from "use-debounce";
 
 import { Button } from "@/components/ui/button";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+	Form,
+	FormControl,
+	FormDescription,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui/select";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
-import { LinkExpirationDatePicker } from "../../_components/update-link-modal";
+import { LinkExpirationDatePicker } from "../../_components/single-link/update-link-modal";
 import { revalidateHomepage } from "../../actions/revalidate-homepage";
 
 import type { CustomDomain } from "@/server/db/schema";
@@ -38,8 +38,6 @@ import type { z } from "zod";
 export default function CreateLinkPage() {
   const router = useRouter();
   const [destinationURL, setDestinationURL] = useState<string | undefined>();
-  // const [alias, setAlias] = useState("");
-  // const debouncedAlias = useDebounce(alias, 500);
   const [userDomains, setUserDomains] = useState<CustomDomain[]>([]);
   const [metaData, setMetaData] = useState({
     title: "",
@@ -73,8 +71,6 @@ export default function CreateLinkPage() {
   const checkAliasAvailability = api.link.checkAliasAvailability.useQuery(
     { alias: debouncedAlias!, domain: selectedDomain },
     {
-      // enabled: debouncedAlias!.length > 0,
-      // debouncedAlias can be undefined
       enabled: !!debouncedAlias,
       onSuccess: (data) => {
         if (!data.isAvailable) {
@@ -203,6 +199,22 @@ export default function CreateLinkPage() {
               )}
             />
 
+            {/* form field for note */}
+            <FormField
+              control={form.control}
+              name="note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormDescription>Add a note to your link</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* horizontal line with optional settings */}
             <div className="flex items-center gap-4">
               <div className="flex-grow border-t border-gray-200" />
@@ -250,10 +262,6 @@ export default function CreateLinkPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  {/* <FormDescription>
-                    You need to be on a <b>pro plan</b> to create password protected links
-                  </FormDescription> */}
-
                   {!userSubscription.isLoading &&
                     userSubscription.data?.subscriptions?.status !== "active" && (
                       <FormDescription>
