@@ -7,6 +7,7 @@ import { env } from "@/env.mjs";
 import { api } from "@/trpc/server";
 
 import Links from "./_components/all-links-renderer";
+import { DashboardActions } from "./_components/dashboard-actions";
 import { DashboardSidebar } from "./_components/dashboard-sidebar";
 
 export const metadata: Metadata = {
@@ -40,9 +41,12 @@ export default async function DashboardPage({ searchParams }: Props) {
     <div>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold leading-tight text-gray-800">Links</h2>
-        <Button asChild>
-          <Link href="/dashboard/link/new">Shorten Link</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild>
+            <Link href="/dashboard/link/new">Shorten Link</Link>
+          </Button>
+          <DashboardActions />
+        </div>
       </div>
 
       <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-11">

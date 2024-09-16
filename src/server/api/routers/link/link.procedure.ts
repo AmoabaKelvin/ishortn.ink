@@ -90,4 +90,14 @@ export const linkRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return services.checkAliasAvailability(ctx, input);
     }),
+
+  bulkUpload: protectedProcedure
+    .input(z.object({ csv: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return services.bulkCreateLinks(ctx, input.csv);
+    }),
+
+  exportUserLinks: protectedProcedure.mutation(async ({ ctx }) => {
+    return services.exportAllUserLinks(ctx);
+  }),
 });
