@@ -1,17 +1,18 @@
 import { relations } from "drizzle-orm";
 import {
-	boolean,
-	datetime,
-	index,
-	int,
-	json,
-	longtext,
-	mysqlEnum,
-	mysqlTable,
-	serial,
-	text,
-	timestamp,
-	varchar,
+  boolean,
+  datetime,
+  index,
+  int,
+  json,
+  longtext,
+  mysqlEnum,
+  mysqlTable,
+  serial,
+  text,
+  timestamp,
+  unique,
+  varchar,
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -80,6 +81,7 @@ export const link = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
+    uniqueAliasDomainIdx: unique("unique_alias_domain").on(table.alias, table.domain), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
   }),
 );
 

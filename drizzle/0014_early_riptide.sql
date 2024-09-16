@@ -1,1 +1,1 @@
-ALTER TABLE `Link` ADD `note` varchar(255);
+ALTER TABLE `Link`;

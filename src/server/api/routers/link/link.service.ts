@@ -1,6 +1,7 @@
 import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { parse } from "csv-parse/sync";
 import { subDays } from "date-fns";
 import { and, asc, count, desc, eq } from "drizzle-orm";
 
@@ -397,4 +398,62 @@ export const checkAliasAvailability = async (
   });
 
   return { isAvailable: !existingLink };
+};
+
+type LinkRecord = {
+  url: string;
+  alias?: string;
+  domain?: string;
+  note?: string;
+};
+
+export const bulkCreateLinks = async (ctx: ProtectedTRPCContext, csvContent: string) => {
+  const records = parse(csvContent, { columns: true, skip_empty_lines: true }) as LinkRecord[];
+
+  // we need to check for alias clashes and report those to the user, if we use promise.all, it will
+  // fail if there is an alias clash so we need to use promise.allSettled
+  // promise.all settled will return an array of objects with status and value, we can then filter out
+  // the rejected promises and report those to the user
+  const bulkLinksCreationPromiseResults = await Promise.allSettled(
+    records.map(async (record: LinkRecord) => {
+      const alias = record.alias ?? (await generateShortLink());
+      await ctx.db.insert(link).values({
+        url: record.url,
+        alias,
+        userId: ctx.auth.userId,
+        domain: record.domain ?? "ishortn.ink",
+        note: record.note,
+      });
+    }),
+  );
+
+  const successfulLinks = bulkLinksCreationPromiseResults.filter(
+    (result) => result.status === "fulfilled",
+  ).length;
+  const failedLinks = bulkLinksCreationPromiseResults.filter(
+    (result) => result.status === "rejected",
+  ).length;
+
+  // TODO: add a way to notify the user about links that failed. We have already added an email template.
+  // so we need to filter the links that failed and attach the right reason to the email.
+
+  return {
+    success: true,
+    message: `${successfulLinks} links created successfully, ${failedLinks} links failed to create`,
+  };
+};
+
+export const exportAllUserLinks = async (ctx: ProtectedTRPCContext) => {
+  const links = await ctx.db.query.link.findMany({
+    columns: {
+      url: true,
+      alias: true,
+      note: true,
+      domain: true,
+      createdAt: true,
+    },
+    where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+  });
+
+  return links;
 };
