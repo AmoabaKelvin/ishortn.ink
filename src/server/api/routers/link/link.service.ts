@@ -8,6 +8,7 @@ import { and, asc, count, desc, eq } from "drizzle-orm";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { Cache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { db } from "@/server/db";
 import { link, linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
@@ -23,7 +24,6 @@ import type {
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
-
 const cache = new Cache();
 
 function constructCacheKey(domain: string, alias: string) {
@@ -81,7 +81,7 @@ export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput)
 };
 
 export const getLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
-  return await ctx.db.query.link.findFirst({
+  return ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
 };
@@ -94,6 +94,10 @@ export const getLinkByAlias = async (input: { alias: string; domain: string }) =
 };
 
 export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInput) => {
+  const userSubscription = await ctx.db.query.subscription.findFirst({
+    where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+  });
+
   if (input.alias) {
     if (input.alias.includes(".")) {
       throw new Error("Cannot include periods in alias");
@@ -112,27 +116,44 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
   }
 
   if (input.password) {
-    const userSubscription = await ctx.db.query.subscription.findFirst({
-      where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
-    });
-
     if (userSubscription?.status !== "active") {
       throw new Error("You need to upgrade to a pro plan to use password protection");
     }
 
-    const passwordHash = await bcrypt.hash(input.password, 10);
-    input.password = passwordHash;
+    input.password = await bcrypt.hash(input.password, 10);
   }
 
   const domain = input.domain ?? "ishortn.ink";
 
-  return await ctx.db.insert(link).values({
+  const inputMetaData = input.metadata;
+  const metadataValues = Object.values(inputMetaData ?? {});
+  const hasUserFilledMetadata = metadataValues.some(
+    (value) => value !== undefined && value !== null && value !== "",
+  );
+  if (hasUserFilledMetadata) {
+    if (userSubscription?.status !== "active") {
+      throw new Error("You need to upgrade to a pro plan to use custom social media previews");
+    }
+  }
+
+  const fetchedMetadata = await fetchMetadataInfo(input.url);
+
+  input.metadata = {
+    title: inputMetaData?.title ?? fetchedMetadata.title,
+    description: inputMetaData?.description ?? fetchedMetadata.description,
+    image: inputMetaData?.image ?? fetchedMetadata.image,
+  };
+
+  return ctx.db.insert(link).values({
     ...input,
     alias: input.alias ?? (await generateShortLink()),
     userId: ctx.auth.userId,
     passwordHash: input.password,
     domain,
     note: input.note,
+    metadata: {
+      ...input.metadata,
+    },
   });
 };
 
@@ -163,7 +184,6 @@ export const deleteLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput)
   }
 
   await cache.delete(constructCacheKey(linkToDelete.domain, linkToDelete.alias!));
-
   await ctx.db.delete(link).where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 };
 
@@ -231,7 +251,6 @@ export const getLinkVisits = async (
       linkVisits: {
         where: userHasProPlan ? undefined : (visit, { gte }) => gte(visit.createdAt, sevenDaysAgo),
       },
-      // uniqueLinkVisits: true,
       uniqueLinkVisits: {
         where: userHasProPlan ? undefined : (visit, { gte }) => gte(visit.createdAt, sevenDaysAgo),
       },
@@ -255,7 +274,10 @@ export const getLinkVisits = async (
     },
     {} as Record<string, number>,
   );
-  const topCountry = Object.entries(countryVisits).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+  const topCountry = Object.entries(countryVisits).reduce(
+    (a, b) => (a[1] > b[1] ? a : b),
+    ["", 0],
+  )[0];
 
   const referrerVisits = link.linkVisits.reduce(
     (acc, visit) => {
@@ -264,7 +286,10 @@ export const getLinkVisits = async (
     },
     {} as Record<string, number>,
   );
-  const topReferrer = Object.entries(referrerVisits).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+  const topReferrer = Object.entries(referrerVisits).reduce(
+    (a, b) => (a[1] > b[1] ? a : b),
+    ["", 0],
+  )[0];
 
   return {
     totalVisits: link.linkVisits,
@@ -285,7 +310,7 @@ export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLin
     return null;
   }
 
-  return await ctx.db
+  return ctx.db
     .update(link)
     .set({
       publicStats: !fetchedLink.publicStats,
@@ -302,7 +327,7 @@ export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLink
     return null;
   }
 
-  return await ctx.db
+  return ctx.db
     .update(link)
     .set({
       disabled: !fetchedLink.disabled,
@@ -444,7 +469,7 @@ export const bulkCreateLinks = async (ctx: ProtectedTRPCContext, csvContent: str
 };
 
 export const exportAllUserLinks = async (ctx: ProtectedTRPCContext) => {
-  const links = await ctx.db.query.link.findMany({
+  return ctx.db.query.link.findMany({
     columns: {
       url: true,
       alias: true,
@@ -454,6 +479,4 @@ export const exportAllUserLinks = async (ctx: ProtectedTRPCContext) => {
     },
     where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
   });
-
-  return links;
 };

@@ -13,3 +13,5 @@ export const LOCAL_DEVELOPMENT_GEOLOCATION_DATA = {
   country: "United States",
   city: "New York",
 };
+
+export const socialMediaAgents = ["Twitter", "Facebook", "LinkedIn", "WhatsApp"];
