@@ -77,6 +77,7 @@ export const link = mysqlTable(
     }).notNull(),
     passwordHash: text("passwordHash"),
     note: varchar("note", { length: 255 }),
+    metadata: json("metadata"),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),

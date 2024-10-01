@@ -22,7 +22,11 @@ export class Cache {
 
   async set(cacheKey: string, link: Link): Promise<boolean> {
     try {
-      await this.redis.hset(cacheKey, link);
+      const linkToStore = {
+        ...link,
+        metadata: JSON.stringify(link.metadata),
+      };
+      await this.redis.hset(cacheKey, linkToStore);
       return true;
     } catch (error) {
       return false;
@@ -55,5 +59,6 @@ function convertToLink(link: Record<string, string>): Link | null {
     passwordHash: link.passwordHash!,
     domain: link.domain!,
     note: link.note!,
+    metadata: JSON.parse(link.metadata!), // Deserialize metadata from string to object
   };
 }
