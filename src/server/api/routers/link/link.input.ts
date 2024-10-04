@@ -47,6 +47,19 @@ export const verifyLinkPasswordSchema = z.object({
   password: z.string(),
 });
 
+export const rangeEnum = z.enum([
+  "24h",
+  "7d",
+  "30d",
+  "90d",
+  "this_month",
+  "last_month",
+  "this_year",
+  "last_year",
+]);
+
+export type RangeEnum = z.infer<typeof rangeEnum>;
+
 export type CreateLinkInput = z.infer<typeof createLinkSchema>;
 export type UpdateLinkInput = z.infer<typeof updateLinkSchema>;
 export type GetLinkInput = z.infer<typeof getLinkSchema>;

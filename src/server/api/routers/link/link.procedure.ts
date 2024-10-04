@@ -55,6 +55,19 @@ export const linkRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         domain: z.string(),
+        range: z
+          .enum([
+            "24h",
+            "7d",
+            "30d",
+            "90d",
+            "this_month",
+            "last_month",
+            "this_year",
+            "last_year",
+            "all",
+          ])
+          .default("7d"),
       }),
     )
     .query(({ ctx, input }) => {
