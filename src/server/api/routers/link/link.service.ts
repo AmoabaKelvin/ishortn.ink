@@ -2,7 +2,7 @@ import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { parse } from "csv-parse/sync";
-import { subDays } from "date-fns";
+import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import { and, asc, count, desc, eq } from "drizzle-orm";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
@@ -236,28 +236,18 @@ export const shortenLinkWithAutoAlias = async (
 
 export const getLinkVisits = async (
   ctx: ProtectedTRPCContext,
-  input: { id: string; domain: string },
+  input: { id: string; domain: string; range: string },
 ) => {
   const userSubscription = await ctx.db.query.subscription.findFirst({
     where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
   });
   const userHasProPlan = userSubscription?.status === "active";
 
-  const sevenDaysAgo = subDays(new Date(), 7);
-
   const link = await ctx.db.query.link.findFirst({
     where: (table, { eq, and }) => and(eq(table.alias, input.id), eq(table.domain, input.domain)),
-    with: {
-      linkVisits: {
-        where: userHasProPlan ? undefined : (visit, { gte }) => gte(visit.createdAt, sevenDaysAgo),
-      },
-      uniqueLinkVisits: {
-        where: userHasProPlan ? undefined : (visit, { gte }) => gte(visit.createdAt, sevenDaysAgo),
-      },
-    },
   });
 
-  if (!link || link?.linkVisits.length === 0) {
+  if (!link) {
     return {
       totalVisits: [],
       uniqueVisits: [],
@@ -267,7 +257,72 @@ export const getLinkVisits = async (
     };
   }
 
-  const countryVisits = link.linkVisits.reduce(
+  let now = new Date();
+  let startDate: Date;
+  let range = input.range;
+
+  // Enforce 7-day limit for free users
+  if (!userHasProPlan && !["24h", "7d"].includes(range)) {
+    range = "7d";
+  }
+
+  switch (range) {
+    case "24h":
+      startDate = subDays(now, 1);
+      break;
+    case "7d":
+      startDate = subDays(now, 7);
+      break;
+    case "30d":
+      startDate = subDays(now, 30);
+      break;
+    case "90d":
+      startDate = subDays(now, 90);
+      break;
+    case "this_month":
+      startDate = startOfMonth(now);
+      break;
+    case "last_month":
+      startDate = startOfMonth(subDays(now, 30));
+      now.setDate(0); // Set to last day of previous month
+      break;
+    case "this_year":
+      startDate = startOfYear(now);
+      break;
+    case "last_year":
+      startDate = startOfYear(subDays(now, 365));
+      now = endOfYear(subDays(now, 365));
+      break;
+    case "all":
+      startDate = new Date(0); // Beginning of time
+      break;
+    default:
+      startDate = subDays(now, 7); // Default to last 7 days
+  }
+
+  const [totalVisits, uniqueVisits] = await Promise.all([
+    ctx.db.query.linkVisit.findMany({
+      where: (visit, { eq, and, gte, lte }) =>
+        and(eq(visit.linkId, link.id), gte(visit.createdAt, startDate), lte(visit.createdAt, now)),
+    }),
+    ctx.db.query.uniqueLinkVisit.findMany({
+      where: (visit, { eq, and, gte, lte }) =>
+        and(eq(visit.linkId, link.id), gte(visit.createdAt, startDate), lte(visit.createdAt, now)),
+    }),
+  ]);
+
+  if (totalVisits.length === 0) {
+    return {
+      totalVisits: [],
+      uniqueVisits: [],
+      topCountry: "N/A",
+      referers: {},
+      topReferrer: "N/A",
+      isProPlan: userHasProPlan,
+    };
+  }
+
+  const countryVisits = totalVisits.reduce(
     (acc, visit) => {
       acc[visit.country!] = (acc[visit.country!] ?? 0) + 1;
       return acc;
@@ -279,7 +334,7 @@ export const getLinkVisits = async (
     ["", 0],
   )[0];
 
-  const referrerVisits = link.linkVisits.reduce(
+  const referrerVisits = totalVisits.reduce(
     (acc, visit) => {
       acc[visit.referer!] = (acc[visit.referer!] ?? 0) + 1;
       return acc;
@@ -292,8 +347,8 @@ export const getLinkVisits = async (
   )[0];
 
   return {
-    totalVisits: link.linkVisits,
-    uniqueVisits: link.uniqueLinkVisits,
+    totalVisits,
+    uniqueVisits,
     topCountry,
     referers: referrerVisits,
     topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
