@@ -48,6 +48,7 @@ const Link = ({ link }: LinkProps) => {
         </p>
       </div>
       <div className="flex items-center gap-2">
+        {link.note && <LinkNoteTooltip note={link.note} />}
         <Badge
           variant="secondary"
           className="rounded-md bg-slate-200 transition-all duration-500 hover:scale-110 hover:cursor-pointer"
@@ -57,7 +58,6 @@ const Link = ({ link }: LinkProps) => {
           <span className="ml-0.5 hidden md:inline">visits</span>
           <span className="ml-0.5 inline md:hidden">v</span>
         </Badge>
-        {link.note && <LinkNoteTooltip note={link.note} />}
         <LinkActions link={link} />
       </div>
     </div>
