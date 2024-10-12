@@ -24,11 +24,13 @@ export const createLinkSchema = z.object({
   password: z.string().optional(),
   domain: z.string().optional(),
   note: z.string().optional(),
-  metadata: z.object({
-    title: z.string().optional(),
-    description: z.string().optional(),
-    image: z.string().optional(),
-  }),
+  metadata: z
+    .object({
+      title: z.string().optional(),
+      description: z.string().optional(),
+      image: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const quickLinkShorteningSchema = z.object({
