@@ -20,9 +20,12 @@ type LinkMetadata = {
   image: string;
 };
 
-export async function generateMetadata({ params }: LinkRedirectionPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: LinkRedirectionPageProps): Promise<Metadata> {
   const headersList = headers();
-  const incomingDomain = headersList.get("x-forwarded-host") ?? headersList.get("host");
+  const incomingDomain =
+    headersList.get("x-forwarded-host") ?? headersList.get("host");
 
   let domain: string;
   if (process.env.VERCEL_URL && incomingDomain !== process.env.STAGING_DOMAIN) {
@@ -33,7 +36,11 @@ export async function generateMetadata({ params }: LinkRedirectionPageProps): Pr
 
   const link = await api.link.retrieveOriginalUrl.query({
     alias: params.linkAlias,
-    domain: domain.replace("http://", "").replace("https://", "").replace("www.", ""),
+    domain: domain
+      .replace("http://", "")
+      .replace("https://", "")
+      .replace("www.", ""),
+    from: "metadata",
   });
 
   const linkMetadata = link?.metadata as LinkMetadata;
@@ -58,7 +65,8 @@ function isSocialMediaAgent(userAgent: string | null): boolean {
 
 const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
   const headersList = headers();
-  const incomingDomain = headersList.get("x-forwarded-host") ?? headersList.get("host");
+  const incomingDomain =
+    headersList.get("x-forwarded-host") ?? headersList.get("host");
   const userAgent = headers().get("user-agent");
 
   let domain: string;
@@ -70,7 +78,11 @@ const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
 
   const link = await api.link.retrieveOriginalUrl.query({
     alias: params.linkAlias,
-    domain: domain.replace("http://", "").replace("https://", "").replace("www.", ""),
+    domain: domain
+      .replace("http://", "")
+      .replace("https://", "")
+      .replace("www.", ""),
+    from: "redirection",
   });
 
   if (!link) return notFound();

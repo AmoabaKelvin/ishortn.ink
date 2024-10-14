@@ -3,6 +3,9 @@ import { z } from "zod";
 export const retrieveOriginalUrlSchema = z.object({
   alias: z.string(),
   domain: z.string(),
+  // have a from that specifies who called this function, whether the metadata generation func
+  // or the actual domain retriever
+  from: z.enum(["metadata", "redirection"]),
 });
 
 export const getLinkSchema = z.object({

@@ -10,8 +10,13 @@ import type { PublicTRPCContext } from "../../trpc";
 
 const cache = new Cache();
 
-export async function logAnalytics(ctx: PublicTRPCContext, link: Link) {
+export async function logAnalytics(ctx: PublicTRPCContext, link: Link, from: string) {
   if (link.passwordHash) {
+    return;
+  }
+
+  if (from === "metadata") {
+    // don't log analytics for metadata generation
     return;
   }
 

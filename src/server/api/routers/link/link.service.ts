@@ -206,7 +206,7 @@ export const retrieveOriginalUrl = async (
     }
   }
 
-  waitUntil(logAnalytics(ctx, link));
+  waitUntil(logAnalytics(ctx, link, input.from));
 
   return link;
 };
