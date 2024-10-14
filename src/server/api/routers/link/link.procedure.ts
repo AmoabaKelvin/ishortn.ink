@@ -28,7 +28,7 @@ export const linkRouter = createTRPCRouter({
         domain: z.string(),
       }),
     )
-    .query(({ ctx, input }) => {
+    .query(({ input }) => {
       return services.getLinkByAlias(input);
     }),
 

@@ -1,21 +1,21 @@
 import { motion } from "framer-motion";
 import { CloudUploadIcon } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
-import Link from "next/link";
 
 type BulkLinkUploadDialogProps = {
   open: boolean;
@@ -98,7 +98,7 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
                   {isDragActive
                     ? "Drop the files here to upload"
                     : file
-                      ? "Successfully uploaded " + file.name
+                      ? `Successfully uploaded ${file.name}`
                       : "Drag 'n' drop some files here, or click to select files"}
                 </p>
               </div>

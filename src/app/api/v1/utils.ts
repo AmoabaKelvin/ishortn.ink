@@ -1,5 +1,5 @@
-import crypto from "crypto";
 import { eq } from "drizzle-orm";
+import crypto from "node:crypto";
 
 import { db } from "@/server/db";
 import { subscription, token } from "@/server/db/schema";

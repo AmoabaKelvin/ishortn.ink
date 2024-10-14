@@ -1,5 +1,8 @@
-import { forwardRef, type SVGProps } from "react";
+import { forwardRef } from "react";
+
 import { cn } from "@/lib/utils";
+
+import type { SVGProps } from "react";
 
 const AnimatedSpinner = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
   ({ className, ...props }, ref) => (
@@ -13,46 +16,11 @@ const AnimatedSpinner = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
     >
       <g className="animated-spinner">
         <rect x="11" y="1" width="2" height="5" opacity=".14" />
-        <rect
-          x="11"
-          y="1"
-          width="2"
-          height="5"
-          transform="rotate(30 12 12)"
-          opacity=".29"
-        />
-        <rect
-          x="11"
-          y="1"
-          width="2"
-          height="5"
-          transform="rotate(60 12 12)"
-          opacity=".43"
-        />
-        <rect
-          x="11"
-          y="1"
-          width="2"
-          height="5"
-          transform="rotate(90 12 12)"
-          opacity=".57"
-        />
-        <rect
-          x="11"
-          y="1"
-          width="2"
-          height="5"
-          transform="rotate(120 12 12)"
-          opacity=".71"
-        />
-        <rect
-          x="11"
-          y="1"
-          width="2"
-          height="5"
-          transform="rotate(150 12 12)"
-          opacity=".86"
-        />
+        <rect x="11" y="1" width="2" height="5" transform="rotate(30 12 12)" opacity=".29" />
+        <rect x="11" y="1" width="2" height="5" transform="rotate(60 12 12)" opacity=".43" />
+        <rect x="11" y="1" width="2" height="5" transform="rotate(90 12 12)" opacity=".57" />
+        <rect x="11" y="1" width="2" height="5" transform="rotate(120 12 12)" opacity=".71" />
+        <rect x="11" y="1" width="2" height="5" transform="rotate(150 12 12)" opacity=".86" />
         <rect x="11" y="1" width="2" height="5" transform="rotate(180 12 12)" />
       </g>
     </svg>
@@ -74,8 +42,8 @@ const CreditCard = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <rect x="2" y="5" width="20" height="14" rx="2"></rect>
-      <line x1="2" y1="10" x2="22" y2="10"></line>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
     </svg>
   ),
 );
@@ -84,32 +52,32 @@ CreditCard.displayName = "CreditCard";
 export { AnimatedSpinner, CreditCard };
 
 export {
-  EyeOpenIcon,
-  EyeNoneIcon as EyeCloseIcon,
-  SunIcon,
-  MoonIcon,
-  ExclamationTriangleIcon,
-  ExitIcon,
-  EnterIcon,
-  GearIcon,
-  RocketIcon,
-  PlusIcon,
-  HamburgerMenuIcon,
-  Pencil2Icon,
-  UpdateIcon,
-  CheckCircledIcon,
-  PlayIcon,
-  TrashIcon,
   ArchiveIcon,
-  ResetIcon,
-  DiscordLogoIcon,
-  FileTextIcon,
-  IdCardIcon,
-  PlusCircledIcon,
-  FilePlusIcon,
+  ArrowLeftIcon,
+  CheckCircledIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  DiscordLogoIcon,
   DotsHorizontalIcon,
-  ArrowLeftIcon,
+  EnterIcon,
+  ExclamationTriangleIcon,
+  ExitIcon,
+  EyeNoneIcon as EyeCloseIcon,
+  EyeOpenIcon,
+  FilePlusIcon,
+  FileTextIcon,
+  GearIcon,
+  HamburgerMenuIcon,
+  IdCardIcon,
+  MoonIcon,
+  Pencil2Icon,
+  PlayIcon,
+  PlusCircledIcon,
+  PlusIcon,
+  ResetIcon,
+  RocketIcon,
+  SunIcon,
+  TrashIcon,
+  UpdateIcon,
 } from "@radix-ui/react-icons";

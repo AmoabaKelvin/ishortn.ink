@@ -12,22 +12,22 @@ import { useDebounce } from "use-debounce";
 
 import { Button } from "@/components/ui/button";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+	Form,
+	FormControl,
+	FormDescription,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui/select";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
@@ -174,15 +174,12 @@ export default function CreateLinkPage() {
                           <SelectContent>
                             <SelectGroup>
                               <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
-                              {userDomains.length > 0 && (
-                                <>
-                                  {userDomains.map((domain) => (
-                                    <SelectItem key={domain.id} value={domain.domain!}>
-                                      {domain.domain}
-                                    </SelectItem>
-                                  ))}
-                                </>
-                              )}
+                              {userDomains.length > 0 &&
+                                userDomains.map((domain) => (
+                                  <SelectItem key={domain.id} value={domain.domain!}>
+                                    {domain.domain}
+                                  </SelectItem>
+                                ))}
                             </SelectGroup>
                           </SelectContent>
                         </Select>

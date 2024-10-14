@@ -68,7 +68,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
             : null,
         })
         .where(eq(subscription.userId, userId));
-    } catch (e) {
+    } catch (_e) {
       throw new Error("Failed to update subscription status");
     }
 

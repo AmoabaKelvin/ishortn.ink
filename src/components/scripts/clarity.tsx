@@ -5,6 +5,7 @@ export function MicrosoftClarityScript() {
     <Script
       id="clarity-script"
       strategy="afterInteractive"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
       dangerouslySetInnerHTML={{
         __html: `
         (function(c,l,a,r,i,t,y){

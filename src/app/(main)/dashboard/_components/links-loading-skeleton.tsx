@@ -24,6 +24,7 @@ export const LinksSkeletonLoader = () => {
       {Array<number>(5)
         .fill(0)
         .map((_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
           <LinkSkeletonLoader key={index} />
         ))}
     </div>

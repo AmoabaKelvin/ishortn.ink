@@ -6,19 +6,19 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
 } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/react";
@@ -99,7 +99,7 @@ function Billing({ subscriptions }: BillingPageProps) {
         </Card>
 
         {/* View the different plans for the site */}
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2">
           <Card className="flex flex-col p-2">
             <CardHeader className="h-full">
               <CardTitle className="line-clamp-1">Pro</CardTitle>
@@ -107,7 +107,7 @@ function Billing({ subscriptions }: BillingPageProps) {
                 Unlock advanced features and support the development of this amazing product.
               </CardDescription>
             </CardHeader>
-            <CardContent className="h-full flex-1 space-y-6">
+            <CardContent className="flex-1 h-full space-y-6">
               <div className="text-3xl font-bold">
                 $5
                 <span className="text-sm font-normal text-muted-foreground">/month</span>
@@ -115,7 +115,7 @@ function Billing({ subscriptions }: BillingPageProps) {
               <div className="space-y-2">
                 {planBenfits.pro.map((feature) => (
                   <div key={feature} className="flex items-center gap-2">
-                    <div className="aspect-square shrink-0 rounded-full bg-foreground p-px text-background">
+                    <div className="p-px rounded-full aspect-square shrink-0 bg-foreground text-background">
                       <CheckIcon className="size-4" aria-hidden="true" />
                     </div>
                     <span className="text-sm text-muted-foreground">{feature}</span>
@@ -145,7 +145,7 @@ function Billing({ subscriptions }: BillingPageProps) {
                 The free plan is perfect for getting started with the basics. Upgrade to unlock more
               </CardDescription>
             </CardHeader>
-            <CardContent className="h-full flex-1 space-y-6">
+            <CardContent className="flex-1 h-full space-y-6">
               <div className="text-3xl font-bold">
                 $0
                 <span className="text-sm font-normal text-muted-foreground">/month</span>
@@ -153,7 +153,7 @@ function Billing({ subscriptions }: BillingPageProps) {
               <div className="space-y-2">
                 {planBenfits.free.map((feature) => (
                   <div key={feature} className="flex items-center gap-2">
-                    <div className="aspect-square shrink-0 rounded-full bg-foreground p-px text-background">
+                    <div className="p-px rounded-full aspect-square shrink-0 bg-foreground text-background">
                       <CheckIcon className="size-4" aria-hidden="true" />
                     </div>
                     <span className="text-sm text-muted-foreground">{feature}</span>
@@ -187,7 +187,7 @@ function ManageProPlan() {
       await cancelSubscriptionMutation.mutateAsync();
       await revalidateRoute("/dashboard/settings/billing");
       toast.success("Subscription cancelled successfully");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to cancel subscription");
     }
   };
@@ -199,7 +199,7 @@ function ManageProPlan() {
       if (updateUrl) {
         window.location.href = updateUrl.update_payment_method;
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to update subscription details");
     }
   };
@@ -211,7 +211,7 @@ function ManageProPlan() {
       if (portalUrl) {
         window.location.href = portalUrl.customer_portal;
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to visit customer portal");
     }
   };

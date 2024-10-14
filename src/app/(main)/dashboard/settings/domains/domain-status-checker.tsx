@@ -11,11 +11,7 @@ interface DomainStatusCheckerProps {
   onStatusChange: (newStatus: "pending" | "active" | "invalid") => void;
 }
 
-export default function DomainStatusChecker({
-  domain,
-  initialStatus,
-  onStatusChange,
-}: DomainStatusCheckerProps) {
+export default function DomainStatusChecker({ domain, onStatusChange }: DomainStatusCheckerProps) {
   const [isChecking, setIsChecking] = useState(false);
 
   const checkDomainStatus = api.customDomain.checkStatus.useQuery(

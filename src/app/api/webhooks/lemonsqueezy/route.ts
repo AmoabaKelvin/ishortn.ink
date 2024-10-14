@@ -48,7 +48,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
   const { meta, data } = webhookEvent;
   const { event_name, custom_data } = meta;
   const { user_id: userId } = custom_data;
-  const subscriptionId = parseInt(data.id);
+  const subscriptionId = Number.parseInt(data.id);
 
   const lemonsqueezySubscription = data.attributes as LemonsqueezySubscriptionAttributes;
   const customerId = lemonsqueezySubscription.customer_id;

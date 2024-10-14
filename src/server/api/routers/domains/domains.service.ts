@@ -54,6 +54,7 @@ export async function addDomainToUserAccount(
       return challenge;
     });
 
+    // biome-ignore lint/suspicious/noImplicitAnyLet: <explanation>
     let wellConfigured;
 
     if (response.verified) {
@@ -84,7 +85,7 @@ export async function addDomainToUserAccount(
       status: wellConfigured ? "active" : "pending",
       verificationDetails: verificationDetails,
     });
-  } catch (error) {
+  } catch (_error) {
     throw new Error("Failed to add domain to Vercel project");
   }
 

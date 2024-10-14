@@ -69,9 +69,9 @@ function LinkStatus({ disabled }: { disabled: boolean }) {
   return (
     <div className={`flex items-center gap-2 ${disabled ? "text-red-500" : "text-blue-500"}`}>
       {disabled ? (
-        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-300"></span>
+        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-300" />
       ) : (
-        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-300"></span>
+        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-300" />
       )}
     </div>
   );

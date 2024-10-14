@@ -5,8 +5,9 @@ export const convertDataToCSV = (data: LinkExportData[]) => {
   let csvContent = "data:text/csv;charset=utf-8,";
   const headers = ["createdAt", "url", "alias", "domain", "note"];
 
-  csvContent += headers.join(",") + "\n";
+  csvContent += `${headers.join(",")}\n`;
 
+  // biome-ignore lint/complexity/noForEach: <explanation>
   data.forEach((row: LinkExportData) => {
     const values = headers.map((header) => {
       const value = row[header as keyof LinkExportData];
@@ -19,7 +20,7 @@ export const convertDataToCSV = (data: LinkExportData[]) => {
       }
       return value ?? "";
     });
-    csvContent += values.join(",") + "\n";
+    csvContent += `${values.join(",")}\n`;
   });
 
   return csvContent;

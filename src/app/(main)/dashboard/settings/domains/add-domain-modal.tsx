@@ -6,13 +6,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,8 +39,7 @@ const itemVariants = {
 };
 
 export function AddCustomDomainModal() {
-  const { data: userSubscription, isLoading: isSubscriptionLoading } =
-    api.subscriptions.get.useQuery();
+  const { data: userSubscription } = api.subscriptions.get.useQuery();
 
   const [domain, setDomain] = useState("");
   const [isOpen, setIsOpen] = useState(false);

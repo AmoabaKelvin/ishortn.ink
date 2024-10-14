@@ -117,7 +117,7 @@ export function parseReferrer(referrer: string | null): string {
     // Split by dots and take up to two parts
     const parts = hostname.split(".");
     return parts.slice(-2).join(".");
-  } catch (error) {
+  } catch (_error) {
     // If parsing fails, return the original string, limited to 50 characters
     return referrer.substring(0, 50);
   }

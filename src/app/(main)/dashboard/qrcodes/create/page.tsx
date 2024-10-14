@@ -17,6 +17,7 @@ import { isValidUrlAndNotIshortn } from "./utils";
 
 import type { CornerType } from "qrcode-with-logos/types/src/core/types";
 import type { CornerStyle, PatternStyle } from "./types";
+
 function QRCodeCreationPage() {
   const router = useRouter();
   const userSubDetails = api.subscriptions.get.useQuery().data;
@@ -95,7 +96,7 @@ function QRCodeCreationPage() {
           finalContent = `https://ishortn.ink/${createdShortLink.alias}`;
           wasShortened = true;
         }
-      } catch (error) {
+      } catch (_error) {
         toast.error("Failed to shorten link. Using original content.");
       }
     }

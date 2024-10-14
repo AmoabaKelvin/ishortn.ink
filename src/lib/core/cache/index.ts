@@ -15,7 +15,7 @@ export class Cache {
     try {
       const retrievedLink = await this.redis.hgetall(key);
       return convertToLink(retrievedLink);
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -28,7 +28,7 @@ export class Cache {
       };
       await this.redis.hset(cacheKey, linkToStore);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -37,7 +37,7 @@ export class Cache {
     try {
       await this.redis.del(key);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

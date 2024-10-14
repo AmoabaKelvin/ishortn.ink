@@ -25,7 +25,7 @@ export function QRCodeModal({ open, setOpen, destinationUrl }: QRCodeModalProps)
     const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
     const downloadLink = document.createElement("a");
     downloadLink.href = pngUrl;
-    downloadLink.download = `qrcode.png`;
+    downloadLink.download = "qrcode.png";
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);

@@ -1,6 +1,6 @@
-import crypto from "crypto";
 import { and, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
+import crypto from "node:crypto";
 
 import { token } from "@/server/db/schema";
 
