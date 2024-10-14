@@ -1,14 +1,14 @@
 "use client";
 
-import { Bar, CartesianGrid, BarChart as RechartsBarChart, XAxis } from "recharts";
+import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis } from "recharts";
 
 import { Card } from "@/components/ui/card";
 import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
+	ChartContainer,
+	ChartLegend,
+	ChartLegendContent,
+	ChartTooltip,
+	ChartTooltipContent,
 } from "@/components/ui/chart";
 
 import UpgradeText from "../../../qrcodes/upgrade-text";
@@ -29,7 +29,7 @@ const chartConfig = {
 type BarChartProps = {
   clicksPerDate: Record<string, number>;
   uniqueClicksPerDate: Record<string, number>;
-  className?: string;
+  className: string;
   isProPlan?: boolean;
 };
 
@@ -39,8 +39,6 @@ export function BarChart({
   className,
   isProPlan,
 }: BarChartProps) {
-  // const isDesktop = useMediaQuery("(min-width: 768px)");
-
   const chartData = Object.entries(clicksPerDate).map(([date, clicks]) => ({
     date,
     clicks,
@@ -49,7 +47,10 @@ export function BarChart({
 
   return (
     <Card className="py-16">
-      <ChartContainer config={chartConfig} className="h-96 w-full md:h-full md:min-h-96">
+      <ChartContainer
+        config={chartConfig}
+        className="w-full h-96 md:h-full md:min-h-96"
+      >
         <RechartsBarChart accessibilityLayer data={chartData}>
           <CartesianGrid vertical={false} />
           <XAxis
@@ -71,13 +72,17 @@ export function BarChart({
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend content={<ChartLegendContent />} />
           <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
-          <Bar dataKey="uniqueClicks" fill="var(--color-uniqueClicks)" radius={4} />
+          <Bar
+            dataKey="uniqueClicks"
+            fill="var(--color-uniqueClicks)"
+            radius={4}
+          />
         </RechartsBarChart>
       </ChartContainer>
       {isProPlan === false && (
-        <div className="mt-2 text-center text-sm text-gray-500">
-          Showing data for the last 7 days. <UpgradeText text="Upgrade to Pro" /> for full
-          analytics.
+        <div className="mt-2 text-sm text-center text-gray-500">
+          Showing data for the last 7 days.{" "}
+          <UpgradeText text="Upgrade to Pro" /> for full analytics.
         </div>
       )}
     </Card>

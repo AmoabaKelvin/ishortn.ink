@@ -94,6 +94,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.3",
     "@next/eslint-plugin-next": "^14.2.1",
     "@tailwindcss/typography": "^0.5.12",
     "@types/eslint": "^8.56.9",
@@ -108,10 +109,7 @@
     "dotenv-cli": "^7.4.1",
     "drizzle-kit": "latest",
     "eslint": "^8.57.0",
-    "pg": "^8.11.5",
     "postcss": "^8.4.38",
-    "prettier": "^3.2.5",
-    "prettier-plugin-tailwindcss": "^0.5.14",
     "react-email": "3.0.1",
     "tailwindcss": "^3.4.3",
     "tsx": "^4.7.2",

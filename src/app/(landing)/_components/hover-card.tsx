@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+
+import type React from "react";
 
 type FeaturesProps = {
   name: string;

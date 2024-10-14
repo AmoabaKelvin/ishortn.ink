@@ -10,7 +10,7 @@ type FAQProps = {
   }[];
 };
 
-export function FAQ({ faqs }: FAQProps) {
+export function Faq({ faqs }: FAQProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const toggleFAQ = (index: number) => {
@@ -19,13 +19,10 @@ export function FAQ({ faqs }: FAQProps) {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-10 text-gray-800 md:py-16">
-      {/* <h1 className="mb-10 text-center text-4xl font-bold text-gray-600">
-        Frequently Asked Questions
-      </h1> */}
       <div className="space-y-4 first:mt-0">
         {faqs.map((faq, index) => (
           <motion.div
-            key={index}
+            key={faq.question}
             className="rounded-lg border border-gray-200 p-5 shadow-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -47,12 +44,13 @@ export function FAQ({ faqs }: FAQProps) {
                   viewBox="0 0 24 24"
                   xmlns="http://www.w3.org/2000/svg"
                 >
+                  <title>Plus</title>
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="2"
                     d="M19 9l-7 7-7-7"
-                  ></path>
+                  />
                 </svg>
               </motion.span>
             </div>

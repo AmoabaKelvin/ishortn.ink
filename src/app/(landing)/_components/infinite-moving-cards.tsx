@@ -34,12 +34,12 @@ export const InfiniteMovingCards = ({
     if (containerRef.current && scrollerRef.current) {
       const scrollerContent = Array.from(scrollerRef.current.children);
 
-      scrollerContent.forEach((item) => {
+      for (const item of scrollerContent) {
         const duplicatedItem = item.cloneNode(true);
         if (scrollerRef.current) {
           scrollerRef.current.appendChild(duplicatedItem);
         }
-      });
+      }
 
       getDirection();
       getSpeed();
@@ -85,7 +85,7 @@ export const InfiniteMovingCards = ({
           pauseOnHover && "hover:[animation-play-state:paused]",
         )}
       >
-        {items.map((item, idx) => (
+        {items.map((item) => (
           <li
             className="relative w-[350px] max-w-full flex-shrink-0 rounded-2xl border border-b-0 border-gray-300 bg-white px-8 py-6 shadow-lg md:w-[450px]"
             key={item.name}
@@ -94,11 +94,11 @@ export const InfiniteMovingCards = ({
               <div
                 aria-hidden="true"
                 className="user-select-none -z-1 h-[calc(100% + 4px)] w-[calc(100% + 4px)] pointer-events-none absolute -left-0.5 -top-0.5"
-              ></div>
+              />
               <span className="relative z-20 text-sm font-normal leading-[1.6] text-gray-800">
                 {item.quote}
               </span>
-              <div className="relative z-20 mt-6 flex flex-row items-center">
+              <div className="relative z-20 flex flex-row items-center mt-6">
                 <span className="flex flex-col gap-1">
                   <span className="text-sm font-normal leading-[1.6] text-blue-500">
                     {item.name}

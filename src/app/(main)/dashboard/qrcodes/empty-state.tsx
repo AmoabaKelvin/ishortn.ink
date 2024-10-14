@@ -47,6 +47,7 @@ function EmptyState() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >
+        <title>Qr code</title>
         <g>
           <path
             d="M457.83,158.441c-0.021-0.028-0.033-0.058-0.057-0.087l-50.184-62.48c-0.564-0.701-1.201-1.305-1.879-1.845

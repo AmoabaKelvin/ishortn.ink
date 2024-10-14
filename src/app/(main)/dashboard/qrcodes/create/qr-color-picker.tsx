@@ -20,7 +20,7 @@ function ColorPicker({ selectedColor, setSelectedColor }: ColorPickerProps) {
             })}
             onClick={() => setSelectedColor(color)}
           >
-            <div className="size-11 rounded-full" style={{ backgroundColor: color }}></div>
+            <div className="size-11 rounded-full" style={{ backgroundColor: color }} />
           </div>
         ))}
       </div>

@@ -64,7 +64,7 @@ export const customDomainRouter = createTRPCRouter({
         const isApex = domainData.name.split(".").length === 2;
         const verificationRecord = configData.misconfigured
           ? null
-          : configData.challenges?.find((c) => c.type === "TXT")?.value ?? null;
+          : (configData.challenges?.find((c) => c.type === "TXT")?.value ?? null);
 
         let status: "pending" | "active" | "invalid" = "pending";
         const verificationDetails: VerificationDetails = {
@@ -75,7 +75,7 @@ export const customDomainRouter = createTRPCRouter({
         if (verificationRecord) {
           verificationDetails.challenges.push({
             type: "TXT",
-            domain: `_vercel`,
+            domain: "_vercel",
             value: verificationRecord,
           });
         }

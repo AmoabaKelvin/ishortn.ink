@@ -67,15 +67,24 @@ const QRCodeDisplay = ({ qr }: QRCodeDisplayProps) => {
           </div>
           <div className="flex items-center space-x-2">
             <button
+              type="button"
               className="rounded-full hover:bg-gray-100"
               onClick={() => setOpenLinkUpdateModal(true)}
             >
               <PencilLine size={20} className="text-gray-500" />
             </button>
-            <button className="rounded-full p-2 hover:bg-gray-100" onClick={handleDownload}>
+            <button
+              type="button"
+              className="rounded-full p-2 hover:bg-gray-100"
+              onClick={handleDownload}
+            >
               <Download size={20} className="text-gray-500" />
             </button>
-            <button className="group rounded-full hover:bg-gray-100" onClick={handleDelete}>
+            <button
+              type="button"
+              className="group rounded-full hover:bg-gray-100"
+              onClick={handleDelete}
+            >
               <Trash2 size={20} className="text-gray-500 group-hover:text-red-500" />
             </button>
           </div>

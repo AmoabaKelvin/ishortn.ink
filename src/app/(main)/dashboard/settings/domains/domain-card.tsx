@@ -26,13 +26,14 @@ type VerificationDetails = {
 
 export default function DomainCard({ domain }: DomainCardProps) {
   const [status, setStatus] = useState(domain.status);
+  // biome-ignore lint/suspicious/noImplicitAnyLet: <explanation>
   let verificationChallenges;
 
   try {
     verificationChallenges = JSON.parse(
       (domain.verificationDetails as string) ?? "[]",
     ) as VerificationDetails;
-  } catch (error) {
+  } catch (_error) {
     verificationChallenges = domain.verificationDetails as VerificationDetails;
   }
 
@@ -89,8 +90,8 @@ export default function DomainCard({ domain }: DomainCardProps) {
               </AlertDescription>
             </Alert>
             <div className="space-y-4">
-              {verificationChallenges.map((challenge, index) => (
-                <div key={index}>
+              {verificationChallenges.map((challenge) => (
+                <div key={challenge.domain}>
                   <h3 className="mb-2 font-semibold">{challenge.type} Record</h3>
                   <div className="flex items-center gap-2 rounded bg-secondary p-2">
                     <code className="flex-grow text-sm">

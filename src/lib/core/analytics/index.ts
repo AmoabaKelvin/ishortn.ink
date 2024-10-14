@@ -98,6 +98,7 @@ export const aggregateVisits = (
   const clicksPerBrowser: Record<string, number> = {};
   const clicksPerModel: Record<string, number> = {};
 
+  // biome-ignore lint/complexity/noForEach: <explanation>
   visits.forEach((visit) => {
     const date = new Date(visit.createdAt!).toISOString().split("T")[0];
     safeIncrement(clicksPerDate, date!);
@@ -121,6 +122,7 @@ export const aggregateVisits = (
       clicksPerModel,
     };
 
+  // biome-ignore lint/complexity/noForEach: <explanation>
   uniqueVisits.forEach((uniqueVisit) => {
     const date = new Date(uniqueVisit.createdAt!).toISOString().split("T")[0];
     safeIncrement(uniqueClicksPerDate, date!);

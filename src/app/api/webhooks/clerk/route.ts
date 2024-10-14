@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     imageUrl: userInfo.avatarUrl,
   });
 
-  const { data, error } = await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: "Kelvin <developer@ishortn.ink>",
     to: userInfo.email!,
     subject: "Welcome to iShortn",
@@ -168,7 +168,6 @@ interface Payload {
 function getUserInfo(payload: Payload) {
   const data = payload.data;
   const emailData = data.email_addresses[0];
-  const externalAccountData = data.external_accounts[0];
 
   const userInfo = {
     name: `${data.first_name} ${data.last_name}`,

@@ -17,19 +17,26 @@ type LinksAnalyticsPageProps = {
   searchParams: Record<string, string | string[] | undefined>;
 };
 
-export default async function LinkAnalyticsPage({ params, searchParams }: LinksAnalyticsPageProps) {
+export default async function LinkAnalyticsPage({
+  params,
+  searchParams,
+}: LinksAnalyticsPageProps) {
   const domain = (searchParams?.domain as string) ?? "ishortn.ink";
 
-  const obtainedLink = await api.link.getLinkByAlias.query({ alias: params.alias, domain: domain });
+  const obtainedLink = await api.link.getLinkByAlias.query({
+    alias: params.alias,
+    domain: domain,
+  });
   const link = obtainedLink[0];
 
   if (link?.publicStats === false) {
     return (
-      <div className="mt-20 flex flex-col items-center justify-center md:mt-20">
+      <div className="flex flex-col items-center justify-center mt-20 md:mt-20">
         <h1 className="mb-10 text-3xl">iShortn</h1>
         <p className="text-2xl font-bold">Link not found</p>
         <p className="text-gray-500">
-          This link <b className="text-bold">does not have</b> public stats enabled.
+          This link <b className="text-bold">does not have</b> public stats
+          enabled.
         </p>
         <p className="text-center text-gray-500">
           If you know the owner of this link, ask them to enable public stats.
@@ -52,8 +59,8 @@ export default async function LinkAnalyticsPage({ params, searchParams }: LinksA
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <h1 className="cursor-pointer font-semibold leading-tight text-blue-600 hover:underline md:text-3xl">
+    <div className="max-w-5xl mx-auto">
+      <h1 className="font-semibold leading-tight text-blue-600 cursor-pointer hover:underline md:text-3xl">
         ishortn.ink/{params.alias}
       </h1>
 
@@ -65,7 +72,7 @@ export default async function LinkAnalyticsPage({ params, searchParams }: LinksA
         />
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-10">
+      <div className="grid grid-cols-1 gap-4 mt-5 md:grid-cols-10">
         <CountriesAndCitiesStats
           citiesRecords={aggregatedVisits.clicksPerCity}
           countriesRecords={aggregatedVisits.clicksPerCountry}

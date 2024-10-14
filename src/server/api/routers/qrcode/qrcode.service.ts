@@ -46,7 +46,7 @@ export const createQrCode = async (ctx: ProtectedTRPCContext, input: QRCodeInput
     qrCode: input.qrCodeBase64,
     linkId: linkId ?? 0,
     contentType: input.wasShortened ? "link" : "text",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   } as any);
 
   const insertedQrCodeId = insertionResult[0].insertId;
@@ -78,6 +78,7 @@ export async function retrieveUserQrCodes(ctx: ProtectedTRPCContext) {
     },
   });
 
+  // biome-ignore lint/complexity/noForEach: <explanation>
   qrCodes.forEach((qrCode) => {
     return { ...qrCode, numberOfVisits: qrCode.link?.linkVisits.length ?? 0 };
   });

@@ -1,9 +1,9 @@
 import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import { and, asc, count, desc, eq } from "drizzle-orm";
+import crypto from "node:crypto";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { Cache } from "@/lib/core/cache";
