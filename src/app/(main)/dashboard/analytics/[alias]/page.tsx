@@ -11,6 +11,8 @@ import { RangeSelectorWrapper } from "./range-selector-wrapper";
 import { UserAgentStats } from "./user-agent-stats";
 
 import type { RangeEnum } from "@/server/api/routers/link/link.input";
+import WorldMapHeatmap from "./world-map-heatmap";
+
 type LinksAnalyticsPageProps = {
   params: {
     alias: string;
@@ -18,7 +20,10 @@ type LinksAnalyticsPageProps = {
   searchParams: Record<string, string | string[] | undefined>;
 };
 
-export default async function LinkAnalyticsPage({ params, searchParams }: LinksAnalyticsPageProps) {
+export default async function LinkAnalyticsPage({
+  params,
+  searchParams,
+}: LinksAnalyticsPageProps) {
   const range = (searchParams?.range ?? "7d") as RangeEnum;
   const domain = (searchParams?.domain as string) ?? "ishortn.ink";
 
@@ -30,6 +35,7 @@ export default async function LinkAnalyticsPage({ params, searchParams }: LinksA
     });
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
+  const countryData = aggregatedVisits.clicksPerCountry;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -101,6 +107,13 @@ export default async function LinkAnalyticsPage({ params, searchParams }: LinksA
           clicksPerOS={aggregatedVisits.clicksPerOS}
           totalClicks={totalVisits.length}
         />
+      </div>
+
+      <div className="mt-10 md:mt-14">
+        <h2 className="text-2xl font-semibold mb-8">
+          Global Link Clicks Distribution
+        </h2>
+        <WorldMapHeatmap data={countryData} />
       </div>
     </div>
   );
