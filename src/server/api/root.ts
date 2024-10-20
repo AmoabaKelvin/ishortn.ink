@@ -1,3 +1,4 @@
+import { aiRouter } from "./routers/ai/ai.procedure";
 import { customDomainRouter } from "./routers/domains/domains.procedure";
 import { lemonsqueezyRouter } from "./routers/lemonsqueezy/lemonsqueezy.procedure";
 import { linkRouter } from "./routers/link/link.procedure";
@@ -13,6 +14,7 @@ export const appRouter = createTRPCRouter({
   subscriptions: subscriptionsRouter,
   qrCode: qrCodeRouter,
   customDomain: customDomainRouter,
+  ai: aiRouter,
 });
 
 export type AppRouter = typeof appRouter;
