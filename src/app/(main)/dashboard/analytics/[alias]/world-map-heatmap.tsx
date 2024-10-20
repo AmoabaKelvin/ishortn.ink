@@ -45,15 +45,28 @@ const WorldMapHeatmap = ({ data }: WorldMapHeatmapProps) => {
 
   const handleMouseEnter = (event: React.MouseEvent, countryName: string) => {
     handleMouseMove(event);
-    setTooltipContent(`${countryName}: ${data[countryName] ?? 0} clicks`);
+    const displayName =
+      countryName === "United States of America"
+        ? "United States"
+        : countryName;
+    setTooltipContent(
+      `${displayName}: ${getClicksForCountry(displayName)} clicks`
+    );
   };
 
   const handleMouseLeave = () => {
     setTooltipContent(null);
   };
 
+  const getClicksForCountry = (countryName: string) => {
+    if (countryName === "United States of America") {
+      return data["United States"] ?? 0;
+    }
+    return data[countryName] ?? 0;
+  };
+
   const getFillColor = (countryName: string) => {
-    const clicks = data[countryName] ?? 0;
+    const clicks = getClicksForCountry(countryName);
     return colorScale(clicks);
   };
 
