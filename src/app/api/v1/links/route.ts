@@ -52,7 +52,10 @@ const shortenLinkSchema = z.object({
 
 async function checkLinkAliasCollision(alias: string, domain: string | undefined) {
   const domainToUse = domain ?? "ishortn.ink";
-  const existingLink = await db.select().from(link).where(and(eq(link.alias, alias), eq(link.domain, domainToUse)));
+  const existingLink = await db
+    .select()
+    .from(link)
+    .where(and(eq(link.alias, alias), eq(link.domain, domainToUse)));
   return existingLink.length > 0;
 }
 
@@ -70,6 +73,13 @@ async function createNewLink(
 
     const hashedPassword = bcrypt.hashSync(data.password, 10);
     data.password = hashedPassword;
+  }
+
+  const aliasRegex = /^[a-zA-Z0-9-_]+$/;
+  if (!aliasRegex.test(data.alias ?? "")) {
+    return new Response("Alias can only contain alphanumeric characters, dashes, and underscores", {
+      status: 400,
+    });
   }
 
   const newLinkData = {

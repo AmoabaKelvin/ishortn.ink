@@ -109,12 +109,14 @@ export default async function LinkAnalyticsPage({
         />
       </div>
 
-      <div className="mt-10 md:mt-14">
-        <h2 className="text-2xl font-semibold mb-8">
-          Global Link Clicks Distribution
-        </h2>
-        <WorldMapHeatmap data={countryData} />
-      </div>
+      {isProPlan && (
+        <div className="mt-10 md:mt-14">
+          <h2 className="text-2xl font-semibold mb-8">
+            Global Link Clicks Distribution
+          </h2>
+          <WorldMapHeatmap data={countryData} />
+        </div>
+      )}
     </div>
   );
 }
