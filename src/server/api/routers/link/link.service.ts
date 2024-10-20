@@ -99,6 +99,11 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
   });
 
   if (input.alias) {
+    const aliasRegex = /^[a-zA-Z0-9-_]+$/;
+    if (!aliasRegex.test(input.alias)) {
+      throw new Error("Alias can only contain alphanumeric characters, dashes, and underscores");
+    }
+
     if (input.alias.includes(".")) {
       throw new Error("Cannot include periods in alias");
     }

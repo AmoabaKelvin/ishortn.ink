@@ -1,12 +1,10 @@
-import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
-
 import { socialMediaAgents } from "@/lib/constants";
 import { api } from "@/trpc/server";
-
-import { LinkPasswordVerification } from "./link-password-verification";
-
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
+import { LinkPasswordVerification } from "./link-password-verification";
+import LinkPreview from "./link-preview";
 
 type LinkRedirectionPageProps = {
   params: {
@@ -14,10 +12,21 @@ type LinkRedirectionPageProps = {
   };
 };
 
-type LinkMetadata = {
+export type LinkMetadata = {
   title: string;
   description: string;
   image: string;
+};
+
+const DEFAULT_DOMAIN = "ishortn.ink";
+
+const cleanUrl = (url: string) => url.replace(/^(https?:\/\/)?(www\.)?/, "");
+
+const getDomain = (incomingDomain: string | null): string => {
+  if (process.env.VERCEL_URL && incomingDomain !== process.env.STAGING_DOMAIN) {
+    return incomingDomain ?? DEFAULT_DOMAIN;
+  }
+  return DEFAULT_DOMAIN;
 };
 
 export async function generateMetadata({
@@ -26,20 +35,11 @@ export async function generateMetadata({
   const headersList = headers();
   const incomingDomain =
     headersList.get("x-forwarded-host") ?? headersList.get("host");
-
-  let domain: string;
-  if (process.env.VERCEL_URL && incomingDomain !== process.env.STAGING_DOMAIN) {
-    domain = incomingDomain ?? "ishortn.ink";
-  } else {
-    domain = "ishortn.ink";
-  }
+  const domain = getDomain(incomingDomain);
 
   const link = await api.link.retrieveOriginalUrl.query({
-    alias: params.linkAlias,
-    domain: domain
-      .replace("http://", "")
-      .replace("https://", "")
-      .replace("www.", ""),
+    alias: cleanAlias(params.linkAlias),
+    domain: cleanUrl(domain),
     from: "metadata",
   });
 
@@ -59,29 +59,26 @@ export async function generateMetadata({
   };
 }
 
-function isSocialMediaAgent(userAgent: string | null): boolean {
-  return socialMediaAgents.some((agent) => userAgent?.includes(agent));
-}
+const isSocialMediaAgent = (userAgent: string | null): boolean =>
+  socialMediaAgents.some((agent) => userAgent?.includes(agent));
+
+const cleanAlias = (incomingAlias: string): string => {
+  if (incomingAlias.endsWith("!")) {
+    return incomingAlias.slice(0, -1);
+  }
+  return incomingAlias;
+};
 
 const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
   const headersList = headers();
   const incomingDomain =
     headersList.get("x-forwarded-host") ?? headersList.get("host");
-  const userAgent = headers().get("user-agent");
-
-  let domain: string;
-  if (process.env.VERCEL_URL && incomingDomain !== process.env.STAGING_DOMAIN) {
-    domain = incomingDomain ?? "ishortn.ink";
-  } else {
-    domain = "ishortn.ink";
-  }
+  const userAgent = headersList.get("user-agent");
+  const domain = getDomain(incomingDomain);
 
   const link = await api.link.retrieveOriginalUrl.query({
-    alias: params.linkAlias,
-    domain: domain
-      .replace("http://", "")
-      .replace("https://", "")
-      .replace("www.", ""),
+    alias: cleanAlias(params.linkAlias),
+    domain: cleanUrl(domain),
     from: "redirection",
   });
 
@@ -93,6 +90,10 @@ const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
 
   if (isSocialMediaAgent(userAgent)) {
     return <div>Redirecting...</div>;
+  }
+
+  if (params.linkAlias.endsWith("!")) {
+    return <LinkPreview link={link} />;
   }
 
   redirect(link.url!);
