@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Gem } from "lucide-react";
+import { ChevronDown, ChevronUp, Gem, Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useEffect, useState } from "react";
@@ -12,22 +12,22 @@ import { useDebounce } from "use-debounce";
 
 import { Button } from "@/components/ui/button";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
@@ -39,12 +39,23 @@ import { LinkPreviewComponent } from "./link-preview";
 
 import type { CustomDomain } from "@/server/db/schema";
 import type { z } from "zod";
+import UpgradeToProAIButtonTooltip from "./upgrade-to-pro-ai-tooltip";
+
+type MetaData = {
+  title: string;
+  description: string;
+  image: string;
+  favicon: string;
+};
+
 export default function CreateLinkPage() {
   const router = useRouter();
   const [destinationURL, setDestinationURL] = useState<string | undefined>();
   const [userDomains, setUserDomains] = useState<CustomDomain[]>([]);
   const [isCustomMetadataOpen, setIsCustomMetadataOpen] = useState(false);
   const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
+  const [generatedAliases, setGeneratedAliases] = useState<string[]>([]);
+  const [currentAliasIndex, setCurrentAliasIndex] = useState(0);
   const [metaData, setMetaData] = useState({
     title: "",
     description: "",
@@ -54,6 +65,12 @@ export default function CreateLinkPage() {
 
   const userSubscription = api.subscriptions.get.useQuery();
   const customDomainsQuery = api.customDomain.list.useQuery();
+  const generateAliasMutation = api.ai.generateAlias.useMutation({
+    onSuccess: (data) => {
+      setGeneratedAliases(data.alias);
+      form.setValue("alias", data.alias[0]);
+    },
+  });
 
   const form = useForm<z.infer<typeof createLinkSchema>>({
     resolver: zodResolver(createLinkSchema),
@@ -62,6 +79,54 @@ export default function CreateLinkPage() {
   const [debouncedUrl] = useDebounce(destinationURL, 500);
   const [debouncedAlias] = useDebounce(form.watch("alias"), 500);
   const selectedDomain = form.watch("domain") ?? "ishortn.ink";
+
+  async function generateAliases(metadata: {
+    title: string;
+    description: string;
+  }) {
+    generateAliasMutation.mutate({
+      url: form.getValues("url"),
+      title: metadata.title,
+      description: metadata.description,
+    });
+  }
+
+  const cycleAlias = (direction: "up" | "down") => {
+    let newIndex: number;
+    if (direction === "up") {
+      newIndex = (currentAliasIndex + 1) % generatedAliases.length;
+    } else {
+      newIndex =
+        (currentAliasIndex - 1 + generatedAliases.length) %
+        generatedAliases.length;
+    }
+    setCurrentAliasIndex(newIndex);
+    form.setValue("alias", generatedAliases[newIndex]);
+  };
+
+  const handleRegenerateClick = async () => {
+    setCurrentAliasIndex(0);
+    setGeneratedAliases([]);
+    form.setValue("alias", "");
+    const url = form.getValues("url");
+    if (!url) {
+      toast.error("Please enter a valid URL first");
+      return;
+    }
+
+    let currentMetadata = metaData;
+    if (!currentMetadata.title && !currentMetadata.description) {
+      const newMetadata = (await fetchMetadata(url)) as unknown as MetaData;
+      if (newMetadata) {
+        currentMetadata = newMetadata;
+      } else {
+        toast.error("Failed to fetch metadata. Please try again.");
+        return;
+      }
+    }
+
+    await generateAliases(currentMetadata);
+  };
 
   const formUpdateMutation = api.link.create.useMutation({
     onSuccess: async () => {
@@ -88,7 +153,7 @@ export default function CreateLinkPage() {
           form.clearErrors("alias");
         }
       },
-    },
+    }
   );
 
   async function onSubmit(values: z.infer<typeof createLinkSchema>) {
@@ -116,10 +181,23 @@ export default function CreateLinkPage() {
     if (!url) return;
     const metadata = await fetchMetadataInfo(url);
     setMetaData(metadata);
+    setGeneratedAliases([]);
+    form.setValue("alias", "");
+
+    if (userSubscription?.data?.subscriptions?.status === "active") {
+      generateAliasMutation.mutate({
+        url: form.getValues("url"),
+        title: metadata.title,
+        description: metadata.description,
+      });
+    }
   }
 
   useEffect(() => {
-    if ((form.formState.errors.url ?? !form.getValues("url")) || !debouncedUrl) {
+    if (
+      (form.formState.errors.url ?? !form.getValues("url")) ||
+      !debouncedUrl
+    ) {
       return;
     }
     void fetchMetadata(debouncedUrl);
@@ -128,10 +206,17 @@ export default function CreateLinkPage() {
   return (
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       <div className="md:col-span-5">
-        <h2 className="text-2xl font-semibold text-gray-900">Create a new link</h2>
-        <p className="mt-1 text-sm text-gray-500">Create a new link to share with your audience.</p>
+        <h2 className="text-2xl font-semibold text-gray-900">
+          Create a new link
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Create a new link to share with your audience.
+        </p>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-5 space-y-5">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="mt-5 space-y-5"
+          >
             <div className="space-y-4 rounded-lg border border-gray-200 p-4">
               <FormField
                 control={form.control}
@@ -173,23 +258,80 @@ export default function CreateLinkPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
+                              <SelectItem value="ishortn.ink">
+                                ishortn.ink
+                              </SelectItem>
                               {userDomains.length > 0 &&
                                 userDomains.map((domain) => (
-                                  <SelectItem key={domain.id} value={domain.domain!}>
+                                  <SelectItem
+                                    key={domain.id}
+                                    value={domain.domain!}
+                                  >
                                     {domain.domain}
                                   </SelectItem>
                                 ))}
                             </SelectGroup>
                           </SelectContent>
                         </Select>
-                        <Input
-                          placeholder="short-link"
-                          className="h-10 flex-grow rounded-bl-none rounded-tl-none"
-                          {...field}
-                        />
+                        <div className="relative flex-grow">
+                          <Input
+                            placeholder="short-link"
+                            className="h-10 flex-grow rounded-bl-none rounded-tl-none"
+                            {...field}
+                          />
+
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                            {generateAliasMutation.isLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                            ) : generatedAliases.length > 0 ? (
+                              <div className="flex flex-col">
+                                <ChevronUp
+                                  className="h-4 w-4 cursor-pointer text-gray-500 hover:text-gray-700"
+                                  onClick={() => cycleAlias("up")}
+                                />
+                                <ChevronDown
+                                  className="h-4 w-4 cursor-pointer text-gray-500 hover:text-gray-700"
+                                  onClick={() => cycleAlias("down")}
+                                />
+                              </div>
+                            ) : userSubscription?.data?.subscriptions
+                                ?.status !== "active" ? (
+                              <UpgradeToProAIButtonTooltip />
+                            ) : (
+                              <Sparkles
+                                className="h-4 w-4 text-gray-500"
+                                onClick={handleRegenerateClick}
+                              />
+                            )}
+                          </div>
+                        </div>
                       </section>
                     </FormControl>
+                    <AnimatePresence>
+                      {generatedAliases.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <FormDescription className="flex justify-between">
+                            <motion.span key={currentAliasIndex}>
+                              Suggestion {currentAliasIndex + 1} of{" "}
+                              {generatedAliases.length}
+                            </motion.span>
+                            <motion.span
+                              className="cursor-pointer"
+                              onClick={handleRegenerateClick}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              Regenerate
+                            </motion.span>
+                          </FormDescription>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -221,17 +363,19 @@ export default function CreateLinkPage() {
                 <div className="flex flex-col">
                   <p className="flex items-center gap-2 text-lg font-semibold">
                     Custom Social Media Previews
-                    {userSubscription?.data?.subscriptions?.status !== "active" && (
+                    {userSubscription?.data?.subscriptions?.status !==
+                      "active" && (
                       <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
-                        <div className="flex items-center space-x-1">
+                        <span className="flex items-center space-x-1">
                           <Gem className="h-4 w-4 text-slate-500" />
                           <p className="uppercase">Pro</p>
-                        </div>
+                        </span>
                       </span>
                     )}
                   </p>
                   <span className="text-sm text-gray-500">
-                    Personalize your link previews with custom metadata settings.
+                    Personalize your link previews with custom metadata
+                    settings.
                   </span>
                 </div>
                 <ChevronDown
@@ -261,7 +405,10 @@ export default function CreateLinkPage() {
                                 placeholder="Custom title for your link"
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setMetaData({ ...metaData, title: e.target.value });
+                                  setMetaData({
+                                    ...metaData,
+                                    title: e.target.value,
+                                  });
                                 }}
                               />
                             </FormControl>
@@ -280,7 +427,10 @@ export default function CreateLinkPage() {
                                 placeholder="Custom description for your link"
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setMetaData({ ...metaData, description: e.target.value });
+                                  setMetaData({
+                                    ...metaData,
+                                    description: e.target.value,
+                                  });
                                 }}
                               />
                             </FormControl>
@@ -299,7 +449,10 @@ export default function CreateLinkPage() {
                                 placeholder="https://example.com/image.jpg"
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setMetaData({ ...metaData, image: e.target.value });
+                                  setMetaData({
+                                    ...metaData,
+                                    image: e.target.value,
+                                  });
                                 }}
                               />
                             </FormControl>
@@ -317,12 +470,17 @@ export default function CreateLinkPage() {
               <button
                 type="button"
                 className="flex w-full items-center justify-between text-left"
-                onClick={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
+                onClick={() =>
+                  setIsOptionalSettingsOpen(!isOptionalSettingsOpen)
+                }
               >
                 <div className="flex flex-col">
-                  <span className="text-lg font-semibold">Optional Settings</span>
+                  <span className="text-lg font-semibold">
+                    Optional Settings
+                  </span>
                   <span className="text-sm text-gray-500">
-                    Access additional configuration options for further customization.
+                    Access additional configuration options for further
+                    customization.
                   </span>
                 </div>
                 <ChevronDown
@@ -351,8 +509,8 @@ export default function CreateLinkPage() {
                               <Input {...field} type="number" />
                             </FormControl>
                             <FormDescription>
-                              Deactivate the link after a certain number of clicks. Leave empty to
-                              never disable
+                              Deactivate the link after a certain number of
+                              clicks. Leave empty to never disable
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -366,7 +524,9 @@ export default function CreateLinkPage() {
                           <FormItem>
                             <FormLabel>Disable after date</FormLabel>
                             <FormControl>
-                              <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
+                              <LinkExpirationDatePicker
+                                setSeletectedDate={field.onChange}
+                              />
                             </FormControl>
                             <FormDescription>
                               Deactivate the link after a certain date
@@ -378,16 +538,20 @@ export default function CreateLinkPage() {
 
                       <FormField
                         control={form.control}
-                        disabled={userSubscription?.data?.subscriptions?.status !== "active"}
+                        disabled={
+                          userSubscription?.data?.subscriptions?.status !==
+                          "active"
+                        }
                         name="password"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Password</FormLabel>
                             {!userSubscription.isLoading &&
-                              userSubscription.data?.subscriptions?.status !== "active" && (
+                              userSubscription.data?.subscriptions?.status !==
+                                "active" && (
                                 <FormDescription>
-                                  You need to be on a <b>pro plan</b> to create password protected
-                                  links
+                                  You need to be on a <b>pro plan</b> to create
+                                  password protected links
                                 </FormDescription>
                               )}
 
@@ -395,8 +559,9 @@ export default function CreateLinkPage() {
                               <Input {...field} type="password" />
                             </FormControl>
                             <FormDescription>
-                              Set a password to protect your link. Users will be prompted to enter
-                              the password before being redirected
+                              Set a password to protect your link. Users will be
+                              prompted to enter the password before being
+                              redirected
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
