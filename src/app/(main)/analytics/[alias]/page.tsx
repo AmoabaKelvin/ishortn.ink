@@ -5,9 +5,7 @@ import { removeUrlProtocol } from "@/lib/utils";
 import { api } from "@/trpc/server";
 
 import { BarChart } from "../../dashboard/analytics/[alias]/_components/bar-chart";
-import {
-	CountriesAndCitiesStats,
-} from "../../dashboard/analytics/[alias]/countries-and-cities-stats";
+import { CountriesAndCitiesStats } from "../../dashboard/analytics/[alias]/countries-and-cities-stats";
 import { UserAgentStats } from "../../dashboard/analytics/[alias]/user-agent-stats";
 
 type LinksAnalyticsPageProps = {
@@ -76,6 +74,8 @@ export default async function LinkAnalyticsPage({
         <CountriesAndCitiesStats
           citiesRecords={aggregatedVisits.clicksPerCity}
           countriesRecords={aggregatedVisits.clicksPerCountry}
+          continentsRecords={aggregatedVisits.clicksPerContinent}
+          proUser={false}
           totalClicks={totalVisits.length}
         />
 

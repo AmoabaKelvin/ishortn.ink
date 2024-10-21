@@ -97,7 +97,9 @@ export default async function LinkAnalyticsPage({
         <CountriesAndCitiesStats
           citiesRecords={aggregatedVisits.clicksPerCity}
           countriesRecords={aggregatedVisits.clicksPerCountry}
+          continentsRecords={aggregatedVisits.clicksPerContinent}
           totalClicks={totalVisits.length}
+          proUser={!!isProPlan}
         />
 
         <UserAgentStats

@@ -21,12 +21,14 @@ export function BarList({ records, totalClicks }: BarListProps) {
               {record.name[0]}
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-gray-800">{record.name}</h2>
+              <h2 className="text-sm font-semibold text-gray-800">
+                {record.name}
+              </h2>
               <p className="text-xs text-gray-500">{record.clicks} clicks</p>
             </div>
           </div>
           <div className="text-xs font-semibold text-gray-900">
-            {((record.clicks / totalClicks) * 100).toFixed(2)}%
+            {((record.clicks / totalClicks) * 100).toFixed(0)}%
           </div>
         </div>
       ))}
@@ -44,7 +46,9 @@ function BarListTitle({ title, description, children }: BarListTitleProps) {
   return (
     <Card className="flex h-max flex-col gap-4 rounded-md  p-6 md:col-span-5">
       <div>
-        <h1 className="text-xl font-semibold leading-tight text-gray-800">{title}</h1>
+        <h1 className="text-xl font-semibold leading-tight text-gray-800">
+          {title}
+        </h1>
         <p className="text-sm text-gray-500">{description}</p>
       </div>
       <div className="flex flex-col gap-3">{children}</div>
@@ -58,7 +62,11 @@ type BarListTabViewSwitcherProps = {
   onChangeView: (view: string) => void;
 };
 
-function BarListTabViewSwitcher({ currentView, views, onChangeView }: BarListTabViewSwitcherProps) {
+function BarListTabViewSwitcher({
+  currentView,
+  views,
+  onChangeView,
+}: BarListTabViewSwitcherProps) {
   return (
     <div className="mb-3 w-max border-b border-gray-200 text-center font-medium text-gray-500">
       <ul className="-mb-px flex flex-wrap gap-4">
@@ -69,7 +77,7 @@ function BarListTabViewSwitcher({ currentView, views, onChangeView }: BarListTab
               className={cn(
                 "inline-block cursor-pointer rounded-t-lg border-b-2 border-transparent py-2 hover:border-gray-300 hover:text-gray-600",
                 currentView === name.toLowerCase() &&
-                  "border-blue-600 text-blue-600 dark:border-blue-500",
+                  "border-blue-600 text-blue-600 dark:border-blue-500"
               )}
             >
               {name.charAt(0).toUpperCase() + name.slice(1)}
