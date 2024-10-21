@@ -120,6 +120,13 @@
       "when": 1726477168321,
       "tag": "0016_yielding_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1729496296579,
+      "tag": "0017_left_scorpion",
+      "breakpoints": true
     }
   ]
 }
