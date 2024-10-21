@@ -29,7 +29,7 @@ export const user = mysqlTable(
   },
   (table) => ({
     userIdx: index("userId_idx").on(table.id),
-  }),
+  })
 );
 
 export const subscription = mysqlTable(
@@ -55,7 +55,7 @@ export const subscription = mysqlTable(
   },
   (table) => ({
     userIdx: index("userId_idx").on(table.userId),
-  }),
+  })
 );
 
 export const link = mysqlTable(
@@ -82,8 +82,11 @@ export const link = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
-    uniqueAliasDomainIdx: unique("unique_alias_domain").on(table.alias, table.domain), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
-  }),
+    uniqueAliasDomainIdx: unique("unique_alias_domain").on(
+      table.alias,
+      table.domain
+    ), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
+  })
 );
 
 export const linkVisit = mysqlTable(
@@ -98,11 +101,12 @@ export const linkVisit = mysqlTable(
     referer: varchar("referer", { length: 255 }),
     country: varchar("country", { length: 255 }),
     city: varchar("city", { length: 255 }),
+    continent: varchar("continent", { length: 255 }).default("N/A"),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
-  }),
+  })
 );
 
 export const uniqueLinkVisit = mysqlTable(
@@ -117,7 +121,7 @@ export const uniqueLinkVisit = mysqlTable(
     linkIdIdx: index("linkId_idx").on(table.linkId),
     ipHashIdx: index("ipHash_idx").on(table.ipHash),
     uniqueVisitIdx: index("unique_visit_idx").on(table.linkId, table.ipHash),
-  }),
+  })
 );
 
 export const token = mysqlTable(
@@ -130,7 +134,7 @@ export const token = mysqlTable(
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
-  }),
+  })
 );
 
 export const qrcode = mysqlTable(
@@ -177,7 +181,7 @@ export const qrcode = mysqlTable(
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
-  }),
+  })
 );
 
 // Define relations
@@ -197,12 +201,14 @@ export const customDomain = mysqlTable(
     domain: varchar("domain", { length: 255 }).unique(),
     userId: varchar("userId", { length: 32 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow(),
-    status: mysqlEnum("status", ["pending", "active", "invalid"]).default("pending"),
+    status: mysqlEnum("status", ["pending", "active", "invalid"]).default(
+      "pending"
+    ),
     verificationDetails: json("verificationDetails"),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
-  }),
+  })
 );
 
 export const userRelations = relations(user, ({ many, one }) => ({
@@ -258,9 +264,15 @@ export const customDomainRelations = relations(customDomain, ({ one }) => ({
   }),
 }));
 
-export const uniqueLinkVisitRelations = relations(uniqueLinkVisit, ({ one }) => ({
-  link: one(link, { fields: [uniqueLinkVisit.linkId], references: [link.id] }),
-}));
+export const uniqueLinkVisitRelations = relations(
+  uniqueLinkVisit,
+  ({ one }) => ({
+    link: one(link, {
+      fields: [uniqueLinkVisit.linkId],
+      references: [link.id],
+    }),
+  })
+);
 
 export type CustomDomain = typeof customDomain.$inferSelect;
 export type NewCustomDomain = typeof customDomain.$inferInsert;

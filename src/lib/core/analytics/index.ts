@@ -15,6 +15,7 @@ const getGeolocationDetailsFromAPI = async (ip: string) => {
   return {
     city: data.city.names.en,
     country: data.country.names.en,
+    continent: data.continent.names.en,
   };
 };
 
@@ -26,6 +27,7 @@ const getGeolocationDetails = async (ip: string) => {
   return {
     city: geolocationDetails?.city ?? "Unknown",
     country: geolocationDetails?.country ?? "Unknown",
+    continent: geolocationDetails.continent ?? "Unknown",
   };
 };
 
@@ -93,6 +95,7 @@ export const aggregateVisits = (
   const uniqueClicksPerDate: Record<string, number> = {};
   const clicksPerCountry: Record<string, number> = {};
   const clicksPerCity: Record<string, number> = {};
+  const clicksPerContinent: Record<string, number> = {};
   const clicksPerDevice: Record<string, number> = {};
   const clicksPerOS: Record<string, number> = {};
   const clicksPerBrowser: Record<string, number> = {};
@@ -105,6 +108,7 @@ export const aggregateVisits = (
 
     if (visit.country) safeIncrement(clicksPerCountry, visit.country);
     if (visit.city) safeIncrement(clicksPerCity, visit.city);
+    if (visit.continent) safeIncrement(clicksPerContinent, visit.continent);
     if (visit.device) safeIncrement(clicksPerDevice, visit.device);
     if (visit.os) safeIncrement(clicksPerOS, visit.os);
     if (visit.browser) safeIncrement(clicksPerBrowser, visit.browser);
@@ -116,6 +120,7 @@ export const aggregateVisits = (
       clicksPerDate,
       clicksPerCountry,
       clicksPerCity,
+      clicksPerContinent,
       clicksPerDevice,
       clicksPerOS,
       clicksPerBrowser,
@@ -133,6 +138,7 @@ export const aggregateVisits = (
     uniqueClicksPerDate,
     clicksPerCountry,
     clicksPerCity,
+    clicksPerContinent,
     clicksPerDevice,
     clicksPerOS,
     clicksPerBrowser,

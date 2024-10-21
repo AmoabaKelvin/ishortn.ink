@@ -86,7 +86,10 @@ export const getLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) =>
   });
 };
 
-export const getLinkByAlias = async (input: { alias: string; domain: string }) => {
+export const getLinkByAlias = async (input: {
+  alias: string;
+  domain: string;
+}) => {
   return db
     .select()
     .from(link)
@@ -493,7 +496,10 @@ type LinkRecord = {
 };
 
 export const bulkCreateLinks = async (ctx: ProtectedTRPCContext, csvContent: string) => {
-  const records = parse(csvContent, { columns: true, skip_empty_lines: true }) as LinkRecord[];
+  const records = parse(csvContent, {
+    columns: true,
+    skip_empty_lines: true,
+  }) as LinkRecord[];
 
   // we need to check for alias clashes and report those to the user, if we use promise.all, it will
   // fail if there is an alias clash so we need to use promise.allSettled
