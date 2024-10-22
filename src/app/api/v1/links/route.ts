@@ -64,8 +64,6 @@ async function createNewLink(
   userId: string,
   subStatus: string | undefined | null,
 ) {
-  // check if there is a password
-
   if (data.password) {
     if (subStatus !== "active" || subStatus === undefined) {
       throw new Error("You need to upgrade to a pro plan to use password protection");
@@ -76,10 +74,8 @@ async function createNewLink(
   }
 
   const aliasRegex = /^[a-zA-Z0-9-_]+$/;
-  if (!aliasRegex.test(data.alias ?? "")) {
-    return new Response("Alias can only contain alphanumeric characters, dashes, and underscores", {
-      status: 400,
-    });
+  if (data.alias && !aliasRegex.test(data.alias ?? "")) {
+    throw new Error("Alias can only contain alphanumeric characters, dashes, and underscores");
   }
 
   const newLinkData = {
