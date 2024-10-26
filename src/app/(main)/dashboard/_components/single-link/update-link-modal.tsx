@@ -14,7 +14,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -23,17 +23,21 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
+  FormMessage
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
@@ -50,7 +54,11 @@ type LinkEditModalProps = {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
+export default function UpdateLinkModal({
+  link,
+  open,
+  setOpen,
+}: LinkEditModalProps) {
   const formUpdateMutation = api.link.update.useMutation({
     onSuccess: async () => {
       await revalidateHomepage();
@@ -66,6 +74,7 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
     resolver: zodResolver(updateLinkSchema),
     defaultValues: {
       id: link.id,
+      name: link.name!,
       url: link.url!,
       alias: link.alias!,
       note: link.note ?? undefined,
@@ -75,7 +84,9 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
   });
   form.setValue("id", link.id);
 
-  async function onSubmit(values: z.infer<Omit<typeof updateLinkSchema, "id">>) {
+  async function onSubmit(
+    values: z.infer<Omit<typeof updateLinkSchema, "id">>
+  ) {
     toast.promise(formUpdateMutation.mutateAsync(values), {
       loading: "Updating link...",
       success: "Link updated successfully",
@@ -107,6 +118,22 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
             />
             <FormField
               control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Link Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="My Awesome Link" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    A friendly name to identify your link (optional)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="alias"
               render={({ field }) => (
                 <FormItem>
@@ -119,7 +146,9 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
+                            <SelectItem value="ishortn.ink">
+                              ishortn.ink
+                            </SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
@@ -166,8 +195,8 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
                     <Input {...field} type="number" />
                   </FormControl>
                   <FormDescription>
-                    Deactivate the link after a certain number of clicks. Leave empty to never
-                    disable
+                    Deactivate the link after a certain number of clicks. Leave
+                    empty to never disable
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -181,14 +210,22 @@ export default function UpdateLinkModal({ link, open, setOpen }: LinkEditModalPr
                 <FormItem>
                   <FormLabel>Disable after date</FormLabel>
                   <FormControl>
-                    <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
+                    <LinkExpirationDatePicker
+                      setSeletectedDate={field.onChange}
+                    />
                   </FormControl>
-                  <FormDescription>Deactivate the link after a certain date</FormDescription>
+                  <FormDescription>
+                    Deactivate the link after a certain date
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="mt-10 w-full" onClick={form.handleSubmit(onSubmit)}>
+            <Button
+              type="submit"
+              className="mt-10 w-full"
+              onClick={form.handleSubmit(onSubmit)}
+            >
               Submit
             </Button>
           </form>
@@ -202,7 +239,9 @@ type LinkExpirationDatePickerProps = {
   setSeletectedDate: (date: Date) => void;
 };
 
-export function LinkExpirationDatePicker({ setSeletectedDate }: LinkExpirationDatePickerProps) {
+export function LinkExpirationDatePicker({
+  setSeletectedDate,
+}: LinkExpirationDatePickerProps) {
   const [date, setDate] = useState<Date>();
 
   const handleSelect = (date: Date) => {
@@ -217,7 +256,7 @@ export function LinkExpirationDatePicker({ setSeletectedDate }: LinkExpirationDa
           variant={"outline"}
           className={cn(
             "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
+            !date && "text-muted-foreground"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />

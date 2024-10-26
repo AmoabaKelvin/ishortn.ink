@@ -11,6 +11,7 @@ import { LinkNoteTooltip } from "./link-note-viewer";
 import { LinkSecurityStatusTooltip } from "./link-security-status-tooltip";
 
 import type { RouterOutputs } from "@/trpc/shared";
+
 type LinkProps = {
   link: RouterOutputs["link"]["list"]["links"][number];
 };
@@ -26,11 +27,21 @@ const Link = ({ link }: LinkProps) => {
         <div className="flex items-center gap-3">
           <div
             className="flex cursor-pointer items-center text-blue-600 hover:underline"
-            onClick={() => router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`)}
+            onClick={() =>
+              router.push(
+                `/dashboard/analytics/${link.alias}?domain=${link.domain}`
+              )
+            }
           >
             <LinkStatus disabled={link.disabled ?? false} />
             <LinkSecurityStatusTooltip link={link} />
-            {link.domain}/{link.alias}
+            {link.name !== "Untitled Link" && link.name ? (
+              <span className="">{link.name}</span>
+            ) : (
+              <>
+                {link.domain}/{link.alias}
+              </>
+            )}
           </div>
           <div
             className="hover:animate-wiggle-more flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-white "
@@ -42,9 +53,15 @@ const Link = ({ link }: LinkProps) => {
           </div>
         </div>
         <p className="text-sm text-gray-500">
-          <span>{daysSinceLinkCreation === 0 ? "Today" : `${daysSinceLinkCreation}d`}</span>
+          <span>
+            {daysSinceLinkCreation === 0
+              ? "Today"
+              : `${daysSinceLinkCreation}d`}
+          </span>
           <span className="mx-1 text-slate-300">•</span>
-          <span className="cursor-pointer text-gray-900 hover:underline">{link.url}</span>
+          <span className="cursor-pointer text-gray-900 hover:underline">
+            {link.url}
+          </span>
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -67,7 +84,11 @@ export default Link;
 
 function LinkStatus({ disabled }: { disabled: boolean }) {
   return (
-    <div className={`flex items-center gap-2 ${disabled ? "text-red-500" : "text-blue-500"}`}>
+    <div
+      className={`flex items-center gap-2 ${
+        disabled ? "text-red-500" : "text-blue-500"
+      }`}
+    >
       {disabled ? (
         <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-300" />
       ) : (

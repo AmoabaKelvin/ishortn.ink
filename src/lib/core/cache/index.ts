@@ -47,6 +47,7 @@ function convertToLink(link: Record<string, string>): Link | null {
   return {
     id: Number(link.id),
     url: link.url!,
+    name: link.name!,
     alias: link.alias!,
     userId: link.userId!,
     createdAt: new Date(link.createdAt!),

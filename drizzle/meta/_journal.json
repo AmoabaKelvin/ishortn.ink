@@ -127,6 +127,13 @@
       "when": 1729496296579,
       "tag": "0017_left_scorpion",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1729954126940,
+      "tag": "0018_gray_captain_midlands",
+      "breakpoints": true
     }
   ]
 }
