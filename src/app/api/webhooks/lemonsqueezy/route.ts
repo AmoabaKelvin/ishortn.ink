@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
+import { Resend } from "resend";
 
+import WelcomeEmail from "@/emails/welcome-to-pro";
 import { webhookHasMeta } from "@/lib/typeguards";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
@@ -9,6 +11,9 @@ import type {
   LemonsqueezySubscriptionAttributes,
   LemonsqueezyWebhookPayload,
 } from "@/lib/types/lemonsqueezy";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function POST(request: Request) {
   if (!process.env.LEMONSQUEEZY_WEBHOOK_SECRET) {
     return new Response("Lemon Squeezy Webhook Secret not set in .env", {
@@ -38,11 +43,8 @@ export async function POST(request: Request) {
 
   void processWebhook(data);
 
-  // do processing
   return new Response("OK", { status: 200 });
 }
-
-// async function processWebhook(webhookEvent: NewWebhook);
 
 async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
   const { meta, data } = webhookEvent;
@@ -68,7 +70,6 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     });
 
     if (!user) {
-      console.error(`User with id ${userId} not found`);
       return;
     }
 
@@ -95,6 +96,16 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
           endsAt: endsAt ? new Date(endsAt) : null,
         },
       });
+
+    const email = user.email;
+    const name = user.name;
+
+    await resend.emails.send({
+      from: "Kelvin <kelvin@ishortn.ink>",
+      to: email!,
+      subject: "Welcome to iShortn Pro",
+      react: WelcomeEmail({ userName: name ?? "there" }),
+    });
   } else if (event_name === "subscription_updated") {
     // handle subscription updated. Sent when a subscription is updated
 
