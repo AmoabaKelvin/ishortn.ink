@@ -18,7 +18,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
+  FormMessage
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,7 +27,7 @@ import {
   SelectGroup,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
@@ -35,12 +35,12 @@ import { api } from "@/trpc/react";
 
 import { LinkExpirationDatePicker } from "../../_components/single-link/update-link-modal";
 import { revalidateHomepage } from "../../actions/revalidate-homepage";
+
 import { LinkPreviewComponent } from "./link-preview";
+import UpgradeToProAIButtonTooltip from "./upgrade-to-pro-ai-tooltip";
 
 import type { CustomDomain } from "@/server/db/schema";
 import type { z } from "zod";
-import UpgradeToProAIButtonTooltip from "./upgrade-to-pro-ai-tooltip";
-
 type MetaData = {
   title: string;
   description: string;
@@ -236,6 +236,22 @@ export default function CreateLinkPage() {
                         }}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Link Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="My Awesome Link" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      A friendly name to identify your link (optional)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

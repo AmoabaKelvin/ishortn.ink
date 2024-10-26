@@ -47,6 +47,7 @@ export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput)
       .select({
         id: link.id,
         url: link.url,
+        name: link.name,
         alias: link.alias,
         domain: link.domain,
         createdAt: link.createdAt,
@@ -152,8 +153,11 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
     image: inputMetaData?.image ?? fetchedMetadata.image,
   };
 
+  const name = input.name ?? fetchedMetadata.title ?? "Untitled Link";
+
   return ctx.db.insert(link).values({
     ...input,
+    name,
     alias: input.alias ?? (await generateShortLink()),
     userId: ctx.auth.userId,
     passwordHash: input.password,

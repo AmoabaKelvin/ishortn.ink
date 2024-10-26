@@ -21,6 +21,7 @@ export const listLinksSchema = z.object({
 
 export const createLinkSchema = z.object({
   url: z.string(),
+  name: z.string().optional(),
   alias: z.string().optional(),
   disableLinkAfterClicks: z.number().optional(),
   disableLinkAfterDate: z.date().optional(),
@@ -42,6 +43,7 @@ export const quickLinkShorteningSchema = z.object({
 
 export const updateLinkSchema = createLinkSchema.partial().extend({
   id: z.number(),
+  name: z.string().optional(),
   disabled: z.boolean().optional(),
   publicStats: z.boolean().optional(),
   note: z.string().optional(),
