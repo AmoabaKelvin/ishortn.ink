@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { parseReferrer } from "@/lib/utils";
+import { isBot } from "@/lib/utils/is-bot";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
 import type { Link } from "@/server/db/schema";
@@ -13,6 +14,12 @@ export async function logAnalytics(ctx: PublicTRPCContext, link: Link, from: str
   }
 
   if (from === "metadata") {
+    return;
+  }
+
+  const userAgent = ctx.headers.get("user-agent");
+
+  if (userAgent && isBot(userAgent)) {
     return;
   }
 
