@@ -2,11 +2,11 @@ import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
 import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns } from "drizzle-orm";
 import crypto from "node:crypto";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
-import { Cache } from "@/lib/core/cache";
+import { deleteFromCache, getFromCache, setInCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { db } from "@/server/db";
@@ -24,7 +24,6 @@ import type {
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
-const cache = new Cache();
 
 function constructCacheKey(domain: string, alias: string) {
   return `${domain}:${alias}`;
@@ -45,20 +44,8 @@ export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput)
       .where(eq(link.userId, ctx.auth.userId)),
     ctx.db
       .select({
-        id: link.id,
-        url: link.url,
-        name: link.name,
-        alias: link.alias,
-        domain: link.domain,
-        createdAt: link.createdAt,
-        disableLinkAfterClicks: link.disableLinkAfterClicks,
-        disableLinkAfterDate: link.disableLinkAfterDate,
-        disabled: link.disabled,
-        publicStats: link.publicStats,
-        userId: link.userId,
-        passwordHash: link.passwordHash,
+        ...getTableColumns(link),
         totalClicks: count(linkVisit.id).as("total_clicks"),
-        note: link.note,
       })
       .from(link)
       .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
@@ -175,15 +162,15 @@ export const updateLink = async (ctx: ProtectedTRPCContext, input: UpdateLinkInp
     .set(input)
     .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 
-  if (input.alias) {
-    await cache.delete(input.alias);
-  }
-
   const updatedLink = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
 
-  await cache.set(constructCacheKey(updatedLink!.domain, updatedLink!.alias!), updatedLink!);
+  if (updatedLink?.alias !== input.alias || updatedLink?.domain !== input.domain) {
+    // we should delete the old cache key if the alias or domain has changed
+    await deleteFromCache(constructCacheKey(updatedLink!.domain, updatedLink!.alias!));
+  }
+  await setInCache(constructCacheKey(updatedLink!.domain, updatedLink!.alias!), updatedLink!);
 };
 
 export const deleteLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
@@ -195,8 +182,10 @@ export const deleteLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput)
     return null;
   }
 
-  await cache.delete(constructCacheKey(linkToDelete.domain, linkToDelete.alias!));
-  await ctx.db.delete(link).where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
+  Promise.all([
+    deleteFromCache(constructCacheKey(linkToDelete.domain, linkToDelete.alias!)),
+    ctx.db.delete(link).where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId))),
+  ]);
 };
 
 export const retrieveOriginalUrl = async (
@@ -206,7 +195,7 @@ export const retrieveOriginalUrl = async (
   const { alias, domain } = input;
   const cacheKey = `${domain}:${alias}`;
 
-  let link: Link | undefined | null = await cache.get(cacheKey);
+  let link: Link | undefined | null = await getFromCache(cacheKey);
 
   if (!link?.alias) {
     link = await ctx.db.query.link.findFirst({
@@ -216,6 +205,8 @@ export const retrieveOriginalUrl = async (
     if (!link) {
       return null;
     }
+
+    await setInCache(`${link.domain}:${link.alias}`, link);
   }
 
   waitUntil(logAnalytics(ctx, link, input.from));
@@ -240,7 +231,7 @@ export const shortenLinkWithAutoAlias = async (
   });
 
   if (insertedLink) {
-    await cache.set(constructCacheKey(insertedLink.domain, insertedLink.alias!), insertedLink);
+    await setInCache(constructCacheKey(insertedLink.domain, insertedLink.alias!), insertedLink);
   }
 
   return insertedLink;
@@ -475,7 +466,7 @@ export const changeLinkPassword = async (
     where: (table, { eq }) => eq(table.id, input.id),
   });
 
-  await cache.delete(constructCacheKey(updatedLink!.domain, updatedLink!.alias!));
+  await deleteFromCache(constructCacheKey(updatedLink!.domain, updatedLink!.alias!));
 
   return updatedLink;
 };
