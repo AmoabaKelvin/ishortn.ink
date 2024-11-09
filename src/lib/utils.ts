@@ -122,3 +122,12 @@ export function parseReferrer(referrer: string | null): string {
     return referrer.substring(0, 50);
   }
 }
+
+/**
+ * Normalizes a link alias by converting it to lowercase
+ * @param alias The alias to normalize
+ * @returns The normalized alias
+ */
+export function normalizeAlias(alias: string): string {
+  return alias.toLowerCase();
+}

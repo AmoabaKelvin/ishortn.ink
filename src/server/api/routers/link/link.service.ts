@@ -2,12 +2,13 @@ import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
 import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
-import { and, asc, count, desc, eq, getTableColumns } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import crypto from "node:crypto";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { deleteFromCache, getFromCache, setInCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { normalizeAlias } from "@/lib/utils";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { db } from "@/server/db";
 import { link, linkVisit, uniqueLinkVisit } from "@/server/db/schema";
@@ -81,7 +82,7 @@ export const getLinkByAlias = async (input: {
   return db
     .select()
     .from(link)
-    .where(and(eq(link.domain, input.domain), eq(link.alias, input.alias)));
+    .where(and(eq(link.domain, input.domain), sql`lower(${link.alias}) = lower(${input.alias})`));
 };
 
 export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInput) => {
@@ -101,10 +102,12 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
 
     const domain = input.domain ?? "ishortn.ink";
 
+    // checking if the alias is already taken
+    const normalizedAlias = normalizeAlias(input.alias);
     const aliasExists = await ctx.db
       .select()
       .from(link)
-      .where(and(eq(link.alias, input.alias), eq(link.domain, domain)));
+      .where(and(sql`lower(${link.alias}) = ${normalizedAlias}`, eq(link.domain, domain)));
 
     if (aliasExists.length) {
       throw new Error("Alias already exists");
@@ -199,7 +202,11 @@ export const retrieveOriginalUrl = async (
 
   if (!link?.alias) {
     link = await ctx.db.query.link.findFirst({
-      where: (table, { eq, and }) => and(eq(table.alias, input.alias), eq(table.domain, domain)),
+      where: (table, { eq, and, sql }) => 
+        and(
+          sql`lower(${table.alias}) = lower(${input.alias})`,
+          eq(table.domain, domain)
+        ),
     });
 
     if (!link) {
