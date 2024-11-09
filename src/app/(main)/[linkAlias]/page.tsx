@@ -1,10 +1,13 @@
-import { socialMediaAgents } from "@/lib/constants";
-import { api } from "@/trpc/server";
-import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+
+import { socialMediaAgents } from "@/lib/constants";
+import { api } from "@/trpc/server";
+
 import { LinkPasswordVerification } from "./link-password-verification";
 import LinkPreview from "./link-preview";
+
+import type { Metadata } from "next";
 
 type LinkRedirectionPageProps = {
   params: {
@@ -63,10 +66,11 @@ const isSocialMediaAgent = (userAgent: string | null): boolean =>
   socialMediaAgents.some((agent) => userAgent?.includes(agent));
 
 const cleanAlias = (incomingAlias: string): string => {
-  if (incomingAlias.endsWith("!")) {
-    return incomingAlias.slice(0, -1);
+  let alias = incomingAlias;
+  if (alias.endsWith("!")) {
+    alias = alias.slice(0, -1);
   }
-  return incomingAlias;
+  return alias.toLowerCase();
 };
 
 const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
