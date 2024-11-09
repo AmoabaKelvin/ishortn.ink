@@ -102,7 +102,10 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 
 export type TRPCContext = inferAsyncReturnType<typeof createTRPCContext>;
 export type ProtectedTRPCContext = TRPCContext & {
-  auth: WithoutNull<TRPCContext["auth"]>;
+  // auth: TRPCContext["auth"];
+  auth: Omit<NonNullable<TRPCContext["auth"]>, "userId"> & {
+    userId: string;
+  };
 };
 
 export type PublicTRPCContext = {
