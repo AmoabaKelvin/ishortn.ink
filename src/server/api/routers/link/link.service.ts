@@ -94,15 +94,15 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
   const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
   const fetchedMetadata = await fetchMetadataInfo(input.url);
 
-  console.log("Alias", alias)
-
   const phishingResult = await detectPhishingLink(input.url, fetchedMetadata);
   if (phishingResult.phishing) {
-    throw new Error("This URL has been detected as a potential phishing site. Shortened link will not be created.");
+    throw new Error(
+      "This URL has been detected as a potential phishing site. Shortened link will not be created.",
+    );
   }
 
-  console.log("Alias", alias)
-  
+  console.log("Alias", alias);
+
   if (input.alias) {
     const aliasRegex = /^[a-zA-Z0-9-_]+$/;
     if (!aliasRegex.test(input.alias)) {
@@ -209,11 +209,8 @@ export const retrieveOriginalUrl = async (
 
   if (!link?.alias) {
     link = await ctx.db.query.link.findFirst({
-      where: (table, { eq, and, sql }) => 
-        and(
-          sql`lower(${table.alias}) = lower(${input.alias})`,
-          eq(table.domain, domain)
-        ),
+      where: (table, { eq, and, sql }) =>
+        and(sql`lower(${table.alias}) = lower(${input.alias})`, eq(table.domain, domain)),
     });
 
     if (!link) {
@@ -232,6 +229,14 @@ export const shortenLinkWithAutoAlias = async (
   ctx: ProtectedTRPCContext,
   input: QuickLinkShorteningInput,
 ) => {
+  // check for phishing
+  const phishingResult = await detectPhishingLink(input.url, await fetchMetadataInfo(input.url));
+  if (phishingResult.phishing) {
+    throw new Error(
+      "This URL has been detected as a potential phishing site. Shortened link will not be created.",
+    );
+  }
+
   const insertionResult = await ctx.db.insert(link).values({
     url: input.url,
     alias: await generateShortLink(),

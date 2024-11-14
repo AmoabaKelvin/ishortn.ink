@@ -3,6 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { generateShortLink } from "@/lib/core/links";
+import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
+import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 
@@ -76,6 +78,14 @@ async function createNewLink(
   const aliasRegex = /^[a-zA-Z0-9-_]+$/;
   if (data.alias && !aliasRegex.test(data.alias ?? "")) {
     throw new Error("Alias can only contain alphanumeric characters, dashes, and underscores");
+  }
+
+  // check for phishing
+  const phishingResult = await detectPhishingLink(data.url, await fetchMetadataInfo(data.url));
+  if (phishingResult.phishing) {
+    throw new Error(
+      "This URL has been detected as a potential phishing site. Shortened link will not be created.",
+    );
   }
 
   const newLinkData = {
