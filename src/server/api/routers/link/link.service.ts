@@ -10,6 +10,7 @@ import { deleteFromCache, getFromCache, setInCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { normalizeAlias } from "@/lib/utils";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
+import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { db } from "@/server/db";
 import { link, linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
@@ -25,7 +26,6 @@ import type {
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
-
 function constructCacheKey(domain: string, alias: string) {
   return `${domain}:${alias}`;
 }
@@ -90,6 +90,19 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
     where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
   });
 
+  const domain = input.domain ?? "ishortn.ink";
+  const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
+  const fetchedMetadata = await fetchMetadataInfo(input.url);
+
+  console.log("Alias", alias)
+
+  const phishingResult = await detectPhishingLink(input.url, fetchedMetadata);
+  if (phishingResult.phishing) {
+    throw new Error("This URL has been detected as a potential phishing site. Shortened link will not be created.");
+  }
+
+  console.log("Alias", alias)
+  
   if (input.alias) {
     const aliasRegex = /^[a-zA-Z0-9-_]+$/;
     if (!aliasRegex.test(input.alias)) {
@@ -100,10 +113,8 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
       throw new Error("Cannot include periods in alias");
     }
 
-    const domain = input.domain ?? "ishortn.ink";
-
     // checking if the alias is already taken
-    const normalizedAlias = normalizeAlias(input.alias);
+    const normalizedAlias = normalizeAlias(alias);
     const aliasExists = await ctx.db
       .select()
       .from(link)
@@ -122,8 +133,6 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
     input.password = await bcrypt.hash(input.password, 10);
   }
 
-  const domain = input.domain ?? "ishortn.ink";
-
   const inputMetaData = input.metadata;
   const metadataValues = Object.values(inputMetaData ?? {});
   const hasUserFilledMetadata = metadataValues.some(
@@ -134,8 +143,6 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
       throw new Error("You need to upgrade to a pro plan to use custom social media previews");
     }
   }
-
-  const fetchedMetadata = await fetchMetadataInfo(input.url);
 
   input.metadata = {
     title: inputMetaData?.title ?? fetchedMetadata.title,
@@ -148,7 +155,7 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
   return ctx.db.insert(link).values({
     ...input,
     name,
-    alias: input.alias ?? (await generateShortLink()),
+    alias: alias,
     userId: ctx.auth.userId,
     passwordHash: input.password,
     domain,
