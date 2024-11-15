@@ -10,8 +10,6 @@ export const dynamic = "force-dynamic";
 async function CustomDomainsPage() {
   const userDomains = await api.customDomain.list.query();
 
-  console.log(userDomains);
-
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -22,7 +20,11 @@ async function CustomDomainsPage() {
         <AddCustomDomainModal />
       </div>
       <Separator />
-      {userDomains.length === 0 ? <EmptyState /> : <ListDomains domains={userDomains} />}
+      {userDomains.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <ListDomains domains={userDomains} />
+      )}
     </div>
   );
 }

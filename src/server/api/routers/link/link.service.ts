@@ -229,21 +229,29 @@ export const shortenLinkWithAutoAlias = async (
   ctx: ProtectedTRPCContext,
   input: QuickLinkShorteningInput,
 ) => {
-  // check for phishing
-  const phishingResult = await detectPhishingLink(input.url, await fetchMetadataInfo(input.url));
+  const [phishingResult, userSettings] = await Promise.all([
+    detectPhishingLink(input.url, await fetchMetadataInfo(input.url)),
+    ctx.db.query.siteSettings.findFirst({
+      where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+    }),
+  ]);
+
   if (phishingResult.phishing) {
     throw new Error(
       "This URL has been detected as a potential phishing site. Shortened link will not be created.",
     );
   }
 
-  const insertionResult = await ctx.db.insert(link).values({
+  const defaultDomain = userSettings?.defaultDomain ?? "ishortn.ink";
+
+  const [insertionResult] = await ctx.db.insert(link).values({
     url: input.url,
     alias: await generateShortLink(),
     userId: ctx.auth.userId,
+    domain: defaultDomain,
   });
 
-  const insertedLinkId = insertionResult[0].insertId;
+  const insertedLinkId = insertionResult.insertId;
 
   const insertedLink = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, insertedLinkId),

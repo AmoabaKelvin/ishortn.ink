@@ -182,6 +182,20 @@ export const qrcode = mysqlTable(
   }),
 );
 
+export const siteSettings = mysqlTable(
+  "SiteSettings",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    defaultDomain: varchar("defaultDomain", { length: 255 }).default("ishortn.ink"),
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+  }),
+);
+
 // Define relations
 export const linkRelations = relations(link, ({ one, many }) => ({
   user: one(user, {
@@ -264,6 +278,13 @@ export const uniqueLinkVisitRelations = relations(uniqueLinkVisit, ({ one }) => 
   link: one(link, {
     fields: [uniqueLinkVisit.linkId],
     references: [link.id],
+  }),
+}));
+
+export const siteSettingsRelations = relations(siteSettings, ({ one }) => ({
+  user: one(user, {
+    fields: [siteSettings.userId],
+    references: [user.id],
   }),
 }));
 

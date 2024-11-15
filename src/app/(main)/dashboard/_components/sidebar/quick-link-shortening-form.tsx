@@ -25,6 +25,10 @@ export function QuickLinkShorteningForm() {
     onSuccess() {
       toast.success("Link shortened successfully");
       reset({ url: "" });
+      revalidateHomepage();
+    },
+    onError(error) {
+      toast.error(error.message);
     },
   });
 
@@ -34,24 +38,31 @@ export function QuickLinkShorteningForm() {
   };
 
   return (
-    <div className="rounded-md bg-gray-100/65 p-6">
-      <h1 className="text-xl font-semibold leading-tight text-gray-800">Quick Shorten</h1>
-      <p className="text-sm text-gray-500">Shorten a link quickly without any settings</p>
+    <div className="p-6 rounded-md bg-gray-100/65">
+      <h1 className="text-xl font-semibold leading-tight text-gray-800">
+        Quick Shorten
+      </h1>
+      <p className="text-sm text-gray-500">
+        Shorten a link quickly without any settings
+      </p>
       <Input
         type="url"
         placeholder="Paste a link to shorten"
         className={cn(
           "mt-4 w-full",
-          errors.url && "border-red-500 placeholder:text-red-500 dark:border-red-400",
+          errors.url &&
+            "border-red-500 placeholder:text-red-500 dark:border-red-400"
         )}
         {...register("url", { required: true })}
       />
       <Button
-        className="mt-4 w-full"
+        className="w-full mt-4"
         onClick={handleSubmit(onSubmit)}
         disabled={quickLinkShorteningMutation.isLoading}
       >
-        {quickLinkShorteningMutation.isLoading && <Loader2 className="mr-2 animate-spin" />}
+        {quickLinkShorteningMutation.isLoading && (
+          <Loader2 className="mr-2 animate-spin" />
+        )}
         Shorten
       </Button>
     </div>
