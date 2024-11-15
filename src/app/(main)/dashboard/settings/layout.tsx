@@ -3,11 +3,15 @@ import type { Metadata } from "next";
 import { SidebarNav } from "./sidebar-nav";
 
 export const metadata: Metadata = {
-  title: "Custom Domains",
-  description: "Manage your custom domains",
+  title: "Settings",
+  description: "Manage your account settings",
 };
 
 const sidebarNavItems = [
+  {
+    title: "General",
+    href: "/dashboard/settings/general",
+  },
   {
     title: "Billing",
     href: "/dashboard/settings/billing",
@@ -31,7 +35,9 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
     <div className="grid gap-8">
       <div className="mb-4">
         <h1 className="text-3xl font-medium">Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage your account settings</p>
+        <p className="text-sm text-muted-foreground">
+          Manage your account settings
+        </p>
       </div>
       <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
         <aside className="lg:w-1/5">
