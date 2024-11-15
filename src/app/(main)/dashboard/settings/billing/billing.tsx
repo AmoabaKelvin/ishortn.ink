@@ -6,19 +6,19 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/react";
@@ -35,7 +35,8 @@ function Billing({ subscriptions }: BillingPageProps) {
 
   const hasActiveSubscription = userSubcription?.status === "active";
 
-  const getCheckoutUrlMutation = api.lemonsqueezy.createCheckoutUrl.useMutation();
+  const getCheckoutUrlMutation =
+    api.lemonsqueezy.createCheckoutUrl.useMutation();
 
   const handleUpgrade = async () => {
     try {
@@ -48,14 +49,15 @@ function Billing({ subscriptions }: BillingPageProps) {
 
   return (
     <div>
-      {/* page header, with title and subtext */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Billing</h1>
-        <p className="mt-2 text-gray-500">Manage your subscription and billing information.</p>
+        <p className="mt-2 text-gray-500">
+          Manage your subscription and billing information.
+        </p>
       </div>
       <Separator />
       {/* show  information about current plan */}
-      <div className="flex flex-col py-4">
+      <div className="flex flex-col py-4 mt-8">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-xl">
@@ -75,14 +77,18 @@ function Billing({ subscriptions }: BillingPageProps) {
                 {/* we will show the card details and the next payment date */}
                 <div className="flex flex-col space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Card ending in</span>
+                    <span className="text-sm text-muted-foreground">
+                      Card ending in
+                    </span>
                     <span className="text-sm font-bold">
                       {/* {subscriptions.cardLastFour ?? "****"} */}
                       {userSubcription?.cardLastFour ?? "****"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Next payment</span>
+                    <span className="text-sm text-muted-foreground">
+                      Next payment
+                    </span>
                     <span className="text-sm font-bold">
                       {/* {hasActiveSubscription
                         ? new Date(subscriptions.renewsAt).toDateString()
@@ -104,13 +110,16 @@ function Billing({ subscriptions }: BillingPageProps) {
             <CardHeader className="h-full">
               <CardTitle className="line-clamp-1">Pro</CardTitle>
               <CardDescription className="line-clamp-2">
-                Unlock advanced features and support the development of this amazing product.
+                Unlock advanced features and support the development of this
+                amazing product.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 h-full space-y-6">
               <div className="text-3xl font-bold">
                 $5
-                <span className="text-sm font-normal text-muted-foreground">/month</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  /month
+                </span>
               </div>
               <div className="space-y-2">
                 {planBenfits.pro.map((feature) => (
@@ -118,7 +127,9 @@ function Billing({ subscriptions }: BillingPageProps) {
                     <div className="p-px rounded-full aspect-square shrink-0 bg-foreground text-background">
                       <CheckIcon className="size-4" aria-hidden="true" />
                     </div>
-                    <span className="text-sm text-muted-foreground">{feature}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {feature}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -126,7 +137,9 @@ function Billing({ subscriptions }: BillingPageProps) {
             <CardFooter className="pt-4">
               <Button
                 className="w-full"
-                disabled={hasActiveSubscription || getCheckoutUrlMutation.isLoading}
+                disabled={
+                  hasActiveSubscription || getCheckoutUrlMutation.isLoading
+                }
                 onClick={handleUpgrade}
                 data-umami-event="Upgrade Plan"
               >
@@ -142,13 +155,16 @@ function Billing({ subscriptions }: BillingPageProps) {
             <CardHeader className="">
               <CardTitle className="line-clamp-1">Free</CardTitle>
               <CardDescription className="line-clamp-2">
-                The free plan is perfect for getting started with the basics. Upgrade to unlock more
+                The free plan is perfect for getting started with the basics.
+                Upgrade to unlock more
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 h-full space-y-6">
               <div className="text-3xl font-bold">
                 $0
-                <span className="text-sm font-normal text-muted-foreground">/month</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  /month
+                </span>
               </div>
               <div className="space-y-2">
                 {planBenfits.free.map((feature) => (
@@ -156,7 +172,9 @@ function Billing({ subscriptions }: BillingPageProps) {
                     <div className="p-px rounded-full aspect-square shrink-0 bg-foreground text-background">
                       <CheckIcon className="size-4" aria-hidden="true" />
                     </div>
-                    <span className="text-sm text-muted-foreground">{feature}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {feature}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -179,8 +197,10 @@ function Billing({ subscriptions }: BillingPageProps) {
 export default Billing;
 
 function ManageProPlan() {
-  const cancelSubscriptionMutation = api.lemonsqueezy.cancelSubscription.useMutation();
-  const updateSubscriptionDetailsMutation = api.lemonsqueezy.subscriptionDetails.useMutation();
+  const cancelSubscriptionMutation =
+    api.lemonsqueezy.cancelSubscription.useMutation();
+  const updateSubscriptionDetailsMutation =
+    api.lemonsqueezy.subscriptionDetails.useMutation();
 
   const handleCancelSubscription = async () => {
     try {
