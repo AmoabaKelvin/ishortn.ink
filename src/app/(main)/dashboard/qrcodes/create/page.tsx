@@ -11,6 +11,7 @@ import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../../actions/revalidate-homepage";
 import { checkIfUserCanCreateMoreQRCodes } from "../utils";
+
 import QRCodeContent from "./qr-content";
 import QRCodeCustomization from "./qr-customization";
 import { isValidUrlAndNotIshortn } from "./utils";
@@ -36,7 +37,11 @@ function QRCodeCreationPage() {
       router.push("/dashboard/qrcodes");
     },
   });
-  const shortenLinkMutation = api.link.quickShorten.useMutation();
+  const shortenLinkMutation = api.link.quickShorten.useMutation({
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const [qrCodeTitle, setQRCodeTitle] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState("#198639");
@@ -91,7 +96,9 @@ function QRCodeCreationPage() {
 
     if (isValidUrlAndNotIshortn(enteredContent)) {
       try {
-        const createdShortLink = await shortenLinkMutation.mutateAsync({ url: enteredContent });
+        const createdShortLink = await shortenLinkMutation.mutateAsync({
+          url: enteredContent,
+        });
         if (createdShortLink?.alias) {
           finalContent = `https://ishortn.ink/${createdShortLink.alias}`;
           wasShortened = true;
@@ -164,7 +171,11 @@ function QRCodeCreationPage() {
           setSelectedColor={setSelectedColor}
           setLogoImage={setLogoImage}
         />
-        <Button className="mt-6 w-full" onClick={handleSaveQRCode} disabled={!canCreateMoreQRCodes}>
+        <Button
+          className="w-full mt-6"
+          onClick={handleSaveQRCode}
+          disabled={!canCreateMoreQRCodes}
+        >
           Generate QR Code
         </Button>
       </div>
