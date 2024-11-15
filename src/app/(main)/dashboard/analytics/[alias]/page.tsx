@@ -1,18 +1,19 @@
 import { Crown, Fingerprint, MapPinned, MousePointerClick } from "lucide-react";
 
+import { ReferrerStats } from "@/app/(main)/dashboard/analytics/[alias]/referrers";
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
 import UpgradeText from "../../qrcodes/upgrade-text";
+
 import { BarChart } from "./_components/bar-chart";
 import QuickInfoCard from "./_components/quick-info-card";
 import { CountriesAndCitiesStats } from "./countries-and-cities-stats";
 import { RangeSelectorWrapper } from "./range-selector-wrapper";
 import { UserAgentStats } from "./user-agent-stats";
-
-import type { RangeEnum } from "@/server/api/routers/link/link.input";
 import WorldMapHeatmap from "./world-map-heatmap";
 
+import type { RangeEnum } from "@/server/api/routers/link/link.input";
 type LinksAnalyticsPageProps = {
   params: {
     alias: string;
@@ -27,25 +28,31 @@ export default async function LinkAnalyticsPage({
   const range = (searchParams?.range ?? "7d") as RangeEnum;
   const domain = (searchParams?.domain as string) ?? "ishortn.ink";
 
-  const { totalVisits, uniqueVisits, topCountry, topReferrer, isProPlan } =
-    await api.link.linkVisits.query({
-      id: params.alias,
-      domain,
-      range,
-    });
+  const {
+    totalVisits,
+    uniqueVisits,
+    topCountry,
+    referers,
+    topReferrer,
+    isProPlan,
+  } = await api.link.linkVisits.query({
+    id: params.alias,
+    domain,
+    range,
+  });
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
   const countryData = aggregatedVisits.clicksPerCountry;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="max-w-5xl mx-auto">
       <div className="flex flex-col items-center justify-between md:flex-row">
         <div className="flex flex-col gap-1">
-          <h1 className="cursor-pointer font-semibold leading-tight text-blue-600 hover:underline md:text-3xl">
+          <h1 className="font-semibold leading-tight text-blue-600 cursor-pointer hover:underline md:text-3xl">
             {searchParams?.domain}/{params.alias}
           </h1>
           {!isProPlan && (
-            <div className="mt-2 text-center text-sm text-gray-500">
+            <div className="mt-2 text-sm text-center text-gray-500">
               You are viewing limited analytics data (last 7 days).{" "}
               <UpgradeText text="Upgrade to Pro" /> for full analytics.
             </div>
@@ -61,7 +68,7 @@ export default async function LinkAnalyticsPage({
       </div>
 
       {/* quick info cards */}
-      <div className="mt-5 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 mt-5 md:mt-10 md:grid-cols-4">
         <QuickInfoCard
           title="Total Visits"
           value={totalVisits.length}
@@ -93,7 +100,7 @@ export default async function LinkAnalyticsPage({
         />
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 md:mt-14 md:grid-cols-10">
+      <div className="grid grid-cols-1 gap-4 mt-5 md:mt-14 md:grid-cols-10">
         <CountriesAndCitiesStats
           citiesRecords={aggregatedVisits.clicksPerCity}
           countriesRecords={aggregatedVisits.clicksPerCountry}
@@ -109,11 +116,13 @@ export default async function LinkAnalyticsPage({
           clicksPerOS={aggregatedVisits.clicksPerOS}
           totalClicks={totalVisits.length}
         />
+
+        <ReferrerStats referers={referers} totalClicks={totalVisits.length} />
       </div>
 
       {isProPlan && (
         <div className="mt-10 md:mt-14">
-          <h2 className="text-2xl font-semibold mb-8">
+          <h2 className="mb-8 text-2xl font-semibold">
             Global Link Clicks Distribution
           </h2>
           <WorldMapHeatmap data={countryData} />
