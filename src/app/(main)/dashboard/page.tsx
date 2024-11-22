@@ -26,12 +26,13 @@ export default async function DashboardPage({ searchParams }: Props) {
   const orderBy = searchParams.orderBy as "createdAt" | "totalClicks";
   const orderDirection = searchParams.orderDirection as "desc" | "asc";
 
-  const { links, totalLinks, totalPages, currentPage, totalClicks } = await api.link.list.query({
-    page,
-    pageSize,
-    orderBy,
-    orderDirection,
-  });
+  const { links, totalLinks, totalPages, currentPage, totalClicks } =
+    await api.link.list.query({
+      page,
+      pageSize,
+      orderBy,
+      orderDirection,
+    });
 
   const userSubscription = await api.subscriptions.get.query();
   const subscriptions = userSubscription?.subscriptions;
@@ -40,7 +41,9 @@ export default async function DashboardPage({ searchParams }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold leading-tight text-gray-800">Links</h2>
+        <h2 className="text-xl font-semibold leading-tight text-gray-800">
+          Links
+        </h2>
         <div className="flex items-center gap-2">
           <Button asChild>
             <Link href="/dashboard/link/new">Shorten Link</Link>
@@ -51,6 +54,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
       <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-11">
         <DashboardSidebar
+          monthlyLinkCount={userSubscription?.monthlyLinkCount!}
           numberOfClicks={totalClicks}
           numberOfLinks={totalLinks}
           userHasProPlan={userHasProPlan}

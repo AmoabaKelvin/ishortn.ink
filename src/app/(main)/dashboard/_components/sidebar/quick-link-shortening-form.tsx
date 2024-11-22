@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -12,7 +13,6 @@ import { api } from "@/trpc/react";
 import { revalidateHomepage } from "../../actions/revalidate-homepage";
 
 import type { QuickLinkShorteningInput } from "@/server/api/routers/link/link.input";
-
 export function QuickLinkShorteningForm() {
   const {
     register,
@@ -38,10 +38,10 @@ export function QuickLinkShorteningForm() {
   };
 
   return (
-    <div className="p-6 rounded-md bg-gray-100/65">
-      <h1 className="text-xl font-semibold leading-tight text-gray-800">
+    <Card className="p-6">
+      <CardTitle className="text-xl font-semibold leading-tight text-gray-800">
         Quick Shorten
-      </h1>
+      </CardTitle>
       <p className="text-sm text-gray-500">
         Shorten a link quickly without any settings
       </p>
@@ -65,6 +65,6 @@ export function QuickLinkShorteningForm() {
         )}
         Shorten
       </Button>
-    </div>
+    </Card>
   );
 }
