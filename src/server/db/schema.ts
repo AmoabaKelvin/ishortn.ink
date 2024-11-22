@@ -26,6 +26,8 @@ export const user = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow(),
     imageUrl: text("imageUrl"),
     qrCodeCount: int("qrCodeCount").default(0),
+    monthlyLinkCount: int("monthlyLinkCount").default(0),
+    lastLinkCountReset: timestamp("lastLinkCountReset").defaultNow(),
   },
   (table) => ({
     userIdx: index("userId_idx").on(table.id),
@@ -233,6 +235,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
     references: [subscription.userId],
   }),
   customDomains: many(customDomain),
+  siteSettings: one(siteSettings),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({

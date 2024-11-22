@@ -8,13 +8,18 @@ import crypto from "node:crypto";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { deleteFromCache, getFromCache, setInCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
-import { normalizeAlias } from "@/lib/utils";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { db } from "@/server/db";
 import { link, linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
-import { logAnalytics } from "./utils";
+import {
+  checkAndUpdateLinkLimit,
+  getUserDefaultDomain,
+  incrementLinkCount,
+  logAnalytics,
+  validateAlias,
+} from "./utils";
 
 import type { Link } from "@/server/db/schema";
 import type { ProtectedTRPCContext, PublicTRPCContext } from "../../trpc";
@@ -26,6 +31,7 @@ import type {
   RetrieveOriginalUrlInput,
   UpdateLinkInput,
 } from "./link.input";
+
 function constructCacheKey(domain: string, alias: string) {
   return `${domain}:${alias}`;
 }
@@ -86,47 +92,26 @@ export const getLinkByAlias = async (input: {
 };
 
 export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInput) => {
-  const userSubscription = await ctx.db.query.subscription.findFirst({
-    where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
-  });
+  const { isProUser, currentCount } = await checkAndUpdateLinkLimit(ctx);
 
   const domain = input.domain ?? "ishortn.ink";
   const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
-  const fetchedMetadata = await fetchMetadataInfo(input.url);
 
+  const fetchedMetadata = await fetchMetadataInfo(input.url);
   const phishingResult = await detectPhishingLink(input.url, fetchedMetadata);
+
   if (phishingResult.phishing) {
     throw new Error(
-      "This URL has been detected as a potential phishing site. Shortened link will not be created.",
+      "This URL has been detected as a potential phishing site. Shortening will not continue.",
     );
   }
 
-  console.log("Alias", alias);
-
   if (input.alias) {
-    const aliasRegex = /^[a-zA-Z0-9-_]+$/;
-    if (!aliasRegex.test(input.alias)) {
-      throw new Error("Alias can only contain alphanumeric characters, dashes, and underscores");
-    }
-
-    if (input.alias.includes(".")) {
-      throw new Error("Cannot include periods in alias");
-    }
-
-    // checking if the alias is already taken
-    const normalizedAlias = normalizeAlias(alias);
-    const aliasExists = await ctx.db
-      .select()
-      .from(link)
-      .where(and(sql`lower(${link.alias}) = ${normalizedAlias}`, eq(link.domain, domain)));
-
-    if (aliasExists.length) {
-      throw new Error("Alias already exists");
-    }
+    await validateAlias(ctx, input.alias, domain);
   }
 
   if (input.password) {
-    if (userSubscription?.status !== "active") {
+    if (!isProUser) {
       throw new Error("You need to upgrade to a pro plan to use password protection");
     }
 
@@ -139,7 +124,7 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
     (value) => value !== undefined && value !== null && value !== "",
   );
   if (hasUserFilledMetadata) {
-    if (userSubscription?.status !== "active") {
+    if (!isProUser) {
       throw new Error("You need to upgrade to a pro plan to use custom social media previews");
     }
   }
@@ -152,7 +137,7 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
 
   const name = input.name ?? fetchedMetadata.title ?? "Untitled Link";
 
-  return ctx.db.insert(link).values({
+  const [result] = await ctx.db.insert(link).values({
     ...input,
     name,
     alias: alias,
@@ -164,6 +149,12 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
       ...input.metadata,
     },
   });
+
+  if (!isProUser) {
+    await incrementLinkCount(ctx, currentCount, isProUser);
+  }
+
+  return result;
 };
 
 export const updateLink = async (ctx: ProtectedTRPCContext, input: UpdateLinkInput) => {
@@ -177,7 +168,6 @@ export const updateLink = async (ctx: ProtectedTRPCContext, input: UpdateLinkInp
   });
 
   if (updatedLink?.alias !== input.alias || updatedLink?.domain !== input.domain) {
-    // we should delete the old cache key if the alias or domain has changed
     await deleteFromCache(constructCacheKey(updatedLink!.domain, updatedLink!.alias!));
   }
   await setInCache(constructCacheKey(updatedLink!.domain, updatedLink!.alias!), updatedLink!);
@@ -229,11 +219,11 @@ export const shortenLinkWithAutoAlias = async (
   ctx: ProtectedTRPCContext,
   input: QuickLinkShorteningInput,
 ) => {
-  const [phishingResult, userSettings] = await Promise.all([
+  const { isProUser, currentCount } = await checkAndUpdateLinkLimit(ctx);
+
+  const [defaultDomain, phishingResult] = await Promise.all([
+    getUserDefaultDomain(ctx),
     detectPhishingLink(input.url, await fetchMetadataInfo(input.url)),
-    ctx.db.query.siteSettings.findFirst({
-      where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
-    }),
   ]);
 
   if (phishingResult.phishing) {
@@ -241,8 +231,6 @@ export const shortenLinkWithAutoAlias = async (
       "This URL has been detected as a potential phishing site. Shortened link will not be created.",
     );
   }
-
-  const defaultDomain = userSettings?.defaultDomain ?? "ishortn.ink";
 
   const [insertionResult] = await ctx.db.insert(link).values({
     url: input.url,
@@ -258,6 +246,9 @@ export const shortenLinkWithAutoAlias = async (
   });
 
   if (insertedLink) {
+    if (!isProUser) {
+      await incrementLinkCount(ctx, currentCount, isProUser);
+    }
     await setInCache(constructCacheKey(insertedLink.domain, insertedLink.alias!), insertedLink);
   }
 

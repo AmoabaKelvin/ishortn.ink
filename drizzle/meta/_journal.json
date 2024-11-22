@@ -141,6 +141,13 @@
       "when": 1731709264083,
       "tag": "0019_tiresome_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1732222486958,
+      "tag": "0020_whole_manta",
+      "breakpoints": true
     }
   ]
 }

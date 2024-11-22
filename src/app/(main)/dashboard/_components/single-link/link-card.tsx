@@ -4,6 +4,7 @@ import { Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { copyToClipboard, daysSinceDate } from "@/lib/utils";
 
 import { LinkActions } from "./link-actions";
@@ -11,7 +12,6 @@ import { LinkNoteTooltip } from "./link-note-viewer";
 import { LinkSecurityStatusTooltip } from "./link-security-status-tooltip";
 
 import type { RouterOutputs } from "@/trpc/shared";
-
 type LinkProps = {
   link: RouterOutputs["link"]["list"]["links"][number];
 };
@@ -22,7 +22,7 @@ const Link = ({ link }: LinkProps) => {
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
 
   return (
-    <div className="flex items-center justify-between rounded-md bg-gray-100 px-6 py-4">
+    <Card className="flex items-center justify-between rounded-md px-6 py-4">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div
@@ -77,7 +77,7 @@ const Link = ({ link }: LinkProps) => {
         </Badge>
         <LinkActions link={link} />
       </div>
-    </div>
+    </Card>
   );
 };
 export default Link;
