@@ -116,8 +116,6 @@ export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<s
   const cacheKey = `user_settings_domain:${ctx.auth.userId}`;
   const cachedDomain = await redis.get(cacheKey);
 
-  console.log("cachedDomain", cachedDomain);
-
   if (cachedDomain) {
     return cachedDomain ?? "ishortn.ink";
   }
