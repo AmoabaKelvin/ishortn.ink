@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { redis } from "@/lib/core/cache";
 import { siteSettings } from "@/server/db/schema";
 
 import type { ProtectedTRPCContext } from "../../trpc";
@@ -47,6 +48,8 @@ export async function updateSiteSettings(
     if (!domain) {
       throw new Error("You can only set verified custom domains as your default domain");
     }
+
+    await redis.del(`user_settings_domain:${ctx.auth.userId}`);
   }
 
   if (existingSettings) {
