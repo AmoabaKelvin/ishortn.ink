@@ -11,14 +11,14 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/react";
@@ -268,7 +268,7 @@ function ManageProPlan() {
 
 const planBenfits = {
   free: [
-    "Unlimited links",
+    "30 links per month",
     "Custom alias",
     "Basic analytics",
     "30 days of analytics data retention",
