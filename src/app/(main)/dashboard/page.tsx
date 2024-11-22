@@ -26,15 +26,19 @@ export default async function DashboardPage({ searchParams }: Props) {
   const orderBy = searchParams.orderBy as "createdAt" | "totalClicks";
   const orderDirection = searchParams.orderDirection as "desc" | "asc";
 
-  const { links, totalLinks, totalPages, currentPage, totalClicks } =
-    await api.link.list.query({
+  const [
+    { links, totalLinks, totalPages, currentPage, totalClicks },
+    userSubscription,
+  ] = await Promise.all([
+    api.link.list.query({
       page,
       pageSize,
       orderBy,
       orderDirection,
-    });
+    }),
+    api.subscriptions.get.query(),
+  ]);
 
-  const userSubscription = await api.subscriptions.get.query();
   const subscriptions = userSubscription?.subscriptions;
   const userHasProPlan = subscriptions?.status === "active";
 
