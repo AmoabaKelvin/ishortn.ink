@@ -28,7 +28,7 @@ const linkSchema = z.object({
   metadata: z.string().transform((str) => JSON.parse(str)),
 });
 
-const redis = new Redis(env.REDIS_URL, {
+export const redis = new Redis(env.REDIS_URL, {
   retryStrategy: (times: number) => Math.min(times * 50, 2000),
   enableOfflineQueue: true,
   maxRetriesPerRequest: 3,
