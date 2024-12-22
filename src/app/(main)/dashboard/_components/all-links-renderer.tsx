@@ -79,6 +79,8 @@ const Links = (
           <SelectContent>
             <SelectItem value="createdAt-desc">Newest first</SelectItem>
             <SelectItem value="createdAt-asc">Oldest first</SelectItem>
+            <SelectItem value="lastClicked-desc">Recently clicked</SelectItem>
+            <SelectItem value="lastClicked-asc">Least recently clicked</SelectItem>
             <SelectItem value="totalClicks-desc">Most clicks</SelectItem>
             <SelectItem value="totalClicks-asc">Least clicks</SelectItem>
           </SelectContent>

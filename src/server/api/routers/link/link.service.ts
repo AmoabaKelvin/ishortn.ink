@@ -39,7 +39,12 @@ function constructCacheKey(domain: string, alias: string) {
 export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput) => {
   const { page, pageSize, orderBy, orderDirection } = input;
 
-  const orderColumn = orderBy === "totalClicks" ? count(linkVisit.id) : link.createdAt;
+  const orderColumn = 
+    orderBy === "totalClicks" 
+      ? count(linkVisit.id) 
+      : orderBy === "lastClicked"
+        ? sql`MAX(${linkVisit.createdAt})`
+        : link.createdAt;
   const orderFunc = orderDirection === "desc" ? desc : asc;
 
   const [totalLinksResult, totalClicksResult, links] = await Promise.all([
