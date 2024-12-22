@@ -15,7 +15,7 @@ export const getLinkSchema = z.object({
 export const listLinksSchema = z.object({
   page: z.number().min(1).default(1),
   pageSize: z.number().min(1).max(100).default(10),
-  orderBy: z.enum(["createdAt", "totalClicks"]).default("createdAt"),
+  orderBy: z.enum(["createdAt", "totalClicks", "lastClicked"]).default("createdAt"),
   orderDirection: z.enum(["asc", "desc"]).default("desc"),
 });
 
