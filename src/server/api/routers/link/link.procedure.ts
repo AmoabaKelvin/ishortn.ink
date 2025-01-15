@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "../../trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "../../trpc";
+
 import * as inputs from "./link.input";
 import * as services from "./link.service";
 
@@ -9,40 +14,58 @@ import type { PublicTRPCContext } from "../../trpc";
 export const linkRouter = createTRPCRouter({
   retrieveOriginalUrl: publicProcedure
     .input(inputs.retrieveOriginalUrlSchema)
-    .query(({ ctx, input }: { ctx: PublicTRPCContext; input: inputs.RetrieveOriginalUrlInput }) => {
-      return services.retrieveOriginalUrl(ctx, input);
+    .query(
+      ({
+        ctx,
+        input,
+      }: {
+        ctx: PublicTRPCContext;
+        input: inputs.RetrieveOriginalUrlInput;
+      }) => {
+        return services.retrieveOriginalUrl(ctx, input);
+      }
+    ),
+
+  list: protectedProcedure
+    .input(inputs.listLinksSchema)
+    .query(({ ctx, input }) => {
+      return services.getLinks(ctx, input);
     }),
 
-  list: protectedProcedure.input(inputs.listLinksSchema).query(({ ctx, input }) => {
-    return services.getLinks(ctx, input);
-  }),
-
-  get: protectedProcedure.input(inputs.getLinkSchema).query(({ ctx, input }) => {
-    return services.getLink(ctx, input);
-  }),
+  get: protectedProcedure
+    .input(inputs.getLinkSchema)
+    .query(({ ctx, input }) => {
+      return services.getLink(ctx, input);
+    }),
 
   getLinkByAlias: publicProcedure
     .input(
       z.object({
         alias: z.string(),
         domain: z.string(),
-      }),
+      })
     )
     .query(({ input }) => {
       return services.getLinkByAlias(input);
     }),
 
-  create: protectedProcedure.input(inputs.createLinkSchema).mutation(({ ctx, input }) => {
-    return services.createLink(ctx, input);
-  }),
+  create: protectedProcedure
+    .input(inputs.createLinkSchema)
+    .mutation(({ ctx, input }) => {
+      return services.createLink(ctx, input);
+    }),
 
-  update: protectedProcedure.input(inputs.updateLinkSchema).mutation(({ ctx, input }) => {
-    return services.updateLink(ctx, input);
-  }),
+  update: protectedProcedure
+    .input(inputs.updateLinkSchema)
+    .mutation(({ ctx, input }) => {
+      return services.updateLink(ctx, input);
+    }),
 
-  delete: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
-    return services.deleteLink(ctx, input);
-  }),
+  delete: protectedProcedure
+    .input(inputs.getLinkSchema)
+    .mutation(({ ctx, input }) => {
+      return services.deleteLink(ctx, input);
+    }),
 
   quickShorten: protectedProcedure
     .input(inputs.quickLinkShorteningSchema)
@@ -68,23 +91,29 @@ export const linkRouter = createTRPCRouter({
             "all",
           ])
           .default("7d"),
-      }),
+      })
     )
     .query(({ ctx, input }) => {
       return services.getLinkVisits(ctx, input);
     }),
 
-  toggleLinkStatus: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
-    return services.toggleLinkStatus(ctx, input);
-  }),
+  toggleLinkStatus: protectedProcedure
+    .input(inputs.getLinkSchema)
+    .mutation(({ ctx, input }) => {
+      return services.toggleLinkStatus(ctx, input);
+    }),
 
-  togglePublicStats: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
-    return services.togglePublicStats(ctx, input);
-  }),
+  togglePublicStats: protectedProcedure
+    .input(inputs.getLinkSchema)
+    .mutation(({ ctx, input }) => {
+      return services.togglePublicStats(ctx, input);
+    }),
 
-  resetLinkStatistics: protectedProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
-    return services.resetLinkStatistics(ctx, input);
-  }),
+  resetLinkStatistics: protectedProcedure
+    .input(inputs.getLinkSchema)
+    .mutation(({ ctx, input }) => {
+      return services.resetLinkStatistics(ctx, input);
+    }),
 
   verifyLinkPassword: protectedProcedure
     .input(inputs.verifyLinkPasswordSchema)
@@ -112,5 +141,9 @@ export const linkRouter = createTRPCRouter({
 
   exportUserLinks: protectedProcedure.mutation(async ({ ctx }) => {
     return services.exportAllUserLinks(ctx);
+  }),
+
+  checkVercelHeaders: publicProcedure.query(async ({ ctx }) => {
+    return services.checkPresenceOfVercelHeaders(ctx);
   }),
 });
