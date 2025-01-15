@@ -1,9 +1,9 @@
+import crypto from "node:crypto";
 import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
 import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import { and, asc, count, desc, eq, getTableColumns, sql } from "drizzle-orm";
-import crypto from "node:crypto";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { deleteFromCache, getFromCache, setInCache } from "@/lib/core/cache";
@@ -39,9 +39,9 @@ function constructCacheKey(domain: string, alias: string) {
 export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput) => {
   const { page, pageSize, orderBy, orderDirection } = input;
 
-  const orderColumn = 
-    orderBy === "totalClicks" 
-      ? count(linkVisit.id) 
+  const orderColumn =
+    orderBy === "totalClicks"
+      ? count(linkVisit.id)
       : orderBy === "lastClicked"
         ? sql`MAX(${linkVisit.createdAt})`
         : link.createdAt;
@@ -215,7 +215,7 @@ export const retrieveOriginalUrl = async (
     await setInCache(`${link.domain}:${link.alias}`, link);
   }
 
-  waitUntil(logAnalytics(ctx, link, input.from));
+  // waitUntil(logAnalytics(ctx, link, input.from));
 
   return link;
 };
