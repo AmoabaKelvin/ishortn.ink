@@ -1,9 +1,8 @@
-import crypto from "node:crypto";
-import { waitUntil } from "@vercel/functions";
 import bcrypt from "bcryptjs";
 import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import { and, asc, count, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import crypto from "node:crypto";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { deleteFromCache, getFromCache, setInCache } from "@/lib/core/cache";
@@ -17,7 +16,6 @@ import {
   checkAndUpdateLinkLimit,
   getUserDefaultDomain,
   incrementLinkCount,
-  logAnalytics,
   validateAlias,
 } from "./utils";
 
@@ -36,19 +34,25 @@ function constructCacheKey(domain: string, alias: string) {
   return `${domain}:${alias}`;
 }
 
-export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput) => {
+export const getLinks = async (
+  ctx: ProtectedTRPCContext,
+  input: ListLinksInput
+) => {
   const { page, pageSize, orderBy, orderDirection } = input;
 
   const orderColumn =
     orderBy === "totalClicks"
       ? count(linkVisit.id)
       : orderBy === "lastClicked"
-        ? sql`MAX(${linkVisit.createdAt})`
-        : link.createdAt;
+      ? sql`MAX(${linkVisit.createdAt})`
+      : link.createdAt;
   const orderFunc = orderDirection === "desc" ? desc : asc;
 
   const [totalLinksResult, totalClicksResult, links] = await Promise.all([
-    ctx.db.select({ count: count() }).from(link).where(eq(link.userId, ctx.auth.userId)),
+    ctx.db
+      .select({ count: count() })
+      .from(link)
+      .where(eq(link.userId, ctx.auth.userId)),
     ctx.db
       .select({ totalClicks: count(linkVisit.id) })
       .from(linkVisit)
@@ -80,7 +84,10 @@ export const getLinks = async (ctx: ProtectedTRPCContext, input: ListLinksInput)
   };
 };
 
-export const getLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
+export const getLink = async (
+  ctx: ProtectedTRPCContext,
+  input: GetLinkInput
+) => {
   return ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
@@ -93,21 +100,30 @@ export const getLinkByAlias = async (input: {
   return db
     .select()
     .from(link)
-    .where(and(eq(link.domain, input.domain), sql`lower(${link.alias}) = lower(${input.alias})`));
+    .where(
+      and(
+        eq(link.domain, input.domain),
+        sql`lower(${link.alias}) = lower(${input.alias})`
+      )
+    );
 };
 
-export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInput) => {
+export const createLink = async (
+  ctx: ProtectedTRPCContext,
+  input: CreateLinkInput
+) => {
   const { isProUser, currentCount } = await checkAndUpdateLinkLimit(ctx);
 
   const domain = input.domain ?? "ishortn.ink";
-  const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
+  const alias =
+    input.alias && input.alias !== "" ? input.alias : await generateShortLink();
 
   const fetchedMetadata = await fetchMetadataInfo(input.url);
   const phishingResult = await detectPhishingLink(input.url, fetchedMetadata);
 
   if (phishingResult.phishing) {
     throw new Error(
-      "This URL has been detected as a potential phishing site. Shortening will not continue.",
+      "This URL has been detected as a potential phishing site. Shortening will not continue."
     );
   }
 
@@ -117,7 +133,9 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
 
   if (input.password) {
     if (!isProUser) {
-      throw new Error("You need to upgrade to a pro plan to use password protection");
+      throw new Error(
+        "You need to upgrade to a pro plan to use password protection"
+      );
     }
 
     input.password = await bcrypt.hash(input.password, 10);
@@ -126,11 +144,13 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
   const inputMetaData = input.metadata;
   const metadataValues = Object.values(inputMetaData ?? {});
   const hasUserFilledMetadata = metadataValues.some(
-    (value) => value !== undefined && value !== null && value !== "",
+    (value) => value !== undefined && value !== null && value !== ""
   );
   if (hasUserFilledMetadata) {
     if (!isProUser) {
-      throw new Error("You need to upgrade to a pro plan to use custom social media previews");
+      throw new Error(
+        "You need to upgrade to a pro plan to use custom social media previews"
+      );
     }
   }
 
@@ -162,7 +182,10 @@ export const createLink = async (ctx: ProtectedTRPCContext, input: CreateLinkInp
   return result;
 };
 
-export const updateLink = async (ctx: ProtectedTRPCContext, input: UpdateLinkInput) => {
+export const updateLink = async (
+  ctx: ProtectedTRPCContext,
+  input: UpdateLinkInput
+) => {
   await ctx.db
     .update(link)
     .set(input)
@@ -172,13 +195,24 @@ export const updateLink = async (ctx: ProtectedTRPCContext, input: UpdateLinkInp
     where: (table, { eq }) => eq(table.id, input.id),
   });
 
-  if (updatedLink?.alias !== input.alias || updatedLink?.domain !== input.domain) {
-    await deleteFromCache(constructCacheKey(updatedLink!.domain, updatedLink!.alias!));
+  if (
+    updatedLink?.alias !== input.alias ||
+    updatedLink?.domain !== input.domain
+  ) {
+    await deleteFromCache(
+      constructCacheKey(updatedLink!.domain, updatedLink!.alias!)
+    );
   }
-  await setInCache(constructCacheKey(updatedLink!.domain, updatedLink!.alias!), updatedLink!);
+  await setInCache(
+    constructCacheKey(updatedLink!.domain, updatedLink!.alias!),
+    updatedLink!
+  );
 };
 
-export const deleteLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
+export const deleteLink = async (
+  ctx: ProtectedTRPCContext,
+  input: GetLinkInput
+) => {
   const linkToDelete = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
@@ -188,14 +222,18 @@ export const deleteLink = async (ctx: ProtectedTRPCContext, input: GetLinkInput)
   }
 
   Promise.all([
-    deleteFromCache(constructCacheKey(linkToDelete.domain, linkToDelete.alias!)),
-    ctx.db.delete(link).where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId))),
+    deleteFromCache(
+      constructCacheKey(linkToDelete.domain, linkToDelete.alias!)
+    ),
+    ctx.db
+      .delete(link)
+      .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId))),
   ]);
 };
 
 export const retrieveOriginalUrl = async (
   ctx: PublicTRPCContext,
-  input: RetrieveOriginalUrlInput,
+  input: RetrieveOriginalUrlInput
 ) => {
   const { alias, domain } = input;
   const cacheKey = `${domain}:${alias}`;
@@ -205,7 +243,10 @@ export const retrieveOriginalUrl = async (
   if (!link?.alias) {
     link = await ctx.db.query.link.findFirst({
       where: (table, { eq, and, sql }) =>
-        and(sql`lower(${table.alias}) = lower(${input.alias})`, eq(table.domain, domain)),
+        and(
+          sql`lower(${table.alias}) = lower(${input.alias})`,
+          eq(table.domain, domain)
+        ),
     });
 
     if (!link) {
@@ -222,7 +263,7 @@ export const retrieveOriginalUrl = async (
 
 export const shortenLinkWithAutoAlias = async (
   ctx: ProtectedTRPCContext,
-  input: QuickLinkShorteningInput,
+  input: QuickLinkShorteningInput
 ) => {
   const { isProUser, currentCount } = await checkAndUpdateLinkLimit(ctx);
 
@@ -233,7 +274,7 @@ export const shortenLinkWithAutoAlias = async (
 
   if (phishingResult.phishing) {
     throw new Error(
-      "This URL has been detected as a potential phishing site. Shortened link will not be created.",
+      "This URL has been detected as a potential phishing site. Shortened link will not be created."
     );
   }
 
@@ -254,7 +295,10 @@ export const shortenLinkWithAutoAlias = async (
     if (!isProUser) {
       await incrementLinkCount(ctx, currentCount, isProUser);
     }
-    await setInCache(constructCacheKey(insertedLink.domain, insertedLink.alias!), insertedLink);
+    await setInCache(
+      constructCacheKey(insertedLink.domain, insertedLink.alias!),
+      insertedLink
+    );
   }
 
   return insertedLink;
@@ -262,7 +306,7 @@ export const shortenLinkWithAutoAlias = async (
 
 export const getLinkVisits = async (
   ctx: ProtectedTRPCContext,
-  input: { id: string; domain: string; range: string },
+  input: { id: string; domain: string; range: string }
 ) => {
   const userSubscription = await ctx.db.query.subscription.findFirst({
     where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
@@ -270,7 +314,8 @@ export const getLinkVisits = async (
   const userHasProPlan = userSubscription?.status === "active";
 
   const link = await ctx.db.query.link.findFirst({
-    where: (table, { eq, and }) => and(eq(table.alias, input.id), eq(table.domain, input.domain)),
+    where: (table, { eq, and }) =>
+      and(eq(table.alias, input.id), eq(table.domain, input.domain)),
   });
 
   if (!link) {
@@ -329,11 +374,19 @@ export const getLinkVisits = async (
   const [totalVisits, uniqueVisits] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { eq, and, gte, lte }) =>
-        and(eq(visit.linkId, link.id), gte(visit.createdAt, startDate), lte(visit.createdAt, now)),
+        and(
+          eq(visit.linkId, link.id),
+          gte(visit.createdAt, startDate),
+          lte(visit.createdAt, now)
+        ),
     }),
     ctx.db.query.uniqueLinkVisit.findMany({
       where: (visit, { eq, and, gte, lte }) =>
-        and(eq(visit.linkId, link.id), gte(visit.createdAt, startDate), lte(visit.createdAt, now)),
+        and(
+          eq(visit.linkId, link.id),
+          gte(visit.createdAt, startDate),
+          lte(visit.createdAt, now)
+        ),
     }),
   ]);
 
@@ -348,28 +401,22 @@ export const getLinkVisits = async (
     };
   }
 
-  const countryVisits = totalVisits.reduce(
-    (acc, visit) => {
-      acc[visit.country!] = (acc[visit.country!] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  const countryVisits = totalVisits.reduce((acc, visit) => {
+    acc[visit.country!] = (acc[visit.country!] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
   const topCountry = Object.entries(countryVisits).reduce(
     (a, b) => (a[1] > b[1] ? a : b),
-    ["", 0],
+    ["", 0]
   )[0];
 
-  const referrerVisits = totalVisits.reduce(
-    (acc, visit) => {
-      acc[visit.referer!] = (acc[visit.referer!] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  const referrerVisits = totalVisits.reduce((acc, visit) => {
+    acc[visit.referer!] = (acc[visit.referer!] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
   const topReferrer = Object.entries(referrerVisits).reduce(
     (a, b) => (a[1] > b[1] ? a : b),
-    ["", 0],
+    ["", 0]
   )[0];
 
   return {
@@ -382,7 +429,10 @@ export const getLinkVisits = async (
   };
 };
 
-export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
+export const togglePublicStats = async (
+  ctx: ProtectedTRPCContext,
+  input: GetLinkInput
+) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
@@ -399,7 +449,10 @@ export const togglePublicStats = async (ctx: ProtectedTRPCContext, input: GetLin
     .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 };
 
-export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
+export const toggleLinkStatus = async (
+  ctx: ProtectedTRPCContext,
+  input: GetLinkInput
+) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
@@ -416,7 +469,10 @@ export const toggleLinkStatus = async (ctx: ProtectedTRPCContext, input: GetLink
     .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
 };
 
-export const resetLinkStatistics = async (ctx: ProtectedTRPCContext, input: GetLinkInput) => {
+export const resetLinkStatistics = async (
+  ctx: ProtectedTRPCContext,
+  input: GetLinkInput
+) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
@@ -432,7 +488,7 @@ export const resetLinkStatistics = async (ctx: ProtectedTRPCContext, input: GetL
 
 export const verifyLinkPassword = async (
   ctx: PublicTRPCContext,
-  input: { id: number; password: string },
+  input: { id: number; password: string }
 ) => {
   const link = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
@@ -442,7 +498,10 @@ export const verifyLinkPassword = async (
     return null;
   }
 
-  const isPasswordCorrect = await bcrypt.compare(input.password, link.passwordHash);
+  const isPasswordCorrect = await bcrypt.compare(
+    input.password,
+    link.passwordHash
+  );
 
   if (!isPasswordCorrect) {
     return null;
@@ -454,7 +513,8 @@ export const verifyLinkPassword = async (
     .update(ctx.headers.get("x-forwarded-for") ?? "")
     .digest("hex");
   const existingLinkVisit = await ctx.db.query.uniqueLinkVisit.findFirst({
-    where: (table, { eq, and }) => and(eq(table.linkId, link.id), eq(table.ipHash, ipHash)),
+    where: (table, { eq, and }) =>
+      and(eq(table.linkId, link.id), eq(table.ipHash, ipHash)),
   });
 
   if (!existingLinkVisit) {
@@ -474,7 +534,7 @@ export const verifyLinkPassword = async (
 
 export const changeLinkPassword = async (
   ctx: ProtectedTRPCContext,
-  input: { id: number; password: string },
+  input: { id: number; password: string }
 ) => {
   const passwordHash = await bcrypt.hash(input.password, 10);
 
@@ -489,14 +549,16 @@ export const changeLinkPassword = async (
     where: (table, { eq }) => eq(table.id, input.id),
   });
 
-  await deleteFromCache(constructCacheKey(updatedLink!.domain, updatedLink!.alias!));
+  await deleteFromCache(
+    constructCacheKey(updatedLink!.domain, updatedLink!.alias!)
+  );
 
   return updatedLink;
 };
 
 export const checkAliasAvailability = async (
   ctx: PublicTRPCContext,
-  input: { alias: string; domain: string },
+  input: { alias: string; domain: string }
 ) => {
   const existingLink = await ctx.db.query.link.findFirst({
     where: (table, { eq, and }) =>
@@ -513,7 +575,10 @@ type LinkRecord = {
   note?: string;
 };
 
-export const bulkCreateLinks = async (ctx: ProtectedTRPCContext, csvContent: string) => {
+export const bulkCreateLinks = async (
+  ctx: ProtectedTRPCContext,
+  csvContent: string
+) => {
   const records = parse(csvContent, {
     columns: true,
     skip_empty_lines: true,
@@ -533,14 +598,14 @@ export const bulkCreateLinks = async (ctx: ProtectedTRPCContext, csvContent: str
         domain: record.domain ?? "ishortn.ink",
         note: record.note,
       });
-    }),
+    })
   );
 
   const successfulLinks = bulkLinksCreationPromiseResults.filter(
-    (result) => result.status === "fulfilled",
+    (result) => result.status === "fulfilled"
   ).length;
   const failedLinks = bulkLinksCreationPromiseResults.filter(
-    (result) => result.status === "rejected",
+    (result) => result.status === "rejected"
   ).length;
 
   // TODO: add a way to notify the user about links that failed. We have already added an email template.
@@ -563,4 +628,12 @@ export const exportAllUserLinks = async (ctx: ProtectedTRPCContext) => {
     },
     where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
   });
+};
+
+export const checkPresenceOfVercelHeaders = async (ctx: PublicTRPCContext) => {
+  return {
+    headers: ctx.headers,
+    countryHeader: ctx.headers.get("x-vercel-ip-country"),
+    cityHeader: ctx.headers.get("x-vercel-ip-city"),
+  };
 };
