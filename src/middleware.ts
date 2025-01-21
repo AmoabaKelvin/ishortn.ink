@@ -1,9 +1,18 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { geolocation } from "@vercel/functions";
+import { NextRequest } from "next/server";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
+export function userLocationMiddleware(request: NextRequest) {
+  const geo = geolocation(request);
+  console.log("Geo: ", geo);
+  // return NextResponse.redirect(new URL('/home', request.url))
+}
+
 export default clerkMiddleware((auth, req) => {
   if (isProtectedRoute(req)) auth().protect();
+  return userLocationMiddleware(req);
 });
 
 export const config = {
