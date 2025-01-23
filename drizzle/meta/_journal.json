@@ -148,6 +148,13 @@
       "when": 1732222486958,
       "tag": "0020_whole_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1737529916349,
+      "tag": "0021_smiling_juggernaut",
+      "breakpoints": true
     }
   ]
 }
