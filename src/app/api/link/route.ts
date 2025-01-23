@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: "Link not found" }, { status: 404 });
     }
 
+    console.log("Link found:", link);
+
     return Response.json({ url: link.url });
   } catch (error) {
     console.error("Error processing link:", error);

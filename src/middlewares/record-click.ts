@@ -76,8 +76,11 @@ export async function recordUserClickForLink(
   city: string,
   continent: string
 ) {
+  const cleanedDomain = domain
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "");
   const cacheKey = `${
-    domain.includes("localhost") ? "ishortn.ink" : domain
+    domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
   }:${alias}`;
   console.log(cacheKey);
   const cachedLink: Link | null = await getFromCache(cacheKey);
@@ -101,7 +104,10 @@ export async function recordUserClickForLink(
   const link = await db.query.link.findFirst({
     where: (table, { and, eq }) =>
       and(
-        eq(table.domain, domain.includes("localhost") ? "ishortn.ink" : domain),
+        eq(
+          table.domain,
+          domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
+        ),
         sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`
       ),
   });
