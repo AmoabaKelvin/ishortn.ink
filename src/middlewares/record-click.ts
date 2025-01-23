@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { UAParser } from "ua-parser-js";
 
 import { getFromCache, Link } from "@/lib/core/cache";
+import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
@@ -49,9 +50,9 @@ async function recordClick(
       linkId: link.id,
       ...deviceDetails,
       referer: parseReferrer(headers.get("referer")),
-      country: country ?? "Unknown",
+      country: getCountryFullName(country) ?? "Unknown",
       city: city ?? "Unknown",
-      continent: continent ?? "Unknown",
+      continent: getContinentName(continent) ?? "Unknown",
     }),
     db
       .insert(uniqueLinkVisit)

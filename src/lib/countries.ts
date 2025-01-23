@@ -514,3 +514,7 @@ export function getContinentName(code: string): string {
 
   return ContinentNames[continentCode as keyof typeof ContinentNames];
 }
+
+export function getCountryFullName(code: string): string {
+  return COUNTRIES[code.toUpperCase() as keyof typeof COUNTRIES];
+}
