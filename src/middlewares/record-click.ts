@@ -52,7 +52,7 @@ async function recordClick(
       referer: parseReferrer(headers.get("referer")),
       country: getCountryFullName(country) ?? "Unknown",
       city: city ?? "Unknown",
-      continent: getContinentName(continent) ?? "Unknown",
+      continent: getContinentName(country) ?? "Unknown",
     }),
     db
       .insert(uniqueLinkVisit)
