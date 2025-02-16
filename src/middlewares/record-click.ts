@@ -8,6 +8,30 @@ import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
+/**
+ * This function records a unique click for a link.
+ * It checks if there exists a unique click for this ip and link id.
+ * If there is, it does not record the click.
+ * If there is not, it records the click.
+ */
+async function recordUniqueClick(ipHash: string, linkId: number) {
+  // CHECK IF THERE EXISTS A UNIQUE CLICK FOR THIS IP AND LINK ID
+  const existingUniqueClick = await db.query.uniqueLinkVisit.findFirst({
+    where: (table, { and, eq }) =>
+      and(eq(table.ipHash, ipHash), eq(table.linkId, linkId)),
+  });
+
+  if (existingUniqueClick) {
+    return;
+  }
+
+  // RECORD THE UNIQUE CLICK
+  await db.insert(uniqueLinkVisit).values({
+    ipHash,
+    linkId,
+  });
+}
+
 async function recordClick(
   req: Request,
   link: Link,
@@ -54,17 +78,7 @@ async function recordClick(
       city: city ?? "Unknown",
       continent: getContinentName(country) ?? "Unknown",
     }),
-    db
-      .insert(uniqueLinkVisit)
-      .values({
-        linkId: link.id,
-        ipHash,
-      })
-      .onDuplicateKeyUpdate({
-        set: {
-          ipHash,
-        },
-      }),
+    recordUniqueClick(ipHash, link.id),
   ]);
 }
 
@@ -83,13 +97,9 @@ export async function recordUserClickForLink(
   const cacheKey = `${
     domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
   }:${alias}`;
-  console.log(cacheKey);
   const cachedLink: Link | null = await getFromCache(cacheKey);
 
   if (cachedLink) {
-    console.log(
-      "this is a cached link and as such the work has been cut short"
-    );
     await recordClick(
       req,
       cachedLink,
