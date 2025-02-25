@@ -13,10 +13,13 @@ export const getLinkSchema = z.object({
 });
 
 export const listLinksSchema = z.object({
-  page: z.number().min(1).default(1),
-  pageSize: z.number().min(1).max(100).default(10),
-  orderBy: z.enum(["createdAt", "totalClicks", "lastClicked"]).default("createdAt"),
+  page: z.number().default(1),
+  pageSize: z.number().default(10),
+  orderBy: z
+    .enum(["createdAt", "totalClicks", "lastClicked"])
+    .default("createdAt"),
   orderDirection: z.enum(["asc", "desc"]).default("desc"),
+  tag: z.string().optional(),
 });
 
 export const createLinkSchema = z.object({
@@ -28,6 +31,7 @@ export const createLinkSchema = z.object({
   password: z.string().optional(),
   domain: z.string().optional(),
   note: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   metadata: z
     .object({
       title: z.string().optional(),
@@ -39,6 +43,7 @@ export const createLinkSchema = z.object({
 
 export const quickLinkShorteningSchema = z.object({
   url: z.string().url(),
+  tags: z.array(z.string()).optional(),
 });
 
 export const updateLinkSchema = createLinkSchema.partial().extend({
@@ -70,8 +75,12 @@ export type RangeEnum = z.infer<typeof rangeEnum>;
 export type CreateLinkInput = z.infer<typeof createLinkSchema>;
 export type UpdateLinkInput = z.infer<typeof updateLinkSchema>;
 export type GetLinkInput = z.infer<typeof getLinkSchema>;
-export type RetrieveOriginalUrlInput = z.infer<typeof retrieveOriginalUrlSchema>;
+export type RetrieveOriginalUrlInput = z.infer<
+  typeof retrieveOriginalUrlSchema
+>;
 
-export type QuickLinkShorteningInput = z.infer<typeof quickLinkShorteningSchema>;
+export type QuickLinkShorteningInput = z.infer<
+  typeof quickLinkShorteningSchema
+>;
 
 export type ListLinksInput = z.infer<typeof listLinksSchema>;

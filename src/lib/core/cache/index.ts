@@ -26,6 +26,10 @@ const linkSchema = z.object({
   domain: z.string().min(1),
   note: z.string(),
   metadata: z.string().transform((str) => JSON.parse(str)),
+  tags: z
+    .string()
+    .transform((str) => JSON.parse(str) as string[])
+    .default("[]"),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
@@ -45,6 +49,7 @@ function convertToLink(data: Record<string, string>): Link {
       ? new Date(parsed.disableLinkAfterDate)
       : null,
     metadata: parsed.metadata as Record<string, unknown>,
+    tags: parsed.tags || [],
   };
 }
 
@@ -65,7 +70,7 @@ async function getFromCache(key: string): Promise<Link | null> {
 async function setInCache(
   key: string,
   link: Link,
-  ttlSeconds: number = DEFAULT_CACHE_TTL,
+  ttlSeconds: number = DEFAULT_CACHE_TTL
 ): Promise<boolean> {
   try {
     const linkToStore = {

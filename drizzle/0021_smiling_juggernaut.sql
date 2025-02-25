@@ -1,1 +1,1 @@
-ALTER TABLE `UniqueLinkVisit` ADD CONSTRAINT `UniqueLinkVisit_ipHash_unique` UNIQUE(`ipHash`);
+-- ALTER TABLE `UniqueLinkVisit` ADD CONSTRAINT `UniqueLinkVisit_ipHash_unique` UNIQUE(`ipHash`);

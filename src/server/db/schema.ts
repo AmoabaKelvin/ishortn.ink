@@ -8,11 +8,12 @@ import {
   longtext,
   mysqlEnum,
   mysqlTable,
+  primaryKey,
   serial,
   text,
   timestamp,
   unique,
-  varchar,
+  varchar
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -81,6 +82,7 @@ export const link = mysqlTable(
     passwordHash: text("passwordHash"),
     note: varchar("note", { length: 255 }),
     metadata: json("metadata"),
+    tags: json("tags").$type<string[]>().default([]),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
@@ -117,7 +119,7 @@ export const uniqueLinkVisit = mysqlTable(
   {
     id: serial("id").primaryKey(),
     linkId: int("linkId").notNull(),
-    ipHash: varchar("ipHash", { length: 255 }).notNull().unique(),
+    ipHash: varchar("ipHash", { length: 255 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
@@ -203,6 +205,36 @@ export const siteSettings = mysqlTable(
   })
 );
 
+// Tag model for storing unique tags
+export const tag = mysqlTable(
+  "Tag",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 50 }).notNull().unique(),
+    createdAt: timestamp("createdAt").defaultNow(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+  },
+  (table) => ({
+    nameIdx: index("name_idx").on(table.name),
+    userIdIdx: index("userId_idx").on(table.userId),
+  })
+);
+
+// LinkTag join table for many-to-many relationship
+export const linkTag = mysqlTable(
+  "LinkTag",
+  {
+    linkId: int("linkId").notNull(),
+    tagId: int("tagId").notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.linkId, table.tagId] }),
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+    tagIdIdx: index("tagId_idx").on(table.tagId),
+  })
+);
+
 // Define relations
 export const linkRelations = relations(link, ({ one, many }) => ({
   user: one(user, {
@@ -211,6 +243,7 @@ export const linkRelations = relations(link, ({ one, many }) => ({
   }),
   linkVisits: many(linkVisit),
   uniqueLinkVisits: many(uniqueLinkVisit),
+  linkTags: many(linkTag),
 }));
 
 export const customDomain = mysqlTable(
@@ -243,6 +276,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   }),
   customDomains: many(customDomain),
   siteSettings: one(siteSettings),
+  tags: many(tag),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -301,6 +335,27 @@ export const siteSettingsRelations = relations(siteSettings, ({ one }) => ({
   }),
 }));
 
+// Define relations for Tag
+export const tagRelations = relations(tag, ({ many, one }) => ({
+  user: one(user, {
+    fields: [tag.userId],
+    references: [user.id],
+  }),
+  linkTags: many(linkTag),
+}));
+
+// Define relations for LinkTag
+export const linkTagRelations = relations(linkTag, ({ one }) => ({
+  link: one(link, {
+    fields: [linkTag.linkId],
+    references: [link.id],
+  }),
+  tag: one(tag, {
+    fields: [linkTag.tagId],
+    references: [tag.id],
+  }),
+}));
+
 export type CustomDomain = typeof customDomain.$inferSelect;
 export type NewCustomDomain = typeof customDomain.$inferInsert;
 
@@ -323,3 +378,9 @@ export type NewSubscription = typeof subscription.$inferInsert;
 
 export type QrCode = typeof qrcode.$inferSelect;
 export type NewQrCode = typeof qrcode.$inferInsert;
+
+export type Tag = typeof tag.$inferSelect;
+export type NewTag = typeof tag.$inferInsert;
+
+export type LinkTag = typeof linkTag.$inferSelect;
+export type NewLinkTag = typeof linkTag.$inferInsert;

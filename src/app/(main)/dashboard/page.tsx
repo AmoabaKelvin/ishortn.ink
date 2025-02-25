@@ -25,6 +25,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const pageSize = 10;
   const orderBy = searchParams.orderBy as "createdAt" | "totalClicks";
   const orderDirection = searchParams.orderDirection as "desc" | "asc";
+  const tag = searchParams.tag as string | undefined;
 
   const [
     { links, totalLinks, totalPages, currentPage, totalClicks },
@@ -35,6 +36,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       pageSize,
       orderBy,
       orderDirection,
+      tag,
     }),
     api.subscriptions.get.query(),
   ]);

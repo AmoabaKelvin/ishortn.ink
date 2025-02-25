@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -23,13 +23,13 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import {
   Select,
@@ -37,7 +37,7 @@ import {
   SelectGroup,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
@@ -59,6 +59,13 @@ export default function UpdateLinkModal({
   open,
   setOpen,
 }: LinkEditModalProps) {
+  const [tags, setTags] = useState<string[]>((link.tags as string[]) || []);
+  const [tagInput, setTagInput] = useState("");
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+
+  // Fetch user's existing tags
+  const { data: userTags } = api.tag.list.useQuery();
+
   const formUpdateMutation = api.link.update.useMutation({
     onSuccess: async () => {
       await revalidateHomepage();
@@ -80,13 +87,53 @@ export default function UpdateLinkModal({
       note: link.note ?? undefined,
       disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
+      tags: (link.tags as string[]) || [],
     },
   });
   form.setValue("id", link.id);
 
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && tagInput.trim() !== "") {
+      e.preventDefault();
+      addTag(tagInput.trim());
+    } else if (e.key === "ArrowDown" && userTags && userTags.length > 0) {
+      // Show dropdown on arrow down
+      setShowTagDropdown(true);
+    }
+  };
+
+  const addTag = (tagToAdd: string) => {
+    if (!tags.includes(tagToAdd)) {
+      const newTags = [...tags, tagToAdd];
+      setTags(newTags);
+      form.setValue("tags", newTags);
+      setTagInput("");
+    }
+    setShowTagDropdown(false);
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    const newTags = tags.filter((tag) => tag !== tagToRemove);
+    setTags(newTags);
+    form.setValue("tags", newTags);
+  };
+
+  // Filter tags based on input
+  const filteredTags = userTags
+    ? userTags
+        .filter(
+          (tag) =>
+            (tagInput === "" ||
+              tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
+            !tags.includes(tag.name)
+        )
+        .map((tag) => tag.name)
+    : [];
+
   async function onSubmit(
     values: z.infer<Omit<typeof updateLinkSchema, "id">>
   ) {
+    values.tags = tags;
     toast.promise(formUpdateMutation.mutateAsync(values), {
       loading: "Updating link...",
       success: "Link updated successfully",
@@ -173,6 +220,78 @@ export default function UpdateLinkModal({
                   <FormControl>
                     <Input placeholder="Add a note to your link" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tags"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Tags</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {tags.map((tag) => (
+                          <div
+                            key={tag}
+                            className="flex items-center gap-1 px-2 py-1 text-sm bg-gray-100 rounded-md"
+                          >
+                            <span>{tag}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeTag(tag)}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="relative">
+                        <Input
+                          placeholder="Add tags (press Enter to add)"
+                          value={tagInput}
+                          onChange={(e) => {
+                            setTagInput(e.target.value);
+                            setShowTagDropdown(true);
+                          }}
+                          onKeyDown={handleTagKeyDown}
+                          onBlur={() => {
+                            // Delay hiding dropdown to allow for clicks
+                            setTimeout(() => setShowTagDropdown(false), 200);
+                          }}
+                          onFocus={() => {
+                            setShowTagDropdown(true);
+                          }}
+                        />
+
+                        {/* Tag dropdown */}
+                        {showTagDropdown && filteredTags.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                            {filteredTags.map((tag) => (
+                              <div
+                                key={tag}
+                                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                onMouseDown={(e) => {
+                                  e.preventDefault(); // Prevent input blur
+                                  addTag(tag);
+                                }}
+                              >
+                                {tag}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Add tags to categorize your links. Press Enter to add a tag
+                    or select from existing tags.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
