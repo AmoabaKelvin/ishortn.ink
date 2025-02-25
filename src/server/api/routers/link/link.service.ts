@@ -1,7 +1,16 @@
 import bcrypt from "bcryptjs";
 import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
-import { and, asc, count, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  sql,
+} from "drizzle-orm";
 import crypto from "node:crypto";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
@@ -10,7 +19,15 @@ import { generateShortLink } from "@/lib/core/links";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { db } from "@/server/db";
-import { link, linkVisit, uniqueLinkVisit } from "@/server/db/schema";
+import {
+  link,
+  linkTag,
+  linkVisit,
+  tag,
+  uniqueLinkVisit,
+} from "@/server/db/schema";
+
+import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 
 import {
   checkAndUpdateLinkLimit,
@@ -38,45 +55,96 @@ export const getLinks = async (
   ctx: ProtectedTRPCContext,
   input: ListLinksInput
 ) => {
-  const { page, pageSize, orderBy, orderDirection } = input;
-
-  const orderColumn =
-    orderBy === "totalClicks"
-      ? count(linkVisit.id)
-      : orderBy === "lastClicked"
-      ? sql`MAX(${linkVisit.createdAt})`
-      : link.createdAt;
+  const { page, pageSize, orderBy, orderDirection, tag: tagName } = input;
   const orderFunc = orderDirection === "desc" ? desc : asc;
 
+  // If filtering by tag, first get the link IDs that have this tag
+  let linkIdsWithTag: number[] = [];
+  if (tagName && tagName.trim() !== "") {
+    // Get tag record
+    const tagRecord = await ctx.db.query.tag.findFirst({
+      where: and(
+        eq(tag.name, tagName.trim().toLowerCase()),
+        eq(tag.userId, ctx.auth.userId)
+      ),
+    });
+
+    if (tagRecord) {
+      // Get link IDs associated with this tag
+      const linkTagRecords = await ctx.db
+        .select({ linkId: linkTag.linkId })
+        .from(linkTag)
+        .where(eq(linkTag.tagId, tagRecord.id));
+
+      linkIdsWithTag = linkTagRecords.map((record) => record.linkId);
+    }
+  }
+
+  // Base query condition
+  let baseCondition = eq(link.userId, ctx.auth.userId);
+
+  // Add tag filtering if needed
+  if (tagName && tagName.trim() !== "" && linkIdsWithTag.length > 0) {
+    baseCondition = and(baseCondition, inArray(link.id, linkIdsWithTag))!;
+  } else if (tagName && tagName.trim() !== "" && linkIdsWithTag.length === 0) {
+    // No links with this tag, return empty results
+    return {
+      links: [],
+      totalLinks: 0,
+      totalClicks: 0,
+      currentPage: page,
+      totalPages: 0,
+    };
+  }
+
+  // Prepare the query parts
+  const linksQuery = ctx.db
+    .select({
+      ...getTableColumns(link),
+      totalClicks: count(linkVisit.id).as("total_clicks"),
+    })
+    .from(link)
+    .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
+    .where(baseCondition)
+    .groupBy(link.id)
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  // Apply ordering based on the orderBy parameter
+  if (orderBy === "totalClicks") {
+    linksQuery.orderBy(orderFunc(count(linkVisit.id)));
+  } else if (orderBy === "lastClicked") {
+    linksQuery.orderBy(orderFunc(sql`MAX(${linkVisit.createdAt})`));
+  } else {
+    linksQuery.orderBy(orderFunc(link.createdAt));
+  }
+
   const [totalLinksResult, totalClicksResult, links] = await Promise.all([
-    ctx.db
-      .select({ count: count() })
-      .from(link)
-      .where(eq(link.userId, ctx.auth.userId)),
+    ctx.db.select({ count: count() }).from(link).where(baseCondition),
     ctx.db
       .select({ totalClicks: count(linkVisit.id) })
       .from(linkVisit)
       .innerJoin(link, eq(link.id, linkVisit.linkId))
       .where(eq(link.userId, ctx.auth.userId)),
-    ctx.db
-      .select({
-        ...getTableColumns(link),
-        totalClicks: count(linkVisit.id).as("total_clicks"),
-      })
-      .from(link)
-      .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
-      .where(eq(link.userId, ctx.auth.userId))
-      .groupBy(link.id)
-      .limit(pageSize)
-      .offset((page - 1) * pageSize)
-      .orderBy(orderFunc(orderColumn)),
+    linksQuery,
   ]);
+
+  // Fetch tags for each link
+  const linksWithTags = await Promise.all(
+    links.map(async (linkItem) => {
+      const tagRecords = await getTagsForLink(ctx, linkItem.id);
+      return {
+        ...linkItem,
+        tags: tagRecords.map((tagRecord) => tagRecord.name),
+      };
+    })
+  );
 
   const totalLinks = totalLinksResult?.[0]?.count ?? 0;
   const totalClicks = totalClicksResult?.[0]?.totalClicks ?? 0;
 
   return {
-    links,
+    links: linksWithTags,
     totalLinks,
     totalClicks,
     currentPage: page,
@@ -161,9 +229,12 @@ export const createLink = async (
   };
 
   const name = input.name ?? fetchedMetadata.title ?? "Untitled Link";
+  const tagNames = input.tags ?? [];
 
+  // Create link without tags field
+  const { tags, ...linkData } = input;
   const [result] = await ctx.db.insert(link).values({
-    ...input,
+    ...linkData,
     name,
     alias: alias,
     userId: ctx.auth.userId,
@@ -174,6 +245,11 @@ export const createLink = async (
       ...input.metadata,
     },
   });
+
+  // Associate tags with the link
+  if (tagNames.length > 0) {
+    await associateTagsWithLink(ctx, Number(result.insertId), tagNames);
+  }
 
   if (!isProUser) {
     await incrementLinkCount(ctx, currentCount, isProUser);
@@ -186,26 +262,46 @@ export const updateLink = async (
   ctx: ProtectedTRPCContext,
   input: UpdateLinkInput
 ) => {
+  // Extract tags from input
+  const { tags: tagNames, ...linkData } = input;
+
+  // Update link data
   await ctx.db
     .update(link)
-    .set(input)
+    .set(linkData)
     .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
+
+  // Update tags if provided
+  if (tagNames) {
+    await associateTagsWithLink(ctx, input.id, tagNames);
+  }
 
   const updatedLink = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
 
+  if (!updatedLink) {
+    throw new Error("Link not found after update");
+  }
+
+  // Get tags for the updated link
+  const tagRecords = await getTagsForLink(ctx, input.id);
+  const updatedLinkWithTags = {
+    ...updatedLink,
+    tags: tagRecords.map((tagRecord) => tagRecord.name),
+  };
+
   if (
-    updatedLink?.alias !== input.alias ||
-    updatedLink?.domain !== input.domain
+    updatedLink.alias !== input.alias ||
+    updatedLink.domain !== input.domain
   ) {
     await deleteFromCache(
-      constructCacheKey(updatedLink!.domain, updatedLink!.alias!)
+      constructCacheKey(updatedLink.domain, updatedLink.alias!)
     );
   }
   await setInCache(
-    constructCacheKey(updatedLink!.domain, updatedLink!.alias!),
-    updatedLink!
+    constructCacheKey(updatedLink.domain, updatedLink.alias!),
+    updatedLinkWithTags
   );
 };
 
@@ -267,41 +363,49 @@ export const shortenLinkWithAutoAlias = async (
 ) => {
   const { isProUser, currentCount } = await checkAndUpdateLinkLimit(ctx);
 
-  const [defaultDomain, phishingResult] = await Promise.all([
-    getUserDefaultDomain(ctx),
-    detectPhishingLink(input.url, await fetchMetadataInfo(input.url)),
-  ]);
+  const alias = await generateShortLink();
+  const domain = await getUserDefaultDomain(ctx);
+
+  const fetchedMetadata = await fetchMetadataInfo(input.url);
+  const phishingResult = await detectPhishingLink(input.url, fetchedMetadata);
 
   if (phishingResult.phishing) {
     throw new Error(
-      "This URL has been detected as a potential phishing site. Shortened link will not be created."
+      "This URL has been detected as a potential phishing site. Shortening will not continue."
     );
   }
 
-  const [insertionResult] = await ctx.db.insert(link).values({
+  const name = fetchedMetadata.title ?? "Untitled Link";
+  const tagNames = input.tags ?? [];
+
+  // Create link without tags field
+  const [result] = await ctx.db.insert(link).values({
     url: input.url,
-    alias: await generateShortLink(),
+    alias,
+    domain,
     userId: ctx.auth.userId,
-    domain: defaultDomain,
+    name,
+    metadata: {
+      title: fetchedMetadata.title,
+      description: fetchedMetadata.description,
+      image: fetchedMetadata.image,
+    },
   });
 
-  const insertedLinkId = insertionResult.insertId;
-
-  const insertedLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq }) => eq(table.id, insertedLinkId),
-  });
-
-  if (insertedLink) {
-    if (!isProUser) {
-      await incrementLinkCount(ctx, currentCount, isProUser);
-    }
-    await setInCache(
-      constructCacheKey(insertedLink.domain, insertedLink.alias!),
-      insertedLink
-    );
+  // Associate tags with the link
+  if (tagNames.length > 0) {
+    await associateTagsWithLink(ctx, Number(result.insertId), tagNames);
   }
 
-  return insertedLink;
+  if (!isProUser) {
+    await incrementLinkCount(ctx, currentCount, isProUser);
+  }
+
+  return {
+    id: result.insertId,
+    alias,
+    domain,
+  };
 };
 
 export const getLinkVisits = async (

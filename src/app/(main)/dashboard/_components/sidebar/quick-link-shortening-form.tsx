@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -21,10 +22,17 @@ export function QuickLinkShorteningForm() {
     formState: { errors },
   } = useForm<QuickLinkShorteningInput>();
 
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [showTagInput, setShowTagInput] = useState(false);
+
   const quickLinkShorteningMutation = api.link.quickShorten.useMutation({
     onSuccess() {
       toast.success("Link shortened successfully");
       reset({ url: "" });
+      setTags([]);
+      setTagInput("");
+      setShowTagInput(false);
       revalidateHomepage();
     },
     onError(error) {
@@ -32,8 +40,25 @@ export function QuickLinkShorteningForm() {
     },
   });
 
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && tagInput.trim() !== "") {
+      e.preventDefault();
+      if (!tags.includes(tagInput.trim())) {
+        setTags([...tags, tagInput.trim()]);
+        setTagInput("");
+      }
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
   const onSubmit = async (data: QuickLinkShorteningInput) => {
-    quickLinkShorteningMutation.mutate(data);
+    quickLinkShorteningMutation.mutate({
+      ...data,
+      tags,
+    });
     await revalidateHomepage();
   };
 
@@ -55,6 +80,44 @@ export function QuickLinkShorteningForm() {
         )}
         {...register("url", { required: true })}
       />
+
+      {showTagInput ? (
+        <div className="mt-2">
+          <div className="flex flex-wrap gap-2 mb-2">
+            {tags.map((tag) => (
+              <div
+                key={tag}
+                className="flex items-center gap-1 px-2 py-1 text-sm bg-gray-100 rounded-md"
+              >
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <Input
+            placeholder="Add tags (press Enter to add)"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            className="mb-2"
+          />
+        </div>
+      ) : (
+        <Button
+          variant="ghost"
+          className="mt-2 text-sm text-gray-500 p-0 h-auto"
+          onClick={() => setShowTagInput(true)}
+        >
+          + Add tags
+        </Button>
+      )}
+
       <Button
         className="w-full mt-4"
         onClick={handleSubmit(onSubmit)}
