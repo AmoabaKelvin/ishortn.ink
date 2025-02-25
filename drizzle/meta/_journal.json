@@ -169,6 +169,13 @@
       "when": 1740471246412,
       "tag": "0023_unusual_kree",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1740485887402,
+      "tag": "0024_lethal_lady_vermin",
+      "breakpoints": true
     }
   ]
 }

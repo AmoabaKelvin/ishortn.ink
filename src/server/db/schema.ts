@@ -13,7 +13,7 @@ import {
   text,
   timestamp,
   unique,
-  varchar,
+  varchar
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -119,7 +119,7 @@ export const uniqueLinkVisit = mysqlTable(
   {
     id: serial("id").primaryKey(),
     linkId: int("linkId").notNull(),
-    ipHash: varchar("ipHash", { length: 255 }).notNull().unique(),
+    ipHash: varchar("ipHash", { length: 255 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
