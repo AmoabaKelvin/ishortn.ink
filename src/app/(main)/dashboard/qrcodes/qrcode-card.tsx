@@ -1,12 +1,12 @@
 "use client";
 import {
-	BarChart2,
-	Calendar,
-	Download,
-	Link as LinkIcon,
-	PencilLine,
-	Trash2,
-	Type,
+  BarChart2,
+  Calendar,
+  Download,
+  Link as LinkIcon,
+  PencilLine,
+  Trash2,
+  Type,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -52,7 +52,11 @@ const QRCodeDisplay = ({ qr }: QRCodeDisplayProps) => {
     <div className="flex flex-col items-start space-y-4 rounded-lg bg-white p-4 shadow-sm sm:flex-row sm:space-x-4 sm:space-y-0">
       <div className="h-32 w-full flex-shrink-0 overflow-hidden rounded-lg border-4 border-gray-200 p-1 sm:w-32">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`${qr.qrCode}`} alt="QR Code" className="h-full w-full object-cover" />
+        <img
+          src={`${qr.qrCode}`}
+          alt="QR Code"
+          className="h-full w-full object-cover"
+        />
       </div>
       <div className="w-full flex-grow">
         <div className="flex items-start justify-between sm:flex-row">
@@ -62,7 +66,11 @@ const QRCodeDisplay = ({ qr }: QRCodeDisplayProps) => {
             </h2>
             <p className="mt-1 text-sm text-gray-600">
               Content Type:{" "}
-              {isALink(qr.content) ? <span className="text-black">Link</span> : "Text"}
+              {isALink(qr.content) ? (
+                <span className="text-black">Link</span>
+              ) : (
+                "Text"
+              )}
             </p>
           </div>
           <div className="flex items-center space-x-2">
@@ -85,7 +93,10 @@ const QRCodeDisplay = ({ qr }: QRCodeDisplayProps) => {
               className="group rounded-full hover:bg-gray-100"
               onClick={handleDelete}
             >
-              <Trash2 size={20} className="text-gray-500 group-hover:text-red-500" />
+              <Trash2
+                size={20}
+                className="text-gray-500 group-hover:text-red-500"
+              />
             </button>
           </div>
         </div>
@@ -123,7 +134,7 @@ const QRCodeDisplay = ({ qr }: QRCodeDisplayProps) => {
       <UpdateLinkModal
         open={openLinkUpdateModal}
         setOpen={setOpenLinkUpdateModal}
-        link={{ ...qr.link!, totalClicks: 0 }}
+        link={{ ...qr.link!, totalClicks: 0, tags: qr.link?.tags ?? [] }}
       />
     </div>
   );
