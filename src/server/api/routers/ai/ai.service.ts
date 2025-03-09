@@ -1,7 +1,6 @@
+import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
-
-import { geminiModel, geminiPro } from "@/ai";
 
 export async function generateAliasFromMetadata(metadata: {
   title?: string;
@@ -10,7 +9,9 @@ export async function generateAliasFromMetadata(metadata: {
   url: string;
 }): Promise<Array<string>> {
   const result = await generateObject({
-    model: geminiModel,
+    model: openai("gpt-4o-mini", {
+      structuredOutputs: true,
+    }),
     schema: z.object({
       recommendations: z.array(z.string()),
     }),
@@ -109,12 +110,14 @@ type Metadata = {
 
 export async function detectPhishingLink(
   url: string,
-  metadata: Metadata,
+  metadata: Metadata
 ): Promise<{ url: string; phishing: boolean }> {
   const features = extractUrlFeatures(url);
 
   const result = await generateObject({
-    model: geminiPro,
+    model: openai("gpt-4o-mini", {
+      structuredOutputs: true,
+    }),
     temperature: 0,
     schema: phishingDetectionSchema,
     prompt: `You are a cybersecurity expert tasked with analyzing URLs for potential phishing attempts.
