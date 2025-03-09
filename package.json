@@ -17,7 +17,7 @@
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe --latest"
   },
   "dependencies": {
-    "@ai-sdk/google": "^0.0.52",
+    "@ai-sdk/openai": "^1.2.1",
     "@clerk/nextjs": "^5.5.7",
     "@hookform/resolvers": "^3.3.4",
     "@lemonsqueezy/lemonsqueezy.js": "^3.2.0",
@@ -50,7 +50,7 @@
     "@types/react-simple-maps": "^3.0.6",
     "@types/ua-parser-js": "^0.7.39",
     "@vercel/functions": "^1.5.2",
-    "ai": "^3.4.16",
+    "ai": "^4.1.54",
     "bcryptjs": "^2.4.3",
     "chart.js": "^4.4.3",
     "class-variance-authority": "^0.7.0",
@@ -69,7 +69,6 @@
     "next": "^14.2.15",
     "next-themes": "^0.2.1",
     "nodemailer": "^6.9.13",
-    "postgres": "^3.4.4",
     "posthog-js": "^1.144.2",
     "qrcode-with-logos": "^1.1.0",
     "qrcode.react": "^3.1.0",
