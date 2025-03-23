@@ -118,32 +118,43 @@ export async function detectPhishingLink(
     model: openai("gpt-4o-mini", {
       structuredOutputs: true,
     }),
-    temperature: 0,
+    temperature: 1,
     schema: phishingDetectionSchema,
     prompt: `You are a cybersecurity expert tasked with analyzing URLs for potential phishing attempts.
-    Please analyze the following URL and its characteristics to determine if it is a potential phishing link:
+    Please analyze the following URL and determine if it is a potential phishing link.
 
     URL: ${url}
 
-    Here are some features about the domain to help you figure out:
-    FEATURES:
-    ${JSON.stringify(features)}
+    FEATURES ANALYSIS:
+    ${JSON.stringify(features, null, 2)}
 
-    Here is some metadata from the website, might help you out:
-    ${JSON.stringify(metadata)}
+    WEBSITE METADATA:
+    ${JSON.stringify(metadata, null, 2)}
 
-    Consider these factors in your analysis:
-    - Domain reputation and legitimacy
-    - Commonly abused TLDs
-    - URL structure and patterns common in phishing
-    - Presence of intentionally misleading elements
-    - Use of URL obfuscation techniques
-    - Impersonation of well-known brands or services
-    - Character substitution tricks (e.g., using '1' for 'l', '0' for 'o')
-    - Excessive use of subdomains or unusual URL patterns
+    IMPORTANT CONSIDERATIONS:
+    1. DO NOT flag legitimate e-commerce sites, even if they have long URLs or complex paths
+    2. Missing metadata is common with many legitimate sites and should NOT automatically indicate phishing
+    3. Legitimate retail sites often have long product URLs with hyphens and numbers (e.g., product IDs)
+    4. Consider the domain's primary purpose - retail sites like "targetsportscanada.com" are legitimate businesses
 
-    Based on your comprehensive knowledge of phishing tactics, provide a determination of whether it appears to be a phishing attempt.
-    Use your knowledge about popular phishing urls as well when making a conclusion
+    Common legitimate e-commerce patterns:
+    - Long paths containing product names, categories, and IDs
+    - Multiple hyphens in the path section
+    - Query parameters for tracking or session information
+    - Subdomains like "shop.", "store.", or "www."
+
+    TRUE PHISHING INDICATORS (multiple must be present):
+    - Domains mimicking well-known brands but with spelling errors or character substitutions
+    - Extremely short-lived domains (recently registered)
+    - Nonsensical combinations of words in domains
+    - Suspicious TLDs (.xyz, .tk, .ml) combined with brand impersonation
+    - Base64 or otherwise encoded content in URL
+    - Hidden redirects
+    - IP addresses instead of domain names
+    - Excessive subdomains (more than 3)
+
+    Return FALSE for phishing UNLESS you are HIGHLY CONFIDENT the URL is malicious.
+    If you are uncertain, err on the side of marking the URL as legitimate.
     `,
   });
 
