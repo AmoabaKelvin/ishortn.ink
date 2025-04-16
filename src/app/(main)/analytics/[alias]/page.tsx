@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 import { aggregateVisits } from "@/lib/core/analytics";
 import { removeUrlProtocol } from "@/lib/utils";

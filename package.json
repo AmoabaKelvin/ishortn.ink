@@ -68,6 +68,7 @@
     "nanoid": "^5.0.7",
     "next": "^14.2.15",
     "next-themes": "^0.2.1",
+    "next-view-transitions": "^0.3.4",
     "nodemailer": "^6.9.13",
     "posthog-js": "^1.144.2",
     "qrcode-with-logos": "^1.1.0",

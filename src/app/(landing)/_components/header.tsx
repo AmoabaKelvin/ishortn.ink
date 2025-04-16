@@ -2,14 +2,14 @@
 
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 import { Button } from "@/components/ui/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { APP_TITLE } from "@/lib/constants";
 
@@ -23,7 +23,10 @@ const routes = [
   },
 ] as const;
 
-const handleSmoothScroll = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+const handleSmoothScroll = (
+  event: React.MouseEvent<HTMLAnchorElement>,
+  href: string
+) => {
   if (href.startsWith("/#")) {
     event.preventDefault();
     const targetId = href.split("#")[1];
@@ -54,7 +57,10 @@ export const Header = () => {
             <div className="py-1">
               {routes.map(({ name, href }) => (
                 <DropdownMenuItem key={name} asChild>
-                  <Link href={href} onClick={(e) => handleSmoothScroll(e, href)}>
+                  <Link
+                    href={href}
+                    onClick={(e) => handleSmoothScroll(e, href)}
+                  >
                     {name}
                   </Link>
                 </DropdownMenuItem>
@@ -62,7 +68,10 @@ export const Header = () => {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Link className="flex items-center justify-center text-xl font-bold" href="/">
+        <Link
+          className="flex items-center justify-center text-xl font-bold"
+          href="/"
+        >
           {APP_TITLE}
         </Link>
         <nav className="ml-10 hidden gap-4 sm:gap-6 md:flex">

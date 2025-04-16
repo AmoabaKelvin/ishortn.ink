@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -18,7 +18,10 @@ export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
 
   return (
     <nav
-      className={cn("flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1", className)}
+      className={cn(
+        "flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1",
+        className
+      )}
       {...props}
     >
       {items.map((item) => (
@@ -30,7 +33,7 @@ export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
             pathname === item.href
               ? "bg-muted hover:bg-muted"
               : "hover:bg-transparent hover:underline",
-            "justify-start",
+            "justify-start"
           )}
         >
           {item.title}

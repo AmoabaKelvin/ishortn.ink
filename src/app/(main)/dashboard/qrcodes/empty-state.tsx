@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 import { Button } from "@/components/ui/button";
 
@@ -60,13 +60,19 @@ function EmptyState() {
           />
         </g>
       </motion.svg>
-      <motion.h2 className="text-2xl font-bold text-gray-900" variants={itemVariants}>
+      <motion.h2
+        className="text-2xl font-bold text-gray-900"
+        variants={itemVariants}
+      >
         No QR Codes
       </motion.h2>
       <motion.div variants={itemVariants}>
         <Button asChild>
           <Link href="/dashboard/qrcodes/create">
-            <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <motion.span
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
               Create QR Code
             </motion.span>
           </Link>

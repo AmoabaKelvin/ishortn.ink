@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, EllipsisVertical, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";

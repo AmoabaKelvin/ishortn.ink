@@ -1,5 +1,11 @@
-import { BarChartHorizontal, Blocks, Brush, LinkIcon, QrCode } from "lucide-react";
-import Link from "next/link";
+import {
+  BarChartHorizontal,
+  Blocks,
+  Brush,
+  LinkIcon,
+  QrCode,
+} from "lucide-react";
+import { Link } from "next-view-transitions";
 
 import { Button } from "@/components/ui/button";
 import { Paths } from "@/lib/constants";
@@ -13,7 +19,8 @@ export const metadata: Metadata = {
   title: {
     absolute: "iShortn",
   },
-  description: "URL Shortener with analytics, custom domains, and password protection.",
+  description:
+    "URL Shortener with analytics, custom domains, and password protection.",
 };
 
 const features = [
@@ -58,8 +65,8 @@ const HomePage = () => {
             Transform Your Links with Powerful Shortening and Analytics
           </h1>
           <p className="mt-4 mb-10 text-center text-balance text-muted-foreground md:text-lg lg:text-xl">
-            Simple, Fast, and Insightful. Enhance your online presence with our robust URL
-            shortening and tracking solution.
+            Simple, Fast, and Insightful. Enhance your online presence with our
+            robust URL shortening and tracking solution.
           </p>
           <div className="flex justify-center gap-4">
             <Button asChild className="px-10 py-6">
@@ -76,8 +83,8 @@ const HomePage = () => {
             </a>
           </h1>
           <p className="mb-10 text-center text-balance text-muted-foreground md:text-lg lg:text-xl">
-            Discover the powerful features that make iShortn the ultimate URL shortening and
-            tracking tool.
+            Discover the powerful features that make iShortn the ultimate URL
+            shortening and tracking tool.
           </p>
 
           <div className="flex flex-wrap justify-center gap-6">
@@ -114,7 +121,11 @@ const HomePage = () => {
           about iShortn.
         </p>
         <div className="relative flex h-[20rem] flex-col items-center justify-center overflow-hidden rounded-md antialiased dark:bg-black">
-          <InfiniteMovingCards items={testimonials} direction="right" speed="slow" />
+          <InfiniteMovingCards
+            items={testimonials}
+            direction="right"
+            speed="slow"
+          />
         </div>
       </section>
 

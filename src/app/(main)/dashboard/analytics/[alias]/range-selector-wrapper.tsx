@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useTransitionRouter } from "next-view-transitions";
 
 import { RangeSelector } from "./range-selector";
 
@@ -17,10 +17,12 @@ export function RangeSelectorWrapper({
   domain,
   alias,
 }: RangeSelectorWrapperProps) {
-  const router = useRouter();
+  const router = useTransitionRouter();
 
   const handleRangeChange = (newRange: string) => {
-    router.push(`/dashboard/analytics/${alias}?domain=${domain}&range=${newRange}`);
+    router.push(
+      `/dashboard/analytics/${alias}?domain=${domain}&range=${newRange}`
+    );
   };
 
   return (
