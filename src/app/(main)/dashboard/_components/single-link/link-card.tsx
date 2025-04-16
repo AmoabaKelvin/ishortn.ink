@@ -1,7 +1,7 @@
 "use client";
 
 import { Copy } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useTransitionRouter } from "next-view-transitions";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,7 @@ type LinkProps = {
 };
 
 const Link = ({ link, onTagClick }: LinkProps) => {
-  const router = useRouter();
+  const router = useTransitionRouter();
 
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
   const tags = (link.tags as string[]) || [];

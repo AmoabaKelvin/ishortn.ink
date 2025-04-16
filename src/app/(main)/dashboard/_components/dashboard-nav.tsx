@@ -1,5 +1,5 @@
 import { UserButton } from "@clerk/nextjs";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 const DashboardNav = () => {
   return (

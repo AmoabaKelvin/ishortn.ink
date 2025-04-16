@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/server";
@@ -32,8 +32,9 @@ async function QRCodePage() {
           <div className="flex flex-col gap-4">
             {!canCreateMoreQRCodes && (
               <div className="rounded-lg bg-red-100 p-4 text-red-800">
-                You have reached the maximum number of QR Codes allowed. Please upgrade your
-                subscription to create more QR Codes. <UpgradeText />
+                You have reached the maximum number of QR Codes allowed. Please
+                upgrade your subscription to create more QR Codes.{" "}
+                <UpgradeText />
               </div>
             )}
             {userCodes.map((qr) => (

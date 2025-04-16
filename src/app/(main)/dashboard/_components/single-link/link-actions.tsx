@@ -13,7 +13,7 @@ import {
   Trash2Icon,
   Unlink,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useTransitionRouter } from "next-view-transitions";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -35,7 +35,6 @@ import { QRCodeModal } from "./link-qrcode-modal";
 import UpdateLinkModal from "./update-link-modal";
 
 import type { RouterOutputs } from "@/trpc/shared";
-
 type LinkActionsProps = {
   link: RouterOutputs["link"]["list"]["links"][number];
 };
@@ -46,7 +45,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   const [openChangePasswordModal, setOpenChangePasswordModal] = useState(false);
   const isPublicStatsEnabled = link.publicStats!;
   const isLinkActive = !link.disabled!;
-  const router = useRouter();
+  const router = useTransitionRouter();
 
   const togglePublicStatMutation = api.link.togglePublicStats.useMutation({
     onSuccess: async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useTransitionRouter } from "next-view-transitions";
 import posthog from "posthog-js";
 import QrCodeWithLogo from "qrcode-with-logos";
 import { useEffect, useState } from "react";
@@ -18,9 +18,8 @@ import { isValidUrlAndNotIshortn } from "./utils";
 
 import type { CornerType } from "qrcode-with-logos/types/src/core/types";
 import type { CornerStyle, PatternStyle } from "./types";
-
 function QRCodeCreationPage() {
-  const router = useRouter();
+  const router = useTransitionRouter();
   const userSubDetails = api.subscriptions.get.useQuery().data;
 
   const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(userSubDetails);

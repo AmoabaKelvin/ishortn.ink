@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 import { api } from "@/trpc/server";
 
@@ -25,7 +25,11 @@ export default async function ApiTokenPage() {
         </p>
 
         {tokens.length > 0 ? (
-          <TokenCard start="******" createdAt={token!.createdAt!.getTime()} keyID={token!.id} />
+          <TokenCard
+            start="******"
+            createdAt={token!.createdAt!.getTime()}
+            keyID={token!.id}
+          />
         ) : (
           <GenerateTokenTrigger />
         )}

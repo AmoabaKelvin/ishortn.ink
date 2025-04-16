@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, TriangleAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useTransitionRouter } from "next-view-transitions";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { api } from "@/trpc/react";
 
 export const LinkPasswordVerification = ({ id }: { id: number }) => {
   const verifyPasswordMutation = api.link.verifyLinkPassword.useMutation();
-  const router = useRouter();
+  const router = useTransitionRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,7 +41,9 @@ export const LinkPasswordVerification = ({ id }: { id: number }) => {
   };
 
   return (
-    <div className={`flex h-screen flex-col items-center justify-center ${satoshi.className}`}>
+    <div
+      className={`flex h-screen flex-col items-center justify-center ${satoshi.className}`}
+    >
       <h1 className="mb-10 text-4xl font-bold">iShortn</h1>
 
       <h1 className="text-2xl font-bold">This link is password protected</h1>
