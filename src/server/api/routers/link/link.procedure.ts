@@ -109,6 +109,12 @@ export const linkRouter = createTRPCRouter({
       return services.togglePublicStats(ctx, input);
     }),
 
+  toggleArchive: protectedProcedure
+    .input(inputs.ToggleArchiveInput)
+    .mutation(({ ctx, input }) => {
+      return services.toggleArchive(ctx, input);
+    }),
+
   resetLinkStatistics: protectedProcedure
     .input(inputs.getLinkSchema)
     .mutation(({ ctx, input }) => {
