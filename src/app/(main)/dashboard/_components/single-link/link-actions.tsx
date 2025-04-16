@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Archive,
+  ArchiveRestore,
   Copy,
   KeyRound,
   MoreVertical,
@@ -11,6 +13,7 @@ import {
   Trash2Icon,
   Unlink,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -26,6 +29,7 @@ import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { revalidateHomepage } from "../../actions/revalidate-homepage";
+
 import { ChangeLinkPasswordModal } from "./change-link-password-modal";
 import { QRCodeModal } from "./link-qrcode-modal";
 import UpdateLinkModal from "./update-link-modal";
@@ -42,6 +46,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   const [openChangePasswordModal, setOpenChangePasswordModal] = useState(false);
   const isPublicStatsEnabled = link.publicStats!;
   const isLinkActive = !link.disabled!;
+  const router = useRouter();
 
   const togglePublicStatMutation = api.link.togglePublicStats.useMutation({
     onSuccess: async () => {
@@ -68,8 +73,22 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
     },
   });
 
+  const toggleArchive = api.link.toggleArchive.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.archived ? "Link archived" : "Link restored");
+      router.refresh();
+    },
+    onError: (error) => {
+      toast.error("Error updating link status", {
+        description: error.message,
+      });
+    },
+  });
+
   const copyPublicStatsLink = async () => {
-    await copyToClipboard(`https://ishortn.ink/analytics/${link.alias}?domain=${link.domain}`);
+    await copyToClipboard(
+      `https://ishortn.ink/analytics/${link.alias}?domain=${link.domain}`
+    );
   };
 
   const handleLinkToggleMutation = async () => {
@@ -85,6 +104,17 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
       loading: "Toggling Public Stats...",
       success: "Public Stats toggled successfully",
       error: "Failed to toggle Public Stats",
+    });
+  };
+
+  const handleToggleArchive = () => {
+    toast.promise(toggleArchive.mutateAsync({ id: link.id }), {
+      loading: link.archived ? "Restoring link..." : "Archiving link...",
+      success: (data) => {
+        router.refresh();
+        return data.archived ? "Link archived" : "Link restored";
+      },
+      error: "Failed to update link status",
     });
   };
 
@@ -163,11 +193,26 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
               <Trash2Icon className="mr-2 size-4" />
               Delete Link
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleToggleArchive}>
+              {link.archived ? (
+                <>
+                  <ArchiveRestore className="mr-2 h-4 w-4" /> Restore
+                </>
+              ) : (
+                <>
+                  <Archive className="mr-2 h-4 w-4" /> Archive
+                </>
+              )}
+            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <UpdateLinkModal link={link} open={openEditModal} setOpen={setOpenEditModal} />
+      <UpdateLinkModal
+        link={link}
+        open={openEditModal}
+        setOpen={setOpenEditModal}
+      />
       <QRCodeModal
         open={qrModal}
         setOpen={setQrModal}
