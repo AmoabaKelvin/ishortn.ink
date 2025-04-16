@@ -176,6 +176,13 @@
       "when": 1740485887402,
       "tag": "0024_lethal_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1744755274438,
+      "tag": "0025_sudden_expediter",
+      "breakpoints": true
     }
   ]
 }

@@ -44,6 +44,7 @@ import type {
   ListLinksInput,
   QuickLinkShorteningInput,
   RetrieveOriginalUrlInput,
+  ToggleArchiveInput,
   UpdateLinkInput,
 } from "./link.input";
 
@@ -55,7 +56,14 @@ export const getLinks = async (
   ctx: ProtectedTRPCContext,
   input: ListLinksInput
 ) => {
-  const { page, pageSize, orderBy, orderDirection, tag: tagName } = input;
+  const {
+    page,
+    pageSize,
+    orderBy,
+    orderDirection,
+    tag: tagName,
+    archivedFilter,
+  } = input;
   const orderFunc = orderDirection === "desc" ? desc : asc;
 
   // If filtering by tag, first get the link IDs that have this tag
@@ -81,11 +89,11 @@ export const getLinks = async (
   }
 
   // Base query condition
-  let baseCondition = eq(link.userId, ctx.auth.userId);
+  let baseCondition = and(eq(link.userId, ctx.auth.userId));
 
   // Add tag filtering if needed
   if (tagName && tagName.trim() !== "" && linkIdsWithTag.length > 0) {
-    baseCondition = and(baseCondition, inArray(link.id, linkIdsWithTag))!;
+    baseCondition = and(baseCondition, inArray(link.id, linkIdsWithTag));
   } else if (tagName && tagName.trim() !== "" && linkIdsWithTag.length === 0) {
     // No links with this tag, return empty results
     return {
@@ -96,6 +104,15 @@ export const getLinks = async (
       totalPages: 0,
     };
   }
+
+  // Add archived filtering
+  if (archivedFilter === "archived") {
+    baseCondition = and(baseCondition, eq(link.archived, true));
+  } else if (archivedFilter === "active" || !archivedFilter) {
+    // Default to showing active links
+    baseCondition = and(baseCondition, eq(link.archived, false));
+  }
+  // If archivedFilter is 'all', no additional condition is added
 
   // Prepare the query parts
   const linksQuery = ctx.db
@@ -236,7 +253,7 @@ export const createLink = async (
   const [result] = await ctx.db.insert(link).values({
     ...linkData,
     name,
-    alias: alias,
+    alias,
     userId: ctx.auth.userId,
     passwordHash: input.password,
     domain,
@@ -740,4 +757,34 @@ export const checkPresenceOfVercelHeaders = async (ctx: PublicTRPCContext) => {
     countryHeader: ctx.headers.get("x-vercel-ip-country"),
     cityHeader: ctx.headers.get("x-vercel-ip-city"),
   };
+};
+
+export const toggleArchive = async (
+  ctx: ProtectedTRPCContext,
+  input: ToggleArchiveInput
+) => {
+  const currentLink = await ctx.db.query.link.findFirst({
+    where: and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)),
+    columns: { archived: true },
+  });
+
+  if (!currentLink) {
+    throw new Error(
+      "Link not found or you don't have permission to modify it."
+    );
+  }
+
+  const newArchivedStatus = !currentLink.archived;
+
+  await ctx.db
+    .update(link)
+    .set({ archived: newArchivedStatus })
+    .where(and(eq(link.id, input.id), eq(link.userId, ctx.auth.userId)));
+
+  // Invalidate cache if necessary (if the link was cached)
+  // Consider if archived links should be cached differently or not at all
+  // For simplicity, let's remove it for now
+  // await deleteFromCache(constructCacheKey(link.domain, link.alias)); // Need domain/alias
+
+  return { success: true, archived: newArchivedStatus };
 };

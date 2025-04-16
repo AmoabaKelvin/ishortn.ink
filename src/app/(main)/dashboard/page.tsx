@@ -26,6 +26,11 @@ export default async function DashboardPage({ searchParams }: Props) {
   const orderBy = searchParams.orderBy as "createdAt" | "totalClicks";
   const orderDirection = searchParams.orderDirection as "desc" | "asc";
   const tag = searchParams.tag as string | undefined;
+  const archivedFilter = searchParams.archivedFilter as
+    | "active"
+    | "archived"
+    | "all"
+    | undefined;
 
   const [
     { links, totalLinks, totalPages, currentPage, totalClicks },
@@ -37,6 +42,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       orderBy,
       orderDirection,
       tag,
+      archivedFilter,
     }),
     api.subscriptions.get.query(),
   ]);

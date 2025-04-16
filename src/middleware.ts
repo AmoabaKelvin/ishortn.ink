@@ -20,6 +20,11 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // if the pathname is more than one, we don't need to check for the api/link route
+  if (pathname.split("/").length > 2) {
+    return NextResponse.next();
+  }
+
   const geo = geolocation(request);
   const ip = ipAddress(request);
   const userAgent = request.headers.get("user-agent");
