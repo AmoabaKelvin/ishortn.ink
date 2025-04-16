@@ -101,8 +101,19 @@ export async function PATCH(
     return Response.json(updatedLink);
   } catch (error) {
     console.error("Failed to update link:", error);
-    // Consider more specific error handling (e.g., duplicate alias if changed)
-    return new Response("Failed to update link", { status: 500 });
+
+    // Check for unique constraint violation (PostgreSQL error code 23505)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((error as any)?.code === "23505" && filteredUpdateData.alias) {
+      return new Response("Alias already exists for this domain", {
+        status: 409,
+      }); // 409 Conflict
+    }
+
+    // Generic error for other database issues or unexpected errors
+    return new Response("Failed to update link due to a server error", {
+      status: 500,
+    });
   }
 }
 
