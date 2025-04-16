@@ -13,7 +13,7 @@ import {
   text,
   timestamp,
   unique,
-  varchar
+  varchar,
 } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable(
@@ -83,6 +83,7 @@ export const link = mysqlTable(
     note: varchar("note", { length: 255 }),
     metadata: json("metadata"),
     tags: json("tags").$type<string[]>().default([]),
+    archived: boolean("archived").default(false),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
