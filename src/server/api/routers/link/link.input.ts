@@ -6,6 +6,14 @@ export const retrieveOriginalUrlSchema = z.object({
   // have a from that specifies who called this function, whether the metadata generation func
   // or the actual domain retriever
   from: z.enum(["metadata", "redirection"]),
+  geolocation: z
+    .object({
+      latitude: z.number().optional(),
+      longitude: z.number().optional(),
+      country: z.string().optional(),
+      city: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const getLinkSchema = z.object({
@@ -13,13 +21,14 @@ export const getLinkSchema = z.object({
 });
 
 export const listLinksSchema = z.object({
-  page: z.number().default(1),
-  pageSize: z.number().default(10),
+  page: z.number().min(1).default(1),
+  pageSize: z.number().min(1).max(100).default(10),
   orderBy: z
     .enum(["createdAt", "totalClicks", "lastClicked"])
     .default("createdAt"),
   orderDirection: z.enum(["asc", "desc"]).default("desc"),
   tag: z.string().optional(),
+  archivedFilter: z.enum(["active", "archived", "all"]).optional(),
 });
 
 export const createLinkSchema = z.object({
@@ -84,3 +93,6 @@ export type QuickLinkShorteningInput = z.infer<
 >;
 
 export type ListLinksInput = z.infer<typeof listLinksSchema>;
+
+export const ToggleArchiveInput = z.object({ id: z.number() });
+export type ToggleArchiveInput = z.infer<typeof ToggleArchiveInput>;
