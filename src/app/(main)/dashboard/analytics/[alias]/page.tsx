@@ -15,16 +15,15 @@ import WorldMapHeatmap from "./world-map-heatmap";
 
 import type { RangeEnum } from "@/server/api/routers/link/link.input";
 type LinksAnalyticsPageProps = {
-  params: {
+  params: Promise<{
     alias: string;
-  };
-  searchParams: Record<string, string | string[] | undefined>;
+  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function LinkAnalyticsPage({
-  params,
-  searchParams,
-}: LinksAnalyticsPageProps) {
+export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const range = (searchParams?.range ?? "7d") as RangeEnum;
   const domain = (searchParams?.domain as string) ?? "ishortn.ink";
 

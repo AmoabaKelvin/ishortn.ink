@@ -5,6 +5,9 @@ import { api } from "@/trpc/server";
 import GenerateTokenTrigger from "./create-token";
 import TokenCard from "./token-card";
 
+
+export const dynamic = 'force-dynamic'
+
 export default async function ApiTokenPage() {
   const tokens = await api.token.list.query();
   const token = tokens[0];

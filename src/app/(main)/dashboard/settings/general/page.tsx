@@ -2,6 +2,8 @@ import { SettingsForm } from "@/app/(main)/dashboard/settings/general/settings-f
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/server";
 
+export const dynamic = 'force-dynamic'
+
 async function GeneralSettingsPage() {
   const [userSettings, userDomains] = await Promise.all([
     api.siteSettings.get.query(),

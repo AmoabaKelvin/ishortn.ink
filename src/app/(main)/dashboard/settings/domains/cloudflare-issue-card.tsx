@@ -34,7 +34,7 @@ const CloudflareIssuesCard = () => {
             below when adding another domain.
           </p>
 
-          <p className="mt-5 text-gray-700">
+          <div className="mt-5 text-gray-700">
             <b>Using Cloudflare as a DNS provider?</b>
             <ol className="list-inside list-decimal">
               <li>In your Cloudflare dashboard, add the provided record.</li>
@@ -43,7 +43,7 @@ const CloudflareIssuesCard = () => {
                 iShortn DNS servers for handling instead of Cloudflare.
               </li>
             </ol>
-          </p>
+          </div>
         </div>
       </motion.div>
     </div>

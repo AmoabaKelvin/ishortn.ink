@@ -26,10 +26,7 @@ type LinksProps = {
   currentPage: number;
 };
 
-const Links = (
-  { links, totalPages, currentPage, totalLinks }: LinksProps,
-  searchParams: Record<string, string | string[] | undefined>
-) => {
+const Links = ({ links, totalPages, currentPage, totalLinks }: LinksProps) => {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");

@@ -10,9 +10,9 @@ import LinkPreview from "./link-preview";
 import type { Metadata } from "next";
 
 type LinkRedirectionPageProps = {
-  params: {
+  params: Promise<{
     linkAlias: string;
-  };
+  }>;
 };
 
 export type LinkMetadata = {
@@ -32,10 +32,9 @@ const getDomain = (incomingDomain: string | null): string => {
   return DEFAULT_DOMAIN;
 };
 
-export async function generateMetadata({
-  params,
-}: LinkRedirectionPageProps): Promise<Metadata> {
-  const headersList = headers();
+export async function generateMetadata(props: LinkRedirectionPageProps): Promise<Metadata> {
+  const params = await props.params;
+  const headersList = await headers();
   const incomingDomain =
     headersList.get("x-forwarded-host") ?? headersList.get("host");
   const domain = getDomain(incomingDomain);
@@ -73,8 +72,9 @@ const cleanAlias = (incomingAlias: string): string => {
   return alias.toLowerCase();
 };
 
-const LinkRedirectionPage = async ({ params }: LinkRedirectionPageProps) => {
-  const headersList = headers();
+const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
+  const params = await props.params;
+  const headersList = await headers();
   const incomingDomain =
     headersList.get("x-forwarded-host") ?? headersList.get("host");
   const userAgent = headersList.get("user-agent");

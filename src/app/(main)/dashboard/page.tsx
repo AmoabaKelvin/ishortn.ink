@@ -17,10 +17,11 @@ export const metadata: Metadata = {
 };
 
 interface Props {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function DashboardPage({ searchParams }: Props) {
+export default async function DashboardPage(props: Props) {
+  const searchParams = await props.searchParams;
   const page = Number.parseInt(searchParams.page as string) || 1;
   const pageSize = 10;
   const orderBy = searchParams.orderBy as "createdAt" | "totalClicks";

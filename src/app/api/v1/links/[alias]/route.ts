@@ -7,10 +7,8 @@ import { validateAndGetToken } from "../../utils";
 
 import type { NextRequest } from "next/server";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { alias: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
+  const params = await props.params;
   const alias = params.alias;
   const apiKey = request.headers.get("x-api-key");
 
@@ -33,10 +31,8 @@ export async function GET(
   return Response.json(retrievedLink);
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { alias: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
+  const params = await props.params;
   const alias = params.alias;
   const apiKey = request.headers.get("x-api-key");
 
