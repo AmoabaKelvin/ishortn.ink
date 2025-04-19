@@ -4,7 +4,8 @@ import { db } from "@/server/db";
 import { validateAndGetToken } from "../../utils";
 
 import type { NextRequest } from "next/server";
-export async function GET(request: NextRequest, { params }: { params: { alias: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
+  const params = await props.params;
   const alias = params.alias;
   const apiKey = request.headers.get("x-api-key");
 

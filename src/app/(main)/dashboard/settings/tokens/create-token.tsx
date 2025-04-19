@@ -30,6 +30,7 @@ const GenerateTokenTrigger = () => {
       })
       .catch(() => {
         // noop
+        return
       });
   };
 

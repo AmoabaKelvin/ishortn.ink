@@ -9,16 +9,15 @@ import { CountriesAndCitiesStats } from "../../dashboard/analytics/[alias]/count
 import { UserAgentStats } from "../../dashboard/analytics/[alias]/user-agent-stats";
 
 type LinksAnalyticsPageProps = {
-  params: {
+  params: Promise<{
     alias: string;
-  };
-  searchParams: Record<string, string | string[] | undefined>;
+  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function LinkAnalyticsPage({
-  params,
-  searchParams,
-}: LinksAnalyticsPageProps) {
+export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const domain = (searchParams?.domain as string) ?? "ishortn.ink";
 
   const obtainedLink = await api.link.getLinkByAlias.query({

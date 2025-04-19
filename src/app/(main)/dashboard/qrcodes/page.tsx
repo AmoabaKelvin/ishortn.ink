@@ -8,6 +8,8 @@ import QRCodeDisplay from "./qrcode-card";
 import UpgradeText from "./upgrade-text";
 import { checkIfUserCanCreateMoreQRCodes } from "./utils";
 
+export const dynamic = 'force-dynamic'
+
 async function QRCodePage() {
   const userCodes = await api.qrCode.list.query();
   const subDetails = await api.subscriptions.get.query();

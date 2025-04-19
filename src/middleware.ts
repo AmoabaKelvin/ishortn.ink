@@ -32,10 +32,8 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   const response = await fetch(
     encodeURI(
-      `${
-        request.url.split(pathname)[0]
-      }/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${
-        geo.city
+      `${request.url.split(pathname)[0]
+      }/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${geo.city
       }&ip=${ip}`
     ),
     {
@@ -59,8 +57,8 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
   return NextResponse.redirect(data.url);
 }
 
-export default clerkMiddleware((auth, req) => {
-  if (isProtectedRoute(req)) auth().protect();
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) await auth.protect();
   return resolveLinkAndLogAnalytics(req);
 });
 
