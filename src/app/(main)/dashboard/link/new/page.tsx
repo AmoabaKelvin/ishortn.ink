@@ -40,7 +40,7 @@ import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
-import { LinkExpirationDatePicker } from "../../_components/single-link/update-link-modal";
+import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
 import { revalidateHomepage } from "../../revalidate-homepage";
 
 import { LinkPreviewComponent } from "./link-preview";

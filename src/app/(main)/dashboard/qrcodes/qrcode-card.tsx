@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
 
-import UpdateLinkModal from "../_components/single-link/update-link-modal";
+import { UpdateLinkModal } from "../_components/links/link-card/update-modal";
 import { revalidateRoute } from "../revalidate-homepage";
 
 import type { RouterOutputs } from "@/trpc/shared";
