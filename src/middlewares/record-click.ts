@@ -1,8 +1,9 @@
+import { waitUntil } from "@vercel/functions";
 import crypto from "crypto";
 import { sql } from "drizzle-orm";
 import { UAParser } from "ua-parser-js";
 
-import { getFromCache, Link } from "@/lib/core/cache";
+import { getFromCache, Link, setInCache } from "@/lib/core/cache";
 import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
@@ -127,16 +128,30 @@ export async function recordUserClickForLink(
     return null;
   }
 
-  await recordClick(
-    req,
-    link,
-    req.referrer ?? "direct",
-    ip,
-    country,
-    city,
-    continent
-  );
+  // await setInCache(cacheKey, link);
 
+  // await recordClick(
+  //   req,
+  //   link,
+  //   req.referrer ?? "direct",
+  //   ip,
+  //   country,
+  //   city,
+  //   continent
+  // );
+
+  waitUntil(setInCache(cacheKey, link));
+  waitUntil(
+    recordClick(
+      req,
+      link,
+      req.referrer ?? "direct",
+      ip,
+      country,
+      city,
+      continent
+    )
+  );
   return link;
 }
 
