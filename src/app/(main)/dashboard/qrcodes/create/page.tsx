@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
-import { revalidateRoute } from "../../actions/revalidate-homepage";
+import { revalidateRoute } from "../../revalidate-homepage";
 import { checkIfUserCanCreateMoreQRCodes } from "../utils";
 
 import QRCodeContent from "./qr-content";

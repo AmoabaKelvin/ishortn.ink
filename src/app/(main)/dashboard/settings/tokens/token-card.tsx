@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
-import { revalidateRoute } from "../../actions/revalidate-homepage";
+import { revalidateRoute } from "../../revalidate-homepage";
 
 const TokenCard = ({
   start,

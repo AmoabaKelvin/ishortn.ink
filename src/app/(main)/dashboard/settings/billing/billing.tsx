@@ -23,7 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/react";
 
-import { revalidateRoute } from "../../actions/revalidate-homepage";
+import { revalidateRoute } from "../../revalidate-homepage";
 
 import type { RouterOutputs } from "@/trpc/shared";
 type BillingPageProps = {

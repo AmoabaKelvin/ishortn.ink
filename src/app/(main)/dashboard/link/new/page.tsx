@@ -41,7 +41,7 @@ import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
 import { LinkExpirationDatePicker } from "../../_components/single-link/update-link-modal";
-import { revalidateHomepage } from "../../actions/revalidate-homepage";
+import { revalidateHomepage } from "../../revalidate-homepage";
 
 import { LinkPreviewComponent } from "./link-preview";
 import UpgradeToProAIButtonTooltip from "./upgrade-to-pro-ai-tooltip";

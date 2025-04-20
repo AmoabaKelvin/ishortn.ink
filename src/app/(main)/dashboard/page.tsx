@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { env } from "@/env.mjs";
 import { api } from "@/trpc/server";
 
-import Links from "./_components/all-links-renderer";
-import { DashboardActions } from "./_components/dashboard-actions";
-import { DashboardSidebar } from "./_components/dashboard-sidebar";
+import { BulkLinkActions } from "./_components/bulk-actions/bulk-actions";
+import { Links } from "./_components/links/links";
+import { DashboardSidebar } from "./_components/sidebar/sidebar";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
@@ -61,7 +61,7 @@ export default async function DashboardPage(props: Props) {
           <Button asChild>
             <Link href="/dashboard/link/new">Shorten Link</Link>
           </Button>
-          <DashboardActions />
+          <BulkLinkActions />
         </div>
       </div>
 

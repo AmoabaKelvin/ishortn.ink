@@ -16,9 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import Link from "./single-link/link-card";
+import Link from "./link-card/card";
 
 import type { RouterOutputs } from "@/trpc/shared";
+
 type LinksProps = {
   links: RouterOutputs["link"]["list"]["links"];
   totalLinks: number;
@@ -26,7 +27,12 @@ type LinksProps = {
   currentPage: number;
 };
 
-const Links = ({ links, totalPages, currentPage, totalLinks }: LinksProps) => {
+export const Links = ({
+  links,
+  totalPages,
+  currentPage,
+  totalLinks,
+}: LinksProps) => {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
@@ -289,5 +295,3 @@ const Links = ({ links, totalPages, currentPage, totalLinks }: LinksProps) => {
     </>
   );
 };
-
-export default Links;

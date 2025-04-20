@@ -17,6 +17,7 @@ import { useTransitionRouter } from "next-view-transitions";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,13 +29,12 @@ import {
 import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
-import { revalidateHomepage } from "../../actions/revalidate-homepage";
-
-import { ChangeLinkPasswordModal } from "./change-link-password-modal";
-import { QRCodeModal } from "./link-qrcode-modal";
-import UpdateLinkModal from "./update-link-modal";
+import { ChangeLinkPasswordModal } from "./password-change-modal";
+import { QRCodeModal } from "./qrcode-modal";
+import { UpdateLinkModal } from "./update-modal";
 
 import type { RouterOutputs } from "@/trpc/shared";
+
 type LinkActionsProps = {
   link: RouterOutputs["link"]["list"]["links"][number];
 };

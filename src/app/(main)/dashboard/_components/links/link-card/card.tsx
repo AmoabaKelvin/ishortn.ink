@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { copyToClipboard, daysSinceDate } from "@/lib/utils";
 
-import { LinkActions } from "./link-actions";
-import { LinkNoteTooltip } from "./link-note-viewer";
-import { LinkSecurityStatusTooltip } from "./link-security-status-tooltip";
+import { LinkActions } from "./actions";
+import { LinkNoteTooltip } from "./note-tooltip";
+import { LinkPasswordStatusTooltip } from "./security-tooltip";
 
 import type { RouterOutputs } from "@/trpc/shared";
+
 type LinkProps = {
   link: RouterOutputs["link"]["list"]["links"][number];
   onTagClick?: (tag: string) => void;
@@ -37,7 +38,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
               }
             >
               <LinkStatus disabled={link.disabled ?? false} />
-              <LinkSecurityStatusTooltip link={link} />
+              <LinkPasswordStatusTooltip link={link} />
               {link.name !== "Untitled Link" && link.name ? (
                 <span className="">{link.name}</span>
               ) : (

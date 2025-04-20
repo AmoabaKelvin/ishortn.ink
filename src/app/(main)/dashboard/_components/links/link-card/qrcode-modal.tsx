@@ -3,11 +3,11 @@ import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 
 type QRCodeModalProps = {
@@ -16,13 +16,19 @@ type QRCodeModalProps = {
   destinationUrl: string;
 };
 
-export function QRCodeModal({ open, setOpen, destinationUrl }: QRCodeModalProps) {
+export function QRCodeModal({
+  open,
+  setOpen,
+  destinationUrl,
+}: QRCodeModalProps) {
   const qrCodeCanvasRef = useRef(null);
 
   const handleQRCodeDownload = () => {
     if (!destinationUrl) return;
     const canvas = document.getElementById("qr-gen") as HTMLCanvasElement;
-    const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    const pngUrl = canvas
+      .toDataURL("image/png")
+      .replace("image/png", "image/octet-stream");
     const downloadLink = document.createElement("a");
     downloadLink.href = pngUrl;
     downloadLink.download = "qrcode.png";
@@ -36,7 +42,9 @@ export function QRCodeModal({ open, setOpen, destinationUrl }: QRCodeModalProps)
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>QR Code</DialogTitle>
-          <DialogDescription>Here is your QR Code for the link.</DialogDescription>
+          <DialogDescription>
+            Here is your QR Code for the link.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center">
           <QRCode

@@ -1,7 +1,7 @@
 import { UserButton } from "@clerk/nextjs";
 import { Link } from "next-view-transitions";
 
-const DashboardNav = () => {
+const DashboardHeader = () => {
   return (
     <div className="flex items-center justify-between">
       <h2 className="inline-flex text-xl font-semibold leading-tight text-gray-800">
@@ -46,4 +46,4 @@ const DashboardNav = () => {
   );
 };
 
-export { DashboardNav };
+export { DashboardHeader as DashboardNav };

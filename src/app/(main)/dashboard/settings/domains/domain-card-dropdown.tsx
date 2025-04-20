@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/trpc/react";
 
-import { revalidateRoute } from "../../actions/revalidate-homepage";
+import { revalidateRoute } from "../../revalidate-homepage";
 
 interface DomainCardDropdownProps {
   domainId: number;
@@ -66,7 +66,10 @@ export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56">
           <DropdownMenuGroup>
-            <DropdownMenuItem onClick={handleDeleteClick} className="text-red-500">
+            <DropdownMenuItem
+              onClick={handleDeleteClick}
+              className="text-red-500"
+            >
               <Trash2 className="mr-2 h-4 w-4" />
               <span>Delete</span>
             </DropdownMenuItem>
@@ -74,13 +77,16 @@ export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the domain and all
-              associated links.
+              This action cannot be undone. This will permanently delete the
+              domain and all associated links.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

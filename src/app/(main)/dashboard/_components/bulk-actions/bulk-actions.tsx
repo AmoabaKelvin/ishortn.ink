@@ -19,25 +19,27 @@ import { convertDataToCSV } from "@/lib/utils/convert-links-to-csv";
 import { convertDataToJSON } from "@/lib/utils/convert-links-to-json";
 import { api } from "@/trpc/react";
 
-import { BulkLinkUploadDialog } from "./bulk-upload-button";
+import { BulkLinkUploadDialog } from "./bulk-link-upload";
 
-export function DashboardActions() {
+export function BulkLinkActions() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [format, setFormat] = useState<"csv" | "json">("csv");
 
   const { data: subStatus } = api.subscriptions.get.useQuery();
 
-  const { mutate: exportLinks, isLoading } = api.link.exportUserLinks.useMutation({
-    onSuccess: (data) => {
-      const content = format === "csv" ? convertDataToCSV(data) : convertDataToJSON(data);
-      const fileName = `ishortn_links.${format}`;
-      triggerDownload(content, fileName);
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  const { mutate: exportLinks, isLoading } =
+    api.link.exportUserLinks.useMutation({
+      onSuccess: (data) => {
+        const content =
+          format === "csv" ? convertDataToCSV(data) : convertDataToJSON(data);
+        const fileName = `ishortn_links.${format}`;
+        triggerDownload(content, fileName);
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
 
   const triggerDownload = (content: string, fileName: string): void => {
     const encodedUri = encodeURI(content);
@@ -90,10 +92,16 @@ export function DashboardActions() {
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => handleExport("csv")} disabled={isLoading}>
+                <DropdownMenuItem
+                  onClick={() => handleExport("csv")}
+                  disabled={isLoading}
+                >
                   <span>CSV</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("json")} disabled={isLoading}>
+                <DropdownMenuItem
+                  onClick={() => handleExport("json")}
+                  disabled={isLoading}
+                >
                   <span>JSON</span>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>

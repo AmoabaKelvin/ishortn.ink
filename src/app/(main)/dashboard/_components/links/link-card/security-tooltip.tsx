@@ -1,6 +1,11 @@
 import { ShieldBan, ShieldCheckIcon } from "lucide-react";
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -8,7 +13,9 @@ type LinkSecurityStatusTooltipProps = {
   link: RouterOutputs["link"]["list"]["links"][number];
 };
 
-export const LinkSecurityStatusTooltip = ({ link }: LinkSecurityStatusTooltipProps) => {
+export const LinkPasswordStatusTooltip = ({
+  link,
+}: LinkSecurityStatusTooltipProps) => {
   return (
     <TooltipProvider>
       <Tooltip>

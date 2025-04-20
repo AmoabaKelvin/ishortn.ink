@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -45,21 +46,16 @@ import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
 
-import { revalidateHomepage } from "../../actions/revalidate-homepage";
-
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
+
 type LinkEditModalProps = {
   link: RouterOutputs["link"]["list"]["links"][number];
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-export default function UpdateLinkModal({
-  link,
-  open,
-  setOpen,
-}: LinkEditModalProps) {
+export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
   const [tags, setTags] = useState<string[]>((link.tags as string[]) || []);
   const [tagInput, setTagInput] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(false);

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
 
-import { revalidateRoute } from "../../actions/revalidate-homepage";
+import { revalidateRoute } from "../../revalidate-homepage";
 
 const GenerateTokenTrigger = () => {
   const createAPIKeyMutation = api.token.create.useMutation();
@@ -30,7 +30,7 @@ const GenerateTokenTrigger = () => {
       })
       .catch(() => {
         // noop
-        return
+        return;
       });
   };
 
@@ -55,7 +55,8 @@ const GenerateTokenTrigger = () => {
           <DialogHeader>
             <DialogTitle>Your API key is ready!</DialogTitle>
             <DialogDescription>
-              Make sure you copy your API key now. You won&apos;t be able to see it again!
+              Make sure you copy your API key now. You won&apos;t be able to see
+              it again!
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

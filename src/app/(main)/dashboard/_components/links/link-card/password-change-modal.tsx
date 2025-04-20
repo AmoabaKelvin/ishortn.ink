@@ -2,23 +2,21 @@ import posthog from "posthog-js";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
 
-import { revalidateHomepage } from "../../actions/revalidate-homepage";
-
 type ChangePasswordModalProps = {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-
   id: number;
   hasPassword: boolean;
 };
@@ -27,13 +25,19 @@ const getComponentMessages = (hasPassword: boolean) => {
   // Return the appropriate messages based on whether the link has a password or not
   return {
     title: hasPassword ? "Change Password" : "Set Password",
-    description: hasPassword ? "Change the password for the link." : "Set a password for the link.",
+    description: hasPassword
+      ? "Change the password for the link."
+      : "Set a password for the link.",
     buttonText: hasPassword ? "Update Password" : "Set Password",
     inputPlaceholder: hasPassword ? "New Password" : "Password",
 
     loading: hasPassword ? "Changing password..." : "Setting password...",
-    loadingSuccess: hasPassword ? "Password changed successfully" : "Password set successfully",
-    loadingError: hasPassword ? "Failed to change password" : "Failed to set password",
+    loadingSuccess: hasPassword
+      ? "Password changed successfully"
+      : "Password set successfully",
+    loadingError: hasPassword
+      ? "Failed to change password"
+      : "Failed to set password",
   };
 };
 
@@ -59,11 +63,14 @@ export function ChangeLinkPasswordModal({
   const handlePasswordChange = async () => {
     if (!newPassword) return;
 
-    toast.promise(changePasswordMutation.mutateAsync({ id, password: newPassword }), {
-      loading: componentMessages.loading,
-      success: componentMessages.loadingSuccess,
-      error: componentMessages.loadingError,
-    });
+    toast.promise(
+      changePasswordMutation.mutateAsync({ id, password: newPassword }),
+      {
+        loading: componentMessages.loading,
+        success: componentMessages.loadingSuccess,
+        error: componentMessages.loadingError,
+      }
+    );
 
     await revalidateHomepage();
   };

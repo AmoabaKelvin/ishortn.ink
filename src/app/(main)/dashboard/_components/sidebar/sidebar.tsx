@@ -1,8 +1,8 @@
 import MonthlyUsage from "@/app/(main)/dashboard/_components/sidebar/monthly-usage";
 import { UpgradeToPro } from "@/components/upgrade-to-pro";
 
-import { QuickLinkShorteningForm } from "./sidebar/quick-link-shortening-form";
-import { UserLinksOverView } from "./sidebar/user-links-overview";
+import { QuickLinkShorteningForm } from "./quick-link-shortening-form";
+import { UserLinksOverView } from "./user-links-overview";
 
 type DashboardSidebarProps = {
   numberOfLinks: number;
