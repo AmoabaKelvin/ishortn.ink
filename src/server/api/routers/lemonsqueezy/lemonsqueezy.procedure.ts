@@ -1,7 +1,11 @@
-import { cancelSubscription, createCheckout, getSubscription } from "@lemonsqueezy/lemonsqueezy.js";
+import {
+  cancelSubscription,
+  createCheckout,
+  getSubscription,
+} from "@lemonsqueezy/lemonsqueezy.js";
 import { eq } from "drizzle-orm";
 
-import { configureLemonSqueezy } from "@/config/lemonsqueezy";
+import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { subscription } from "@/server/db/schema";
 
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
@@ -17,24 +21,28 @@ export const lemonsqueezyRouter = createTRPCRouter({
       where: (table, { eq }) => eq(table.id, userId),
     });
 
-    const checkout = await createCheckout(process.env.LEMONSQUEEZY_STORE_ID!, variantId, {
-      checkoutOptions: {
-        embed: true,
-        media: false,
-      },
-      checkoutData: {
-        email: user!.email ?? undefined,
-        custom: {
-          user_id: userId,
+    const checkout = await createCheckout(
+      process.env.LEMONSQUEEZY_STORE_ID!,
+      variantId,
+      {
+        checkoutOptions: {
+          embed: true,
+          media: false,
         },
-      },
-      productOptions: {
-        enabledVariants: [variantId],
-        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing/`,
-        receiptButtonText: "Go to Dashboard",
-        receiptThankYouNote: "Thank you for signing up to iShortn Pro!",
-      },
-    });
+        checkoutData: {
+          email: user!.email ?? undefined,
+          custom: {
+            user_id: userId,
+          },
+        },
+        productOptions: {
+          enabledVariants: [variantId],
+          redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing/`,
+          receiptButtonText: "Go to Dashboard",
+          receiptThankYouNote: "Thank you for signing up to iShortn Pro!",
+        },
+      }
+    );
 
     return checkout.data?.data.attributes.url;
   }),
@@ -52,7 +60,9 @@ export const lemonsqueezyRouter = createTRPCRouter({
       throw new Error("No active subscription found");
     }
 
-    const cancelledSub = await cancelSubscription(userSubscription.subscriptionId!);
+    const cancelledSub = await cancelSubscription(
+      userSubscription.subscriptionId!
+    );
 
     if (cancelledSub.error) {
       throw new Error(cancelledSub.error.message);

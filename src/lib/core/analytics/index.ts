@@ -1,7 +1,7 @@
 import UAParser from "ua-parser-js";
 
 import { env } from "@/env.mjs";
-import { LOCAL_DEVELOPMENT_GEOLOCATION_DATA } from "@/lib/constants";
+import { LOCAL_DEVELOPMENT_GEOLOCATION_DATA } from "@/lib/constants/app";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -45,7 +45,8 @@ const identifyRequestingDevice = (headers: Headers) => {
   };
 
   const osName = result.os.name ?? "Unknown";
-  const deviceType = result.device.type ?? deviceTypesMapping[osName] ?? "Unknown";
+  const deviceType =
+    result.device.type ?? deviceTypesMapping[osName] ?? "Unknown";
 
   return {
     browser: result.browser.name ?? "Unknown",
@@ -78,7 +79,10 @@ export const retrieveDeviceAndGeolocationData = async (headers: Headers) => {
   };
 };
 
-function safeIncrement<T extends string>(record: Record<T, number>, key: T): void {
+function safeIncrement<T extends string>(
+  record: Record<T, number>,
+  key: T
+): void {
   record[key] = (record[key] || 0) + 1;
 }
 
@@ -89,7 +93,7 @@ type AggregateVisitsParams = {
 
 export const aggregateVisits = (
   visits: AggregateVisitsParams["visits"],
-  uniqueVisits: AggregateVisitsParams["uniqueVisits"],
+  uniqueVisits: AggregateVisitsParams["uniqueVisits"]
 ) => {
   const clicksPerDate: Record<string, number> = {};
   const uniqueClicksPerDate: Record<string, number> = {};

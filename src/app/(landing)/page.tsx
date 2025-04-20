@@ -1,8 +1,8 @@
 import { Link } from "next-view-transitions";
 
 import { Button } from "@/components/ui/button";
-import { landingPageCopy } from "@/copy/landing-page";
-import { Paths } from "@/lib/constants";
+import { Paths } from "@/lib/constants/app";
+import { landingPageCopy } from "@/lib/copy/landing-page";
 
 import { Faq } from "./_components/faq";
 import { Footer } from "./_components/footer";

@@ -9,7 +9,7 @@ import { ReleaseNotesScript } from "@/components/scripts/release-notes";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env.mjs";
-import { APP_TITLE } from "@/lib/constants";
+import { APP_TITLE } from "@/lib/constants/app";
 import { fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { TRPCReactProvider } from "@/trpc/react";

@@ -1,4 +1,4 @@
-import type { CornerStyle, PatternStyle } from "./types";
+import type { CornerStyle, PatternStyle } from "@/lib/types/qrcode";
 
 export const patternStyles: PatternStyle[] = [
   "square",

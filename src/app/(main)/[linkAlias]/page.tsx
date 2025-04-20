@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
-import { socialMediaAgents } from "@/lib/constants";
+import { socialMediaAgents } from "@/lib/constants/app";
 import { api } from "@/trpc/server";
 
 import { LinkPasswordVerification } from "./link-password-verification";
@@ -32,7 +32,9 @@ const getDomain = (incomingDomain: string | null): string => {
   return DEFAULT_DOMAIN;
 };
 
-export async function generateMetadata(props: LinkRedirectionPageProps): Promise<Metadata> {
+export async function generateMetadata(
+  props: LinkRedirectionPageProps
+): Promise<Metadata> {
   const params = await props.params;
   const headersList = await headers();
   const incomingDomain =

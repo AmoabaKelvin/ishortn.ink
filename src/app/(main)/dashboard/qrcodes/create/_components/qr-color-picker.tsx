@@ -1,6 +1,5 @@
+import { presetColors } from "@/lib/constants/qrcode";
 import { cn } from "@/lib/utils";
-
-import { presetColors } from "../constants";
 
 interface ColorPickerProps {
   selectedColor: string;

@@ -5,13 +5,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { cornerStyles, patternStyles } from "../constants";
+import { cornerStyles, patternStyles } from "@/lib/constants/qrcode";
 
 import { ColorPicker } from "./qr-color-picker";
 import { LogoUploader } from "./qr-logo-uploader";
 
-import type { CornerStyle, PatternStyle } from "../types";
+import type { CornerStyle, PatternStyle } from "@/lib/types/qrcode";
 
 interface QRCodeCustomizationProps {
   patternStyle: PatternStyle;

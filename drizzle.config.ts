@@ -1,6 +1,6 @@
 import { defineConfig } from "drizzle-kit";
 
-import { DATABASE_PREFIX } from "@/lib/constants";
+import { DATABASE_PREFIX } from "@/lib/constants/app";
 
 export default defineConfig({
   schema: "./src/server/db/schema.ts",
