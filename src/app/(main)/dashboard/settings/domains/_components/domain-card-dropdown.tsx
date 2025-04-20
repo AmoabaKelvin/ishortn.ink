@@ -4,6 +4,7 @@ import { EllipsisVertical, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/trpc/react";
-
-import { revalidateRoute } from "../../revalidate-homepage";
 
 interface DomainCardDropdownProps {
   domainId: number;

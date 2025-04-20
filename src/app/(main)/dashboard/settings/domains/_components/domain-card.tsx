@@ -3,6 +3,7 @@
 import { Copy } from "lucide-react";
 import { useState } from "react";
 
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,12 +15,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { revalidateRoute } from "../../../revalidate-homepage";
-
 import { DomainCardDropdown } from "./domain-card-dropdown";
 import DomainStatusChecker from "./domain-status-checker";
 
 import type { RouterOutputs } from "@/trpc/shared";
+
 type DomainCardProps = {
   domain: RouterOutputs["customDomain"]["list"][0];
 };

@@ -4,6 +4,7 @@ import CloudflareIssuesCard from "./cloudflare-issue-card";
 import DomainCard from "./domain-card";
 
 import type { RouterOutputs } from "@/trpc/shared";
+
 type ListDomainsProps = {
   domains: RouterOutputs["customDomain"]["list"];
 };

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,8 +20,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
-
-import { revalidateRoute } from "../../revalidate-homepage";
 
 const containerVariants = {
   hidden: { opacity: 0 },
