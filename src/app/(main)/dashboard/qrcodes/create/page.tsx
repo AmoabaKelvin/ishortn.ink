@@ -6,18 +6,19 @@ import QrCodeWithLogo from "qrcode-with-logos";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
-import { revalidateRoute } from "../../actions/revalidate-homepage";
 import { checkIfUserCanCreateMoreQRCodes } from "../utils";
 
-import QRCodeContent from "./qr-content";
-import QRCodeCustomization from "./qr-customization";
+import QRCodeContent from "./_components/qr-content";
+import QRCodeCustomization from "./_components/qr-customization";
 import { isValidUrlAndNotIshortn } from "./utils";
 
+import type { CornerStyle, PatternStyle } from "@/lib/types/qrcode";
 import type { CornerType } from "qrcode-with-logos/types/src/core/types";
-import type { CornerStyle, PatternStyle } from "./types";
+
 function QRCodeCreationPage() {
   const router = useTransitionRouter();
   const userSubDetails = api.subscriptions.get.useQuery().data;

@@ -1,4 +1,5 @@
 "use client";
+
 import { Link } from "next-view-transitions";
 import { useRef, useState } from "react";
 
@@ -19,7 +20,7 @@ type FeaturesProps = {
   logo: React.ReactNode;
 };
 
-const CardSpotlight = (props: FeaturesProps) => {
+export const CardSpotlight = (props: FeaturesProps) => {
   const divRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -86,5 +87,3 @@ const CardSpotlight = (props: FeaturesProps) => {
     </Card>
   );
 };
-
-export default CardSpotlight;

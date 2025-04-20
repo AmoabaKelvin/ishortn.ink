@@ -5,13 +5,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-
-import { revalidateHomepage } from "../../actions/revalidate-homepage";
 
 import type { QuickLinkShorteningInput } from "@/server/api/routers/link/link.input";
 export function QuickLinkShorteningForm() {

@@ -1,9 +1,9 @@
 import { Separator } from "@/components/ui/separator";
 import { api } from "@/trpc/server";
 
-import { AddCustomDomainModal } from "./add-domain-modal";
-import ListDomains from "./domains";
-import EmptyState from "./empty-state";
+import { AddCustomDomainModal } from "./_components/add-domain-modal";
+import ListDomains from "./_components/domains";
+import EmptyState from "./_components/empty-state";
 
 export const dynamic = "force-dynamic";
 

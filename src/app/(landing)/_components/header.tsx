@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { APP_TITLE } from "@/lib/constants";
+import { APP_TITLE } from "@/lib/constants/app";
 
 const routes = [
   { name: "Home", href: "/" },
