@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { revalidateRoute } from "../../revalidate-homepage";
+import { revalidateRoute } from "../../../revalidate-homepage";
 
 import { DomainCardDropdown } from "./domain-card-dropdown";
 import DomainStatusChecker from "./domain-status-checker";

@@ -2,11 +2,10 @@ import { Link } from "next-view-transitions";
 
 import { api } from "@/trpc/server";
 
-import GenerateTokenTrigger from "./create-token";
-import TokenCard from "./token-card";
+import GenerateTokenTrigger from "./_components/create-token";
+import TokenCard from "./_components/token-card";
 
-
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export default async function ApiTokenPage() {
   const tokens = await api.token.list.query();

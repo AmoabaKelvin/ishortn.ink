@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
+import { SidebarNav } from "@/app/(main)/dashboard/settings/_components/settings-navigation";
 
-import { SidebarNav } from "./sidebar-nav";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Settings",
