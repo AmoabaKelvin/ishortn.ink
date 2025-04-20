@@ -3,10 +3,9 @@
 import posthog from "posthog-js";
 import { toast } from "sonner";
 
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
-
-import { revalidateRoute } from "../../revalidate-homepage";
 
 const TokenCard = ({
   start,

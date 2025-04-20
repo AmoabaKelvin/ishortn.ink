@@ -3,6 +3,7 @@
 import posthog from "posthog-js";
 import { useState } from "react";
 
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,8 +13,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
-
-import { revalidateRoute } from "../../revalidate-homepage";
 
 const GenerateTokenTrigger = () => {
   const createAPIKeyMutation = api.token.create.useMutation();
