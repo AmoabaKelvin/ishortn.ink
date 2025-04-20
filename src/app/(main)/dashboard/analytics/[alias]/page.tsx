@@ -1,5 +1,6 @@
 import { Crown, Fingerprint, MapPinned, MousePointerClick } from "lucide-react";
 
+import AnalyticsHeader from "@/app/(main)/dashboard/analytics/[alias]/header";
 import { ReferrerStats } from "@/app/(main)/dashboard/analytics/[alias]/referrers";
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
@@ -21,7 +22,9 @@ type LinksAnalyticsPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) {
+export default async function LinkAnalyticsPage(
+  props: LinksAnalyticsPageProps
+) {
   const searchParams = await props.searchParams;
   const params = await props.params;
   const range = (searchParams?.range ?? "7d") as RangeEnum;
@@ -47,9 +50,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     <div className="max-w-5xl mx-auto">
       <div className="flex flex-col items-center justify-between md:flex-row">
         <div className="flex flex-col gap-1">
-          <h1 className="font-semibold leading-tight text-blue-600 cursor-pointer hover:underline md:text-3xl">
-            {searchParams?.domain}/{params.alias}
-          </h1>
+          <AnalyticsHeader domain={domain} alias={params.alias} />
           {!isProPlan && (
             <div className="mt-2 text-sm text-center text-gray-500">
               You are viewing limited analytics data (last 7 days).{" "}
