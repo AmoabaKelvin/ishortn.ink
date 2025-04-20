@@ -5,8 +5,8 @@ import { removeUrlProtocol } from "@/lib/utils";
 import { api } from "@/trpc/server";
 
 import { BarChart } from "../../dashboard/analytics/[alias]/_components/bar-chart";
-import { CountriesAndCitiesStats } from "../../dashboard/analytics/[alias]/countries-and-cities-stats";
-import { UserAgentStats } from "../../dashboard/analytics/[alias]/user-agent-stats";
+import { CountriesAndCitiesStats } from "../../dashboard/analytics/[alias]/_components/countries-and-cities-stats";
+import { UserAgentStats } from "../../dashboard/analytics/[alias]/_components/user-agent-stats";
 
 type LinksAnalyticsPageProps = {
   params: Promise<{
@@ -15,7 +15,9 @@ type LinksAnalyticsPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) {
+export default async function LinkAnalyticsPage(
+  props: LinksAnalyticsPageProps
+) {
   const searchParams = await props.searchParams;
   const params = await props.params;
   const domain = (searchParams?.domain as string) ?? "ishortn.ink";
