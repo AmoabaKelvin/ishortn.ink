@@ -3,7 +3,7 @@ import { Info } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 
-import { isValidUrlAndNotIshortn } from "./utils";
+import { isValidUrlAndNotIshortn } from "../utils";
 
 interface QRCodeContentProps {
   qrCodeTitle: string;
@@ -42,7 +42,9 @@ function QRCodeContent({
           />
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: isValidUrlAndNotIshortn(enteredContent) ? 1 : 0 }}
+            animate={{
+              opacity: isValidUrlAndNotIshortn(enteredContent) ? 1 : 0,
+            }}
             className="flex items-center text-sm text-muted-foreground"
           >
             <Info className="mr-1 size-4" />

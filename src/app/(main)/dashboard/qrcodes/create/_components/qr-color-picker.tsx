@@ -1,13 +1,16 @@
 import { cn } from "@/lib/utils";
 
-import { presetColors } from "./constants";
+import { presetColors } from "../constants";
 
 interface ColorPickerProps {
   selectedColor: string;
   setSelectedColor: (color: string) => void;
 }
 
-function ColorPicker({ selectedColor, setSelectedColor }: ColorPickerProps) {
+export function ColorPicker({
+  selectedColor,
+  setSelectedColor,
+}: ColorPickerProps) {
   return (
     <div>
       <span className="text-lg">Select color</span>
@@ -20,12 +23,13 @@ function ColorPicker({ selectedColor, setSelectedColor }: ColorPickerProps) {
             })}
             onClick={() => setSelectedColor(color)}
           >
-            <div className="size-11 rounded-full" style={{ backgroundColor: color }} />
+            <div
+              className="size-11 rounded-full"
+              style={{ backgroundColor: color }}
+            />
           </div>
         ))}
       </div>
     </div>
   );
 }
-
-export default ColorPicker;

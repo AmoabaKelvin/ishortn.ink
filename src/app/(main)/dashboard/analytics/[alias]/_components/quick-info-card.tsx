@@ -6,7 +6,7 @@ type QuickInfoCardProps = {
   icon?: React.ReactNode;
 };
 
-function QuickInfoCard({ title, value, icon }: QuickInfoCardProps) {
+export function QuickInfoCard({ title, value, icon }: QuickInfoCardProps) {
   return (
     // expand card on hover
     <Card className="transition-transform duration-300 hover:scale-105">
@@ -20,5 +20,3 @@ function QuickInfoCard({ title, value, icon }: QuickInfoCardProps) {
     </Card>
   );
 }
-
-export default QuickInfoCard;

@@ -3,12 +3,12 @@ import { Link } from "next-view-transitions";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/server";
 
-import EmptyState from "./empty-state";
-import QRCodeDisplay from "./qrcode-card";
-import UpgradeText from "./upgrade-text";
+import EmptyState from "./_components/empty-state";
+import QRCodeDisplay from "./_components/qrcode-card";
+import UpgradeText from "./_components/upgrade-text";
 import { checkIfUserCanCreateMoreQRCodes } from "./utils";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 async function QRCodePage() {
   const userCodes = await api.qrCode.list.query();

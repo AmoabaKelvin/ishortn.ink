@@ -7,7 +7,7 @@ interface LogoUploaderProps {
   setLogoImage: (image: string | null) => void;
 }
 
-function LogoUploader({ setLogoImage }: LogoUploaderProps) {
+export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
   const [error, setError] = useState<string | null>(null);
 
   const handleFileUpload = useCallback(
@@ -30,12 +30,15 @@ function LogoUploader({ setLogoImage }: LogoUploaderProps) {
         reader.readAsDataURL(file);
       }
     },
-    [setLogoImage],
+    [setLogoImage]
   );
 
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  }, []);
+  const handleDragOver = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+    },
+    []
+  );
 
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
@@ -58,7 +61,7 @@ function LogoUploader({ setLogoImage }: LogoUploaderProps) {
         reader.readAsDataURL(file);
       }
     },
-    [setLogoImage],
+    [setLogoImage]
   );
 
   return (
@@ -87,7 +90,9 @@ function LogoUploader({ setLogoImage }: LogoUploaderProps) {
             </label>
             <p className="pl-1">or drag and drop</p>
           </div>
-          <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 2MB</p>
+          <p className="text-xs text-muted-foreground">
+            PNG, JPG, GIF up to 2MB
+          </p>
           {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
       </div>

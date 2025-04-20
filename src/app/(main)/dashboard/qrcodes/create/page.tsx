@@ -12,8 +12,8 @@ import { api } from "@/trpc/react";
 import { revalidateRoute } from "../../revalidate-homepage";
 import { checkIfUserCanCreateMoreQRCodes } from "../utils";
 
-import QRCodeContent from "./qr-content";
-import QRCodeCustomization from "./qr-customization";
+import QRCodeContent from "./_components/qr-content";
+import QRCodeCustomization from "./_components/qr-customization";
 import { isValidUrlAndNotIshortn } from "./utils";
 
 import type { CornerType } from "qrcode-with-logos/types/src/core/types";

@@ -6,11 +6,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { cornerStyles, patternStyles } from "./constants";
-import ColorPicker from "./qr-color-picker";
-import LogoUploader from "./qr-logo-uploader";
+import { cornerStyles, patternStyles } from "../constants";
 
-import type { CornerStyle, PatternStyle } from "./types";
+import { ColorPicker } from "./qr-color-picker";
+import { LogoUploader } from "./qr-logo-uploader";
+
+import type { CornerStyle, PatternStyle } from "../types";
 
 interface QRCodeCustomizationProps {
   patternStyle: PatternStyle;
@@ -75,7 +76,10 @@ function QRCodeCustomization({
           </div>
         </div>
 
-        <ColorPicker selectedColor={selectedColor} setSelectedColor={setSelectedColor} />
+        <ColorPicker
+          selectedColor={selectedColor}
+          setSelectedColor={setSelectedColor}
+        />
         <LogoUploader setLogoImage={setLogoImage} />
       </div>
     </div>

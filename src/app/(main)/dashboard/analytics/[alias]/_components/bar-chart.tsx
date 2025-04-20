@@ -1,17 +1,22 @@
 "use client";
 
-import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis } from "recharts";
+import {
+  Bar,
+  CartesianGrid,
+  BarChart as RechartsBarChart,
+  XAxis,
+} from "recharts";
 
 import { Card } from "@/components/ui/card";
 import {
-	ChartContainer,
-	ChartLegend,
-	ChartLegendContent,
-	ChartTooltip,
-	ChartTooltipContent,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
 } from "@/components/ui/chart";
 
-import UpgradeText from "../../../qrcodes/upgrade-text";
+import UpgradeText from "../../../qrcodes/_components/upgrade-text";
 
 import type { ChartConfig } from "@/components/ui/chart";
 

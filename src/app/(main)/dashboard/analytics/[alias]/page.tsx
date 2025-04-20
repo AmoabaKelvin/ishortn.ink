@@ -1,17 +1,17 @@
 import { Crown, Fingerprint, MapPinned, MousePointerClick } from "lucide-react";
 
-import { ReferrerStats } from "@/app/(main)/dashboard/analytics/[alias]/referrers";
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
-import UpgradeText from "../../qrcodes/upgrade-text";
+import UpgradeText from "../../qrcodes/_components/upgrade-text";
 
 import { BarChart } from "./_components/bar-chart";
-import QuickInfoCard from "./_components/quick-info-card";
-import { CountriesAndCitiesStats } from "./countries-and-cities-stats";
-import { RangeSelectorWrapper } from "./range-selector-wrapper";
-import { UserAgentStats } from "./user-agent-stats";
-import WorldMapHeatmap from "./world-map-heatmap";
+import { CountriesAndCitiesStats } from "./_components/countries-and-cities-stats";
+import { QuickInfoCard } from "./_components/quick-info-card";
+import { RangeSelectorWrapper } from "./_components/range-selector-wrapper";
+import { ReferrerStats } from "./_components/referrers";
+import { UserAgentStats } from "./_components/user-agent-stats";
+import WorldMapHeatmap from "./_components/world-map-heatmap";
 
 import type { RangeEnum } from "@/server/api/routers/link/link.input";
 type LinksAnalyticsPageProps = {
@@ -21,7 +21,9 @@ type LinksAnalyticsPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) {
+export default async function LinkAnalyticsPage(
+  props: LinksAnalyticsPageProps
+) {
   const searchParams = await props.searchParams;
   const params = await props.params;
   const range = (searchParams?.range ?? "7d") as RangeEnum;
