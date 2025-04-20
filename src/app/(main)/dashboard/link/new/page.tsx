@@ -43,11 +43,12 @@ import { api } from "@/trpc/react";
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
 import { revalidateHomepage } from "../../revalidate-homepage";
 
-import { LinkPreviewComponent } from "./link-preview";
-import UpgradeToProAIButtonTooltip from "./upgrade-to-pro-ai-tooltip";
+import { LinkPreviewComponent } from "./_components/link-preview";
+import UpgradeToProAIButtonTooltip from "./_components/upgrade-to-pro-ai-tooltip";
 
 import type { CustomDomain } from "@/server/db/schema";
 import type { z } from "zod";
+
 type MetaData = {
   title: string;
   description: string;
