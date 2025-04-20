@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import BarList from "./_components/bar-list";
+import { BarList } from "./bar-list";
 
 type UserAgentStatsProps = {
   clicksPerDevice: Record<string, number>;
@@ -24,7 +24,9 @@ export function UserAgentStats({
   const browserRecordsAsArray = converRecordToArray(clicksPerBrowser);
   const modelRecordsAsArray = converRecordToArray(clicksPerModel);
 
-  const [currentView, setCurrentView] = useState<"device" | "os" | "browser" | "model">("device");
+  const [currentView, setCurrentView] = useState<
+    "device" | "os" | "browser" | "model"
+  >("device");
 
   const handleViewChange = (view: string) => {
     setCurrentView(view as "device" | "os" | "browser" | "model");

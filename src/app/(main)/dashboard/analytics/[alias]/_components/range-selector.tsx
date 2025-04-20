@@ -26,7 +26,11 @@ type RangeSelectorProps = {
   onRangeChange: (range: string) => void;
 };
 
-const RangeSelector = ({ isProPlan, initialRange, onRangeChange }: RangeSelectorProps) => {
+export const RangeSelector = ({
+  isProPlan,
+  initialRange,
+  onRangeChange,
+}: RangeSelectorProps) => {
   const [selectedRange, setSelectedRange] = React.useState(initialRange);
 
   const handleRangeChange = (value: string) => {
@@ -44,7 +48,9 @@ const RangeSelector = ({ isProPlan, initialRange, onRangeChange }: RangeSelector
           <SelectItem
             key={option.value}
             value={option.value}
-            disabled={!isProPlan && option.value !== "7d" && option.value !== "24h"}
+            disabled={
+              !isProPlan && option.value !== "7d" && option.value !== "24h"
+            }
           >
             {option.label}
           </SelectItem>
@@ -53,5 +59,3 @@ const RangeSelector = ({ isProPlan, initialRange, onRangeChange }: RangeSelector
     </Select>
   );
 };
-
-export { RangeSelector };

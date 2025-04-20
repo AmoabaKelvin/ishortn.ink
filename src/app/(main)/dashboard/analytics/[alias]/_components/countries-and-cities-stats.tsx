@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import BarList from "./_components/bar-list";
+import { BarList } from "./bar-list";
 
 type CountriesAndCitiesStatsProps = {
   countriesRecords: Record<string, number>;
