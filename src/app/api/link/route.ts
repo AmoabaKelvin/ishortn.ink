@@ -40,6 +40,12 @@ export async function GET(request: NextRequest) {
 
     console.log("Link found:", link);
 
+    // Redirect to password verification page for protected links
+    if (link.passwordHash) {
+      const verifyUrl = `${request.url.split('/api/link')[0]}/verify-password/${link.id}`;
+      return Response.json({ url: verifyUrl });
+    }
+
     return Response.json({ url: link.url });
   } catch (error) {
     console.error("Error processing link:", error);

@@ -64,7 +64,7 @@ const getUserIP = (headers: Headers) => {
     return xForwardedFor.split(",")[0]?.trim();
   }
 
-  return realIp?.trim();
+  return realIp?.trim() ?? "127.0.0.1";
 };
 
 export const retrieveDeviceAndGeolocationData = async (headers: Headers) => {
