@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
       ip,
       country,
       city,
-      continent
+      continent,
+      true // skipAnalytics flag
     );
 
     if (!link) {
@@ -39,6 +40,24 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("Link found:", link);
+
+    // Redirect to password verification page for protected links
+    if (link.passwordHash) {
+      const verifyUrl = `${request.url.split('/api/link')[0]}/verify-password/${link.id}`;
+      return Response.json({ url: verifyUrl });
+    }
+
+    // Record the click only for actual redirections (non-password protected links)
+    await recordUserClickForLink(
+      request,
+      domain,
+      alias,
+      ip,
+      country,
+      city,
+      continent,
+      false // record analytics
+    );
 
     return Response.json({ url: link.url });
   } catch (error) {

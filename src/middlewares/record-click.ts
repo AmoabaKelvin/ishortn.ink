@@ -90,7 +90,8 @@ export async function recordUserClickForLink(
   ip: string,
   country: string,
   city: string,
-  continent: string
+  continent: string,
+  skipAnalytics: boolean = false
 ) {
   const cleanedDomain = domain
     .replace(/^https?:\/\//, "")
@@ -101,15 +102,17 @@ export async function recordUserClickForLink(
   const cachedLink: Link | null = await getFromCache(cacheKey);
 
   if (cachedLink) {
-    await recordClick(
-      req,
-      cachedLink,
-      req.referrer ?? "direct",
-      ip,
-      country,
-      city,
-      continent
-    );
+    if (!skipAnalytics) {
+      await recordClick(
+        req,
+        cachedLink,
+        req.referrer ?? "direct",
+        ip,
+        country,
+        city,
+        continent
+      );
+    }
     return cachedLink;
   }
 
@@ -141,17 +144,19 @@ export async function recordUserClickForLink(
   // );
 
   waitUntil(setInCache(cacheKey, link));
-  waitUntil(
-    recordClick(
-      req,
-      link,
-      req.referrer ?? "direct",
-      ip,
-      country,
-      city,
-      continent
-    )
-  );
+  if (!skipAnalytics) {
+    waitUntil(
+      recordClick(
+        req,
+        link,
+        req.referrer ?? "direct",
+        ip,
+        country,
+        city,
+        continent
+      )
+    );
+  }
   return link;
 }
 
