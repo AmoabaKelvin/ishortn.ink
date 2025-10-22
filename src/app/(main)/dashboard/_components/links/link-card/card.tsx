@@ -63,7 +63,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                 : `${daysSinceLinkCreation}d`}
             </span>
             <span className="mx-1 text-slate-300">•</span>
-            <span className="cursor-pointer text-gray-900 hover:underline">
+            <span className="cursor-pointer text-gray-900 break-all hover:underline">
               {link.url}
             </span>
             {tags.length > 0 && (
