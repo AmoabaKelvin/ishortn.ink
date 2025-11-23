@@ -1,72 +1,62 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { landingPageCopy } from "@/lib/copy/landing-page";
+import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 
-type FAQProps = {
-  faqs: {
-    question: string;
-    answer: string;
-  }[];
-};
-
-export function Faq({ faqs }: FAQProps) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-
-  const toggleFAQ = (index: number) => {
-    setActiveIndex(activeIndex === index ? null : index);
-  };
+export const Faq = () => {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-10 text-gray-800 md:py-16">
-      <div className="space-y-4 first:mt-0">
-        {faqs.map((faq, index) => (
-          <motion.div
-            key={faq.question}
-            className="rounded-lg border border-gray-200 p-5 shadow-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
+    <section id="faq" className="py-20 bg-[#050505] border-t border-white/10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+        <div className="mb-16 text-center">
+          <h2 className="text-4xl font-black tracking-tighter text-white mb-4">
+            FAQ.
+          </h2>
+          <p className="text-neutral-500">Common questions, answered.</p>
+        </div>
+
+        <div className="space-y-4">
+          {landingPageCopy.faq.map((item, i) => (
             <div
-              className="flex cursor-pointer items-center justify-between"
-              onClick={() => toggleFAQ(index)}
+              key={i}
+              className={`border ${
+                openIndex === i
+                  ? "border-[#FF3300] bg-[#0A0A0A]"
+                  : "border-white/10 bg-[#0A0A0A]"
+              } transition-colors duration-300`}
             >
-              <h2 className="text-lg font-semibold text-gray-700">{faq.question}</h2>
-              <motion.span
-                animate={{ rotate: activeIndex === index ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
+              <button
+                className="w-full flex items-center justify-between p-6 text-left"
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
               >
-                <svg
-                  className="h-6 w-6 text-gray-700"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
+                <span
+                  className={`font-bold ${
+                    openIndex === i ? "text-white" : "text-neutral-400"
+                  }`}
                 >
-                  <title>Plus</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </motion.span>
-            </div>
-            {activeIndex === index && (
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: "auto" }}
-                transition={{ duration: 0.3 }}
-                className="mt-4 overflow-hidden"
+                  {item.question}
+                </span>
+                {openIndex === i ? (
+                  <Minus className="text-[#FF3300]" size={20} />
+                ) : (
+                  <Plus className="text-neutral-600" size={20} />
+                )}
+              </button>
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  openIndex === i ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                }`}
               >
-                <p className="text-gray-600">{faq.answer}</p>
-              </motion.div>
-            )}
-          </motion.div>
-        ))}
+                <div className="p-6 pt-0 text-neutral-500 text-sm leading-relaxed">
+                  {item.answer}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   );
-}
+};
