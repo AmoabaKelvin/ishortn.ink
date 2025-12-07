@@ -93,7 +93,11 @@ export default function Billing({ subscriptions }: BillingProps) {
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Plan</p>
-            <p className="font-medium">Pro Plan</p>
+            <p className="font-medium capitalize">
+              {subscriptions?.plan
+                ? `${subscriptions.plan} Plan`
+                : "Free Plan"}
+            </p>
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">
