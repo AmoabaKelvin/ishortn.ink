@@ -4,6 +4,8 @@ import { QuickInfoCard } from "@/app/(main)/dashboard/analytics/[alias]/_compone
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
+export const dynamic = "force-dynamic";
+
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 
 import { AnalyticsFilter } from "./_components/analytics-filter";
