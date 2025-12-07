@@ -27,18 +27,18 @@ export function SidebarStats({
 }: SidebarStatsProps) {
   const linkCap = linkLimit ?? undefined;
   const linkLimitValue = linkCap ?? (userHasPaidPlan ? undefined : 30);
-  const remaining = linkLimitValue ? Math.max(linkLimitValue - monthlyLinkCount, 0) : Infinity;
-  const percentage = linkLimitValue
-    ? Math.min((monthlyLinkCount / linkLimitValue) * 100, 100)
+  const remaining = linkLimitValue != null ? Math.max(linkLimitValue - monthlyLinkCount, 0) : Infinity;
+  const percentage = linkLimitValue != null
+    ? Math.min((monthlyLinkCount / (linkLimitValue || 1)) * 100, 100)
     : 0;
-  const isNearLimit = linkLimitValue ? monthlyLinkCount >= linkLimitValue * 0.83 : false;
-  const isAtLimit = linkLimitValue ? monthlyLinkCount >= linkLimitValue : false;
+  const isNearLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue * 0.83 : false;
+  const isAtLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue : false;
 
   const eventLimit = eventUsage?.limit ?? undefined;
   const eventCount = eventUsage?.count ?? 0;
-  const eventPercentage = eventLimit ? Math.min((eventCount / eventLimit) * 100, 100) : 0;
-  const eventNearLimit = eventLimit ? eventCount >= eventLimit * 0.8 : false;
-  const eventAtLimit = eventLimit ? eventCount >= eventLimit : false;
+  const eventPercentage = eventLimit != null ? Math.min((eventCount / (eventLimit || 1)) * 100, 100) : 0;
+  const eventNearLimit = eventLimit != null ? eventCount >= eventLimit * 0.8 : false;
+  const eventAtLimit = eventLimit != null ? eventCount >= eventLimit : false;
 
   if (userHasPaidPlan) {
     const isProPlan = plan === "pro";
@@ -62,7 +62,7 @@ export function SidebarStats({
             <Sigma size={14} className="text-gray-500" />
             <span className="font-medium">{monthlyLinkCount} links</span> created this month
           </div>
-          {eventLimit && (
+          {eventLimit != null && (
             <div className="mt-3 space-y-2 rounded-lg bg-white/60 border border-gray-200 p-3">
               <div className="flex items-center justify-between text-xs text-gray-700">
                 <span className="font-medium">Events usage</span>
@@ -141,7 +141,7 @@ export function SidebarStats({
                 {Number.isFinite(remaining) ? remaining : "Unlimited"}
               </span>
             </div>
-            {linkLimitValue ? (
+            {linkLimitValue != null ? (
               <>
                 <Progress
                   value={percentage}
@@ -164,7 +164,7 @@ export function SidebarStats({
           </div>
 
           {/* Warning Messages */}
-          {linkLimitValue && (
+          {linkLimitValue != null && (
             <>
               {isAtLimit && (
                 <div className="rounded-lg bg-red-50 border border-red-200 p-2.5">
@@ -185,7 +185,7 @@ export function SidebarStats({
         </div>
       </div>
 
-      {eventLimit && (
+      {eventLimit != null && (
         <div className="rounded-xl bg-gradient-to-br from-white to-gray-50 p-4 border border-gray-200">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
