@@ -31,6 +31,11 @@ const linkSchema = z.object({
     .transform((str) => JSON.parse(str) as string[])
     .default("[]"),
   archived: z.boolean().default(false),
+  folderId: z
+    .string()
+    .nullable()
+    .transform((val) => (val ? Number(val) : null))
+    .default(null),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
@@ -52,6 +57,7 @@ function convertToLink(data: Record<string, string>): Link {
     metadata: parsed.metadata as Record<string, unknown>,
     tags: parsed.tags || [],
     archived: parsed.archived || false,
+    folderId: parsed.folderId ?? null,
   };
 }
 

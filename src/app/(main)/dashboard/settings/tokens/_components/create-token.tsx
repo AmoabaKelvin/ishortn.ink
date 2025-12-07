@@ -34,7 +34,7 @@ const GenerateTokenTrigger = () => {
   };
 
   const handlePageRevalidate = async () => {
-    await revalidateRoute("/dashboard/tokens");
+    await revalidateRoute("/dashboard/settings");
   };
 
   return (

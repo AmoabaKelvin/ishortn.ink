@@ -4,10 +4,10 @@ import { ZodError } from "zod";
 
 import { db } from "@/server/db";
 
-import type { getAuth } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import type { inferAsyncReturnType } from "@trpc/server";
 export const createTRPCContext = async (opts: {
-  auth: ReturnType<typeof getAuth>;
+  auth: Awaited<ReturnType<typeof auth>>;
   headers: Headers;
 }) => {
   return {

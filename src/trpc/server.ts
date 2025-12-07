@@ -1,10 +1,14 @@
 import "server-only";
 
 import { auth } from "@clerk/nextjs/server";
-import { createTRPCProxyClient, loggerLink, TRPCClientError } from "@trpc/client";
+import {
+  createTRPCProxyClient,
+  loggerLink,
+  TRPCClientError
+} from "@trpc/client";
 import { callProcedure } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
-import { headers, type UnsafeUnwrappedHeaders } from "next/headers";
+import { headers } from "next/headers";
 import { cache } from "react";
 
 import { appRouter } from "@/server/api/root";
@@ -19,7 +23,7 @@ import type { TRPCErrorResponse } from "@trpc/server/rpc";
  * handling a tRPC call from a React Server Component.
  */
 const createContext = cache(async () => {
-  const heads = new Headers((await headers()) as unknown as UnsafeUnwrappedHeaders);
+  const heads = new Headers(await headers());
   return createTRPCContext({
     auth: await auth(),
     headers: heads,

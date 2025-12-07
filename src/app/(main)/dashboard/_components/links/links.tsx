@@ -9,11 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
 } from "@/components/ui/select";
 
 import Link from "./link-card/card";
@@ -35,7 +35,9 @@ export const Links = ({
 }: LinksProps) => {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(
+    urlSearchParams.get("search") ?? ""
+  );
   const [orderBy, setOrderBy] = useState(
     urlSearchParams.get("orderBy") ?? "createdAt"
   );
@@ -59,6 +61,29 @@ export const Links = ({
       setArchivedFilter(archivedFromUrl);
     }
   }, [urlSearchParams]);
+
+  // Debounce search query to transform URL
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      const params = new URLSearchParams(urlSearchParams.toString());
+      const currentSearch = params.get("search") ?? "";
+      
+      // Only push if changed
+      if (searchQuery !== currentSearch) {
+        if (searchQuery) {
+            params.set("search", searchQuery);
+        } else {
+            params.delete("search");
+        }
+        params.set("page", "1"); // Reset to first page
+        router.push(`/dashboard?${params.toString()}`);
+      }
+    }, 500); // 500ms debounce
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery, router, urlSearchParams]);
 
   const handlePageChange = (page: number) => {
     const params = new URLSearchParams(urlSearchParams.toString());
@@ -121,86 +146,84 @@ export const Links = ({
 
   return (
     <>
-      <div className="flex flex-col gap-4">
-        {/* Search input on its own line */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
+        {/* Search input */}
         <Input
-          className="w-full"
-          placeholder="Search links"
+          className="w-full sm:flex-1"
+          placeholder="Search links..."
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
         />
-        {/* Filters below the search */}
-        <div className="flex flex-col gap-2 md:flex-row">
-          {/* Archived filter */}
-          <Select
-            onValueChange={handleArchivedFilterChange}
-            value={archivedFilter}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Show links" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">
-                <Archive className="inline-block h-4 w-4 mr-1" /> Active
-              </SelectItem>
-              <SelectItem value="archived">
-                <ArchiveRestore className="inline-block h-4 w-4 mr-1" />{" "}
-                Archived
-              </SelectItem>
-              <SelectItem value="all">
-                <GalleryVerticalEnd className="inline-block h-4 w-4 mr-1" /> All
-              </SelectItem>
-            </SelectContent>
-          </Select>
 
-          {/* Tag filter */}
-          <Select
-            onValueChange={(value) => {
-              if (value !== "all") {
-                handleTagClick(value);
-              } else {
-                setSelectedTags([]);
-                const params = new URLSearchParams(urlSearchParams.toString());
-                params.delete("tag");
-                params.set("page", "1");
-                router.push(`/dashboard?${params.toString()}`);
-              }
-            }}
-            value={selectedTags.length > 0 ? selectedTags[0] : "all"}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Filter by tag" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All tags</SelectItem>
-              {allTags.map((tag) => (
-                <SelectItem key={tag} value={tag}>
-                  {tag}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Filters */}
+        {/* Archived filter */}
+        <Select
+          onValueChange={handleArchivedFilterChange}
+          value={archivedFilter}
+        >
+          <SelectTrigger className="w-full sm:w-[140px]">
+            <SelectValue placeholder="Show links" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">
+              <Archive className="inline-block h-4 w-4 mr-1" /> Active
+            </SelectItem>
+            <SelectItem value="archived">
+              <ArchiveRestore className="inline-block h-4 w-4 mr-1" /> Archived
+            </SelectItem>
+            <SelectItem value="all">
+              <GalleryVerticalEnd className="inline-block h-4 w-4 mr-1" /> All
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
-          {/* Sort order */}
-          <Select
-            onValueChange={handleOrderChange}
-            defaultValue={`${orderBy}-${orderDirection}`}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="createdAt-desc">Newest first</SelectItem>
-              <SelectItem value="createdAt-asc">Oldest first</SelectItem>
-              <SelectItem value="lastClicked-desc">Recently clicked</SelectItem>
-              <SelectItem value="lastClicked-asc">
-                Least recently clicked
+        {/* Tag filter */}
+        <Select
+          onValueChange={(value) => {
+            if (value !== "all") {
+              handleTagClick(value);
+            } else {
+              setSelectedTags([]);
+              const params = new URLSearchParams(urlSearchParams.toString());
+              params.delete("tag");
+              params.set("page", "1");
+              router.push(`/dashboard?${params.toString()}`);
+            }
+          }}
+          value={selectedTags.length > 0 ? selectedTags[0] : "all"}
+        >
+          <SelectTrigger className="w-full sm:w-[140px]">
+            <SelectValue placeholder="Filter by tag" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All tags</SelectItem>
+            {allTags.map((tag) => (
+              <SelectItem key={tag} value={tag}>
+                {tag}
               </SelectItem>
-              <SelectItem value="totalClicks-desc">Most clicks</SelectItem>
-              <SelectItem value="totalClicks-asc">Least clicks</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Sort order */}
+        <Select
+          onValueChange={handleOrderChange}
+          value={`${orderBy}-${orderDirection}`}
+        >
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="createdAt-desc">Newest first</SelectItem>
+            <SelectItem value="createdAt-asc">Oldest first</SelectItem>
+            <SelectItem value="lastClicked-desc">Recently clicked</SelectItem>
+            <SelectItem value="lastClicked-asc">
+              Least recently clicked
+            </SelectItem>
+            <SelectItem value="totalClicks-desc">Most clicks</SelectItem>
+            <SelectItem value="totalClicks-asc">Least clicks</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {selectedTags.length > 0 && (

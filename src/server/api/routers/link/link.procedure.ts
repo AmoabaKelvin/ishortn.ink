@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
+    createTRPCRouter,
+    protectedProcedure,
+    publicProcedure,
 } from "../../trpc";
 
 import * as inputs from "./link.input";
@@ -97,6 +97,12 @@ export const linkRouter = createTRPCRouter({
       return services.getLinkVisits(ctx, input);
     }),
 
+  allAnalytics: protectedProcedure
+    .input(inputs.allAnalyticsSchema)
+    .query(({ ctx, input }) => {
+      return services.getAllUserAnalytics(ctx, input);
+    }),
+
   toggleLinkStatus: protectedProcedure
     .input(inputs.getLinkSchema)
     .mutation(({ ctx, input }) => {
@@ -151,5 +157,9 @@ export const linkRouter = createTRPCRouter({
 
   checkVercelHeaders: publicProcedure.query(async ({ ctx }) => {
     return services.checkPresenceOfVercelHeaders(ctx);
+  }),
+
+  stats: protectedProcedure.query(async ({ ctx }) => {
+    return services.getStats(ctx);
   }),
 });

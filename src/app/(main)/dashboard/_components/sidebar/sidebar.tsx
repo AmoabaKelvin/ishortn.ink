@@ -9,6 +9,8 @@ type DashboardSidebarProps = {
   numberOfClicks: number;
   userHasProPlan: boolean;
   monthlyLinkCount: number;
+  linkLimit?: number | null;
+  plan?: "free" | "pro" | "ultra";
 };
 
 const DashboardSidebar = ({
@@ -16,6 +18,8 @@ const DashboardSidebar = ({
   numberOfClicks,
   userHasProPlan,
   monthlyLinkCount,
+  linkLimit,
+  plan,
 }: DashboardSidebarProps) => {
   return (
     <div className="col-span-11 flex w-full flex-col gap-4 md:col-span-4 ">
@@ -28,6 +32,8 @@ const DashboardSidebar = ({
       <MonthlyUsage
         monthlyLinkCount={monthlyLinkCount}
         isProUser={userHasProPlan}
+        linkLimit={linkLimit}
+        plan={plan}
       />
       {/* <BuyMeACoffee /> */}
       {/* <UpgradeToPro /> */}

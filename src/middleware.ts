@@ -15,7 +15,8 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     pathname === "/" ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/_next/")
+    pathname.startsWith("/_next/") ||
+    pathname.endsWith(".png")
   ) {
     return NextResponse.next();
   }
@@ -64,7 +65,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next|favicon|^[^/]+$|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/((?!_next|favicon|^[^/]+$|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
   ],
 };

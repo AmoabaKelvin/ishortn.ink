@@ -41,6 +41,10 @@ export async function generateMetadata(
     headersList.get("x-forwarded-host") ?? headersList.get("host");
   const domain = getDomain(incomingDomain);
 
+  if (params.linkAlias.toLowerCase().endsWith(".png")) {
+    return {};
+  }
+
   const link = await api.link.retrieveOriginalUrl.query({
     alias: cleanAlias(params.linkAlias),
     domain: cleanUrl(domain),
@@ -81,6 +85,10 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
     headersList.get("x-forwarded-host") ?? headersList.get("host");
   const userAgent = headersList.get("user-agent");
   const domain = getDomain(incomingDomain);
+
+  if (params.linkAlias.endsWith(".png")) {
+    return notFound();
+  }
 
   const link = await api.link.retrieveOriginalUrl.query({
     alias: cleanAlias(params.linkAlias),

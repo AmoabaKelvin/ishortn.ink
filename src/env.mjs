@@ -21,6 +21,7 @@ export const env = createEnv({
     REDIS_URL: z.string().url(),
     UMAMI_TRACKING_ID: z.string().optional(),
     UMAMI_URL: z.string().url().optional(),
+    DISCORD_WEBHOOK_URL: z.string().url().optional(),
   },
 
   /**
@@ -47,6 +48,7 @@ export const env = createEnv({
     REDIS_URL: process.env.REDIS_URL,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,
     UMAMI_URL: process.env.UMAMI_URL,
+    DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },

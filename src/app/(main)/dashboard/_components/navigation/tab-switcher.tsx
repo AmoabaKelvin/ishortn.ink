@@ -9,7 +9,7 @@ const links = [
   { name: "Links", href: "/dashboard" },
   { name: "QR Codes", href: "/dashboard/qrcodes" },
   // { name: "API Keys", href: "/dashboard/tokens" },
-  { name: "Settings", href: "/dashboard/settings/general" },
+  { name: "Settings", href: "/dashboard/settings" },
   // {
   //   name: "Feature Requests",
   //   href: "https://docs.google.com/forms/d/e/1FAIpQLSfVfz9c1qkC4aDSjFnMcVnrimKiNOHA2aoQhyxNaMmDjMSNEg/viewform?usp=sf_link",
