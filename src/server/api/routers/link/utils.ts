@@ -143,10 +143,13 @@ export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<s
   return defaultDomain;
 }
 
+const MINIMUM_ALIAS_LENGTH_FREE = 6;
+
 export const validateAlias = (
   ctx: ProtectedTRPCContext,
   alias: string,
   domain: string,
+  isPaidUser: boolean = false,
 ): Promise<void> => {
   const aliasRegex = /^[a-zA-Z0-9-_]+$/;
 
@@ -156,6 +159,13 @@ export const validateAlias = (
 
   if (alias.includes(".")) {
     throw new Error("Cannot include periods in alias");
+  }
+
+  // Free users must have aliases with at least 6 characters
+  if (!isPaidUser && alias.length < MINIMUM_ALIAS_LENGTH_FREE) {
+    throw new Error(
+      `Custom aliases must be at least ${MINIMUM_ALIAS_LENGTH_FREE} characters on the free plan. Upgrade to Pro for shorter aliases.`
+    );
   }
 
   return checkAliasAvailability(ctx, alias, domain);

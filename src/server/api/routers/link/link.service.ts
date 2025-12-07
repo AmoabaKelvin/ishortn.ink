@@ -18,6 +18,7 @@ import QRCode from "qrcode";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { resolvePlan } from "@/lib/billing/plans";
+import { getUserPlanContext } from "@/server/lib/user-plan";
 import { deleteFromCache, getFromCache, setInCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
@@ -247,7 +248,7 @@ export const createLink = async (
   }
 
   if (input.alias) {
-    await validateAlias(ctx, input.alias, domain);
+    await validateAlias(ctx, input.alias, domain, isPaidPlan);
   }
 
   if (input.password) {
@@ -340,6 +341,24 @@ export const updateLink = async (
   ctx: ProtectedTRPCContext,
   input: UpdateLinkInput
 ) => {
+  // Get existing link first
+  const existingLink = await ctx.db.query.link.findFirst({
+    where: (table, { eq, and }) =>
+      and(eq(table.id, input.id), eq(table.userId, ctx.auth.userId)),
+  });
+
+  if (!existingLink) {
+    throw new Error("Link not found");
+  }
+
+  // If alias is being changed, validate it
+  if (input.alias && input.alias !== existingLink.alias) {
+    const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
+    const isPaidUser = planCtx ? planCtx.plan !== "free" : false;
+    const domain = input.domain ?? existingLink.domain;
+    await validateAlias(ctx, input.alias, domain, isPaidUser);
+  }
+
   // Extract tags from input
   const { tags: tagNames, ...linkData } = input;
 
