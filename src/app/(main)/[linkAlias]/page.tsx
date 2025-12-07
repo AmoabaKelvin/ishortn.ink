@@ -86,7 +86,7 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
   const userAgent = headersList.get("user-agent");
   const domain = getDomain(incomingDomain);
 
-  if (params.linkAlias.endsWith(".png")) {
+  if (params.linkAlias.toLowerCase().endsWith(".png")) {
     return notFound();
   }
 
