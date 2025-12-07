@@ -12,15 +12,12 @@ export function configureLemonSqueezy() {
   if (missingVars.length > 0) {
     throw new Error(
       `Missing required LEMONSQUEEZY env variables: ${missingVars.join(
-        ", ",
-      )}. Please, set them in your .env file.`,
+        ", "
+      )}. Please, set them in your .env file.`
     );
   }
 
   lemonSqueezySetup({
     apiKey: process.env.LEMONSQUEEZY_API_KEY,
-    onError: (error) => {
-      throw new Error(`Lemon Squeezy API error: ${error.message}`);
-    },
   });
 }

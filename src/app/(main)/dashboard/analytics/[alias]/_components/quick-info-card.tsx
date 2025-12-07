@@ -8,8 +8,7 @@ type QuickInfoCardProps = {
 
 export function QuickInfoCard({ title, value, icon }: QuickInfoCardProps) {
   return (
-    // expand card on hover
-    <Card className="transition-transform duration-300 hover:scale-105">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon}

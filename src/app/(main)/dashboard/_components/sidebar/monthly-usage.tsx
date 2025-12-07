@@ -6,16 +6,19 @@ import { Progress } from "@/components/ui/progress";
 type MonthlyUsageProps = {
   monthlyLinkCount: number;
   isProUser: boolean;
+  linkLimit?: number | null;
+  plan?: "free" | "pro" | "ultra";
 };
 
-const MonthlyUsage = ({ monthlyLinkCount, isProUser }: MonthlyUsageProps) => {
-  if (isProUser) {
-    return null; // Don't show for pro users
+const MonthlyUsage = ({ monthlyLinkCount, isProUser, linkLimit, plan }: MonthlyUsageProps) => {
+  const limit = linkLimit ?? (isProUser ? undefined : 30);
+
+  if (!limit) {
+    return null; // Unlimited plans don't need this card
   }
 
-  const limit = 30;
   const percentage = Math.min((monthlyLinkCount / limit) * 100, 100);
-  const isNearLimit = monthlyLinkCount >= 25;
+  const isNearLimit = monthlyLinkCount >= limit * 0.83;
   const isAtLimit = monthlyLinkCount >= limit;
 
   return (

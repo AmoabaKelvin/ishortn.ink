@@ -10,14 +10,16 @@ type UpgradeTextProps = {
 };
 
 function UpgradeText({ text }: UpgradeTextProps) {
-  const upgradeMutation = api.lemonsqueezy.createCheckoutUrl.useMutation({
-    onSuccess: (url) => {
-      window.open(url);
+  const upgradeMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
+    onSuccess: (data) => {
+      if (data.status === "redirect" && data.url) {
+        window.open(data.url);
+      }
     },
   });
 
   const handleUpgrade = async () => {
-    toast.promise(upgradeMutation.mutateAsync(), {
+    toast.promise(upgradeMutation.mutateAsync({ plan: "pro" }), {
       loading: "Creating checkout session",
       success: "Checkout session created successfully",
       error: "Failed to create checkout session",
@@ -25,10 +27,12 @@ function UpgradeText({ text }: UpgradeTextProps) {
   };
 
   return (
-    <span className="text-blue-600 underline hover:cursor-pointer" onClick={handleUpgrade}>
-      {/* Upgrade your subscription */}
+    <button 
+      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+      onClick={handleUpgrade}
+    >
       {text ?? "Upgrade your subscription"}
-    </span>
+    </button>
   );
 }
 

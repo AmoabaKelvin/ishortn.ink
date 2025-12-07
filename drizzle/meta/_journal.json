@@ -183,6 +183,20 @@
       "when": 1744755274438,
       "tag": "0025_sudden_expediter",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1763930980580,
+      "tag": "0026_plain_taskmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1765049407994,
+      "tag": "0027_lucky_dragon_man",
+      "breakpoints": true
     }
   ]
 }

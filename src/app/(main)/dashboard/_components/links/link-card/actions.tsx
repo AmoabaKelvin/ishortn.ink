@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  AlertTriangle,
   Archive,
   ArchiveRestore,
   Copy,
+  FolderInput,
   KeyRound,
   MoreVertical,
   Pencil,
@@ -19,6 +21,16 @@ import { toast } from "sonner";
 
 import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -28,6 +40,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
+
+import { MoveToFolderModal } from "@/app/(main)/dashboard/folders/_components/move-to-folder-modal";
 
 import { ChangeLinkPasswordModal } from "./password-change-modal";
 import { QRCodeModal } from "./qrcode-modal";
@@ -43,6 +57,9 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [qrModal, setQrModal] = useState(false);
   const [openChangePasswordModal, setOpenChangePasswordModal] = useState(false);
+  const [moveToFolderModal, setMoveToFolderModal] = useState(false);
+  const [resetStatsDialog, setResetStatsDialog] = useState(false);
+  const [deleteLinkDialog, setDeleteLinkDialog] = useState(false);
   const isPublicStatsEnabled = link.publicStats!;
   const isLinkActive = !link.disabled!;
   const router = useTransitionRouter();
@@ -119,7 +136,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
           <MoreVertical className="size-4 cursor-pointer" />
         </DropdownMenuTrigger>
@@ -148,6 +165,11 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
               {isLinkActive ? "Deactivate" : "Activate"} Link
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setMoveToFolderModal(true)}>
+              <FolderInput className="mr-2 size-4" />
+              Move to Folder
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             {link.passwordHash ? (
               <DropdownMenuItem
                 className="text-red-500"
@@ -167,13 +189,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
             )}
             <DropdownMenuItem
               className="text-red-500 hover:cursor-pointer"
-              onClick={() => {
-                toast.promise(resetLinksMutation.mutateAsync({ id: link.id }), {
-                  loading: "Resetting Statistics...",
-                  success: "Link statistics reset successfully",
-                  error: "Failed to reset Link Statistics",
-                });
-              }}
+              onClick={() => setResetStatsDialog(true)}
             >
               <RotateCcwIcon className="mr-2 size-4" />
               Reset Statistics
@@ -181,13 +197,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-500"
-              onClick={() => {
-                toast.promise(deleteLinkMutation.mutateAsync({ id: link.id }), {
-                  loading: "Deleting Link...",
-                  success: "Link deleted successfully",
-                  error: "Failed to delete Link",
-                });
-              }}
+              onClick={() => setDeleteLinkDialog(true)}
             >
               <Trash2Icon className="mr-2 size-4" />
               Delete Link
@@ -223,6 +233,82 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
         id={link.id}
         hasPassword={!!link.passwordHash}
       />
+      <MoveToFolderModal
+        linkId={link.id}
+        open={moveToFolderModal}
+        onOpenChange={setMoveToFolderModal}
+        currentFolderId={link.folderId}
+      />
+
+      {/* Reset Statistics Confirmation Dialog */}
+      <AlertDialog open={resetStatsDialog} onOpenChange={setResetStatsDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Reset Statistics
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Are you sure you want to reset all statistics for{" "}
+                <span className="font-semibold">{link.alias}</span>?
+              </p>
+              <p>This will permanently delete all click data and cannot be undone.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                toast.promise(resetLinksMutation.mutateAsync({ id: link.id }), {
+                  loading: "Resetting Statistics...",
+                  success: "Link statistics reset successfully",
+                  error: "Failed to reset Link Statistics",
+                });
+              }}
+              disabled={resetLinksMutation.isLoading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {resetLinksMutation.isLoading ? "Resetting..." : "Reset Statistics"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Link Confirmation Dialog */}
+      <AlertDialog open={deleteLinkDialog} onOpenChange={setDeleteLinkDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Delete Link
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Are you sure you want to delete{" "}
+                <span className="font-semibold">{link.alias}</span>?
+              </p>
+              <p>This will permanently delete the link and all its statistics. This action cannot be undone.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                toast.promise(deleteLinkMutation.mutateAsync({ id: link.id }), {
+                  loading: "Deleting Link...",
+                  success: "Link deleted successfully",
+                  error: "Failed to delete Link",
+                });
+              }}
+              disabled={deleteLinkMutation.isLoading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteLinkMutation.isLoading ? "Deleting..." : "Delete Link"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

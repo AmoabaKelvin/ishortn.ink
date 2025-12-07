@@ -129,7 +129,7 @@ export function BulkLinkUploadDialog({
           </Button>
         ) : (
           <Button asChild>
-            <Link href="/dashboard/settings/billing">Upgrade to Pro 🚀</Link>
+            <Link href="/dashboard/settings#billing">Upgrade to Pro 🚀</Link>
           </Button>
         )}
       </DialogContent>

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { Resend } from "resend";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
+import { getPlanFromIds } from "@/lib/billing/plans";
 import { webhookHasMeta } from "@/lib/typeguards";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
@@ -59,6 +60,9 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
   const createdAt = new Date(lemonsqueezySubscription.created_at);
   const endsAt = lemonsqueezySubscription.ends_at;
   const status = lemonsqueezySubscription.status;
+  const productId = lemonsqueezySubscription.product_id;
+  const variantId = lemonsqueezySubscription.variant_id;
+  const plan = getPlanFromIds(variantId, productId) ?? "pro";
 
   // payment data
   const cardBrand = lemonsqueezySubscription.card_brand;
@@ -81,6 +85,9 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
         customerId,
         orderId,
         status,
+        plan,
+        variantId,
+        productId,
         cardBrand,
         cardLastFour,
         renewsAt: new Date(renewsAt),
@@ -113,10 +120,24 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
       .update(subscription)
       .set({
         status,
+        plan,
+        variantId,
+        productId,
         renewsAt: renewsAt ? new Date(renewsAt) : null,
         endsAt: endsAt ? new Date(endsAt) : null,
         cardBrand,
         cardLastFour,
+      })
+      .where(eq(subscription.userId, userId));
+  } else if (event_name === "subscription_cancelled") {
+    await db
+      .update(subscription)
+      .set({
+        status,
+        plan: "free",
+        variantId: 0,
+        productId: 0,
+        endsAt: endsAt ? new Date(endsAt) : null,
       })
       .where(eq(subscription.userId, userId));
   } else if (event_name === "subscription_expired") {
@@ -124,6 +145,9 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
       .update(subscription)
       .set({
         status,
+        plan: "free",
+        variantId: 0,
+        productId: 0,
         endsAt: new Date(), // set endsAt to now to indicate the subscription has ended
       })
       .where(eq(subscription.userId, userId));

@@ -7,6 +7,9 @@ import { redis } from "@/lib/core/cache";
 import { normalizeAlias, parseReferrer } from "@/lib/utils";
 import { isBot } from "@/lib/utils/is-bot";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
+import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user-plan";
+import { registerEventUsage } from "@/server/lib/event-usage";
+import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
 
 import type { Link } from "@/server/db/schema";
 import type { ProtectedTRPCContext, PublicTRPCContext } from "../../trpc";
@@ -26,6 +29,23 @@ export async function logAnalytics(ctx: PublicTRPCContext, link: Link, from: str
   }
 
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+
+  const usage = await registerEventUsage(link.userId, ctx.db);
+
+  if (usage.alertLevelTriggered && usage.limit && usage.userEmail && usage.plan) {
+    await sendEventUsageEmail({
+      email: usage.userEmail,
+      name: usage.userName,
+      threshold: usage.alertLevelTriggered,
+      limit: usage.limit,
+      currentCount: usage.currentCount,
+      plan: usage.plan,
+    });
+  }
+
+  if (!usage.allowed) {
+    return;
+  }
 
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,
@@ -51,65 +71,55 @@ export async function logAnalytics(ctx: PublicTRPCContext, link: Link, from: str
 }
 
 export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
-  const userInfo = await ctx.db.query.user.findFirst({
-    where: (table, { eq }) => eq(table.id, ctx.auth.userId),
-    with: {
-      subscriptions: true,
-    },
-  });
+  const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
 
-  const userSubscription = userInfo?.subscriptions;
-  const isProUser = userSubscription?.status === "active";
-
-  if (isProUser) {
-    return {
-      isProUser: true,
-      currentCount: userInfo?.monthlyLinkCount ?? 0,
-    };
+  if (!planCtx) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "User not found",
+    });
   }
 
-  let currentCount = userInfo?.monthlyLinkCount ?? 0;
-  const lastReset = userInfo?.lastLinkCountReset;
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const { plan, caps } = planCtx;
+  const currentCount = await normalizeMonthlyLinkCount(planCtx, ctx.db);
+  const limit = caps.linksLimit;
 
-  if (!lastReset || lastReset < monthStart) {
-    await ctx.db
-      .update(user)
-      .set({
-        monthlyLinkCount: 0,
-        lastLinkCountReset: now,
-      })
-      .where(eq(user.id, ctx.auth.userId));
-    currentCount = 0;
-  }
+  if (limit !== undefined && currentCount >= limit) {
+    const limitText = limit.toLocaleString();
+    const linkLimitMessage =
+      plan === "free"
+        ? `You've reached your monthly limit of ${limitText} links. Upgrade to Pro for more.`
+        : `You've reached your monthly limit of ${limitText} links. Upgrade to Ultra for unlimited links.`;
 
-  if (currentCount >= 30) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "You've reached your monthly limit of 30 links. Upgrade to Pro for unlimited links!",
+      message: linkLimitMessage,
     });
   }
 
   return {
-    isProUser: false,
+    plan,
     currentCount,
+    limit,
+    isProUser: plan !== "free",
   };
 }
 
 export async function incrementLinkCount(
   ctx: ProtectedTRPCContext,
   currentCount: number,
-  isProUser: boolean,
+  limit?: number
 ) {
-  if (!isProUser) {
-    await ctx.db
-      .update(user)
-      .set({
-        monthlyLinkCount: currentCount + 1,
-      })
-      .where(eq(user.id, ctx.auth.userId));
+  if (limit === undefined) {
+    return;
   }
+
+  await ctx.db
+    .update(user)
+    .set({
+      monthlyLinkCount: currentCount + 1,
+    })
+    .where(eq(user.id, ctx.auth.userId));
 }
 
 export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<string> {
@@ -133,10 +143,13 @@ export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<s
   return defaultDomain;
 }
 
+const MINIMUM_ALIAS_LENGTH_FREE = 6;
+
 export const validateAlias = (
   ctx: ProtectedTRPCContext,
   alias: string,
   domain: string,
+  isPaidUser: boolean = false,
 ): Promise<void> => {
   const aliasRegex = /^[a-zA-Z0-9-_]+$/;
 
@@ -146,6 +159,13 @@ export const validateAlias = (
 
   if (alias.includes(".")) {
     throw new Error("Cannot include periods in alias");
+  }
+
+  // Free users must have aliases with at least 6 characters
+  if (!isPaidUser && alias.length < MINIMUM_ALIAS_LENGTH_FREE) {
+    throw new Error(
+      `Custom aliases must be at least ${MINIMUM_ALIAS_LENGTH_FREE} characters on the free plan. Upgrade to Pro for shorter aliases.`
+    );
   }
 
   return checkAliasAvailability(ctx, alias, domain);

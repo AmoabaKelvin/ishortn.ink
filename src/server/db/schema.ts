@@ -23,16 +23,19 @@ export const user = mysqlTable(
       length: 32,
     }).primaryKey(), // 32 chars is the length of clerk user id
     name: varchar("name", { length: 255 }),
-    email: varchar("email", { length: 255 }).unique(),
-    createdAt: timestamp("createdAt").defaultNow(),
-    imageUrl: text("imageUrl"),
-    qrCodeCount: int("qrCodeCount").default(0),
-    monthlyLinkCount: int("monthlyLinkCount").default(0),
-    lastLinkCountReset: timestamp("lastLinkCountReset").defaultNow(),
-  },
-  (table) => ({
-    userIdx: index("userId_idx").on(table.id),
-  })
+  email: varchar("email", { length: 255 }).unique(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  imageUrl: text("imageUrl"),
+  qrCodeCount: int("qrCodeCount").default(0),
+  monthlyLinkCount: int("monthlyLinkCount").default(0),
+  lastLinkCountReset: timestamp("lastLinkCountReset").defaultNow(),
+  monthlyEventCount: int("monthlyEventCount").default(0),
+  lastEventCountReset: timestamp("lastEventCountReset").defaultNow(),
+  eventUsageAlertLevel: int("eventUsageAlertLevel").default(0),
+},
+(table) => ({
+  userIdx: index("userId_idx").on(table.id),
+})
 );
 
 export const subscription = mysqlTable(
@@ -47,15 +50,18 @@ export const subscription = mysqlTable(
     orderId: int("orderId").default(0),
     subscriptionId: int("subscriptionId").default(0),
     customerId: int("customerId").default(0),
-    renewsAt: datetime("renewsAt"),
-    createdAt: timestamp("createdAt"),
-    endsAt: datetime("endsAt"),
-    status: varchar("status", { length: 255 }).default(""),
+  renewsAt: datetime("renewsAt"),
+  createdAt: timestamp("createdAt"),
+  endsAt: datetime("endsAt"),
+  status: varchar("status", { length: 255 }).default(""),
+  plan: mysqlEnum("plan", ["free", "pro", "ultra"]).default("free"),
+  variantId: int("variantId").default(0),
+  productId: int("productId").default(0),
 
-    // details about the payment to show in the dashboard
-    cardBrand: varchar("cardBrand", { length: 255 }).default(""),
-    cardLastFour: varchar("cardLastFour", { length: 4 }).default(""),
-  },
+  // details about the payment to show in the dashboard
+  cardBrand: varchar("cardBrand", { length: 255 }).default(""),
+  cardLastFour: varchar("cardLastFour", { length: 4 }).default(""),
+},
   (table) => ({
     userIdx: index("userId_idx").on(table.userId),
   })
@@ -84,6 +90,7 @@ export const link = mysqlTable(
     metadata: json("metadata"),
     tags: json("tags").$type<string[]>().default([]),
     archived: boolean("archived").default(false),
+    folderId: int("folderId"),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
@@ -92,6 +99,7 @@ export const link = mysqlTable(
       table.alias,
       table.domain
     ), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
+    folderIdIdx: index("folderId_idx").on(table.folderId),
   })
 );
 
@@ -221,6 +229,22 @@ export const tag = mysqlTable(
   })
 );
 
+// Folder model for organizing links
+export const folder = mysqlTable(
+  "Folder",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+  })
+);
+
 // LinkTag join table for many-to-many relationship
 export const linkTag = mysqlTable(
   "LinkTag",
@@ -245,6 +269,10 @@ export const linkRelations = relations(link, ({ one, many }) => ({
   linkVisits: many(linkVisit),
   uniqueLinkVisits: many(uniqueLinkVisit),
   linkTags: many(linkTag),
+  folder: one(folder, {
+    fields: [link.folderId],
+    references: [folder.id],
+  }),
 }));
 
 export const customDomain = mysqlTable(
@@ -278,6 +306,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   customDomains: many(customDomain),
   siteSettings: one(siteSettings),
   tags: many(tag),
+  folders: many(folder),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -357,6 +386,15 @@ export const linkTagRelations = relations(linkTag, ({ one }) => ({
   }),
 }));
 
+// Define relations for Folder
+export const folderRelations = relations(folder, ({ one, many }) => ({
+  user: one(user, {
+    fields: [folder.userId],
+    references: [user.id],
+  }),
+  links: many(link),
+}));
+
 export type CustomDomain = typeof customDomain.$inferSelect;
 export type NewCustomDomain = typeof customDomain.$inferInsert;
 
@@ -385,3 +423,6 @@ export type NewTag = typeof tag.$inferInsert;
 
 export type LinkTag = typeof linkTag.$inferSelect;
 export type NewLinkTag = typeof linkTag.$inferInsert;
+
+export type Folder = typeof folder.$inferSelect;
+export type NewFolder = typeof folder.$inferInsert;

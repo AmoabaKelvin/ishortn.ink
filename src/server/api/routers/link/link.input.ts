@@ -29,6 +29,7 @@ export const listLinksSchema = z.object({
   orderDirection: z.enum(["asc", "desc"]).default("desc"),
   tag: z.string().optional(),
   archivedFilter: z.enum(["active", "archived", "all"]).optional(),
+  search: z.string().optional(),
 });
 
 export const createLinkSchema = z.object({
@@ -77,6 +78,7 @@ export const rangeEnum = z.enum([
   "last_month",
   "this_year",
   "last_year",
+  "all",
 ]);
 
 export type RangeEnum = z.infer<typeof rangeEnum>;
@@ -96,3 +98,11 @@ export type ListLinksInput = z.infer<typeof listLinksSchema>;
 
 export const ToggleArchiveInput = z.object({ id: z.number() });
 export type ToggleArchiveInput = z.infer<typeof ToggleArchiveInput>;
+
+export const allAnalyticsSchema = z.object({
+  range: rangeEnum.default("7d"),
+  filterType: z.enum(["all", "folder", "domain", "link"]).default("all"),
+  filterId: z.union([z.number(), z.string()]).optional(),
+});
+
+export type AllAnalyticsInput = z.infer<typeof allAnalyticsSchema>;

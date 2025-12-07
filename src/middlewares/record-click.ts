@@ -8,6 +8,8 @@ import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
+import { registerEventUsage } from "@/server/lib/event-usage";
+import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
 
 /**
  * This function records a unique click for a link.
@@ -69,6 +71,25 @@ async function recordClick(
   };
 
   const ipHash = crypto.createHash("sha256").update(ip).digest("hex");
+
+  const usage = await registerEventUsage(link.userId, db);
+
+  if (usage.alertLevelTriggered && usage.limit && usage.userEmail && usage.plan) {
+    waitUntil(
+      sendEventUsageEmail({
+        email: usage.userEmail,
+        name: usage.userName,
+        threshold: usage.alertLevelTriggered,
+        limit: usage.limit,
+        currentCount: usage.currentCount,
+        plan: usage.plan,
+      })
+    );
+  }
+
+  if (!usage.allowed) {
+    return;
+  }
 
   await Promise.all([
     db.insert(linkVisit).values({

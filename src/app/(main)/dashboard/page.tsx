@@ -8,7 +8,8 @@ import { api } from "@/trpc/server";
 
 import { BulkLinkActions } from "./_components/bulk-actions/bulk-actions";
 import { Links } from "./_components/links/links";
-import { DashboardSidebar } from "./_components/sidebar/sidebar";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
@@ -32,55 +33,42 @@ export default async function DashboardPage(props: Props) {
     | "archived"
     | "all"
     | undefined;
+  const search = searchParams.search as string | undefined;
 
-  const [
-    { links, totalLinks, totalPages, currentPage, totalClicks },
-    userSubscription,
-  ] = await Promise.all([
-    api.link.list.query({
+  const { links, totalLinks, totalPages, currentPage } =
+    await api.link.list.query({
       page,
       pageSize,
       orderBy,
       orderDirection,
       tag,
       archivedFilter,
-    }),
-    api.subscriptions.get.query(),
-  ]);
+      search,
+    });
 
-  const subscriptions = userSubscription?.subscriptions;
-  const userHasProPlan = subscriptions?.status === "active";
+  const { totalLinks: totalLinksCount, activeLinks } =
+    await api.link.stats.query();
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold leading-tight text-gray-800">
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-2xl font-semibold leading-tight text-gray-900">
           Links
         </h2>
         <div className="flex items-center gap-2">
-          <Button asChild>
+          <Button asChild className="bg-blue-600 hover:bg-blue-700">
             <Link href="/dashboard/link/new">Shorten Link</Link>
           </Button>
           <BulkLinkActions />
         </div>
       </div>
 
-      <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-11">
-        <DashboardSidebar
-          monthlyLinkCount={userSubscription?.monthlyLinkCount!}
-          numberOfClicks={totalClicks}
-          numberOfLinks={totalLinks}
-          userHasProPlan={userHasProPlan}
-        />
-        <div className="col-span-11 md:col-span-7">
-          <Links
-            links={links}
-            totalPages={totalPages}
-            currentPage={currentPage}
-            totalLinks={totalLinks}
-          />
-        </div>
-      </div>
+      <Links
+        links={links}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        totalLinks={totalLinks}
+      />
     </div>
   );
 }

@@ -134,7 +134,7 @@ const QRCodeDisplay = ({ qr }: QRCodeDisplayProps) => {
       <UpdateLinkModal
         open={openLinkUpdateModal}
         setOpen={setOpenLinkUpdateModal}
-        link={{ ...qr.link!, totalClicks: 0, tags: qr.link?.tags ?? [] }}
+        link={{ ...qr.link!, totalClicks: 0, tags: qr.link?.tags ?? [], folder: null }}
       />
     </div>
   );

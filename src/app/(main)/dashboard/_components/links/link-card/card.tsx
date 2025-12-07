@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy } from "lucide-react";
+import { Copy, Folder, MousePointerClick } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,6 @@ import { copyToClipboard, daysSinceDate } from "@/lib/utils";
 
 import { LinkActions } from "./actions";
 import { LinkNoteTooltip } from "./note-tooltip";
-import { LinkPasswordStatusTooltip } from "./security-tooltip";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -23,6 +22,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
 
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
   const tags = (link.tags as string[]) || [];
+  const folderInfo = link.folder as { id: number; name: string } | null;
 
   return (
     <Card className="flex flex-col rounded-md px-6 py-4">
@@ -37,8 +37,6 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                 )
               }
             >
-              <LinkStatus disabled={link.disabled ?? false} />
-              <LinkPasswordStatusTooltip link={link} />
               {link.name !== "Untitled Link" && link.name ? (
                 <span className="">{link.name}</span>
               ) : (
@@ -56,20 +54,37 @@ const Link = ({ link, onTagClick }: LinkProps) => {
               <Copy className="h-3 w-3" />
             </div>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 flex items-center gap-1 flex-wrap">
             <span>
               {daysSinceLinkCreation === 0
                 ? "Today"
                 : `${daysSinceLinkCreation}d`}
             </span>
-            <span className="mx-1 text-slate-300">•</span>
+            <span className="text-slate-300">•</span>
             <span className="cursor-pointer text-gray-900 hover:underline">
-              {link.url}
+              {link.url && link.url.length > 50
+                ? `${link.url.substring(0, 50)}...`
+                : link.url}
             </span>
+            {folderInfo && (
+              <>
+                <span className="text-slate-300">•</span>
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs py-0 h-5 border-blue-200"
+                  onClick={() =>
+                    router.push(`/dashboard/folders/${folderInfo.id}`)
+                  }
+                >
+                  <Folder className="h-3 w-3 mr-1" />
+                  {folderInfo.name}
+                </Badge>
+              </>
+            )}
             {tags.length > 0 && (
               <>
-                <span className="mx-1 text-slate-300">•</span>
-                <span className="flex-wrap inline-flex gap-1">
+                <span className="text-slate-300">•</span>
+                <span className="inline-flex gap-1">
                   {tags.map((tag) => (
                     <Badge
                       key={tag}
@@ -88,13 +103,14 @@ const Link = ({ link, onTagClick }: LinkProps) => {
         <div className="flex items-center gap-2">
           {link.note && <LinkNoteTooltip note={link.note} />}
           <Badge
-            variant="secondary"
-            className="rounded-md bg-slate-200 transition-all duration-500 hover:scale-110 hover:cursor-pointer"
+            variant="outline"
+            className="rounded-md py-1 bg-slate-50 cursor-pointer font-normal"
             onClick={() => router.push(`/dashboard/analytics/${link.alias}`)}
           >
+            <MousePointerClick className="h-4 w-4 mr-1 text-blue-600" />
             {link.totalClicks}
-            <span className="ml-0.5 hidden md:inline">visits</span>
-            <span className="ml-0.5 inline md:hidden">v</span>
+            <span className="ml-1 hidden md:inline">visits</span>
+            <span className="ml-1 inline md:hidden">v</span>
           </Badge>
           <LinkActions link={link} />
         </div>
@@ -103,19 +119,3 @@ const Link = ({ link, onTagClick }: LinkProps) => {
   );
 };
 export default Link;
-
-function LinkStatus({ disabled }: { disabled: boolean }) {
-  return (
-    <div
-      className={`flex items-center gap-2 ${
-        disabled ? "text-red-500" : "text-blue-500"
-      }`}
-    >
-      {disabled ? (
-        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-300" />
-      ) : (
-        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-300" />
-      )}
-    </div>
-  );
-}

@@ -5,13 +5,13 @@ import posthog from "posthog-js";
 
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from "@/components/ui/dialog";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
@@ -30,12 +30,16 @@ const proPlanBenefits = [
 ];
 
 export function UpgradeToPro() {
-  const getCheckoutUrlMutation = api.lemonsqueezy.createCheckoutUrl.useMutation();
+  const upgradeMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation();
 
   const handleUpgrade = async () => {
     try {
-      const checkoutUrl = await getCheckoutUrlMutation.mutateAsync();
-      checkoutUrl && window.open(checkoutUrl);
+      const result = await upgradeMutation.mutateAsync({ plan: "pro" });
+      if (result.status === "redirect" && result.url) {
+        window.open(result.url);
+      } else if (result.status === "updated") {
+        window.location.reload();
+      }
     } catch (error) {
       console.error(error);
     }
@@ -90,10 +94,10 @@ export function UpgradeToPro() {
               </DialogClose>
               <Button
                 className="w-full"
-                disabled={getCheckoutUrlMutation.isLoading}
+                disabled={upgradeMutation.isLoading}
                 onClick={handleUpgrade}
               >
-                {getCheckoutUrlMutation.isLoading && (
+                {upgradeMutation.isLoading && (
                   <Loader2 className="mr-2 size-5 animate-spin" />
                 )}
                 Upgrade Now

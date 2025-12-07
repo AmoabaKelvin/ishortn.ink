@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq, inArray } from "drizzle-orm";
+import { count, eq, inArray, sql } from "drizzle-orm";
 
 import { customDomain, link, linkVisit } from "@/server/db/schema";
 
@@ -141,4 +141,47 @@ export async function deleteDomainAndAssociatedLinks(ctx: ProtectedTRPCContext, 
 
     return { success: true, message: "Domain and associated links deleted successfully" };
   });
+}
+
+export async function getDomainStatistics(ctx: ProtectedTRPCContext, domain: string) {
+  // Get all links for this domain
+  const domainLinks = await ctx.db
+    .select({
+      id: link.id,
+      createdAt: link.createdAt,
+    })
+    .from(link)
+    .where(eq(link.domain, domain));
+
+  const linkIds = domainLinks.map((l) => l.id);
+
+  // Calculate link count
+  const linkCount = domainLinks.length;
+
+  // Calculate total clicks
+  let totalClicks = 0;
+  if (linkIds.length > 0) {
+    const clicksResult = await ctx.db
+      .select({ count: count() })
+      .from(linkVisit)
+      .where(inArray(linkVisit.linkId, linkIds));
+
+    totalClicks = clicksResult[0]?.count ?? 0;
+  }
+
+  // Find last used date (most recent link creation)
+  const lastUsedAt = domainLinks.length > 0
+    ? domainLinks.reduce((latest, current) => {
+        const currentDate = current.createdAt ? new Date(current.createdAt) : null;
+        if (!currentDate) return latest;
+        if (!latest) return currentDate;
+        return currentDate > latest ? currentDate : latest;
+      }, null as Date | null)
+    : null;
+
+  return {
+    linkCount,
+    totalClicks,
+    lastUsedAt,
+  };
 }
