@@ -17,12 +17,8 @@ export function DeleteFolderButton({ folder }: DeleteFolderButtonProps) {
   const [open, setOpen] = useState(false);
   const router = useTransitionRouter();
 
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    if (!newOpen) {
-      // Navigate back to folders page after deletion
-      router.push("/dashboard/folders");
-    }
+  const handleSuccess = () => {
+    router.push("/dashboard/folders");
   };
 
   return (
@@ -38,7 +34,8 @@ export function DeleteFolderButton({ folder }: DeleteFolderButtonProps) {
       <DeleteFolderDialog
         folder={folder}
         open={open}
-        onOpenChange={handleOpenChange}
+        onOpenChange={setOpen}
+        onSuccess={handleSuccess}
       />
     </>
   );

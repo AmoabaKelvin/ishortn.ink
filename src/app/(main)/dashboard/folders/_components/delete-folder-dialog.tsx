@@ -23,12 +23,14 @@ type DeleteFolderDialogProps = {
     | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 };
 
 export function DeleteFolderDialog({
   folder,
   open,
   onOpenChange,
+  onSuccess,
 }: DeleteFolderDialogProps) {
   const utils = api.useUtils();
 
@@ -37,6 +39,7 @@ export function DeleteFolderDialog({
       toast.success("Folder deleted successfully");
       await utils.folder.list.invalidate();
       onOpenChange(false);
+      onSuccess?.();
     },
     onError: (error) => {
       toast.error(error.message);
