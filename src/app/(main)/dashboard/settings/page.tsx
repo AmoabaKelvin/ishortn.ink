@@ -25,8 +25,6 @@ async function SettingsPage() {
     api.token.list.query(),
   ]);
 
-  const token = tokens[0];
-
   return (
     <div className="space-y-10">
       {/* Page Header */}
@@ -94,11 +92,11 @@ async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="max-w-3xl">
-              {tokens.length > 0 ? (
+              {tokens.length > 0 && tokens[0] ? (
                 <TokenCard
                   start="******"
-                  createdAt={token!.createdAt!.getTime()}
-                  keyID={token!.id}
+                  createdAt={tokens[0].createdAt?.getTime() ?? Date.now()}
+                  keyID={tokens[0].id}
                 />
               ) : (
                 <GenerateTokenTrigger />
