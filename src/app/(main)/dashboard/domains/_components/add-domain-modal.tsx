@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -47,6 +48,9 @@ export function AddCustomDomainModal() {
   const createCustomDomainMutation = api.customDomain.create.useMutation({
     onSuccess: async () => {
       toast.success("Domain added successfully");
+      trackEvent(POSTHOG_EVENTS.CUSTOM_DOMAIN_ADDED, {
+        domain,
+      });
       setDomain("");
       setIsOpen(false);
       await revalidateRoute("/dashboard/domains");

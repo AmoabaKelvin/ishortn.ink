@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { Webhook } from "svix";
 
 import { env } from "@/env.mjs";
+import { POSTHOG_EVENTS, trackServerEvent } from "@/lib/analytics/events";
 import WelcomeEmail from "@/lib/email/templates/welcome-email";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
@@ -70,6 +71,12 @@ export async function POST(req: Request) {
     name: userInfo.name,
     email: userInfo.email,
     imageUrl: userInfo.avatarUrl,
+  });
+
+  // Track user signup in PostHog
+  await trackServerEvent(id!, POSTHOG_EVENTS.USER_SIGNED_UP, {
+    email: userInfo.email,
+    name: userInfo.name,
   });
 
   const { error } = await resend.emails.send({

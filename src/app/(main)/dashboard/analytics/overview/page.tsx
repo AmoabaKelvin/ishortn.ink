@@ -7,6 +7,7 @@ import { api } from "@/trpc/server";
 export const dynamic = "force-dynamic";
 
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
+import { AnalyticsTracker } from "../_components/analytics-tracker";
 
 import { AnalyticsFilter } from "./_components/analytics-filter";
 import { DestinationUrlsCard } from "./_components/destination-urls-card";
@@ -65,6 +66,7 @@ export default async function AnalyticsOverviewPage(
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
+      <AnalyticsTracker isOverview />
       {/* Header */}
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div className="flex flex-col gap-1">

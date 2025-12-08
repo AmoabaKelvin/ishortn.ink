@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { Resend } from "resend";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
+import { POSTHOG_EVENTS, trackServerEvent } from "@/lib/analytics/events";
 import { getPlanFromIds } from "@/lib/billing/plans";
 import { webhookHasMeta } from "@/lib/typeguards";
 import { db } from "@/server/db";
@@ -140,6 +141,10 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
         endsAt: endsAt ? new Date(endsAt) : null,
       })
       .where(eq(subscription.userId, userId));
+
+    await trackServerEvent(userId, POSTHOG_EVENTS.SUBSCRIPTION_CANCELLED, {
+      previous_plan: plan,
+    });
   } else if (event_name === "subscription_expired") {
     await db
       .update(subscription)

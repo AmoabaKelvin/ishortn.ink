@@ -1,8 +1,8 @@
-import posthog from "posthog-js";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,7 +52,7 @@ export function ChangeLinkPasswordModal({
     onSuccess: () => {
       setOpen(false);
       setNewPassword("");
-      posthog.capture("link_password_changed");
+      trackEvent(POSTHOG_EVENTS.LINK_PASSWORD_CHANGED);
     },
     onError: () => {
       setNewPassword("");

@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   ScanQrCode,
+  Sparkles,
   User,
   X
 } from "lucide-react";
@@ -217,6 +218,12 @@ export function AppSidebar({
                 <Cog size={18} className="shrink-0" />
                 <span>Settings</span>
               </Link> */}
+              <button
+                className="headway-badge flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-150"
+              >
+                <Sparkles size={18} className="shrink-0" />
+                <span>What&apos;s New</span>
+              </button>
               <Link
                 href="https://docs.google.com/forms/d/e/1FAIpQLSfVfz9c1qkC4aDSjFnMcVnrimKiNOHA2aoQhyxNaMmDjMSNEg/viewform?usp=sf_link"
                 target="_blank"

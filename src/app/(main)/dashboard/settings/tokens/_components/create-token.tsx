@@ -1,10 +1,10 @@
 "use client";
 
-import posthog from "posthog-js";
 import { useState } from "react";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ const GenerateTokenTrigger = () => {
       })
       .then(async (results) => {
         setKey(results[0]!.token);
-        posthog.capture("api_key_created");
+        trackEvent(POSTHOG_EVENTS.API_KEY_CREATED);
       })
       .catch(() => {
         // noop

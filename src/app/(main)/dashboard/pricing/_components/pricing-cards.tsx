@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -93,6 +94,10 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
       if (data.status === "redirect" && data.url) {
         window.location.href = data.url;
       } else if (data.status === "updated") {
+        trackEvent(POSTHOG_EVENTS.SUBSCRIPTION_UPGRADED, {
+          from_plan: currentPlan,
+          to_plan: loadingPlan,
+        });
         toast.success(data.message);
         window.location.reload();
       }

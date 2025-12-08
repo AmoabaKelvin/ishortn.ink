@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -68,6 +69,10 @@ export function DowngradeFeedbackModal({
 
   const downgradeMutation = api.lemonsqueezy.downgradeWithFeedback.useMutation({
     onSuccess: (data) => {
+      trackEvent(POSTHOG_EVENTS.SUBSCRIPTION_DOWNGRADED, {
+        from_plan: currentPlanName.toLowerCase(),
+        to_plan: targetPlan,
+      });
       toast.success(data.message);
       reset();
       onOpenChange(false);
