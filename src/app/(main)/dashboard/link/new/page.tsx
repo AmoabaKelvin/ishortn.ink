@@ -205,11 +205,13 @@ export default function CreateLinkPage() {
     : [];
 
   async function onSubmit(values: z.infer<typeof createLinkSchema>) {
+    values.tags = tags;
+    await formUpdateMutation.mutateAsync(values);
+
+    // Track events only after successful mutation
     if (values.password) {
       trackEvent(POSTHOG_EVENTS.LINK_CREATED_WITH_PASSWORD);
     }
-    values.tags = tags;
-    await formUpdateMutation.mutateAsync(values);
     trackEvent(POSTHOG_EVENTS.LINK_CREATED, {
       has_custom_alias: !!values.alias,
       has_password: !!values.password,
