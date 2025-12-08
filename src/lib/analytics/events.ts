@@ -1,12 +1,11 @@
+"use client";
+
 import posthog from "posthog-js";
 
 /**
  * PostHog event names for tracking user activities
  */
 export const POSTHOG_EVENTS = {
-  // User events
-  USER_SIGNED_UP: "user_signed_up",
-
   // Link events
   LINK_CREATED: "link_created",
   LINK_CREATED_WITH_PASSWORD: "link_created_with_password",
@@ -38,7 +37,6 @@ export const POSTHOG_EVENTS = {
   // Subscription events
   SUBSCRIPTION_UPGRADED: "subscription_upgraded",
   SUBSCRIPTION_DOWNGRADED: "subscription_downgraded",
-  SUBSCRIPTION_CANCELLED: "subscription_cancelled",
 } as const;
 
 type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];
@@ -52,44 +50,5 @@ export function trackEvent(
 ) {
   if (typeof window !== "undefined") {
     posthog.capture(eventName, properties);
-  }
-}
-
-/**
- * Server-side PostHog tracking via API
- * Use this for server-side events (webhooks, API routes, etc.)
- */
-export async function trackServerEvent(
-  distinctId: string,
-  eventName: PostHogEventName,
-  properties?: Record<string, unknown>
-) {
-  const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  const posthogHost =
-    process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com";
-
-  if (!posthogKey) {
-    console.warn("PostHog key not configured, skipping server event tracking");
-    return;
-  }
-
-  try {
-    await fetch(`${posthogHost}/capture/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_key: posthogKey,
-        event: eventName,
-        distinct_id: distinctId,
-        properties: {
-          ...properties,
-          $lib: "ishortn-server",
-        },
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to track server event:", error);
   }
 }
