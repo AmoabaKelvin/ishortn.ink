@@ -4,6 +4,7 @@ import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
+import { AnalyticsTracker } from "../_components/analytics-tracker";
 
 import { BarChart } from "./_components/bar-chart";
 import { CountriesAndCitiesStats } from "./_components/countries-and-cities-stats";
@@ -47,6 +48,7 @@ export default async function LinkAnalyticsPage(
 
   return (
     <div className="max-w-5xl mx-auto">
+      <AnalyticsTracker alias={params.alias} domain={domain} />
       <div className="flex flex-col items-center justify-between md:flex-row">
         <div className="flex flex-col gap-1">
           <h1 className="font-semibold leading-tight text-blue-600 cursor-pointer hover:underline md:text-3xl">

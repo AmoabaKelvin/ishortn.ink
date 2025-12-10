@@ -19,6 +19,8 @@ import { useTransitionRouter } from "next-view-transitions";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+
 import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import {
   AlertDialog,
@@ -297,7 +299,13 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
               onClick={() => {
                 toast.promise(deleteLinkMutation.mutateAsync({ id: link.id }), {
                   loading: "Deleting Link...",
-                  success: "Link deleted successfully",
+                  success: () => {
+                    trackEvent(POSTHOG_EVENTS.LINK_DELETED, {
+                      alias: link.alias,
+                      domain: link.domain,
+                    });
+                    return "Link deleted successfully";
+                  },
                   error: "Failed to delete Link",
                 });
               }}

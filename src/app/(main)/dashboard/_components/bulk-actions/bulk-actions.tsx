@@ -4,6 +4,7 @@ import { EllipsisVertical, FileDown, UploadIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,6 +36,10 @@ export function BulkLinkActions() {
           format === "csv" ? convertDataToCSV(data) : convertDataToJSON(data);
         const fileName = `ishortn_links.${format}`;
         triggerDownload(content, fileName);
+        trackEvent(POSTHOG_EVENTS.LINKS_EXPORTED, {
+          format,
+          link_count: data.length,
+        });
       },
       onError: (error) => {
         toast.error(error.message);

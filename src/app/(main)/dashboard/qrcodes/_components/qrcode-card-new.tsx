@@ -5,6 +5,7 @@ import { Link } from "next-view-transitions";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -40,6 +41,7 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
     link.href = qr.qrCode!;
     link.download = qr.title ?? "qr-code";
     link.click();
+    trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED);
   };
 
   const handleDelete = async () => {

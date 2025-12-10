@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,6 +47,7 @@ export function CreateFolderModal({ trigger, open: controlledOpen, onOpenChange 
   const createFolderMutation = api.folder.create.useMutation({
     onSuccess: async () => {
       toast.success("Folder created successfully");
+      trackEvent(POSTHOG_EVENTS.FOLDER_CREATED);
       await utils.folder.list.invalidate();
       reset();
       setOpen(false);

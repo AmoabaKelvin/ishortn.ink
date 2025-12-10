@@ -1,9 +1,9 @@
 "use client";
 
-import posthog from "posthog-js";
 import { toast } from "sonner";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
@@ -19,7 +19,7 @@ const TokenCard = ({
   const deleteAPIKeyMutation = api.token.delete.useMutation({
     onSuccess: async () => {
       await revalidateRoute("/dashboard/settings");
-      posthog.capture("api_key_revoked");
+      trackEvent(POSTHOG_EVENTS.API_KEY_REVOKED);
       toast.success("API Token revoked");
     },
   });

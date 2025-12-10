@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -50,6 +51,9 @@ export function DomainCardNew({ domain }: DomainCardProps) {
   const deleteMutation = api.customDomain.delete.useMutation({
     onSuccess: async () => {
       toast.success("Domain deleted successfully");
+      trackEvent(POSTHOG_EVENTS.CUSTOM_DOMAIN_DELETED, {
+        domain: domain.domain,
+      });
       await revalidateRoute("/dashboard/domains");
     },
     onError: (error) => {

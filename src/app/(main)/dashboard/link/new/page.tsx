@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
-import posthog from "posthog-js";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -205,11 +205,19 @@ export default function CreateLinkPage() {
     : [];
 
   async function onSubmit(values: z.infer<typeof createLinkSchema>) {
-    if (values.password) {
-      posthog.capture("$create_link_with_password");
-    }
     values.tags = tags;
     await formUpdateMutation.mutateAsync(values);
+
+    // Track events only after successful mutation
+    if (values.password) {
+      trackEvent(POSTHOG_EVENTS.LINK_CREATED_WITH_PASSWORD);
+    }
+    trackEvent(POSTHOG_EVENTS.LINK_CREATED, {
+      has_custom_alias: !!values.alias,
+      has_password: !!values.password,
+      has_expiration: !!values.disableLinkAfterDate || !!values.disableLinkAfterClicks,
+      domain: values.domain || "ishortn.ink",
+    });
   }
 
   useEffect(() => {

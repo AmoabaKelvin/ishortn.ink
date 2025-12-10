@@ -4,6 +4,7 @@ import { FolderInput, FolderPlus, Search, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -78,6 +79,7 @@ export function MoveToFolderModal({
   const moveLinkMutation = api.folder.moveLink.useMutation({
     onSuccess: async () => {
       toast.success("Link moved successfully");
+      trackEvent(POSTHOG_EVENTS.LINK_MOVED_TO_FOLDER);
       await utils.link.list.invalidate();
       await utils.folder.list.invalidate();
       setIsCreatingNew(false);
@@ -97,6 +99,10 @@ export function MoveToFolderModal({
           data.count === 1 ? "link" : "links"
         } moved successfully`
       );
+      trackEvent(POSTHOG_EVENTS.LINK_MOVED_TO_FOLDER, {
+        bulk: true,
+        count: data.count,
+      });
       await utils.link.list.invalidate();
       await utils.folder.list.invalidate();
       setIsCreatingNew(false);
