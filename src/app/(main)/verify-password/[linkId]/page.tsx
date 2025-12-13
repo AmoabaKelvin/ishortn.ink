@@ -20,6 +20,9 @@ export default function VerifyPasswordPage({ params }: VerifyPasswordPageProps) 
   const verifyPasswordMutation = api.link.verifyLinkPassword.useMutation();
   const router = useTransitionRouter();
 
+  // Get link information by ID to determine domain
+  const { data: linkData } = api.link.get.useQuery({ id: parseInt(linkId) });
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -47,11 +50,17 @@ export default function VerifyPasswordPage({ params }: VerifyPasswordPageProps) 
     router.push(result.url!);
   };
 
+  // Determine what to display based on domain
+  const getDisplayTitle = () => {
+    if (!linkData?.domain) return "iShortn";
+    return linkData.domain === "ishortn.ink" ? "iShortn" : linkData.domain;
+  };
+
   return (
     <div
       className={`flex h-screen flex-col items-center justify-center ${satoshi.className}`}
     >
-      <h1 className="mb-10 text-4xl font-bold">iShortn</h1>
+      <h1 className="mb-10 text-4xl font-bold">{getDisplayTitle()}</h1>
 
       <h1 className="text-2xl font-bold">This link is password protected</h1>
       <form
