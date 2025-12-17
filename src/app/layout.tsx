@@ -10,7 +10,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env.mjs";
 import { APP_TITLE } from "@/lib/constants/app";
-import { fontSans } from "@/lib/fonts";
+import { fontSans, fontDisplay } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { TRPCReactProvider } from "@/trpc/react";
 
@@ -56,7 +56,8 @@ export default function RootLayout({
             <body
               className={cn(
                 "min-h-screen bg-background font-sans antialiased",
-                fontSans.variable
+                fontSans.variable,
+                fontDisplay.variable
               )}
             >
               {/* we ship dark theme later, now light theme */}

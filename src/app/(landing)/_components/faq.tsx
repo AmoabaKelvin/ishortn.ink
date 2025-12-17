@@ -1,7 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useState } from "react";
+import { AnimatePresence, motion, useInView } from "framer-motion";
+import { ChevronDown } from "lucide-react";
+import { useRef, useState } from "react";
 
 type FAQProps = {
   faqs: {
@@ -10,63 +11,76 @@ type FAQProps = {
   }[];
 };
 
-export function Faq({ faqs }: FAQProps) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-
-  const toggleFAQ = (index: number) => {
-    setActiveIndex(activeIndex === index ? null : index);
-  };
+const FAQItem = ({
+  faq,
+  index,
+  isOpen,
+  onToggle,
+}: {
+  faq: { question: string; answer: string };
+  index: number;
+  isOpen: boolean;
+  onToggle: () => void;
+}) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-10 text-gray-800 md:py-16">
-      <div className="space-y-4 first:mt-0">
-        {faqs.map((faq, index) => (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      transition={{ duration: 0.4, delay: index * 0.1 }}
+      className={`faq-item overflow-hidden ${isOpen ? "border-neutral-300/80" : ""}`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-4 p-6 text-left transition-colors hover:bg-neutral-50/50"
+      >
+        <span className="text-lg font-medium text-neutral-900">{faq.question}</span>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${
+            isOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600"
+          }`}
+        >
+          <ChevronDown className="h-4 w-4" />
+        </motion.div>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
           <motion.div
-            key={faq.question}
-            className="rounded-lg border border-gray-200 p-5 shadow-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            <div
-              className="flex cursor-pointer items-center justify-between"
-              onClick={() => toggleFAQ(index)}
-            >
-              <h2 className="text-lg font-semibold text-gray-700">{faq.question}</h2>
-              <motion.span
-                animate={{ rotate: activeIndex === index ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <svg
-                  className="h-6 w-6 text-gray-700"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <title>Plus</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </motion.span>
+            <div className="px-6 pb-6">
+              <p className="leading-relaxed text-neutral-600">{faq.answer}</p>
             </div>
-            {activeIndex === index && (
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: "auto" }}
-                transition={{ duration: 0.3 }}
-                className="mt-4 overflow-hidden"
-              >
-                <p className="text-gray-600">{faq.answer}</p>
-              </motion.div>
-            )}
           </motion.div>
-        ))}
-      </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+export function Faq({ faqs }: FAQProps) {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
+      {faqs.map((faq, index) => (
+        <FAQItem
+          key={faq.question}
+          faq={faq}
+          index={index}
+          isOpen={openIndex === index}
+          onToggle={() => setOpenIndex(openIndex === index ? null : index)}
+        />
+      ))}
     </div>
   );
 }

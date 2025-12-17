@@ -1,115 +1,106 @@
-import { Link } from "next-view-transitions";
+import { HelpCircle } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Paths } from "@/lib/constants/app";
 import { landingPageCopy } from "@/lib/copy/landing-page";
 
+import { CTA } from "./_components/cta";
 import { Faq } from "./_components/faq";
+import { Features } from "./_components/features";
 import { Footer } from "./_components/footer";
 import { Header } from "./_components/header";
-import { CardSpotlight } from "./_components/hover-card";
-import { InfiniteMovingCards } from "./_components/infinite-moving-cards";
+import { Hero } from "./_components/hero";
+import { Pricing } from "./_components/pricing";
+import { Testimonials } from "./_components/testimonials";
 
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "iShortn",
+    absolute: "iShortn - Short links. Big impact.",
   },
   description:
-    "URL Shortener with analytics, custom domains, and password protection.",
+    "Transform lengthy URLs into powerful branded links. Track clicks, understand your audience, and grow with actionable insights. Free URL shortener with analytics.",
+  openGraph: {
+    title: "iShortn - Short links. Big impact.",
+    description:
+      "Transform lengthy URLs into powerful branded links. Track clicks, understand your audience, and grow with actionable insights.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "iShortn - Short links. Big impact.",
+    description:
+      "Transform lengthy URLs into powerful branded links. Track clicks, understand your audience, and grow with actionable insights.",
+  },
 };
 
 const HomePage = () => {
   return (
-    <>
+    <main className="relative">
       <Header />
-      <section className="mx-auto grid min-h-[calc(100vh-300px)] max-w-5xl flex-col  items-center justify-center gap-4 py-10 text-center  md:py-12">
-        <div className="p-4">
-          <h1 className="text-3xl font-bold text-center text-balance sm:text-5xl">
-            Transform Your Links with Powerful Shortening and Analytics
-          </h1>
-          <p className="mt-4 mb-10 text-center text-balance text-muted-foreground md:text-lg lg:text-xl">
-            Simple, Fast, and Insightful. Enhance your online presence with our
-            robust URL shortening and tracking solution.
-          </p>
-          <div className="flex justify-center gap-4">
-            <Button asChild className="px-10 py-6">
-              <Link href={Paths.Login}>Get Started for free</Link>
-            </Button>
+
+      {/* Hero Section */}
+      <Hero />
+
+      {/* Features Section */}
+      <Features />
+
+      {/* Pricing Section */}
+      <Pricing />
+
+      {/* Testimonials Section */}
+      <Testimonials />
+
+      {/* FAQ Section */}
+      <section id="faq" className="landing-section relative overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-neutral-50/30 to-white" />
+        <div className="noise-overlay" />
+
+        <div className="landing-container relative z-10">
+          {/* Section Header */}
+          <div className="mb-16 text-center">
+            <div className="landing-badge mx-auto mb-6">
+              <HelpCircle className="h-3.5 w-3.5 text-blue-500" />
+              <span>Got Questions?</span>
+            </div>
+            <h2 className="font-display text-4xl tracking-tight text-neutral-900 sm:text-5xl">
+              Frequently asked questions
+            </h2>
+            <p className="mx-auto mt-6 max-w-xl text-lg text-neutral-600">
+              Everything you need to know about iShortn. Can&apos;t find the answer
+              you&apos;re looking for? Reach out to our support team.
+            </p>
           </div>
-        </div>
-      </section>
-      <section>
-        <div className="container mx-auto lg:max-w-screen-lg">
-          <h1 className="mb-4 text-3xl font-bold text-center md:text-4xl lg:text-5xl">
-            <a id="features" href="#features" aria-label="Features">
-              Features
+
+          <Faq faqs={landingPageCopy.faq} />
+
+          {/* Contact CTA */}
+          <div className="mx-auto mt-16 max-w-xl rounded-3xl border border-neutral-200/60 bg-gradient-to-br from-neutral-50 to-white p-10 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+              <HelpCircle className="h-7 w-7" />
+            </div>
+            <h3 className="text-xl font-semibold text-neutral-900">
+              Still have questions?
+            </h3>
+            <p className="mt-2 text-neutral-600">
+              Can&apos;t find what you&apos;re looking for? Our team is here to help.
+            </p>
+            <a
+              href="mailto:support@ishortn.ink"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-neutral-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-neutral-800 hover:shadow-lg hover:shadow-neutral-900/20"
+            >
+              Contact Support
             </a>
-          </h1>
-          <p className="mb-10 text-center text-balance text-muted-foreground md:text-lg lg:text-xl">
-            Discover the powerful features that make iShortn the ultimate URL
-            shortening and tracking tool.
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-6">
-            {landingPageCopy.features.map((feature) => (
-              <div className="w-[300px] max-w-full" key={feature.name}>
-                <CardSpotlight
-                  key={feature.name}
-                  name={feature.name}
-                  description={feature.description}
-                  logo={<feature.logo className="h-7 w-7" />}
-                />
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
-      {/* section for testimonials */}
-      <section className="container mx-auto mt-28 lg:max-w-screen-lg">
-        <h1 className="mb-4 text-3xl font-bold text-center md:text-4xl lg:text-5xl">
-          <a id="testimonials" href="#testimonials" aria-label="Testimonials">
-            Testimonials
-          </a>
-        </h1>
-        <p className="mb-10 text-center text-balance text-muted-foreground md:text-lg lg:text-xl">
-          Hear what our customers have to{" "}
-          <Link
-            className="text-blue-500"
-            href="https://buymeacoffee.com/kelvinamoaba"
-            target="_blank"
-          >
-            say
-          </Link>{" "}
-          about iShortn.
-        </p>
-        <div className="relative flex h-[20rem] flex-col items-center justify-center overflow-hidden rounded-md antialiased dark:bg-black">
-          <InfiniteMovingCards
-            items={landingPageCopy.testimonials}
-            direction="right"
-            speed="slow"
-          />
-        </div>
-      </section>
+      {/* CTA Section */}
+      <CTA />
 
-      {/* section for faqs */}
-      <section className="container mx-auto mt-28 lg:max-w-screen-lg">
-        <h1 className="mb-4 text-3xl font-bold text-center md:text-4xl lg:text-5xl">
-          <a id="faq" href="#faq" aria-label="Frequently Asked Questions">
-            Frequently Asked Questions
-          </a>{" "}
-        </h1>
-        <p className="mb-10 text-center text-balance text-muted-foreground md:text-lg lg:text-xl">
-          Find answers to common questions about iShortn.
-        </p>
-        <Faq faqs={landingPageCopy.faq} />
-      </section>
-
-      <div className="h-20" />
+      {/* Footer */}
       <Footer />
-    </>
+    </main>
   );
 };
 
