@@ -10,7 +10,7 @@ export function ChangelogBanner() {
   const [isDismissed, setIsDismissed] = useState(true);
   const [latestEntry, setLatestEntry] = useState<{
     shortDesc: string;
-    date: string;
+    slug: string;
     title: string;
   } | null>(null);
 
@@ -26,7 +26,7 @@ export function ChangelogBanner() {
       if (latest) {
         setLatestEntry({
           shortDesc: latest.shortDesc,
-          date: latest.date,
+          slug: latest.slug,
           title: latest.title,
         });
         setIsDismissed(false);
@@ -36,8 +36,8 @@ export function ChangelogBanner() {
 
   const handleDismiss = () => {
     setIsDismissed(true);
-    if (latestEntry?.date) {
-      markAsViewed.mutate({ date: latestEntry.date });
+    if (latestEntry?.slug) {
+      markAsViewed.mutate({ slug: latestEntry.slug });
     }
   };
 

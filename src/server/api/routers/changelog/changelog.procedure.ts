@@ -21,34 +21,34 @@ export const changelogRouter = createTRPCRouter({
     const userData = await ctx.db.query.user.findFirst({
       where: eq(user.id, ctx.auth.userId),
       columns: {
-        lastViewedChangelogDate: true,
+        lastViewedChangelogSlug: true,
       },
     });
 
-    return getChangelogEntriesSince(userData?.lastViewedChangelogDate ?? null);
+    return getChangelogEntriesSince(userData?.lastViewedChangelogSlug ?? null);
   }),
 
   getUnseenCount: protectedProcedure.query(async ({ ctx }) => {
     const userData = await ctx.db.query.user.findFirst({
       where: eq(user.id, ctx.auth.userId),
       columns: {
-        lastViewedChangelogDate: true,
+        lastViewedChangelogSlug: true,
       },
     });
 
     const newEntries = await getChangelogEntriesSince(
-      userData?.lastViewedChangelogDate ?? null
+      userData?.lastViewedChangelogSlug ?? null
     );
 
     return newEntries.length;
   }),
 
   markAsViewed: protectedProcedure
-    .input(z.object({ date: z.string() }))
+    .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db
         .update(user)
-        .set({ lastViewedChangelogDate: input.date })
+        .set({ lastViewedChangelogSlug: input.slug })
         .where(eq(user.id, ctx.auth.userId));
 
       return { success: true };

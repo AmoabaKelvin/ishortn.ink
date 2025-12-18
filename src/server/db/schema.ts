@@ -32,7 +32,7 @@ export const user = mysqlTable(
   monthlyEventCount: int("monthlyEventCount").default(0),
   lastEventCountReset: timestamp("lastEventCountReset").defaultNow(),
   eventUsageAlertLevel: int("eventUsageAlertLevel").default(0),
-  lastViewedChangelogDate: varchar("lastViewedChangelogDate", { length: 10 }),
+  lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
 },
 (table) => ({
   userIdx: index("userId_idx").on(table.id),

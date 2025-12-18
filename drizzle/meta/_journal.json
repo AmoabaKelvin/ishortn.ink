@@ -218,6 +218,13 @@
       "when": 1766052743973,
       "tag": "0030_short_white_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1766140800000,
+      "tag": "0031_changelog_slug_fix",
+      "breakpoints": true
     }
   ]
 }

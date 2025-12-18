@@ -29,10 +29,16 @@ export async function getChangelogEntries(): Promise<ChangelogEntry[]> {
       const { data, content } = matter(fileContents);
 
       // Ensure date is a string (gray-matter may parse it as a Date object)
+      // Supports both date-only (2025-12-18) and datetime (2025-12-18T14:30:00) formats
       const dateValue = data.date;
-      const dateString = dateValue instanceof Date
-        ? dateValue.toISOString().split("T")[0]
-        : String(dateValue);
+      let dateString: string;
+      if (dateValue instanceof Date) {
+        dateString = dateValue.toISOString();
+      } else {
+        const strValue = String(dateValue);
+        // If it's just a date (no time component), append T00:00:00 for consistent sorting
+        dateString = strValue.includes("T") ? strValue : `${strValue}T00:00:00`;
+      }
 
       const processedContent = await remark().use(gfm).use(html).process(content);
       const htmlContent = processedContent.toString();
@@ -75,16 +81,24 @@ export async function getChangelogManifest(): Promise<ChangelogManifest> {
 }
 
 export async function getChangelogEntriesSince(
-  lastViewedDate: string | null
+  lastViewedSlug: string | null
 ): Promise<ChangelogEntry[]> {
   const entries = await getChangelogEntries();
 
-  if (!lastViewedDate) {
+  if (!lastViewedSlug) {
     return entries;
   }
 
-  const lastViewed = new Date(lastViewedDate);
-  return entries.filter((entry) => new Date(entry.date) > lastViewed);
+  // Find the index of the last viewed entry by slug
+  const lastViewedIndex = entries.findIndex((entry) => entry.slug === lastViewedSlug);
+
+  // If the slug is not found, return all entries (edge case: deleted changelog)
+  if (lastViewedIndex === -1) {
+    return entries;
+  }
+
+  // Return all entries that are newer (have a lower index since entries are sorted newest first)
+  return entries.slice(0, lastViewedIndex);
 }
 
 export async function getLatestChangelog(): Promise<ChangelogEntry | null> {
