@@ -274,6 +274,19 @@ export const createLink = async (
     }
   }
 
+  // Check for UTM params - Ultra plan only
+  const utmParamsValues = Object.values(input.utmParams ?? {});
+  const hasUtmParams = utmParamsValues.some(
+    (value) => value !== undefined && value !== null && value !== ""
+  );
+  if (hasUtmParams) {
+    if (plan !== "ultra") {
+      throw new Error(
+        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature."
+      );
+    }
+  }
+
   input.metadata = {
     title: inputMetaData?.title ?? fetchedMetadata.title,
     description: inputMetaData?.description ?? fetchedMetadata.description,
@@ -357,6 +370,22 @@ export const updateLink = async (
     const isPaidUser = planCtx ? planCtx.plan !== "free" : false;
     const domain = input.domain ?? existingLink.domain;
     await validateAlias(ctx, input.alias, domain, isPaidUser);
+  }
+
+  // Check for UTM params - Ultra plan only
+  if (input.utmParams) {
+    const utmParamsValues = Object.values(input.utmParams);
+    const hasUtmParams = utmParamsValues.some(
+      (value) => value !== undefined && value !== null && value !== ""
+    );
+    if (hasUtmParams) {
+      const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
+      if (planCtx?.plan !== "ultra") {
+        throw new Error(
+          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature."
+        );
+      }
+    }
   }
 
   // Extract tags from input

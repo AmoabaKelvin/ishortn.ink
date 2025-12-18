@@ -36,6 +36,11 @@ const linkSchema = z.object({
     .nullable()
     .transform((val) => (val ? Number(val) : null))
     .default(null),
+  utmParams: z
+    .string()
+    .nullable()
+    .transform((str) => (str ? JSON.parse(str) : null))
+    .default(null),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
@@ -58,6 +63,7 @@ function convertToLink(data: Record<string, string>): Link {
     tags: parsed.tags || [],
     archived: parsed.archived || false,
     folderId: parsed.folderId ?? null,
+    utmParams: parsed.utmParams ?? null,
   };
 }
 
@@ -86,6 +92,7 @@ async function setInCache(
       createdAt: link.createdAt!.toISOString(),
       disableLinkAfterDate: link.disableLinkAfterDate?.toISOString() ?? null,
       metadata: JSON.stringify(link.metadata),
+      utmParams: link.utmParams ? JSON.stringify(link.utmParams) : null,
     };
 
     const pipeline = redis.pipeline();

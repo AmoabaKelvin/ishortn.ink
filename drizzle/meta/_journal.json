@@ -197,6 +197,20 @@
       "when": 1765049407994,
       "tag": "0027_lucky_dragon_man",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1766003966000,
+      "tag": "0028_married_medusa",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1766010581371,
+      "tag": "0029_loving_psynapse",
+      "breakpoints": true
     }
   ]
 }

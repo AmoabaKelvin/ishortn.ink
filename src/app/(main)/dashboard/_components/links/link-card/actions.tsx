@@ -46,8 +46,8 @@ import { api } from "@/trpc/react";
 import { MoveToFolderModal } from "@/app/(main)/dashboard/folders/_components/move-to-folder-modal";
 
 import { ChangeLinkPasswordModal } from "./password-change-modal";
+import { EditLinkDrawer } from "./edit-link-drawer";
 import { QRCodeModal } from "./qrcode-modal";
-import { UpdateLinkModal } from "./update-modal";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -219,10 +219,10 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <UpdateLinkModal
+      <EditLinkDrawer
         link={link}
         open={openEditModal}
-        setOpen={setOpenEditModal}
+        onClose={() => setOpenEditModal(false)}
       />
       <QRCodeModal
         open={qrModal}

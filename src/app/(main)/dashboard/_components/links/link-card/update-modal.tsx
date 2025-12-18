@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarIcon, ChevronDown, X } from "lucide-react";
+import { CalendarIcon, ChevronDown, Gem, X } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -61,10 +61,12 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [isBasicInfoOpen, setIsBasicInfoOpen] = useState(true);
   const [isTagsOpen, setIsTagsOpen] = useState(false);
+  const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
   const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
 
   // Fetch user's existing tags
   const { data: userTags } = api.tag.list.useQuery();
+  const userSubscription = api.subscriptions.get.useQuery();
 
   const formUpdateMutation = api.link.update.useMutation({
     onSuccess: async () => {
@@ -88,6 +90,13 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
       disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
       tags: (link.tags as string[]) || [],
+      utmParams: (link.utmParams as {
+        utm_source?: string;
+        utm_medium?: string;
+        utm_campaign?: string;
+        utm_term?: string;
+        utm_content?: string;
+      }) ?? undefined,
     },
   });
   form.setValue("id", link.id);
@@ -367,6 +376,155 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                               add a tag or select from existing tags.
                             </FormDescription>
                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* UTM Parameters Section */}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-left"
+                onClick={() => setIsUtmParamsOpen(!isUtmParamsOpen)}
+              >
+                <div className="flex flex-col">
+                  <p className="flex items-center gap-2 text-lg font-semibold">
+                    UTM Parameters
+                    {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
+                      <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
+                        <span className="flex items-center space-x-1">
+                          <Gem className="h-4 w-4 text-slate-500" />
+                          <p className="uppercase">Ultra</p>
+                        </span>
+                      </span>
+                    )}
+                  </p>
+                  <span className="text-sm text-gray-500">
+                    Add UTM parameters for campaign tracking
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`h-5 w-5 transform transition-transform ${
+                    isUtmParamsOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              <AnimatePresence>
+                {isUtmParamsOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="mt-4 space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="utmParams.utm_source"
+                        disabled={
+                          userSubscription?.data?.subscriptions?.plan !== "ultra"
+                        }
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>UTM Source</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="e.g., google, newsletter, twitter"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Identifies the source of traffic
+                            </FormDescription>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="utmParams.utm_medium"
+                        disabled={
+                          userSubscription?.data?.subscriptions?.plan !== "ultra"
+                        }
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>UTM Medium</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="e.g., cpc, email, social"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Identifies the marketing medium
+                            </FormDescription>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="utmParams.utm_campaign"
+                        disabled={
+                          userSubscription?.data?.subscriptions?.plan !== "ultra"
+                        }
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>UTM Campaign</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="e.g., summer_sale, product_launch"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Identifies the specific campaign name
+                            </FormDescription>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="utmParams.utm_term"
+                        disabled={
+                          userSubscription?.data?.subscriptions?.plan !== "ultra"
+                        }
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>UTM Term</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="e.g., running+shoes"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Identifies paid search keywords (optional)
+                            </FormDescription>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="utmParams.utm_content"
+                        disabled={
+                          userSubscription?.data?.subscriptions?.plan !== "ultra"
+                        }
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>UTM Content</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="e.g., logolink, textlink"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Differentiates ads or links (optional)
+                            </FormDescription>
                           </FormItem>
                         )}
                       />

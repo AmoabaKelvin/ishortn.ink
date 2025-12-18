@@ -15,6 +15,7 @@ import {
   Menu,
   ScanQrCode,
   Sparkles,
+  Target,
   User,
   X
 } from "lucide-react";
@@ -39,7 +40,7 @@ const navigationItems = [
   { name: "QR Codes", href: "/dashboard/qrcodes", icon: ScanQrCode },
   { name: "Domains", href: "/dashboard/domains", icon: Globe },
   { name: "Folders", href: "/dashboard/folders", icon: FolderOpen },
-  // { name: "Tags", href: "/dashboard/tags", icon: Tags },
+  { name: "UTM Templates", href: "/dashboard/utm-templates", icon: Target },
   { name: "Settings", href: "/dashboard/settings", icon: Cog },
 ];
 
