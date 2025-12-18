@@ -71,7 +71,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                 <span className="text-slate-300">•</span>
                 <Badge
                   variant="outline"
-                  className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs py-0 h-5 border-blue-200"
+                  className="cursor-pointer rounded-md bg-slate-50 hover:bg-slate-100 text-xs py-0 h-5"
                   onClick={() =>
                     router.push(`/dashboard/folders/${folderInfo.id}`)
                   }
@@ -89,7 +89,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                     <Badge
                       key={tag}
                       variant="outline"
-                      className="cursor-pointer bg-gray-50 hover:bg-gray-100 text-xs py-0 h-5"
+                      className="cursor-pointer rounded-md bg-slate-50 hover:bg-slate-100 text-xs py-0 h-5"
                       onClick={() => onTagClick && onTagClick(tag)}
                     >
                       {tag}

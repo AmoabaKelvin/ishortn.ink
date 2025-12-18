@@ -13,6 +13,7 @@ const routes = [
   { name: "Pricing", href: "/#pricing" },
   { name: "Testimonials", href: "/#testimonials" },
   { name: "FAQ", href: "/#faq" },
+  { name: "Changelog", href: "/changelog" },
 ] as const;
 
 const handleSmoothScroll = (
