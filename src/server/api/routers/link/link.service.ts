@@ -364,9 +364,12 @@ export const updateLink = async (
     throw new Error("Link not found");
   }
 
+  // Get plan context once for both alias and UTM validation
+  let planCtx: Awaited<ReturnType<typeof getUserPlanContext>> | null = null;
+
   // If alias is being changed, validate it
   if (input.alias && input.alias !== existingLink.alias) {
-    const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
+    planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
     const isPaidUser = planCtx ? planCtx.plan !== "free" : false;
     const domain = input.domain ?? existingLink.domain;
     await validateAlias(ctx, input.alias, domain, isPaidUser);
@@ -379,7 +382,7 @@ export const updateLink = async (
       (value) => value !== undefined && value !== null && value !== ""
     );
     if (hasUtmParams) {
-      const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
+      planCtx = planCtx ?? await getUserPlanContext(ctx.auth.userId, ctx.db);
       if (planCtx?.plan !== "ultra") {
         throw new Error(
           "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature."

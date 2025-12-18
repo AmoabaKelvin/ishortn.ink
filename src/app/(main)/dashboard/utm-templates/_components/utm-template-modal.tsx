@@ -126,7 +126,8 @@ export function UtmTemplateModal({
         utmContent: "",
       });
     }
-  }, [template, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template]);
 
   const createMutation = api.utmTemplate.create.useMutation({
     onSuccess: () => {

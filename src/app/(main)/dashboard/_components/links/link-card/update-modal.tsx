@@ -9,6 +9,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
+import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
+import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -422,111 +424,23 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <div className="mt-4 space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="utmParams.utm_source"
-                        disabled={
-                          userSubscription?.data?.subscriptions?.plan !== "ultra"
-                        }
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>UTM Source</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="e.g., google, newsletter, twitter"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Identifies the source of traffic
-                            </FormDescription>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="utmParams.utm_medium"
-                        disabled={
-                          userSubscription?.data?.subscriptions?.plan !== "ultra"
-                        }
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>UTM Medium</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="e.g., cpc, email, social"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Identifies the marketing medium
-                            </FormDescription>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="utmParams.utm_campaign"
-                        disabled={
-                          userSubscription?.data?.subscriptions?.plan !== "ultra"
-                        }
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>UTM Campaign</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="e.g., summer_sale, product_launch"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Identifies the specific campaign name
-                            </FormDescription>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="utmParams.utm_term"
-                        disabled={
-                          userSubscription?.data?.subscriptions?.plan !== "ultra"
-                        }
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>UTM Term</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="e.g., running+shoes"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Identifies paid search keywords (optional)
-                            </FormDescription>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="utmParams.utm_content"
-                        disabled={
-                          userSubscription?.data?.subscriptions?.plan !== "ultra"
-                        }
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>UTM Content</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="e.g., logolink, textlink"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Differentiates ads or links (optional)
-                            </FormDescription>
-                          </FormItem>
-                        )}
+                    <div className="mt-4 space-y-3">
+                      {userSubscription?.data?.subscriptions?.plan === "ultra" && (
+                        <div className="flex justify-end">
+                          <UtmTemplateSelector
+                            onSelect={(params) => {
+                              form.setValue("utmParams.utm_source", params.utm_source ?? "");
+                              form.setValue("utmParams.utm_medium", params.utm_medium ?? "");
+                              form.setValue("utmParams.utm_campaign", params.utm_campaign ?? "");
+                              form.setValue("utmParams.utm_term", params.utm_term ?? "");
+                              form.setValue("utmParams.utm_content", params.utm_content ?? "");
+                            }}
+                          />
+                        </div>
+                      )}
+                      <UtmParamsForm
+                        form={form}
+                        disabled={userSubscription?.data?.subscriptions?.plan !== "ultra"}
                       />
                     </div>
                   </motion.div>

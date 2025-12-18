@@ -18,9 +18,9 @@ export default function UtmTemplatesPage() {
   );
 
   const { data: templates, isLoading } = api.utmTemplate.list.useQuery();
-  const userSubscription = api.subscriptions.get.useQuery();
+  const { data: userSubscription, isLoading: isLoadingSubscription } = api.subscriptions.get.useQuery();
 
-  const isUltraUser = userSubscription?.data?.subscriptions?.plan === "ultra";
+  const isUltraUser = userSubscription?.subscriptions?.plan === "ultra";
 
   const handleEdit = (template: UtmTemplate) => {
     setEditingTemplate(template);
@@ -33,6 +33,14 @@ export default function UtmTemplatesPage() {
       setEditingTemplate(null);
     }
   };
+
+  if (isLoadingSubscription) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" />
+      </div>
+    );
+  }
 
   if (!isUltraUser) {
     return (

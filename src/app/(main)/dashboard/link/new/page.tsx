@@ -233,10 +233,22 @@ export default function CreateLinkPage() {
   // Fetch ishortn.ink metadata on initial load
   useEffect(() => {
     if (isInitialLoad) {
-      fetchMetadataInfo("https://ishortn.ink").then((metadata) => {
-        setMetaData(metadata);
-        setIsInitialLoad(false);
-      });
+      fetchMetadataInfo("https://ishortn.ink")
+        .then((metadata) => {
+          setMetaData(metadata);
+        })
+        .catch(() => {
+          // Set fallback metadata if fetch fails
+          setMetaData({
+            title: "iShortn",
+            description: "URL Shortener",
+            image: "",
+            favicon: "",
+          });
+        })
+        .finally(() => {
+          setIsInitialLoad(false);
+        });
     }
   }, [isInitialLoad]);
 

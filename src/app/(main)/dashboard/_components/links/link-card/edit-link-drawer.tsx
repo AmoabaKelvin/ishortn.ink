@@ -116,7 +116,8 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
       }) ?? undefined,
     });
     setTags((link.tags as string[]) || []);
-  }, [link, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [link]);
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
