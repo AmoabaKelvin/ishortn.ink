@@ -3,12 +3,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarIcon, ChevronDown, X } from "lucide-react";
+import { CalendarIcon, ChevronDown, Gem, X } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
+import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
+import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -61,10 +63,12 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [isBasicInfoOpen, setIsBasicInfoOpen] = useState(true);
   const [isTagsOpen, setIsTagsOpen] = useState(false);
+  const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
   const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
 
   // Fetch user's existing tags
   const { data: userTags } = api.tag.list.useQuery();
+  const userSubscription = api.subscriptions.get.useQuery();
 
   const formUpdateMutation = api.link.update.useMutation({
     onSuccess: async () => {
@@ -88,6 +92,13 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
       disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
       tags: (link.tags as string[]) || [],
+      utmParams: (link.utmParams as {
+        utm_source?: string;
+        utm_medium?: string;
+        utm_campaign?: string;
+        utm_term?: string;
+        utm_content?: string;
+      }) ?? undefined,
     },
   });
   form.setValue("id", link.id);
@@ -369,6 +380,67 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                             <FormMessage />
                           </FormItem>
                         )}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* UTM Parameters Section */}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-left"
+                onClick={() => setIsUtmParamsOpen(!isUtmParamsOpen)}
+              >
+                <div className="flex flex-col">
+                  <p className="flex items-center gap-2 text-lg font-semibold">
+                    UTM Parameters
+                    {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
+                      <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
+                        <span className="flex items-center space-x-1">
+                          <Gem className="h-4 w-4 text-slate-500" />
+                          <p className="uppercase">Ultra</p>
+                        </span>
+                      </span>
+                    )}
+                  </p>
+                  <span className="text-sm text-gray-500">
+                    Add UTM parameters for campaign tracking
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`h-5 w-5 transform transition-transform ${
+                    isUtmParamsOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              <AnimatePresence>
+                {isUtmParamsOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="mt-4 space-y-3">
+                      {userSubscription?.data?.subscriptions?.plan === "ultra" && (
+                        <div className="flex justify-end">
+                          <UtmTemplateSelector
+                            onSelect={(params) => {
+                              form.setValue("utmParams.utm_source", params.utm_source ?? undefined);
+                              form.setValue("utmParams.utm_medium", params.utm_medium ?? undefined);
+                              form.setValue("utmParams.utm_campaign", params.utm_campaign ?? undefined);
+                              form.setValue("utmParams.utm_term", params.utm_term ?? undefined);
+                              form.setValue("utmParams.utm_content", params.utm_content ?? undefined);
+                            }}
+                          />
+                        </div>
+                      )}
+                      <UtmParamsForm
+                        form={form}
+                        disabled={userSubscription?.data?.subscriptions?.plan !== "ultra"}
                       />
                     </div>
                   </motion.div>

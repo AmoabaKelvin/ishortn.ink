@@ -89,6 +89,13 @@ export const link = mysqlTable(
     passwordHash: text("passwordHash"),
     note: varchar("note", { length: 255 }),
     metadata: json("metadata"),
+    utmParams: json("utmParams").$type<{
+      utm_source?: string;
+      utm_medium?: string;
+      utm_campaign?: string;
+      utm_term?: string;
+      utm_content?: string;
+    }>(),
     tags: json("tags").$type<string[]>().default([]),
     archived: boolean("archived").default(false),
     folderId: int("folderId"),
@@ -308,6 +315,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   siteSettings: one(siteSettings),
   tags: many(tag),
   folders: many(folder),
+  utmTemplates: many(utmTemplate),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -427,3 +435,34 @@ export type NewLinkTag = typeof linkTag.$inferInsert;
 
 export type Folder = typeof folder.$inferSelect;
 export type NewFolder = typeof folder.$inferInsert;
+
+// UTM Template model for storing reusable UTM parameter configurations
+export const utmTemplate = mysqlTable(
+  "UtmTemplate",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 100 }).notNull(),
+    utmSource: varchar("utmSource", { length: 255 }),
+    utmMedium: varchar("utmMedium", { length: 255 }),
+    utmCampaign: varchar("utmCampaign", { length: 255 }),
+    utmTerm: varchar("utmTerm", { length: 255 }),
+    utmContent: varchar("utmContent", { length: 255 }),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+  })
+);
+
+// Define relations for UtmTemplate
+export const utmTemplateRelations = relations(utmTemplate, ({ one }) => ({
+  user: one(user, {
+    fields: [utmTemplate.userId],
+    references: [user.id],
+  }),
+}));
+
+export type UtmTemplate = typeof utmTemplate.$inferSelect;
+export type NewUtmTemplate = typeof utmTemplate.$inferInsert;

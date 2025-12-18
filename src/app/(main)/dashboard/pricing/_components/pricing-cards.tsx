@@ -69,6 +69,7 @@ const plans = [
       "Dedicated support",
       "Full API access",
       "Advanced analytics",
+      "UTM tracking",
     ],
     comingSoon: [
       "Team collaboration",
@@ -76,7 +77,7 @@ const plans = [
       "Device targeting",
       "Geo targeting",
       "Time-based routing",
-      "UTM & Conversion tracking",
+      "Conversion tracking",
     ],
   },
 ];
