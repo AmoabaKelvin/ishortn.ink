@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 
 import { utmTemplate } from "@/server/db/schema";
@@ -12,9 +13,10 @@ import type {
 const ensureUltraPlan = async (ctx: ProtectedTRPCContext) => {
   const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
   if (planCtx?.plan !== "ultra") {
-    throw new Error(
-      "UTM templates are only available on the Ultra plan. Please upgrade to use this feature."
-    );
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "UTM templates are only available on the Ultra plan. Please upgrade to use this feature.",
+    });
   }
 };
 
@@ -72,7 +74,10 @@ export const updateUtmTemplate = async (
     .where(and(eq(utmTemplate.id, id), eq(utmTemplate.userId, ctx.auth.userId)));
 
   if (result[0].affectedRows === 0) {
-    throw new Error("Template not found or access denied");
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Template not found or access denied",
+    });
   }
 
   const updated = await ctx.db.query.utmTemplate.findFirst({
@@ -80,7 +85,10 @@ export const updateUtmTemplate = async (
   });
 
   if (!updated) {
-    throw new Error("Failed to retrieve updated template");
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to retrieve updated template",
+    });
   }
 
   return updated;
@@ -90,9 +98,19 @@ export const deleteUtmTemplate = async (
   ctx: ProtectedTRPCContext,
   id: number
 ) => {
+  await ensureUltraPlan(ctx);
+
   // Only delete if the template belongs to the user
-  await ctx.db
+  const result = await ctx.db
     .delete(utmTemplate)
     .where(and(eq(utmTemplate.id, id), eq(utmTemplate.userId, ctx.auth.userId)));
+
+  if (result[0].affectedRows === 0) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Template not found or access denied",
+    });
+  }
+
   return { success: true };
 };

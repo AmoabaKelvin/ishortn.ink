@@ -68,21 +68,17 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   const formUpdateMutation = api.link.update.useMutation({
     onSuccess: async () => {
       await revalidateHomepage();
-      toast.success("Link updated successfully");
       onClose();
-    },
-    onError: (error) => {
-      toast.error(error.message);
     },
   });
 
-  const form = useForm<z.infer<Omit<typeof updateLinkSchema, "id">>>({
+  const form = useForm<z.infer<typeof updateLinkSchema>>({
     resolver: zodResolver(updateLinkSchema),
     defaultValues: {
       id: link.id,
-      name: link.name!,
-      url: link.url!,
-      alias: link.alias!,
+      name: link.name ?? "",
+      url: link.url ?? "",
+      alias: link.alias ?? "",
       note: link.note ?? undefined,
       disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
@@ -100,9 +96,9 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   useEffect(() => {
     form.reset({
       id: link.id,
-      name: link.name!,
-      url: link.url!,
-      alias: link.alias!,
+      name: link.name ?? "",
+      url: link.url ?? "",
+      alias: link.alias ?? "",
       note: link.note ?? undefined,
       disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
@@ -155,9 +151,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
         .map((tag) => tag.name)
     : [];
 
-  async function onSubmit(
-    values: z.infer<Omit<typeof updateLinkSchema, "id">>
-  ) {
+  async function onSubmit(values: z.infer<typeof updateLinkSchema>) {
     values.tags = tags;
     toast.promise(formUpdateMutation.mutateAsync(values), {
       loading: "Updating link...",
@@ -206,7 +200,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       {link.totalClicks} clicks
                     </span>
                     <span>
-                      Created {format(new Date(link.createdAt!), "MMM d, yyyy")}
+                      Created {link.createdAt ? format(new Date(link.createdAt), "MMM d, yyyy") : "Unknown"}
                     </span>
                   </div>
                 </div>
