@@ -1,6 +1,8 @@
 import { Funnel_Display, Funnel_Sans } from "next/font/google";
 
 import { cn } from "@/lib/utils";
+import { ChangelogBanner } from "@/components/changelog/changelog-banner";
+import { ChangelogToast } from "@/components/changelog/changelog-toast";
 
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
@@ -24,6 +26,11 @@ const funnelSans = Funnel_Sans({
 export default function DashboardLayout({ children }: Props) {
   return (
     <div className={cn("min-h-screen bg-gray-50", funnelSans.className)}>
+      {/* Changelog banner at the top */}
+      <div className="fixed top-0 left-0 right-0 z-50 lg:left-[280px]">
+        <ChangelogBanner />
+      </div>
+
       <SidebarWrapper />
 
       {/* Main content area with left margin for sidebar */}
@@ -33,6 +40,9 @@ export default function DashboardLayout({ children }: Props) {
           <div className="mt-7 py-4">{children}</div>
         </div>
       </div>
+
+      {/* Changelog toast notification */}
+      <ChangelogToast />
     </div>
   );
 }
