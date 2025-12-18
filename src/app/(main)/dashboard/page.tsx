@@ -35,19 +35,16 @@ export default async function DashboardPage(props: Props) {
     | undefined;
   const search = searchParams.search as string | undefined;
 
-  const result = await api.link.list.query({
-    page,
-    pageSize,
-    orderBy,
-    orderDirection,
-    tag,
-    archivedFilter,
-    search,
-  });
-  const links = result.links;
-  const totalLinks = result.totalLinks as number;
-  const totalPages = result.totalPages as number;
-  const currentPage = result.currentPage as number;
+  const { links, totalLinks, totalPages, currentPage } =
+    await api.link.list.query({
+      page,
+      pageSize,
+      orderBy,
+      orderDirection,
+      tag,
+      archivedFilter,
+      search,
+    });
 
   const { totalLinks: totalLinksCount, activeLinks } =
     await api.link.stats.query();
