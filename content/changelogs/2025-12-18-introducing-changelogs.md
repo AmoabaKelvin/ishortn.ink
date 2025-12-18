@@ -1,5 +1,5 @@
 ---
-date: 2025-12-18
+date: 2025-12-18T10:00:00
 version: 1.0.0
 title: Introducing Changelogs
 shortDesc: Stay up to date with new features and improvements

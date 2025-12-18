@@ -12,7 +12,7 @@ export function ChangelogToast() {
   const [isVisible, setIsVisible] = useState(false);
   const [latestEntry, setLatestEntry] = useState<{
     shortDesc: string;
-    date: string;
+    slug: string;
     title: string;
     version: string;
   } | null>(null);
@@ -33,7 +33,7 @@ export function ChangelogToast() {
       if (dismissedVersion !== latest.version) {
         setLatestEntry({
           shortDesc: latest.shortDesc,
-          date: latest.date,
+          slug: latest.slug,
           title: latest.title,
           version: latest.version,
         });
@@ -48,14 +48,14 @@ export function ChangelogToast() {
     setIsVisible(false);
     if (latestEntry) {
       localStorage.setItem(STORAGE_KEY, latestEntry.version);
-      markAsViewed.mutate({ date: latestEntry.date });
+      markAsViewed.mutate({ slug: latestEntry.slug });
     }
   };
 
   const handleViewChangelog = () => {
     if (latestEntry) {
       localStorage.setItem(STORAGE_KEY, latestEntry.version);
-      markAsViewed.mutate({ date: latestEntry.date });
+      markAsViewed.mutate({ slug: latestEntry.slug });
     }
   };
 
