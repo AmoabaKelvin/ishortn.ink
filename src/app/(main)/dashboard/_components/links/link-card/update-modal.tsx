@@ -429,11 +429,11 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                         <div className="flex justify-end">
                           <UtmTemplateSelector
                             onSelect={(params) => {
-                              form.setValue("utmParams.utm_source", params.utm_source ?? "");
-                              form.setValue("utmParams.utm_medium", params.utm_medium ?? "");
-                              form.setValue("utmParams.utm_campaign", params.utm_campaign ?? "");
-                              form.setValue("utmParams.utm_term", params.utm_term ?? "");
-                              form.setValue("utmParams.utm_content", params.utm_content ?? "");
+                              form.setValue("utmParams.utm_source", params.utm_source ?? undefined);
+                              form.setValue("utmParams.utm_medium", params.utm_medium ?? undefined);
+                              form.setValue("utmParams.utm_campaign", params.utm_campaign ?? undefined);
+                              form.setValue("utmParams.utm_term", params.utm_term ?? undefined);
+                              form.setValue("utmParams.utm_content", params.utm_content ?? undefined);
                             }}
                           />
                         </div>
