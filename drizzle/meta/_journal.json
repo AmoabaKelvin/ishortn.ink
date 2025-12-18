@@ -211,6 +211,13 @@
       "when": 1766010581371,
       "tag": "0029_loving_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1766052743973,
+      "tag": "0030_short_white_tiger",
+      "breakpoints": true
     }
   ]
 }

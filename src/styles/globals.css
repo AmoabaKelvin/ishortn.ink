@@ -4,71 +4,80 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 240 10% 3.9%;
+    --background: 0 0% 99%;
+    --foreground: 240 10% 6%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 240 10% 6%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 240 10% 6%;
 
-    --primary: 240 5.9% 10%;
+    --primary: 240 5% 12%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 5% 12%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 5% 12%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 240 5% 65%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+
+    /* Landing page specific */
+    --landing-bg: 60 9% 98%;
+    --landing-surface: 0 0% 100%;
+    --landing-border: 40 6% 90%;
+    --landing-text: 240 10% 6%;
+    --landing-text-muted: 240 4% 46%;
+    --landing-accent: 258 90% 66%;
+    --landing-accent-soft: 258 90% 96%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 240 10% 4%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 3.9%;
+    --card: 240 10% 4%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 3.9%;
+    --popover: 240 10% 4%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
+    --primary-foreground: 240 5% 10%;
 
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 240 4% 16%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
 
-    --accent: 240 3.7% 15.9%;
+    --accent: 240 4% 16%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 62.8% 40.6%;
+    --destructive: 0 63% 41%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 240 5% 84%;
 
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -93,45 +102,185 @@
   }
 }
 
+/* Landing page styles */
+@layer components {
+  .landing-gradient-text {
+    @apply bg-gradient-to-r from-neutral-900 via-neutral-700 to-neutral-900 bg-clip-text text-transparent;
+  }
+
+  .landing-gradient-bg {
+    background: linear-gradient(
+      135deg,
+      hsl(60, 9%, 98%) 0%,
+      hsl(40, 10%, 96%) 50%,
+      hsl(60, 9%, 98%) 100%
+    );
+  }
+
+  .landing-card {
+    @apply relative overflow-hidden rounded-2xl border border-neutral-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300;
+  }
+
+  .landing-card:hover {
+    @apply border-neutral-300/80 shadow-lg shadow-neutral-900/5;
+  }
+
+  .landing-button-primary {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-full bg-neutral-900 px-8 py-4 text-sm font-medium text-white transition-all duration-300 hover:bg-neutral-800 hover:shadow-lg hover:shadow-neutral-900/20;
+  }
+
+  .landing-button-secondary {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white px-8 py-4 text-sm font-medium text-neutral-900 transition-all duration-300 hover:border-neutral-300 hover:bg-neutral-50;
+  }
+
+  .landing-section {
+    @apply relative px-4 py-24 md:py-32;
+  }
+
+  .landing-container {
+    @apply mx-auto max-w-6xl;
+  }
+
+  .landing-badge {
+    @apply inline-flex items-center gap-2 rounded-full border border-neutral-200/60 bg-white/60 px-4 py-2 text-xs font-medium text-neutral-600 backdrop-blur-sm;
+  }
+
+  .feature-card {
+    @apply relative overflow-hidden rounded-3xl border border-neutral-200/50 bg-gradient-to-br from-white to-neutral-50/80 p-8 transition-all duration-500;
+  }
+
+  .feature-card::before {
+    content: "";
+    @apply absolute inset-0 bg-gradient-to-br from-transparent via-neutral-100/0 to-neutral-100/50 opacity-0 transition-opacity duration-500;
+  }
+
+  .feature-card:hover::before {
+    @apply opacity-100;
+  }
+
+  .feature-card:hover {
+    @apply border-neutral-300/80 shadow-2xl shadow-neutral-900/10 -translate-y-1;
+  }
+
+  .pricing-card {
+    @apply relative overflow-hidden rounded-3xl border border-neutral-200/60 bg-white p-8 transition-all duration-500;
+  }
+
+  .pricing-card:hover {
+    @apply shadow-2xl shadow-neutral-900/10 -translate-y-1;
+  }
+
+  .pricing-card-popular {
+    @apply border-neutral-900 bg-neutral-900 text-white;
+  }
+
+  .testimonial-card {
+    @apply relative rounded-2xl border border-neutral-200/60 bg-white/90 p-8 backdrop-blur-sm transition-all duration-300;
+  }
+
+  .testimonial-card:hover {
+    @apply shadow-lg shadow-neutral-900/5 -translate-y-0.5;
+  }
+
+  .faq-item {
+    @apply rounded-2xl border border-neutral-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300;
+  }
+
+  .faq-item:hover {
+    @apply border-neutral-300/80;
+  }
+
+  .gradient-blur {
+    @apply absolute rounded-full blur-3xl;
+  }
+
+  .noise-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    @apply pointer-events-none absolute inset-0 opacity-[0.015];
+  }
+
+  .grid-overlay {
+    background-image:
+      linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+    @apply pointer-events-none absolute inset-0;
+  }
+}
+
+/* Animated spinner */
 .animated-spinner {
   transform-origin: center;
   animation: loader-spin 0.75s step-end infinite;
 }
+
 @keyframes loader-spin {
-  8.3% {
-    transform: rotate(30deg);
-  }
-  16.6% {
-    transform: rotate(60deg);
-  }
-  25% {
-    transform: rotate(90deg);
-  }
-  33.3% {
-    transform: rotate(120deg);
-  }
-  41.6% {
-    transform: rotate(150deg);
-  }
-  50% {
-    transform: rotate(180deg);
-  }
-  58.3% {
-    transform: rotate(210deg);
-  }
-  66.6% {
-    transform: rotate(240deg);
-  }
-  75% {
-    transform: rotate(270deg);
-  }
-  83.3% {
-    transform: rotate(300deg);
-  }
-  91.6% {
-    transform: rotate(330deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  8.3% { transform: rotate(30deg); }
+  16.6% { transform: rotate(60deg); }
+  25% { transform: rotate(90deg); }
+  33.3% { transform: rotate(120deg); }
+  41.6% { transform: rotate(150deg); }
+  50% { transform: rotate(180deg); }
+  58.3% { transform: rotate(210deg); }
+  66.6% { transform: rotate(240deg); }
+  75% { transform: rotate(270deg); }
+  83.3% { transform: rotate(300deg); }
+  91.6% { transform: rotate(330deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Selection */
+::selection {
+  @apply bg-neutral-900 text-white;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-neutral-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-400;
+}
+
+/* Changelog prose code blocks - use !important to override prose defaults */
+.changelog-prose pre {
+  @apply rounded-xl p-4 overflow-x-auto;
+  background-color: #171717 !important;
+}
+
+.changelog-prose pre code {
+  background-color: transparent !important;
+  color: #f5f5f5 !important;
+  font-size: 0.875rem !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
+  padding: 0 !important;
+  white-space: pre;
+}
+
+.changelog-prose code:not(pre code) {
+  @apply rounded px-1.5 py-0.5;
+  background-color: #f5f5f5 !important;
+  color: #262626 !important;
+  font-size: 0.875rem !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
+}
+
+.changelog-prose code:not(pre code)::before,
+.changelog-prose code:not(pre code)::after {
+  content: none !important;
 }

@@ -1,4 +1,5 @@
 import { aiRouter } from "./routers/ai/ai.procedure";
+import { changelogRouter } from "./routers/changelog/changelog.procedure";
 import { customDomainRouter } from "./routers/domains/domains.procedure";
 import { folderRouter } from "./routers/folder/folder.procedure";
 import { lemonsqueezyRouter } from "./routers/lemonsqueezy/lemonsqueezy.procedure";
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   tag: tagRouter,
   folder: folderRouter,
   utmTemplate: utmTemplateRouter,
+  changelog: changelogRouter,
 });
 
 export type AppRouter = typeof appRouter;
