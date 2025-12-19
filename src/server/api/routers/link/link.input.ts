@@ -49,6 +49,15 @@ export const createLinkSchema = z.object({
       image: z.string().optional(),
     })
     .optional(),
+  utmParams: z
+    .object({
+      utm_source: z.string().max(255).optional(),
+      utm_medium: z.string().max(255).optional(),
+      utm_campaign: z.string().max(255).optional(),
+      utm_term: z.string().max(255).optional(),
+      utm_content: z.string().max(255).optional(),
+    })
+    .optional(),
 });
 
 export const quickLinkShorteningSchema = z.object({
@@ -95,6 +104,16 @@ export type QuickLinkShorteningInput = z.infer<
 >;
 
 export type ListLinksInput = z.infer<typeof listLinksSchema>;
+
+export const listLinksOutputSchema = z.object({
+  links: z.array(z.any()),
+  totalLinks: z.number(),
+  totalClicks: z.number(),
+  currentPage: z.number(),
+  totalPages: z.number(),
+});
+
+export type ListLinksOutput = z.infer<typeof listLinksOutputSchema>;
 
 export const ToggleArchiveInput = z.object({ id: z.number() });
 export type ToggleArchiveInput = z.infer<typeof ToggleArchiveInput>;

@@ -41,6 +41,8 @@ import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
+import { UtmParamsForm } from "../../_components/utm-params-form";
+import { UtmTemplateSelector } from "../../_components/utm-template-selector";
 import { revalidateHomepage } from "../../revalidate-homepage";
 
 import { LinkPreviewComponent } from "./_components/link-preview";
@@ -61,6 +63,7 @@ export default function CreateLinkPage() {
   const [destinationURL, setDestinationURL] = useState<string | undefined>();
   const [userDomains, setUserDomains] = useState<CustomDomain[]>([]);
   const [isCustomMetadataOpen, setIsCustomMetadataOpen] = useState(false);
+  const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
   const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
   const [generatedAliases, setGeneratedAliases] = useState<string[]>([]);
   const [currentAliasIndex, setCurrentAliasIndex] = useState(0);
@@ -70,6 +73,7 @@ export default function CreateLinkPage() {
     image: "",
     favicon: "",
   });
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(false);
@@ -225,6 +229,28 @@ export default function CreateLinkPage() {
       setUserDomains(customDomainsQuery.data);
     }
   }, [customDomainsQuery.data]);
+
+  // Fetch ishortn.ink metadata on initial load
+  useEffect(() => {
+    if (isInitialLoad) {
+      fetchMetadataInfo("https://ishortn.ink")
+        .then((metadata) => {
+          setMetaData(metadata);
+        })
+        .catch(() => {
+          // Set fallback metadata if fetch fails
+          setMetaData({
+            title: "iShortn",
+            description: "URL Shortener",
+            image: "",
+            favicon: "",
+          });
+        })
+        .finally(() => {
+          setIsInitialLoad(false);
+        });
+    }
+  }, [isInitialLoad]);
 
   useEffect(() => {
     if (debouncedAlias) {
@@ -602,6 +628,67 @@ export default function CreateLinkPage() {
                             </FormControl>
                           </FormItem>
                         )}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* UTM Parameters Section */}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-left"
+                onClick={() => setIsUtmParamsOpen(!isUtmParamsOpen)}
+              >
+                <div className="flex flex-col">
+                  <p className="flex items-center gap-2 text-lg font-semibold">
+                    UTM Parameters
+                    {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
+                      <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
+                        <span className="flex items-center space-x-1">
+                          <Gem className="h-4 w-4 text-slate-500" />
+                          <p className="uppercase">Ultra</p>
+                        </span>
+                      </span>
+                    )}
+                  </p>
+                  <span className="text-sm text-gray-500">
+                    Add UTM parameters for campaign tracking
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`h-5 w-5 transform transition-transform ${
+                    isUtmParamsOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              <AnimatePresence>
+                {isUtmParamsOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="mt-4 space-y-3">
+                      {userSubscription?.data?.subscriptions?.plan === "ultra" && (
+                        <div className="flex justify-end">
+                          <UtmTemplateSelector
+                            onSelect={(params) => {
+                              form.setValue("utmParams.utm_source", params.utm_source ?? "");
+                              form.setValue("utmParams.utm_medium", params.utm_medium ?? "");
+                              form.setValue("utmParams.utm_campaign", params.utm_campaign ?? "");
+                              form.setValue("utmParams.utm_term", params.utm_term ?? "");
+                              form.setValue("utmParams.utm_content", params.utm_content ?? "");
+                            }}
+                          />
+                        </div>
+                      )}
+                      <UtmParamsForm
+                        form={form}
+                        disabled={userSubscription?.data?.subscriptions?.plan !== "ultra"}
                       />
                     </div>
                   </motion.div>

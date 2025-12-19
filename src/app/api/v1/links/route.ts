@@ -25,12 +25,18 @@ export async function POST(request: Request) {
     return new Response(input.error.message, { status: 400 });
   }
 
-  if (input.data.alias && (await checkLinkAliasCollision(input.data.alias, input.data.domain))) {
+  const parsedData = input.data as ShortenLinkInput;
+  if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, parsedData.domain ?? "ishortn.ink"))) {
     return new Response("Alias already exists", { status: 400 });
   }
 
   try {
-    const newLink = await createNewLink(input.data, token.userId, token.subscription?.status);
+    const newLink = await createNewLink(
+      parsedData,
+      token.userId,
+      token.subscription?.status,
+      token.subscription?.plan
+    );
     return new Response(JSON.stringify(newLink), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -50,10 +56,35 @@ const shortenLinkSchema = z.object({
   alias: z.string().optional(),
   password: z.string().optional(),
   domain: z.string().optional(),
+  utmParams: z
+    .object({
+      utm_source: z.string().max(255).optional(),
+      utm_medium: z.string().max(255).optional(),
+      utm_campaign: z.string().max(255).optional(),
+      utm_term: z.string().max(255).optional(),
+      utm_content: z.string().max(255).optional(),
+    })
+    .optional(),
 });
 
-async function checkLinkAliasCollision(alias: string, domain: string | undefined) {
-  const domainToUse = domain ?? "ishortn.ink";
+type ShortenLinkInput = {
+  url: string;
+  expiresAt?: string;
+  expiresAfter?: number;
+  alias?: string;
+  password?: string;
+  domain?: string;
+  utmParams?: {
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_term?: string;
+    utm_content?: string;
+  };
+};
+
+async function checkLinkAliasCollision(alias: string, domain: string) {
+  const domainToUse = domain;
   const existingLink = await db
     .select()
     .from(link)
@@ -62,9 +93,10 @@ async function checkLinkAliasCollision(alias: string, domain: string | undefined
 }
 
 async function createNewLink(
-  data: z.infer<typeof shortenLinkSchema>,
+  data: ShortenLinkInput,
   userId: string,
   subStatus: string | undefined | null,
+  plan: string | undefined | null
 ) {
   if (data.password) {
     if (subStatus !== "active" || subStatus === undefined) {
@@ -73,6 +105,19 @@ async function createNewLink(
 
     const hashedPassword = bcrypt.hashSync(data.password, 10);
     data.password = hashedPassword;
+  }
+
+  // Check for UTM params - Ultra plan only
+  if (data.utmParams) {
+    const utmParamsValues = Object.values(data.utmParams);
+    const hasUtmParams = utmParamsValues.some(
+      (value) => value !== undefined && value !== null && value !== ""
+    );
+    if (hasUtmParams && plan !== "ultra") {
+      throw new Error(
+        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature."
+      );
+    }
   }
 
   const aliasRegex = /^[a-zA-Z0-9-_]+$/;
@@ -96,6 +141,7 @@ async function createNewLink(
     passwordHash: data.password,
     domain: data.domain ?? "ishortn.ink",
     userId,
+    utmParams: data.utmParams ?? null,
   };
 
   const newLink = await db.insert(link).values(newLinkData);

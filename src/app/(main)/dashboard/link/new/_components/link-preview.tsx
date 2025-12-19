@@ -1,3 +1,5 @@
+const DEFAULT_FAVICON = "https://www.google.com/s2/favicons?domain=ishortn.ink&sz=64";
+
 export function LinkPreviewComponent({
   destinationURL,
   metaTitle,
@@ -16,22 +18,30 @@ export function LinkPreviewComponent({
       <div className="flex items-center font-semibold">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={favicon || "https://via.placeholder.com/1200x630"}
+          src={favicon || DEFAULT_FAVICON}
           className="mr-2 h-6 w-6 rounded-md"
           alt="Favicon"
+          onError={(e) => {
+            e.currentTarget.src = DEFAULT_FAVICON;
+          }}
         />
-        {metaTitle || "Title"}
+        {metaTitle}
       </div>
-      <span className="text-sm">{metaDescription || "Description"}</span>
+      <span className="text-sm">{metaDescription}</span>
       <span className="text-sm text-slate-500">
-        {destinationURL?.replace(/(^\w+:|^)\/\//, "").split("/")[0]}
+        {destinationURL?.replace(/(^\w+:|^)\/\//, "").split("/")[0] || "ishortn.ink"}
       </span>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={metaImage || "https://via.placeholder.com/1200x630"}
-        className="w-full rounded-lg"
-        alt="Link preview"
-      />
+      {metaImage && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={metaImage}
+          className="w-full rounded-lg"
+          alt="Link preview"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      )}
     </div>
   );
 }

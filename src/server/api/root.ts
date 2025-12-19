@@ -1,4 +1,5 @@
 import { aiRouter } from "./routers/ai/ai.procedure";
+import { changelogRouter } from "./routers/changelog/changelog.procedure";
 import { customDomainRouter } from "./routers/domains/domains.procedure";
 import { folderRouter } from "./routers/folder/folder.procedure";
 import { lemonsqueezyRouter } from "./routers/lemonsqueezy/lemonsqueezy.procedure";
@@ -8,6 +9,7 @@ import { siteSettingsRouter } from "./routers/settings/settings.procedure";
 import { subscriptionsRouter } from "./routers/subscriptions/subscriptions.procedure";
 import { tagRouter } from "./routers/tag/tag.router";
 import { tokenRouter } from "./routers/token/token.procedure";
+import { utmTemplateRouter } from "./routers/utm-template/utm-template.router";
 import { createTRPCRouter } from "./trpc";
 
 export const appRouter = createTRPCRouter({
@@ -21,6 +23,8 @@ export const appRouter = createTRPCRouter({
   siteSettings: siteSettingsRouter,
   tag: tagRouter,
   folder: folderRouter,
+  utmTemplate: utmTemplateRouter,
+  changelog: changelogRouter,
 });
 
 export type AppRouter = typeof appRouter;

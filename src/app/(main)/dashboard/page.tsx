@@ -65,9 +65,9 @@ export default async function DashboardPage(props: Props) {
 
       <Links
         links={links}
-        totalPages={totalPages}
-        currentPage={currentPage}
-        totalLinks={totalLinks}
+        totalPages={totalPages as number}
+        currentPage={currentPage as number}
+        totalLinks={totalLinks as number}
       />
     </div>
   );
