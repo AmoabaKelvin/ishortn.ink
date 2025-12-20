@@ -94,7 +94,7 @@ export function AddCustomDomainModal() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="bg-blue-600 hover:bg-blue-700">
           <Plus className="mr-2 h-4 w-4" />
           {isProUser ? "Add Domain" : "Upgrade to Add Domain"}
         </Button>
@@ -161,7 +161,7 @@ export function AddCustomDomainModal() {
           {isProUser ? (
             <Button
               type="submit"
-              className="mt-3 w-full"
+              className="mt-3 w-full bg-blue-600 hover:bg-blue-700"
               onClick={handleCreateDomain}
               disabled={!domain || createCustomDomainMutation.isLoading}
             >
@@ -170,7 +170,7 @@ export function AddCustomDomainModal() {
           ) : (
             <Button
               type="button"
-              className="mt-3 w-full"
+              className="mt-3 w-full bg-blue-600 hover:bg-blue-700"
               onClick={handleUpgrade}
             >
               Upgrade to Pro

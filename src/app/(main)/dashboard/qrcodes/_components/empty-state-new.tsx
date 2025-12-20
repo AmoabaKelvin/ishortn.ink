@@ -18,7 +18,7 @@ export function QRCodeEmptyState() {
         Create your first QR code to share your links in the physical world.
         Track scans and customize designs.
       </p>
-      <Button asChild>
+      <Button asChild className="bg-blue-600 hover:bg-blue-700">
         <Link href="/dashboard/qrcodes/create">Create QR Code</Link>
       </Button>
     </div>

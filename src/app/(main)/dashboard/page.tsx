@@ -46,8 +46,8 @@ export default async function DashboardPage(props: Props) {
       search,
     });
 
-  const { totalLinks: totalLinksCount, activeLinks } =
-    await api.link.stats.query();
+  // const { totalLinks: totalLinksCount, activeLinks } =
+  //   await api.link.stats.query();
 
   return (
     <div>

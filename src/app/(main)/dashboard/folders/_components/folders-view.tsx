@@ -34,36 +34,33 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
   const hasFolders = folders && folders.length > 0;
 
   return (
-    <div className="space-y-8 p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Folders
-          </h1>
-          <p className="text-slate-500 mt-2 text-lg">
-            Organize your links into folders
+          <h1 className="text-2xl font-semibold text-gray-900">Folders</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Organize your links into folders.
           </p>
         </div>
 
         {isProUser && hasFolders && (
-          <Button
-            onClick={() => setCreateModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
+          <Button onClick={() => setCreateModalOpen(true)}>
             <FolderPlus className="mr-2 h-4 w-4" />
             Create Folder
           </Button>
         )}
       </div>
 
-      {/* Content */}
       {!isProUser ? (
-        <EmptyStateFree />
+        <div className="mt-8">
+          <EmptyStateFree />
+        </div>
       ) : !hasFolders ? (
-        <EmptyStatePro onCreateClick={() => setCreateModalOpen(true)} />
+        <div className="mt-8">
+          <EmptyStatePro onCreateClick={() => setCreateModalOpen(true)} />
+        </div>
       ) : (
-        <div className="space-y-4">
+        <div className="mt-8 space-y-4">
           {folders.map((folder) => (
             <FolderCard
               key={folder.id}
@@ -75,7 +72,6 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
         </div>
       )}
 
-      {/* Modals */}
       <CreateFolderModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
