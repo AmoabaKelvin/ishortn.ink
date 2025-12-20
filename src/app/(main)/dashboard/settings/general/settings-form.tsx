@@ -125,7 +125,7 @@ export function SettingsForm({
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save changes
             </Button>
