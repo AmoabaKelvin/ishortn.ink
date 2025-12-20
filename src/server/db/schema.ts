@@ -16,6 +16,130 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 
+// ============================================================================
+// TEAM TABLES
+// ============================================================================
+
+export const team = mysqlTable(
+  "Team",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    slug: varchar("slug", { length: 100 }).notNull().unique(), // subdomain: slug.ishortn.ink
+    avatarUrl: text("avatarUrl"),
+    defaultDomain: varchar("defaultDomain", { length: 255 }).default(
+      "ishortn.ink"
+    ),
+    ownerId: varchar("ownerId", { length: 32 }).notNull(), // Ultra user who created the team
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    slugIdx: index("slug_idx").on(table.slug),
+    ownerIdIdx: index("ownerId_idx").on(table.ownerId),
+  })
+);
+
+export const teamMember = mysqlTable(
+  "TeamMember",
+  {
+    id: serial("id").primaryKey(),
+    teamId: int("teamId").notNull(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    role: mysqlEnum("role", ["owner", "admin", "member"]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    teamUserIdx: index("team_user_idx").on(table.teamId, table.userId),
+    uniqueTeamUser: unique("unique_team_user").on(table.teamId, table.userId),
+    userIdx: index("user_idx").on(table.userId),
+  })
+);
+
+export const teamInvite = mysqlTable(
+  "TeamInvite",
+  {
+    id: serial("id").primaryKey(),
+    teamId: int("teamId").notNull(),
+    email: varchar("email", { length: 255 }),
+    role: mysqlEnum("inviteRole", ["admin", "member"]).notNull().default("member"),
+    token: varchar("token", { length: 64 }).notNull().unique(),
+    invitedBy: varchar("invitedBy", { length: 32 }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    acceptedAt: timestamp("acceptedAt"),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    tokenIdx: index("token_idx").on(table.token),
+    teamIdx: index("team_idx").on(table.teamId),
+  })
+);
+
+// Reserved team slugs that cannot be used
+export const RESERVED_TEAM_SLUGS = [
+  "www",
+  "api",
+  "app",
+  "admin",
+  "dashboard",
+  "mail",
+  "smtp",
+  "ftp",
+  "ssh",
+  "support",
+  "help",
+  "docs",
+  "blog",
+  "status",
+  "cdn",
+  "static",
+  "assets",
+  "img",
+  "images",
+  "js",
+  "css",
+  "fonts",
+  "media",
+  "download",
+  "downloads",
+  "login",
+  "signin",
+  "signup",
+  "register",
+  "auth",
+  "oauth",
+  "sso",
+  "account",
+  "accounts",
+  "billing",
+  "payment",
+  "payments",
+  "checkout",
+  "subscribe",
+  "subscription",
+  "pricing",
+  "terms",
+  "privacy",
+  "legal",
+  "security",
+  "abuse",
+  "spam",
+  "report",
+  "null",
+  "undefined",
+  "test",
+  "testing",
+  "dev",
+  "development",
+  "staging",
+  "prod",
+  "production",
+  "demo",
+  "example",
+  "sample",
+];
+
 export const user = mysqlTable(
   "User",
   {
@@ -86,6 +210,7 @@ export const link = mysqlTable(
     userId: varchar("userId", {
       length: 32,
     }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     passwordHash: text("passwordHash"),
     note: varchar("note", { length: 255 }),
     metadata: json("metadata"),
@@ -102,6 +227,7 @@ export const link = mysqlTable(
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
     uniqueAliasDomainIdx: unique("unique_alias_domain").on(
       table.alias,
@@ -167,6 +293,7 @@ export const qrcode = mysqlTable(
     title: varchar("title", { length: 255 }).default(""),
     createdAt: timestamp("createdAt").defaultNow(),
     userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     linkId: int("linkId").default(0), // the link that the qrcode is associated with (if any)
 
     // we need to store the presets for the qrcode in order to view the previous styles used when modifying the qrcode
@@ -203,6 +330,7 @@ export const qrcode = mysqlTable(
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
   })
 );
 
@@ -211,6 +339,7 @@ export const siteSettings = mysqlTable(
   {
     id: serial("id").primaryKey(),
     userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     defaultDomain: varchar("defaultDomain", { length: 255 }).default(
       "ishortn.ink"
     ),
@@ -219,21 +348,31 @@ export const siteSettings = mysqlTable(
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
   })
 );
 
 // Tag model for storing unique tags
+// Uniqueness strategy:
+// - Team workspaces: unique(name, teamId) enforced at DB level
+// - Personal workspaces: uniqueness enforced at application layer (tag.service.ts)
+//   because MySQL treats NULL teamId values as distinct in unique constraints
 export const tag = mysqlTable(
   "Tag",
   {
     id: serial("id").primaryKey(),
-    name: varchar("name", { length: 50 }).notNull().unique(),
+    name: varchar("name", { length: 50 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow(),
     userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
   },
   (table) => ({
     nameIdx: index("name_idx").on(table.name),
     userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
+    // Prevents duplicate tag names within a team (where teamId is NOT NULL)
+    // Personal workspace tags (teamId=NULL) are deduplicated at application layer
+    uniqueTagPerTeam: unique("unique_tag_team").on(table.name, table.teamId),
   })
 );
 
@@ -245,11 +384,13 @@ export const folder = mysqlTable(
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
     userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
   })
 );
 
@@ -274,6 +415,10 @@ export const linkRelations = relations(link, ({ one, many }) => ({
     fields: [link.userId],
     references: [user.id],
   }),
+  team: one(team, {
+    fields: [link.teamId],
+    references: [team.id],
+  }),
   linkVisits: many(linkVisit),
   uniqueLinkVisits: many(uniqueLinkVisit),
   linkTags: many(linkTag),
@@ -289,6 +434,7 @@ export const customDomain = mysqlTable(
     id: serial("id").primaryKey(),
     domain: varchar("domain", { length: 255 }).unique(),
     userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     createdAt: timestamp("createdAt").defaultNow(),
     status: mysqlEnum("status", ["pending", "active", "invalid"]).default(
       "pending"
@@ -297,6 +443,7 @@ export const customDomain = mysqlTable(
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
   })
 );
 
@@ -316,6 +463,8 @@ export const userRelations = relations(user, ({ many, one }) => ({
   tags: many(tag),
   folders: many(folder),
   utmTemplates: many(utmTemplate),
+  teamMemberships: many(teamMember),
+  ownedTeams: many(team),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -344,6 +493,10 @@ export const qrcodeRelations = relations(qrcode, ({ one }) => ({
     fields: [qrcode.userId],
     references: [user.id],
   }),
+  team: one(team, {
+    fields: [qrcode.teamId],
+    references: [team.id],
+  }),
   link: one(link, {
     fields: [qrcode.linkId],
     references: [link.id],
@@ -354,6 +507,10 @@ export const customDomainRelations = relations(customDomain, ({ one }) => ({
   user: one(user, {
     fields: [customDomain.userId],
     references: [user.id],
+  }),
+  team: one(team, {
+    fields: [customDomain.teamId],
+    references: [team.id],
   }),
 }));
 
@@ -372,6 +529,10 @@ export const siteSettingsRelations = relations(siteSettings, ({ one }) => ({
     fields: [siteSettings.userId],
     references: [user.id],
   }),
+  team: one(team, {
+    fields: [siteSettings.teamId],
+    references: [team.id],
+  }),
 }));
 
 // Define relations for Tag
@@ -379,6 +540,10 @@ export const tagRelations = relations(tag, ({ many, one }) => ({
   user: one(user, {
     fields: [tag.userId],
     references: [user.id],
+  }),
+  team: one(team, {
+    fields: [tag.teamId],
+    references: [team.id],
   }),
   linkTags: many(linkTag),
 }));
@@ -400,6 +565,10 @@ export const folderRelations = relations(folder, ({ one, many }) => ({
   user: one(user, {
     fields: [folder.userId],
     references: [user.id],
+  }),
+  team: one(team, {
+    fields: [folder.teamId],
+    references: [team.id],
   }),
   links: many(link),
 }));
@@ -448,11 +617,13 @@ export const utmTemplate = mysqlTable(
     utmTerm: varchar("utmTerm", { length: 255 }),
     utmContent: varchar("utmContent", { length: 255 }),
     userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
   })
 );
 
@@ -462,7 +633,65 @@ export const utmTemplateRelations = relations(utmTemplate, ({ one }) => ({
     fields: [utmTemplate.userId],
     references: [user.id],
   }),
+  team: one(team, {
+    fields: [utmTemplate.teamId],
+    references: [team.id],
+  }),
 }));
 
 export type UtmTemplate = typeof utmTemplate.$inferSelect;
 export type NewUtmTemplate = typeof utmTemplate.$inferInsert;
+
+// ============================================================================
+// TEAM RELATIONS
+// ============================================================================
+
+export const teamRelations = relations(team, ({ one, many }) => ({
+  owner: one(user, {
+    fields: [team.ownerId],
+    references: [user.id],
+  }),
+  members: many(teamMember),
+  invites: many(teamInvite),
+  links: many(link),
+  folders: many(folder),
+  qrcodes: many(qrcode),
+  customDomains: many(customDomain),
+  tags: many(tag),
+  utmTemplates: many(utmTemplate),
+}));
+
+export const teamMemberRelations = relations(teamMember, ({ one }) => ({
+  team: one(team, {
+    fields: [teamMember.teamId],
+    references: [team.id],
+  }),
+  user: one(user, {
+    fields: [teamMember.userId],
+    references: [user.id],
+  }),
+}));
+
+export const teamInviteRelations = relations(teamInvite, ({ one }) => ({
+  team: one(team, {
+    fields: [teamInvite.teamId],
+    references: [team.id],
+  }),
+  inviter: one(user, {
+    fields: [teamInvite.invitedBy],
+    references: [user.id],
+  }),
+}));
+
+// Team type exports
+export type Team = typeof team.$inferSelect;
+export type NewTeam = typeof team.$inferInsert;
+
+export type TeamMember = typeof teamMember.$inferSelect;
+export type NewTeamMember = typeof teamMember.$inferInsert;
+
+export type TeamInvite = typeof teamInvite.$inferSelect;
+export type NewTeamInvite = typeof teamInvite.$inferInsert;
+
+export type TeamRole = "owner" | "admin" | "member";
+export type InviteRole = "admin" | "member";
