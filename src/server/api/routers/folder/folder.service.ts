@@ -36,67 +36,61 @@ export const createFolder = async (
     });
   }
 
-  // Team workspaces (Ultra) have no folder limit (undefined)
-  if (folderLimit !== undefined) {
-    const currentFolders = await ctx.db
-      .select({ count: sql<number>`count(*)` })
-      .from(folder)
-      .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId));
-
-    if (Number(currentFolders[0]?.count ?? 0) >= folderLimit) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "You have reached your folder limit. Upgrade to Ultra for unlimited folders.",
-      });
-    }
-  }
-
-  // Check for duplicate folder name in workspace
-  const existingFolder = await ctx.db.query.folder.findFirst({
-    where: and(
-      eq(folder.name, input.name),
-      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
-    ),
-  });
-
-  if (existingFolder) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "A folder with this name already exists",
-    });
-  }
-
   const ownership = workspaceOwnership(ctx.workspace);
 
-  await ctx.db.insert(folder).values({
-    name: input.name,
-    description: input.description,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-  });
+  // Use transaction to atomically check limits, duplicates, and insert
+  return await ctx.db.transaction(async (tx) => {
+    // Team workspaces (Ultra) have no folder limit (undefined)
+    if (folderLimit !== undefined) {
+      const currentFolders = await tx
+        .select({ count: sql<number>`count(*)` })
+        .from(folder)
+        .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId));
 
-  // Query the just-created folder to get its ID
-  const createdFolder = await ctx.db.query.folder.findFirst({
-    where: and(
-      eq(folder.name, input.name),
-      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
-    ),
-    orderBy: (table, { desc }) => [desc(table.createdAt)],
-  });
+      if (Number(currentFolders[0]?.count ?? 0) >= folderLimit) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "You have reached your folder limit. Upgrade to Ultra for unlimited folders.",
+        });
+      }
+    }
 
-  if (!createdFolder) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Failed to create folder",
+    // Check for duplicate folder name in workspace
+    const existingFolder = await tx.query.folder.findFirst({
+      where: and(
+        eq(folder.name, input.name),
+        workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+      ),
     });
-  }
 
-  return {
-    id: createdFolder.id,
-    name: input.name,
-    description: input.description,
-  };
+    if (existingFolder) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "A folder with this name already exists",
+      });
+    }
+
+    const [inserted] = await tx.insert(folder).values({
+      name: input.name,
+      description: input.description,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+    }).$returningId();
+
+    if (!inserted) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create folder",
+      });
+    }
+
+    return {
+      id: inserted.id,
+      name: input.name,
+      description: input.description,
+    };
+  });
 };
 
 export const listFolders = async (ctx: WorkspaceTRPCContext) => {

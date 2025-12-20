@@ -1,7 +1,3 @@
-import { getPlanCaps, isUnlimitedFolders, resolvePlan } from "@/lib/billing/plans";
-import { folder } from "@/server/db/schema";
-import { workspaceFilter } from "@/server/lib/workspace";
-import { count } from "drizzle-orm";
 import { createTRPCRouter, workspaceProcedure } from "../../trpc";
 import {
     createFolderInput,
@@ -26,28 +22,7 @@ export const folderRouter = createTRPCRouter({
   create: workspaceProcedure
     .input(createFolderInput)
     .mutation(async ({ ctx, input }) => {
-      const user = await ctx.db.query.user.findFirst({
-        where: (table, { eq }) => eq(table.id, ctx.auth.userId),
-        with: { subscriptions: true },
-      });
-
-      const plan = resolvePlan(user?.subscriptions);
-
-      if (!isUnlimitedFolders(plan)) {
-        const caps = getPlanCaps(plan);
-        const folderCount = await ctx.db
-          .select({ count: count() })
-          .from(folder)
-          .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId))
-          .then((res) => res[0]?.count ?? 0);
-
-        if (folderCount >= (caps.folderLimit ?? 0)) {
-          throw new Error(
-            `You have reached the limit of ${caps.folderLimit} folders for your plan. Please upgrade to add more.`
-          );
-        }
-      }
-
+      // Folder limit check is done atomically in createFolder via transaction
       return createFolder(ctx, input);
     }),
 
