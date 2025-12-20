@@ -31,18 +31,46 @@ export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
     }
 
     // Create new tag - DB unique constraint prevents duplicates
-    const [result] = await ctx.db.insert(tag).values({
-      name: normalizedName,
-      userId: ownership.userId,
-      teamId: ownership.teamId,
-    });
+    // Handle race condition: if another request creates the tag between our check and insert,
+    // catch the duplicate key error and return the existing tag
+    try {
+      const [result] = await ctx.db.insert(tag).values({
+        name: normalizedName,
+        userId: ownership.userId,
+        teamId: ownership.teamId,
+      });
 
-    return {
-      id: result.insertId,
-      name: normalizedName,
-      userId: ownership.userId,
-      teamId: ownership.teamId,
-    };
+      return {
+        id: result.insertId,
+        name: normalizedName,
+        userId: ownership.userId,
+        teamId: ownership.teamId,
+      };
+    } catch (error) {
+      // Check if this is a duplicate key error (MySQL error code 1062)
+      const isDuplicateKeyError =
+        error instanceof Error &&
+        (error.message.includes("Duplicate entry") ||
+          error.message.includes("ER_DUP_ENTRY") ||
+          (error as { code?: string }).code === "ER_DUP_ENTRY");
+
+      if (isDuplicateKeyError) {
+        // Another request created the tag concurrently, fetch and return it
+        const createdTag = await ctx.db.query.tag.findFirst({
+          where: and(
+            eq(tag.name, normalizedName),
+            eq(tag.teamId, ctx.workspace.teamId)
+          ),
+        });
+
+        if (createdTag) {
+          return createdTag;
+        }
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   // Personal workspace: use transaction for atomic check-and-insert
