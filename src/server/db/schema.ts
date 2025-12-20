@@ -33,10 +33,12 @@ export const team = mysqlTable(
     ownerId: varchar("ownerId", { length: 32 }).notNull(), // Ultra user who created the team
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
+    deletedAt: timestamp("deletedAt"), // Soft delete timestamp for grace period cleanup
   },
   (table) => ({
     slugIdx: index("slug_idx").on(table.slug),
     ownerIdIdx: index("ownerId_idx").on(table.ownerId),
+    deletedAtIdx: index("deletedAt_idx").on(table.deletedAt), // Index for cleanup job queries
   })
 );
 
