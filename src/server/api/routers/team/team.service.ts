@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { addDays } from "date-fns";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import crypto from "node:crypto";
 
 import { redis } from "@/lib/core/cache";
@@ -179,35 +179,39 @@ export async function updateTeamSlug(
 
 /**
  * Delete team (owner only)
+ * Implements soft delete with grace period - sets deletedAt timestamp.
+ * A background cleanup job will permanently delete the team and its resources
+ * after the grace period (30 days).
  */
 export async function deleteTeam(ctx: TeamTRPCContext) {
   requirePermission(ctx.workspace, "team.delete", "delete team");
 
-  // Delete in transaction (cascade)
+  // Soft delete: set deletedAt timestamp
+  // Team resources (links, folders, QR codes, etc.) are preserved during grace period
+  // A background cleanup job will permanently delete everything after 30 days
   await ctx.db.transaction(async (tx) => {
-    // Delete all invites
+    // Delete all pending invites (no need to preserve these)
     await tx
       .delete(teamInvite)
       .where(eq(teamInvite.teamId, ctx.workspace.teamId));
 
-    // Delete all members
+    // Remove all members (they can no longer access the team)
     await tx
       .delete(teamMember)
       .where(eq(teamMember.teamId, ctx.workspace.teamId));
 
-    // Note: We're NOT deleting team resources (links, folders, etc.) here
-    // They will remain with teamId pointing to a deleted team
-    // A cleanup job could handle orphaned resources later
-
-    // Delete the team
-    await tx.delete(team).where(eq(team.id, ctx.workspace.teamId));
+    // Soft delete the team by setting deletedAt
+    await tx
+      .update(team)
+      .set({ deletedAt: new Date() })
+      .where(eq(team.id, ctx.workspace.teamId));
   });
 
   return { success: true };
 }
 
 /**
- * List all teams the user is a member of
+ * List all teams the user is a member of (excludes soft-deleted teams)
  */
 export async function listUserTeams(ctx: ProtectedTRPCContext) {
   const memberships = await ctx.db.query.teamMember.findMany({
@@ -217,17 +221,21 @@ export async function listUserTeams(ctx: ProtectedTRPCContext) {
     },
   });
 
-  return memberships.map((m) => ({
-    id: m.team.id,
-    name: m.team.name,
-    slug: m.team.slug,
-    avatarUrl: m.team.avatarUrl,
-    role: m.role,
-  }));
+  // Filter out soft-deleted teams
+  return memberships
+    .filter((m) => m.team.deletedAt === null)
+    .map((m) => ({
+      id: m.team.id,
+      name: m.team.name,
+      slug: m.team.slug,
+      avatarUrl: m.team.avatarUrl,
+      role: m.role,
+    }));
 }
 
 /**
  * Check if a team slug is available
+ * Excludes soft-deleted teams so slugs can be reused after cleanup
  */
 export async function checkSlugAvailability(
   ctx: ProtectedTRPCContext,
@@ -238,8 +246,9 @@ export async function checkSlugAvailability(
     return { available: false, reason: "This slug is reserved and cannot be used" };
   }
 
+  // Only check active teams (not soft-deleted)
   const existingTeam = await ctx.db.query.team.findFirst({
-    where: eq(team.slug, slug),
+    where: and(eq(team.slug, slug), isNull(team.deletedAt)),
   });
 
   if (existingTeam) {

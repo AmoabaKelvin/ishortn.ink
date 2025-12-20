@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
@@ -110,9 +110,9 @@ async function getTeamWorkspaceContext(
   teamSlug: string,
   dbClient: DbClient
 ): Promise<TeamWorkspaceContext> {
-  // Fetch team by slug
+  // Fetch team by slug (exclude soft-deleted teams)
   const teamRecord = await dbClient.query.team.findFirst({
-    where: eq(team.slug, teamSlug),
+    where: and(eq(team.slug, teamSlug), isNull(team.deletedAt)),
   });
 
   if (!teamRecord) {
@@ -157,9 +157,9 @@ export async function getTeamWorkspaceContextById(
   teamId: number,
   dbClient: DbClient = db
 ): Promise<TeamWorkspaceContext> {
-  // Fetch team by ID
+  // Fetch team by ID (exclude soft-deleted teams)
   const teamRecord = await dbClient.query.team.findFirst({
-    where: eq(team.id, teamId),
+    where: and(eq(team.id, teamId), isNull(team.deletedAt)),
   });
 
   if (!teamRecord) {
@@ -220,7 +220,7 @@ export async function userHasUltraPlan(
 }
 
 /**
- * Gets all teams that a user is a member of.
+ * Gets all teams that a user is a member of (excludes soft-deleted teams).
  */
 export async function getUserTeams(
   userId: string,
@@ -233,8 +233,11 @@ export async function getUserTeams(
     },
   });
 
-  return memberships.map((m) => ({
-    team: m.team,
-    role: m.role,
-  }));
+  // Filter out soft-deleted teams
+  return memberships
+    .filter((m) => m.team.deletedAt === null)
+    .map((m) => ({
+      team: m.team,
+      role: m.role,
+    }));
 }
