@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
-import { linkTag, tag } from "@/server/db/schema";
+import { link, linkTag, tag } from "@/server/db/schema";
 import {
   workspaceFilter,
   workspaceOwnership,
@@ -9,34 +9,72 @@ import {
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 
 // Create a new tag if it doesn't exist
+// Uses transaction to prevent race conditions for personal workspace tags
+// (MySQL unique constraint on (name, teamId) doesn't prevent duplicates when teamId is NULL)
 export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
-  // Check if tag already exists for this workspace
-  const existingTag = await ctx.db.query.tag.findFirst({
-    where: and(
-      eq(tag.name, tagName.toLowerCase().trim()),
-      workspaceFilter(ctx.workspace, tag.userId, tag.teamId)
-    ),
-  });
-
-  if (existingTag) {
-    return existingTag;
-  }
-
+  const normalizedName = tagName.toLowerCase().trim();
   const ownership = workspaceOwnership(ctx.workspace);
 
-  // Create new tag
-  const [result] = await ctx.db.insert(tag).values({
-    name: tagName.toLowerCase().trim(),
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-  });
+  // For team workspaces, the DB unique constraint handles uniqueness
+  // For personal workspaces, we need atomic check-and-insert
+  if (ctx.workspace.type === "team") {
+    // Check if tag already exists for this team
+    const existingTag = await ctx.db.query.tag.findFirst({
+      where: and(
+        eq(tag.name, normalizedName),
+        eq(tag.teamId, ctx.workspace.teamId)
+      ),
+    });
 
-  return {
-    id: result.insertId,
-    name: tagName.toLowerCase().trim(),
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-  };
+    if (existingTag) {
+      return existingTag;
+    }
+
+    // Create new tag - DB unique constraint prevents duplicates
+    const [result] = await ctx.db.insert(tag).values({
+      name: normalizedName,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+    });
+
+    return {
+      id: result.insertId,
+      name: normalizedName,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+    };
+  }
+
+  // Personal workspace: use transaction for atomic check-and-insert
+  // This prevents race conditions since MySQL allows multiple NULL values in unique constraint
+  return ctx.db.transaction(async (tx) => {
+    // Check if tag already exists for this user's personal workspace
+    const existingTag = await tx.query.tag.findFirst({
+      where: and(
+        eq(tag.name, normalizedName),
+        eq(tag.userId, ctx.auth.userId),
+        isNull(tag.teamId) // Personal workspace has null teamId
+      ),
+    });
+
+    if (existingTag) {
+      return existingTag;
+    }
+
+    // Create new tag within transaction
+    const [result] = await tx.insert(tag).values({
+      name: normalizedName,
+      userId: ownership.userId,
+      teamId: null,
+    });
+
+    return {
+      id: result.insertId,
+      name: normalizedName,
+      userId: ownership.userId,
+      teamId: null,
+    };
+  });
 };
 
 // Get all tags for a workspace
@@ -53,6 +91,19 @@ export const associateTagsWithLink = async (
   linkId: number,
   tagNames: string[]
 ) => {
+  // Verify the link belongs to the current workspace before modifying
+  const linkRecord = await ctx.db.query.link.findFirst({
+    where: and(
+      eq(link.id, linkId),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId)
+    ),
+  });
+
+  if (!linkRecord) {
+    // Link doesn't exist or doesn't belong to this workspace
+    return;
+  }
+
   // First, remove all existing tag associations for this link
   await ctx.db.delete(linkTag).where(eq(linkTag.linkId, linkId));
 
@@ -76,10 +127,24 @@ export const associateTagsWithLink = async (
 };
 
 // Get tags for a specific link
+// Verifies the link belongs to the current workspace before returning tags
 export const getTagsForLink = async (
   ctx: WorkspaceTRPCContext,
   linkId: number
 ) => {
+  // Verify the link belongs to the current workspace
+  const linkRecord = await ctx.db.query.link.findFirst({
+    where: and(
+      eq(link.id, linkId),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId)
+    ),
+  });
+
+  if (!linkRecord) {
+    // Link doesn't exist or doesn't belong to this workspace
+    return [];
+  }
+
   const result = await ctx.db
     .select({
       id: tag.id,
