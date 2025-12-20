@@ -2,14 +2,15 @@ import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getPlanCaps, isUnlimitedDomains, resolvePlan } from "@/lib/billing/plans";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
 import { customDomain } from "@/server/db/schema";
+import { workspaceFilter } from "@/server/lib/workspace";
 
 import * as input from "./domains.input";
 import * as services from "./domains.service";
 
 export const customDomainRouter = createTRPCRouter({
-  create: protectedProcedure
+  create: workspaceProcedure
     .input(input.createCustomDomainSchema)
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.db.query.user.findFirst({
@@ -18,13 +19,13 @@ export const customDomainRouter = createTRPCRouter({
       });
 
       const plan = resolvePlan(user?.subscriptions);
-      
+
       if (!isUnlimitedDomains(plan)) {
         const caps = getPlanCaps(plan);
         const domainCount = await ctx.db
           .select({ count: count() })
           .from(customDomain)
-          .where(eq(customDomain.userId, ctx.auth.userId))
+          .where(workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId))
           .then((res) => res[0]?.count ?? 0);
 
         if (domainCount >= (caps.domainLimit ?? 0)) {
@@ -37,23 +38,23 @@ export const customDomainRouter = createTRPCRouter({
       return services.addDomainToUserAccount(ctx, input);
     }),
 
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: workspaceProcedure.query(async ({ ctx }) => {
     return services.getCustomDomainsForUser(ctx);
   }),
 
-  delete: protectedProcedure
+  delete: workspaceProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       return services.deleteDomainAndAssociatedLinks(ctx, input.id);
     }),
 
-  getStats: protectedProcedure
+  getStats: workspaceProcedure
     .input(z.object({ domain: z.string() }))
     .query(async ({ ctx, input }) => {
       return services.getDomainStatistics(ctx, input.domain);
     }),
 
-  checkStatus: protectedProcedure
+  checkStatus: workspaceProcedure
     .input(z.object({ domain: z.string() }))
     .query(async ({ ctx, input }) => {
       console.log("Domain we are checking for", input.domain);
@@ -141,7 +142,7 @@ export const customDomainRouter = createTRPCRouter({
               status,
               verificationDetails: JSON.stringify(verificationDetails.challenges),
             })
-            .where(and(eq(customDomain.domain, domain), eq(customDomain.userId, ctx.auth.userId)));
+            .where(and(eq(customDomain.domain, domain), workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId)));
         }
 
         return {
@@ -155,7 +156,7 @@ export const customDomainRouter = createTRPCRouter({
         await ctx.db
           .update(customDomain)
           .set({ status: "active" })
-          .where(and(eq(customDomain.domain, domain), eq(customDomain.userId, ctx.auth.userId)));
+          .where(and(eq(customDomain.domain, domain), workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId)));
 
         return {
           status: "active",

@@ -4,6 +4,7 @@ import {
     createTRPCRouter,
     protectedProcedure,
     publicProcedure,
+    workspaceProcedure,
 } from "../../trpc";
 
 import * as inputs from "./link.input";
@@ -26,14 +27,14 @@ export const linkRouter = createTRPCRouter({
       }
     ),
 
-  list: protectedProcedure
+  list: workspaceProcedure
     .input(inputs.listLinksSchema)
     .output(inputs.listLinksOutputSchema)
     .query(({ ctx, input }) => {
       return services.getLinks(ctx, input);
     }),
 
-  get: protectedProcedure
+  get: workspaceProcedure
     .input(inputs.getLinkSchema)
     .query(({ ctx, input }) => {
       return services.getLink(ctx, input);
@@ -50,31 +51,31 @@ export const linkRouter = createTRPCRouter({
       return services.getLinkByAlias(input);
     }),
 
-  create: protectedProcedure
+  create: workspaceProcedure
     .input(inputs.createLinkSchema)
     .mutation(({ ctx, input }) => {
       return services.createLink(ctx, input);
     }),
 
-  update: protectedProcedure
+  update: workspaceProcedure
     .input(inputs.updateLinkSchema)
     .mutation(({ ctx, input }) => {
       return services.updateLink(ctx, input);
     }),
 
-  delete: protectedProcedure
+  delete: workspaceProcedure
     .input(inputs.getLinkSchema)
     .mutation(({ ctx, input }) => {
       return services.deleteLink(ctx, input);
     }),
 
-  quickShorten: protectedProcedure
+  quickShorten: workspaceProcedure
     .input(inputs.quickLinkShorteningSchema)
     .mutation(({ ctx, input }) => {
       return services.shortenLinkWithAutoAlias(ctx, input);
     }),
 
-  linkVisits: protectedProcedure
+  linkVisits: workspaceProcedure
     .input(
       z.object({
         id: z.string(),
@@ -98,31 +99,31 @@ export const linkRouter = createTRPCRouter({
       return services.getLinkVisits(ctx, input);
     }),
 
-  allAnalytics: protectedProcedure
+  allAnalytics: workspaceProcedure
     .input(inputs.allAnalyticsSchema)
     .query(({ ctx, input }) => {
       return services.getAllUserAnalytics(ctx, input);
     }),
 
-  toggleLinkStatus: protectedProcedure
+  toggleLinkStatus: workspaceProcedure
     .input(inputs.getLinkSchema)
     .mutation(({ ctx, input }) => {
       return services.toggleLinkStatus(ctx, input);
     }),
 
-  togglePublicStats: protectedProcedure
+  togglePublicStats: workspaceProcedure
     .input(inputs.getLinkSchema)
     .mutation(({ ctx, input }) => {
       return services.togglePublicStats(ctx, input);
     }),
 
-  toggleArchive: protectedProcedure
+  toggleArchive: workspaceProcedure
     .input(inputs.ToggleArchiveInput)
     .mutation(({ ctx, input }) => {
       return services.toggleArchive(ctx, input);
     }),
 
-  resetLinkStatistics: protectedProcedure
+  resetLinkStatistics: workspaceProcedure
     .input(inputs.getLinkSchema)
     .mutation(({ ctx, input }) => {
       return services.resetLinkStatistics(ctx, input);
@@ -134,7 +135,7 @@ export const linkRouter = createTRPCRouter({
       return services.verifyLinkPassword(ctx, input);
     }),
 
-  changeLinkPassword: protectedProcedure
+  changeLinkPassword: workspaceProcedure
     .input(inputs.verifyLinkPasswordSchema)
     .mutation(({ ctx, input }) => {
       return services.changeLinkPassword(ctx, input);
@@ -146,13 +147,13 @@ export const linkRouter = createTRPCRouter({
       return services.checkAliasAvailability(ctx, input);
     }),
 
-  bulkUpload: protectedProcedure
+  bulkUpload: workspaceProcedure
     .input(z.object({ csv: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return services.bulkCreateLinks(ctx, input.csv);
     }),
 
-  exportUserLinks: protectedProcedure.mutation(async ({ ctx }) => {
+  exportUserLinks: workspaceProcedure.mutation(async ({ ctx }) => {
     return services.exportAllUserLinks(ctx);
   }),
 
@@ -160,7 +161,7 @@ export const linkRouter = createTRPCRouter({
     return services.checkPresenceOfVercelHeaders(ctx);
   }),
 
-  stats: protectedProcedure.query(async ({ ctx }) => {
+  stats: workspaceProcedure.query(async ({ ctx }) => {
     return services.getStats(ctx);
   }),
 });

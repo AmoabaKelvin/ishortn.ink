@@ -6,13 +6,13 @@ import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { redis } from "@/lib/core/cache";
 import { normalizeAlias, parseReferrer } from "@/lib/utils";
 import { isBot } from "@/lib/utils/is-bot";
-import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
+import { link, linkVisit, siteSettings, team, uniqueLinkVisit, user } from "@/server/db/schema";
 import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user-plan";
 import { registerEventUsage } from "@/server/lib/event-usage";
 import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
 
 import type { Link } from "@/server/db/schema";
-import type { ProtectedTRPCContext, PublicTRPCContext } from "../../trpc";
+import type { ProtectedTRPCContext, PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 export async function logAnalytics(ctx: PublicTRPCContext, link: Link, from: string) {
   if (link.passwordHash) {
     return;
@@ -105,6 +105,26 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
   };
 }
 
+/**
+ * Workspace-aware link limit check.
+ * Team workspaces bypass limits (they're Ultra with unlimited links).
+ * Personal workspaces check against the user's plan limits.
+ */
+export async function checkWorkspaceLinkLimit(ctx: WorkspaceTRPCContext) {
+  // Team workspaces have unlimited links (Ultra plan)
+  if (ctx.workspace.type === "team") {
+    return {
+      plan: "ultra" as const,
+      currentCount: 0,
+      limit: undefined,
+      isProUser: true,
+    };
+  }
+
+  // Personal workspace: check user's plan limits
+  return checkAndUpdateLinkLimit(ctx);
+}
+
 export async function incrementLinkCount(
   ctx: ProtectedTRPCContext,
   currentCount: number,
@@ -120,6 +140,23 @@ export async function incrementLinkCount(
       monthlyLinkCount: currentCount + 1,
     })
     .where(eq(user.id, ctx.auth.userId));
+}
+
+/**
+ * Workspace-aware link count increment.
+ * Only increments for personal workspaces since team workspaces have no limits.
+ */
+export async function incrementWorkspaceLinkCount(
+  ctx: WorkspaceTRPCContext,
+  currentCount: number,
+  limit?: number
+) {
+  // Don't track usage for team workspaces
+  if (ctx.workspace.type === "team") {
+    return;
+  }
+
+  return incrementLinkCount(ctx, currentCount, limit);
 }
 
 export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<string> {
@@ -141,6 +178,35 @@ export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<s
   await redis.set(cacheKey, defaultDomain, "EX", 300); // 5 minutes
 
   return defaultDomain;
+}
+
+/**
+ * Workspace-aware default domain lookup.
+ * For team workspaces: uses team's default domain
+ * For personal workspaces: uses user's site settings
+ */
+export async function getWorkspaceDefaultDomain(ctx: WorkspaceTRPCContext): Promise<string> {
+  if (ctx.workspace.type === "team") {
+    const cacheKey = `team_default_domain:${ctx.workspace.teamId}`;
+    const cachedDomain = await redis.get(cacheKey);
+
+    if (cachedDomain) {
+      return cachedDomain;
+    }
+
+    // Get team's default domain from the team record
+    const teamRecord = await ctx.db.query.team.findFirst({
+      where: eq(team.id, ctx.workspace.teamId),
+    });
+
+    const defaultDomain = teamRecord?.defaultDomain ?? "ishortn.ink";
+    await redis.set(cacheKey, defaultDomain, "EX", 300); // 5 minutes
+
+    return defaultDomain;
+  }
+
+  // Personal workspace: use user's default domain
+  return getUserDefaultDomain(ctx);
 }
 
 const MINIMUM_ALIAS_LENGTH_FREE = 6;

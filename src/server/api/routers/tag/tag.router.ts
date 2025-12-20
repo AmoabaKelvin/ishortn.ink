@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
 
 import {
   associateTagsWithLink,
@@ -11,27 +11,27 @@ import {
 } from "./tag.service";
 
 export const tagRouter = createTRPCRouter({
-  // Get all tags for the current user
-  list: protectedProcedure.query(async ({ ctx }) => {
+  // Get all tags for the current workspace
+  list: workspaceProcedure.query(async ({ ctx }) => {
     return getUserTags(ctx);
   }),
 
   // Create a new tag
-  create: protectedProcedure
+  create: workspaceProcedure
     .input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return createTag(ctx, input.name);
     }),
 
   // Get tags for a specific link
-  getForLink: protectedProcedure
+  getForLink: workspaceProcedure
     .input(z.object({ linkId: z.number() }))
     .query(async ({ ctx, input }) => {
       return getTagsForLink(ctx, input.linkId);
     }),
 
   // Associate tags with a link
-  associateWithLink: protectedProcedure
+  associateWithLink: workspaceProcedure
     .input(
       z.object({
         linkId: z.number(),
@@ -44,7 +44,7 @@ export const tagRouter = createTRPCRouter({
     }),
 
   // Get links by tag
-  getLinksByTag: protectedProcedure
+  getLinksByTag: workspaceProcedure
     .input(z.object({ tagName: z.string() }))
     .query(async ({ ctx, input }) => {
       return getLinksByTag(ctx, input.tagName);

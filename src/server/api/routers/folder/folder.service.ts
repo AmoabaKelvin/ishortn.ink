@@ -1,11 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 
+import { getPlanCaps } from "@/lib/billing/plans";
 import { folder, link, linkVisit } from "@/server/db/schema";
-import { getUserPlanContext } from "@/server/lib/user-plan";
+import {
+  workspaceFilter,
+  workspaceOwnership,
+} from "@/server/lib/workspace";
 import { getTagsForLink } from "../tag/tag.service";
 
-import type { ProtectedTRPCContext } from "../../trpc";
+import type { WorkspaceTRPCContext } from "../../trpc";
 import type {
   CreateFolderInput,
   DeleteFolderInput,
@@ -16,19 +20,13 @@ import type {
 } from "./folder.input";
 
 export const createFolder = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: CreateFolderInput
 ) => {
-  const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
-
-  if (!planCtx) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "User not found",
-    });
-  }
-
-  const folderLimit = planCtx.caps.folderLimit;
+  // Use workspace plan - team workspaces have Ultra features (unlimited folders)
+  const workspacePlan = ctx.workspace.plan;
+  const caps = getPlanCaps(workspacePlan);
+  const folderLimit = caps.folderLimit;
 
   if (folderLimit === 0) {
     throw new TRPCError({
@@ -38,11 +36,12 @@ export const createFolder = async (
     });
   }
 
+  // Team workspaces (Ultra) have no folder limit (undefined)
   if (folderLimit !== undefined) {
     const currentFolders = await ctx.db
       .select({ count: sql<number>`count(*)` })
       .from(folder)
-      .where(eq(folder.userId, ctx.auth.userId));
+      .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId));
 
     if (Number(currentFolders[0]?.count ?? 0) >= folderLimit) {
       throw new TRPCError({
@@ -53,10 +52,12 @@ export const createFolder = async (
     }
   }
 
-  // Check for duplicate folder name
+  // Check for duplicate folder name in workspace
   const existingFolder = await ctx.db.query.folder.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.name, input.name), eq(table.userId, ctx.auth.userId)),
+    where: and(
+      eq(folder.name, input.name),
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+    ),
   });
 
   if (existingFolder) {
@@ -66,16 +67,21 @@ export const createFolder = async (
     });
   }
 
+  const ownership = workspaceOwnership(ctx.workspace);
+
   await ctx.db.insert(folder).values({
     name: input.name,
     description: input.description,
-    userId: ctx.auth.userId,
+    userId: ownership.userId,
+    teamId: ownership.teamId,
   });
 
   // Query the just-created folder to get its ID
   const createdFolder = await ctx.db.query.folder.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.name, input.name), eq(table.userId, ctx.auth.userId)),
+    where: and(
+      eq(folder.name, input.name),
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+    ),
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
 
@@ -93,24 +99,24 @@ export const createFolder = async (
   };
 };
 
-export const listFolders = async (ctx: ProtectedTRPCContext) => {
+export const listFolders = async (ctx: WorkspaceTRPCContext) => {
   const userFolders = await ctx.db.query.folder.findMany({
-    where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+    where: workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
 
   // Get link counts for each folder
   const foldersWithCounts = await Promise.all(
-    userFolders.map(async (folder) => {
+    userFolders.map(async (folderItem) => {
       const linkCount = await ctx.db
         .select({ count: sql<number>`count(*)` })
         .from(link)
         .where(
-          and(eq(link.userId, ctx.auth.userId), eq(link.folderId, folder.id))
+          and(workspaceFilter(ctx.workspace, link.userId, link.teamId), eq(link.folderId, folderItem.id))
         );
 
       return {
-        ...folder,
+        ...folderItem,
         linkCount: Number(linkCount[0]?.count ?? 0),
       };
     })
@@ -120,12 +126,14 @@ export const listFolders = async (ctx: ProtectedTRPCContext) => {
 };
 
 export const getFolder = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: GetFolderInput
 ) => {
   const folderData = await ctx.db.query.folder.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.id, input.id), eq(table.userId, ctx.auth.userId)),
+    where: and(
+      eq(folder.id, input.id),
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+    ),
   });
 
   if (!folderData) {
@@ -144,7 +152,7 @@ export const getFolder = async (
     .from(link)
     .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
     .where(
-      and(eq(link.folderId, input.id), eq(link.userId, ctx.auth.userId))
+      and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId))
     )
     .groupBy(link.id)
     .orderBy(desc(link.createdAt));
@@ -168,13 +176,15 @@ export const getFolder = async (
 };
 
 export const updateFolder = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: UpdateFolderInput
 ) => {
-  // Check if folder exists and belongs to user
+  // Check if folder exists and belongs to workspace
   const existingFolder = await ctx.db.query.folder.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.id, input.id), eq(table.userId, ctx.auth.userId)),
+    where: and(
+      eq(folder.id, input.id),
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+    ),
   });
 
   if (!existingFolder) {
@@ -189,7 +199,7 @@ export const updateFolder = async (
     where: (table, { eq, and, ne }) =>
       and(
         eq(table.name, input.name),
-        eq(table.userId, ctx.auth.userId),
+        workspaceFilter(ctx.workspace, table.userId, table.teamId),
         ne(table.id, input.id)
       ),
   });
@@ -207,7 +217,7 @@ export const updateFolder = async (
       name: input.name,
       description: input.description,
     })
-    .where(eq(folder.id, input.id));
+    .where(and(eq(folder.id, input.id), workspaceFilter(ctx.workspace, folder.userId, folder.teamId)));
 
   return {
     id: input.id,
@@ -217,13 +227,15 @@ export const updateFolder = async (
 };
 
 export const deleteFolder = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: DeleteFolderInput
 ) => {
-  // Check if folder exists and belongs to user
+  // Check if folder exists and belongs to workspace
   const existingFolder = await ctx.db.query.folder.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.id, input.id), eq(table.userId, ctx.auth.userId)),
+    where: and(
+      eq(folder.id, input.id),
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+    ),
   });
 
   if (!existingFolder) {
@@ -237,7 +249,7 @@ export const deleteFolder = async (
   await ctx.db
     .update(link)
     .set({ folderId: null })
-    .where(and(eq(link.folderId, input.id), eq(link.userId, ctx.auth.userId)));
+    .where(and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
   // Delete the folder
   await ctx.db.delete(folder).where(eq(folder.id, input.id));
@@ -246,13 +258,15 @@ export const deleteFolder = async (
 };
 
 export const moveLinkToFolder = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: MoveLinkToFolderInput
 ) => {
-  // Check if link exists and belongs to user
+  // Check if link exists and belongs to workspace
   const existingLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.id, input.linkId), eq(table.userId, ctx.auth.userId)),
+    where: and(
+      eq(link.id, input.linkId),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId)
+    ),
   });
 
   if (!existingLink) {
@@ -262,12 +276,14 @@ export const moveLinkToFolder = async (
     });
   }
 
-  // If folderId is provided, check if folder exists and belongs to user
+  // If folderId is provided, check if folder exists and belongs to workspace
   if (input.folderId !== null) {
     const folderId = input.folderId;
     const existingFolder = await ctx.db.query.folder.findFirst({
-      where: (table, { eq, and }) =>
-        and(eq(table.id, folderId), eq(table.userId, ctx.auth.userId)),
+      where: and(
+        eq(folder.id, folderId),
+        workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+      ),
     });
 
     if (!existingFolder) {
@@ -288,7 +304,7 @@ export const moveLinkToFolder = async (
 };
 
 export const moveBulkLinksToFolder = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: MoveBulkLinksToFolderInput
 ) => {
   if (input.linkIds.length === 0) {
@@ -298,12 +314,14 @@ export const moveBulkLinksToFolder = async (
     });
   }
 
-  // If folderId is provided, check if folder exists and belongs to user
+  // If folderId is provided, check if folder exists and belongs to workspace
   if (input.folderId !== null) {
     const folderId = input.folderId;
     const existingFolder = await ctx.db.query.folder.findFirst({
-      where: (table, { eq, and }) =>
-        and(eq(table.id, folderId), eq(table.userId, ctx.auth.userId)),
+      where: and(
+        eq(folder.id, folderId),
+        workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+      ),
     });
 
     if (!existingFolder) {
@@ -319,7 +337,7 @@ export const moveBulkLinksToFolder = async (
     .update(link)
     .set({ folderId: input.folderId })
     .where(
-      and(inArray(link.id, input.linkIds), eq(link.userId, ctx.auth.userId))
+      and(inArray(link.id, input.linkIds), workspaceFilter(ctx.workspace, link.userId, link.teamId))
     );
 
   return {
@@ -328,11 +346,11 @@ export const moveBulkLinksToFolder = async (
   };
 };
 
-export const getFolderStats = async (ctx: ProtectedTRPCContext) => {
+export const getFolderStats = async (ctx: WorkspaceTRPCContext) => {
   const folderCount = await ctx.db
     .select({ count: sql<number>`count(*)` })
     .from(folder)
-    .where(eq(folder.userId, ctx.auth.userId));
+    .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId));
 
   return {
     totalFolders: Number(folderCount[0]?.count ?? 0),

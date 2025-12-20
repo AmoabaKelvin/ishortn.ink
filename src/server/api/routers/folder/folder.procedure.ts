@@ -1,7 +1,8 @@
 import { getPlanCaps, isUnlimitedFolders, resolvePlan } from "@/lib/billing/plans";
 import { folder } from "@/server/db/schema";
-import { count, eq } from "drizzle-orm";
-import { createTRPCRouter, protectedProcedure } from "../../trpc";
+import { workspaceFilter } from "@/server/lib/workspace";
+import { count } from "drizzle-orm";
+import { createTRPCRouter, workspaceProcedure } from "../../trpc";
 import {
     createFolderInput,
     deleteFolderInput,
@@ -22,7 +23,7 @@ import {
 } from "./folder.service";
 
 export const folderRouter = createTRPCRouter({
-  create: protectedProcedure
+  create: workspaceProcedure
     .input(createFolderInput)
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.db.query.user.findFirst({
@@ -37,7 +38,7 @@ export const folderRouter = createTRPCRouter({
         const folderCount = await ctx.db
           .select({ count: count() })
           .from(folder)
-          .where(eq(folder.userId, ctx.auth.userId))
+          .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId))
           .then((res) => res[0]?.count ?? 0);
 
         if (folderCount >= (caps.folderLimit ?? 0)) {
@@ -50,41 +51,41 @@ export const folderRouter = createTRPCRouter({
       return createFolder(ctx, input);
     }),
 
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: workspaceProcedure.query(async ({ ctx }) => {
     return listFolders(ctx);
   }),
 
-  get: protectedProcedure
+  get: workspaceProcedure
     .input(getFolderInput)
     .query(async ({ ctx, input }) => {
       return getFolder(ctx, input);
     }),
 
-  update: protectedProcedure
+  update: workspaceProcedure
     .input(updateFolderInput)
     .mutation(async ({ ctx, input }) => {
       return updateFolder(ctx, input);
     }),
 
-  delete: protectedProcedure
+  delete: workspaceProcedure
     .input(deleteFolderInput)
     .mutation(async ({ ctx, input }) => {
       return deleteFolder(ctx, input);
     }),
 
-  moveLink: protectedProcedure
+  moveLink: workspaceProcedure
     .input(moveLinkToFolderInput)
     .mutation(async ({ ctx, input }) => {
       return moveLinkToFolder(ctx, input);
     }),
 
-  moveBulkLinks: protectedProcedure
+  moveBulkLinks: workspaceProcedure
     .input(moveBulkLinksToFolderInput)
     .mutation(async ({ ctx, input }) => {
       return moveBulkLinksToFolder(ctx, input);
     }),
 
-  stats: protectedProcedure.query(async ({ ctx }) => {
+  stats: workspaceProcedure.query(async ({ ctx }) => {
     return getFolderStats(ctx);
   }),
 });

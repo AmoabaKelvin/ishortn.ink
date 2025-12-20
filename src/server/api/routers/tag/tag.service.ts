@@ -1,16 +1,20 @@
 import { and, eq } from "drizzle-orm";
 
 import { linkTag, tag } from "@/server/db/schema";
+import {
+  workspaceFilter,
+  workspaceOwnership,
+} from "@/server/lib/workspace";
 
-import type { ProtectedTRPCContext } from "../../trpc";
+import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 
 // Create a new tag if it doesn't exist
-export const createTag = async (ctx: ProtectedTRPCContext, tagName: string) => {
-  // Check if tag already exists for this user
+export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
+  // Check if tag already exists for this workspace
   const existingTag = await ctx.db.query.tag.findFirst({
     where: and(
       eq(tag.name, tagName.toLowerCase().trim()),
-      eq(tag.userId, ctx.auth.userId)
+      workspaceFilter(ctx.workspace, tag.userId, tag.teamId)
     ),
   });
 
@@ -18,30 +22,34 @@ export const createTag = async (ctx: ProtectedTRPCContext, tagName: string) => {
     return existingTag;
   }
 
+  const ownership = workspaceOwnership(ctx.workspace);
+
   // Create new tag
   const [result] = await ctx.db.insert(tag).values({
     name: tagName.toLowerCase().trim(),
-    userId: ctx.auth.userId,
+    userId: ownership.userId,
+    teamId: ownership.teamId,
   });
 
   return {
     id: result.insertId,
     name: tagName.toLowerCase().trim(),
-    userId: ctx.auth.userId,
+    userId: ownership.userId,
+    teamId: ownership.teamId,
   };
 };
 
-// Get all tags for a user
-export const getUserTags = async (ctx: ProtectedTRPCContext) => {
+// Get all tags for a workspace
+export const getUserTags = async (ctx: WorkspaceTRPCContext) => {
   return ctx.db.query.tag.findMany({
-    where: eq(tag.userId, ctx.auth.userId),
+    where: workspaceFilter(ctx.workspace, tag.userId, tag.teamId),
     orderBy: (tag) => tag.name,
   });
 };
 
 // Associate tags with a link
 export const associateTagsWithLink = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   linkId: number,
   tagNames: string[]
 ) => {
@@ -69,7 +77,7 @@ export const associateTagsWithLink = async (
 
 // Get tags for a specific link
 export const getTagsForLink = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   linkId: number
 ) => {
   const result = await ctx.db
@@ -86,13 +94,13 @@ export const getTagsForLink = async (
 
 // Get links by tag
 export const getLinksByTag = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   tagName: string
 ) => {
   const tagRecord = await ctx.db.query.tag.findFirst({
     where: and(
       eq(tag.name, tagName.toLowerCase().trim()),
-      eq(tag.userId, ctx.auth.userId)
+      workspaceFilter(ctx.workspace, tag.userId, tag.teamId)
     ),
   });
 
