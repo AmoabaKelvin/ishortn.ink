@@ -39,9 +39,20 @@ export async function createTeam(
   ctx: ProtectedTRPCContext,
   input: CreateTeamInput
 ) {
+  // Normalize and validate slug
+  const normalizedSlug = input.slug.trim().toLowerCase();
+
+  // Defense-in-depth: Check reserved slugs (also validated in Zod schema)
+  if (RESERVED_TEAM_SLUGS.includes(normalizedSlug)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This team slug is reserved and cannot be used",
+    });
+  }
+
   // Check if slug is already taken
   const existingTeam = await ctx.db.query.team.findFirst({
-    where: eq(team.slug, input.slug),
+    where: eq(team.slug, normalizedSlug),
   });
 
   if (existingTeam) {
@@ -53,10 +64,10 @@ export async function createTeam(
 
   // Create team in transaction
   const result = await ctx.db.transaction(async (tx) => {
-    // Create the team
+    // Create the team with normalized slug
     const [teamResult] = await tx.insert(team).values({
       name: input.name,
-      slug: input.slug,
+      slug: normalizedSlug,
       ownerId: ctx.auth.userId,
     });
 
@@ -69,7 +80,7 @@ export async function createTeam(
       role: "owner",
     });
 
-    return { teamId, slug: input.slug };
+    return { teamId, slug: normalizedSlug };
   });
 
   return result;
@@ -135,9 +146,20 @@ export async function updateTeamSlug(
 ) {
   requireMinimumRole(ctx.workspace, "owner", "change team slug");
 
+  // Normalize and validate slug
+  const normalizedSlug = input.slug.trim().toLowerCase();
+
+  // Defense-in-depth: Check reserved slugs (also validated in Zod schema)
+  if (RESERVED_TEAM_SLUGS.includes(normalizedSlug)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This team slug is reserved and cannot be used",
+    });
+  }
+
   // Check if new slug is already taken
   const existingTeam = await ctx.db.query.team.findFirst({
-    where: eq(team.slug, input.slug),
+    where: eq(team.slug, normalizedSlug),
   });
 
   if (existingTeam && existingTeam.id !== ctx.workspace.teamId) {
@@ -149,10 +171,10 @@ export async function updateTeamSlug(
 
   await ctx.db
     .update(team)
-    .set({ slug: input.slug })
+    .set({ slug: normalizedSlug })
     .where(eq(team.id, ctx.workspace.teamId));
 
-  return { slug: input.slug };
+  return { slug: normalizedSlug };
 }
 
 /**
