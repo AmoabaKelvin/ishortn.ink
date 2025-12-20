@@ -11,6 +11,11 @@ const linkSchema = z.object({
   name: z.string().min(1),
   alias: z.string().min(1),
   userId: z.string().min(1),
+  teamId: z
+    .string()
+    .nullable()
+    .transform((val) => (val ? Number(val) : null))
+    .default(null),
   createdAt: z.string().transform((str) => new Date(str)),
   disableLinkAfterClicks: z
     .string()
@@ -63,6 +68,7 @@ function convertToLink(data: Record<string, string>): Link {
     tags: parsed.tags || [],
     archived: parsed.archived || false,
     folderId: parsed.folderId ?? null,
+    teamId: parsed.teamId ?? null,
     utmParams: parsed.utmParams ?? null,
   };
 }
