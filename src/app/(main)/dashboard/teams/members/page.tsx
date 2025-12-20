@@ -26,6 +26,16 @@ import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -63,7 +73,7 @@ import { api } from "@/trpc/react";
 const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
 
 const inviteSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Invalid email"),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
   role: z.enum(["admin", "member"]).default("member"),
 });
 
@@ -93,6 +103,7 @@ export default function TeamMembersPage() {
   const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(
     null
   );
+  const [transferOwnershipMemberId, setTransferOwnershipMemberId] = useState<string | null>(null);
 
   const currentWorkspace = api.team.currentWorkspace.useQuery();
   const isTeamWorkspace = currentWorkspace.data?.type === "team";
@@ -290,13 +301,16 @@ export default function TeamMembersPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Email (optional)</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="colleague@company.com"
                               {...field}
                             />
                           </FormControl>
+                          <p className="text-xs text-gray-500">
+                            Leave empty to create a link-only invite.
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -456,11 +470,7 @@ export default function TeamMembersPage() {
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() =>
-                                transferOwnershipMutation.mutate({
-                                  newOwnerId: member.userId,
-                                })
-                              }
+                              onClick={() => setTransferOwnershipMemberId(member.userId)}
                               className="text-sm text-amber-600"
                             >
                               <Crown className="mr-2 h-3.5 w-3.5" />
@@ -580,6 +590,37 @@ export default function TeamMembersPage() {
           </div>
         </div>
       )}
+
+      {/* Transfer Ownership Confirmation Dialog */}
+      <AlertDialog
+        open={!!transferOwnershipMemberId}
+        onOpenChange={(open) => !open && setTransferOwnershipMemberId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Transfer ownership</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action is irreversible. You will lose owner privileges and become an admin of this team. The new owner will have full control over the team, including the ability to remove you.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (transferOwnershipMemberId) {
+                  transferOwnershipMutation.mutate({
+                    newOwnerId: transferOwnershipMemberId,
+                  });
+                  setTransferOwnershipMemberId(null);
+                }
+              }}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Transfer ownership
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
