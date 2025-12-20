@@ -27,7 +27,7 @@ export async function sendTeamInviteEmail({
   if (!resend) return;
 
   const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
-  const inviteUrl = `https://${baseDomain}/teams/accept-invite?token=${token}`;
+  const inviteUrl = `https://${baseDomain}/teams/accept-invite?token=${encodeURIComponent(token)}`;
 
   try {
     await resend.emails.send({
