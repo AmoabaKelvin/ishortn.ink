@@ -8,6 +8,7 @@ import { qrCodeRouter } from "./routers/qrcode/qrcode.procedure";
 import { siteSettingsRouter } from "./routers/settings/settings.procedure";
 import { subscriptionsRouter } from "./routers/subscriptions/subscriptions.procedure";
 import { tagRouter } from "./routers/tag/tag.router";
+import { teamRouter } from "./routers/team/team.procedure";
 import { tokenRouter } from "./routers/token/token.procedure";
 import { utmTemplateRouter } from "./routers/utm-template/utm-template.router";
 import { createTRPCRouter } from "./trpc";
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
   folder: folderRouter,
   utmTemplate: utmTemplateRouter,
   changelog: changelogRouter,
+  team: teamRouter,
 });
 
 export type AppRouter = typeof appRouter;
