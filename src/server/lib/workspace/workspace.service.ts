@@ -29,7 +29,11 @@ export function extractSubdomain(hostname: string): string | null {
   if (host.endsWith(".ishortn.ink")) {
     const parts = host.split(".");
     if (parts.length === 3) {
-      return parts[0] ?? null;
+      const subdomain = parts[0]?.trim();
+      if (subdomain && subdomain.length > 0) {
+        return subdomain;
+      }
+      return null;
     }
   }
 
@@ -37,7 +41,11 @@ export function extractSubdomain(hostname: string): string | null {
   if (host.endsWith(".localhost")) {
     const parts = host.split(".");
     if (parts.length === 2) {
-      return parts[0] ?? null;
+      const subdomain = parts[0]?.trim();
+      if (subdomain && subdomain.length > 0) {
+        return subdomain;
+      }
+      return null;
     }
   }
 
