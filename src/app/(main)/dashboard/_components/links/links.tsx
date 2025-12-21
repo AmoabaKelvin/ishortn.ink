@@ -1,7 +1,19 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Archive, ArchiveRestore, GalleryVerticalEnd, X } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowDown,
+  ArrowUp,
+  CalendarDays,
+  Check,
+  GalleryVerticalEnd,
+  MousePointerClick,
+  Tag,
+  Tags,
+  X,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -9,14 +21,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 
 import Link from "./link-card/card";
+import { BulkActionBar } from "./bulk-action-bar";
+import { SelectionProvider, useSelection } from "./selection-context";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -27,7 +41,8 @@ type LinksProps = {
   currentPage: number;
 };
 
-export const Links = ({
+// Inner component that uses the selection context
+const LinksContent = ({
   links,
   totalPages,
   currentPage,
@@ -35,6 +50,7 @@ export const Links = ({
 }: LinksProps) => {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
+  const { isSelectionMode, enterSelectionMode, exitSelectionMode, selectAll, clearSelection, selectedLinkIds } = useSelection();
   const [searchQuery, setSearchQuery] = useState(
     urlSearchParams.get("search") ?? ""
   );
@@ -67,7 +83,7 @@ export const Links = ({
     const handler = setTimeout(() => {
       const params = new URLSearchParams(urlSearchParams.toString());
       const currentSearch = params.get("search") ?? "";
-      
+
       // Only push if changed
       if (searchQuery !== currentSearch) {
         if (searchQuery) {
@@ -144,6 +160,16 @@ export const Links = ({
     setAllTags(Array.from(tags));
   }, [links]);
 
+  const allSelected = selectedLinkIds.length === links.length && links.length > 0;
+
+  const handleSelectAllToggle = () => {
+    if (allSelected) {
+      clearSelection();
+    } else {
+      selectAll(links.map((l) => l.id));
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
@@ -166,13 +192,16 @@ export const Links = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="active">
-              <Archive className="inline-block h-4 w-4 mr-1" /> Active
+              <Archive className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              Active
             </SelectItem>
             <SelectItem value="archived">
-              <ArchiveRestore className="inline-block h-4 w-4 mr-1" /> Archived
+              <ArchiveRestore className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              Archived
             </SelectItem>
             <SelectItem value="all">
-              <GalleryVerticalEnd className="inline-block h-4 w-4 mr-1" /> All
+              <GalleryVerticalEnd className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              All
             </SelectItem>
           </SelectContent>
         </Select>
@@ -196,9 +225,13 @@ export const Links = ({
             <SelectValue placeholder="Filter by tag" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All tags</SelectItem>
+            <SelectItem value="all">
+              <Tags className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              All tags
+            </SelectItem>
             {allTags.map((tag) => (
               <SelectItem key={tag} value={tag}>
+                <Tag className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
                 {tag}
               </SelectItem>
             ))}
@@ -214,14 +247,30 @@ export const Links = ({
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="createdAt-desc">Newest first</SelectItem>
-            <SelectItem value="createdAt-asc">Oldest first</SelectItem>
-            <SelectItem value="lastClicked-desc">Recently clicked</SelectItem>
+            <SelectItem value="createdAt-desc">
+              <CalendarDays className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              Newest first
+            </SelectItem>
+            <SelectItem value="createdAt-asc">
+              <CalendarDays className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              Oldest first
+            </SelectItem>
+            <SelectItem value="lastClicked-desc">
+              <MousePointerClick className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              Recently clicked
+            </SelectItem>
             <SelectItem value="lastClicked-asc">
+              <MousePointerClick className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
               Least recently clicked
             </SelectItem>
-            <SelectItem value="totalClicks-desc">Most clicks</SelectItem>
-            <SelectItem value="totalClicks-asc">Least clicks</SelectItem>
+            <SelectItem value="totalClicks-desc">
+              <ArrowDown className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              Most clicks
+            </SelectItem>
+            <SelectItem value="totalClicks-asc">
+              <ArrowUp className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              Least clicks
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -265,6 +314,52 @@ export const Links = ({
         </div>
       )}
 
+      {/* Selection mode bar */}
+      <AnimatePresence>
+        {isSelectionMode && links.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-2.5 border border-gray-100">
+              <div className="flex items-center gap-3">
+                <motion.button
+                  type="button"
+                  onClick={handleSelectAllToggle}
+                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors ${
+                    allSelected ? "border-gray-900 bg-gray-900" : "border-gray-300 bg-white"
+                  }`}>
+                    {allSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                  </div>
+                  <span className="font-medium">
+                    {allSelected ? "Deselect all" : `Select all (${links.length})`}
+                  </span>
+                </motion.button>
+                {selectedLinkIds.length > 0 && (
+                  <span className="text-sm text-gray-400">
+                    {selectedLinkIds.length} selected
+                  </span>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={exitSelectionMode}
+                className="text-gray-500 hover:text-gray-700 -mr-2"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div className="mt-6 space-y-2 first:mt-0">
         <AnimatePresence>
           {links.map((link, index) => (
@@ -273,7 +368,7 @@ export const Links = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
             >
               <Link link={link} onTagClick={handleTagClick} />
             </motion.div>
@@ -307,7 +402,6 @@ export const Links = ({
               <Button
                 variant="ghost"
                 onClick={() => handlePageChange(currentPage + 1)}
-                // className="text-sm text-gray-500 hover:text-gray-700"
               >
                 Next
               </Button>
@@ -315,6 +409,18 @@ export const Links = ({
           </div>
         </div>
       )}
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar />
     </>
+  );
+};
+
+// Wrapper component that provides the selection context
+export const Links = (props: LinksProps) => {
+  return (
+    <SelectionProvider>
+      <LinksContent {...props} />
+    </SelectionProvider>
   );
 };

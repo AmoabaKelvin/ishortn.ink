@@ -38,7 +38,7 @@ export default function DomainStatusChecker({ domain, onStatusChange }: DomainSt
   return (
     <Badge
       variant="outline"
-      className="rounded-md py-1 bg-slate-50 font-normal cursor-pointer hover:bg-slate-100 transition-colors"
+      className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 font-normal cursor-pointer hover:bg-gray-100 transition-colors"
       onClick={(e) => {
         e.stopPropagation();
         if (!isLoading) {
@@ -46,8 +46,10 @@ export default function DomainStatusChecker({ domain, onStatusChange }: DomainSt
         }
       }}
     >
-      <RefreshCw className={`h-4 w-4 mr-1 text-blue-600 ${isLoading ? 'animate-spin' : ''}`} />
-      {isLoading ? "Checking..." : "Check Now"}
+      <RefreshCw className={`h-3.5 w-3.5 mr-1.5 text-blue-500 ${isLoading ? 'animate-spin' : ''}`} />
+      <span className="text-gray-700 font-medium text-xs">
+        {isLoading ? "Checking..." : "Check Now"}
+      </span>
     </Badge>
   );
 }

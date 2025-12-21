@@ -125,3 +125,37 @@ export const allAnalyticsSchema = z.object({
 });
 
 export type AllAnalyticsInput = z.infer<typeof allAnalyticsSchema>;
+
+// ============================================================================
+// TRANSFER LINKS SCHEMAS
+// ============================================================================
+
+const transferLinksBaseSchema = z.object({
+  linkIds: z.array(z.number().min(1)).min(1, "At least one link is required").max(100, "Maximum 100 links per transfer"),
+});
+
+const transferToPersonalSchema = transferLinksBaseSchema.extend({
+  targetWorkspaceType: z.literal("personal"),
+  targetTeamId: z.undefined().optional(),
+});
+
+const transferToTeamSchema = transferLinksBaseSchema.extend({
+  targetWorkspaceType: z.literal("team"),
+  targetTeamId: z.number().min(1, "Team ID is required for team transfers"),
+});
+
+export const transferLinksToWorkspaceSchema = z.discriminatedUnion("targetWorkspaceType", [
+  transferToPersonalSchema,
+  transferToTeamSchema,
+]);
+
+export type TransferLinksToWorkspaceInput = z.infer<typeof transferLinksToWorkspaceSchema>;
+
+export const validateTransferSchema = transferLinksToWorkspaceSchema;
+export type ValidateTransferInput = z.infer<typeof validateTransferSchema>;
+
+export const bulkDeleteLinksSchema = z.object({
+  linkIds: z.array(z.number().min(1)).min(1, "At least one link is required").max(100, "Maximum 100 links per deletion"),
+});
+
+export type BulkDeleteLinksInput = z.infer<typeof bulkDeleteLinksSchema>;

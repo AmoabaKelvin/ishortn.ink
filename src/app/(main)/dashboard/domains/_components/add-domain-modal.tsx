@@ -1,7 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Plus } from "lucide-react";
+import { Globe, Lightbulb, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -22,22 +21,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.3,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
 
 export function AddCustomDomainModal() {
   const { data: userSubscription } = api.subscriptions.get.useQuery();
@@ -94,7 +77,7 @@ export function AddCustomDomainModal() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button>
           <Plus className="mr-2 h-4 w-4" />
           {isProUser ? "Add Domain" : "Upgrade to Add Domain"}
         </Button>
@@ -107,61 +90,41 @@ export function AddCustomDomainModal() {
           </DialogDescription>
         </DialogHeader>
         {isProUser ? (
-          <motion.div
-            className="mt-2 flex flex-col gap-3"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <motion.div className="flex flex-col gap-1" variants={itemVariants}>
-              <Label htmlFor="name">Domain</Label>
-              <Input
-                id="name"
-                className="w-full"
-                placeholder="example.com"
-                value={domain}
-                onChange={handleDomainChange}
-              />
-            </motion.div>
-            <motion.div
-              variants={itemVariants}
-              className="mt-1 text-sm text-yellow-600"
-            >
-              Tip: If there's already content on your domain, consider using a
-              subdomain like "links.example.com".
-            </motion.div>
-            <motion.div
-              variants={itemVariants}
-              className="mt-2 text-sm text-gray-500"
-            >
-              <h4 className="mb-1 font-semibold">Quick Guide:</h4>
-              <ul className="list-disc space-y-1 pl-5">
-                <li>Ensure you own or have permission to use this domain.</li>
-                <li>
-                  You'll need to configure DNS settings after adding the domain.
-                </li>
-                <li>Verification may take up to 24 hours to complete.</li>
-              </ul>
-            </motion.div>
-          </motion.div>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="domain" className="text-sm font-medium text-gray-700">
+                Domain
+              </Label>
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="domain"
+                  className="pl-10"
+                  placeholder="links.example.com"
+                  value={domain}
+                  onChange={handleDomainChange}
+                />
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
+              <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-700">
+                Use a subdomain like <span className="font-medium">links.example.com</span> if your main domain already has content.
+              </p>
+            </div>
+          </div>
         ) : (
-          <motion.div
-            className="mt-2 text-center"
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <p className="text-yellow-600">
-              Custom domains are only available for pro users. Please upgrade
-              your plan to add a custom domain.
+          <div className="rounded-lg bg-amber-50 border border-amber-100 px-4 py-3 text-center">
+            <p className="text-sm text-amber-700">
+              Custom domains are available on the Pro plan.
             </p>
-          </motion.div>
+          </div>
         )}
         <DialogFooter>
           {isProUser ? (
             <Button
               type="submit"
-              className="mt-3 w-full bg-blue-600 hover:bg-blue-700"
+              className="mt-3 w-full"
               onClick={handleCreateDomain}
               disabled={!domain || createCustomDomainMutation.isLoading}
             >
@@ -170,7 +133,7 @@ export function AddCustomDomainModal() {
           ) : (
             <Button
               type="button"
-              className="mt-3 w-full bg-blue-600 hover:bg-blue-700"
+              className="mt-3 w-full"
               onClick={handleUpgrade}
             >
               Upgrade to Pro

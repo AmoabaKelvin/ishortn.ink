@@ -29,7 +29,8 @@ import {
   linkVisit,
   qrcode,
   tag,
-  uniqueLinkVisit
+  uniqueLinkVisit,
+  user,
 } from "@/server/db/schema";
 import {
   workspaceFilter,
@@ -169,6 +170,23 @@ export const getLinks = async (
     linksQuery,
   ]);
 
+  // Batch fetch creator info for team workspaces (avoid N+1)
+  let creatorMap: Map<string, { id: string; name: string | null; imageUrl: string | null }> = new Map();
+  if (ctx.workspace.type === "team") {
+    const creatorIds = [...new Set(links.map((l) => l.createdByUserId).filter(Boolean))] as string[];
+    if (creatorIds.length > 0) {
+      const creators = await ctx.db.query.user.findMany({
+        where: inArray(user.id, creatorIds),
+        columns: {
+          id: true,
+          name: true,
+          imageUrl: true,
+        },
+      });
+      creatorMap = new Map(creators.map((c) => [c.id, c]));
+    }
+  }
+
   // Fetch tags and folder for each link
   const linksWithTags = await Promise.all(
     links.map(async (linkItem) => {
@@ -186,10 +204,14 @@ export const getLinks = async (
         });
       }
 
+      // Get creator from pre-fetched map
+      const createdBy = linkItem.createdByUserId ? creatorMap.get(linkItem.createdByUserId) ?? null : null;
+
       return {
         ...linkItem,
         tags: tagRecords.map((tagRecord) => tagRecord.name),
         folder: folderInfo,
+        createdBy,
       };
     })
   );
@@ -311,6 +333,7 @@ export const createLink = async (
     alias,
     userId: ownership.userId,
     teamId: ownership.teamId,
+    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
     passwordHash: input.password,
     domain,
     note: input.note,
@@ -461,7 +484,7 @@ export const deleteLink = async (
     return null;
   }
 
-  Promise.all([
+  await Promise.all([
     deleteFromCache(
       constructCacheKey(linkToDelete.domain, linkToDelete.alias!)
     ),
@@ -469,6 +492,58 @@ export const deleteLink = async (
       .delete(link)
       .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId))),
   ]);
+};
+
+export const bulkDeleteLinks = async (
+  ctx: WorkspaceTRPCContext,
+  linkIds: number[]
+) => {
+  if (linkIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Fetch links to delete (for cache invalidation)
+  const linksToDelete = await ctx.db.query.link.findMany({
+    where: and(
+      inArray(link.id, linkIds),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId)
+    ),
+  });
+
+  if (linksToDelete.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const validLinkIds = linksToDelete.map((l) => l.id);
+
+  // Delete from database in transaction (delete dependents first)
+  await ctx.db.transaction(async (tx) => {
+    // 1. Delete link visits
+    await tx.delete(linkVisit).where(inArray(linkVisit.linkId, validLinkIds));
+
+    // 2. Delete unique link visits
+    await tx.delete(uniqueLinkVisit).where(inArray(uniqueLinkVisit.linkId, validLinkIds));
+
+    // 3. Delete link-tag associations
+    await tx.delete(linkTag).where(inArray(linkTag.linkId, validLinkIds));
+
+    // 4. Delete QR codes associated with links
+    await tx.delete(qrcode).where(inArray(qrcode.linkId, validLinkIds));
+
+    // 5. Finally delete the links themselves
+    await tx.delete(link).where(inArray(link.id, validLinkIds));
+  });
+
+  // Invalidate cache for all deleted links (async, don't block)
+  void Promise.all(
+    linksToDelete.map((l) =>
+      deleteFromCache(constructCacheKey(l.domain, l.alias!))
+    )
+  ).catch((err) => {
+    console.error("Failed to invalidate cache for deleted links:", err);
+  });
+
+  return { success: true, count: linksToDelete.length };
 };
 
 export const retrieveOriginalUrl = async (
@@ -530,6 +605,7 @@ export const shortenLinkWithAutoAlias = async (
     domain,
     userId: ownership.userId,
     teamId: ownership.teamId,
+    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
     name,
     metadata: {
       title: fetchedMetadata.title,
@@ -1071,6 +1147,7 @@ export const bulkCreateLinks = async (
         alias,
         userId: ownership.userId,
         teamId: ownership.teamId,
+        createdByUserId: ctx.auth.userId, // Track the actual user who created the link
         domain: record.domain ?? "ishortn.ink",
         note: record.note,
       });

@@ -201,23 +201,23 @@ export function AnalyticsFilter() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-10 w-full sm:w-[240px] justify-between gap-2 px-3"
+          className="h-9 w-full sm:w-[240px] justify-between gap-2 px-3"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate text-sm">{getFilterLabel()}</span>
+            <Filter className="h-4 w-4 shrink-0 text-gray-400" />
+            <span className="truncate text-sm font-medium">{getFilterLabel()}</span>
           </div>
           {filterType !== "all" ? (
             <X
-              className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              className="h-4 w-4 shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
               onClick={clearFilter}
             />
           ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl border-gray-200" align="start">
         <Command>
           {viewMode === "items" && (
             <CommandInput
@@ -228,7 +228,7 @@ export function AnalyticsFilter() {
 
           <CommandList className="max-h-[300px]">
             {viewMode === "categories" ? (
-              <CommandGroup className="p-2">
+              <CommandGroup className="p-1.5">
                 {categories.map((category) => {
                   const Icon = category.icon;
                   return (
@@ -236,14 +236,14 @@ export function AnalyticsFilter() {
                       key={category.value}
                       value={category.value}
                       onSelect={() => handleCategorySelect(category.value)}
-                      className="flex items-center justify-between px-3 py-2.5 cursor-pointer"
+                      className="flex items-center justify-between rounded-lg px-3 py-2.5"
                     >
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4" />
-                        <span>{category.label}</span>
+                      <div className="flex items-center gap-2.5">
+                        <Icon className="h-4 w-4 text-gray-400" />
+                        <span className="font-medium">{category.label}</span>
                       </div>
                       {category.value !== "all" && (
-                        <ChevronRight className="h-4 w-4 opacity-50" />
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
                       )}
                     </CommandItem>
                   );
@@ -253,23 +253,23 @@ export function AnalyticsFilter() {
               <>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                   </div>
                 ) : (
                   <>
-                    <CommandEmpty className="py-8">No {selectedCategory} found.</CommandEmpty>
-                    <CommandGroup className="p-2">
+                    <CommandEmpty className="py-8 text-gray-500">No {selectedCategory} found.</CommandEmpty>
+                    <CommandGroup className="p-1.5">
                       {getCurrentItems().map((item) => (
                         <CommandItem
                           key={item.value}
                           value={item.value}
                           onSelect={handleItemSelect}
-                          className="px-3 py-2.5 cursor-pointer"
+                          className="rounded-lg px-3 py-2.5"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span>{item.label}</span>
+                            <span className="font-medium">{item.label}</span>
                             {item.subtitle && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-gray-500">
                                 {item.subtitle}
                               </span>
                             )}

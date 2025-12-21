@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Trash2 } from "lucide-react";
+import { Download, Link2, MousePointerClick, QrCode, Trash2, Type } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { copyToClipboard, daysSinceDate } from "@/lib/utils";
+import { daysSinceDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { UpdateLinkModal } from "../../_components/links/link-card/update-modal";
@@ -52,19 +52,11 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
     });
   };
 
-  const handleCopy = async () => {
-    if (isALink(qr.content) && qr.link) {
-      await copyToClipboard(`https://ishortn.ink/${qr.link.alias}`);
-    } else {
-      await copyToClipboard(qr.content);
-    }
-  };
-
   return (
-    <Card className="group relative overflow-hidden rounded-lg border border-gray-200 bg-card transition-all hover:shadow-sm">
+    <Card className="group relative overflow-hidden rounded-xl border border-gray-100 bg-white transition-all hover:border-gray-200">
       <div className="flex items-start p-5 gap-5">
         {/* QR Code Image */}
-        <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-white p-2 shadow-sm">
+        <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={qr.qrCode!}
@@ -76,15 +68,15 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
         {/* QR Code Details */}
         <div className="flex flex-1 flex-col min-w-0 gap-1">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-100 truncate pr-4">
+            <h3 className="font-medium text-gray-900 truncate pr-4">
               {qr.title || "Untitled QR Code"}
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleDownload}
-                className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="h-8 w-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
               >
                 <Download className="h-4 w-4" />
               </Button>
@@ -92,7 +84,7 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
                 variant="ghost"
                 size="icon"
                 onClick={handleDelete}
-                className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -102,33 +94,46 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
           {isALink(qr.content) && qr.link ? (
             <Link
               href={`/dashboard/analytics/${qr.link.alias}`}
-              className="text-sm text-blue-600 hover:text-blue-700 hover:underline truncate mb-3 block dark:text-blue-400 dark:hover:text-blue-300"
+              className="text-sm text-gray-500 hover:text-gray-900 hover:underline underline-offset-2 truncate mb-2 block"
             >
               ishortn.ink/{qr.link.alias}
             </Link>
           ) : (
-            <p className="text-sm text-slate-500 truncate mb-3">{qr.content}</p>
+            <p className="text-sm text-gray-500 truncate mb-2">{qr.content}</p>
           )}
 
-          <div className="flex items-center gap-3 mt-auto">
-            <Badge variant="secondary" className="font-normal text-xs">
-              {isALink(qr.content) ? "Link" : "Text"}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge
+              variant="outline"
+              className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 font-normal hover:bg-gray-100 transition-colors"
+            >
+              {isALink(qr.content) ? (
+                <>
+                  <Link2 className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                  <span className="text-gray-700 font-medium text-xs">Link</span>
+                </>
+              ) : (
+                <>
+                  <Type className="h-3.5 w-3.5 mr-1.5 text-purple-500" />
+                  <span className="text-gray-700 font-medium text-xs">Text</span>
+                </>
+              )}
             </Badge>
 
             {isALink(qr.content) && (
-              <div className="flex items-center text-xs text-slate-500">
-                <span className="font-medium text-slate-900 dark:text-slate-100 mr-1">
-                  {scans}
-                </span>{" "}
-                scans
-              </div>
+              <Badge
+                variant="outline"
+                className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 cursor-pointer font-normal hover:bg-gray-100 transition-colors"
+              >
+                <MousePointerClick className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                <span className="text-gray-700 font-medium text-xs">{scans}</span>
+                <span className="ml-1 text-gray-400 text-xs">scans</span>
+              </Badge>
             )}
 
-            <div className="flex items-center text-xs text-slate-400 ml-auto">
-              {daysSinceCreation === 0
-                ? "Created today"
-                : `${daysSinceCreation}d ago`}
-            </div>
+            <span className="text-xs text-gray-400 ml-auto">
+              {daysSinceCreation === 0 ? "Today" : `${daysSinceCreation}d ago`}
+            </span>
           </div>
         </div>
       </div>
