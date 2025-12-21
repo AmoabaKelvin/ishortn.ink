@@ -1,19 +1,21 @@
 "use client";
 
+import { motion } from "framer-motion";
 import {
-  AlertTriangle,
   Archive,
   ArchiveRestore,
+  ArrowRightLeft,
   Copy,
   FolderInput,
   KeyRound,
-  MoreVertical,
+  MoreHorizontal,
   Pencil,
-  PowerCircle,
   QrCode,
-  RotateCcwIcon,
-  Trash2Icon,
+  RotateCcw,
+  Trash2,
   Unlink,
+  Link as LinkIcon,
+  BarChart3,
 } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
 import { useState } from "react";
@@ -35,8 +37,8 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -44,6 +46,7 @@ import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { MoveToFolderModal } from "@/app/(main)/dashboard/folders/_components/move-to-folder-modal";
+import { TransferToWorkspaceModal } from "../transfer-to-workspace-modal";
 
 import { ChangeLinkPasswordModal } from "./password-change-modal";
 import { EditLinkDrawer } from "./edit-link-drawer";
@@ -60,6 +63,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   const [qrModal, setQrModal] = useState(false);
   const [openChangePasswordModal, setOpenChangePasswordModal] = useState(false);
   const [moveToFolderModal, setMoveToFolderModal] = useState(false);
+  const [transferToWorkspaceModal, setTransferToWorkspaceModal] = useState(false);
   const [resetStatsDialog, setResetStatsDialog] = useState(false);
   const [deleteLinkDialog, setDeleteLinkDialog] = useState(false);
   const isPublicStatsEnabled = link.publicStats!;
@@ -68,13 +72,13 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
 
   const togglePublicStatMutation = api.link.togglePublicStats.useMutation({
     onSuccess: async () => {
-      toast.success("Public Stats toggled successfully");
+      toast.success("Public stats toggled");
       await revalidateHomepage();
     },
   });
   const toggleLinkStatusMutation = api.link.toggleLinkStatus.useMutation({
     onSuccess: async () => {
-      toast.success("Link status toggled successfully");
+      toast.success("Link status toggled");
       await revalidateHomepage();
     },
   });
@@ -111,111 +115,167 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
 
   const handleLinkToggleMutation = async () => {
     toast.promise(toggleLinkStatusMutation.mutateAsync({ id: link.id }), {
-      loading: "Toggling Link Status...",
-      success: "Link status toggled successfully",
-      error: "Failed to toggle Link Status",
+      loading: "Updating...",
+      success: isLinkActive ? "Link deactivated" : "Link activated",
+      error: "Failed to update link",
     });
   };
 
   const handlePublicStatsToggleMutation = async () => {
     toast.promise(togglePublicStatMutation.mutateAsync({ id: link.id }), {
-      loading: "Toggling Public Stats...",
-      success: "Public Stats toggled successfully",
-      error: "Failed to toggle Public Stats",
+      loading: "Updating...",
+      success: isPublicStatsEnabled ? "Public stats disabled" : "Public stats enabled",
+      error: "Failed to update",
     });
   };
 
   const handleToggleArchive = () => {
     toast.promise(toggleArchive.mutateAsync({ id: link.id }), {
-      loading: link.archived ? "Restoring link..." : "Archiving link...",
+      loading: link.archived ? "Restoring..." : "Archiving...",
       success: (data) => {
         router.refresh();
         return data.archived ? "Link archived" : "Link restored";
       },
-      error: "Failed to update link status",
+      error: "Failed to update",
     });
   };
 
   return (
     <>
       <DropdownMenu modal={false}>
-        <DropdownMenuTrigger>
-          <MoreVertical className="size-4 cursor-pointer" />
+        <DropdownMenuTrigger asChild>
+          <motion.button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none"
+            whileTap={{ scale: 0.95 }}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </motion.button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-              <Pencil className="mr-2 size-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setQrModal(true)}>
-              <QrCode className="mr-2 size-4" />
-              QR Code
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handlePublicStatsToggleMutation}>
-              <PowerCircle className="mr-2 size-4" />
-              {isPublicStatsEnabled ? "Disable" : "Enable"} Public Stats
-            </DropdownMenuItem>
-            {isPublicStatsEnabled && (
-              <DropdownMenuItem onClick={copyPublicStatsLink}>
-                <Copy className="mr-2 size-4" />
-                Copy Public Stats Link
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={handleLinkToggleMutation}>
-              <Unlink className="mr-2 size-4" />
-              {isLinkActive ? "Deactivate" : "Activate"} Link
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setMoveToFolderModal(true)}>
-              <FolderInput className="mr-2 size-4" />
-              Move to Folder
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {link.passwordHash ? (
-              <DropdownMenuItem
-                className="text-red-500"
-                onClick={() => setOpenChangePasswordModal(true)}
-              >
-                <KeyRound className="mr-2 size-4" />
-                Change Password
-              </DropdownMenuItem>
+        <DropdownMenuContent
+          align="end"
+          className="w-56 rounded-xl border-gray-200 p-1.5 shadow-lg"
+          sideOffset={8}
+        >
+          {/* Edit & Share */}
+          <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-gray-400">
+            Edit & Share
+          </DropdownMenuLabel>
+          <DropdownMenuItem
+            onClick={() => setOpenEditModal(true)}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+          >
+            <Pencil className="mr-2.5 h-4 w-4 text-gray-400" />
+            Edit link
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setQrModal(true)}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+          >
+            <QrCode className="mr-2.5 h-4 w-4 text-gray-400" />
+            QR code
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
+
+          {/* Organize */}
+          <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-gray-400">
+            Organize
+          </DropdownMenuLabel>
+          <DropdownMenuItem
+            onClick={() => setMoveToFolderModal(true)}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+          >
+            <FolderInput className="mr-2.5 h-4 w-4 text-gray-400" />
+            Move to folder
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setTransferToWorkspaceModal(true)}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+          >
+            <ArrowRightLeft className="mr-2.5 h-4 w-4 text-gray-400" />
+            Transfer to workspace
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={handleToggleArchive}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+          >
+            {link.archived ? (
+              <>
+                <ArchiveRestore className="mr-2.5 h-4 w-4 text-gray-400" />
+                Restore from archive
+              </>
             ) : (
-              <DropdownMenuItem
-                className="text-blue-500"
-                onClick={() => setOpenChangePasswordModal(true)}
-              >
-                <KeyRound className="mr-2 size-4" />
-                Add Password
-              </DropdownMenuItem>
+              <>
+                <Archive className="mr-2.5 h-4 w-4 text-gray-400" />
+                Archive
+              </>
             )}
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
+
+          {/* Settings */}
+          <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-gray-400">
+            Settings
+          </DropdownMenuLabel>
+          <DropdownMenuItem
+            onClick={handleLinkToggleMutation}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+          >
+            {isLinkActive ? (
+              <>
+                <Unlink className="mr-2.5 h-4 w-4 text-gray-400" />
+                Deactivate link
+              </>
+            ) : (
+              <>
+                <LinkIcon className="mr-2.5 h-4 w-4 text-gray-400" />
+                Activate link
+              </>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setOpenChangePasswordModal(true)}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+          >
+            <KeyRound className="mr-2.5 h-4 w-4 text-gray-400" />
+            {link.passwordHash ? "Change password" : "Add password"}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={handlePublicStatsToggleMutation}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+          >
+            <BarChart3 className="mr-2.5 h-4 w-4 text-gray-400" />
+            {isPublicStatsEnabled ? "Disable public stats" : "Enable public stats"}
+          </DropdownMenuItem>
+          {isPublicStatsEnabled && (
             <DropdownMenuItem
-              className="text-red-500 hover:cursor-pointer"
-              onClick={() => setResetStatsDialog(true)}
+              onClick={copyPublicStatsLink}
+              className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
             >
-              <RotateCcwIcon className="mr-2 size-4" />
-              Reset Statistics
+              <Copy className="mr-2.5 h-4 w-4 text-gray-400" />
+              Copy stats link
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-red-500"
-              onClick={() => setDeleteLinkDialog(true)}
-            >
-              <Trash2Icon className="mr-2 size-4" />
-              Delete Link
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleToggleArchive}>
-              {link.archived ? (
-                <>
-                  <ArchiveRestore className="mr-2 h-4 w-4" /> Restore
-                </>
-              ) : (
-                <>
-                  <Archive className="mr-2 h-4 w-4" /> Archive
-                </>
-              )}
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
+          )}
+
+          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
+
+          {/* Danger Zone */}
+          <DropdownMenuItem
+            onClick={() => setResetStatsDialog(true)}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-red-600 focus:bg-red-50 focus:text-red-600"
+          >
+            <RotateCcw className="mr-2.5 h-4 w-4" />
+            Reset statistics
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setDeleteLinkDialog(true)}
+            className="rounded-lg px-2 py-2 text-sm font-medium text-red-600 focus:bg-red-50 focus:text-red-600"
+          >
+            <Trash2 className="mr-2.5 h-4 w-4" />
+            Delete link
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -241,37 +301,44 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
         onOpenChange={setMoveToFolderModal}
         currentFolderId={link.folderId}
       />
+      <TransferToWorkspaceModal
+        linkIds={[link.id]}
+        open={transferToWorkspaceModal}
+        onOpenChange={setTransferToWorkspaceModal}
+      />
 
       {/* Reset Statistics Confirmation Dialog */}
       <AlertDialog open={resetStatsDialog} onOpenChange={setResetStatsDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              Reset Statistics
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Are you sure you want to reset all statistics for{" "}
-                <span className="font-semibold">{link.alias}</span>?
-              </p>
-              <p>This will permanently delete all click data and cannot be undone.</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogContent className="max-w-md rounded-2xl border-0 p-0 overflow-hidden shadow-2xl">
+          <div className="bg-gradient-to-b from-amber-50 to-white p-6">
+            <AlertDialogHeader className="space-y-3">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+                <RotateCcw className="h-5 w-5 text-amber-600" />
+              </div>
+              <AlertDialogTitle className="text-center text-lg font-semibold text-gray-900">
+                Reset statistics?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-center text-sm text-gray-500">
+                This will permanently delete all click data for <span className="font-medium text-gray-700">{link.alias}</span>. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter className="flex-row gap-2 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
+            <AlertDialogCancel className="flex-1 rounded-xl border-gray-200 font-medium hover:bg-gray-100">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 toast.promise(resetLinksMutation.mutateAsync({ id: link.id }), {
-                  loading: "Resetting Statistics...",
-                  success: "Link statistics reset successfully",
-                  error: "Failed to reset Link Statistics",
+                  loading: "Resetting...",
+                  success: "Statistics reset",
+                  error: "Failed to reset",
                 });
               }}
               disabled={resetLinksMutation.isLoading}
-              className="bg-red-600 hover:bg-red-700"
+              className="flex-1 rounded-xl bg-amber-600 font-medium text-white hover:bg-amber-700 disabled:opacity-50"
             >
-              {resetLinksMutation.isLoading ? "Resetting..." : "Reset Statistics"}
+              {resetLinksMutation.isLoading ? "Resetting..." : "Reset"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -279,40 +346,42 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
 
       {/* Delete Link Confirmation Dialog */}
       <AlertDialog open={deleteLinkDialog} onOpenChange={setDeleteLinkDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              Delete Link
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Are you sure you want to delete{" "}
-                <span className="font-semibold">{link.alias}</span>?
-              </p>
-              <p>This will permanently delete the link and all its statistics. This action cannot be undone.</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogContent className="max-w-md rounded-2xl border-0 p-0 overflow-hidden shadow-2xl">
+          <div className="bg-gradient-to-b from-red-50 to-white p-6">
+            <AlertDialogHeader className="space-y-3">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-center text-lg font-semibold text-gray-900">
+                Delete link?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-center text-sm text-gray-500">
+                This will permanently delete <span className="font-medium text-gray-700">{link.alias}</span> and all its analytics data. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter className="flex-row gap-2 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
+            <AlertDialogCancel className="flex-1 rounded-xl border-gray-200 font-medium hover:bg-gray-100">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 toast.promise(deleteLinkMutation.mutateAsync({ id: link.id }), {
-                  loading: "Deleting Link...",
+                  loading: "Deleting...",
                   success: () => {
                     trackEvent(POSTHOG_EVENTS.LINK_DELETED, {
                       alias: link.alias,
                       domain: link.domain,
                     });
-                    return "Link deleted successfully";
+                    return "Link deleted";
                   },
-                  error: "Failed to delete Link",
+                  error: "Failed to delete",
                 });
               }}
               disabled={deleteLinkMutation.isLoading}
-              className="bg-red-600 hover:bg-red-700"
+              className="flex-1 rounded-xl bg-red-600 font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
-              {deleteLinkMutation.isLoading ? "Deleting..." : "Delete Link"}
+              {deleteLinkMutation.isLoading ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
