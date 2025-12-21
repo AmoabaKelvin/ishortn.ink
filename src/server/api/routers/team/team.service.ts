@@ -50,9 +50,9 @@ export async function createTeam(
     });
   }
 
-  // Check if slug is already taken
+  // Check if slug is already taken (exclude soft-deleted teams)
   const existingTeam = await ctx.db.query.team.findFirst({
-    where: eq(team.slug, normalizedSlug),
+    where: and(eq(team.slug, normalizedSlug), isNull(team.deletedAt)),
   });
 
   if (existingTeam) {
@@ -157,9 +157,9 @@ export async function updateTeamSlug(
     });
   }
 
-  // Check if new slug is already taken
+  // Check if new slug is already taken (exclude soft-deleted teams)
   const existingTeam = await ctx.db.query.team.findFirst({
-    where: eq(team.slug, normalizedSlug),
+    where: and(eq(team.slug, normalizedSlug), isNull(team.deletedAt)),
   });
 
   if (existingTeam && existingTeam.id !== ctx.workspace.teamId) {
@@ -659,6 +659,14 @@ export async function acceptInvite(
     });
   }
 
+  // Check if team has been soft-deleted
+  if (invite.team.deletedAt !== null) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "This team no longer exists",
+    });
+  }
+
   if (invite.acceptedAt) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -741,6 +749,7 @@ export async function getInviteByToken(
           name: true,
           slug: true,
           avatarUrl: true,
+          deletedAt: true,
         },
       },
       inviter: {
@@ -756,8 +765,18 @@ export async function getInviteByToken(
     return null;
   }
 
+  // Don't expose invites for soft-deleted teams
+  if (invite.team.deletedAt !== null) {
+    return null;
+  }
+
   return {
-    team: invite.team,
+    team: {
+      id: invite.team.id,
+      name: invite.team.name,
+      slug: invite.team.slug,
+      avatarUrl: invite.team.avatarUrl,
+    },
     role: invite.role,
     invitedBy: invite.inviter,
     isExpired: invite.expiresAt < new Date(),
