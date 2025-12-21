@@ -1,17 +1,26 @@
 import { TRPCError } from "@trpc/server";
-import { count, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 
 import { customDomain, link, linkVisit } from "@/server/db/schema";
+import {
+  requirePermission,
+  workspaceFilter,
+  workspaceOwnership,
+} from "@/server/lib/workspace";
 
 import { addDomainToVercelProject, deleteDomainFromVercelProject } from "./utils";
 
-import type { ProtectedTRPCContext } from "../../trpc";
+import type { WorkspaceTRPCContext } from "../../trpc";
 import type { CreateCustomDomainInput } from "./domains.input";
 import type { VercelConfigResponse } from "./domains.procedure";
+
 export async function addDomainToUserAccount(
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: CreateCustomDomainInput,
 ) {
+  // Check permission for domain creation (owners and admins only in team workspaces)
+  requirePermission(ctx.workspace, "domains.create", "add custom domains");
+
   const userId = ctx.auth.userId;
 
   const userSubscription = await ctx.db.query.subscription.findFirst({
@@ -79,8 +88,11 @@ export async function addDomainToUserAccount(
       }
     }
 
+    const ownership = workspaceOwnership(ctx.workspace);
+
     await ctx.db.insert(customDomain).values({
-      userId,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
       domain: domain,
       status: wellConfigured ? "active" : "pending",
       verificationDetails: verificationDetails,
@@ -92,22 +104,26 @@ export async function addDomainToUserAccount(
   return { success: true };
 }
 
-export async function getCustomDomainsForUser(ctx: ProtectedTRPCContext) {
-  const userId = ctx.auth.userId;
-
+export async function getCustomDomainsForUser(ctx: WorkspaceTRPCContext) {
   const customDomains = await ctx.db.query.customDomain.findMany({
-    where: (table, { eq }) => eq(table.userId, userId),
+    where: workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
   });
 
   return customDomains;
 }
 
-export async function deleteDomainAndAssociatedLinks(ctx: ProtectedTRPCContext, domainId: number) {
+export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, domainId: number) {
+  // Check permission for domain deletion (owners and admins only in team workspaces)
+  requirePermission(ctx.workspace, "domains.delete", "delete custom domains");
+
   const domain = await ctx.db.query.customDomain.findFirst({
-    where: (table, { eq }) => eq(table.id, domainId),
+    where: and(
+      eq(customDomain.id, domainId),
+      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId)
+    ),
   });
 
-  if (!domain || domain.userId !== ctx.auth.userId) {
+  if (!domain) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "Domain not found or you don't have permission to delete it",
@@ -122,7 +138,7 @@ export async function deleteDomainAndAssociatedLinks(ctx: ProtectedTRPCContext, 
     const linksToDelete = await tx
       .select({ id: link.id })
       .from(link)
-      .where(eq(link.domain, domain.domain!));
+      .where(and(eq(link.domain, domain.domain!), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
     const linkIds = linksToDelete.map((link) => link.id);
 
@@ -132,7 +148,7 @@ export async function deleteDomainAndAssociatedLinks(ctx: ProtectedTRPCContext, 
     }
 
     // delete all links
-    await tx.delete(link).where(eq(link.domain, domain.domain!));
+    await tx.delete(link).where(and(eq(link.domain, domain.domain!), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
     // Delete the domain itself
     await tx.delete(customDomain).where(eq(customDomain.id, domainId));
@@ -143,15 +159,15 @@ export async function deleteDomainAndAssociatedLinks(ctx: ProtectedTRPCContext, 
   });
 }
 
-export async function getDomainStatistics(ctx: ProtectedTRPCContext, domain: string) {
-  // Get all links for this domain
+export async function getDomainStatistics(ctx: WorkspaceTRPCContext, domain: string) {
+  // Get all links for this domain in the current workspace
   const domainLinks = await ctx.db
     .select({
       id: link.id,
       createdAt: link.createdAt,
     })
     .from(link)
-    .where(eq(link.domain, domain));
+    .where(and(eq(link.domain, domain), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
   const linkIds = domainLinks.map((l) => l.id);
 

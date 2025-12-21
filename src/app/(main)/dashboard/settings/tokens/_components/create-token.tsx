@@ -39,7 +39,7 @@ const GenerateTokenTrigger = () => {
 
   return (
     <div>
-      <Button onClick={createKey} disabled={createAPIKeyMutation.isLoading}>
+      <Button onClick={createKey} disabled={createAPIKeyMutation.isLoading} className="bg-blue-600 hover:bg-blue-700">
         Create API Key
       </Button>
 

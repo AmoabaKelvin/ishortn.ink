@@ -2,17 +2,20 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 
 import { utmTemplate } from "@/server/db/schema";
-import { getUserPlanContext } from "@/server/lib/user-plan";
+import {
+  workspaceFilter,
+  workspaceOwnership,
+} from "@/server/lib/workspace";
 
-import type { ProtectedTRPCContext } from "../../trpc";
+import type { WorkspaceTRPCContext } from "../../trpc";
 import type {
   CreateUtmTemplateInput,
   UpdateUtmTemplateInput,
 } from "./utm-template.input";
 
-const ensureUltraPlan = async (ctx: ProtectedTRPCContext) => {
-  const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
-  if (planCtx?.plan !== "ultra") {
+const ensureUltraPlan = (ctx: WorkspaceTRPCContext) => {
+  // Use workspace plan - team workspaces inherit Ultra features
+  if (ctx.workspace.plan !== "ultra") {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "UTM templates are only available on the Ultra plan. Please upgrade to use this feature.",
@@ -20,27 +23,29 @@ const ensureUltraPlan = async (ctx: ProtectedTRPCContext) => {
   }
 };
 
-export const getUserUtmTemplates = async (ctx: ProtectedTRPCContext) => {
+export const getUserUtmTemplates = async (ctx: WorkspaceTRPCContext) => {
   return ctx.db.query.utmTemplate.findMany({
-    where: eq(utmTemplate.userId, ctx.auth.userId),
+    where: workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId),
     orderBy: (template) => template.name,
   });
 };
 
 export const getUtmTemplateById = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   id: number
 ) => {
   return ctx.db.query.utmTemplate.findFirst({
-    where: and(eq(utmTemplate.id, id), eq(utmTemplate.userId, ctx.auth.userId)),
+    where: and(eq(utmTemplate.id, id), workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId)),
   });
 };
 
 export const createUtmTemplate = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: CreateUtmTemplateInput
 ) => {
-  await ensureUltraPlan(ctx);
+  ensureUltraPlan(ctx);
+
+  const ownership = workspaceOwnership(ctx.workspace);
 
   const [result] = await ctx.db.insert(utmTemplate).values({
     name: input.name,
@@ -49,29 +54,31 @@ export const createUtmTemplate = async (
     utmCampaign: input.utmCampaign,
     utmTerm: input.utmTerm,
     utmContent: input.utmContent,
-    userId: ctx.auth.userId,
+    userId: ownership.userId,
+    teamId: ownership.teamId,
   });
 
   return {
     id: result.insertId,
     ...input,
-    userId: ctx.auth.userId,
+    userId: ownership.userId,
+    teamId: ownership.teamId,
   };
 };
 
 export const updateUtmTemplate = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   input: UpdateUtmTemplateInput
 ) => {
-  await ensureUltraPlan(ctx);
+  ensureUltraPlan(ctx);
 
   const { id, ...data } = input;
 
-  // Only update if the template belongs to the user
+  // Only update if the template belongs to the workspace
   const result = await ctx.db
     .update(utmTemplate)
     .set(data)
-    .where(and(eq(utmTemplate.id, id), eq(utmTemplate.userId, ctx.auth.userId)));
+    .where(and(eq(utmTemplate.id, id), workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId)));
 
   if (result[0].affectedRows === 0) {
     throw new TRPCError({
@@ -81,7 +88,7 @@ export const updateUtmTemplate = async (
   }
 
   const updated = await ctx.db.query.utmTemplate.findFirst({
-    where: and(eq(utmTemplate.id, id), eq(utmTemplate.userId, ctx.auth.userId)),
+    where: and(eq(utmTemplate.id, id), workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId)),
   });
 
   if (!updated) {
@@ -95,15 +102,15 @@ export const updateUtmTemplate = async (
 };
 
 export const deleteUtmTemplate = async (
-  ctx: ProtectedTRPCContext,
+  ctx: WorkspaceTRPCContext,
   id: number
 ) => {
-  await ensureUltraPlan(ctx);
+  ensureUltraPlan(ctx);
 
-  // Only delete if the template belongs to the user
+  // Only delete if the template belongs to the workspace
   const result = await ctx.db
     .delete(utmTemplate)
-    .where(and(eq(utmTemplate.id, id), eq(utmTemplate.userId, ctx.auth.userId)));
+    .where(and(eq(utmTemplate.id, id), workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId)));
 
   if (result[0].affectedRows === 0) {
     throw new TRPCError({

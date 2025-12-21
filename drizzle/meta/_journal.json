@@ -225,6 +225,27 @@
       "when": 1766140800000,
       "tag": "0031_changelog_slug_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1766220819874,
+      "tag": "0032_rainy_catseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1766220900000,
+      "tag": "0033_fix_team_collation",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1766269885261,
+      "tag": "0034_outgoing_ser_duncan",
+      "breakpoints": true
     }
   ]
 }

@@ -14,10 +14,10 @@ import {
   LogOut,
   Menu,
   ScanQrCode,
-  Sparkles,
   Target,
   User,
-  X
+  Users,
+  X,
 } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { usePathname, useRouter } from "next/navigation";
@@ -27,12 +27,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 import { SidebarStats } from "./sidebar-stats";
+import { WorkspaceSwitcher } from "./workspace-switcher";
 
 const navigationItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -44,6 +45,30 @@ const navigationItems = [
   { name: "Settings", href: "/dashboard/settings", icon: Cog },
 ];
 
+// Additional navigation items for team workspaces
+const teamNavigationItems = [
+  { name: "Team Members", href: "/dashboard/teams/members", icon: Users },
+  { name: "Team Settings", href: "/dashboard/teams/settings", icon: Cog },
+];
+
+type Team = {
+  id: number;
+  name: string;
+  slug: string;
+  avatarUrl: string | null;
+  role: "owner" | "admin" | "member";
+};
+
+type CurrentWorkspace = {
+  type: "personal" | "team";
+  teamId?: number;
+  teamSlug?: string;
+  teamName?: string;
+  teamAvatar?: string | null;
+  role?: "owner" | "admin" | "member";
+  plan: "free" | "pro" | "ultra";
+};
+
 type AppSidebarProps = {
   userHasPaidPlan?: boolean;
   monthlyLinkCount?: number;
@@ -52,6 +77,9 @@ type AppSidebarProps = {
   eventUsage?: { count: number; limit: number | null } | undefined;
   folderUsage?: { count: number; limit: number | null } | undefined;
   plan?: "free" | "pro" | "ultra";
+  teams?: Team[];
+  currentWorkspace?: CurrentWorkspace;
+  canCreateTeam?: boolean;
 };
 
 export function AppSidebar({
@@ -61,6 +89,9 @@ export function AppSidebar({
   eventUsage,
   folderUsage,
   plan = "free",
+  teams = [],
+  currentWorkspace = { type: "personal", plan: "free" },
+  canCreateTeam = false,
 }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -114,7 +145,7 @@ export function AppSidebar({
       <aside
         className={cn(
           "fixed left-0 top-0 z-40 h-screen w-[280px] flex-col border-r border-gray-200 bg-white transition-transform duration-200 ease-in-out lg:translate-x-0",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-full flex-col">
@@ -127,6 +158,15 @@ export function AppSidebar({
             >
               iShortn.ink
             </Link>
+          </div>
+
+          {/* Workspace Switcher */}
+          <div className="border-b border-gray-100 p-4">
+            <WorkspaceSwitcher
+              teams={teams}
+              currentWorkspace={currentWorkspace}
+              canCreateTeam={canCreateTeam}
+            />
           </div>
 
           {/* Main Content */}
@@ -182,7 +222,7 @@ export function AppSidebar({
                           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                           isActive
                             ? "bg-blue-50 text-blue-600"
-                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
                         )}
                       >
                         <Icon size={20} className="shrink-0" />
@@ -192,22 +232,58 @@ export function AppSidebar({
                   );
                 })}
               </ul>
+
+              {/* Team Navigation (only shown in team workspaces) */}
+              {currentWorkspace.type === "team" && (
+                <>
+                  <div className="my-4 border-t border-gray-100" />
+                  <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    Team
+                  </p>
+                  <ul className="space-y-1">
+                    {teamNavigationItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname.startsWith(item.href);
+
+                      return (
+                        <li key={item.name}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={cn(
+                              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                              isActive
+                                ? "bg-purple-50 text-purple-600"
+                                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                            )}
+                          >
+                            <Icon size={20} className="shrink-0" />
+                            <span>{item.name}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
             </nav>
           </div>
 
           {/* Footer Section */}
           <div className="shrink-0 border-t border-gray-100">
-            {/* Stats Section */}
-            <div className="pt-3">
-              <SidebarStats
-                monthlyLinkCount={monthlyLinkCount}
-                userHasPaidPlan={userHasPaidPlan}
-                linkLimit={linkLimit}
-                eventUsage={eventUsage}
-                folderUsage={folderUsage}
-                plan={plan}
-              />
-            </div>
+            {/* Stats Section - Only show for personal workspace */}
+            {currentWorkspace.type === "personal" && (
+              <div className="pt-3">
+                <SidebarStats
+                  monthlyLinkCount={monthlyLinkCount}
+                  userHasPaidPlan={userHasPaidPlan}
+                  linkLimit={linkLimit}
+                  eventUsage={eventUsage}
+                  folderUsage={folderUsage}
+                  plan={plan}
+                />
+              </div>
+            )}
 
             {/* Settings & Help Links */}
             <div className="p-3 space-y-1">
@@ -219,12 +295,6 @@ export function AppSidebar({
                 <Cog size={18} className="shrink-0" />
                 <span>Settings</span>
               </Link> */}
-              <button
-                className="headway-badge flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-150"
-              >
-                <Sparkles size={18} className="shrink-0" />
-                <span>What&apos;s New</span>
-              </button>
               <Link
                 href="https://docs.google.com/forms/d/e/1FAIpQLSfVfz9c1qkC4aDSjFnMcVnrimKiNOHA2aoQhyxNaMmDjMSNEg/viewform?usp=sf_link"
                 target="_blank"

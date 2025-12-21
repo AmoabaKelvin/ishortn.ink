@@ -72,7 +72,7 @@ export default function UtmTemplatesPage() {
             Create and manage reusable UTM parameter templates for your links.
           </p>
         </div>
-        <Button onClick={() => setModalOpen(true)}>
+        <Button onClick={() => setModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="mr-2 h-4 w-4" />
           New Template
         </Button>
@@ -107,7 +107,7 @@ export default function UtmTemplatesPage() {
             <p className="mt-1 text-sm text-gray-500">
               Create your first UTM template to get started.
             </p>
-            <Button className="mt-4" onClick={() => setModalOpen(true)}>
+            <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => setModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Create Template
             </Button>

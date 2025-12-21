@@ -16,21 +16,18 @@ async function QRCodePage() {
   const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(subDetails);
 
   return (
-    <div className="space-y-8 p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            QR Codes
-          </h1>
-          <p className="text-slate-500 mt-2 text-lg">
+          <h1 className="text-2xl font-semibold text-gray-900">QR Codes</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Manage and track your QR codes.
           </p>
         </div>
 
         {userCodes.length > 0 && (
           canCreateMoreQRCodes ? (
-            <Button asChild>
+            <Button asChild className="bg-blue-600 hover:bg-blue-700">
               <Link href="/dashboard/qrcodes/create">Create QR Code</Link>
             </Button>
           ) : (
@@ -39,9 +36,8 @@ async function QRCodePage() {
         )}
       </div>
 
-      {/* Upgrade Warning */}
       {!canCreateMoreQRCodes && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-900 flex items-center justify-between">
+        <div className="mt-6 rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-900 flex items-center justify-between">
           <p className="text-sm font-medium">
             You have reached the maximum number of QR Codes allowed.
           </p>
@@ -49,11 +45,12 @@ async function QRCodePage() {
         </div>
       )}
 
-      {/* Content */}
       {userCodes.length === 0 ? (
-        <QRCodeEmptyState />
+        <div className="mt-8">
+          <QRCodeEmptyState />
+        </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="mt-8 flex flex-col gap-4">
           {userCodes.map((qr) => (
             <QRCodeCard qr={qr} key={qr.id} />
           ))}

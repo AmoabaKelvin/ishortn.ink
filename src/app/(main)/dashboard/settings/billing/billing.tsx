@@ -62,7 +62,7 @@ export default function Billing({ subscriptions }: BillingProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => router.push("/dashboard/pricing")}>
+          <Button onClick={() => router.push("/dashboard/pricing")} className="bg-blue-600 hover:bg-blue-700">
             View Plans
           </Button>
         </CardContent>
@@ -86,7 +86,7 @@ export default function Billing({ subscriptions }: BillingProps) {
               variant={
                 subscription.status === "active" ? "default" : "destructive"
               }
-              className="capitalize"
+              className={`capitalize ${subscription.status === "active" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
             >
               {subscription.status}
             </Badge>
@@ -131,8 +131,8 @@ export default function Billing({ subscriptions }: BillingProps) {
             Manage Subscription
           </Button>
           <Button
-            variant="secondary"
             onClick={() => router.push("/dashboard/pricing")}
+            className="bg-blue-600 hover:bg-blue-700"
           >
             Change Plan
           </Button>

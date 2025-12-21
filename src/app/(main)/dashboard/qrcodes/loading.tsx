@@ -3,11 +3,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function QRCodesLoading() {
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-32" />
+      <div className="flex items-center justify-between">
+        <div>
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="h-4 w-48 mt-2" />
+        </div>
+        <Skeleton className="h-9 w-32" />
       </div>
-      <div className="flex flex-col gap-4">
+
+      <div className="mt-8 flex flex-col gap-4">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
             <div className="flex items-start gap-4">
