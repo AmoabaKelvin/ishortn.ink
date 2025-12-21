@@ -75,22 +75,22 @@ export default async function LinkAnalyticsPage(
         <QuickInfoCard
           title="Total Visits"
           value={totalVisits.length}
-          icon={<MousePointerClick className="size-4" />}
+          icon={<MousePointerClick className="size-4 text-blue-600" />}
         />
         <QuickInfoCard
           title="Unique Visits"
           value={uniqueVisits.length}
-          icon={<Fingerprint className="size-4" />}
+          icon={<Fingerprint className="size-4 text-blue-600" />}
         />
         <QuickInfoCard
           title="Top Country"
           value={topCountry}
-          icon={<MapPinned className="size-4" />}
+          icon={<MapPinned className="size-4 text-blue-600" />}
         />
         <QuickInfoCard
           title="Top Referrer"
           value={topReferrer}
-          icon={<Crown className="size-4" />}
+          icon={<Crown className="size-4 text-blue-600" />}
         />
       </div>
 

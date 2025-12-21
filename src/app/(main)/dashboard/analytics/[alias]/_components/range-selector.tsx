@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  Calendar,
+  CalendarDays,
+  CalendarRange,
+  Clock,
+  History,
+  Infinity,
+} from "lucide-react";
 import React from "react";
 
 import {
@@ -11,13 +19,13 @@ import {
 } from "@/components/ui/select";
 
 const rangeOptions = [
-  { value: "24h", label: "Last 24 hours" },
-  { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "90d", label: "Last 90 days" },
-  { value: "this_month", label: "This month" },
-  { value: "this_year", label: "This year" },
-  { value: "all", label: "All" },
+  { value: "24h", label: "Last 24 hours", icon: Clock },
+  { value: "7d", label: "Last 7 days", icon: CalendarDays },
+  { value: "30d", label: "Last 30 days", icon: CalendarRange },
+  { value: "90d", label: "Last 90 days", icon: CalendarRange },
+  { value: "this_month", label: "This month", icon: Calendar },
+  { value: "this_year", label: "This year", icon: History },
+  { value: "all", label: "All time", icon: Infinity },
 ];
 
 type RangeSelectorProps = {
@@ -44,17 +52,21 @@ export const RangeSelector = ({
         <SelectValue placeholder="Select range" />
       </SelectTrigger>
       <SelectContent>
-        {rangeOptions.map((option) => (
-          <SelectItem
-            key={option.value}
-            value={option.value}
-            disabled={
-              !isProPlan && option.value !== "7d" && option.value !== "24h"
-            }
-          >
-            {option.label}
-          </SelectItem>
-        ))}
+        {rangeOptions.map((option) => {
+          const Icon = option.icon;
+          return (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              disabled={
+                !isProPlan && option.value !== "7d" && option.value !== "24h"
+              }
+            >
+              <Icon className="inline-block h-4 w-4 mr-1.5 text-gray-400" />
+              {option.label}
+            </SelectItem>
+          );
+        })}
       </SelectContent>
     </Select>
   );
