@@ -46,6 +46,7 @@ const linkSchema = z.object({
     .nullable()
     .transform((str) => (str ? JSON.parse(str) : null))
     .default(null),
+  createdByUserId: z.string().nullable().default(null),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
@@ -70,6 +71,7 @@ function convertToLink(data: Record<string, string>): Link {
     folderId: parsed.folderId ?? null,
     teamId: parsed.teamId ?? null,
     utmParams: parsed.utmParams ?? null,
+    createdByUserId: parsed.createdByUserId ?? null,
   };
 }
 
