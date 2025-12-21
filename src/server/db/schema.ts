@@ -213,6 +213,7 @@ export const link = mysqlTable(
       length: 32,
     }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    createdByUserId: varchar("createdByUserId", { length: 32 }), // tracks original creator (immutable)
     passwordHash: text("passwordHash"),
     note: varchar("note", { length: 255 }),
     metadata: json("metadata"),
