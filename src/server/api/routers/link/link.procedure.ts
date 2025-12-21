@@ -9,6 +9,7 @@ import {
 
 import * as inputs from "./link.input";
 import * as services from "./link.service";
+import * as transferServices from "./transfer.service";
 
 import type { PublicTRPCContext } from "../../trpc";
 
@@ -164,4 +165,34 @@ export const linkRouter = createTRPCRouter({
   stats: workspaceProcedure.query(async ({ ctx }) => {
     return services.getStats(ctx);
   }),
+
+  // ============================================================================
+  // TRANSFER LINKS PROCEDURES
+  // ============================================================================
+
+  /** Get all workspaces the user can transfer links to */
+  getAvailableWorkspaces: workspaceProcedure.query(async ({ ctx }) => {
+    return transferServices.getAvailableWorkspaces(ctx);
+  }),
+
+  /** Validate a transfer before executing it (dry run) */
+  validateTransfer: workspaceProcedure
+    .input(inputs.validateTransferSchema)
+    .mutation(async ({ ctx, input }) => {
+      return transferServices.validateTransfer(ctx, input);
+    }),
+
+  /** Transfer links to another workspace */
+  transferToWorkspace: workspaceProcedure
+    .input(inputs.transferLinksToWorkspaceSchema)
+    .mutation(async ({ ctx, input }) => {
+      return transferServices.transferLinksToWorkspace(ctx, input);
+    }),
+
+  /** Bulk delete links */
+  bulkDelete: workspaceProcedure
+    .input(inputs.bulkDeleteLinksSchema)
+    .mutation(async ({ ctx, input }) => {
+      return services.bulkDeleteLinks(ctx, input.linkIds);
+    }),
 });
