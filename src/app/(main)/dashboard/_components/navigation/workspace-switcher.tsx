@@ -68,10 +68,10 @@ export function WorkspaceSwitcher({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm hover:bg-gray-50 transition-all duration-150">
+        <button className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm hover:bg-gray-50 hover:border-gray-300 transition-all duration-150">
           {isPersonal ? (
             <>
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-100">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
                 <User size={16} className="text-blue-600" />
               </div>
               <div className="flex-1 min-w-0 text-left">
@@ -85,12 +85,12 @@ export function WorkspaceSwitcher({
             </>
           ) : (
             <>
-              <Avatar className="h-8 w-8 rounded-md">
+              <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage
                   src={currentWorkspace.teamAvatar ?? undefined}
                   alt={currentWorkspace.teamName ?? "Team"}
                 />
-                <AvatarFallback className="rounded-md bg-purple-100 text-purple-600 font-medium">
+                <AvatarFallback className="rounded-lg bg-purple-100 text-purple-600 font-medium">
                   {currentWorkspace.teamName?.[0]?.toUpperCase() ?? "T"}
                 </AvatarFallback>
               </Avatar>
@@ -108,7 +108,7 @@ export function WorkspaceSwitcher({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-64 p-2"
+        className="w-64 p-1.5 rounded-xl border-gray-200"
         align="start"
         side="bottom"
         sideOffset={8}
@@ -118,13 +118,13 @@ export function WorkspaceSwitcher({
           <button
             onClick={() => handleWorkspaceSwitch("personal")}
             className={cn(
-              "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               isPersonal
                 ? "bg-blue-50 text-blue-700"
                 : "text-gray-700 hover:bg-gray-100"
             )}
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100">
               <User size={14} className="text-blue-600" />
             </div>
             <span className="flex-1 text-left font-medium">Personal</span>
@@ -148,18 +148,18 @@ export function WorkspaceSwitcher({
                     key={team.id}
                     onClick={() => handleWorkspaceSwitch("team", team.slug)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                       isSelected
                         ? "bg-purple-50 text-purple-700"
                         : "text-gray-700 hover:bg-gray-100"
                     )}
                   >
-                    <Avatar className="h-7 w-7 rounded-md">
+                    <Avatar className="h-7 w-7 rounded-lg">
                       <AvatarImage
                         src={team.avatarUrl ?? undefined}
                         alt={team.name}
                       />
-                      <AvatarFallback className="rounded-md bg-purple-100 text-purple-600 text-xs font-medium">
+                      <AvatarFallback className="rounded-lg bg-purple-100 text-purple-600 text-xs font-medium">
                         {team.name[0]?.toUpperCase() ?? "T"}
                       </AvatarFallback>
                     </Avatar>
@@ -179,9 +179,9 @@ export function WorkspaceSwitcher({
               <Separator className="my-2" />
               <button
                 onClick={handleCreateTeam}
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-md border border-dashed border-gray-300">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-gray-300">
                   <Plus size={14} className="text-gray-500" />
                 </div>
                 <span className="flex-1 text-left font-medium">Create Team</span>
