@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
-import { team, teamMember } from "@/server/db/schema";
+import { RESERVED_TEAM_SLUGS, team, teamMember } from "@/server/db/schema";
 
 import type { WorkspaceContext, PersonalWorkspaceContext, TeamWorkspaceContext } from "./types";
 
@@ -25,31 +25,37 @@ export function extractSubdomain(hostname: string): string | null {
   // Remove port if present
   const host = hostname.split(":")[0] ?? hostname;
 
+  let subdomain: string | null = null;
+
   // Check for production subdomains (*.ishortn.ink)
   if (host.endsWith(".ishortn.ink")) {
     const parts = host.split(".");
     if (parts.length === 3) {
-      const subdomain = parts[0]?.trim();
-      if (subdomain && subdomain.length > 0) {
-        return subdomain;
+      const candidate = parts[0]?.trim().toLowerCase();
+      if (candidate && candidate.length > 0) {
+        subdomain = candidate;
       }
-      return null;
     }
   }
 
   // Check for local development subdomains (*.localhost)
-  if (host.endsWith(".localhost")) {
+  if (!subdomain && host.endsWith(".localhost")) {
     const parts = host.split(".");
     if (parts.length === 2) {
-      const subdomain = parts[0]?.trim();
-      if (subdomain && subdomain.length > 0) {
-        return subdomain;
+      const candidate = parts[0]?.trim().toLowerCase();
+      if (candidate && candidate.length > 0) {
+        subdomain = candidate;
       }
-      return null;
     }
   }
 
-  return null;
+  // Don't treat reserved slugs as team subdomains
+  // These are system subdomains (www, api, app, etc.) that should use personal workspace
+  if (subdomain && RESERVED_TEAM_SLUGS.includes(subdomain)) {
+    return null;
+  }
+
+  return subdomain;
 }
 
 /**
