@@ -55,7 +55,13 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     return NextResponse.next();
   }
 
-  return NextResponse.redirect(data.url);
+  // Ensure URL has a valid protocol for redirect
+  let redirectUrl = data.url;
+  if (!redirectUrl.startsWith("http://") && !redirectUrl.startsWith("https://")) {
+    redirectUrl = `https://${redirectUrl}`;
+  }
+
+  return NextResponse.redirect(redirectUrl);
 }
 
 export default clerkMiddleware(async (auth, req) => {
