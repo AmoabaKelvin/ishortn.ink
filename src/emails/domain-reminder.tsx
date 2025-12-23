@@ -61,8 +61,8 @@ export const DomainReminderEmail = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {challenges.map((challenge) => (
-                    <tr key={`${challenge.type}-${challenge.domain}`}>
+                  {challenges.map((challenge, index) => (
+                    <tr key={`${challenge.type}-${challenge.domain}-${index}`}>
                       <td style={tableCell}>{challenge.type}</td>
                       <td style={tableCell}>
                         <code style={codeStyle}>{challenge.domain}</code>
