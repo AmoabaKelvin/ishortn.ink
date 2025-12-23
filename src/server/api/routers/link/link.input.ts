@@ -159,3 +159,17 @@ export const bulkDeleteLinksSchema = z.object({
 });
 
 export type BulkDeleteLinksInput = z.infer<typeof bulkDeleteLinksSchema>;
+
+export const bulkArchiveLinksSchema = z.object({
+  linkIds: z.array(z.number().min(1)).min(1, "At least one link is required").max(100, "Maximum 100 links per operation"),
+  archive: z.boolean(),
+});
+
+export type BulkArchiveLinksInput = z.infer<typeof bulkArchiveLinksSchema>;
+
+export const bulkToggleLinkStatusSchema = z.object({
+  linkIds: z.array(z.number().min(1)).min(1, "At least one link is required").max(100, "Maximum 100 links per operation"),
+  disable: z.boolean(),
+});
+
+export type BulkToggleLinkStatusInput = z.infer<typeof bulkToggleLinkStatusSchema>;

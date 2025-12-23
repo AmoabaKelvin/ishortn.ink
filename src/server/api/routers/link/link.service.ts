@@ -49,6 +49,8 @@ import {
 import type { Link } from "@/server/db/schema";
 import type { ProtectedTRPCContext, PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type {
+  BulkArchiveLinksInput,
+  BulkToggleLinkStatusInput,
   CreateLinkInput,
   GetLinkInput,
   ListLinksInput,
@@ -544,6 +546,70 @@ export const bulkDeleteLinks = async (
   });
 
   return { success: true, count: linksToDelete.length };
+};
+
+export const bulkArchiveLinks = async (
+  ctx: WorkspaceTRPCContext,
+  input: BulkArchiveLinksInput
+) => {
+  const { linkIds, archive } = input;
+
+  if (linkIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Verify links belong to workspace
+  const linksToUpdate = await ctx.db.query.link.findMany({
+    where: and(
+      inArray(link.id, linkIds),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId)
+    ),
+  });
+
+  if (linksToUpdate.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const validLinkIds = linksToUpdate.map((l) => l.id);
+
+  await ctx.db
+    .update(link)
+    .set({ archived: archive })
+    .where(inArray(link.id, validLinkIds));
+
+  return { success: true, count: linksToUpdate.length, archived: archive };
+};
+
+export const bulkToggleLinkStatus = async (
+  ctx: WorkspaceTRPCContext,
+  input: BulkToggleLinkStatusInput
+) => {
+  const { linkIds, disable } = input;
+
+  if (linkIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Verify links belong to workspace
+  const linksToUpdate = await ctx.db.query.link.findMany({
+    where: and(
+      inArray(link.id, linkIds),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId)
+    ),
+  });
+
+  if (linksToUpdate.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const validLinkIds = linksToUpdate.map((l) => l.id);
+
+  await ctx.db
+    .update(link)
+    .set({ disabled: disable })
+    .where(inArray(link.id, validLinkIds));
+
+  return { success: true, count: linksToUpdate.length, disabled: disable };
 };
 
 export const retrieveOriginalUrl = async (
