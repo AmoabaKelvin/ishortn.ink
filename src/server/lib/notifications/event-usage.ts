@@ -28,7 +28,7 @@ export async function sendEventUsageEmail({
 
   try {
     await resend.emails.send({
-      from: "Kelvin <kelvin@ishortn.ink>",
+      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
       to: email,
       subject: `You're ${threshold}% through your monthly analytics cap`,
       react: EventUsageAlertEmail({

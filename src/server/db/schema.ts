@@ -443,6 +443,7 @@ export const customDomain = mysqlTable(
       "pending"
     ),
     verificationDetails: json("verificationDetails"),
+    lastReminderSentAt: timestamp("lastReminderSentAt"),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),

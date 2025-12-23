@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 
-import { cleanupDeletedTeams } from "@/server/api/routers/team/team-cleanup.service";
+import { sendDomainConfigurationReminders } from "@/server/api/routers/domains/domain-reminder.service";
 
 /**
- * Cron job endpoint to clean up soft-deleted teams that have passed the grace period.
+ * Cron job endpoint to send reminder emails for misconfigured domains.
  *
  * This endpoint requires API key authentication via the CRON_SECRET environment variable.
  * Vercel Cron automatically sends GET requests with the Authorization header.
  *
- * Schedule: 0 0 * * * (daily at midnight) - configured in vercel.json
+ * Schedule: 0 9 * * * (daily at 9 AM UTC) - configured in vercel.json
  *
  * Environment variable required:
  * - CRON_SECRET: A secure random string used to authenticate cron requests
  *
  * Usage:
- * GET /api/cron/cleanup-teams
+ * GET /api/cron/domain-reminders
  * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
  */
 
@@ -33,9 +33,7 @@ function validateApiKey(request: Request): boolean {
   }
 
   // Support both "Bearer <token>" and just "<token>"
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader;
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
 
   // Use timing-safe comparison to prevent timing attacks
   if (token.length !== cronSecret.length) {
@@ -51,7 +49,7 @@ function validateApiKey(request: Request): boolean {
 }
 
 /**
- * GET - Run the cleanup job (Vercel Cron sends GET requests)
+ * GET - Run the reminder job (Vercel Cron sends GET requests)
  */
 export async function GET(request: Request) {
   if (!validateApiKey(request)) {
@@ -59,14 +57,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log("[Team Cleanup] Starting cleanup job...");
+    console.log("[Domain Reminder] Starting reminder job...");
     const startTime = Date.now();
 
-    const result = await cleanupDeletedTeams();
+    const result = await sendDomainConfigurationReminders();
 
     const duration = Date.now() - startTime;
     console.log(
-      `[Team Cleanup] Completed in ${duration}ms. Deleted ${result.teamsDeleted} teams.`,
+      `[Domain Reminder] Completed in ${duration}ms. Checked ${result.domainsChecked} domains, sent ${result.remindersSent} reminders.`,
     );
 
     return NextResponse.json({
@@ -75,7 +73,7 @@ export async function GET(request: Request) {
       duration: `${duration}ms`,
     });
   } catch (error) {
-    console.error("[Team Cleanup] Error during cleanup:", error);
+    console.error("[Domain Reminder] Error during reminder job:", error);
     return NextResponse.json(
       {
         success: false,

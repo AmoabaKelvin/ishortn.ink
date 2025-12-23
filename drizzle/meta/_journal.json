@@ -253,6 +253,13 @@
       "when": 1766339526379,
       "tag": "0035_needy_doctor_faustus",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1766504801723,
+      "tag": "0036_lovely_eternals",
+      "breakpoints": true
     }
   ]
 }
