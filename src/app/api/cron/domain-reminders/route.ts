@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
 
-import {
-  getDomainReminderStats,
-  sendDomainConfigurationReminders,
-} from "@/server/api/routers/domains/domain-reminder.service";
+import { sendDomainConfigurationReminders } from "@/server/api/routers/domains/domain-reminder.service";
 
 /**
  * Cron job endpoint to send reminder emails for misconfigured domains.
  *
  * This endpoint requires API key authentication via the CRON_SECRET environment variable.
- * It should be called by a cron job scheduler (e.g., Vercel Cron, GitHub Actions, etc.)
+ * Vercel Cron automatically sends GET requests with the Authorization header.
  *
- * Recommended cron schedule: 0 9 * * * (daily at 9 AM UTC)
+ * Schedule: 0 9 * * * (daily at 9 AM UTC) - configured in vercel.json
  *
  * Environment variable required:
  * - CRON_SECRET: A secure random string used to authenticate cron requests
  *
  * Usage:
- * POST /api/cron/domain-reminders
- * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
- *
- * GET /api/cron/domain-reminders (for stats only)
+ * GET /api/cron/domain-reminders
  * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
  */
 
@@ -55,35 +49,9 @@ function validateApiKey(request: Request): boolean {
 }
 
 /**
- * GET - Get reminder stats (useful for monitoring)
+ * GET - Run the reminder job (Vercel Cron sends GET requests)
  */
 export async function GET(request: Request) {
-  if (!validateApiKey(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const stats = await getDomainReminderStats();
-    return NextResponse.json({
-      success: true,
-      stats,
-    });
-  } catch (error) {
-    console.error("Error getting domain reminder stats:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    );
-  }
-}
-
-/**
- * POST - Run the reminder job
- */
-export async function POST(request: Request) {
   if (!validateApiKey(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
