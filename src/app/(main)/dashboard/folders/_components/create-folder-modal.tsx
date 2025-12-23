@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/trpc/react";
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 
 import type { CreateFolderInput } from "@/server/api/routers/folder/folder.input";
 
@@ -49,6 +50,7 @@ export function CreateFolderModal({ trigger, open: controlledOpen, onOpenChange 
       toast.success("Folder created successfully");
       trackEvent(POSTHOG_EVENTS.FOLDER_CREATED);
       await utils.folder.list.invalidate();
+      await revalidateRoute("/dashboard/folders");
       reset();
       setOpen(false);
     },
