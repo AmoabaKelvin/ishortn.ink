@@ -1,6 +1,7 @@
 {
-  "name": "next-lucia-auth",
-  "version": "0.1.0",
+  "name": "ishortn",
+  "version": "1.0.0",
+  "description": "URL shortening and link management platform",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -21,7 +22,6 @@
     "@clerk/nextjs": "^6.35.4",
     "@hookform/resolvers": "^3.3.4",
     "@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
-    "@lucia-auth/adapter-drizzle": "1.0.0",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.1.1",
@@ -45,7 +45,6 @@
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tanstack/react-query": "^4.36.1",
     "@trpc/client": "^10.45.2",
-    "@trpc/next": "^10.45.2",
     "@trpc/react-query": "^10.45.2",
     "@trpc/server": "^10.45.2",
     "@types/bcryptjs": "^2.4.6",
@@ -55,7 +54,6 @@
     "ai": "^4.1.54",
     "bcryptjs": "^2.4.3",
     "caniuse-lite": "^1.0.30001756",
-    "chart.js": "^4.4.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "cmdk": "^1.0.0",
@@ -73,7 +71,6 @@
     "next": "15.5.9",
     "next-themes": "^0.2.1",
     "next-view-transitions": "^0.3.4",
-    "nodemailer": "^6.9.13",
     "posthog-js": "^1.144.2",
     "qrcode-with-logos": "^1.1.0",
     "qrcode.react": "^3.1.0",
@@ -94,7 +91,7 @@
     "svix": "^1.24.0",
     "tailwind-merge": "^2.2.2",
     "tailwindcss-animate": "^1.0.7",
-    "ua-parser-js": "^1.0.37",
+    "ua-parser-js": "^2.0.7",
     "use-debounce": "^10.0.1",
     "vaul": "^0.8.9",
     "zod": "^3.22.4"
@@ -106,7 +103,6 @@
     "@types/d3-scale": "^4.0.9",
     "@types/eslint": "^8.56.9",
     "@types/node": "^18.19.31",
-    "@types/nodemailer": "^6.4.14",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "@types/react-syntax-highlighter": "^15.5.11",
@@ -121,9 +117,6 @@
     "tailwindcss": "^3.4.3",
     "tsx": "^4.7.2",
     "typescript": "^5.4.5"
-  },
-  "ct3aMetadata": {
-    "initVersion": "7.24.2"
   },
   "overrides": {
     "@types/react": "19.1.2",
