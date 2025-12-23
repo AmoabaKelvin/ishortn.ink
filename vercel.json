@@ -3,5 +3,11 @@
     "app/api/**/*": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/domain-reminders",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
