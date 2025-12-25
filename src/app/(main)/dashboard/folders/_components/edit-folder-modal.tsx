@@ -1,6 +1,5 @@
 "use client";
 
-import { Pencil } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -8,15 +7,17 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import type { UpdateFolderInput } from "@/server/api/routers/folder/folder.input";
@@ -77,27 +78,29 @@ export function EditFolderModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Pencil className="h-5 w-5 text-blue-600" />
-            Edit Folder
-          </DialogTitle>
-          <DialogDescription>
-            Update your folder's name and description.
-          </DialogDescription>
+          <DialogTitle>Edit Folder</DialogTitle>
+          <DialogDescription>Update folder details</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-4 py-4">
+          <DialogBody className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">
-                Folder Name <span className="text-red-500">*</span>
+              <Label
+                htmlFor="edit-name"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Name
               </Label>
               <Input
                 id="edit-name"
-                placeholder="e.g., Marketing Campaign 2024"
-                className={errors.name ? "border-red-500" : ""}
+                placeholder="Folder name"
+                className={cn(
+                  "h-10",
+                  errors.name &&
+                    "border-destructive focus-visible:ring-destructive"
+                )}
                 {...register("name", {
                   required: "Folder name is required",
                   maxLength: {
@@ -107,36 +110,45 @@ export function EditFolderModal({
                 })}
               />
               {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
+                <p className="text-xs text-destructive">{errors.name.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-description">Description (Optional)</Label>
+              <Label
+                htmlFor="edit-description"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Description
+                <span className="ml-1.5 text-muted-foreground/60 lowercase tracking-normal font-normal">
+                  optional
+                </span>
+              </Label>
               <Textarea
                 id="edit-description"
-                placeholder="Add notes about what this folder contains..."
+                placeholder="Add notes about this folder..."
                 rows={3}
-                className="resize-none"
+                className="resize-none text-sm"
                 {...register("description")}
               />
             </div>
-          </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => onOpenChange(false)}
+              className="h-9"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={updateFolderMutation.isLoading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="h-9"
             >
-              {updateFolderMutation.isLoading ? "Saving..." : "Save Changes"}
+              {updateFolderMutation.isLoading ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>
