@@ -267,6 +267,20 @@
       "when": 1766678400000,
       "tag": "0037_fix_customdomain_collation",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1766701156421,
+      "tag": "0038_flippant_polaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1766765000000,
+      "tag": "0039_fix_folderpermission_collation",
+      "breakpoints": true
     }
   ]
 }
