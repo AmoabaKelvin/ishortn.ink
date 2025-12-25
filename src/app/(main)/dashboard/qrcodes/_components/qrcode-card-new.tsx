@@ -93,10 +93,10 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
 
           {isALink(qr.content) && qr.link ? (
             <Link
-              href={`/dashboard/analytics/${qr.link.alias}`}
+              href={`/dashboard/analytics/${qr.link.alias}?domain=${qr.link.domain ?? "ishortn.ink"}`}
               className="text-sm text-gray-500 hover:text-gray-900 hover:underline underline-offset-2 truncate mb-2 block"
             >
-              ishortn.ink/{qr.link.alias}
+              {(qr.link.domain ?? "ishortn.ink")}/{qr.link.alias}
             </Link>
           ) : (
             <p className="text-sm text-gray-500 truncate mb-2">{qr.content}</p>
@@ -148,7 +148,6 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
     </Card>
   );
 }
-
 
 
 

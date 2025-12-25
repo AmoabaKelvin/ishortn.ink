@@ -748,6 +748,7 @@ export const getLinkVisits = async (
       topCountry: "N/A",
       referers: {},
       topReferrer: "N/A",
+      isProPlan: userHasPaidPlan,
     };
   }
 
