@@ -12,6 +12,14 @@
     {
       "path": "/api/cron/cleanup-teams",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-analytics",
+      "schedule": "0 2 * * 0"
+    },
+    {
+      "path": "/api/cron/cleanup-expired",
+      "schedule": "0 4 * * *"
     }
   ]
 }
