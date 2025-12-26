@@ -67,175 +67,208 @@ export function QRAdvancedCustomization({
   setMarginNoiseRate,
 }: QRAdvancedCustomizationProps) {
   return (
-    <div className="space-y-6">
-      {/* Pixel Style */}
-      <div className="space-y-2">
-        <Label>Pixel Style</Label>
-        <Select
-          value={pixelStyle}
-          onValueChange={(value) => setPixelStyle(value as QRPixelStyle)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select pixel style" />
-          </SelectTrigger>
-          <SelectContent>
-            {pixelStyles.map((style) => (
-              <SelectItem key={style.value} value={style.value}>
-                {style.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <div className="space-y-8">
+      {/* Shape Section */}
+      <div className="space-y-5">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-blue-500" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Shape</span>
+        </div>
 
-      {/* Marker Shape */}
-      <div className="space-y-2">
-        <Label>Marker Shape</Label>
-        <Select
-          value={markerShape}
-          onValueChange={(value) => setMarkerShape(value as QRMarkerShape)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select marker shape" />
-          </SelectTrigger>
-          <SelectContent>
-            {markerShapes.map((shape) => (
-              <SelectItem key={shape.value} value={shape.value}>
-                {shape.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Marker Inner Shape */}
-      <div className="space-y-2">
-        <Label>Marker Inner Shape</Label>
-        <Select
-          value={markerInnerShape}
-          onValueChange={(value) => setMarkerInnerShape(value as QRMarkerInnerShape)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select inner shape" />
-          </SelectTrigger>
-          <SelectContent>
-            {markerInnerShapes.map((shape) => (
-              <SelectItem key={shape.value} value={shape.value}>
-                {shape.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Dark Color */}
-      <div className="space-y-2">
-        <Label>QR Code Color</Label>
-        <div className="flex flex-wrap gap-3">
-          {presetColors.map((color) => (
-            <button
-              type="button"
-              key={color}
-              className={cn("rounded-full border-2 p-1 hover:cursor-pointer transition-all", {
-                "border-blue-500 ring-2 ring-blue-200": darkColor === color,
-                "border-transparent": darkColor !== color,
-              })}
-              onClick={() => setDarkColor(color)}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-600">Pixel Style</Label>
+            <Select
+              value={pixelStyle}
+              onValueChange={(value) => setPixelStyle(value as QRPixelStyle)}
             >
-              <div
-                className="size-8 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-            </button>
-          ))}
-        </div>
-      </div>
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Select style" />
+              </SelectTrigger>
+              <SelectContent>
+                {pixelStyles.map((style) => (
+                  <SelectItem key={style.value} value={style.value}>
+                    {style.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* Background Color */}
-      <div className="space-y-2">
-        <Label>Background Color</Label>
-        <div className="flex flex-wrap gap-3">
-          {["#ffffff", "#f5f5f5", "#000000", "#1a1a2e", "#f0f0f0"].map((color) => (
-            <button
-              type="button"
-              key={color}
-              className={cn("rounded-full border-2 p-1 hover:cursor-pointer transition-all", {
-                "border-blue-500 ring-2 ring-blue-200": lightColor === color,
-                "border-gray-300": lightColor !== color,
-              })}
-              onClick={() => setLightColor(color)}
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-600">Marker Shape</Label>
+            <Select
+              value={markerShape}
+              onValueChange={(value) => setMarkerShape(value as QRMarkerShape)}
             >
-              <div
-                className="size-8 rounded-full border border-gray-200"
-                style={{ backgroundColor: color }}
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Select shape" />
+              </SelectTrigger>
+              <SelectContent>
+                {markerShapes.map((shape) => (
+                  <SelectItem key={shape.value} value={shape.value}>
+                    {shape.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-600">Inner Shape</Label>
+            <Select
+              value={markerInnerShape}
+              onValueChange={(value) => setMarkerInnerShape(value as QRMarkerInnerShape)}
+            >
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Select inner" />
+              </SelectTrigger>
+              <SelectContent>
+                {markerInnerShapes.map((shape) => (
+                  <SelectItem key={shape.value} value={shape.value}>
+                    {shape.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Colors Section */}
+      <div className="space-y-5">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-blue-500" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Colors</span>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <Label className="text-xs text-gray-600">QR Code Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {presetColors.map((color) => (
+                <button
+                  type="button"
+                  key={color}
+                  className={cn(
+                    "group relative rounded-xl p-0.5 transition-all duration-200",
+                    darkColor === color
+                      ? "ring-2 ring-blue-500 ring-offset-2"
+                      : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
+                  )}
+                  onClick={() => setDarkColor(color)}
+                >
+                  <div
+                    className="size-8 rounded-lg shadow-sm transition-transform group-hover:scale-105"
+                    style={{ backgroundColor: color }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-xs text-gray-600">Background Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {["#ffffff", "#f5f5f5", "#000000", "#1a1a2e", "#f0f0f0"].map((color) => (
+                <button
+                  type="button"
+                  key={color}
+                  className={cn(
+                    "group relative rounded-xl p-0.5 transition-all duration-200",
+                    lightColor === color
+                      ? "ring-2 ring-blue-500 ring-offset-2"
+                      : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
+                  )}
+                  onClick={() => setLightColor(color)}
+                >
+                  <div
+                    className="size-8 rounded-lg border border-gray-200 shadow-sm transition-transform group-hover:scale-105"
+                    style={{ backgroundColor: color }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Effects Section */}
+      <div className="space-y-5">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-blue-500" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Effects</span>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-600">Effect Type</Label>
+            <Select
+              value={effect}
+              onValueChange={(value) => setEffect(value as QREffect)}
+            >
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Select effect" />
+              </SelectTrigger>
+              <SelectContent>
+                {qrEffects.map((eff) => (
+                  <SelectItem key={eff.value} value={eff.value}>
+                    {eff.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {effect !== "none" && (
+            <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-gray-600">Effect Intensity</Label>
+                <span className="text-xs font-medium text-gray-900">{effectRadius}</span>
+              </div>
+              <Slider
+                value={[effectRadius]}
+                onValueChange={([value]) => setEffectRadius(value ?? 12)}
+                min={5}
+                max={30}
+                step={1}
               />
-            </button>
-          ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="margin-noise" className="text-sm font-medium text-gray-900">
+                Margin Noise
+              </Label>
+              <p className="text-xs text-gray-500">
+                Add decorative dots around the QR code
+              </p>
+            </div>
+            <Switch
+              id="margin-noise"
+              checked={marginNoise}
+              onCheckedChange={setMarginNoise}
+            />
+          </div>
+
+          {marginNoise && (
+            <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-gray-600">Noise Density</Label>
+                <span className="text-xs font-medium text-gray-900">{Math.round(marginNoiseRate * 100)}%</span>
+              </div>
+              <Slider
+                value={[marginNoiseRate]}
+                onValueChange={([value]) => setMarginNoiseRate(value ?? 0.5)}
+                min={0.1}
+                max={0.8}
+                step={0.05}
+              />
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Effect */}
-      <div className="space-y-2">
-        <Label>Effect</Label>
-        <Select
-          value={effect}
-          onValueChange={(value) => setEffect(value as QREffect)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select effect" />
-          </SelectTrigger>
-          <SelectContent>
-            {qrEffects.map((eff) => (
-              <SelectItem key={eff.value} value={eff.value}>
-                {eff.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Effect Radius (only shown when effect is not none) */}
-      {effect !== "none" && (
-        <div className="space-y-2">
-          <Label>Effect Intensity: {effectRadius}</Label>
-          <Slider
-            value={[effectRadius]}
-            onValueChange={([value]) => setEffectRadius(value ?? 12)}
-            min={5}
-            max={30}
-            step={1}
-          />
-        </div>
-      )}
-
-      {/* Margin Noise */}
-      <div className="flex items-center justify-between space-x-2">
-        <Label htmlFor="margin-noise" className="flex flex-col gap-1">
-          <span>Margin Noise</span>
-          <span className="font-normal text-xs text-muted-foreground">
-            Add decorative noise dots around the QR code
-          </span>
-        </Label>
-        <Switch
-          id="margin-noise"
-          checked={marginNoise}
-          onCheckedChange={setMarginNoise}
-        />
-      </div>
-
-      {/* Margin Noise Rate (only shown when margin noise is enabled) */}
-      {marginNoise && (
-        <div className="space-y-2">
-          <Label>Noise Density: {Math.round(marginNoiseRate * 100)}%</Label>
-          <Slider
-            value={[marginNoiseRate]}
-            onValueChange={([value]) => setMarginNoiseRate(value ?? 0.5)}
-            min={0.1}
-            max={0.8}
-            step={0.05}
-          />
-        </div>
-      )}
     </div>
   );
 }

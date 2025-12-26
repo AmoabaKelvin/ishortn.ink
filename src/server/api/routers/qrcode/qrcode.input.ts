@@ -42,4 +42,18 @@ export const qrPresetDeleteInput = z.object({
   id: z.number(),
 });
 
+export const qrPresetUpdateInput = z.object({
+  id: z.number(),
+  pixelStyle: z.string(),
+  markerShape: z.string(),
+  markerInnerShape: z.string(),
+  darkColor: z.string(),
+  lightColor: z.string(),
+  effect: z.string(),
+  effectRadius: z.number().min(5).max(30),
+  marginNoise: z.boolean(),
+  marginNoiseRate: z.number().min(0).max(1),
+});
+
 export type QRPresetCreateInput = z.infer<typeof qrPresetCreateInput>;
+export type QRPresetUpdateInput = z.infer<typeof qrPresetUpdateInput>;

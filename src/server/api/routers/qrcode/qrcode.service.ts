@@ -7,7 +7,7 @@ import {
 } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
-import type { QRCodeInput, QRPresetCreateInput } from "./qrcode.input";
+import type { QRCodeInput, QRPresetCreateInput, QRPresetUpdateInput } from "./qrcode.input";
 
 // Free tier QR code limit
 const FREE_QR_CODE_LIMIT = 5;
@@ -165,4 +165,34 @@ export async function deleteQrPreset(ctx: WorkspaceTRPCContext, id: number) {
   await ctx.db.delete(qrPreset).where(eq(qrPreset.id, id));
 
   return true;
+}
+
+export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetUpdateInput) {
+  const preset = await ctx.db.query.qrPreset.findFirst({
+    where: and(
+      eq(qrPreset.id, input.id),
+      workspaceFilter(ctx.workspace, qrPreset.userId, qrPreset.teamId)
+    ),
+  });
+
+  if (!preset) throw new Error("Preset not found");
+
+  await ctx.db
+    .update(qrPreset)
+    .set({
+      pixelStyle: input.pixelStyle,
+      markerShape: input.markerShape,
+      markerInnerShape: input.markerInnerShape,
+      darkColor: input.darkColor,
+      lightColor: input.lightColor,
+      effect: input.effect,
+      effectRadius: input.effectRadius,
+      marginNoise: input.marginNoise,
+      marginNoiseRate: String(input.marginNoiseRate),
+    })
+    .where(eq(qrPreset.id, input.id));
+
+  return ctx.db.query.qrPreset.findFirst({
+    where: eq(qrPreset.id, input.id),
+  });
 }

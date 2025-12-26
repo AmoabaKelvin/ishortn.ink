@@ -20,6 +20,9 @@ export const qrCodeRouter = createTRPCRouter({
   listPresets: workspaceProcedure.query(async ({ ctx }) => {
     return services.listQrPresets(ctx);
   }),
+  updatePreset: workspaceProcedure.input(inputs.qrPresetUpdateInput).mutation(async ({ ctx, input }) => {
+    return services.updateQrPreset(ctx, input);
+  }),
   deletePreset: workspaceProcedure.input(inputs.qrPresetDeleteInput).mutation(async ({ ctx, input }) => {
     return services.deleteQrPreset(ctx, input.id);
   }),
