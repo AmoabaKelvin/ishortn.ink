@@ -5,10 +5,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -18,8 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { satoshi } from "@/styles/fonts";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { api } from "@/trpc/react";
 
 export function AddCustomDomainModal() {
@@ -82,60 +81,75 @@ export function AddCustomDomainModal() {
           {isProUser ? "Add Domain" : "Upgrade to Add Domain"}
         </Button>
       </DialogTrigger>
-      <DialogContent className={cn("sm:max-w-[425px]", satoshi.className)}>
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
-          <DialogTitle>Add domain</DialogTitle>
+          <DialogTitle>Add Domain</DialogTitle>
           <DialogDescription>
-            Add a new custom domain for your account.
+            Add a custom domain for your short links
           </DialogDescription>
         </DialogHeader>
+
         {isProUser ? (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="domain" className="text-sm font-medium text-gray-700">
+          <DialogBody className="space-y-4">
+            <div className="space-y-2">
+              <Label
+                htmlFor="domain"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
                 Domain
               </Label>
               <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="domain"
-                  className="pl-10"
+                  className="h-10 pl-10"
                   placeholder="links.example.com"
                   value={domain}
                   onChange={handleDomainChange}
                 />
               </div>
             </div>
-            <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
-              <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-amber-700">
-                Use a subdomain like <span className="font-medium">links.example.com</span> if your main domain already has content.
+            <div className="flex items-start gap-2.5 rounded-lg bg-muted/50 border border-border px-3 py-2.5">
+              <Lightbulb className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Use a subdomain like{" "}
+                <span className="font-medium text-foreground">
+                  links.example.com
+                </span>{" "}
+                if your main domain already has content.
               </p>
             </div>
-          </div>
+          </DialogBody>
         ) : (
-          <div className="rounded-lg bg-amber-50 border border-amber-100 px-4 py-3 text-center">
-            <p className="text-sm text-amber-700">
-              Custom domains are available on the Pro plan.
-            </p>
-          </div>
+          <DialogBody>
+            <div className="rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
+              <p className="text-sm text-muted-foreground">
+                Custom domains are available on the Pro plan.
+              </p>
+            </div>
+          </DialogBody>
         )}
+
         <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setIsOpen(false)}
+            className="h-9"
+          >
+            Cancel
+          </Button>
           {isProUser ? (
             <Button
               type="submit"
-              className="mt-3 w-full"
               onClick={handleCreateDomain}
               disabled={!domain || createCustomDomainMutation.isLoading}
+              className="h-9"
             >
-              Add Domain
+              {createCustomDomainMutation.isLoading ? "Adding..." : "Add Domain"}
             </Button>
           ) : (
-            <Button
-              type="button"
-              className="mt-3 w-full"
-              onClick={handleUpgrade}
-            >
+            <Button type="button" onClick={handleUpgrade} className="h-9">
               Upgrade to Pro
             </Button>
           )}

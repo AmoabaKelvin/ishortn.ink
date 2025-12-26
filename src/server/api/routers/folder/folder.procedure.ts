@@ -3,19 +3,23 @@ import {
     createFolderInput,
     deleteFolderInput,
     getFolderInput,
+    getFolderPermissionsInput,
     moveBulkLinksToFolderInput,
     moveLinkToFolderInput,
     updateFolderInput,
+    updateFolderPermissionsInput,
 } from "./folder.input";
 import {
     createFolder,
     deleteFolder,
     getFolder,
+    getFolderPermissions,
     getFolderStats,
     listFolders,
     moveBulkLinksToFolder,
     moveLinkToFolder,
     updateFolder,
+    updateFolderPermissions,
 } from "./folder.service";
 
 export const folderRouter = createTRPCRouter({
@@ -63,6 +67,19 @@ export const folderRouter = createTRPCRouter({
   stats: workspaceProcedure.query(async ({ ctx }) => {
     return getFolderStats(ctx);
   }),
+
+  // Folder permission management endpoints (team only, admin/owner only)
+  getPermissions: workspaceProcedure
+    .input(getFolderPermissionsInput)
+    .query(async ({ ctx, input }) => {
+      return getFolderPermissions(ctx, input);
+    }),
+
+  updatePermissions: workspaceProcedure
+    .input(updateFolderPermissionsInput)
+    .mutation(async ({ ctx, input }) => {
+      return updateFolderPermissions(ctx, input);
+    }),
 });
 
 export type FolderRouter = typeof folderRouter;

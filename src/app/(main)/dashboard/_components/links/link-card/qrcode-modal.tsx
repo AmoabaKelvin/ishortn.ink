@@ -4,8 +4,10 @@ import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -39,26 +41,40 @@ export function QRCodeModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>QR Code</DialogTitle>
           <DialogDescription>
-            Here is your QR Code for the link.
+            Scan or download your link&apos;s QR code
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col items-center">
-          <QRCode
-            id="qr-gen"
-            value={destinationUrl}
-            size={300}
-            level={"H"}
-            includeMargin={true}
-            ref={qrCodeCanvasRef}
-          />
-          <Button className="mt-4" onClick={handleQRCodeDownload}>
-            Download Image
+
+        <DialogBody className="flex justify-center">
+          <div className="rounded-lg border border-border bg-white p-2">
+            <QRCode
+              id="qr-gen"
+              value={destinationUrl}
+              size={240}
+              level={"H"}
+              includeMargin={true}
+              ref={qrCodeCanvasRef}
+            />
+          </div>
+        </DialogBody>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className="h-9"
+          >
+            Close
           </Button>
-        </div>
+          <Button onClick={handleQRCodeDownload} className="h-9">
+            Download
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

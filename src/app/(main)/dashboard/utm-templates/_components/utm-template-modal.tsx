@@ -16,10 +16,12 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -171,78 +173,93 @@ export function UtmTemplateModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
+          <DialogTitle>
             {isEditing ? "Edit UTM Template" : "Create UTM Template"}
           </DialogTitle>
+          <DialogDescription>
+            {isEditing ? "Update your UTM template parameters" : "Create a reusable UTM template"}
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Template Name */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-semibold text-gray-900">
-                    Template Name
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="New Template"
-                      className="h-11 rounded-lg"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <DialogBody className="space-y-5">
+              {/* Template Name */}
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Template Name
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="New Template"
+                        className="h-10"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            {/* UTM Parameters */}
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Parameters</p>
+              {/* UTM Parameters */}
               <div className="space-y-3">
-                {utmFields.map((field) => {
-                  const Icon = field.icon;
-                  return (
-                    <FormField
-                      key={field.name}
-                      control={form.control}
-                      name={field.name}
-                      render={({ field: formField }) => (
-                        <FormItem>
-                          <FormControl>
-                            <div className="flex items-center overflow-hidden rounded-lg border border-gray-200">
-                              <div className="flex w-36 shrink-0 items-center gap-2.5 border-r border-gray-200 px-4 py-3">
-                                <Icon className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm font-medium text-gray-700">
-                                  {field.label}
-                                </span>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Parameters
+                </p>
+                <div className="space-y-2">
+                  {utmFields.map((field) => {
+                    const Icon = field.icon;
+                    return (
+                      <FormField
+                        key={field.name}
+                        control={form.control}
+                        name={field.name}
+                        render={({ field: formField }) => (
+                          <FormItem>
+                            <FormControl>
+                              <div className="flex items-center overflow-hidden rounded-lg border border-border">
+                                <div className="flex w-32 shrink-0 items-center gap-2.5 border-r border-border bg-muted/30 px-3 py-2.5">
+                                  <Icon className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium text-muted-foreground">
+                                    {field.label}
+                                  </span>
+                                </div>
+                                <Input
+                                  {...formField}
+                                  placeholder={field.placeholder}
+                                  className="h-auto border-0 py-2.5 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                />
                               </div>
-                              <Input
-                                {...formField}
-                                placeholder={field.placeholder}
-                                className="h-auto border-0 py-3 focus-visible:ring-0 focus-visible:ring-offset-0"
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  );
-                })}
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </DialogBody>
 
             <DialogFooter>
-              <Button type="submit" disabled={isLoading} className="px-6">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                className="h-9"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading} className="h-9">
                 {isLoading
                   ? "Saving..."
                   : isEditing
-                  ? "Update template"
-                  : "Create template"}
+                  ? "Update"
+                  : "Create"}
               </Button>
             </DialogFooter>
           </form>

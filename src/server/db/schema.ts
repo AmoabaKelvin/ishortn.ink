@@ -397,6 +397,25 @@ export const folder = mysqlTable(
   })
 );
 
+// FolderPermission join table for folder-level access control in teams
+// Permission semantics:
+// - No permission records for a folder = visible to ALL team members (default behavior)
+// - Permission records exist = folder is RESTRICTED to only those specific users
+// - Owners and admins ALWAYS bypass permission checks (handled in application layer)
+export const folderPermission = mysqlTable(
+  "FolderPermission",
+  {
+    folderId: int("folderId").notNull(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.folderId, table.userId] }),
+    folderIdIdx: index("folderId_idx").on(table.folderId),
+    userIdIdx: index("userId_idx").on(table.userId),
+  })
+);
+
 // LinkTag join table for many-to-many relationship
 export const linkTag = mysqlTable(
   "LinkTag",
@@ -466,6 +485,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   siteSettings: one(siteSettings),
   tags: many(tag),
   folders: many(folder),
+  folderPermissions: many(folderPermission),
   utmTemplates: many(utmTemplate),
   teamMemberships: many(teamMember),
   ownedTeams: many(team),
@@ -575,6 +595,19 @@ export const folderRelations = relations(folder, ({ one, many }) => ({
     references: [team.id],
   }),
   links: many(link),
+  permissions: many(folderPermission),
+}));
+
+// Define relations for FolderPermission
+export const folderPermissionRelations = relations(folderPermission, ({ one }) => ({
+  folder: one(folder, {
+    fields: [folderPermission.folderId],
+    references: [folder.id],
+  }),
+  user: one(user, {
+    fields: [folderPermission.userId],
+    references: [user.id],
+  }),
 }));
 
 export type CustomDomain = typeof customDomain.$inferSelect;
@@ -608,6 +641,9 @@ export type NewLinkTag = typeof linkTag.$inferInsert;
 
 export type Folder = typeof folder.$inferSelect;
 export type NewFolder = typeof folder.$inferInsert;
+
+export type FolderPermission = typeof folderPermission.$inferSelect;
+export type NewFolderPermission = typeof folderPermission.$inferInsert;
 
 // UTM Template model for storing reusable UTM parameter configurations
 export const utmTemplate = mysqlTable(
