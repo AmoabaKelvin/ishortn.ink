@@ -3,8 +3,7 @@
 import { Check, ChevronsUpDown, Info, Loader2 } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
 import posthog from "posthog-js";
-import QrCodeWithLogo from "qrcode-with-logos";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
 
@@ -34,18 +33,18 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
+import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
+import type { QRCodeGeneratorState } from "@/lib/qr-generator";
 
 import { checkIfUserCanCreateMoreQRCodes } from "../utils";
 
 import QRCodeContent from "./_components/qr-content";
-import QRCodeCustomization from "./_components/qr-customization";
-
-import type { CornerStyle, PatternStyle } from "@/lib/types/qrcode";
-import type { CornerType } from "qrcode-with-logos/types/src/core/types";
+import QRAdvancedCustomization from "./_components/qr-advanced-customization";
 
 function QRCodeCreationPage() {
   const router = useTransitionRouter();
   const userSubDetails = api.subscriptions.get.useQuery().data;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(userSubDetails);
 
@@ -61,18 +60,9 @@ function QRCodeCreationPage() {
       router.push("/dashboard/qrcodes");
     },
   });
-  const shortenLinkMutation = api.link.quickShorten.useMutation({
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
 
   const [qrCodeTitle, setQRCodeTitle] = useState<string>("");
-  const [selectedColor, setSelectedColor] = useState("#198639");
-  const [patternStyle, setPatternStyle] = useState<PatternStyle>("diamond");
-  const [cornerStyle, setCornerStyle] = useState<CornerStyle>("square");
   const [enteredContent, setEnteredContent] = useState<string>("");
-  const [logoImage, setLogoImage] = useState<string | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [selectedLink, setSelectedLink] = useState<{
     id: number;
@@ -83,6 +73,13 @@ function QRCodeCreationPage() {
   const [openCombobox, setOpenCombobox] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
+
+  // Advanced QR state using the new generator
+  const [qrState, setQrState] = useState<QRCodeGeneratorState>(() => ({
+    ...defaultGeneratorState(),
+    scale: 10,
+    margin: 2,
+  }));
 
   const { data: linksData, isLoading: isLoadingLinks } = api.link.list.useQuery(
     {
@@ -95,38 +92,39 @@ function QRCodeCreationPage() {
     }
   );
 
-  const generateQRCode = (content: string) => {
-    const qrCodeConfig = {
-      content,
-      width: 1000,
-      canvas: document.getElementById("canvas") as HTMLCanvasElement,
-      dotsOptions: {
-        type: patternStyle,
-        color: selectedColor,
-      },
-      cornersOptions: {
-        type: cornerStyle as CornerType,
-        color: selectedColor,
-      },
-      nodeQrCodeOptions: {
-        margin: 20,
-        color: {
-          dark: "#fafafa",
-        },
-      },
-    };
+  // Update QR state helper
+  const updateQrState = useCallback((updates: Partial<QRCodeGeneratorState>) => {
+    setQrState((prev) => ({ ...prev, ...updates }));
+  }, []);
 
-    // Conditionally add the logo property if an image has been uploaded
-    if (logoImage) {
-      Object.assign(qrCodeConfig, {
-        logo: {
-          src: logoImage,
-        },
-      });
+  // Get current content for QR code
+  const getCurrentContent = useCallback(() => {
+    if (isStandalone && enteredContent) {
+      return enteredContent;
     }
+    if (!isStandalone && selectedLink) {
+      return `https://${selectedLink.domain}/${selectedLink.alias}`;
+    }
+    return "https://ishortn.ink";
+  }, [isStandalone, enteredContent, selectedLink]);
 
-    new QrCodeWithLogo(qrCodeConfig);
-  };
+  // Generate QR code with the new generator
+  const regenerateQRCode = useCallback(async () => {
+    if (!canvasRef.current) return;
+
+    const content = getCurrentContent();
+    await generateQRCode(canvasRef.current, {
+      ...qrState,
+      text: content,
+    });
+  }, [qrState, getCurrentContent]);
+
+  // Debounce the regeneration
+  const [debouncedQrState] = useDebounce(qrState, 100);
+
+  useEffect(() => {
+    regenerateQRCode();
+  }, [debouncedQrState, enteredContent, selectedLink, isStandalone, regenerateQRCode]);
 
   const handleSaveQRCode = async () => {
     posthog.capture("qr_code_created");
@@ -137,7 +135,6 @@ function QRCodeCreationPage() {
 
     // Determine content based on mode
     if (isStandalone) {
-      // For standalone mode, use the entered content
       if (!enteredContent) {
         toast.error("Please enter content for the QR Code");
         return;
@@ -146,7 +143,6 @@ function QRCodeCreationPage() {
       wasShortened = false;
       finalTitle = finalTitle || "Standalone QR Code";
     } else {
-      // For link mode, use the selected link
       if (!selectedLink) {
         toast.error("Please select a link");
         return;
@@ -156,65 +152,32 @@ function QRCodeCreationPage() {
       finalTitle = finalTitle || selectedLink.alias;
     }
 
-    const qrCode = new QrCodeWithLogo({
-      content: finalContent,
-      width: 1000,
-      dotsOptions: {
-        type: patternStyle,
-        color: selectedColor,
-      },
-      cornersOptions: {
-        type: cornerStyle as CornerType,
-        color: selectedColor,
-      },
-      nodeQrCodeOptions: {
-        margin: 20,
-        color: {
-          dark: "#fafafa",
-        },
-      },
+    // Generate final high-quality QR code
+    const finalCanvas = document.createElement("canvas");
+    await generateQRCode(finalCanvas, {
+      ...qrState,
+      text: finalContent,
+      scale: 20, // High quality for download
     });
 
-    await qrCode.getCanvas().then((canvas) => {
-      const url = canvas.toDataURL("image/png", 1.0);
+    const url = finalCanvas.toDataURL("image/png", 1.0);
 
-      const qrCodeData = {
-        wasShortened,
-        title: finalTitle,
-        content: finalContent,
-        patternStyle,
-        cornerStyle,
-        selectedColor,
-        qrCodeBase64: url,
-      };
+    const qrCodeData = {
+      wasShortened,
+      title: finalTitle,
+      content: finalContent,
+      patternStyle: qrState.pixelStyle as string,
+      cornerStyle: qrState.markerShape as string,
+      selectedColor: qrState.darkColor,
+      qrCodeBase64: url,
+    };
 
-      toast.promise(qrCodeCreateMutation.mutateAsync(qrCodeData), {
-        loading: "Creating QR Code...",
-        success: "QR Code created successfully",
-        error: "Failed to create QR Code",
-      });
+    toast.promise(qrCodeCreateMutation.mutateAsync(qrCodeData), {
+      loading: "Creating QR Code...",
+      success: "QR Code created successfully",
+      error: "Failed to create QR Code",
     });
   };
-
-  useEffect(() => {
-    let content = "https://ishortn.ink";
-
-    if (isStandalone && enteredContent) {
-      content = enteredContent;
-    } else if (!isStandalone && selectedLink) {
-      content = `https://${selectedLink.domain}/${selectedLink.alias}`;
-    }
-
-    generateQRCode(content);
-  }, [
-    enteredContent,
-    selectedLink,
-    isStandalone,
-    patternStyle,
-    cornerStyle,
-    selectedColor,
-    logoImage,
-  ]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -373,18 +336,32 @@ function QRCodeCreationPage() {
           <CardHeader>
             <CardTitle>Customize Design</CardTitle>
             <CardDescription>
-              Personalize your QR code appearance
+              Personalize your QR code appearance with advanced styling options
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <QRCodeCustomization
-              patternStyle={patternStyle}
-              setPatternStyle={setPatternStyle}
-              cornerStyle={cornerStyle}
-              setCornerStyle={setCornerStyle}
-              selectedColor={selectedColor}
-              setSelectedColor={setSelectedColor}
-              setLogoImage={setLogoImage}
+            <QRAdvancedCustomization
+              pixelStyle={qrState.pixelStyle}
+              setPixelStyle={(style) => updateQrState({ pixelStyle: style })}
+              markerShape={qrState.markerShape}
+              setMarkerShape={(shape) => updateQrState({ markerShape: shape })}
+              markerInnerShape={qrState.markerInnerShape === "auto" ? "auto" : qrState.markerInnerShape}
+              setMarkerInnerShape={(shape) => updateQrState({ markerInnerShape: shape })}
+              darkColor={qrState.darkColor}
+              setDarkColor={(color) => updateQrState({ darkColor: color })}
+              lightColor={qrState.lightColor}
+              setLightColor={(color) => updateQrState({ lightColor: color })}
+              effect={qrState.effect}
+              setEffect={(effect) => updateQrState({ effect })}
+              effectRadius={qrState.effectCrystalizeRadius}
+              setEffectRadius={(radius) => updateQrState({
+                effectCrystalizeRadius: radius,
+                effectLiquidifyRadius: radius,
+              })}
+              marginNoise={qrState.marginNoise}
+              setMarginNoise={(enabled) => updateQrState({ marginNoise: enabled })}
+              marginNoiseRate={qrState.marginNoiseRate}
+              setMarginNoiseRate={(rate) => updateQrState({ marginNoiseRate: rate })}
             />
           </CardContent>
         </Card>
@@ -406,7 +383,11 @@ function QRCodeCreationPage() {
             <CardDescription>Live preview of your QR code</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center">
-            <canvas id="canvas" className="max-w-full" />
+            <canvas
+              ref={canvasRef}
+              className="max-w-full rounded-lg"
+              style={{ maxWidth: "300px" }}
+            />
           </CardContent>
         </Card>
       </div>
