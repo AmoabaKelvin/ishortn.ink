@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { eq, inArray } from "drizzle-orm";
 
-import { folderPermission } from "@/server/db/schema";
+import { folder, folderPermission } from "@/server/db/schema";
 
 import { isWorkspaceAdmin } from "./permissions";
 import type { WorkspaceContext } from "./types";
@@ -14,8 +14,9 @@ type DatabaseType = typeof Database;
  * Resource-level permission system for folder access control in teams.
  *
  * Permission Semantics:
- * - Folders with NO permission records = visible to ALL team members (default)
- * - Folders with permission records = RESTRICTED to only those users listed
+ * - folder.isRestricted=false: visible to ALL team members (default)
+ * - folder.isRestricted=true with permission records: RESTRICTED to those users + admins/owners
+ * - folder.isRestricted=true with NO permission records: only admins/owners can access
  * - Owners and admins ALWAYS bypass permission checks
  * - Personal workspaces don't use folder permissions (user owns all their folders)
  */
@@ -45,9 +46,9 @@ export function shouldBypassFolderPermissions(
  * Logic:
  * 1. Personal workspace: always true
  * 2. Team workspace + admin/owner: always true (bypass)
- * 3. Team workspace + member: check if folder has restrictions
- *    - No permission records: accessible (default = all members)
- *    - Has permission records: check if user is in the list
+ * 3. Team workspace + member: check folder.isRestricted flag
+ *    - isRestricted=false: accessible (all members)
+ *    - isRestricted=true: check if user is in the permission list
  *
  * @param db - Database instance
  * @param workspace - Workspace context
@@ -64,17 +65,33 @@ export async function canAccessFolder(
     return true;
   }
 
-  // Team member: check if folder has restrictions
+  // Get the folder to check isRestricted flag
+  const folderData = await db.query.folder.findFirst({
+    where: eq(folder.id, folderId),
+    columns: { isRestricted: true },
+  });
+
+  // Folder doesn't exist - deny access
+  if (!folderData) {
+    return false;
+  }
+
+  // Not restricted: accessible to all team members
+  if (!folderData.isRestricted) {
+    return true;
+  }
+
+  // Restricted: check if user is in the permission list
   const permissions = await db.query.folderPermission.findMany({
     where: eq(folderPermission.folderId, folderId),
   });
 
-  // No permissions set: accessible to all team members (default behavior)
+  // Restricted with no permissions = admins/owners only (user already failed bypass check)
   if (permissions.length === 0) {
-    return true;
+    return false;
   }
 
-  // Permissions exist: check if user is in the list
+  // Check if user is in the list
   return permissions.some((p) => p.userId === workspace.userId);
 }
 
@@ -124,10 +141,27 @@ export async function getAccessibleFolderIds(
     return teamFolderIds;
   }
 
-  // Team member: get all permissions for these folders
-  const allPermissions = await db.query.folderPermission.findMany({
-    where: inArray(folderPermission.folderId, teamFolderIds),
+  // Get folder restriction status
+  const folders = await db.query.folder.findMany({
+    where: inArray(folder.id, teamFolderIds),
+    columns: { id: true, isRestricted: true },
   });
+
+  // Build a map of folder id -> isRestricted
+  const folderRestrictionMap = new Map<number, boolean>();
+  for (const f of folders) {
+    folderRestrictionMap.set(f.id, f.isRestricted);
+  }
+
+  // Get all permissions for restricted folders
+  const restrictedFolderIds = folders.filter((f) => f.isRestricted).map((f) => f.id);
+
+  const allPermissions =
+    restrictedFolderIds.length > 0
+      ? await db.query.folderPermission.findMany({
+          where: inArray(folderPermission.folderId, restrictedFolderIds),
+        })
+      : [];
 
   // Group permissions by folder ID
   const folderPermissionMap = new Map<number, string[]>();
@@ -140,14 +174,22 @@ export async function getAccessibleFolderIds(
 
   // Filter to accessible folders
   return teamFolderIds.filter((folderId) => {
-    const permittedUsers = folderPermissionMap.get(folderId);
+    const isRestricted = folderRestrictionMap.get(folderId) ?? false;
 
-    // No permissions: accessible to all team members (default)
-    if (!permittedUsers || permittedUsers.length === 0) {
+    // Not restricted: accessible to all team members
+    if (!isRestricted) {
       return true;
     }
 
-    // Has permissions: check if user is included
+    // Restricted: check if user is in permission list
+    const permittedUsers = folderPermissionMap.get(folderId);
+
+    // Restricted with no permissions = admins/owners only (user failed bypass check above)
+    if (!permittedUsers || permittedUsers.length === 0) {
+      return false;
+    }
+
+    // Check if user is included
     return permittedUsers.includes(workspace.userId);
   });
 }
