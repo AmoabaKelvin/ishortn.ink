@@ -57,9 +57,9 @@ const plans = [
       "Dedicated support",
       "Full API access",
       "Advanced analytics",
+      "Team collaboration",
     ],
     comingSoon: [
-      "Team collaboration",
       "Device targeting",
       "Geo targeting",
     ],

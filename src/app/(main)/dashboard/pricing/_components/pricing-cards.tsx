@@ -70,9 +70,9 @@ const plans = [
       "Full API access",
       "Advanced analytics",
       "UTM tracking",
+      "Team collaboration",
     ],
     comingSoon: [
-      "Team collaboration",
       "Customization of password protected pages",
       "Device targeting",
       "Geo targeting",
