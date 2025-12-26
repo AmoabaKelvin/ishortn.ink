@@ -36,8 +36,9 @@ export const getFolderPermissionsInput = z.object({
 
 export const updateFolderPermissionsInput = z.object({
   folderId: z.number(),
-  // Empty array = unrestricted (all team members can access)
-  // Non-empty array = restricted to only those users
+  // When isRestricted=true: only admins/owners + userIds can access
+  // When isRestricted=false: all team members can access (userIds ignored)
+  isRestricted: z.boolean(),
   userIds: z.array(z.string()),
 });
 

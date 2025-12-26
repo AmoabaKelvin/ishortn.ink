@@ -388,6 +388,7 @@ export const folder = mysqlTable(
     description: text("description"),
     userId: varchar("userId", { length: 32 }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    isRestricted: boolean("isRestricted").default(false).notNull(), // true = restricted access (admins + permitted users only)
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
   },
@@ -399,8 +400,9 @@ export const folder = mysqlTable(
 
 // FolderPermission join table for folder-level access control in teams
 // Permission semantics:
-// - No permission records for a folder = visible to ALL team members (default behavior)
-// - Permission records exist = folder is RESTRICTED to only those specific users
+// - folder.isRestricted=false: visible to ALL team members (default behavior)
+// - folder.isRestricted=true with permission records: RESTRICTED to those specific users + admins/owners
+// - folder.isRestricted=true with no permission records: only admins/owners can access
 // - Owners and admins ALWAYS bypass permission checks (handled in application layer)
 export const folderPermission = mysqlTable(
   "FolderPermission",

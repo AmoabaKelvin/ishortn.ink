@@ -447,7 +447,7 @@ export const getFolderPermissions = async (
   return {
     folderId: input.folderId,
     folderName: folderData.name,
-    isRestricted: permissions.length > 0,
+    isRestricted: folderData.isRestricted,
     permittedUsers: permissions.map((p) => p.user),
   };
 };
@@ -457,8 +457,9 @@ export const getFolderPermissions = async (
  * Only available to team admins and owners
  *
  * Permission Semantics:
- * - Empty userIds array = unrestricted (all team members can access)
- * - Non-empty userIds array = restricted to only those users
+ * - isRestricted=false: all team members can access (userIds ignored)
+ * - isRestricted=true with userIds: only admins/owners + specified users can access
+ * - isRestricted=true with empty userIds: only admins/owners can access
  */
 export const updateFolderPermissions = async (
   ctx: WorkspaceTRPCContext,
@@ -482,8 +483,8 @@ export const updateFolderPermissions = async (
     });
   }
 
-  // De-duplicate userIds
-  const uniqueUserIds = [...new Set(input.userIds)];
+  // De-duplicate userIds (only relevant if isRestricted=true)
+  const uniqueUserIds = input.isRestricted ? [...new Set(input.userIds)] : [];
 
   // Validate userIds are actual team members (if any provided)
   if (uniqueUserIds.length > 0 && ctx.workspace.type === "team" && ctx.workspace.teamId) {
@@ -507,14 +508,19 @@ export const updateFolderPermissions = async (
   }
 
   await ctx.db.transaction(async (tx) => {
+    // Update the folder's isRestricted flag
+    await tx
+      .update(folder)
+      .set({ isRestricted: input.isRestricted })
+      .where(eq(folder.id, input.folderId));
+
     // Remove all existing permissions for this folder
     await tx
       .delete(folderPermission)
       .where(eq(folderPermission.folderId, input.folderId));
 
-    // If userIds provided, create new permissions (restricted access)
-    // If empty array, folder becomes accessible to all team members (no restrictions)
-    if (uniqueUserIds.length > 0) {
+    // If restricted with specific users, create permission records
+    if (input.isRestricted && uniqueUserIds.length > 0) {
       await tx.insert(folderPermission).values(
         uniqueUserIds.map((userId) => ({
           folderId: input.folderId,
@@ -527,7 +533,7 @@ export const updateFolderPermissions = async (
   return {
     success: true,
     folderId: input.folderId,
-    isRestricted: uniqueUserIds.length > 0,
+    isRestricted: input.isRestricted,
     permittedUserCount: uniqueUserIds.length,
   };
 };
