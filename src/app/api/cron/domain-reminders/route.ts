@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 
     const duration = Date.now() - startTime;
     console.log(
-      `[Domain Reminder] Completed in ${duration}ms. Checked ${result.domainsChecked} domains, sent ${result.remindersSent} reminders.`,
+      `[Domain Reminder] Completed in ${duration}ms. Checked ${result.domainsChecked} domains, updated ${result.domainsUpdatedToActive} to active, sent ${result.remindersSent} reminders.`,
     );
 
     return NextResponse.json({
