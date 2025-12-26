@@ -20,13 +20,19 @@ export const patternStyles: PatternStyle[] = [
 ];
 
 export const presetColors = [
-  "#198639",
-  "#34A853",
-  "#E55934",
-  "#2D2E33",
   "#000000",
-  "#FFD600",
-  "#FF585D",
+  "#2D2E33",
+  "#3b82f6",
+  "#22c55e",
+  "#ef4444",
+];
+
+export const presetBackgroundColors = [
+  "#ffffff",
+  "#f5f5f5",
+  "#f0f0f0",
+  "#1a1a2e",
+  "#000000",
 ];
 
 // Legacy corner styles (for qrcode-with-logos compatibility)

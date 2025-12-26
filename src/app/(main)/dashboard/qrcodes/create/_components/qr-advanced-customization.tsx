@@ -16,14 +16,16 @@ import {
   markerInnerShapes,
   qrEffects,
   presetColors,
+  presetBackgroundColors,
 } from "@/lib/constants/qrcode";
-import { cn } from "@/lib/utils";
 import type {
   QRPixelStyle,
   QRMarkerShape,
   QRMarkerInnerShape,
   QREffect,
 } from "@/lib/qr-generator/types";
+
+import { ColorSwatch } from "./color-swatch";
 
 interface QRAdvancedCustomizationProps {
   pixelStyle: QRPixelStyle;
@@ -143,53 +145,20 @@ export function QRAdvancedCustomization({
         </div>
 
         <div className="space-y-4">
-          <div className="space-y-3">
-            <Label className="text-xs text-gray-600">QR Code Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {presetColors.map((color) => (
-                <button
-                  type="button"
-                  key={color}
-                  className={cn(
-                    "group relative rounded-xl p-0.5 transition-all duration-200",
-                    darkColor === color
-                      ? "ring-2 ring-blue-500 ring-offset-2"
-                      : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
-                  )}
-                  onClick={() => setDarkColor(color)}
-                >
-                  <div
-                    className="size-8 rounded-lg shadow-sm transition-transform group-hover:scale-105"
-                    style={{ backgroundColor: color }}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
+          <ColorSwatch
+            label="QR Code Color"
+            color={darkColor}
+            onChange={setDarkColor}
+            presetColors={presetColors}
+          />
 
-          <div className="space-y-3">
-            <Label className="text-xs text-gray-600">Background Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {["#ffffff", "#f5f5f5", "#000000", "#1a1a2e", "#f0f0f0"].map((color) => (
-                <button
-                  type="button"
-                  key={color}
-                  className={cn(
-                    "group relative rounded-xl p-0.5 transition-all duration-200",
-                    lightColor === color
-                      ? "ring-2 ring-blue-500 ring-offset-2"
-                      : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
-                  )}
-                  onClick={() => setLightColor(color)}
-                >
-                  <div
-                    className="size-8 rounded-lg border border-gray-200 shadow-sm transition-transform group-hover:scale-105"
-                    style={{ backgroundColor: color }}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
+          <ColorSwatch
+            label="Background Color"
+            color={lightColor}
+            onChange={setLightColor}
+            presetColors={presetBackgroundColors}
+            showBorder
+          />
         </div>
       </div>
 
