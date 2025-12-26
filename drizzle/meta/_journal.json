@@ -281,6 +281,13 @@
       "when": 1766765000000,
       "tag": "0039_fix_folderpermission_collation",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1766741156394,
+      "tag": "0040_fluffy_loners",
+      "breakpoints": true
     }
   ]
 }
