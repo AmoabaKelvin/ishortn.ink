@@ -7,6 +7,79 @@ import { sendDomainReminderEmail } from "@/server/lib/notifications/domain-remin
 // Reminder throttle: don't send more than once per 7 days
 const REMINDER_INTERVAL_DAYS = 7;
 
+type VercelConfigResponse = {
+  misconfigured: boolean;
+};
+
+/**
+ * Mask an email address for logging purposes (e.g., "john@example.com" -> "j***@example.com")
+ */
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "***";
+  const maskedLocal = local.length > 1 ? `${local[0]}***` : "***";
+  return `${maskedLocal}@${domain}`;
+}
+
+type VercelDomainResponse = {
+  verified: boolean;
+};
+
+/**
+ * Verify domain status with Vercel APIs.
+ * Returns true if domain is actually valid (verified and not misconfigured).
+ */
+async function verifyDomainWithVercel(domain: string): Promise<boolean> {
+  try {
+    const [configResponse, domainResponse] = await Promise.all([
+      fetch(
+        `https://api.vercel.com/v6/domains/${domain}/config?teamId=${process.env.TEAM_ID_VERCEL}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+      fetch(
+        `https://api.vercel.com/v9/projects/${process.env.PROJECT_ID_VERCEL}/domains/${domain}?teamId=${process.env.TEAM_ID_VERCEL}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    ]);
+
+    if (!configResponse.ok || !domainResponse.ok) {
+      // If API calls fail, assume domain is still invalid to be safe
+      console.error(
+        `[Domain Reminder] Vercel API check failed for ${domain}: config=${configResponse.status}, domain=${domainResponse.status}`,
+      );
+      return false;
+    }
+
+    const configData = (await configResponse.json()) as VercelConfigResponse;
+    const domainData = (await domainResponse.json()) as VercelDomainResponse;
+
+    // Domain is valid if it's verified and not misconfigured
+    const isValid = domainData.verified && !configData.misconfigured;
+
+    console.log(
+      `[Domain Reminder] Vercel check for ${domain}: verified=${domainData.verified}, misconfigured=${configData.misconfigured}, isValid=${isValid}`,
+    );
+
+    return isValid;
+  } catch (error) {
+    console.error(`[Domain Reminder] Error checking Vercel API for ${domain}:`, error);
+    // On error, assume domain is still invalid to be safe
+    return false;
+  }
+}
+
 type Challenge = {
   type: "TXT" | "A" | "CNAME";
   domain: string;
@@ -16,6 +89,7 @@ type Challenge = {
 interface ReminderResult {
   domainsChecked: number;
   remindersSent: number;
+  domainsUpdatedToActive: number;
   errors: Array<{ domain: string; error: string }>;
 }
 
@@ -57,6 +131,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
   const result: ReminderResult = {
     domainsChecked: 0,
     remindersSent: 0,
+    domainsUpdatedToActive: 0,
     errors: [],
   };
 
@@ -104,6 +179,24 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
     const domainName = domainRecord.domain ?? "unknown";
 
     try {
+      // First, verify with Vercel API if the domain is actually invalid
+      // This prevents sending emails to users who have already fixed their domain configuration
+      const isActuallyValid = await verifyDomainWithVercel(domainName);
+
+      if (isActuallyValid) {
+        // Domain is now valid according to Vercel, update our database and skip sending email
+        await db
+          .update(customDomain)
+          .set({ status: "active" })
+          .where(eq(customDomain.id, domainRecord.id));
+
+        result.domainsUpdatedToActive++;
+        console.log(
+          `[Domain Reminder] Domain ${domainName} is now valid, updated status to 'active'`,
+        );
+        continue;
+      }
+
       // Determine recipient based on workspace type
       let recipientEmail: string | null = null;
       let recipientName: string | null = null;
@@ -176,7 +269,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
         .where(eq(customDomain.id, domainRecord.id));
 
       result.remindersSent++;
-      console.log(`[Domain Reminder] Sent reminder for ${domainName} to ${recipientEmail}`);
+      console.log(`[Domain Reminder] Sent reminder for ${domainName} to ${maskEmail(recipientEmail)}`);
     } catch (error) {
       console.error(`[Domain Reminder] Failed for ${domainName}:`, error);
       result.errors.push({
