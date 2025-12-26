@@ -119,6 +119,7 @@ export function FolderSettingsModal({
 
     updatePermissions.mutate({
       folderId: folder.id,
+      isRestricted: accessType === "specific",
       userIds: accessType === "all" ? [] : selectedUserIds,
     });
   };
