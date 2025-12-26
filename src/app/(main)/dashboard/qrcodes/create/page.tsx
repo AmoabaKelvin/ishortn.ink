@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown, Info, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Info, Loader2, Save, Trash2 } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
 import posthog from "posthog-js";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,6 +23,15 @@ import {
   CommandItem,
   CommandList
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
 import type { QRCodeGeneratorState } from "@/lib/qr-generator";
+import type { QREffect, QRMarkerInnerShape, QRMarkerShape, QRPixelStyle } from "@/lib/qr-generator/types";
 
 import { checkIfUserCanCreateMoreQRCodes } from "../utils";
 
@@ -81,6 +91,38 @@ function QRCodeCreationPage() {
     margin: 2,
   }));
 
+  // Preset state
+  const [presetName, setPresetName] = useState("");
+  const [savePresetDialogOpen, setSavePresetDialogOpen] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
+
+  // Preset queries and mutations
+  const utils = api.useUtils();
+  const { data: presets, isLoading: isLoadingPresets } = api.qrCode.listPresets.useQuery();
+
+  const createPresetMutation = api.qrCode.createPreset.useMutation({
+    onSuccess: () => {
+      toast.success("Preset saved successfully");
+      setSavePresetDialogOpen(false);
+      setPresetName("");
+      utils.qrCode.listPresets.invalidate();
+    },
+    onError: () => {
+      toast.error("Failed to save preset");
+    },
+  });
+
+  const deletePresetMutation = api.qrCode.deletePreset.useMutation({
+    onSuccess: () => {
+      toast.success("Preset deleted");
+      if (selectedPresetId) setSelectedPresetId(null);
+      utils.qrCode.listPresets.invalidate();
+    },
+    onError: () => {
+      toast.error("Failed to delete preset");
+    },
+  });
+
   const { data: linksData, isLoading: isLoadingLinks } = api.link.list.useQuery(
     {
       page: 1,
@@ -96,6 +138,48 @@ function QRCodeCreationPage() {
   const updateQrState = useCallback((updates: Partial<QRCodeGeneratorState>) => {
     setQrState((prev) => ({ ...prev, ...updates }));
   }, []);
+
+  // Load preset into current state
+  const loadPreset = useCallback((presetId: number) => {
+    const preset = presets?.find((p) => p.id === presetId);
+    if (!preset) return;
+
+    setSelectedPresetId(presetId);
+    setQrState((prev) => ({
+      ...prev,
+      pixelStyle: preset.pixelStyle as QRPixelStyle,
+      markerShape: preset.markerShape as QRMarkerShape,
+      markerInnerShape: preset.markerInnerShape as QRMarkerInnerShape,
+      darkColor: preset.darkColor,
+      lightColor: preset.lightColor,
+      effect: preset.effect as QREffect,
+      effectCrystalizeRadius: preset.effectRadius,
+      effectLiquidifyRadius: preset.effectRadius,
+      marginNoise: preset.marginNoise,
+      marginNoiseRate: parseFloat(preset.marginNoiseRate),
+    }));
+  }, [presets]);
+
+  // Save current style as preset
+  const handleSavePreset = () => {
+    if (!presetName.trim()) {
+      toast.error("Please enter a preset name");
+      return;
+    }
+
+    createPresetMutation.mutate({
+      name: presetName.trim(),
+      pixelStyle: qrState.pixelStyle,
+      markerShape: qrState.markerShape,
+      markerInnerShape: qrState.markerInnerShape === "auto" ? "auto" : qrState.markerInnerShape,
+      darkColor: qrState.darkColor,
+      lightColor: qrState.lightColor,
+      effect: qrState.effect,
+      effectRadius: qrState.effectCrystalizeRadius,
+      marginNoise: qrState.marginNoise,
+      marginNoiseRate: qrState.marginNoiseRate,
+    });
+  };
 
   // Get current content for QR code
   const getCurrentContent = useCallback(() => {
@@ -339,7 +423,105 @@ function QRCodeCreationPage() {
               Personalize your QR code appearance with advanced styling options
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
+            {/* Preset Selection */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Style Presets</Label>
+                <Dialog open={savePresetDialogOpen} onOpenChange={setSavePresetDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Current Style
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Save Style Preset</DialogTitle>
+                      <DialogDescription>
+                        Save your current QR code style settings as a reusable preset.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="preset-name">Preset Name</Label>
+                        <Input
+                          id="preset-name"
+                          placeholder="e.g., Brand Style, Marketing Campaign"
+                          value={presetName}
+                          onChange={(e) => setPresetName(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setSavePresetDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleSavePreset}
+                        disabled={createPresetMutation.isLoading}
+                      >
+                        {createPresetMutation.isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Preset"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {isLoadingPresets ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : presets && presets.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {presets.map((preset) => (
+                    <div
+                      key={preset.id}
+                      className={cn(
+                        "group relative flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-all hover:border-primary",
+                        selectedPresetId === preset.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      )}
+                      onClick={() => loadPreset(preset.id)}
+                    >
+                      <div
+                        className="h-4 w-4 rounded-full border"
+                        style={{ backgroundColor: preset.darkColor }}
+                      />
+                      <span className="text-sm font-medium">{preset.name}</span>
+                      <button
+                        type="button"
+                        className="ml-1 rounded p-0.5 opacity-0 hover:bg-destructive/10 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePresetMutation.mutate({ id: preset.id });
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No presets saved yet. Create your first preset to reuse styles across QR codes.
+                </p>
+              )}
+            </div>
+
+            <div className="border-t pt-6" />
+
             <QRAdvancedCustomization
               pixelStyle={qrState.pixelStyle}
               setPixelStyle={(style) => updateQrState({ pixelStyle: style })}
