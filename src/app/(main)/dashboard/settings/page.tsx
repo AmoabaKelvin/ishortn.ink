@@ -12,17 +12,19 @@ import { api } from "@/trpc/server";
 
 import Billing from "./billing/billing";
 import { SettingsForm } from "./general/settings-form";
+import { ProfileForm } from "./profile/profile-form";
 import GenerateTokenTrigger from "./tokens/_components/create-token";
 import TokenCard from "./tokens/_components/token-card";
 
 export const dynamic = "force-dynamic";
 
 async function SettingsPage() {
-  const [userSettings, userDomains, subscriptions, tokens] = await Promise.all([
+  const [userSettings, userDomains, subscriptions, tokens, userProfile] = await Promise.all([
     api.siteSettings.get.query(),
     api.customDomain.list.query(),
     api.subscriptions.get.query(),
     api.token.list.query(),
+    api.user.getProfile.query(),
   ]);
 
   return (
@@ -36,6 +38,19 @@ async function SettingsPage() {
           Manage your account settings and preferences.
         </p>
       </div>
+
+      <Separator />
+
+      {/* Profile Section */}
+      <section id="profile" className="scroll-mt-20 space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Profile</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage your personal information.
+          </p>
+        </div>
+        <ProfileForm userProfile={userProfile} />
+      </section>
 
       <Separator />
 
