@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Link2, MousePointerClick, QrCode, Trash2, Type } from "lucide-react";
+import { Download, ExternalLink, Link2, MousePointerClick, Trash2, Type } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -53,10 +53,10 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
   };
 
   return (
-    <Card className="group relative overflow-hidden rounded-xl border border-gray-100 bg-white transition-all hover:border-gray-200">
-      <div className="flex items-start p-5 gap-5">
+    <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
+      <div className="flex items-start p-4 gap-4">
         {/* QR Code Image */}
-        <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white p-2">
+        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gray-50 p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={qr.qrCode!}
@@ -66,56 +66,63 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
         </div>
 
         {/* QR Code Details */}
-        <div className="flex flex-1 flex-col min-w-0 gap-1">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900 truncate pr-4">
-              {qr.title || "Untitled QR Code"}
-            </h3>
-            <div className="flex items-center gap-1">
+        <div className="flex flex-1 flex-col min-w-0 gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-medium text-gray-900 truncate text-sm">
+                {qr.title || "Untitled QR Code"}
+              </h3>
+              {isALink(qr.content) && qr.link ? (
+                <Link
+                  href={`/dashboard/analytics/${qr.link.alias}?domain=${qr.link.domain ?? "ishortn.ink"}`}
+                  className="group/link inline-flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors mt-0.5"
+                >
+                  <span className="truncate max-w-[180px]">
+                    {(qr.link.domain ?? "ishortn.ink")}/{qr.link.alias}
+                  </span>
+                  <ExternalLink className="h-3 w-3 opacity-0 group-hover/link:opacity-100 transition-opacity flex-shrink-0" />
+                </Link>
+              ) : (
+                <p className="text-xs text-gray-500 truncate mt-0.5 max-w-[200px]">{qr.content}</p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleDownload}
-                className="h-8 w-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleDelete}
-                className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
 
-          {isALink(qr.content) && qr.link ? (
-            <Link
-              href={`/dashboard/analytics/${qr.link.alias}?domain=${qr.link.domain ?? "ishortn.ink"}`}
-              className="text-sm text-gray-500 hover:text-gray-900 hover:underline underline-offset-2 truncate mb-2 block"
-            >
-              {(qr.link.domain ?? "ishortn.ink")}/{qr.link.alias}
-            </Link>
-          ) : (
-            <p className="text-sm text-gray-500 truncate mb-2">{qr.content}</p>
-          )}
-
+          {/* Meta */}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge
               variant="outline"
-              className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 font-normal hover:bg-gray-100 transition-colors"
+              className="rounded-md h-6 px-2 bg-gray-50/80 border-gray-200/80 font-normal"
             >
               {isALink(qr.content) ? (
                 <>
-                  <Link2 className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-                  <span className="text-gray-700 font-medium text-xs">Link</span>
+                  <Link2 className="h-3 w-3 mr-1 text-blue-500" />
+                  <span className="text-gray-600 text-[11px]">Link</span>
                 </>
               ) : (
                 <>
-                  <Type className="h-3.5 w-3.5 mr-1.5 text-purple-500" />
-                  <span className="text-gray-700 font-medium text-xs">Text</span>
+                  <Type className="h-3 w-3 mr-1 text-purple-500" />
+                  <span className="text-gray-600 text-[11px]">Text</span>
                 </>
               )}
             </Badge>
@@ -123,15 +130,14 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
             {isALink(qr.content) && (
               <Badge
                 variant="outline"
-                className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 cursor-pointer font-normal hover:bg-gray-100 transition-colors"
+                className="rounded-md h-6 px-2 bg-gray-50/80 border-gray-200/80 font-normal"
               >
-                <MousePointerClick className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-                <span className="text-gray-700 font-medium text-xs">{scans}</span>
-                <span className="ml-1 text-gray-400 text-xs">scans</span>
+                <MousePointerClick className="h-3 w-3 mr-1 text-emerald-500" />
+                <span className="text-gray-600 text-[11px]">{scans} scans</span>
               </Badge>
             )}
 
-            <span className="text-xs text-gray-400 ml-auto">
+            <span className="text-[11px] text-gray-400 ml-auto">
               {daysSinceCreation === 0 ? "Today" : `${daysSinceCreation}d ago`}
             </span>
           </div>

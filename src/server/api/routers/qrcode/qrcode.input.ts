@@ -23,3 +23,37 @@ export const qrcodeDeleteInput = z.object({
 });
 
 export type QRCodeInput = z.infer<typeof qrcodeInput>;
+
+// QR Preset schemas
+export const qrPresetCreateInput = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  pixelStyle: z.string().default("rounded"),
+  markerShape: z.string().default("square"),
+  markerInnerShape: z.string().default("auto"),
+  darkColor: z.string().default("#000000"),
+  lightColor: z.string().default("#ffffff"),
+  effect: z.string().default("none"),
+  effectRadius: z.number().min(5).max(30).default(12),
+  marginNoise: z.boolean().default(false),
+  marginNoiseRate: z.number().min(0).max(1).default(0.5),
+});
+
+export const qrPresetDeleteInput = z.object({
+  id: z.number(),
+});
+
+export const qrPresetUpdateInput = z.object({
+  id: z.number(),
+  pixelStyle: z.string(),
+  markerShape: z.string(),
+  markerInnerShape: z.string(),
+  darkColor: z.string(),
+  lightColor: z.string(),
+  effect: z.string(),
+  effectRadius: z.number().min(5).max(30),
+  marginNoise: z.boolean(),
+  marginNoiseRate: z.number().min(0).max(1),
+});
+
+export type QRPresetCreateInput = z.infer<typeof qrPresetCreateInput>;
+export type QRPresetUpdateInput = z.infer<typeof qrPresetUpdateInput>;
