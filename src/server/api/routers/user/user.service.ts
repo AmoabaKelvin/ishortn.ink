@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
 import { user } from "@/server/db/schema";
@@ -15,6 +16,13 @@ export async function getUserProfile(ctx: ProtectedTRPCContext) {
       imageUrl: true,
     },
   });
+
+  if (!userProfile) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "User profile not found",
+    });
+  }
 
   return userProfile;
 }

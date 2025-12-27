@@ -39,6 +39,7 @@ type ProfileFormProps = {
 
 export function ProfileForm({ userProfile }: ProfileFormProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const utils = api.useUtils();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -48,8 +49,9 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
   });
 
   const { mutate: updateProfile } = api.user.updateProfile.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       setIsSaving(false);
+      await utils.user.getProfile.invalidate();
       toast.success("Profile updated successfully");
     },
     onError: (error) => {
