@@ -456,7 +456,7 @@ export const customDomain = mysqlTable(
   "CustomDomain",
   {
     id: serial("id").primaryKey(),
-    domain: varchar("domain", { length: 255 }).unique(),
+    domain: varchar("domain", { length: 255 }),
     userId: varchar("userId", { length: 32 }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     createdAt: timestamp("createdAt").defaultNow(),
@@ -469,6 +469,12 @@ export const customDomain = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
+    // Allow the same domain in different workspaces, but not in the same workspace twice
+    domainWorkspaceUnique: unique("domain_workspace_unique").on(
+      table.domain,
+      table.userId,
+      table.teamId
+    ),
   })
 );
 
