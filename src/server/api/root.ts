@@ -10,6 +10,7 @@ import { subscriptionsRouter } from "./routers/subscriptions/subscriptions.proce
 import { tagRouter } from "./routers/tag/tag.router";
 import { teamRouter } from "./routers/team/team.procedure";
 import { tokenRouter } from "./routers/token/token.procedure";
+import { userRouter } from "./routers/user/user.procedure";
 import { utmTemplateRouter } from "./routers/utm-template/utm-template.router";
 import { createTRPCRouter } from "./trpc";
 
@@ -27,6 +28,7 @@ export const appRouter = createTRPCRouter({
   utmTemplate: utmTemplateRouter,
   changelog: changelogRouter,
   team: teamRouter,
+  user: userRouter,
 });
 
 export type AppRouter = typeof appRouter;
