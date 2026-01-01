@@ -288,6 +288,13 @@
       "when": 1766741156394,
       "tag": "0040_fluffy_loners",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1767293466317,
+      "tag": "0041_chief_slayback",
+      "breakpoints": true
     }
   ]
 }
