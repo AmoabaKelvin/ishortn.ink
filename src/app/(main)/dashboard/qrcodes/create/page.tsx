@@ -207,7 +207,7 @@ function QRCodeCreationPage() {
       effect: qrState.effect,
       effectRadius: qrState.effectCrystalizeRadius,
       marginNoise: qrState.marginNoise,
-      marginNoiseRate: qrState.marginNoiseRate,
+      marginNoiseRate: String(qrState.marginNoiseRate),
     });
   };
 
@@ -225,7 +225,7 @@ function QRCodeCreationPage() {
       effect: qrState.effect,
       effectRadius: qrState.effectCrystalizeRadius,
       marginNoise: qrState.marginNoise,
-      marginNoiseRate: qrState.marginNoiseRate,
+      marginNoiseRate: String(qrState.marginNoiseRate),
     });
   };
 

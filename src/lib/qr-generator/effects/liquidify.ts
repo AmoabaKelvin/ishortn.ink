@@ -15,13 +15,19 @@ export function liquidify(
   const lightRgb = colorHexToRgb(lightColor)
   const darkRgb = colorHexToRgb(darkColor)
 
+  if (!lightRgb) {
+    throw new Error(`Invalid light color hex string: "${lightColor}"`)
+  }
+  if (!darkRgb) {
+    throw new Error(`Invalid dark color hex string: "${darkColor}"`)
+  }
+
   for (let i = 0; i < blurredData.length; i += 4) {
-    if (i + 2 >= blurredData.length) break;
-    const avarageLuminance = ((blurredData[i] ?? 0) + (blurredData[i + 1] ?? 0) + (blurredData[i + 2] ?? 0)) / 3
-    const color = avarageLuminance > threshold ? lightRgb : darkRgb
-    blurredData[i] = color?.[0] ?? 0
-    blurredData[i + 1] = color?.[1] ?? 0
-    blurredData[i + 2] = color?.[2] ?? 0
+    const averageLuminance = ((blurredData[i] ?? 0) + (blurredData[i + 1] ?? 0) + (blurredData[i + 2] ?? 0)) / 3
+    const color = averageLuminance > threshold ? lightRgb : darkRgb
+    blurredData[i] = color[0]
+    blurredData[i + 1] = color[1]
+    blurredData[i + 2] = color[2]
   }
 
   return new ImageData(blurredData, imageData.width, imageData.height)

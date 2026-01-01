@@ -764,7 +764,6 @@ export async function generateQRCode(
   }
 
   async function applyBackground() {
-    ctx.restore();
     const clone = document.createElement("canvas");
     clone.width = width;
     clone.height = height;

@@ -135,7 +135,7 @@ export async function createQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetC
     effect: input.effect,
     effectRadius: input.effectRadius,
     marginNoise: input.marginNoise,
-    marginNoiseRate: String(input.marginNoiseRate),
+    marginNoiseRate: input.marginNoiseRate,
   });
 
   const insertedId = insertResult[0].insertId;
@@ -188,7 +188,7 @@ export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetU
       effect: input.effect,
       effectRadius: input.effectRadius,
       marginNoise: input.marginNoise,
-      marginNoiseRate: String(input.marginNoiseRate),
+      marginNoiseRate: input.marginNoiseRate,
     })
     .where(eq(qrPreset.id, input.id));
 

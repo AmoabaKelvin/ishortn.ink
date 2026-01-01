@@ -23,7 +23,7 @@ export function getAspectRatio(width: number, height: number) {
   return `${width}:${height}`
 }
 
-export function colorHexToRgb(hex: string) {
+export function colorHexToRgb(hex: string): [number, number, number] | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim())
   if (!result)
     return null
