@@ -1,13 +1,13 @@
 import { and, eq, sql } from "drizzle-orm";
 
-import { link, qrcode } from "@/server/db/schema";
+import { link, qrcode, qrPreset } from "@/server/db/schema";
 import {
   workspaceFilter,
   workspaceOwnership,
 } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
-import type { QRCodeInput } from "./qrcode.input";
+import type { QRCodeInput, QRPresetCreateInput, QRPresetUpdateInput } from "./qrcode.input";
 
 // Free tier QR code limit
 const FREE_QR_CODE_LIMIT = 5;
@@ -117,4 +117,82 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
   await ctx.db.delete(qrcode).where(eq(qrcode.id, id));
 
   return true;
+}
+
+// QR Preset Service Functions
+export async function createQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetCreateInput) {
+  const ownership = workspaceOwnership(ctx.workspace);
+
+  const insertResult = await ctx.db.insert(qrPreset).values({
+    name: input.name,
+    userId: ownership.userId ?? "",
+    teamId: ownership.teamId,
+    pixelStyle: input.pixelStyle,
+    markerShape: input.markerShape,
+    markerInnerShape: input.markerInnerShape,
+    darkColor: input.darkColor,
+    lightColor: input.lightColor,
+    effect: input.effect,
+    effectRadius: input.effectRadius,
+    marginNoise: input.marginNoise,
+    marginNoiseRate: input.marginNoiseRate,
+  });
+
+  const insertedId = insertResult[0].insertId;
+
+  return ctx.db.query.qrPreset.findFirst({
+    where: eq(qrPreset.id, insertedId),
+  });
+}
+
+export async function listQrPresets(ctx: WorkspaceTRPCContext) {
+  return ctx.db.query.qrPreset.findMany({
+    where: workspaceFilter(ctx.workspace, qrPreset.userId, qrPreset.teamId),
+    orderBy: (table, { desc }) => [desc(table.createdAt)],
+  });
+}
+
+export async function deleteQrPreset(ctx: WorkspaceTRPCContext, id: number) {
+  const preset = await ctx.db.query.qrPreset.findFirst({
+    where: and(
+      eq(qrPreset.id, id),
+      workspaceFilter(ctx.workspace, qrPreset.userId, qrPreset.teamId)
+    ),
+  });
+
+  if (!preset) throw new Error("Preset not found");
+
+  await ctx.db.delete(qrPreset).where(eq(qrPreset.id, id));
+
+  return true;
+}
+
+export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetUpdateInput) {
+  const preset = await ctx.db.query.qrPreset.findFirst({
+    where: and(
+      eq(qrPreset.id, input.id),
+      workspaceFilter(ctx.workspace, qrPreset.userId, qrPreset.teamId)
+    ),
+  });
+
+  if (!preset) throw new Error("Preset not found");
+
+  await ctx.db
+    .update(qrPreset)
+    .set({
+      pixelStyle: input.pixelStyle,
+      markerShape: input.markerShape,
+      markerInnerShape: input.markerInnerShape,
+      darkColor: input.darkColor,
+      lightColor: input.lightColor,
+      effect: input.effect,
+      effectRadius: input.effectRadius,
+      marginNoise: input.marginNoise,
+      marginNoiseRate: input.marginNoiseRate,
+    })
+    .where(eq(qrPreset.id, input.id));
+
+  return ctx.db.query.qrPreset.findFirst({
+    where: eq(qrPreset.id, input.id),
+  });
 }
