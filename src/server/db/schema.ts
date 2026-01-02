@@ -337,6 +337,39 @@ export const qrcode = mysqlTable(
   })
 );
 
+// QR Code Presets for saving reusable QR code styles
+export const qrPreset = mysqlTable(
+  "QrPreset",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+
+    // Style settings
+    pixelStyle: varchar("pixelStyle", { length: 50 }).notNull().default("rounded"),
+    markerShape: varchar("markerShape", { length: 50 }).notNull().default("square"),
+    markerInnerShape: varchar("markerInnerShape", { length: 50 }).notNull().default("auto"),
+    darkColor: varchar("darkColor", { length: 9 }).notNull().default("#000000"),
+    lightColor: varchar("lightColor", { length: 9 }).notNull().default("#ffffff"),
+
+    // Effect settings
+    effect: varchar("effect", { length: 50 }).notNull().default("none"),
+    effectRadius: int("effectRadius").notNull().default(12),
+
+    // Margin noise settings
+    marginNoise: boolean("marginNoise").notNull().default(false),
+    marginNoiseRate: varchar("marginNoiseRate", { length: 10 }).notNull().default("0.5"),
+
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
+  })
+);
+
 export const siteSettings = mysqlTable(
   "SiteSettings",
   {

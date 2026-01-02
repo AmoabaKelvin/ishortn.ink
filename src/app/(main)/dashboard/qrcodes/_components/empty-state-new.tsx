@@ -1,25 +1,30 @@
 "use client";
 
-import { QrCode } from "lucide-react";
+import { Plus, QrCode } from "lucide-react";
 import { Link } from "next-view-transitions";
 
 import { Button } from "@/components/ui/button";
 
 export function QRCodeEmptyState() {
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed bg-slate-50/50 p-8 text-center animate-in fade-in-50 dark:bg-slate-900/10">
-      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/20">
-        <QrCode className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+    <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gradient-to-b from-gray-50/80 to-white p-10 text-center">
+      <div className="relative">
+        <div className="absolute -inset-3 rounded-full bg-blue-100/50 blur-xl" />
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/20">
+          <QrCode className="h-8 w-8 text-white" />
+        </div>
       </div>
-      <h3 className="mt-6 text-2xl font-semibold tracking-tight">
-        No QR Codes yet
+      <h3 className="mt-8 text-xl font-semibold tracking-tight text-gray-900">
+        Create your first QR code
       </h3>
-      <p className="mt-2 mb-8 max-w-sm text-sm text-muted-foreground">
-        Create your first QR code to share your links in the physical world.
-        Track scans and customize designs.
+      <p className="mt-2 mb-8 max-w-sm text-sm text-gray-500 leading-relaxed">
+        Generate custom QR codes to share your links in the physical world. Track scans and customize designs to match your brand.
       </p>
-      <Button asChild className="bg-blue-600 hover:bg-blue-700">
-        <Link href="/dashboard/qrcodes/create">Create QR Code</Link>
+      <Button asChild className="h-11 gap-2 px-6 shadow-sm">
+        <Link href="/dashboard/qrcodes/create">
+          <Plus className="h-4 w-4" />
+          Create QR Code
+        </Link>
       </Button>
     </div>
   );
