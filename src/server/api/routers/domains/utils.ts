@@ -37,21 +37,17 @@ export async function addDomainToVercelProject(domain: string) {
   );
 
   const responseJson = (await response.json()) as unknown;
-
-  console.log(responseJson);
-
-  // const data = (await response.json()) as VercelDomainResponse | VercelErrorResponse;
   const data = responseJson as VercelDomainResponse | VercelErrorResponse;
 
-  console.log(data);
-
   if ("error" in data) {
-    // throw new Error(data.error.message);
     switch (data.error.code) {
       case "forbidden":
         throw new Error("You don't have permission to add a domain to this project");
       case "domain_taken":
-        throw new Error("This domain is already taken");
+        throw new Error("This domain is already taken by another Vercel project");
+      case "domain_already_in_use":
+        // Domain is already added to our Vercel project - this is fine for domain sharing
+        return { alreadyExists: true as const };
       default:
         throw new Error("Failed to add domain to project");
     }
@@ -59,6 +55,7 @@ export async function addDomainToVercelProject(domain: string) {
 
   return {
     ...data,
+    alreadyExists: false as const,
     verificationChallenges:
       data.verification?.map((challenge) => ({
         type: challenge.type,
@@ -66,6 +63,27 @@ export async function addDomainToVercelProject(domain: string) {
         value: challenge.value,
       })) ?? [],
   };
+}
+
+export async function getDomainFromVercelProject(domain: string) {
+  const response = await fetch(
+    `https://api.vercel.com/v9/projects/${process.env.PROJECT_ID_VERCEL}/domains/${domain}?teamId=${process.env.TEAM_ID_VERCEL}`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      method: "GET",
+    },
+  );
+
+  const data = (await response.json()) as VercelDomainResponse | VercelErrorResponse;
+
+  if ("error" in data) {
+    return null;
+  }
+
+  return data;
 }
 
 export async function deleteDomainFromVercelProject(domain: string) {
