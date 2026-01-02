@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 
 import { customDomain, link, linkVisit } from "@/server/db/schema";
 import {
@@ -178,8 +178,6 @@ export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, 
   // Start a transaction to ensure all operations succeed or fail together
   return await ctx.db.transaction(async (tx) => {
     // Delete all links associated with this domain
-    // await tx.delete(link).where(eq(link.domain, domain.domain!));
-
     const linksToDelete = await tx
       .select({ id: link.id })
       .from(link)
@@ -195,17 +193,21 @@ export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, 
     // delete all links
     await tx.delete(link).where(and(eq(link.domain, domain.domain!), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
-    // Delete the domain itself
-    await tx.delete(customDomain).where(eq(customDomain.id, domainId));
-
-    // Only delete from Vercel if no other workspaces are using this domain
+    // Check if other workspaces are using this domain BEFORE deleting
     const otherWorkspacesUsingDomain = await tx.query.customDomain.findFirst({
-      where: eq(customDomain.domain, domain.domain!),
+      where: and(
+        eq(customDomain.domain, domain.domain!),
+        ne(customDomain.id, domainId)
+      ),
     });
 
+    // If no other workspaces use this domain, delete from Vercel first
     if (!otherWorkspacesUsingDomain) {
       await deleteDomainFromVercelProject(domain.domain!);
     }
+
+    // Delete the domain record from our database
+    await tx.delete(customDomain).where(eq(customDomain.id, domainId));
 
     return { success: true, message: "Domain and associated links deleted successfully" };
   });
