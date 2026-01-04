@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   datetime,
@@ -489,7 +489,7 @@ export const customDomain = mysqlTable(
   "CustomDomain",
   {
     id: serial("id").primaryKey(),
-    domain: varchar("domain", { length: 255 }).unique(),
+    domain: varchar("domain", { length: 255 }),
     userId: varchar("userId", { length: 32 }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     createdAt: timestamp("createdAt").defaultNow(),
@@ -498,10 +498,23 @@ export const customDomain = mysqlTable(
     ),
     verificationDetails: json("verificationDetails"),
     lastReminderSentAt: timestamp("lastReminderSentAt"),
+    // Generated column to handle NULL teamId in unique constraint
+    // MySQL treats NULLs as distinct, so we coalesce to 0 for personal workspaces
+    teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(
+      sql`COALESCE(\`teamId\`, 0)`,
+      { mode: "stored" }
+    ),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
+    // Allow the same domain in different workspaces, but not in the same workspace twice
+    // Uses teamIdForUnique to properly handle NULL teamId values
+    domainWorkspaceUnique: unique("domain_workspace_unique").on(
+      table.domain,
+      table.userId,
+      table.teamIdForUnique
+    ),
   })
 );
 
