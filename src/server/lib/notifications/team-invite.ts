@@ -31,7 +31,7 @@ export async function sendTeamInviteEmail({
 
   try {
     await resend.emails.send({
-      from: "Kelvin <kelvin@ishortn.ink>",
+      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
       to: email,
       subject: `Join ${teamName} on iShortn`,
       react: TeamInviteEmail({

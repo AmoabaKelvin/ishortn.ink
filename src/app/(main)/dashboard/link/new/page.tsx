@@ -826,7 +826,7 @@ export default function CreateLinkPage() {
           </p>
         </div>
         <LinkPreviewComponent
-          destinationURL={form.getValues("url")}
+          destinationURL={destinationURL}
           metaTitle={metaData.title}
           metaDescription={metaData.description}
           metaImage={metaData.image}

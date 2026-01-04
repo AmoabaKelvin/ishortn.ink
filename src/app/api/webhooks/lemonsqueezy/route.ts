@@ -109,7 +109,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     const emailPlan = plan === "ultra" ? "ultra" : "pro";
 
     await resend.emails.send({
-      from: "Kelvin <kelvin@ishortn.ink>",
+      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
       to: email!,
       subject: `Welcome to iShortn ${emailPlan === "ultra" ? "Ultra" : "Pro"}`,
       react: WelcomeEmail({ userName: name ?? "there", plan: emailPlan }),

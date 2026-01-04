@@ -4,6 +4,7 @@ import { FolderPlus } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { api } from "@/trpc/react";
 
 import { CreateFolderModal } from "./create-folder-modal";
 import { DeleteFolderDialog } from "./delete-folder-dialog";
@@ -11,6 +12,7 @@ import { EditFolderModal } from "./edit-folder-modal";
 import { EmptyStateFree } from "./empty-state-free";
 import { EmptyStatePro } from "./empty-state-pro";
 import { FolderCard } from "./folder-card";
+import { FolderSettingsModal } from "./folder-settings-modal";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -27,6 +29,17 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
   const [deletingFolder, setDeletingFolder] = useState<
     RouterOutputs["folder"]["list"][number] | null
   >(null);
+  const [settingsFolder, setSettingsFolder] = useState<
+    RouterOutputs["folder"]["list"][number] | null
+  >(null);
+
+  // Get current workspace to determine if we should show settings button
+  const currentWorkspace = api.team.currentWorkspace.useQuery();
+  const isTeamWorkspace = currentWorkspace.data?.type === "team";
+  const isAdminOrOwner =
+    isTeamWorkspace &&
+    (currentWorkspace.data?.role === "owner" ||
+      currentWorkspace.data?.role === "admin");
 
   // We use initialFolders for rendering, but actions will invalidate queries
   // causing page revalidation or client-side updates if we used useQuery
@@ -67,6 +80,8 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
               folder={folder}
               onEdit={setEditingFolder}
               onDelete={setDeletingFolder}
+              onSettings={setSettingsFolder}
+              showSettingsButton={isAdminOrOwner}
             />
           ))}
         </div>
@@ -87,6 +102,12 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
         folder={deletingFolder}
         open={!!deletingFolder}
         onOpenChange={(open) => !open && setDeletingFolder(null)}
+      />
+
+      <FolderSettingsModal
+        folder={settingsFolder}
+        open={!!settingsFolder}
+        onOpenChange={(open) => !open && setSettingsFolder(null)}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import UAParser from "ua-parser-js";
+import { UAParser } from "ua-parser-js";
 
 import { env } from "@/env.mjs";
 import { LOCAL_DEVELOPMENT_GEOLOCATION_DATA } from "@/lib/constants/app";

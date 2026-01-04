@@ -3,6 +3,7 @@
 import { Link as LinkIcon } from "lucide-react";
 
 import Link from "@/app/(main)/dashboard/_components/links/link-card/card";
+import { SelectionProvider } from "@/app/(main)/dashboard/_components/links/selection-context";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -29,11 +30,13 @@ export function FolderLinks({ links, folderId }: FolderLinksProps) {
   }
 
   return (
-    <div className="space-y-4">
-      {links.map((link) => (
-        <Link key={link.id} link={link} />
-      ))}
-    </div>
+    <SelectionProvider>
+      <div className="space-y-4">
+        {links.map((link) => (
+          <Link key={link.id} link={link} />
+        ))}
+      </div>
+    </SelectionProvider>
   );
 }
 

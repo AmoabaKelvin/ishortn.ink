@@ -2,8 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 
 import { getPlanCaps } from "@/lib/billing/plans";
-import { folder, link, linkVisit } from "@/server/db/schema";
+import { folder, folderPermission, link, linkVisit, teamMember } from "@/server/db/schema";
 import {
+  getAccessibleFolderIds,
+  getFolderPermissionMap,
+  isWorkspaceAdmin,
+  requireFolderAccess,
+  requireFolderPermissionManagement,
+  shouldBypassFolderPermissions,
   workspaceFilter,
   workspaceOwnership,
 } from "@/server/lib/workspace";
@@ -14,9 +20,11 @@ import type {
   CreateFolderInput,
   DeleteFolderInput,
   GetFolderInput,
+  GetFolderPermissionsInput,
   MoveBulkLinksToFolderInput,
   MoveLinkToFolderInput,
   UpdateFolderInput,
+  UpdateFolderPermissionsInput,
 } from "./folder.input";
 
 export const createFolder = async (
@@ -94,14 +102,30 @@ export const createFolder = async (
 };
 
 export const listFolders = async (ctx: WorkspaceTRPCContext) => {
-  const userFolders = await ctx.db.query.folder.findMany({
+  // Get all folders in workspace
+  const allFolders = await ctx.db.query.folder.findMany({
     where: workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
 
+  // Filter folders based on access permissions (for team members)
+  let accessibleFolders = allFolders;
+  if (ctx.workspace.type === "team" && !shouldBypassFolderPermissions(ctx.workspace)) {
+    const folderIds = allFolders.map((f) => f.id);
+    const accessibleIds = await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds);
+    accessibleFolders = allFolders.filter((f) => accessibleIds.includes(f.id));
+  }
+
+  // Get permission info for displaying in UI (only for admins/owners in team workspaces)
+  let permissionMap = new Map<number, string[]>();
+  if (ctx.workspace.type === "team" && isWorkspaceAdmin(ctx.workspace)) {
+    const folderIds = accessibleFolders.map((f) => f.id);
+    permissionMap = await getFolderPermissionMap(ctx.db, folderIds);
+  }
+
   // Get link counts for each folder
   const foldersWithCounts = await Promise.all(
-    userFolders.map(async (folderItem) => {
+    accessibleFolders.map(async (folderItem) => {
       const linkCount = await ctx.db
         .select({ count: sql<number>`count(*)` })
         .from(link)
@@ -109,9 +133,14 @@ export const listFolders = async (ctx: WorkspaceTRPCContext) => {
           and(workspaceFilter(ctx.workspace, link.userId, link.teamId), eq(link.folderId, folderItem.id))
         );
 
+      const permittedUserIds = permissionMap.get(folderItem.id) ?? [];
+
       return {
         ...folderItem,
         linkCount: Number(linkCount[0]?.count ?? 0),
+        // Permission info for UI (only populated for admins/owners)
+        hasRestrictions: permittedUserIds.length > 0,
+        permittedUserIds,
       };
     })
   );
@@ -136,6 +165,9 @@ export const getFolder = async (
       message: "Folder not found",
     });
   }
+
+  // Check access permission for team members
+  await requireFolderAccess(ctx.db, ctx.workspace, input.id);
 
   // Get all links in this folder with totalClicks
   const folderLinks = await ctx.db
@@ -188,6 +220,9 @@ export const updateFolder = async (
     });
   }
 
+  // Check access permission for team members
+  await requireFolderAccess(ctx.db, ctx.workspace, input.id);
+
   // Check for duplicate name (excluding current folder)
   const duplicateFolder = await ctx.db.query.folder.findFirst({
     where: (table, { eq, and, ne }) =>
@@ -239,14 +274,25 @@ export const deleteFolder = async (
     });
   }
 
-  // Move all links in this folder to unfoldered (folderId = null)
-  await ctx.db
-    .update(link)
-    .set({ folderId: null })
-    .where(and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+  // Check access permission for team members
+  await requireFolderAccess(ctx.db, ctx.workspace, input.id);
 
-  // Delete the folder
-  await ctx.db.delete(folder).where(eq(folder.id, input.id));
+  // Use transaction to delete folder, permissions, and update links atomically
+  await ctx.db.transaction(async (tx) => {
+    // Move all links in this folder to unfoldered (folderId = null)
+    await tx
+      .update(link)
+      .set({ folderId: null })
+      .where(and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+
+    // Delete folder permissions
+    await tx
+      .delete(folderPermission)
+      .where(eq(folderPermission.folderId, input.id));
+
+    // Delete the folder
+    await tx.delete(folder).where(eq(folder.id, input.id));
+  });
 
   return { success: true };
 };
@@ -286,6 +332,9 @@ export const moveLinkToFolder = async (
         message: "Folder not found",
       });
     }
+
+    // Check access permission for team members
+    await requireFolderAccess(ctx.db, ctx.workspace, folderId);
   }
 
   // Update link's folderId
@@ -324,6 +373,9 @@ export const moveBulkLinksToFolder = async (
         message: "Folder not found",
       });
     }
+
+    // Check access permission for team members
+    await requireFolderAccess(ctx.db, ctx.workspace, folderId);
   }
 
   // Update all links in the array
@@ -348,5 +400,140 @@ export const getFolderStats = async (ctx: WorkspaceTRPCContext) => {
 
   return {
     totalFolders: Number(folderCount[0]?.count ?? 0),
+  };
+};
+
+/**
+ * Get folder permissions (for permission management UI)
+ * Only available to team admins and owners
+ */
+export const getFolderPermissions = async (
+  ctx: WorkspaceTRPCContext,
+  input: GetFolderPermissionsInput
+) => {
+  // Require admin/owner role
+  requireFolderPermissionManagement(ctx.workspace);
+
+  // Verify folder exists and belongs to workspace
+  const folderData = await ctx.db.query.folder.findFirst({
+    where: and(
+      eq(folder.id, input.folderId),
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+    ),
+  });
+
+  if (!folderData) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Folder not found",
+    });
+  }
+
+  // Get permissions with user info
+  const permissions = await ctx.db.query.folderPermission.findMany({
+    where: eq(folderPermission.folderId, input.folderId),
+    with: {
+      user: {
+        columns: {
+          id: true,
+          name: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+    },
+  });
+
+  return {
+    folderId: input.folderId,
+    folderName: folderData.name,
+    isRestricted: folderData.isRestricted,
+    permittedUsers: permissions.map((p) => p.user),
+  };
+};
+
+/**
+ * Update folder permissions (set which members can access the folder)
+ * Only available to team admins and owners
+ *
+ * Permission Semantics:
+ * - isRestricted=false: all team members can access (userIds ignored)
+ * - isRestricted=true with userIds: only admins/owners + specified users can access
+ * - isRestricted=true with empty userIds: only admins/owners can access
+ */
+export const updateFolderPermissions = async (
+  ctx: WorkspaceTRPCContext,
+  input: UpdateFolderPermissionsInput
+) => {
+  // Require admin/owner role
+  requireFolderPermissionManagement(ctx.workspace);
+
+  // Verify folder exists and belongs to workspace
+  const folderData = await ctx.db.query.folder.findFirst({
+    where: and(
+      eq(folder.id, input.folderId),
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+    ),
+  });
+
+  if (!folderData) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Folder not found",
+    });
+  }
+
+  // De-duplicate userIds (only relevant if isRestricted=true)
+  const uniqueUserIds = input.isRestricted ? [...new Set(input.userIds)] : [];
+
+  // Validate userIds are actual team members (if any provided)
+  if (uniqueUserIds.length > 0 && ctx.workspace.type === "team" && ctx.workspace.teamId) {
+    const validMembers = await ctx.db.query.teamMember.findMany({
+      where: and(
+        eq(teamMember.teamId, ctx.workspace.teamId),
+        inArray(teamMember.userId, uniqueUserIds)
+      ),
+      columns: { userId: true },
+    });
+
+    const validUserIds = new Set(validMembers.map((m) => m.userId));
+    const invalidUserIds = uniqueUserIds.filter((id) => !validUserIds.has(id));
+
+    if (invalidUserIds.length > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Invalid user IDs: ${invalidUserIds.join(", ")}. Users must be team members.`,
+      });
+    }
+  }
+
+  await ctx.db.transaction(async (tx) => {
+    // Update the folder's isRestricted flag
+    await tx
+      .update(folder)
+      .set({ isRestricted: input.isRestricted })
+      .where(eq(folder.id, input.folderId));
+
+    // Remove all existing permissions for this folder
+    await tx
+      .delete(folderPermission)
+      .where(eq(folderPermission.folderId, input.folderId));
+
+    // If restricted with specific users, create permission records
+    if (input.isRestricted && uniqueUserIds.length > 0) {
+      await tx.insert(folderPermission).values(
+        uniqueUserIds.map((userId) => ({
+          folderId: input.folderId,
+          userId,
+        }))
+      );
+    }
+  });
+
+  return {
+    success: true,
+    folderId: input.folderId,
+    isRestricted: input.isRestricted,
+    permittedUserCount: uniqueUserIds.length,
   };
 };

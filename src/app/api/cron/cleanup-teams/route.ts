@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
 
-import {
-  cleanupDeletedTeams,
-  getCleanupStats,
-} from "@/server/api/routers/team/team-cleanup.service";
+import { cleanupDeletedTeams } from "@/server/api/routers/team/team-cleanup.service";
 
 /**
  * Cron job endpoint to clean up soft-deleted teams that have passed the grace period.
  *
  * This endpoint requires API key authentication via the CRON_SECRET environment variable.
- * It should be called by a cron job scheduler (e.g., Vercel Cron, GitHub Actions, etc.)
+ * Vercel Cron automatically sends GET requests with the Authorization header.
  *
- * Example cron schedule: 0 0 * * * (daily at midnight)
+ * Schedule: 0 0 * * * (daily at midnight) - configured in vercel.json
  *
  * Environment variable required:
  * - CRON_SECRET: A secure random string used to authenticate cron requests
  *
  * Usage:
- * POST /api/cron/cleanup-teams
- * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
- *
- * GET /api/cron/cleanup-teams (for stats only)
+ * GET /api/cron/cleanup-teams
  * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
  */
 
@@ -57,43 +51,11 @@ function validateApiKey(request: Request): boolean {
 }
 
 /**
- * GET - Get cleanup stats (useful for monitoring)
+ * GET - Run the cleanup job (Vercel Cron sends GET requests)
  */
 export async function GET(request: Request) {
   if (!validateApiKey(request)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
-
-  try {
-    const stats = await getCleanupStats();
-    return NextResponse.json({
-      success: true,
-      stats,
-    });
-  } catch (error) {
-    console.error("Error getting cleanup stats:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * POST - Run the cleanup job
- */
-export async function POST(request: Request) {
-  if (!validateApiKey(request)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -104,7 +66,7 @@ export async function POST(request: Request) {
 
     const duration = Date.now() - startTime;
     console.log(
-      `[Team Cleanup] Completed in ${duration}ms. Deleted ${result.teamsDeleted} teams.`
+      `[Team Cleanup] Completed in ${duration}ms. Deleted ${result.teamsDeleted} teams.`,
     );
 
     return NextResponse.json({
@@ -119,7 +81,7 @@ export async function POST(request: Request) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

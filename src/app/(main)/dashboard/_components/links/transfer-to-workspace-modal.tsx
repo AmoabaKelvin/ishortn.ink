@@ -7,6 +7,7 @@ import {
   Building2,
   Check,
   ChevronLeft,
+  Loader2,
   User,
 } from "lucide-react";
 import { useState } from "react";
@@ -17,8 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -131,7 +134,7 @@ export function TransferToWorkspaceModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md rounded-2xl border-0 p-0 overflow-hidden shadow-2xl gap-0">
+      <DialogContent className="sm:max-w-[440px]">
         <AnimatePresence mode="wait">
           {step === "select" ? (
             <motion.div
@@ -141,44 +144,40 @@ export function TransferToWorkspaceModal({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              {/* Header */}
-              <div className="px-6 pt-6 pb-4">
-                <DialogHeader className="space-y-1">
-                  <DialogTitle className="text-lg font-semibold text-gray-900">
-                    Transfer {linkIds.length === 1 ? "link" : `${linkIds.length} links`}
-                  </DialogTitle>
-                  <DialogDescription className="text-sm text-gray-500">
-                    Select destination workspace
-                  </DialogDescription>
-                </DialogHeader>
-              </div>
+              <DialogHeader>
+                <DialogTitle>
+                  Transfer {linkIds.length === 1 ? "link" : `${linkIds.length} links`}
+                </DialogTitle>
+                <DialogDescription>
+                  Select destination workspace
+                </DialogDescription>
+              </DialogHeader>
 
-              {/* Content */}
-              <div className="px-6 pb-6">
+              <DialogBody>
                 {loadingWorkspaces ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className="h-14 rounded-xl bg-gray-100 animate-pulse"
+                        className="h-14 rounded-lg bg-muted animate-pulse"
                       />
                     ))}
                   </div>
                 ) : workspacesError ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 mb-3">
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 mb-3">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
                     </div>
-                    <p className="text-sm font-medium text-gray-900">Failed to load workspaces</p>
-                    <p className="text-xs text-gray-500 mt-1">Please try again</p>
+                    <p className="text-sm font-medium">Failed to load workspaces</p>
+                    <p className="text-xs text-muted-foreground mt-1">Please try again</p>
                   </div>
                 ) : availableWorkspaces.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-3">
-                      <Building2 className="h-5 w-5 text-gray-400" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-medium text-gray-900">No workspaces available</p>
-                    <p className="text-xs text-gray-500 mt-1">Create a team or join another workspace</p>
+                    <p className="text-sm font-medium">No workspaces available</p>
+                    <p className="text-xs text-muted-foreground mt-1">Create a team or join another workspace</p>
                   </div>
                 ) : (
                   <ScrollArea className="max-h-[320px] -mx-1 px-1">
@@ -191,71 +190,49 @@ export function TransferToWorkspaceModal({
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.15, delay: index * 0.03 }}
                           className={cn(
-                            "w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-150",
+                            "w-full flex items-center gap-3 rounded-lg p-3 text-left transition-all duration-150",
                             "border",
                             selectedWorkspaceId === workspace.id
-                              ? "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
-                              : "bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                              ? "border-foreground bg-foreground/[0.03] ring-1 ring-foreground/10"
+                              : "border-transparent hover:bg-muted/50"
                           )}
                           onClick={() => setSelectedWorkspaceId(workspace.id)}
                         >
                           <div className={cn(
-                            "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+                            "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
                             selectedWorkspaceId === workspace.id
-                              ? workspace.type === "personal" ? "bg-blue-100" : "bg-blue-100"
-                              : workspace.type === "personal" ? "bg-gray-100" : "bg-gray-100"
+                              ? "bg-foreground/10"
+                              : "bg-muted"
                           )}>
                             {workspace.type === "personal" ? (
-                              <User className={cn(
-                                "h-5 w-5 transition-colors",
-                                selectedWorkspaceId === workspace.id ? "text-blue-600" : "text-gray-500"
-                              )} />
+                              <User className="h-5 w-5 text-muted-foreground" />
                             ) : (
-                              <Building2 className={cn(
-                                "h-5 w-5 transition-colors",
-                                selectedWorkspaceId === workspace.id ? "text-blue-600" : "text-gray-500"
-                              )} />
+                              <Building2 className="h-5 w-5 text-muted-foreground" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className={cn(
-                                "font-medium truncate transition-colors",
-                                selectedWorkspaceId === workspace.id ? "text-blue-900" : "text-gray-900"
-                              )}>
+                              <span className="font-medium truncate text-sm">
                                 {workspace.name}
                               </span>
                               {workspace.type === "team" && (
-                                <Badge className={cn(
-                                  "text-[10px] px-1.5 py-0 h-4 capitalize border-0 font-medium",
-                                  workspace.role === "owner"
-                                    ? "bg-amber-100 text-amber-700"
-                                    : workspace.role === "admin"
-                                    ? "bg-blue-100 text-blue-700"
-                                    : "bg-gray-100 text-gray-600"
-                                )}>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 capitalize font-medium">
                                   {workspace.role}
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               {workspace.linkCount} links · {workspace.plan}
                             </p>
                           </div>
                           <div className={cn(
-                            "flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all",
+                            "flex h-4 w-4 items-center justify-center rounded-full border-2 transition-all",
                             selectedWorkspaceId === workspace.id
-                              ? "border-blue-500 bg-blue-500"
-                              : "border-gray-300 bg-white"
+                              ? "border-foreground bg-foreground"
+                              : "border-muted-foreground/30"
                           )}>
                             {selectedWorkspaceId === workspace.id && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ duration: 0.15 }}
-                              >
-                                <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                              </motion.div>
+                              <Check className="h-2.5 w-2.5 text-background" />
                             )}
                           </div>
                         </motion.button>
@@ -263,14 +240,13 @@ export function TransferToWorkspaceModal({
                     </div>
                   </ScrollArea>
                 )}
-              </div>
+              </DialogBody>
 
-              {/* Footer */}
-              <div className="flex gap-2 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
+              <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={handleClose}
-                  className="flex-1 rounded-xl border-gray-200 font-medium hover:bg-gray-100"
+                  className="h-9"
                 >
                   Cancel
                 </Button>
@@ -281,22 +257,18 @@ export function TransferToWorkspaceModal({
                     validateMutation.isLoading ||
                     availableWorkspaces.length === 0
                   }
-                  className="flex-1 rounded-xl bg-blue-500 font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+                  className="h-9"
                 >
                   {validateMutation.isLoading ? (
-                    <span className="flex items-center gap-2">
-                      <motion.div
-                        className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      />
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Checking...
-                    </span>
+                    </>
                   ) : (
                     "Continue"
                   )}
                 </Button>
-              </div>
+              </DialogFooter>
             </motion.div>
           ) : (
             <motion.div
@@ -306,35 +278,29 @@ export function TransferToWorkspaceModal({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              {/* Header with back button */}
-              <div className="px-6 pt-6 pb-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <button
-                    type="button"
-                    onClick={handleBack}
-                    disabled={transferMutation.isLoading}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <div>
-                    <DialogTitle className="text-lg font-semibold text-gray-900">
-                      Confirm transfer
-                    </DialogTitle>
-                  </div>
+              <DialogHeader className="flex-row items-center gap-3 space-y-0">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  disabled={transferMutation.isLoading}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <div>
+                  <DialogTitle>Confirm transfer</DialogTitle>
                 </div>
-              </div>
+              </DialogHeader>
 
-              {/* Content */}
-              <div className="px-6 pb-6 space-y-4">
+              <DialogBody className="space-y-4">
                 {/* Visual transfer representation */}
                 <div className="flex items-center justify-center gap-4 py-6">
                   {/* Source */}
                   <div className="flex flex-col items-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 mb-2">
-                      <span className="text-xl font-bold text-gray-700">{linkIds.length}</span>
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted mb-2">
+                      <span className="text-xl font-bold">{linkIds.length}</span>
                     </div>
-                    <span className="text-xs text-gray-500">{linkIds.length === 1 ? "link" : "links"}</span>
+                    <span className="text-xs text-muted-foreground">{linkIds.length === 1 ? "link" : "links"}</span>
                   </div>
 
                   {/* Arrow */}
@@ -344,23 +310,20 @@ export function TransferToWorkspaceModal({
                       animate={{ x: 0, opacity: 1 }}
                       transition={{ delay: 0.1 }}
                     >
-                      <ArrowRight className="h-5 w-5 text-blue-500" />
+                      <ArrowRight className="h-5 w-5 text-muted-foreground" />
                     </motion.div>
                   </div>
 
                   {/* Destination */}
                   <div className="flex flex-col items-center">
-                    <div className={cn(
-                      "flex h-14 w-14 items-center justify-center rounded-2xl mb-2",
-                      selectedWorkspace?.type === "personal" ? "bg-blue-100" : "bg-blue-100"
-                    )}>
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted mb-2">
                       {selectedWorkspace?.type === "personal" ? (
-                        <User className="h-6 w-6 text-blue-600" />
+                        <User className="h-6 w-6 text-muted-foreground" />
                       ) : (
-                        <Building2 className="h-6 w-6 text-blue-600" />
+                        <Building2 className="h-6 w-6 text-muted-foreground" />
                       )}
                     </div>
-                    <span className="text-xs font-medium text-gray-900 max-w-[100px] truncate text-center">
+                    <span className="text-xs font-medium max-w-[100px] truncate text-center">
                       {selectedWorkspace?.name}
                     </span>
                   </div>
@@ -368,12 +331,12 @@ export function TransferToWorkspaceModal({
 
                 {/* Warnings */}
                 {validation?.warnings && validation.warnings.length > 0 && (
-                  <div className="rounded-xl bg-amber-50 p-4">
+                  <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-4">
                     <div className="flex gap-3">
-                      <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-amber-900">Note</p>
-                        <ul className="text-xs text-amber-800 space-y-1">
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Note</p>
+                        <ul className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
                           {validation.warnings.map((warning, i) => (
                             <li key={i}>{warning.message}</li>
                           ))}
@@ -385,50 +348,45 @@ export function TransferToWorkspaceModal({
 
                 {/* Info bullets */}
                 <div className="space-y-2 pt-2">
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100">
-                      <Check className="h-3 w-3 text-green-600" />
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 dark:bg-green-950">
+                      <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
                     </div>
                     <span>Analytics data will be preserved</span>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100">
-                      <Check className="h-3 w-3 text-green-600" />
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 dark:bg-green-950">
+                      <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
                     </div>
                     <span>Short URLs will continue to work</span>
                   </div>
                 </div>
-              </div>
+              </DialogBody>
 
-              {/* Footer */}
-              <div className="flex gap-2 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
+              <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={handleBack}
                   disabled={transferMutation.isLoading}
-                  className="flex-1 rounded-xl border-gray-200 font-medium hover:bg-gray-100"
+                  className="h-9"
                 >
                   Back
                 </Button>
                 <Button
                   onClick={handleTransfer}
                   disabled={transferMutation.isLoading}
-                  className="flex-1 rounded-xl bg-blue-500 font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+                  className="h-9"
                 >
                   {transferMutation.isLoading ? (
-                    <span className="flex items-center gap-2">
-                      <motion.div
-                        className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      />
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Transferring...
-                    </span>
+                    </>
                   ) : (
                     "Transfer"
                   )}
                 </Button>
-              </div>
+              </DialogFooter>
             </motion.div>
           )}
         </AnimatePresence>

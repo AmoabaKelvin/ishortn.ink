@@ -29,10 +29,25 @@ export const moveBulkLinksToFolderInput = z.object({
   folderId: z.number().nullable(),
 });
 
+// Folder permissions input schemas
+export const getFolderPermissionsInput = z.object({
+  folderId: z.number(),
+});
+
+export const updateFolderPermissionsInput = z.object({
+  folderId: z.number(),
+  // When isRestricted=true: only admins/owners + userIds can access
+  // When isRestricted=false: all team members can access (userIds ignored)
+  isRestricted: z.boolean(),
+  userIds: z.array(z.string()),
+});
+
 export type CreateFolderInput = z.infer<typeof createFolderInput>;
 export type UpdateFolderInput = z.infer<typeof updateFolderInput>;
 export type DeleteFolderInput = z.infer<typeof deleteFolderInput>;
 export type GetFolderInput = z.infer<typeof getFolderInput>;
 export type MoveLinkToFolderInput = z.infer<typeof moveLinkToFolderInput>;
 export type MoveBulkLinksToFolderInput = z.infer<typeof moveBulkLinksToFolderInput>;
+export type GetFolderPermissionsInput = z.infer<typeof getFolderPermissionsInput>;
+export type UpdateFolderPermissionsInput = z.infer<typeof updateFolderPermissionsInput>;
 

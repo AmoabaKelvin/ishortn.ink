@@ -195,4 +195,18 @@ export const linkRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return services.bulkDeleteLinks(ctx, input.linkIds);
     }),
+
+  /** Bulk archive/restore links */
+  bulkArchive: workspaceProcedure
+    .input(inputs.bulkArchiveLinksSchema)
+    .mutation(async ({ ctx, input }) => {
+      return services.bulkArchiveLinks(ctx, input);
+    }),
+
+  /** Bulk activate/deactivate links */
+  bulkToggleStatus: workspaceProcedure
+    .input(inputs.bulkToggleLinkStatusSchema)
+    .mutation(async ({ ctx, input }) => {
+      return services.bulkToggleLinkStatus(ctx, input);
+    }),
 });

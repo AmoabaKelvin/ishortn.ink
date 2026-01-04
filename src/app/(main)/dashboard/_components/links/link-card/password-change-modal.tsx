@@ -2,16 +2,19 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { satoshi } from "@/styles/fonts";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { api } from "@/trpc/react";
 
 type ChangePasswordModalProps = {
@@ -22,15 +25,13 @@ type ChangePasswordModalProps = {
 };
 
 const getComponentMessages = (hasPassword: boolean) => {
-  // Return the appropriate messages based on whether the link has a password or not
   return {
     title: hasPassword ? "Change Password" : "Set Password",
     description: hasPassword
-      ? "Change the password for the link."
-      : "Set a password for the link.",
-    buttonText: hasPassword ? "Update Password" : "Set Password",
-    inputPlaceholder: hasPassword ? "New Password" : "Password",
-
+      ? "Enter a new password for this link"
+      : "Protect this link with a password",
+    buttonText: hasPassword ? "Update" : "Set Password",
+    inputPlaceholder: hasPassword ? "New password" : "Enter password",
     loading: hasPassword ? "Changing password..." : "Setting password...",
     loadingSuccess: hasPassword
       ? "Password changed successfully"
@@ -77,28 +78,50 @@ export function ChangeLinkPasswordModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className={`sm:max-w-[425px] ${satoshi.className}`}>
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>{componentMessages.title}</DialogTitle>
           <DialogDescription>{componentMessages.description}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col items-center">
-          <input
-            type="password"
-            name="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder={componentMessages.inputPlaceholder}
-            className="w-[85%] rounded-md border border-gray-300 p-2 md:w-96"
-          />
+
+        <DialogBody>
+          <div className="space-y-2">
+            <Label
+              htmlFor="password"
+              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              Password
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder={componentMessages.inputPlaceholder}
+              className="h-10"
+            />
+          </div>
+        </DialogBody>
+
+        <DialogFooter>
           <Button
-            className="mt-4 w-full"
+            type="button"
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className="h-9"
+          >
+            Cancel
+          </Button>
+          <Button
             onClick={handlePasswordChange}
             disabled={!newPassword || changePasswordMutation.isLoading}
+            className="h-9"
           >
-            {componentMessages.buttonText}
+            {changePasswordMutation.isLoading
+              ? "Saving..."
+              : componentMessages.buttonText}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

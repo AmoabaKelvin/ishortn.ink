@@ -9,6 +9,7 @@ import {
   eq,
   getTableColumns,
   inArray,
+  isNull,
   like,
   or,
   sql
@@ -33,9 +34,13 @@ import {
   user,
 } from "@/server/db/schema";
 import {
+  getAccessibleFolderIds,
+  isWorkspaceAdmin,
+  requireFolderAccess,
   workspaceFilter,
   workspaceOwnership,
 } from "@/server/lib/workspace";
+import { folder } from "@/server/db/schema";
 
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 
@@ -49,6 +54,8 @@ import {
 import type { Link } from "@/server/db/schema";
 import type { ProtectedTRPCContext, PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type {
+  BulkArchiveLinksInput,
+  BulkToggleLinkStatusInput,
   CreateLinkInput,
   GetLinkInput,
   ListLinksInput,
@@ -136,6 +143,38 @@ export const getLinks = async (
         like(link.url, searchLower)
       )
     );
+  }
+
+  // Add folder access filtering for team members (non-admin/owner)
+  // - Show links from accessible folders
+  // - Show links with no folder (folderId = null) - always visible to all team members
+  if (ctx.workspace.type === "team" && !isWorkspaceAdmin(ctx.workspace)) {
+    // Get all folders in the team workspace
+    const allFolders = await ctx.db
+      .select({ id: folder.id })
+      .from(folder)
+      .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId));
+
+    const folderIds = allFolders.map((f) => f.id);
+    const accessibleFolderIds = await getAccessibleFolderIds(
+      ctx.db,
+      ctx.workspace,
+      folderIds
+    );
+
+    // Filter: links in accessible folders OR links with no folder
+    if (accessibleFolderIds.length > 0) {
+      baseCondition = and(
+        baseCondition,
+        or(
+          inArray(link.folderId, accessibleFolderIds),
+          isNull(link.folderId)
+        )
+      );
+    } else {
+      // No accessible folders - only show unfoldered links
+      baseCondition = and(baseCondition, isNull(link.folderId));
+    }
   }
 
   // Prepare the query parts
@@ -232,12 +271,19 @@ export const getLink = async (
   ctx: WorkspaceTRPCContext,
   input: GetLinkInput
 ) => {
-  return ctx.db.query.link.findFirst({
+  const linkData = await ctx.db.query.link.findFirst({
     where: and(
       eq(link.id, input.id),
       workspaceFilter(ctx.workspace, link.userId, link.teamId)
     ),
   });
+
+  // Check folder access permission for team members
+  if (linkData?.folderId) {
+    await requireFolderAccess(ctx.db, ctx.workspace, linkData.folderId);
+  }
+
+  return linkData;
 };
 
 export const getLinkByAlias = async (input: {
@@ -398,6 +444,11 @@ export const updateLink = async (
     throw new Error("Link not found");
   }
 
+  // Check folder access permission for team members
+  if (existingLink.folderId) {
+    await requireFolderAccess(ctx.db, ctx.workspace, existingLink.folderId);
+  }
+
   // Use workspace plan - team workspaces have Ultra features
   const workspacePlan = ctx.workspace.plan;
   const isPaidUser = workspacePlan !== "free";
@@ -484,6 +535,11 @@ export const deleteLink = async (
     return null;
   }
 
+  // Check folder access permission for team members
+  if (linkToDelete.folderId) {
+    await requireFolderAccess(ctx.db, ctx.workspace, linkToDelete.folderId);
+  }
+
   await Promise.all([
     deleteFromCache(
       constructCacheKey(linkToDelete.domain, linkToDelete.alias!)
@@ -503,12 +559,27 @@ export const bulkDeleteLinks = async (
   }
 
   // Fetch links to delete (for cache invalidation)
-  const linksToDelete = await ctx.db.query.link.findMany({
+  let linksToDelete = await ctx.db.query.link.findMany({
     where: and(
       inArray(link.id, linkIds),
       workspaceFilter(ctx.workspace, link.userId, link.teamId)
     ),
   });
+
+  if (linksToDelete.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Filter by folder access for team members
+  if (ctx.workspace.type === "team" && !isWorkspaceAdmin(ctx.workspace)) {
+    const folderIds = [...new Set(linksToDelete.map((l) => l.folderId).filter((id): id is number => id !== null))];
+    const accessibleFolderIds = folderIds.length > 0
+      ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds)
+      : [];
+    linksToDelete = linksToDelete.filter((l) =>
+      l.folderId === null || accessibleFolderIds.includes(l.folderId)
+    );
+  }
 
   if (linksToDelete.length === 0) {
     return { success: true, count: 0 };
@@ -544,6 +615,100 @@ export const bulkDeleteLinks = async (
   });
 
   return { success: true, count: linksToDelete.length };
+};
+
+export const bulkArchiveLinks = async (
+  ctx: WorkspaceTRPCContext,
+  input: BulkArchiveLinksInput
+) => {
+  const { linkIds, archive } = input;
+
+  if (linkIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Verify links belong to workspace
+  let linksToUpdate = await ctx.db.query.link.findMany({
+    where: and(
+      inArray(link.id, linkIds),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId)
+    ),
+  });
+
+  if (linksToUpdate.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Filter by folder access for team members
+  if (ctx.workspace.type === "team" && !isWorkspaceAdmin(ctx.workspace)) {
+    const folderIds = [...new Set(linksToUpdate.map((l) => l.folderId).filter((id): id is number => id !== null))];
+    const accessibleFolderIds = folderIds.length > 0
+      ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds)
+      : [];
+    linksToUpdate = linksToUpdate.filter((l) =>
+      l.folderId === null || accessibleFolderIds.includes(l.folderId)
+    );
+  }
+
+  if (linksToUpdate.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const validLinkIds = linksToUpdate.map((l) => l.id);
+
+  await ctx.db
+    .update(link)
+    .set({ archived: archive })
+    .where(inArray(link.id, validLinkIds));
+
+  return { success: true, count: linksToUpdate.length, archived: archive };
+};
+
+export const bulkToggleLinkStatus = async (
+  ctx: WorkspaceTRPCContext,
+  input: BulkToggleLinkStatusInput
+) => {
+  const { linkIds, disable } = input;
+
+  if (linkIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Verify links belong to workspace
+  let linksToUpdate = await ctx.db.query.link.findMany({
+    where: and(
+      inArray(link.id, linkIds),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId)
+    ),
+  });
+
+  if (linksToUpdate.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Filter by folder access for team members
+  if (ctx.workspace.type === "team" && !isWorkspaceAdmin(ctx.workspace)) {
+    const folderIds = [...new Set(linksToUpdate.map((l) => l.folderId).filter((id): id is number => id !== null))];
+    const accessibleFolderIds = folderIds.length > 0
+      ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds)
+      : [];
+    linksToUpdate = linksToUpdate.filter((l) =>
+      l.folderId === null || accessibleFolderIds.includes(l.folderId)
+    );
+  }
+
+  if (linksToUpdate.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const validLinkIds = linksToUpdate.map((l) => l.id);
+
+  await ctx.db
+    .update(link)
+    .set({ disabled: disable })
+    .where(inArray(link.id, validLinkIds));
+
+  return { success: true, count: linksToUpdate.length, disabled: disable };
 };
 
 export const retrieveOriginalUrl = async (
@@ -682,6 +847,7 @@ export const getLinkVisits = async (
       topCountry: "N/A",
       referers: {},
       topReferrer: "N/A",
+      isProPlan: userHasPaidPlan,
     };
   }
 

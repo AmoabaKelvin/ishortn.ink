@@ -1,14 +1,14 @@
 "use client";
 
-import { FolderPlus } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -19,6 +19,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import type { CreateFolderInput } from "@/server/api/routers/folder/folder.input";
@@ -29,7 +31,11 @@ type CreateFolderModalProps = {
   onOpenChange?: (open: boolean) => void;
 };
 
-export function CreateFolderModal({ trigger, open: controlledOpen, onOpenChange }: CreateFolderModalProps) {
+export function CreateFolderModal({
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: CreateFolderModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -49,6 +55,7 @@ export function CreateFolderModal({ trigger, open: controlledOpen, onOpenChange 
       toast.success("Folder created successfully");
       trackEvent(POSTHOG_EVENTS.FOLDER_CREATED);
       await utils.folder.list.invalidate();
+      await revalidateRoute("/dashboard/folders");
       reset();
       setOpen(false);
     },
@@ -64,27 +71,31 @@ export function CreateFolderModal({ trigger, open: controlledOpen, onOpenChange 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FolderPlus className="h-5 w-5 text-blue-600" />
-            Create New Folder
-          </DialogTitle>
+          <DialogTitle>Create Folder</DialogTitle>
           <DialogDescription>
-            Organize your links by creating a new folder. Give it a name and optional description.
+            Organize your links into a new folder
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-4 py-4">
+          <DialogBody className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Folder Name <span className="text-red-500">*</span>
+              <Label
+                htmlFor="name"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Name
               </Label>
               <Input
                 id="name"
-                placeholder="e.g., Marketing Campaign 2024"
-                className={errors.name ? "border-red-500" : ""}
+                placeholder="Folder name"
+                className={cn(
+                  "h-10",
+                  errors.name &&
+                    "border-destructive focus-visible:ring-destructive"
+                )}
                 {...register("name", {
                   required: "Folder name is required",
                   maxLength: {
@@ -94,39 +105,48 @@ export function CreateFolderModal({ trigger, open: controlledOpen, onOpenChange 
                 })}
               />
               {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
+                <p className="text-xs text-destructive">{errors.name.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
+              <Label
+                htmlFor="description"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Description
+                <span className="ml-1.5 text-muted-foreground/60 lowercase tracking-normal font-normal">
+                  optional
+                </span>
+              </Label>
               <Textarea
                 id="description"
-                placeholder="Add notes about what this folder contains..."
+                placeholder="Add notes about this folder..."
                 rows={3}
-                className="resize-none"
+                className="resize-none text-sm"
                 {...register("description")}
               />
             </div>
-          </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 reset();
                 setOpen(false);
               }}
+              className="h-9"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={createFolderMutation.isLoading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="h-9"
             >
-              {createFolderMutation.isLoading ? "Creating..." : "Create Folder"}
+              {createFolderMutation.isLoading ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </form>

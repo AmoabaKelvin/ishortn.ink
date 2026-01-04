@@ -1,0 +1,1 @@
+ALTER TABLE `Folder` ADD `isRestricted` boolean DEFAULT false NOT NULL;

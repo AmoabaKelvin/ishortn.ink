@@ -1,0 +1,1 @@
+ALTER TABLE `CustomDomain` ADD `lastReminderSentAt` timestamp;

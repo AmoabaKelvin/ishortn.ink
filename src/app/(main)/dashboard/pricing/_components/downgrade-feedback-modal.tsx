@@ -8,6 +8,7 @@ import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -102,9 +103,14 @@ export function DowngradeFeedbackModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-5 py-4">
+          <DialogBody className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="reason">Reason for downgrading</Label>
+              <Label
+                htmlFor="reason"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Reason for downgrading
+              </Label>
               <Controller
                 name="reason"
                 control={control}
@@ -112,7 +118,7 @@ export function DowngradeFeedbackModal({
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
                     <SelectTrigger
-                      className={errors.reason ? "border-red-500" : ""}
+                      className={`h-10 ${errors.reason ? "border-destructive" : ""}`}
                     >
                       <SelectValue placeholder="Select a reason..." />
                     </SelectTrigger>
@@ -127,19 +133,25 @@ export function DowngradeFeedbackModal({
                 )}
               />
               {errors.reason && (
-                <p className="text-sm text-red-500">{errors.reason.message}</p>
+                <p className="text-xs text-destructive">{errors.reason.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="additionalFeedback">
-                What could we improve? (Optional)
+              <Label
+                htmlFor="additionalFeedback"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                What could we improve?
+                <span className="ml-1.5 text-muted-foreground/60 lowercase tracking-normal font-normal">
+                  optional
+                </span>
               </Label>
               <Textarea
                 id="additionalFeedback"
                 placeholder="Share any feedback..."
                 rows={3}
-                className="resize-none"
+                className="resize-none text-sm"
                 {...register("additionalFeedback", {
                   maxLength: {
                     value: 1000,
@@ -148,28 +160,29 @@ export function DowngradeFeedbackModal({
                 })}
               />
               {errors.additionalFeedback && (
-                <p className="text-sm text-red-500">
+                <p className="text-xs text-destructive">
                   {errors.additionalFeedback.message}
                 </p>
               )}
             </div>
 
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               {targetPlan === "free"
                 ? "You'll keep access until the end of your billing period."
                 : "Changes will apply at your next billing date."}
             </p>
-          </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 reset();
                 onOpenChange(false);
               }}
               disabled={downgradeMutation.isLoading}
+              className="h-9"
             >
               Cancel
             </Button>
@@ -177,6 +190,7 @@ export function DowngradeFeedbackModal({
               type="submit"
               variant="destructive"
               disabled={downgradeMutation.isLoading}
+              className="h-9"
             >
               {downgradeMutation.isLoading ? (
                 <>

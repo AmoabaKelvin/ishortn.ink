@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   datetime,
@@ -337,6 +337,39 @@ export const qrcode = mysqlTable(
   })
 );
 
+// QR Code Presets for saving reusable QR code styles
+export const qrPreset = mysqlTable(
+  "QrPreset",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+
+    // Style settings
+    pixelStyle: varchar("pixelStyle", { length: 50 }).notNull().default("rounded"),
+    markerShape: varchar("markerShape", { length: 50 }).notNull().default("square"),
+    markerInnerShape: varchar("markerInnerShape", { length: 50 }).notNull().default("auto"),
+    darkColor: varchar("darkColor", { length: 9 }).notNull().default("#000000"),
+    lightColor: varchar("lightColor", { length: 9 }).notNull().default("#ffffff"),
+
+    // Effect settings
+    effect: varchar("effect", { length: 50 }).notNull().default("none"),
+    effectRadius: int("effectRadius").notNull().default(12),
+
+    // Margin noise settings
+    marginNoise: boolean("marginNoise").notNull().default(false),
+    marginNoiseRate: varchar("marginNoiseRate", { length: 10 }).notNull().default("0.5"),
+
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
+  })
+);
+
 export const siteSettings = mysqlTable(
   "SiteSettings",
   {
@@ -388,12 +421,33 @@ export const folder = mysqlTable(
     description: text("description"),
     userId: varchar("userId", { length: 32 }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    isRestricted: boolean("isRestricted").default(false).notNull(), // true = restricted access (admins + permitted users only)
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
+  })
+);
+
+// FolderPermission join table for folder-level access control in teams
+// Permission semantics:
+// - folder.isRestricted=false: visible to ALL team members (default behavior)
+// - folder.isRestricted=true with permission records: RESTRICTED to those specific users + admins/owners
+// - folder.isRestricted=true with no permission records: only admins/owners can access
+// - Owners and admins ALWAYS bypass permission checks (handled in application layer)
+export const folderPermission = mysqlTable(
+  "FolderPermission",
+  {
+    folderId: int("folderId").notNull(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.folderId, table.userId] }),
+    folderIdIdx: index("folderId_idx").on(table.folderId),
+    userIdIdx: index("userId_idx").on(table.userId),
   })
 );
 
@@ -435,7 +489,7 @@ export const customDomain = mysqlTable(
   "CustomDomain",
   {
     id: serial("id").primaryKey(),
-    domain: varchar("domain", { length: 255 }).unique(),
+    domain: varchar("domain", { length: 255 }),
     userId: varchar("userId", { length: 32 }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     createdAt: timestamp("createdAt").defaultNow(),
@@ -443,10 +497,24 @@ export const customDomain = mysqlTable(
       "pending"
     ),
     verificationDetails: json("verificationDetails"),
+    lastReminderSentAt: timestamp("lastReminderSentAt"),
+    // Generated column to handle NULL teamId in unique constraint
+    // MySQL treats NULLs as distinct, so we coalesce to 0 for personal workspaces
+    teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(
+      sql`COALESCE(\`teamId\`, 0)`,
+      { mode: "stored" }
+    ),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
+    // Allow the same domain in different workspaces, but not in the same workspace twice
+    // Uses teamIdForUnique to properly handle NULL teamId values
+    domainWorkspaceUnique: unique("domain_workspace_unique").on(
+      table.domain,
+      table.userId,
+      table.teamIdForUnique
+    ),
   })
 );
 
@@ -465,6 +533,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   siteSettings: one(siteSettings),
   tags: many(tag),
   folders: many(folder),
+  folderPermissions: many(folderPermission),
   utmTemplates: many(utmTemplate),
   teamMemberships: many(teamMember),
   ownedTeams: many(team),
@@ -574,6 +643,19 @@ export const folderRelations = relations(folder, ({ one, many }) => ({
     references: [team.id],
   }),
   links: many(link),
+  permissions: many(folderPermission),
+}));
+
+// Define relations for FolderPermission
+export const folderPermissionRelations = relations(folderPermission, ({ one }) => ({
+  folder: one(folder, {
+    fields: [folderPermission.folderId],
+    references: [folder.id],
+  }),
+  user: one(user, {
+    fields: [folderPermission.userId],
+    references: [user.id],
+  }),
 }));
 
 export type CustomDomain = typeof customDomain.$inferSelect;
@@ -607,6 +689,9 @@ export type NewLinkTag = typeof linkTag.$inferInsert;
 
 export type Folder = typeof folder.$inferSelect;
 export type NewFolder = typeof folder.$inferInsert;
+
+export type FolderPermission = typeof folderPermission.$inferSelect;
+export type NewFolderPermission = typeof folderPermission.$inferInsert;
 
 // UTM Template model for storing reusable UTM parameter configurations
 export const utmTemplate = mysqlTable(

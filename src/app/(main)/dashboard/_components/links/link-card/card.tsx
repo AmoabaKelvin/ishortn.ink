@@ -237,7 +237,9 @@ const Link = ({ link, onTagClick }: LinkProps) => {
               onClick={(e) => {
                 if (!isSelectionMode) {
                   e.stopPropagation();
-                  router.push(`/dashboard/analytics/${link.alias}`);
+                  router.push(
+                    `/dashboard/analytics/${link.alias}?domain=${link.domain}`
+                  );
                 }
               }}
             >

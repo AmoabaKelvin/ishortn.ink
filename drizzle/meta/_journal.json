@@ -253,6 +253,55 @@
       "when": 1766339526379,
       "tag": "0035_needy_doctor_faustus",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1766504801723,
+      "tag": "0036_lovely_eternals",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1766678400000,
+      "tag": "0037_fix_customdomain_collation",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1766701156421,
+      "tag": "0038_flippant_polaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1766765000000,
+      "tag": "0039_fix_folderpermission_collation",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1766741156394,
+      "tag": "0040_fluffy_loners",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1767293466317,
+      "tag": "0041_chief_slayback",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1767524872585,
+      "tag": "0042_greedy_amphibian",
+      "breakpoints": true
     }
   ]
 }
