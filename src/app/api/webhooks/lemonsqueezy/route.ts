@@ -106,12 +106,18 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
 
     const email = user.email;
     const name = user.name;
+    const emailPlan = plan === "ultra" ? "ultra" : "pro";
+
+    if (!email) {
+      console.error(`Cannot send welcome email: user ${userId} has no email`);
+      return;
+    }
 
     await resend.emails.send({
       from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-      to: email!,
-      subject: "Welcome to iShortn Pro",
-      react: WelcomeEmail({ userName: name ?? "there" }),
+      to: email,
+      subject: `Welcome to iShortn ${emailPlan === "ultra" ? "Ultra" : "Pro"}`,
+      react: WelcomeEmail({ userName: name ?? "there", plan: emailPlan }),
     });
   } else if (event_name === "subscription_updated") {
     // handle subscription updated. Sent when a subscription is updated
