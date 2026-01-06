@@ -168,11 +168,11 @@ function QRCodeCreationPage() {
       effectLiquidifyRadius: preset.effectRadius,
       marginNoise: preset.marginNoise,
       marginNoiseRate: parseFloat(preset.marginNoiseRate),
-      // Logo settings
+      // Logo settings (with defaults for older presets)
       logoImage: preset.logoImage ?? undefined,
-      logoSize: preset.logoSize,
-      logoMargin: preset.logoMargin,
-      logoBorderRadius: preset.logoBorderRadius,
+      logoSize: preset.logoSize ?? 25,
+      logoMargin: preset.logoMargin ?? 4,
+      logoBorderRadius: preset.logoBorderRadius ?? 8,
     }));
   }, [presets]);
 

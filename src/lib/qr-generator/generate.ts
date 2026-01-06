@@ -705,7 +705,15 @@ export async function generateQRCode(
 
   // Draw logo in center if provided
   if (state.logoImage) {
-    await drawLogo(realCtx, width, height, state);
+    try {
+      await drawLogo(realCtx, width, height, state);
+    } catch (error) {
+      console.warn(
+        `Failed to draw logo (${state.logoImage.substring(0, 50)}...):`,
+        error instanceof Error ? error.message : error
+      );
+      // Continue without the logo - QR code is still valid
+    }
   }
 
   async function applyPerspective() {
