@@ -7,7 +7,7 @@ import { api } from "@/trpc/server";
 import { QRCodeEmptyState } from "./_components/empty-state-new";
 import { QRCodeCard } from "./_components/qrcode-card-new";
 import UpgradeText from "./_components/upgrade-text";
-import { checkIfUserCanCreateMoreQRCodes } from "./utils";
+import { checkIfUserCanCreateMoreQRCodes } from "@/lib/qrcode";
 
 export const dynamic = "force-dynamic";
 
