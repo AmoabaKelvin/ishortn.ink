@@ -44,4 +44,4 @@ When you remove a domain from a workspace, only that workspace loses access. Oth
 
 ## Who can use this?
 
-Domain sharing is available to all users with custom domain access. Manage your domains at [/dashboard/domains](/dashboard/domains).
+Domain sharing is available to all users with custom domain access. In team workspaces, only **owners and admins** can add domains—team members can use existing domains but cannot add new ones. Manage your domains at [/dashboard/domains](/dashboard/domains).
