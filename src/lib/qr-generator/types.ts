@@ -108,7 +108,7 @@ export interface QRCodeGeneratorState extends QrCodeGeneratorMarkerState {
 
   // Logo embedding options
   logoImage?: string
-  logoSize: number // Percentage of QR code size (0-50)
+  logoSize: number // Percentage of QR code size (10-40)
   logoMargin: number // Padding around the logo in pixels
   logoBorderRadius: number // Border radius percentage (0-50 for circle)
 }
