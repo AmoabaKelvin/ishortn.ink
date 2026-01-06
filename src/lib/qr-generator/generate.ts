@@ -703,6 +703,11 @@ export async function generateQRCode(
   realCtx.drawImage(canvas, 0, 0, width, height);
   realCtx.restore();
 
+  // Draw logo in center if provided
+  if (state.logoImage) {
+    await drawLogo(realCtx, width, height, state);
+  }
+
   async function applyPerspective() {
     if (state.transformPerspectiveX === 0 && state.transformPerspectiveY === 0) return;
 
@@ -827,4 +832,78 @@ function pointToLineProjection(
   const x = x1 + u * dx;
   const y = y1 + u * dy;
   return [x, y] as const;
+}
+
+async function drawLogo(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  state: QRCodeGeneratorState,
+) {
+  if (!state.logoImage) return;
+
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = state.logoImage;
+
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("Failed to load logo image"));
+  });
+
+  // Calculate logo size based on percentage of QR code size
+  const qrSize = Math.min(canvasWidth, canvasHeight);
+  const logoSize = (qrSize * state.logoSize) / 100;
+  const logoMargin = state.logoMargin;
+  const totalSize = logoSize + logoMargin * 2;
+
+  // Calculate center position
+  const centerX = canvasWidth / 2;
+  const centerY = canvasHeight / 2;
+
+  // Draw white background with border radius for the logo area
+  ctx.save();
+
+  // Create rounded rectangle path for the background
+  const bgX = centerX - totalSize / 2;
+  const bgY = centerY - totalSize / 2;
+  const borderRadius = (totalSize * state.logoBorderRadius) / 100;
+
+  ctx.beginPath();
+  ctx.roundRect(bgX, bgY, totalSize, totalSize, borderRadius);
+  ctx.fillStyle = state.lightColor;
+  ctx.fill();
+
+  // Clip to rounded rectangle for the logo
+  const logoX = centerX - logoSize / 2;
+  const logoY = centerY - logoSize / 2;
+  const logoBorderRadius = (logoSize * state.logoBorderRadius) / 100;
+
+  ctx.beginPath();
+  ctx.roundRect(logoX, logoY, logoSize, logoSize, logoBorderRadius);
+  ctx.clip();
+
+  // Draw the logo image, maintaining aspect ratio
+  const imgRatio = img.width / img.height;
+  let drawWidth: number;
+  let drawHeight: number;
+  let drawX: number;
+  let drawY: number;
+
+  if (imgRatio > 1) {
+    // Wider than tall
+    drawHeight = logoSize;
+    drawWidth = logoSize * imgRatio;
+    drawX = logoX - (drawWidth - logoSize) / 2;
+    drawY = logoY;
+  } else {
+    // Taller than wide or square
+    drawWidth = logoSize;
+    drawHeight = logoSize / imgRatio;
+    drawX = logoX;
+    drawY = logoY - (drawHeight - logoSize) / 2;
+  }
+
+  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+  ctx.restore();
 }

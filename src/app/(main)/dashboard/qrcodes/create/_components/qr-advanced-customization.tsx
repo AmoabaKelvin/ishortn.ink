@@ -1,5 +1,8 @@
 "use client";
 
+import { X } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -26,6 +29,7 @@ import type {
 } from "@/lib/qr-generator/types";
 
 import { ColorSwatch } from "./color-swatch";
+import { LogoUploader } from "./qr-logo-uploader";
 
 interface QRAdvancedCustomizationProps {
   pixelStyle: QRPixelStyle;
@@ -46,6 +50,15 @@ interface QRAdvancedCustomizationProps {
   setMarginNoise: (enabled: boolean) => void;
   marginNoiseRate: number;
   setMarginNoiseRate: (rate: number) => void;
+  // Logo props
+  logoImage: string | undefined;
+  setLogoImage: (image: string | undefined) => void;
+  logoSize: number;
+  setLogoSize: (size: number) => void;
+  logoMargin: number;
+  setLogoMargin: (margin: number) => void;
+  logoBorderRadius: number;
+  setLogoBorderRadius: (radius: number) => void;
 }
 
 export function QRAdvancedCustomization({
@@ -67,6 +80,14 @@ export function QRAdvancedCustomization({
   setMarginNoise,
   marginNoiseRate,
   setMarginNoiseRate,
+  logoImage,
+  setLogoImage,
+  logoSize,
+  setLogoSize,
+  logoMargin,
+  setLogoMargin,
+  logoBorderRadius,
+  setLogoBorderRadius,
 }: QRAdvancedCustomizationProps) {
   return (
     <div className="space-y-8">
@@ -235,6 +256,80 @@ export function QRAdvancedCustomization({
                 step={0.05}
               />
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Logo Section */}
+      <div className="space-y-5">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-blue-500" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Logo</span>
+        </div>
+
+        <div className="space-y-4">
+          {logoImage ? (
+            <div className="space-y-4">
+              <div className="relative inline-block">
+                <img
+                  src={logoImage}
+                  alt="Logo preview"
+                  className="h-20 w-20 rounded-lg object-cover border border-gray-200"
+                />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -right-2 -top-2 h-6 w-6 rounded-full"
+                  onClick={() => setLogoImage(undefined)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+
+              <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-gray-600">Logo Size</Label>
+                  <span className="text-xs font-medium text-gray-900">{logoSize}%</span>
+                </div>
+                <Slider
+                  value={[logoSize]}
+                  onValueChange={([value]) => setLogoSize(value ?? 25)}
+                  min={10}
+                  max={40}
+                  step={1}
+                />
+              </div>
+
+              <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-gray-600">Logo Padding</Label>
+                  <span className="text-xs font-medium text-gray-900">{logoMargin}px</span>
+                </div>
+                <Slider
+                  value={[logoMargin]}
+                  onValueChange={([value]) => setLogoMargin(value ?? 4)}
+                  min={0}
+                  max={20}
+                  step={1}
+                />
+              </div>
+
+              <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-gray-600">Corner Radius</Label>
+                  <span className="text-xs font-medium text-gray-900">{logoBorderRadius}%</span>
+                </div>
+                <Slider
+                  value={[logoBorderRadius]}
+                  onValueChange={([value]) => setLogoBorderRadius(value ?? 8)}
+                  min={0}
+                  max={50}
+                  step={1}
+                />
+              </div>
+            </div>
+          ) : (
+            <LogoUploader setLogoImage={(image) => setLogoImage(image ?? undefined)} />
           )}
         </div>
       </div>

@@ -612,6 +612,14 @@ function QRCodeCreationPage() {
               setMarginNoise={(enabled) => updateQrState({ marginNoise: enabled })}
               marginNoiseRate={qrState.marginNoiseRate}
               setMarginNoiseRate={(rate) => updateQrState({ marginNoiseRate: rate })}
+              logoImage={qrState.logoImage}
+              setLogoImage={(image) => updateQrState({ logoImage: image })}
+              logoSize={qrState.logoSize}
+              setLogoSize={(size) => updateQrState({ logoSize: size })}
+              logoMargin={qrState.logoMargin}
+              setLogoMargin={(margin) => updateQrState({ logoMargin: margin })}
+              logoBorderRadius={qrState.logoBorderRadius}
+              setLogoBorderRadius={(radius) => updateQrState({ logoBorderRadius: radius })}
             />
           </CardContent>
         </Card>

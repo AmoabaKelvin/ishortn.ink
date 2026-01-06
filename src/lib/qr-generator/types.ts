@@ -105,6 +105,12 @@ export interface QRCodeGeneratorState extends QrCodeGeneratorMarkerState {
   transformPerspectiveX: number
   transformPerspectiveY: number
   transformScale: number
+
+  // Logo embedding options
+  logoImage?: string
+  logoSize: number // Percentage of QR code size (0-50)
+  logoMargin: number // Padding around the logo in pixels
+  logoBorderRadius: number // Border radius percentage (0-50 for circle)
 }
 
 export interface QRCodeGenerateResult {
