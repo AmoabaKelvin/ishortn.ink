@@ -19,14 +19,6 @@ export const MarkerShapes = [
   'tiny-plus',
 ] as const
 
-export const MarkerSubShapes = [
-  'square',
-  'circle',
-  'box',
-  'random',
-  'plus',
-] as const
-
 export const MarkerInnerShapes = [
   'square',
   'circle',
@@ -38,11 +30,6 @@ export const MarkerInnerShapes = [
 export type PixelStyle = typeof PixelStyles[number]
 export type MarkerShape = typeof MarkerShapes[number]
 export type MarkerInnerShape = typeof MarkerInnerShapes[number]
-
-export interface GeneratedQRInfo {
-  width: number
-  height: number
-}
 
 export interface MarginObject {
   top: number

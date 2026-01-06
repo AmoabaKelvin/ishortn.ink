@@ -1,23 +1,9 @@
-import type { CornerStyle, PatternStyle } from "@/lib/types/qrcode";
 import type {
   QRPixelStyle,
   QRMarkerShape,
   QRMarkerInnerShape,
   QREffect,
 } from "@/lib/qr-generator/types";
-
-// Legacy pattern styles (for qrcode-with-logos compatibility)
-export const patternStyles: PatternStyle[] = [
-  "square",
-  "diamond",
-  "star",
-  "fluid",
-  "rounded",
-  "tile",
-  "stripe",
-  "fluid-line",
-  "stripe-column",
-];
 
 export const presetColors = [
   "#000000",
@@ -35,18 +21,6 @@ export const presetBackgroundColors = [
   "#000000",
 ];
 
-// Legacy corner styles (for qrcode-with-logos compatibility)
-export const cornerStyles: CornerStyle[] = [
-  "circle",
-  "circle-diamond",
-  "square",
-  "square-diamond",
-  "rounded-circle",
-  "rounded",
-  "circle-star",
-];
-
-// New advanced QR code styles
 export const pixelStyles: { value: QRPixelStyle; label: string }[] = [
   { value: "square", label: "Square" },
   { value: "rounded", label: "Rounded" },

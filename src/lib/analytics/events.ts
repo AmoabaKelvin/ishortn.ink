@@ -10,7 +10,6 @@ export const POSTHOG_EVENTS = {
   LINK_CREATED: "link_created",
   LINK_CREATED_WITH_PASSWORD: "link_created_with_password",
   LINK_DELETED: "link_deleted",
-  LINK_QUICK_SHORTENED: "link_quick_shortened",
   LINK_PASSWORD_CHANGED: "link_password_changed",
   LINK_MOVED_TO_FOLDER: "link_moved_to_folder",
   LINKS_EXPORTED: "links_exported",
