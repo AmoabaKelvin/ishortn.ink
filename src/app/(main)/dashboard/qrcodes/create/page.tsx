@@ -168,6 +168,11 @@ function QRCodeCreationPage() {
       effectLiquidifyRadius: preset.effectRadius,
       marginNoise: preset.marginNoise,
       marginNoiseRate: parseFloat(preset.marginNoiseRate),
+      // Logo settings (with defaults for older presets)
+      logoImage: preset.logoImage ?? undefined,
+      logoSize: preset.logoSize ?? 25,
+      logoMargin: preset.logoMargin ?? 4,
+      logoBorderRadius: preset.logoBorderRadius ?? 8,
     }));
   }, [presets]);
 
@@ -186,7 +191,12 @@ function QRCodeCreationPage() {
       qrState.effect !== preset.effect ||
       qrState.effectCrystalizeRadius !== preset.effectRadius ||
       qrState.marginNoise !== preset.marginNoise ||
-      qrState.marginNoiseRate !== parseFloat(preset.marginNoiseRate)
+      qrState.marginNoiseRate !== parseFloat(preset.marginNoiseRate) ||
+      // Logo settings
+      qrState.logoImage !== (preset.logoImage ?? undefined) ||
+      qrState.logoSize !== preset.logoSize ||
+      qrState.logoMargin !== preset.logoMargin ||
+      qrState.logoBorderRadius !== preset.logoBorderRadius
     );
   }, [selectedPresetId, presets, qrState]);
 
@@ -208,6 +218,11 @@ function QRCodeCreationPage() {
       effectRadius: qrState.effectCrystalizeRadius,
       marginNoise: qrState.marginNoise,
       marginNoiseRate: String(qrState.marginNoiseRate),
+      // Logo settings
+      logoImage: qrState.logoImage,
+      logoSize: qrState.logoSize,
+      logoMargin: qrState.logoMargin,
+      logoBorderRadius: qrState.logoBorderRadius,
     });
   };
 
@@ -226,6 +241,11 @@ function QRCodeCreationPage() {
       effectRadius: qrState.effectCrystalizeRadius,
       marginNoise: qrState.marginNoise,
       marginNoiseRate: String(qrState.marginNoiseRate),
+      // Logo settings
+      logoImage: qrState.logoImage,
+      logoSize: qrState.logoSize,
+      logoMargin: qrState.logoMargin,
+      logoBorderRadius: qrState.logoBorderRadius,
     });
   };
 
@@ -612,6 +632,14 @@ function QRCodeCreationPage() {
               setMarginNoise={(enabled) => updateQrState({ marginNoise: enabled })}
               marginNoiseRate={qrState.marginNoiseRate}
               setMarginNoiseRate={(rate) => updateQrState({ marginNoiseRate: rate })}
+              logoImage={qrState.logoImage}
+              setLogoImage={(image) => updateQrState({ logoImage: image })}
+              logoSize={qrState.logoSize}
+              setLogoSize={(size) => updateQrState({ logoSize: size })}
+              logoMargin={qrState.logoMargin}
+              setLogoMargin={(margin) => updateQrState({ logoMargin: margin })}
+              logoBorderRadius={qrState.logoBorderRadius}
+              setLogoBorderRadius={(radius) => updateQrState({ logoBorderRadius: radius })}
             />
           </CardContent>
         </Card>

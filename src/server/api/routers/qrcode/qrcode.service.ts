@@ -136,6 +136,11 @@ export async function createQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetC
     effectRadius: input.effectRadius,
     marginNoise: input.marginNoise,
     marginNoiseRate: input.marginNoiseRate,
+    // Logo settings
+    logoImage: input.logoImage,
+    logoSize: input.logoSize,
+    logoMargin: input.logoMargin,
+    logoBorderRadius: input.logoBorderRadius,
   });
 
   const insertedId = insertResult[0].insertId;
@@ -189,6 +194,11 @@ export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetU
       effectRadius: input.effectRadius,
       marginNoise: input.marginNoise,
       marginNoiseRate: input.marginNoiseRate,
+      // Logo settings
+      logoImage: input.logoImage,
+      logoSize: input.logoSize,
+      logoMargin: input.logoMargin,
+      logoBorderRadius: input.logoBorderRadius,
     })
     .where(eq(qrPreset.id, input.id));
 

@@ -361,6 +361,12 @@ export const qrPreset = mysqlTable(
     marginNoise: boolean("marginNoise").notNull().default(false),
     marginNoiseRate: varchar("marginNoiseRate", { length: 10 }).notNull().default("0.5"),
 
+    // Logo settings
+    logoImage: longtext("logoImage"), // Base64 encoded image
+    logoSize: int("logoSize").notNull().default(25),
+    logoMargin: int("logoMargin").notNull().default(4),
+    logoBorderRadius: int("logoBorderRadius").notNull().default(8),
+
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
   },
