@@ -168,6 +168,11 @@ function QRCodeCreationPage() {
       effectLiquidifyRadius: preset.effectRadius,
       marginNoise: preset.marginNoise,
       marginNoiseRate: parseFloat(preset.marginNoiseRate),
+      // Logo settings
+      logoImage: preset.logoImage ?? undefined,
+      logoSize: preset.logoSize,
+      logoMargin: preset.logoMargin,
+      logoBorderRadius: preset.logoBorderRadius,
     }));
   }, [presets]);
 
@@ -186,7 +191,12 @@ function QRCodeCreationPage() {
       qrState.effect !== preset.effect ||
       qrState.effectCrystalizeRadius !== preset.effectRadius ||
       qrState.marginNoise !== preset.marginNoise ||
-      qrState.marginNoiseRate !== parseFloat(preset.marginNoiseRate)
+      qrState.marginNoiseRate !== parseFloat(preset.marginNoiseRate) ||
+      // Logo settings
+      qrState.logoImage !== (preset.logoImage ?? undefined) ||
+      qrState.logoSize !== preset.logoSize ||
+      qrState.logoMargin !== preset.logoMargin ||
+      qrState.logoBorderRadius !== preset.logoBorderRadius
     );
   }, [selectedPresetId, presets, qrState]);
 
@@ -208,6 +218,11 @@ function QRCodeCreationPage() {
       effectRadius: qrState.effectCrystalizeRadius,
       marginNoise: qrState.marginNoise,
       marginNoiseRate: String(qrState.marginNoiseRate),
+      // Logo settings
+      logoImage: qrState.logoImage,
+      logoSize: qrState.logoSize,
+      logoMargin: qrState.logoMargin,
+      logoBorderRadius: qrState.logoBorderRadius,
     });
   };
 
@@ -226,6 +241,11 @@ function QRCodeCreationPage() {
       effectRadius: qrState.effectCrystalizeRadius,
       marginNoise: qrState.marginNoise,
       marginNoiseRate: String(qrState.marginNoiseRate),
+      // Logo settings
+      logoImage: qrState.logoImage,
+      logoSize: qrState.logoSize,
+      logoMargin: qrState.logoMargin,
+      logoBorderRadius: qrState.logoBorderRadius,
     });
   };
 

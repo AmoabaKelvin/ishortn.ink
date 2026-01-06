@@ -45,6 +45,11 @@ export const qrPresetCreateInput = z.object({
   effectRadius: z.number().min(5).max(30).default(12),
   marginNoise: z.boolean().default(false),
   marginNoiseRate: marginNoiseRateSchema.default("0.5"),
+  // Logo settings
+  logoImage: z.string().nullish(),
+  logoSize: z.number().min(10).max(40).default(25),
+  logoMargin: z.number().min(0).max(20).default(4),
+  logoBorderRadius: z.number().min(0).max(50).default(8),
 });
 
 export const qrPresetDeleteInput = z.object({
@@ -62,6 +67,11 @@ export const qrPresetUpdateInput = z.object({
   effectRadius: z.number().min(5).max(30),
   marginNoise: z.boolean(),
   marginNoiseRate: marginNoiseRateSchema,
+  // Logo settings
+  logoImage: z.string().nullish(),
+  logoSize: z.number().min(10).max(40),
+  logoMargin: z.number().min(0).max(20),
+  logoBorderRadius: z.number().min(0).max(50),
 });
 
 export type QRPresetCreateInput = z.infer<typeof qrPresetCreateInput>;
