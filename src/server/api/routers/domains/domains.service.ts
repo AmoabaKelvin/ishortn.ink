@@ -18,8 +18,8 @@ export async function addDomainToUserAccount(
   ctx: WorkspaceTRPCContext,
   input: CreateCustomDomainInput,
 ) {
-  // Check permission for domain creation (owners and admins only in team workspaces)
-  requirePermission(ctx.workspace, "domains.create", "add custom domains");
+  // Check permission for domain creation (owners only in team workspaces)
+  requirePermission(ctx.workspace, "domains.create", "add custom domains. Only team owners can manage domains");
 
   const userId = ctx.auth.userId;
 
@@ -158,8 +158,8 @@ export async function getCustomDomainsForUser(ctx: WorkspaceTRPCContext) {
 }
 
 export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, domainId: number) {
-  // Check permission for domain deletion (owners and admins only in team workspaces)
-  requirePermission(ctx.workspace, "domains.delete", "delete custom domains");
+  // Check permission for domain deletion (owners only in team workspaces)
+  requirePermission(ctx.workspace, "domains.delete", "delete custom domains. Only team owners can manage domains");
 
   const domain = await ctx.db.query.customDomain.findFirst({
     where: and(

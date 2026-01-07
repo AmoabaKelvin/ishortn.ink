@@ -68,7 +68,7 @@ export function AddCustomDomainModal() {
     toast.promise(createCustomDomainMutation.mutateAsync({ domain }), {
       loading: "Adding domain...",
       success: "Domain added successfully",
-      error: "Failed to add domain",
+      error: (err) => err?.message ?? "Failed to add domain",
     });
   };
 
