@@ -34,7 +34,7 @@ export type WorkspacePermission =
 /**
  * Role-based permission mapping
  * Owner: Full access to everything
- * Admin: Can manage resources and invite members, but cannot delete team
+ * Admin: Can manage resources and invite members, but cannot manage domains or delete team
  * Member: Can create and manage resources, but cannot manage team settings
  */
 export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
@@ -70,8 +70,6 @@ export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
     "qrcodes.create",
     "qrcodes.edit",
     "qrcodes.delete",
-    "domains.create",
-    "domains.delete",
     "tags.create",
     "tags.delete",
     "utm.create",
