@@ -1,5 +1,9 @@
 import type { RouterOutputs } from "@/trpc/shared";
 
+/**
+ * Checks if a user can create more QR codes based on their subscription
+ * Free users are limited to 5 QR codes
+ */
 export function checkIfUserCanCreateMoreQRCodes(
   subDetails: RouterOutputs["subscriptions"]["get"] | undefined
 ) {

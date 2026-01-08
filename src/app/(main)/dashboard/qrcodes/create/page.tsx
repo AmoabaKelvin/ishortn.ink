@@ -47,7 +47,7 @@ import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
 import type { QRCodeGeneratorState } from "@/lib/qr-generator";
 import type { QREffect, QRMarkerInnerShape, QRMarkerShape, QRPixelStyle } from "@/lib/qr-generator/types";
 
-import { checkIfUserCanCreateMoreQRCodes } from "../utils";
+import { checkIfUserCanCreateMoreQRCodes } from "@/lib/qrcode";
 
 import QRCodeContent from "./_components/qr-content";
 import QRAdvancedCustomization from "./_components/qr-advanced-customization";
