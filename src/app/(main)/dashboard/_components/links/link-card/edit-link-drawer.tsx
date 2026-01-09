@@ -213,6 +213,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                 </div>
                 <button
                   onClick={onClose}
+                  aria-label="Close drawer"
                   className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
                 >
                   <X className="h-5 w-5" />
@@ -327,6 +328,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                     <button
                                       type="button"
                                       onClick={() => removeTag(tag)}
+                                      aria-label={`Remove tag ${tag}`}
                                       className="text-gray-500 hover:text-gray-700"
                                     >
                                       <X size={14} />

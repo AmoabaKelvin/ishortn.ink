@@ -19,6 +19,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/_next/") ||
     pathname.endsWith(".png") ||
+    pathname.endsWith(".ico") ||
     pathname.split("/").length > 2;
 
   if (shouldSkip) {

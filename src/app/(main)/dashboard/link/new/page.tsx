@@ -419,6 +419,7 @@ export default function CreateLinkPage() {
                               <button
                                 type="button"
                                 onClick={() => cycleAlias("up")}
+                                aria-label="Previous alias suggestion"
                                 className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                               >
                                 <ChevronUp className="h-4 w-4" />
@@ -426,6 +427,7 @@ export default function CreateLinkPage() {
                               <button
                                 type="button"
                                 onClick={() => cycleAlias("down")}
+                                aria-label="Next alias suggestion"
                                 className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                               >
                                 <ChevronDown className="h-4 w-4" />
@@ -438,6 +440,7 @@ export default function CreateLinkPage() {
                             <button
                               type="button"
                               onClick={handleRegenerateClick}
+                              aria-label="Generate alias suggestions"
                               className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                             >
                               <Sparkles className="h-4 w-4" />
@@ -510,6 +513,7 @@ export default function CreateLinkPage() {
                               <button
                                 type="button"
                                 onClick={() => removeTag(tag)}
+                                aria-label={`Remove tag ${tag}`}
                                 className="text-gray-500 hover:text-gray-700"
                               >
                                 <X size={14} />

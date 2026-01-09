@@ -120,6 +120,7 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
           className="sr-only"
           onChange={handleFileInputChange}
           accept="image/png,image/jpeg,image/gif"
+          aria-label="Upload OG image"
         />
       </div>
 
