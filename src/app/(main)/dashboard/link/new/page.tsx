@@ -46,6 +46,7 @@ import { UtmTemplateSelector } from "../../_components/utm-template-selector";
 import { revalidateHomepage } from "../../revalidate-homepage";
 
 import { LinkPreviewComponent } from "./_components/link-preview";
+import { OgImageUploader } from "./_components/og-image-uploader";
 import UpgradeToProAIButtonTooltip from "./_components/upgrade-to-pro-ai-tooltip";
 
 import type { CustomDomain } from "@/server/db/schema";
@@ -124,21 +125,43 @@ export default function CreateLinkPage() {
     setCurrentAliasIndex(0);
     setGeneratedAliases([]);
     form.setValue("alias", "");
+
     const url = form.getValues("url");
     if (!url) {
       toast.error("Please enter a valid URL first");
       return;
     }
 
+    // Get custom metadata from form - these take priority
+    const customTitle = form.getValues("metadata.title");
+    const customDescription = form.getValues("metadata.description");
+    const customImage = form.getValues("metadata.image");
+
     let currentMetadata = metaData;
-    if (!currentMetadata.title && !currentMetadata.description) {
-      const newMetadata = (await fetchMetadata(url)) as unknown as MetaData;
-      if (newMetadata) {
-        currentMetadata = newMetadata;
-      } else {
+
+    // Only fetch if we don't have any metadata yet (custom or fetched)
+    if (!currentMetadata.title && !currentMetadata.description && !customTitle && !customDescription) {
+      try {
+        const fetchedMetadata = await fetchMetadataInfo(url);
+        currentMetadata = {
+          title: customTitle || fetchedMetadata.title,
+          description: customDescription || fetchedMetadata.description,
+          image: customImage || fetchedMetadata.image,
+          favicon: fetchedMetadata.favicon,
+        };
+        setMetaData(currentMetadata);
+      } catch {
         toast.error("Failed to fetch metadata. Please try again.");
         return;
       }
+    } else {
+      // Use custom values if available
+      currentMetadata = {
+        ...currentMetadata,
+        title: customTitle || currentMetadata.title,
+        description: customDescription || currentMetadata.description,
+        image: customImage || currentMetadata.image,
+      };
     }
 
     await generateAliases(currentMetadata);
@@ -260,30 +283,40 @@ export default function CreateLinkPage() {
     }
   }, [debouncedAlias, selectedDomain]);
 
-  async function fetchMetadata(url: string) {
-    if (!url) return;
-    const metadata = await fetchMetadataInfo(url);
-    setMetaData(metadata);
-    setGeneratedAliases([]);
-    form.setValue("alias", "");
-
-    if (userSubscription?.data?.subscriptions?.status === "active") {
-      generateAliasMutation.mutate({
-        url: form.getValues("url"),
-        title: metadata.title,
-        description: metadata.description,
-      });
-    }
-  }
-
   useEffect(() => {
-    if (
-      (form.formState.errors.url ?? !form.getValues("url")) ||
-      !debouncedUrl
-    ) {
-      return;
-    }
-    void fetchMetadata(debouncedUrl);
+    const fetchMetadata = async () => {
+      if (!debouncedUrl || form.formState.errors.url || !form.getValues("url")) {
+        return;
+      }
+
+      const fetchedMetadata = await fetchMetadataInfo(debouncedUrl);
+
+      // Get custom metadata from form - these take priority over fetched metadata
+      const customTitle = form.getValues("metadata.title");
+      const customDescription = form.getValues("metadata.description");
+      const customImage = form.getValues("metadata.image");
+
+      // Only use fetched values for fields where user hasn't set custom values
+      setMetaData((prev) => ({
+        title: customTitle || fetchedMetadata.title,
+        description: customDescription || fetchedMetadata.description,
+        image: customImage || fetchedMetadata.image,
+        favicon: fetchedMetadata.favicon,
+      }));
+
+      setGeneratedAliases([]);
+      form.setValue("alias", "");
+
+      if (userSubscription?.data?.subscriptions?.status === "active") {
+        generateAliasMutation.mutate({
+          url: debouncedUrl,
+          title: customTitle || fetchedMetadata.title,
+          description: customDescription || fetchedMetadata.description,
+        });
+      }
+    };
+
+    void fetchMetadata();
   }, [debouncedUrl]);
 
   return (
@@ -575,10 +608,10 @@ export default function CreateLinkPage() {
                                 placeholder="Custom title for your link"
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setMetaData({
-                                    ...metaData,
+                                  setMetaData((prev) => ({
+                                    ...prev,
                                     title: e.target.value,
-                                  });
+                                  }));
                                 }}
                               />
                             </FormControl>
@@ -597,10 +630,10 @@ export default function CreateLinkPage() {
                                 placeholder="Custom description for your link"
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setMetaData({
-                                    ...metaData,
+                                  setMetaData((prev) => ({
+                                    ...prev,
                                     description: e.target.value,
-                                  });
+                                  }));
                                 }}
                               />
                             </FormControl>
@@ -612,17 +645,16 @@ export default function CreateLinkPage() {
                         name="metadata.image"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Custom Image URL</FormLabel>
+                            <FormLabel>Custom Image</FormLabel>
                             <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="https://example.com/image.jpg"
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  setMetaData({
-                                    ...metaData,
-                                    image: e.target.value,
-                                  });
+                              <OgImageUploader
+                                value={field.value}
+                                onChange={(image) => {
+                                  field.onChange(image);
+                                  setMetaData((prev) => ({
+                                    ...prev,
+                                    image: image || "",
+                                  }));
                                 }}
                               />
                             </FormControl>

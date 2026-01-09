@@ -45,9 +45,16 @@ import {
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
+import { OgImageUploader } from "@/app/(main)/dashboard/link/new/_components/og-image-uploader";
 
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
+
+type LinkMetadata = {
+  title?: string;
+  description?: string;
+  image?: string;
+};
 
 type EditLinkDrawerProps = {
   link: RouterOutputs["link"]["list"]["links"][number];
@@ -59,6 +66,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   const [tags, setTags] = useState<string[]>((link.tags as string[]) || []);
   const [tagInput, setTagInput] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const [isCustomMetadataOpen, setIsCustomMetadataOpen] = useState(false);
   const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
   const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
 
@@ -71,47 +79,40 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     },
   });
 
-  const form = useForm<z.infer<typeof updateLinkSchema>>({
-    resolver: zodResolver(updateLinkSchema),
-    defaultValues: {
-      id: link.id,
-      name: link.name ?? "",
-      url: link.url ?? "",
-      alias: link.alias ?? "",
-      note: link.note ?? undefined,
-      disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
-      disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
-      tags: (link.tags as string[]) || [],
-      utmParams: (link.utmParams as {
+  const getFormDefaults = (linkData: typeof link) => {
+    const metadata = linkData.metadata as LinkMetadata | undefined;
+    return {
+      id: linkData.id,
+      name: linkData.name ?? "",
+      url: linkData.url ?? "",
+      alias: linkData.alias ?? "",
+      note: linkData.note ?? undefined,
+      disableLinkAfterClicks: linkData.disableLinkAfterClicks ?? undefined,
+      disableLinkAfterDate: linkData.disableLinkAfterDate ?? undefined,
+      tags: (linkData.tags as string[]) || [],
+      metadata: {
+        title: metadata?.title ?? undefined,
+        description: metadata?.description ?? undefined,
+        image: metadata?.image ?? undefined,
+      },
+      utmParams: (linkData.utmParams as {
         utm_source?: string;
         utm_medium?: string;
         utm_campaign?: string;
         utm_term?: string;
         utm_content?: string;
       }) ?? undefined,
-    },
+    };
+  };
+
+  const form = useForm<z.infer<typeof updateLinkSchema>>({
+    resolver: zodResolver(updateLinkSchema),
+    defaultValues: getFormDefaults(link),
   });
 
   useEffect(() => {
-    form.reset({
-      id: link.id,
-      name: link.name ?? "",
-      url: link.url ?? "",
-      alias: link.alias ?? "",
-      note: link.note ?? undefined,
-      disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
-      disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
-      tags: (link.tags as string[]) || [],
-      utmParams: (link.utmParams as {
-        utm_source?: string;
-        utm_medium?: string;
-        utm_campaign?: string;
-        utm_term?: string;
-        utm_content?: string;
-      }) ?? undefined,
-    });
+    form.reset(getFormDefaults(link));
     setTags((link.tags as string[]) || []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [link]);
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -164,7 +165,9 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     );
   }
 
-  const isUltraUser = userSubscription?.data?.subscriptions?.plan === "ultra";
+  const subscriptionStatus = userSubscription?.data?.subscriptions;
+  const isUltraUser = subscriptionStatus?.plan === "ultra";
+  const isProOrUltraUser = subscriptionStatus?.status === "active";
 
   return (
     <AnimatePresence>
@@ -376,6 +379,105 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  {/* Custom Social Media Previews Section */}
+                  <div className="rounded-lg border border-gray-200 p-4">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between text-left"
+                      onClick={() => setIsCustomMetadataOpen(!isCustomMetadataOpen)}
+                    >
+                      <div className="flex flex-col">
+                        <p className="flex items-center gap-2 text-lg font-semibold">
+                          Custom Social Media Previews
+                          {!isProOrUltraUser && (
+                            <span className="flex max-w-fit items-center space-x-1 whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800">
+                              <Gem className="h-4 w-4 text-slate-500" />
+                              <span className="uppercase">Pro</span>
+                            </span>
+                          )}
+                        </p>
+                        <span className="text-sm text-gray-500">
+                          Personalize your link previews with custom metadata
+                        </span>
+                      </div>
+                      <ChevronDown
+                        className={`h-5 w-5 transform transition-transform ${
+                          isCustomMetadataOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    <AnimatePresence>
+                      {isCustomMetadataOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <div className="mt-4 space-y-4">
+                            <FormField
+                              control={form.control}
+                              name="metadata.title"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Custom Title</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Custom title for your link"
+                                      disabled={!isProOrUltraUser}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="metadata.description"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Custom Description</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Custom description for your link"
+                                      disabled={!isProOrUltraUser}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="metadata.image"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Custom Image</FormLabel>
+                                  <FormControl>
+                                    {isProOrUltraUser ? (
+                                      <OgImageUploader
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                      />
+                                    ) : (
+                                      <Input
+                                        placeholder="Upgrade to Pro to add custom images"
+                                        disabled
+                                      />
+                                    )}
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* UTM Parameters Section */}
