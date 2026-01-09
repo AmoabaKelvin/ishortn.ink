@@ -110,10 +110,6 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
 
   if (!qrCode) throw new Error("QR Code not found");
 
-  if (qrCode.linkId) {
-    await ctx.db.delete(link).where(eq(link.id, qrCode.linkId));
-  }
-
   await ctx.db.delete(qrcode).where(eq(qrcode.id, id));
 
   return true;
