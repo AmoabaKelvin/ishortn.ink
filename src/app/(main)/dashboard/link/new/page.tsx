@@ -379,13 +379,13 @@ export default function CreateLinkPage() {
                   <FormItem>
                     <FormLabel>Link Alias</FormLabel>
                     <FormControl>
-                      <section className="flex items-center">
+                      <div className="flex h-9 w-full items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 hover:border-gray-300">
                         <Select
                           onValueChange={(value) => {
                             form.setValue("domain", value);
                           }}
                         >
-                          <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-50">
+                          <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-600 shadow-none ring-0 hover:text-gray-900 focus:ring-0">
                             <SelectValue placeholder="ishortn.ink" />
                           </SelectTrigger>
                           <SelectContent>
@@ -405,39 +405,46 @@ export default function CreateLinkPage() {
                             </SelectGroup>
                           </SelectContent>
                         </Select>
-                        <div className="relative flex-grow">
-                          <Input
-                            placeholder="short-link"
-                            className="h-10 flex-grow rounded-bl-none rounded-tl-none"
-                            {...field}
-                          />
-
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                            {generateAliasMutation.isLoading ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-                            ) : generatedAliases.length > 0 ? (
-                              <div className="flex flex-col">
-                                <ChevronUp
-                                  className="h-4 w-4 cursor-pointer text-gray-500 hover:text-gray-700"
-                                  onClick={() => cycleAlias("up")}
-                                />
-                                <ChevronDown
-                                  className="h-4 w-4 cursor-pointer text-gray-500 hover:text-gray-700"
-                                  onClick={() => cycleAlias("down")}
-                                />
-                              </div>
-                            ) : userSubscription?.data?.subscriptions
-                                ?.status !== "active" ? (
-                              <UpgradeToProAIButtonTooltip />
-                            ) : (
-                              <Sparkles
-                                className="h-4 w-4 text-gray-500"
-                                onClick={handleRegenerateClick}
-                              />
-                            )}
-                          </div>
+                        <div className="h-4 w-px bg-gray-200" />
+                        <input
+                          placeholder="short-link"
+                          className="h-full flex-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                          {...field}
+                        />
+                        <div className="flex h-full items-center border-l border-gray-200 px-2">
+                          {generateAliasMutation.isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          ) : generatedAliases.length > 0 ? (
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => cycleAlias("up")}
+                                className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => cycleAlias("down")}
+                                className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : userSubscription?.data?.subscriptions
+                              ?.status !== "active" ? (
+                            <UpgradeToProAIButtonTooltip />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleRegenerateClick}
+                              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
-                      </section>
+                      </div>
                     </FormControl>
                     <AnimatePresence>
                       {generatedAliases.length > 0 && (
