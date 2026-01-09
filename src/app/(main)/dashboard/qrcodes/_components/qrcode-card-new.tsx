@@ -55,12 +55,17 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
     trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED);
   };
 
-  const handleDelete = () => {
-    toast.promise(deleteQrMutation.mutateAsync({ id: qr.id }), {
-      loading: "Deleting QR Code",
-      success: "QR Code deleted successfully",
-      error: "Failed to delete QR Code",
-    });
+  const handleDelete = async () => {
+    try {
+      await toast.promise(deleteQrMutation.mutateAsync({ id: qr.id }), {
+        loading: "Deleting QR Code",
+        success: "QR Code deleted successfully",
+        error: "Failed to delete QR Code",
+      });
+      setDeleteDialog(false);
+    } catch {
+      // Error is already handled by toast.promise
+    }
   };
 
   return (
@@ -184,7 +189,10 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
               disabled={deleteQrMutation.isLoading}
               className="flex-1 rounded-xl bg-red-600 font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
