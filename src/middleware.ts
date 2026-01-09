@@ -2,40 +2,42 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 import { NextRequest, NextResponse } from "next/server";
 
+import { isBot } from "@/lib/utils/is-bot";
+
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 async function resolveLinkAndLogAnalytics(request: NextRequest) {
   if (isProtectedRoute(request)) {
-    return; // Let Clerk handle protected routes
+    return;
   }
 
-  const { pathname, host } = new URL(request.url);
+  const { pathname, host, origin } = new URL(request.url);
 
-  if (
+  const shouldSkip =
     pathname === "/" ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/_next/") ||
-    pathname.endsWith(".png")
-  ) {
+    pathname.endsWith(".png") ||
+    pathname.split("/").length > 2;
+
+  if (shouldSkip) {
     return NextResponse.next();
   }
 
-  // if the pathname is more than one, we don't need to check for the api/link route
-  if (pathname.split("/").length > 2) {
+  const userAgent = request.headers.get("user-agent");
+
+  if (userAgent && isBot(userAgent)) {
     return NextResponse.next();
   }
 
   const geo = geolocation(request);
   const ip = ipAddress(request);
-  const userAgent = request.headers.get("user-agent");
   const referer = request.headers.get("referer");
 
   const response = await fetch(
     encodeURI(
-      `${request.url.split(pathname)[0]
-      }/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${geo.city
-      }&ip=${ip}`
+      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${geo.city}&ip=${ip}`
     ),
     {
       headers: {
@@ -55,11 +57,9 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Ensure URL has a valid protocol for redirect
-  let redirectUrl = data.url;
-  if (!redirectUrl.startsWith("http://") && !redirectUrl.startsWith("https://")) {
-    redirectUrl = `https://${redirectUrl}`;
-  }
+  const redirectUrl = data.url.startsWith("http://") || data.url.startsWith("https://")
+    ? data.url
+    : `https://${data.url}`;
 
   return NextResponse.redirect(redirectUrl);
 }
