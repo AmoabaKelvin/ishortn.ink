@@ -6,6 +6,16 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,6 +37,7 @@ function isALink(s: string): boolean {
 
 export function QRCodeCard({ qr }: QRCodeCardProps) {
   const [openLinkUpdateModal, setOpenLinkUpdateModal] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
   const deleteQrMutation = api.qrCode.delete.useMutation({
     onSuccess: async () => {
       await revalidateRoute("/dashboard/qrcodes");
@@ -44,7 +55,7 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
     trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     toast.promise(deleteQrMutation.mutateAsync({ id: qr.id }), {
       loading: "Deleting QR Code",
       success: "QR Code deleted successfully",
@@ -100,7 +111,7 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleDelete}
+                onClick={() => setDeleteDialog(true)}
                 className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -151,6 +162,37 @@ export function QRCodeCard({ qr }: QRCodeCardProps) {
           link={{ ...qr.link, totalClicks: 0, tags: qr.link.tags ?? [], folder: null }}
         />
       )}
+
+      {/* Delete QR Code Confirmation Dialog */}
+      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <AlertDialogContent className="max-w-md rounded-2xl border-0 p-0 overflow-hidden shadow-2xl">
+          <div className="bg-gradient-to-b from-red-50 to-white p-6">
+            <AlertDialogHeader className="space-y-3">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-center text-lg font-semibold text-gray-900">
+                Delete QR Code?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-center text-sm text-gray-500">
+                This will permanently delete <span className="font-medium text-gray-700">{qr.title || "this QR Code"}</span>. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter className="flex-row gap-2 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
+            <AlertDialogCancel className="flex-1 rounded-xl border-gray-200 font-medium hover:bg-gray-100">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteQrMutation.isLoading}
+              className="flex-1 rounded-xl bg-red-600 font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleteQrMutation.isLoading ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
