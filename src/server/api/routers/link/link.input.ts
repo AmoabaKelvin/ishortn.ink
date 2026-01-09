@@ -1,5 +1,43 @@
 import { z } from "zod";
 
+// OG image validator: accepts either a URL or a base64 data URI (PNG/JPEG/GIF) under 2MB
+const MAX_OG_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+
+const isValidUrl = (value: string): boolean => {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const isValidBase64Image = (value: string): boolean => {
+  const base64Regex = /^data:image\/(png|jpe?g|gif);base64,[A-Za-z0-9+/]+=*$/;
+  if (!base64Regex.test(value)) return false;
+
+  const base64Payload = value.split(",")[1];
+  if (!base64Payload) return false;
+
+  const padding = (base64Payload.match(/=+$/) || [""])[0].length;
+  const decodedSize = Math.ceil((base64Payload.length * 3) / 4) - padding;
+
+  return decodedSize <= MAX_OG_IMAGE_SIZE_BYTES;
+};
+
+const ogImageSchema = z
+  .string()
+  .refine((value) => {
+    if (!value) return true;
+
+    if (value.startsWith("data:image/")) {
+      return isValidBase64Image(value);
+    }
+
+    return isValidUrl(value);
+  }, "Image must be a valid URL or a base64 PNG/JPEG/GIF under 2MB")
+  .optional();
+
 export const retrieveOriginalUrlSchema = z.object({
   alias: z.string(),
   domain: z.string(),
@@ -46,7 +84,7 @@ export const createLinkSchema = z.object({
     .object({
       title: z.string().optional(),
       description: z.string().optional(),
-      image: z.string().optional(),
+      image: ogImageSchema,
     })
     .optional(),
   utmParams: z
