@@ -23,6 +23,7 @@ import { api } from "@/trpc/react";
 
 export function AddCustomDomainModal() {
   const { data: userSubscription } = api.subscriptions.get.useQuery();
+  const { data: workspace } = api.team.currentWorkspace.useQuery();
 
   const [domain, setDomain] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -67,11 +68,22 @@ export function AddCustomDomainModal() {
     toast.promise(createCustomDomainMutation.mutateAsync({ domain }), {
       loading: "Adding domain...",
       success: "Domain added successfully",
-      error: "Failed to add domain",
+      error: (err) => err?.message ?? "Failed to add domain",
     });
   };
 
   const isProUser = userSubscription?.subscriptions?.status === "active";
+
+  // In team workspaces, only owners and admins can add domains
+  const canAddDomains =
+    workspace?.type === "personal" ||
+    (workspace?.type === "team" &&
+      (workspace.role === "owner" || workspace.role === "admin"));
+
+  // Don't render anything if user lacks permission in a team workspace
+  if (workspace?.type === "team" && !canAddDomains) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

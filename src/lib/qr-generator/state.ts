@@ -41,6 +41,11 @@ export function defaultGeneratorState(): QRCodeGeneratorState {
     transformPerspectiveX: 0,
     transformPerspectiveY: 0,
     transformScale: 1,
+    // Logo defaults
+    logoImage: undefined,
+    logoSize: 25, // 25% of QR code size
+    logoMargin: 4,
+    logoBorderRadius: 8,
   };
 }
 

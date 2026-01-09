@@ -302,6 +302,13 @@
       "when": 1767524872585,
       "tag": "0042_greedy_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1767697982696,
+      "tag": "0043_smart_paladin",
+      "breakpoints": true
     }
   ]
 }
