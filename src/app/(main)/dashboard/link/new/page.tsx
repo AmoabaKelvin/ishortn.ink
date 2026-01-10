@@ -289,30 +289,37 @@ export default function CreateLinkPage() {
         return;
       }
 
-      const fetchedMetadata = await fetchMetadataInfo(debouncedUrl);
+      // Clear previous alias suggestions when URL changes
+      setGeneratedAliases([]);
+      form.setValue("alias", "");
 
       // Get custom metadata from form - these take priority over fetched metadata
       const customTitle = form.getValues("metadata.title");
       const customDescription = form.getValues("metadata.description");
       const customImage = form.getValues("metadata.image");
 
-      // Only use fetched values for fields where user hasn't set custom values
-      setMetaData((prev) => ({
-        title: customTitle || fetchedMetadata.title,
-        description: customDescription || fetchedMetadata.description,
-        image: customImage || fetchedMetadata.image,
-        favicon: fetchedMetadata.favicon,
-      }));
+      try {
+        const fetchedMetadata = await fetchMetadataInfo(debouncedUrl);
 
-      setGeneratedAliases([]);
-      form.setValue("alias", "");
-
-      if (userSubscription?.data?.subscriptions?.status === "active") {
-        generateAliasMutation.mutate({
-          url: debouncedUrl,
+        // Only use fetched values for fields where user hasn't set custom values
+        setMetaData((prev) => ({
           title: customTitle || fetchedMetadata.title,
           description: customDescription || fetchedMetadata.description,
-        });
+          image: customImage || fetchedMetadata.image,
+          favicon: fetchedMetadata.favicon,
+        }));
+
+        if (userSubscription?.data?.subscriptions?.status === "active") {
+          generateAliasMutation.mutate({
+            url: debouncedUrl,
+            title: customTitle || fetchedMetadata.title,
+            description: customDescription || fetchedMetadata.description,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch metadata:", error);
+        // Don't overwrite user-entered metadata on failure
+        // Don't generate aliases since we don't have valid metadata
       }
     };
 
