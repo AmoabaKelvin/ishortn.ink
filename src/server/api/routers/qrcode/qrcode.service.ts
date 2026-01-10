@@ -243,9 +243,27 @@ export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetU
 
   if (!preset) throw new Error("Preset not found");
 
-  // Handle logo image changes - upload to R2 if base64
-  let logoImageUrl = input.logoImage;
-  if (input.logoImage) {
+  // Handle logo image changes:
+  // - undefined: not provided, preserve existing preset.logoImage
+  // - null: explicit removal, delete from R2 and set to null
+  // - string: replacement, upload new and delete old
+  let logoImageUrl: string | null | undefined;
+
+  if (input.logoImage === undefined) {
+    // Not provided - preserve existing
+    logoImageUrl = preset.logoImage;
+  } else if (input.logoImage === null) {
+    // Explicit removal - delete old image if exists
+    logoImageUrl = null;
+    if (preset.logoImage) {
+      try {
+        await deleteImage(preset.logoImage);
+      } catch (error) {
+        console.error("Failed to delete logo image from R2:", error);
+      }
+    }
+  } else {
+    // New image provided - upload to R2
     try {
       const imageUrl = await uploadImage(ctx, {
         image: input.logoImage,
@@ -253,21 +271,20 @@ export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetU
         imageType: "qr-logo",
       });
 
-      if (imageUrl) {
-        logoImageUrl = imageUrl;
+      logoImageUrl = imageUrl ?? input.logoImage;
+
+      // Delete old logo from R2 if it's being replaced
+      if (preset.logoImage && preset.logoImage !== logoImageUrl) {
+        try {
+          await deleteImage(preset.logoImage);
+        } catch (error) {
+          console.error("Failed to delete old logo image from R2:", error);
+        }
       }
     } catch (error) {
       console.error("Failed to upload logo image to R2:", error);
-      // Continue with the original image if upload fails
-    }
-  }
-
-  // Delete old logo from R2 if it's being replaced or removed
-  if (preset.logoImage && preset.logoImage !== logoImageUrl) {
-    try {
-      await deleteImage(preset.logoImage);
-    } catch (error) {
-      console.error("Failed to delete old logo image from R2:", error);
+      // Continue with the input image if upload fails
+      logoImageUrl = input.logoImage;
     }
   }
 
