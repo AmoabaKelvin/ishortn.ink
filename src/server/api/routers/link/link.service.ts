@@ -32,7 +32,7 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
-import { uploadImage } from "@/server/lib/storage";
+import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   getAccessibleFolderIds,
   isWorkspaceAdmin,
@@ -560,6 +560,16 @@ export const deleteLink = async (
     await requireFolderAccess(ctx.db, ctx.workspace, linkToDelete.folderId);
   }
 
+  // Delete OG image from R2 if present
+  const metadata = linkToDelete.metadata as { image?: string } | null;
+  if (metadata?.image) {
+    try {
+      await deleteImage(metadata.image);
+    } catch (error) {
+      console.error("Failed to delete OG image from R2:", error);
+    }
+  }
+
   await Promise.all([
     deleteFromCache(
       constructCacheKey(linkToDelete.domain, linkToDelete.alias!)
@@ -606,6 +616,18 @@ export const bulkDeleteLinks = async (
   }
 
   const validLinkIds = linksToDelete.map((l) => l.id);
+
+  // Delete OG images from R2 before removing links
+  for (const l of linksToDelete) {
+    const metadata = l.metadata as { image?: string } | null;
+    if (metadata?.image) {
+      try {
+        await deleteImage(metadata.image);
+      } catch (error) {
+        console.error(`Failed to delete OG image for link ${l.id}:`, error);
+      }
+    }
+  }
 
   // Delete from database in transaction (delete dependents first)
   await ctx.db.transaction(async (tx) => {
