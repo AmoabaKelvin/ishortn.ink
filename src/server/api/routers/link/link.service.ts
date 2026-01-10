@@ -15,7 +15,6 @@ import {
   sql
 } from "drizzle-orm";
 import crypto from "node:crypto";
-import QRCode from "qrcode";
 
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { resolvePlan } from "@/lib/billing/plans";
@@ -422,36 +421,6 @@ export const createLink = async (
     }
   }
 
-  // Auto-generate QR Code
-  try {
-    const shortUrl = `${domain}/${alias}`;
-    const qrCodeDataUrl = await QRCode.toDataURL(shortUrl, {
-      errorCorrectionLevel: "H",
-      margin: 1,
-      width: 1024,
-      color: {
-        dark: "#000000",
-        light: "#ffffff",
-      },
-    });
-
-    await ctx.db.insert(qrcode).values({
-      userId: ownership.userId,
-      teamId: ownership.teamId,
-      title: name,
-      color: "#000000",
-      content: shortUrl,
-      cornerStyle: "square",
-      patternStyle: "square",
-      qrCode: qrCodeDataUrl,
-      linkId: linkId,
-      contentType: "link",
-    });
-  } catch (error) {
-    console.error("Failed to auto-generate QR code:", error);
-    // Don't fail the link creation if QR generation fails
-  }
-
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
 
   return result;
@@ -833,36 +802,6 @@ export const shortenLinkWithAutoAlias = async (
   // Associate tags with the link
   if (tagNames.length > 0) {
     await associateTagsWithLink(ctx, Number(result.insertId), tagNames);
-  }
-
-  // Auto-generate QR Code
-  try {
-    const shortUrl = `${domain}/${alias}`;
-    const qrCodeDataUrl = await QRCode.toDataURL(shortUrl, {
-      errorCorrectionLevel: "H",
-      margin: 1,
-      width: 1024,
-      color: {
-        dark: "#000000",
-        light: "#ffffff",
-      },
-    });
-
-    await ctx.db.insert(qrcode).values({
-      userId: ownership.userId,
-      teamId: ownership.teamId,
-      title: name,
-      color: "#000000",
-      content: shortUrl,
-      cornerStyle: "square",
-      patternStyle: "square",
-      qrCode: qrCodeDataUrl,
-      linkId: Number(result.insertId),
-      contentType: "link",
-    });
-  } catch (error) {
-    console.error("Failed to auto-generate QR code:", error);
-    // Don't fail the link creation if QR generation fails
   }
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
