@@ -5,7 +5,7 @@ import { workspaceOwnership } from "@/server/lib/workspace";
 import { isR2Configured, r2DeleteImage, r2UploadImage } from "./r2";
 import type { ImageType } from "./types";
 
-const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_SIZE_BYTES = 2 * 1024 * 1024;
 
 const EXTENSION_MAP: Record<string, string> = {
   png: "png",
@@ -38,7 +38,7 @@ export async function uploadImage(
     const buffer = Buffer.from(base64Data!, "base64");
 
     if (buffer.length > MAX_SIZE_BYTES) {
-      throw new Error("Image exceeds maximum size of 5MB");
+      throw new Error("Image exceeds maximum size of 2MB");
     }
 
     const ownership = workspaceOwnership(ctx.workspace);
