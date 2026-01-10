@@ -59,9 +59,31 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const redirectUrl = data.url.startsWith("http://") || data.url.startsWith("https://")
-    ? data.url
-    : `https://${data.url}`;
+  // Validate and normalize the URL before redirecting
+  let redirectUrl: string;
+  try {
+    const parsedUrl = new URL(data.url, request.url);
+
+    // Only allow http and https protocols (reject javascript:, data:, etc.)
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      console.error(`Blocked redirect to unsafe protocol: ${parsedUrl.protocol}`);
+      return NextResponse.next();
+    }
+
+    redirectUrl = parsedUrl.toString();
+  } catch {
+    // If URL parsing fails, try prepending https://
+    try {
+      const fallbackUrl = new URL(`https://${data.url}`);
+      if (fallbackUrl.protocol !== "https:") {
+        return NextResponse.next();
+      }
+      redirectUrl = fallbackUrl.toString();
+    } catch {
+      console.error(`Invalid redirect URL: ${data.url}`);
+      return NextResponse.next();
+    }
+  }
 
   return NextResponse.redirect(redirectUrl);
 }
