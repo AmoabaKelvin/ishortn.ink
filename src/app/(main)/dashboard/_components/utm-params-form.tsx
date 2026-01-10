@@ -13,8 +13,9 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 type UtmParamsFormProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,7 +58,7 @@ const utmFields = [
 
 export function UtmParamsForm({ form, disabled = false }: UtmParamsFormProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {utmFields.map((field) => {
         const Icon = field.icon;
         return (
@@ -67,23 +68,28 @@ export function UtmParamsForm({ form, disabled = false }: UtmParamsFormProps) {
             name={field.name}
             disabled={disabled}
             render={({ field: formField }) => (
-              <FormItem>
-                <FormControl>
-                  <div className="flex items-center overflow-hidden rounded-lg border border-gray-200">
-                    <div className="flex w-36 shrink-0 items-center gap-2.5 border-r border-gray-200 px-4 py-3">
-                      <Icon className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-700">
-                        {field.label}
-                      </span>
-                    </div>
-                    <Input
+              <FormItem className="space-y-0">
+                <div
+                  className={cn(
+                    "flex h-9 w-full items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors",
+                    disabled
+                      ? "opacity-50"
+                      : "hover:border-gray-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20"
+                  )}
+                >
+                  <FormLabel className="flex h-full w-28 shrink-0 cursor-pointer items-center gap-2 border-r border-gray-200 px-3 text-xs font-medium text-gray-600">
+                    <Icon className="h-4 w-4 text-gray-400" />
+                    {field.label}
+                  </FormLabel>
+                  <FormControl>
+                    <input
                       {...formField}
                       placeholder={field.placeholder}
-                      className="h-auto border-0 py-3 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      className="h-full flex-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-900 placeholder:text-gray-500 focus:outline-none disabled:cursor-not-allowed"
                       disabled={disabled}
                     />
-                  </div>
-                </FormControl>
+                  </FormControl>
+                </div>
               </FormItem>
             )}
           />

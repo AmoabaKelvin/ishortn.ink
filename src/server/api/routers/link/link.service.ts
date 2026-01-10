@@ -32,6 +32,7 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
+import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   getAccessibleFolderIds,
   isWorkspaceAdmin,
@@ -388,8 +389,36 @@ export const createLink = async (
   });
 
   // Associate tags with the link
+  const linkId = Number(result.insertId);
   if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, Number(result.insertId), tagNames);
+    await associateTagsWithLink(ctx, linkId, tagNames);
+  }
+
+  // Upload OG image to R2 if it's base64
+  if (input.metadata?.image) {
+    try {
+      const imageUrl = await uploadImage(ctx, {
+        image: input.metadata.image,
+        resourceId: linkId,
+        imageType: "og-image",
+      });
+
+      // Update link with the R2 URL if upload was successful and URL changed
+      if (imageUrl && imageUrl !== input.metadata.image) {
+        await ctx.db
+          .update(link)
+          .set({
+            metadata: {
+              ...input.metadata,
+              image: imageUrl,
+            },
+          })
+          .where(eq(link.id, linkId));
+      }
+    } catch (error) {
+      console.error("Failed to upload OG image:", error);
+      // Don't fail link creation if image upload fails - base64 is already saved
+    }
   }
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
@@ -445,6 +474,28 @@ export const updateLink = async (
 
   // Extract tags from input
   const { tags: tagNames, ...linkData } = input;
+
+  // Upload OG image to R2 if it's base64
+  if (linkData.metadata?.image) {
+    try {
+      const imageUrl = await uploadImage(ctx, {
+        image: linkData.metadata.image,
+        resourceId: input.id,
+        imageType: "og-image",
+      });
+
+      // Update metadata with the R2 URL if upload was successful
+      if (imageUrl) {
+        linkData.metadata = {
+          ...linkData.metadata,
+          image: imageUrl,
+        };
+      }
+    } catch (error) {
+      console.error("Failed to upload OG image:", error);
+      // Continue with the original image (base64 or URL) if upload fails
+    }
+  }
 
   // Update link data - use workspace filtering
   await ctx.db
@@ -509,6 +560,16 @@ export const deleteLink = async (
     await requireFolderAccess(ctx.db, ctx.workspace, linkToDelete.folderId);
   }
 
+  // Delete OG image from R2 if present
+  const metadata = linkToDelete.metadata as { image?: string } | null;
+  if (metadata?.image) {
+    try {
+      await deleteImage(metadata.image);
+    } catch (error) {
+      console.error("Failed to delete OG image from R2:", error);
+    }
+  }
+
   await Promise.all([
     deleteFromCache(
       constructCacheKey(linkToDelete.domain, linkToDelete.alias!)
@@ -555,6 +616,18 @@ export const bulkDeleteLinks = async (
   }
 
   const validLinkIds = linksToDelete.map((l) => l.id);
+
+  // Delete OG images from R2 before removing links
+  for (const l of linksToDelete) {
+    const metadata = l.metadata as { image?: string } | null;
+    if (metadata?.image) {
+      try {
+        await deleteImage(metadata.image);
+      } catch (error) {
+        console.error(`Failed to delete OG image for link ${l.id}:`, error);
+      }
+    }
+  }
 
   // Delete from database in transaction (delete dependents first)
   await ctx.db.transaction(async (tx) => {

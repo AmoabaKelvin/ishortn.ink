@@ -2,40 +2,44 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 import { NextRequest, NextResponse } from "next/server";
 
+import { isBot } from "@/lib/utils/is-bot";
+
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 async function resolveLinkAndLogAnalytics(request: NextRequest) {
   if (isProtectedRoute(request)) {
-    return; // Let Clerk handle protected routes
+    return;
   }
 
-  const { pathname, host } = new URL(request.url);
+  const { pathname, host, origin } = new URL(request.url);
 
-  if (
+  const shouldSkip =
     pathname === "/" ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/_next/") ||
-    pathname.endsWith(".png")
-  ) {
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".ico") ||
+    pathname.split("/").length > 2;
+
+  if (shouldSkip) {
     return NextResponse.next();
   }
 
-  // if the pathname is more than one, we don't need to check for the api/link route
-  if (pathname.split("/").length > 2) {
+  const userAgent = request.headers.get("user-agent");
+
+  // Let social media bots through to the page component so they can see OG meta tags
+  if (userAgent && isBot(userAgent)) {
     return NextResponse.next();
   }
 
   const geo = geolocation(request);
   const ip = ipAddress(request);
-  const userAgent = request.headers.get("user-agent");
   const referer = request.headers.get("referer");
 
   const response = await fetch(
     encodeURI(
-      `${request.url.split(pathname)[0]
-      }/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${geo.city
-      }&ip=${ip}`
+      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${geo.city}&ip=${ip}`
     ),
     {
       headers: {
@@ -55,10 +59,30 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Ensure URL has a valid protocol for redirect
-  let redirectUrl = data.url;
-  if (!redirectUrl.startsWith("http://") && !redirectUrl.startsWith("https://")) {
-    redirectUrl = `https://${redirectUrl}`;
+  // Validate and normalize the URL before redirecting
+  let redirectUrl: string;
+  try {
+    const parsedUrl = new URL(data.url, request.url);
+
+    // Only allow http and https protocols (reject javascript:, data:, etc.)
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      console.error(`Blocked redirect to unsafe protocol: ${parsedUrl.protocol}`);
+      return NextResponse.next();
+    }
+
+    redirectUrl = parsedUrl.toString();
+  } catch {
+    // If URL parsing fails, try prepending https://
+    try {
+      const fallbackUrl = new URL(`https://${data.url}`);
+      if (fallbackUrl.protocol !== "https:") {
+        return NextResponse.next();
+      }
+      redirectUrl = fallbackUrl.toString();
+    } catch {
+      console.error(`Invalid redirect URL: ${data.url}`);
+      return NextResponse.next();
+    }
   }
 
   return NextResponse.redirect(redirectUrl);

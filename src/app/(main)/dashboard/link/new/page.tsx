@@ -46,6 +46,7 @@ import { UtmTemplateSelector } from "../../_components/utm-template-selector";
 import { revalidateHomepage } from "../../revalidate-homepage";
 
 import { LinkPreviewComponent } from "./_components/link-preview";
+import { OgImageUploader } from "./_components/og-image-uploader";
 import UpgradeToProAIButtonTooltip from "./_components/upgrade-to-pro-ai-tooltip";
 
 import type { CustomDomain } from "@/server/db/schema";
@@ -124,21 +125,43 @@ export default function CreateLinkPage() {
     setCurrentAliasIndex(0);
     setGeneratedAliases([]);
     form.setValue("alias", "");
+
     const url = form.getValues("url");
     if (!url) {
       toast.error("Please enter a valid URL first");
       return;
     }
 
+    // Get custom metadata from form - these take priority
+    const customTitle = form.getValues("metadata.title");
+    const customDescription = form.getValues("metadata.description");
+    const customImage = form.getValues("metadata.image");
+
     let currentMetadata = metaData;
-    if (!currentMetadata.title && !currentMetadata.description) {
-      const newMetadata = (await fetchMetadata(url)) as unknown as MetaData;
-      if (newMetadata) {
-        currentMetadata = newMetadata;
-      } else {
+
+    // Only fetch if we don't have any metadata yet (custom or fetched)
+    if (!currentMetadata.title && !currentMetadata.description && !customTitle && !customDescription) {
+      try {
+        const fetchedMetadata = await fetchMetadataInfo(url);
+        currentMetadata = {
+          title: customTitle || fetchedMetadata.title,
+          description: customDescription || fetchedMetadata.description,
+          image: customImage || fetchedMetadata.image,
+          favicon: fetchedMetadata.favicon,
+        };
+        setMetaData(currentMetadata);
+      } catch {
         toast.error("Failed to fetch metadata. Please try again.");
         return;
       }
+    } else {
+      // Use custom values if available
+      currentMetadata = {
+        ...currentMetadata,
+        title: customTitle || currentMetadata.title,
+        description: customDescription || currentMetadata.description,
+        image: customImage || currentMetadata.image,
+      };
     }
 
     await generateAliases(currentMetadata);
@@ -260,30 +283,47 @@ export default function CreateLinkPage() {
     }
   }, [debouncedAlias, selectedDomain]);
 
-  async function fetchMetadata(url: string) {
-    if (!url) return;
-    const metadata = await fetchMetadataInfo(url);
-    setMetaData(metadata);
-    setGeneratedAliases([]);
-    form.setValue("alias", "");
-
-    if (userSubscription?.data?.subscriptions?.status === "active") {
-      generateAliasMutation.mutate({
-        url: form.getValues("url"),
-        title: metadata.title,
-        description: metadata.description,
-      });
-    }
-  }
-
   useEffect(() => {
-    if (
-      (form.formState.errors.url ?? !form.getValues("url")) ||
-      !debouncedUrl
-    ) {
-      return;
-    }
-    void fetchMetadata(debouncedUrl);
+    const fetchMetadata = async () => {
+      if (!debouncedUrl || form.formState.errors.url || !form.getValues("url")) {
+        return;
+      }
+
+      // Clear previous alias suggestions when URL changes
+      setGeneratedAliases([]);
+      form.setValue("alias", "");
+
+      // Get custom metadata from form - these take priority over fetched metadata
+      const customTitle = form.getValues("metadata.title");
+      const customDescription = form.getValues("metadata.description");
+      const customImage = form.getValues("metadata.image");
+
+      try {
+        const fetchedMetadata = await fetchMetadataInfo(debouncedUrl);
+
+        // Only use fetched values for fields where user hasn't set custom values
+        setMetaData((prev) => ({
+          title: customTitle || fetchedMetadata.title,
+          description: customDescription || fetchedMetadata.description,
+          image: customImage || fetchedMetadata.image,
+          favicon: fetchedMetadata.favicon,
+        }));
+
+        if (userSubscription?.data?.subscriptions?.status === "active") {
+          generateAliasMutation.mutate({
+            url: debouncedUrl,
+            title: customTitle || fetchedMetadata.title,
+            description: customDescription || fetchedMetadata.description,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch metadata:", error);
+        // Don't overwrite user-entered metadata on failure
+        // Don't generate aliases since we don't have valid metadata
+      }
+    };
+
+    void fetchMetadata();
   }, [debouncedUrl]);
 
   return (
@@ -346,13 +386,13 @@ export default function CreateLinkPage() {
                   <FormItem>
                     <FormLabel>Link Alias</FormLabel>
                     <FormControl>
-                      <section className="flex items-center">
+                      <div className="flex h-9 w-full items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 hover:border-gray-300">
                         <Select
                           onValueChange={(value) => {
                             form.setValue("domain", value);
                           }}
                         >
-                          <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-50">
+                          <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-600 shadow-none ring-0 hover:text-gray-900 focus:ring-0">
                             <SelectValue placeholder="ishortn.ink" />
                           </SelectTrigger>
                           <SelectContent>
@@ -372,39 +412,49 @@ export default function CreateLinkPage() {
                             </SelectGroup>
                           </SelectContent>
                         </Select>
-                        <div className="relative flex-grow">
-                          <Input
-                            placeholder="short-link"
-                            className="h-10 flex-grow rounded-bl-none rounded-tl-none"
-                            {...field}
-                          />
-
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                            {generateAliasMutation.isLoading ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-                            ) : generatedAliases.length > 0 ? (
-                              <div className="flex flex-col">
-                                <ChevronUp
-                                  className="h-4 w-4 cursor-pointer text-gray-500 hover:text-gray-700"
-                                  onClick={() => cycleAlias("up")}
-                                />
-                                <ChevronDown
-                                  className="h-4 w-4 cursor-pointer text-gray-500 hover:text-gray-700"
-                                  onClick={() => cycleAlias("down")}
-                                />
-                              </div>
-                            ) : userSubscription?.data?.subscriptions
-                                ?.status !== "active" ? (
-                              <UpgradeToProAIButtonTooltip />
-                            ) : (
-                              <Sparkles
-                                className="h-4 w-4 text-gray-500"
-                                onClick={handleRegenerateClick}
-                              />
-                            )}
-                          </div>
+                        <div className="h-4 w-px bg-gray-200" />
+                        <input
+                          placeholder="short-link"
+                          className="h-full flex-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                          {...field}
+                        />
+                        <div className="flex h-full items-center border-l border-gray-200 px-2">
+                          {generateAliasMutation.isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          ) : generatedAliases.length > 0 ? (
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => cycleAlias("up")}
+                                aria-label="Previous alias suggestion"
+                                className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => cycleAlias("down")}
+                                aria-label="Next alias suggestion"
+                                className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : userSubscription?.data?.subscriptions
+                              ?.status !== "active" ? (
+                            <UpgradeToProAIButtonTooltip />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleRegenerateClick}
+                              aria-label="Generate alias suggestions"
+                              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
-                      </section>
+                      </div>
                     </FormControl>
                     <AnimatePresence>
                       {generatedAliases.length > 0 && (
@@ -470,6 +520,7 @@ export default function CreateLinkPage() {
                               <button
                                 type="button"
                                 onClick={() => removeTag(tag)}
+                                aria-label={`Remove tag ${tag}`}
                                 className="text-gray-500 hover:text-gray-700"
                               >
                                 <X size={14} />
@@ -575,10 +626,10 @@ export default function CreateLinkPage() {
                                 placeholder="Custom title for your link"
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setMetaData({
-                                    ...metaData,
+                                  setMetaData((prev) => ({
+                                    ...prev,
                                     title: e.target.value,
-                                  });
+                                  }));
                                 }}
                               />
                             </FormControl>
@@ -597,10 +648,10 @@ export default function CreateLinkPage() {
                                 placeholder="Custom description for your link"
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setMetaData({
-                                    ...metaData,
+                                  setMetaData((prev) => ({
+                                    ...prev,
                                     description: e.target.value,
-                                  });
+                                  }));
                                 }}
                               />
                             </FormControl>
@@ -612,17 +663,16 @@ export default function CreateLinkPage() {
                         name="metadata.image"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Custom Image URL</FormLabel>
+                            <FormLabel>Custom Image</FormLabel>
                             <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="https://example.com/image.jpg"
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  setMetaData({
-                                    ...metaData,
-                                    image: e.target.value,
-                                  });
+                              <OgImageUploader
+                                value={field.value}
+                                onChange={(image) => {
+                                  field.onChange(image);
+                                  setMetaData((prev) => ({
+                                    ...prev,
+                                    image: image || "",
+                                  }));
                                 }}
                               />
                             </FormControl>
