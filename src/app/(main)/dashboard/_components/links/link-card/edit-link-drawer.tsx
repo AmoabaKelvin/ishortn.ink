@@ -265,9 +265,9 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                         <FormItem>
                           <FormLabel>Link Alias</FormLabel>
                           <FormControl>
-                            <section className="flex items-center">
+                            <div className="flex h-9 w-full items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 hover:border-gray-300">
                               <Select>
-                                <SelectTrigger className="w-max rounded-br-none rounded-tr-none bg-slate-50">
+                                <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-600 shadow-none ring-0 hover:text-gray-900 focus:ring-0">
                                   <SelectValue
                                     placeholder={link.domain || "ishortn.ink"}
                                   />
@@ -280,12 +280,13 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
-                              <Input
+                              <div className="h-4 w-px bg-gray-200" />
+                              <input
                                 placeholder="short-link"
-                                className="h-10 flex-grow rounded-bl-none rounded-tl-none"
+                                className="h-full flex-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-900 placeholder:text-gray-500 focus:outline-none"
                                 {...field}
                               />
-                            </section>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
