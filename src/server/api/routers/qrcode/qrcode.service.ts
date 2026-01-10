@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 
 import { link, qrcode, qrPreset } from "@/server/db/schema";
+import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   workspaceFilter,
   workspaceOwnership,
@@ -71,6 +72,30 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
 
   const insertedQrCodeId = insertionResult[0].insertId;
 
+  // Upload QR code image to R2 if it's base64
+  if (input.qrCodeBase64) {
+    try {
+      const imageUrl = await uploadImage(ctx, {
+        image: input.qrCodeBase64,
+        resourceId: insertedQrCodeId,
+        imageType: "qr-code",
+      });
+
+      // Update QR code with the R2 URL if upload was successful and URL changed
+      if (imageUrl && imageUrl !== input.qrCodeBase64) {
+        await ctx.db
+          .update(qrcode)
+          .set({ qrCode: imageUrl })
+          .where(eq(qrcode.id, insertedQrCodeId));
+
+        return imageUrl;
+      }
+    } catch (error) {
+      console.error("Failed to upload QR code image to R2:", error);
+      // Don't fail QR code creation if image upload fails - base64 is already saved
+    }
+  }
+
   const insertedQrCode = await ctx.db.query.qrcode.findFirst({
     where: (table, { eq }) => eq(table.id, insertedQrCodeId),
   });
@@ -110,6 +135,15 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
 
   if (!qrCode) throw new Error("QR Code not found");
 
+  // Delete QR code image from R2 if present
+  if (qrCode.qrCode) {
+    try {
+      await deleteImage(qrCode.qrCode);
+    } catch (error) {
+      console.error("Failed to delete QR code image from R2:", error);
+    }
+  }
+
   await ctx.db.delete(qrcode).where(eq(qrcode.id, id));
 
   return true;
@@ -141,6 +175,28 @@ export async function createQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetC
 
   const insertedId = insertResult[0].insertId;
 
+  // Upload logo image to R2 if it's base64
+  if (input.logoImage) {
+    try {
+      const imageUrl = await uploadImage(ctx, {
+        image: input.logoImage,
+        resourceId: insertedId,
+        imageType: "qr-logo",
+      });
+
+      // Update preset with the R2 URL if upload was successful and URL changed
+      if (imageUrl && imageUrl !== input.logoImage) {
+        await ctx.db
+          .update(qrPreset)
+          .set({ logoImage: imageUrl })
+          .where(eq(qrPreset.id, insertedId));
+      }
+    } catch (error) {
+      console.error("Failed to upload logo image to R2:", error);
+      // Don't fail preset creation if image upload fails - base64 is already saved
+    }
+  }
+
   return ctx.db.query.qrPreset.findFirst({
     where: eq(qrPreset.id, insertedId),
   });
@@ -163,6 +219,15 @@ export async function deleteQrPreset(ctx: WorkspaceTRPCContext, id: number) {
 
   if (!preset) throw new Error("Preset not found");
 
+  // Delete logo image from R2 if present
+  if (preset.logoImage) {
+    try {
+      await deleteImage(preset.logoImage);
+    } catch (error) {
+      console.error("Failed to delete logo image from R2:", error);
+    }
+  }
+
   await ctx.db.delete(qrPreset).where(eq(qrPreset.id, id));
 
   return true;
@@ -178,6 +243,34 @@ export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetU
 
   if (!preset) throw new Error("Preset not found");
 
+  // Handle logo image changes - upload to R2 if base64
+  let logoImageUrl = input.logoImage;
+  if (input.logoImage) {
+    try {
+      const imageUrl = await uploadImage(ctx, {
+        image: input.logoImage,
+        resourceId: input.id,
+        imageType: "qr-logo",
+      });
+
+      if (imageUrl) {
+        logoImageUrl = imageUrl;
+      }
+    } catch (error) {
+      console.error("Failed to upload logo image to R2:", error);
+      // Continue with the original image if upload fails
+    }
+  }
+
+  // Delete old logo from R2 if it's being replaced or removed
+  if (preset.logoImage && preset.logoImage !== logoImageUrl) {
+    try {
+      await deleteImage(preset.logoImage);
+    } catch (error) {
+      console.error("Failed to delete old logo image from R2:", error);
+    }
+  }
+
   await ctx.db
     .update(qrPreset)
     .set({
@@ -191,7 +284,7 @@ export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetU
       marginNoise: input.marginNoise,
       marginNoiseRate: input.marginNoiseRate,
       // Logo settings
-      logoImage: input.logoImage,
+      logoImage: logoImageUrl,
       logoSize: input.logoSize,
       logoMargin: input.logoMargin,
       logoBorderRadius: input.logoBorderRadius,
