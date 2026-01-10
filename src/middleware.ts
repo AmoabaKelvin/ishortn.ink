@@ -28,6 +28,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   const userAgent = request.headers.get("user-agent");
 
+  // Let social media bots through to the page component so they can see OG meta tags
   if (userAgent && isBot(userAgent)) {
     return NextResponse.next();
   }
