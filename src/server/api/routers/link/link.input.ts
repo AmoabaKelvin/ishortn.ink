@@ -61,9 +61,7 @@ export const getLinkSchema = z.object({
 export const listLinksSchema = z.object({
   page: z.number().min(1).default(1),
   pageSize: z.number().min(1).max(100).default(10),
-  orderBy: z
-    .enum(["createdAt", "totalClicks", "lastClicked"])
-    .default("createdAt"),
+  orderBy: z.enum(["createdAt", "totalClicks", "lastClicked"]).default("createdAt"),
   orderDirection: z.enum(["asc", "desc"]).default("desc"),
   tag: z.string().optional(),
   archivedFilter: z.enum(["active", "archived", "all"]).optional(),
@@ -96,6 +94,7 @@ export const createLinkSchema = z.object({
       utm_content: z.string().max(255).optional(),
     })
     .optional(),
+  cloaking: z.boolean().optional(),
 });
 
 export const quickLinkShorteningSchema = z.object({
@@ -109,6 +108,7 @@ export const updateLinkSchema = createLinkSchema.partial().extend({
   disabled: z.boolean().optional(),
   publicStats: z.boolean().optional(),
   note: z.string().optional(),
+  cloaking: z.boolean().optional(),
 });
 
 export const verifyLinkPasswordSchema = z.object({
@@ -133,13 +133,9 @@ export type RangeEnum = z.infer<typeof rangeEnum>;
 export type CreateLinkInput = z.infer<typeof createLinkSchema>;
 export type UpdateLinkInput = z.infer<typeof updateLinkSchema>;
 export type GetLinkInput = z.infer<typeof getLinkSchema>;
-export type RetrieveOriginalUrlInput = z.infer<
-  typeof retrieveOriginalUrlSchema
->;
+export type RetrieveOriginalUrlInput = z.infer<typeof retrieveOriginalUrlSchema>;
 
-export type QuickLinkShorteningInput = z.infer<
-  typeof quickLinkShorteningSchema
->;
+export type QuickLinkShorteningInput = z.infer<typeof quickLinkShorteningSchema>;
 
 export type ListLinksInput = z.infer<typeof listLinksSchema>;
 
@@ -169,7 +165,10 @@ export type AllAnalyticsInput = z.infer<typeof allAnalyticsSchema>;
 // ============================================================================
 
 const transferLinksBaseSchema = z.object({
-  linkIds: z.array(z.number().min(1)).min(1, "At least one link is required").max(100, "Maximum 100 links per transfer"),
+  linkIds: z
+    .array(z.number().min(1))
+    .min(1, "At least one link is required")
+    .max(100, "Maximum 100 links per transfer"),
 });
 
 const transferToPersonalSchema = transferLinksBaseSchema.extend({
@@ -193,20 +192,29 @@ export const validateTransferSchema = transferLinksToWorkspaceSchema;
 export type ValidateTransferInput = z.infer<typeof validateTransferSchema>;
 
 export const bulkDeleteLinksSchema = z.object({
-  linkIds: z.array(z.number().min(1)).min(1, "At least one link is required").max(100, "Maximum 100 links per deletion"),
+  linkIds: z
+    .array(z.number().min(1))
+    .min(1, "At least one link is required")
+    .max(100, "Maximum 100 links per deletion"),
 });
 
 export type BulkDeleteLinksInput = z.infer<typeof bulkDeleteLinksSchema>;
 
 export const bulkArchiveLinksSchema = z.object({
-  linkIds: z.array(z.number().min(1)).min(1, "At least one link is required").max(100, "Maximum 100 links per operation"),
+  linkIds: z
+    .array(z.number().min(1))
+    .min(1, "At least one link is required")
+    .max(100, "Maximum 100 links per operation"),
   archive: z.boolean(),
 });
 
 export type BulkArchiveLinksInput = z.infer<typeof bulkArchiveLinksSchema>;
 
 export const bulkToggleLinkStatusSchema = z.object({
-  linkIds: z.array(z.number().min(1)).min(1, "At least one link is required").max(100, "Maximum 100 links per operation"),
+  linkIds: z
+    .array(z.number().min(1))
+    .min(1, "At least one link is required")
+    .max(100, "Maximum 100 links per operation"),
   disable: z.boolean(),
 });
 
