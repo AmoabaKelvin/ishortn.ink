@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 
 import { recordUserClickForLink } from "@/middlewares/record-click";
 
@@ -15,13 +15,7 @@ function appendUtmParams(baseUrl: string, utmParams: UtmParams): string {
 
   try {
     const url = new URL(baseUrl);
-    const keys = [
-      "utm_source",
-      "utm_medium",
-      "utm_campaign",
-      "utm_term",
-      "utm_content",
-    ] as const;
+    const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
 
     for (const key of keys) {
       const value = utmParams[key];
@@ -47,14 +41,11 @@ export async function GET(request: NextRequest) {
   const ip = searchParams.get("ip") ?? "";
 
   console.log(
-    `Processing link for domain: ${domain}, alias: ${alias}, country: ${country}, city: ${city}, continent: ${continent}, ip: ${ip}`
+    `Processing link for domain: ${domain}, alias: ${alias}, country: ${country}, city: ${city}, continent: ${continent}, ip: ${ip}`,
   );
 
   if (!domain || !alias) {
-    return Response.json(
-      { error: "Missing required parameters" },
-      { status: 400 }
-    );
+    return Response.json({ error: "Missing required parameters" }, { status: 400 });
   }
 
   try {
@@ -66,7 +57,7 @@ export async function GET(request: NextRequest) {
       country,
       city,
       continent,
-      true // skipAnalytics flag
+      true, // skipAnalytics flag
     );
 
     if (!link) {
@@ -78,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     // Redirect to password verification page for protected links
     if (link.passwordHash) {
-      const verifyUrl = `${request.url.split('/api/link')[0]}/verify-password/${link.id}`;
+      const verifyUrl = `${request.url.split("/api/link")[0]}/verify-password/${link.id}`;
       return Response.json({ url: verifyUrl });
     }
 
@@ -91,11 +82,17 @@ export async function GET(request: NextRequest) {
       country,
       city,
       continent,
-      false // record analytics
+      false, // record analytics
     );
 
-    const destinationUrl = appendUtmParams(link.url!, link.utmParams as UtmParams);
-    return Response.json({ url: destinationUrl });
+    // Validate link.url before processing
+    if (!link.url) {
+      console.error("Link has no URL:", link.id);
+      return Response.json({ error: "Link has no destination URL" }, { status: 404 });
+    }
+
+    const destinationUrl = appendUtmParams(link.url, link.utmParams as UtmParams);
+    return Response.json({ url: destinationUrl, cloaking: link.cloaking ?? false });
   } catch (error) {
     console.error("Error processing link:", error);
     return Response.json({ error: "Internal server error" }, { status: 500 });
