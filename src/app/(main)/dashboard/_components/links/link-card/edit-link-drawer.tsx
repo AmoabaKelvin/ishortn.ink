@@ -3,20 +3,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  CalendarIcon,
-  ChevronDown,
-  Gem,
-  MousePointerClick,
-  X,
-} from "lucide-react";
+import { CalendarIcon, ChevronDown, Gem, Loader2, MousePointerClick, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
 import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
+import { OgImageUploader } from "@/app/(main)/dashboard/link/new/_components/og-image-uploader";
+import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -29,11 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -42,10 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
-import { OgImageUploader } from "@/app/(main)/dashboard/link/new/_components/og-image-uploader";
+import { useDebounce } from "use-debounce";
 
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
@@ -69,6 +61,9 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   const [isCustomMetadataOpen, setIsCustomMetadataOpen] = useState(false);
   const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
   const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
+  const [isLinkCloakingOpen, setIsLinkCloakingOpen] = useState(false);
+  const [isCheckingIframeable, setIsCheckingIframeable] = useState(false);
+  const [iframeableResult, setIframeableResult] = useState<boolean | null>(null);
 
   const { data: userTags } = api.tag.list.useQuery();
   const userSubscription = api.subscriptions.get.useQuery();
@@ -95,13 +90,15 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
         description: metadata?.description ?? undefined,
         image: metadata?.image ?? undefined,
       },
-      utmParams: (linkData.utmParams as {
-        utm_source?: string;
-        utm_medium?: string;
-        utm_campaign?: string;
-        utm_term?: string;
-        utm_content?: string;
-      }) ?? undefined,
+      utmParams:
+        (linkData.utmParams as {
+          utm_source?: string;
+          utm_medium?: string;
+          utm_campaign?: string;
+          utm_term?: string;
+          utm_content?: string;
+        }) ?? undefined,
+      cloaking: linkData.cloaking ?? false,
     };
   };
 
@@ -144,9 +141,8 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     ? userTags
         .filter(
           (tag) =>
-            (tagInput === "" ||
-              tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
-            !tags.includes(tag.name)
+            (tagInput === "" || tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
+            !tags.includes(tag.name),
         )
         .map((tag) => tag.name)
     : [];
@@ -161,13 +157,77 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
         loading: "Updating link...",
         success: "Link updated successfully",
         error: "Failed to update link",
-      }
+      },
     );
   }
 
   const subscriptionStatus = userSubscription?.data?.subscriptions;
   const isUltraUser = subscriptionStatus?.plan === "ultra";
   const isProOrUltraUser = subscriptionStatus?.status === "active";
+
+  // Watch the URL field for debouncing
+  const watchedUrl = form.watch("url");
+  const [debouncedUrl] = useDebounce(watchedUrl, 500);
+
+  // Check iframe compatibility when cloaking is enabled or URL changes
+  const cloakingEnabled = form.watch("cloaking");
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const checkIframeable = async () => {
+      if (!cloakingEnabled || !debouncedUrl) {
+        setIframeableResult(null);
+        return;
+      }
+
+      // Validate URL format first
+      try {
+        new URL(debouncedUrl);
+      } catch {
+        setIframeableResult(null);
+        return;
+      }
+
+      setIsCheckingIframeable(true);
+      try {
+        const response = await fetch(
+          `/api/links/iframeable?url=${encodeURIComponent(debouncedUrl)}`,
+          { signal: controller.signal },
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        setIframeableResult(data.iframeable);
+
+        if (!data.iframeable) {
+          toast.error("This website doesn't allow cloaking. Cloaking has been disabled.");
+          form.setValue("cloaking", false);
+        }
+      } catch (error) {
+        // Ignore abort errors (component unmounted or new request started)
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        console.error("Failed to check iframe compatibility:", error);
+        setIframeableResult(false);
+        form.setValue("cloaking", false);
+        toast.error("Failed to verify if URL can be cloaked. Please try again.");
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsCheckingIframeable(false);
+        }
+      }
+    };
+
+    void checkIframeable();
+
+    return () => {
+      controller.abort();
+    };
+  }, [cloakingEnabled, debouncedUrl, form]);
 
   return (
     <AnimatePresence>
@@ -195,9 +255,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
             <div className="border-b border-gray-200 px-6 py-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Edit Link
-                  </h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Edit Link</h2>
                   <p className="mt-1 text-sm text-gray-500">
                     {link.domain}/{link.alias}
                   </p>
@@ -207,7 +265,8 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       {link.totalClicks} clicks
                     </span>
                     <span>
-                      Created {link.createdAt ? format(new Date(link.createdAt), "MMM d, yyyy") : "Unknown"}
+                      Created{" "}
+                      {link.createdAt ? format(new Date(link.createdAt), "MMM d, yyyy") : "Unknown"}
                     </span>
                   </div>
                 </div>
@@ -268,15 +327,11 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                             <div className="flex h-9 w-full items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 hover:border-gray-300">
                               <Select>
                                 <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-600 shadow-none ring-0 hover:text-gray-900 focus:ring-0">
-                                  <SelectValue
-                                    placeholder={link.domain || "ishortn.ink"}
-                                  />
+                                  <SelectValue placeholder={link.domain || "ishortn.ink"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectGroup>
-                                    <SelectItem value="ishortn.ink">
-                                      ishortn.ink
-                                    </SelectItem>
+                                    <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
@@ -300,10 +355,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                         <FormItem>
                           <FormLabel>Note</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Add a note to your link"
-                              {...field}
-                            />
+                            <Input placeholder="Add a note to your link" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -347,10 +399,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   }}
                                   onKeyDown={handleTagKeyDown}
                                   onBlur={() => {
-                                    setTimeout(
-                                      () => setShowTagDropdown(false),
-                                      200
-                                    );
+                                    setTimeout(() => setShowTagDropdown(false), 200);
                                   }}
                                   onFocus={() => setShowTagDropdown(true)}
                                 />
@@ -375,8 +424,8 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                             </div>
                           </FormControl>
                           <FormDescription>
-                            Add tags to categorize your links. Press Enter to
-                            add a tag or select from existing tags.
+                            Add tags to categorize your links. Press Enter to add a tag or select
+                            from existing tags.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -523,11 +572,26 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                               <div className="flex justify-end">
                                 <UtmTemplateSelector
                                   onSelect={(params) => {
-                                    form.setValue("utmParams.utm_source", params.utm_source ?? undefined);
-                                    form.setValue("utmParams.utm_medium", params.utm_medium ?? undefined);
-                                    form.setValue("utmParams.utm_campaign", params.utm_campaign ?? undefined);
-                                    form.setValue("utmParams.utm_term", params.utm_term ?? undefined);
-                                    form.setValue("utmParams.utm_content", params.utm_content ?? undefined);
+                                    form.setValue(
+                                      "utmParams.utm_source",
+                                      params.utm_source ?? undefined,
+                                    );
+                                    form.setValue(
+                                      "utmParams.utm_medium",
+                                      params.utm_medium ?? undefined,
+                                    );
+                                    form.setValue(
+                                      "utmParams.utm_campaign",
+                                      params.utm_campaign ?? undefined,
+                                    );
+                                    form.setValue(
+                                      "utmParams.utm_term",
+                                      params.utm_term ?? undefined,
+                                    );
+                                    form.setValue(
+                                      "utmParams.utm_content",
+                                      params.utm_content ?? undefined,
+                                    );
                                   }}
                                 />
                               </div>
@@ -539,19 +603,114 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     </AnimatePresence>
                   </div>
 
+                  {/* Link Cloaking Section */}
+                  <div className="rounded-lg border border-gray-200 p-4">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between text-left"
+                      onClick={() => setIsLinkCloakingOpen(!isLinkCloakingOpen)}
+                    >
+                      <div className="flex flex-col">
+                        <p className="flex items-center gap-2 text-lg font-semibold">
+                          Link Cloaking
+                          {!isUltraUser && (
+                            <span className="flex max-w-fit items-center space-x-1 whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800">
+                              <Gem className="h-4 w-4 text-slate-500" />
+                              <span className="uppercase">Ultra</span>
+                            </span>
+                          )}
+                        </p>
+                        <span className="text-sm text-gray-500">
+                          Keep your short URL visible in the browser while showing the destination
+                          content
+                        </span>
+                      </div>
+                      <ChevronDown
+                        className={`h-5 w-5 transform transition-transform ${
+                          isLinkCloakingOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    <AnimatePresence>
+                      {isLinkCloakingOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <div className="mt-4 space-y-4">
+                            <FormField
+                              control={form.control}
+                              name="cloaking"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 p-4">
+                                  <div className="space-y-0.5">
+                                    <FormLabel className="text-base">
+                                      Enable Link Cloaking
+                                    </FormLabel>
+                                    <FormDescription>
+                                      Visitors will see your short URL in their browser address bar
+                                      while viewing the destination page content.
+                                    </FormDescription>
+                                  </div>
+                                  <FormControl>
+                                    <div className="flex items-center gap-2">
+                                      {isCheckingIframeable && (
+                                        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                                      )}
+                                      <Switch
+                                        checked={field.value ?? false}
+                                        onCheckedChange={field.onChange}
+                                        disabled={
+                                          !isUltraUser || !watchedUrl || isCheckingIframeable
+                                        }
+                                      />
+                                    </div>
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+
+                            {!isUltraUser && (
+                              <p className="text-sm text-gray-500">
+                                Link cloaking is an Ultra plan feature. Upgrade to unlock this and
+                                other advanced features.
+                              </p>
+                            )}
+
+                            {!watchedUrl && isUltraUser && (
+                              <p className="text-sm text-gray-500">
+                                Enter a destination URL above to enable link cloaking.
+                              </p>
+                            )}
+
+                            {iframeableResult === true && cloakingEnabled && (
+                              <p className="text-sm text-green-600">
+                                This URL can be cloaked successfully.
+                              </p>
+                            )}
+
+                            {iframeableResult === false && (
+                              <p className="text-sm text-amber-600">
+                                This website doesn&apos;t allow cloaking. Try a different URL.
+                              </p>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
                   {/* Optional Settings Section */}
                   <div className="rounded-lg border border-gray-200 p-4">
                     <button
                       type="button"
                       className="flex w-full items-center justify-between text-left"
-                      onClick={() =>
-                        setIsOptionalSettingsOpen(!isOptionalSettingsOpen)
-                      }
+                      onClick={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
                     >
                       <div className="flex flex-col">
-                        <span className="text-lg font-semibold">
-                          Optional Settings
-                        </span>
+                        <span className="text-lg font-semibold">Optional Settings</span>
                         <span className="text-sm text-gray-500">
                           Configure additional options for your link
                         </span>
@@ -581,8 +740,8 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                     <Input {...field} type="number" />
                                   </FormControl>
                                   <FormDescription>
-                                    Deactivate the link after a certain number
-                                    of clicks. Leave empty to never disable
+                                    Deactivate the link after a certain number of clicks. Leave
+                                    empty to never disable
                                   </FormDescription>
                                   <FormMessage />
                                 </FormItem>
@@ -602,7 +761,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                           variant="outline"
                                           className={cn(
                                             "w-full justify-start text-left font-normal",
-                                            !field.value && "text-muted-foreground"
+                                            !field.value && "text-muted-foreground",
                                           )}
                                         >
                                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -616,14 +775,8 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                       <PopoverContent className="w-auto p-0">
                                         <Calendar
                                           mode="single"
-                                          selected={
-                                            field.value
-                                              ? new Date(field.value)
-                                              : undefined
-                                          }
-                                          onSelect={(date) =>
-                                            field.onChange(date)
-                                          }
+                                          selected={field.value ? new Date(field.value) : undefined}
+                                          onSelect={(date) => field.onChange(date)}
                                           initialFocus
                                           disabled={(date) => date < new Date()}
                                         />

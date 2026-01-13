@@ -1,16 +1,16 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Copy, Folder, MousePointerClick } from "lucide-react";
+import { Check, Copy, Eye, Folder, MousePointerClick } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn, copyToClipboard, daysSinceDate } from "@/lib/utils";
 
+import { useSelection } from "../selection-context";
 import { LinkActions } from "./actions";
 import { LinkNoteTooltip } from "./note-tooltip";
-import { useSelection } from "../selection-context";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -27,7 +27,11 @@ const Link = ({ link, onTagClick }: LinkProps) => {
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
   const tags = (link.tags as string[]) || [];
   const folderInfo = link.folder as { id: number; name: string } | null;
-  const createdBy = link.createdBy as { id: string; name: string | null; imageUrl: string | null } | null;
+  const createdBy = link.createdBy as {
+    id: string;
+    name: string | null;
+    imageUrl: string | null;
+  } | null;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (isSelectionMode) {
@@ -54,7 +58,8 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           isSelectionMode && "cursor-pointer",
           isSelectionMode && !selected && "hover:bg-gray-50/50",
           // Selected state - subtle and refined
-          selected && "bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border-blue-200/60 shadow-sm shadow-blue-100/50"
+          selected &&
+            "bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border-blue-200/60 shadow-sm shadow-blue-100/50",
         )}
         onClick={handleCardClick}
       >
@@ -76,7 +81,9 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           <div
             className={cn(
               "flex items-center transition-all duration-200",
-              isSelectionMode ? "w-8 mr-2" : "w-0 mr-0 overflow-hidden opacity-0 group-hover:w-8 group-hover:mr-2 group-hover:opacity-100"
+              isSelectionMode
+                ? "w-8 mr-2"
+                : "w-0 mr-0 overflow-hidden opacity-0 group-hover:w-8 group-hover:mr-2 group-hover:opacity-100",
             )}
           >
             <motion.button
@@ -90,7 +97,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:ring-offset-1",
                 selected
                   ? "border-blue-500 bg-blue-500"
-                  : "border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50"
+                  : "border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50",
               )}
               whileTap={{ scale: 0.9 }}
             >
@@ -117,9 +124,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                 onClick={(e) => {
                   if (!isSelectionMode) {
                     e.stopPropagation();
-                    router.push(
-                      `/dashboard/analytics/${link.alias}?domain=${link.domain}`
-                    );
+                    router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`);
                   }
                 }}
               >
@@ -146,9 +151,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
             </div>
             <p className="text-sm text-gray-500 flex items-center gap-1.5 flex-wrap">
               <span className="text-gray-400">
-                {daysSinceLinkCreation === 0
-                  ? "Today"
-                  : `${daysSinceLinkCreation}d`}
+                {daysSinceLinkCreation === 0 ? "Today" : `${daysSinceLinkCreation}d`}
               </span>
               <span className="text-gray-300">·</span>
               <span
@@ -160,9 +163,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                   }
                 }}
               >
-                {link.url && link.url.length > 50
-                  ? `${link.url.substring(0, 50)}...`
-                  : link.url}
+                {link.url && link.url.length > 50 ? `${link.url.substring(0, 50)}...` : link.url}
               </span>
               {folderInfo && (
                 <>
@@ -231,15 +232,23 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           {/* Right side actions */}
           <div className="flex items-center gap-2 ml-4 flex-shrink-0">
             {link.note && <LinkNoteTooltip note={link.note} />}
+            {link.cloaking && (
+              <Badge
+                variant="outline"
+                className="rounded-lg py-1.5 px-2.5 bg-violet-50 border-violet-200 cursor-default font-normal"
+                title="Link cloaking enabled - URL stays in address bar"
+              >
+                <Eye className="h-3.5 w-3.5 mr-1.5 text-violet-500" />
+                <span className="text-violet-700 font-medium text-xs">Cloaked</span>
+              </Badge>
+            )}
             <Badge
               variant="outline"
               className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 cursor-pointer font-normal hover:bg-gray-100 transition-colors"
               onClick={(e) => {
                 if (!isSelectionMode) {
                   e.stopPropagation();
-                  router.push(
-                    `/dashboard/analytics/${link.alias}?domain=${link.domain}`
-                  );
+                  router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`);
                 }
               }}
             >
