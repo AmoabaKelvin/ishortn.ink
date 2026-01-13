@@ -47,6 +47,10 @@ const linkSchema = z.object({
     .transform((str) => (str ? JSON.parse(str) : null))
     .default(null),
   createdByUserId: z.string().nullable().default(null),
+  cloaking: z
+    .string()
+    .transform((val) => val === "true")
+    .default("false"),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
@@ -72,6 +76,7 @@ function convertToLink(data: Record<string, string>): Link {
     teamId: parsed.teamId ?? null,
     utmParams: parsed.utmParams ?? null,
     createdByUserId: parsed.createdByUserId ?? null,
+    cloaking: parsed.cloaking ?? false,
   };
 }
 
@@ -92,7 +97,7 @@ async function getFromCache(key: string): Promise<Link | null> {
 async function setInCache(
   key: string,
   link: Link,
-  ttlSeconds: number = DEFAULT_CACHE_TTL
+  ttlSeconds: number = DEFAULT_CACHE_TTL,
 ): Promise<boolean> {
   try {
     const linkToStore = {
