@@ -1,17 +1,10 @@
 "use client";
 
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  ChevronDown,
-  ChevronUp,
-  Gem,
-  Loader2,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Gem, Loader2, Sparkles, X } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -36,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
@@ -78,6 +72,9 @@ export default function CreateLinkPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const [isLinkCloakingOpen, setIsLinkCloakingOpen] = useState(false);
+  const [isCheckingIframeable, setIsCheckingIframeable] = useState(false);
+  const [iframeableResult, setIframeableResult] = useState<boolean | null>(null);
 
   const userSubscription = api.subscriptions.get.useQuery();
   const customDomainsQuery = api.customDomain.list.useQuery();
@@ -113,9 +110,7 @@ export default function CreateLinkPage() {
     if (direction === "up") {
       newIndex = (currentAliasIndex + 1) % generatedAliases.length;
     } else {
-      newIndex =
-        (currentAliasIndex - 1 + generatedAliases.length) %
-        generatedAliases.length;
+      newIndex = (currentAliasIndex - 1 + generatedAliases.length) % generatedAliases.length;
     }
     setCurrentAliasIndex(newIndex);
     form.setValue("alias", generatedAliases[newIndex]);
@@ -140,7 +135,12 @@ export default function CreateLinkPage() {
     let currentMetadata = metaData;
 
     // Only fetch if we don't have any metadata yet (custom or fetched)
-    if (!currentMetadata.title && !currentMetadata.description && !customTitle && !customDescription) {
+    if (
+      !currentMetadata.title &&
+      !currentMetadata.description &&
+      !customTitle &&
+      !customDescription
+    ) {
       try {
         const fetchedMetadata = await fetchMetadataInfo(url);
         currentMetadata = {
@@ -192,7 +192,7 @@ export default function CreateLinkPage() {
           form.clearErrors("alias");
         }
       },
-    }
+    },
   );
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -224,9 +224,8 @@ export default function CreateLinkPage() {
     ? userTags
         .filter(
           (tag) =>
-            (tagInput === "" ||
-              tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
-            !tags.includes(tag.name)
+            (tagInput === "" || tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
+            !tags.includes(tag.name),
         )
         .map((tag) => tag.name)
     : [];
@@ -326,20 +325,73 @@ export default function CreateLinkPage() {
     void fetchMetadata();
   }, [debouncedUrl]);
 
+  // Check iframe compatibility when cloaking is enabled or URL changes while cloaking is on
+  const cloakingEnabled = form.watch("cloaking");
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const checkIframeable = async () => {
+      if (!cloakingEnabled || !debouncedUrl) {
+        setIframeableResult(null);
+        return;
+      }
+
+      // Validate URL format first
+      try {
+        new URL(debouncedUrl);
+      } catch {
+        setIframeableResult(null);
+        return;
+      }
+
+      setIsCheckingIframeable(true);
+      try {
+        const response = await fetch(
+          `/api/links/iframeable?url=${encodeURIComponent(debouncedUrl)}`,
+          { signal: controller.signal },
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        setIframeableResult(data.iframeable);
+
+        if (!data.iframeable) {
+          toast.error("This website doesn't allow cloaking.");
+          form.setValue("cloaking", false);
+        }
+      } catch (error) {
+        // Ignore abort errors (component unmounted or new request started)
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        console.error("Failed to check cloaking compatibility:", error);
+        setIframeableResult(false);
+        form.setValue("cloaking", false);
+        toast.error("Failed to check if URL can be cloaked. Please try again.");
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsCheckingIframeable(false);
+        }
+      }
+    };
+
+    void checkIframeable();
+
+    return () => {
+      controller.abort();
+    };
+  }, [cloakingEnabled, debouncedUrl, form]);
+
   return (
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       <div className="md:col-span-5">
-        <h2 className="text-2xl font-semibold text-gray-900">
-          Create a new link
-        </h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Create a new link to share with your audience.
-        </p>
+        <h2 className="text-2xl font-semibold text-gray-900">Create a new link</h2>
+        <p className="mt-1 text-sm text-gray-500">Create a new link to share with your audience.</p>
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="mt-5 space-y-5"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-5 space-y-5">
             <div className="space-y-4 rounded-lg border border-gray-200 p-4">
               <FormField
                 control={form.control}
@@ -397,15 +449,10 @@ export default function CreateLinkPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              <SelectItem value="ishortn.ink">
-                                ishortn.ink
-                              </SelectItem>
+                              <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
                               {userDomains.length > 0 &&
                                 userDomains.map((domain) => (
-                                  <SelectItem
-                                    key={domain.id}
-                                    value={domain.domain!}
-                                  >
+                                  <SelectItem key={domain.id} value={domain.domain!}>
                                     {domain.domain}
                                   </SelectItem>
                                 ))}
@@ -440,8 +487,7 @@ export default function CreateLinkPage() {
                                 <ChevronDown className="h-4 w-4" />
                               </button>
                             </div>
-                          ) : userSubscription?.data?.subscriptions
-                              ?.status !== "active" ? (
+                          ) : userSubscription?.data?.subscriptions?.status !== "active" ? (
                             <UpgradeToProAIButtonTooltip />
                           ) : (
                             <button
@@ -466,8 +512,7 @@ export default function CreateLinkPage() {
                         >
                           <FormDescription className="flex justify-between">
                             <motion.span key={currentAliasIndex}>
-                              Suggestion {currentAliasIndex + 1} of{" "}
-                              {generatedAliases.length}
+                              Suggestion {currentAliasIndex + 1} of {generatedAliases.length}
                             </motion.span>
                             <motion.span
                               className="cursor-pointer"
@@ -566,8 +611,8 @@ export default function CreateLinkPage() {
                       </div>
                     </FormControl>
                     <FormDescription>
-                      Add tags to categorize your links. Press Enter to add a
-                      tag or select from existing tags.
+                      Add tags to categorize your links. Press Enter to add a tag or select from
+                      existing tags.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -584,8 +629,7 @@ export default function CreateLinkPage() {
                 <div className="flex flex-col">
                   <p className="flex items-center gap-2 text-lg font-semibold">
                     Custom Social Media Previews
-                    {userSubscription?.data?.subscriptions?.status !==
-                      "active" && (
+                    {userSubscription?.data?.subscriptions?.status !== "active" && (
                       <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
                         <span className="flex items-center space-x-1">
                           <Gem className="h-4 w-4 text-slate-500" />
@@ -595,8 +639,7 @@ export default function CreateLinkPage() {
                     )}
                   </p>
                   <span className="text-sm text-gray-500">
-                    Personalize your link previews with custom metadata
-                    settings.
+                    Personalize your link previews with custom metadata settings.
                   </span>
                 </div>
                 <ChevronDown
@@ -746,22 +789,118 @@ export default function CreateLinkPage() {
               </AnimatePresence>
             </div>
 
+            {/* Link Cloaking Section */}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-left"
+                onClick={() => setIsLinkCloakingOpen(!isLinkCloakingOpen)}
+              >
+                <div className="flex flex-col">
+                  <p className="flex items-center gap-2 text-lg font-semibold">
+                    Link Cloaking
+                    {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
+                      <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
+                        <span className="flex items-center space-x-1">
+                          <Gem className="h-4 w-4 text-slate-500" />
+                          <p className="uppercase">Ultra</p>
+                        </span>
+                      </span>
+                    )}
+                  </p>
+                  <span className="text-sm text-gray-500">
+                    Keep your short URL visible in the browser while showing the destination content
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`h-5 w-5 transform transition-transform ${
+                    isLinkCloakingOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              <AnimatePresence>
+                {isLinkCloakingOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="mt-4 space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="cloaking"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Enable Link Cloaking</FormLabel>
+                              <FormDescription>
+                                Visitors will see your short URL in their browser address bar while
+                                viewing the destination page content.
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <div className="flex items-center gap-2">
+                                {isCheckingIframeable && (
+                                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                                )}
+                                <Switch
+                                  checked={field.value ?? false}
+                                  onCheckedChange={field.onChange}
+                                  disabled={
+                                    userSubscription?.data?.subscriptions?.plan !== "ultra" ||
+                                    !destinationURL ||
+                                    isCheckingIframeable
+                                  }
+                                />
+                              </div>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
+                        <p className="text-sm text-gray-500">
+                          Link cloaking is an Ultra plan feature. Upgrade to unlock this and other
+                          advanced features.
+                        </p>
+                      )}
+
+                      {!destinationURL &&
+                        userSubscription?.data?.subscriptions?.plan === "ultra" && (
+                          <p className="text-sm text-gray-500">
+                            Enter a destination URL above to enable link cloaking.
+                          </p>
+                        )}
+
+                      {iframeableResult === true && cloakingEnabled && (
+                        <p className="text-sm text-green-600">
+                          This URL can be cloaked successfully.
+                        </p>
+                      )}
+
+                      {iframeableResult === false && (
+                        <p className="text-sm text-amber-600">
+                          This website doesn&apos;t allow cloaking. Try a different URL.
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             {/* Optional Settings Section */}
             <div className="rounded-lg border border-gray-200 p-4">
               <button
                 type="button"
                 className="flex w-full items-center justify-between text-left"
-                onClick={() =>
-                  setIsOptionalSettingsOpen(!isOptionalSettingsOpen)
-                }
+                onClick={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
               >
                 <div className="flex flex-col">
-                  <span className="text-lg font-semibold">
-                    Optional Settings
-                  </span>
+                  <span className="text-lg font-semibold">Optional Settings</span>
                   <span className="text-sm text-gray-500">
-                    Access additional configuration options for further
-                    customization.
+                    Access additional configuration options for further customization.
                   </span>
                 </div>
                 <ChevronDown
@@ -790,8 +929,8 @@ export default function CreateLinkPage() {
                               <Input {...field} type="number" />
                             </FormControl>
                             <FormDescription>
-                              Deactivate the link after a certain number of
-                              clicks. Leave empty to never disable
+                              Deactivate the link after a certain number of clicks. Leave empty to
+                              never disable
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -805,9 +944,7 @@ export default function CreateLinkPage() {
                           <FormItem>
                             <FormLabel>Disable after date</FormLabel>
                             <FormControl>
-                              <LinkExpirationDatePicker
-                                setSeletectedDate={field.onChange}
-                              />
+                              <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
                             </FormControl>
                             <FormDescription>
                               Deactivate the link after a certain date
@@ -819,20 +956,16 @@ export default function CreateLinkPage() {
 
                       <FormField
                         control={form.control}
-                        disabled={
-                          userSubscription?.data?.subscriptions?.status !==
-                          "active"
-                        }
+                        disabled={userSubscription?.data?.subscriptions?.status !== "active"}
                         name="password"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Password</FormLabel>
                             {!userSubscription.isLoading &&
-                              userSubscription.data?.subscriptions?.status !==
-                                "active" && (
+                              userSubscription.data?.subscriptions?.status !== "active" && (
                                 <FormDescription>
-                                  You need to be on a <b>pro plan</b> to create
-                                  password protected links
+                                  You need to be on a <b>pro plan</b> to create password protected
+                                  links
                                 </FormDescription>
                               )}
 
@@ -840,9 +973,8 @@ export default function CreateLinkPage() {
                               <Input {...field} type="password" />
                             </FormControl>
                             <FormDescription>
-                              Set a password to protect your link. Users will be
-                              prompted to enter the password before being
-                              redirected
+                              Set a password to protect your link. Users will be prompted to enter
+                              the password before being redirected
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { geolocation, ipAddress } from "@vercel/functions";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { isBot } from "@/lib/utils/is-bot";
 
@@ -18,6 +18,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     pathname.startsWith("/api/") ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/_next/") ||
+    pathname.startsWith("/cloaked/") ||
     pathname.endsWith(".png") ||
     pathname.endsWith(".ico") ||
     pathname.split("/").length > 2;
@@ -39,14 +40,14 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   const response = await fetch(
     encodeURI(
-      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${geo.city}&ip=${ip}`
+      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${geo.city}&ip=${ip}`,
     ),
     {
       headers: {
         "user-agent": userAgent ?? "",
         referer: referer ?? "",
       },
-    }
+    },
   );
 
   if (!response.ok) {
@@ -83,6 +84,13 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
       console.error(`Invalid redirect URL: ${data.url}`);
       return NextResponse.next();
     }
+  }
+
+  // If cloaking is enabled, rewrite to cloaked page instead of redirecting
+  // This keeps the short URL in the browser's address bar
+  if (data.cloaking) {
+    const encodedUrl = encodeURIComponent(redirectUrl);
+    return NextResponse.rewrite(new URL(`/cloaked/${encodedUrl}`, request.url));
   }
 
   return NextResponse.redirect(redirectUrl);

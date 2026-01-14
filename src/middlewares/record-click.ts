@@ -1,15 +1,27 @@
+import crypto from "node:crypto";
 import { waitUntil } from "@vercel/functions";
-import crypto from "crypto";
 import { sql } from "drizzle-orm";
 import { UAParser } from "ua-parser-js";
 
-import { getFromCache, Link, setInCache } from "@/lib/core/cache";
+import { type Link, getFromCache, setInCache } from "@/lib/core/cache";
 import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 import { registerEventUsage } from "@/server/lib/event-usage";
 import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
+
+// Check if running on localhost (waitUntil doesn't work locally)
+const isLocalhost = process.env.NODE_ENV === "development";
+
+// Helper to run background tasks - awaits on localhost, uses waitUntil in production
+async function runBackgroundTask<T>(promise: Promise<T>): Promise<T | undefined> {
+  if (isLocalhost) {
+    return promise;
+  }
+  waitUntil(promise);
+  return undefined;
+}
 
 /**
  * This function records a unique click for a link.
@@ -20,8 +32,7 @@ import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
 async function recordUniqueClick(ipHash: string, linkId: number) {
   // CHECK IF THERE EXISTS A UNIQUE CLICK FOR THIS IP AND LINK ID
   const existingUniqueClick = await db.query.uniqueLinkVisit.findFirst({
-    where: (table, { and, eq }) =>
-      and(eq(table.ipHash, ipHash), eq(table.linkId, linkId)),
+    where: (table, { and, eq }) => and(eq(table.ipHash, ipHash), eq(table.linkId, linkId)),
   });
 
   if (existingUniqueClick) {
@@ -42,7 +53,7 @@ async function recordClick(
   ip: string,
   country: string,
   city: string,
-  continent: string
+  continent: string,
 ) {
   if (link.passwordHash) return;
   if (from === "metadata") return;
@@ -64,18 +75,18 @@ async function recordClick(
     browser: parsedUserAgent.browser.name ?? "Unknown",
     os: parsedUserAgent.os.name ?? "Unknown",
     device:
-      parsedUserAgent.device.type ??
-      deviceTypesMapping[parsedUserAgent.os.name ?? ""] ??
-      "Unknown",
+      parsedUserAgent.device.type ?? deviceTypesMapping[parsedUserAgent.os.name ?? ""] ?? "Unknown",
     model: parsedUserAgent.device.model ?? "Unknown",
   };
 
-  const ipHash = crypto.createHash("sha256").update(ip).digest("hex");
+  // On localhost, IP may be undefined - use a dummy value for hashing
+  const ipForHash = ip && ip !== "undefined" ? ip : "localhost-dev";
+  const ipHash = crypto.createHash("sha256").update(ipForHash).digest("hex");
 
   const usage = await registerEventUsage(link.userId, db);
 
   if (usage.alertLevelTriggered && usage.limit && usage.userEmail && usage.plan) {
-    waitUntil(
+    await runBackgroundTask(
       sendEventUsageEmail({
         email: usage.userEmail,
         name: usage.userName,
@@ -83,7 +94,7 @@ async function recordClick(
         limit: usage.limit,
         currentCount: usage.currentCount,
         plan: usage.plan,
-      })
+      }),
     );
   }
 
@@ -91,14 +102,37 @@ async function recordClick(
     return;
   }
 
+  // On localhost, geolocation returns undefined - use dummy values
+  let countryName: string;
+  let continentName: string;
+  let cityName: string;
+
+  if (isLocalhost || !country || country === "undefined") {
+    // Use realistic dummy data for localhost
+    countryName = "United States";
+    continentName = "North America";
+    cityName = "San Francisco";
+  } else {
+    try {
+      countryName = getCountryFullName(country) ?? "Unknown";
+      continentName = getContinentName(country) ?? "Unknown";
+      cityName = city ?? "Unknown";
+    } catch {
+      // Invalid country code, use fallback
+      countryName = "United States";
+      continentName = "North America";
+      cityName = "San Francisco";
+    }
+  }
+
   await Promise.all([
     db.insert(linkVisit).values({
       linkId: link.id,
       ...deviceDetails,
       referer: parseReferrer(headers.get("referer")),
-      country: getCountryFullName(country) ?? "Unknown",
-      city: city ?? "Unknown",
-      continent: getContinentName(country) ?? "Unknown",
+      country: countryName,
+      city: cityName,
+      continent: continentName,
     }),
     recordUniqueClick(ipHash, link.id),
   ]);
@@ -112,27 +146,15 @@ export async function recordUserClickForLink(
   country: string,
   city: string,
   continent: string,
-  skipAnalytics: boolean = false
+  skipAnalytics = false,
 ) {
-  const cleanedDomain = domain
-    .replace(/^https?:\/\//, "")
-    .replace(/^www\./, "");
-  const cacheKey = `${
-    domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
-  }:${alias}`;
+  const cleanedDomain = domain.replace(/^https?:\/\//, "").replace(/^www\./, "");
+  const cacheKey = `${domain.includes("localhost") ? "ishortn.ink" : cleanedDomain}:${alias}`;
   const cachedLink: Link | null = await getFromCache(cacheKey);
 
   if (cachedLink) {
     if (!skipAnalytics) {
-      await recordClick(
-        req,
-        cachedLink,
-        req.referrer ?? "direct",
-        ip,
-        country,
-        city,
-        continent
-      );
+      await recordClick(req, cachedLink, req.referrer ?? "direct", ip, country, city, continent);
     }
     return cachedLink;
   }
@@ -140,11 +162,8 @@ export async function recordUserClickForLink(
   const link = await db.query.link.findFirst({
     where: (table, { and, eq }) =>
       and(
-        eq(
-          table.domain,
-          domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
-        ),
-        sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`
+        eq(table.domain, domain.includes("localhost") ? "ishortn.ink" : cleanedDomain),
+        sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`,
       ),
   });
 
@@ -164,18 +183,10 @@ export async function recordUserClickForLink(
   //   continent
   // );
 
-  waitUntil(setInCache(cacheKey, link));
+  await runBackgroundTask(setInCache(cacheKey, link));
   if (!skipAnalytics) {
-    waitUntil(
-      recordClick(
-        req,
-        link,
-        req.referrer ?? "direct",
-        ip,
-        country,
-        city,
-        continent
-      )
+    await runBackgroundTask(
+      recordClick(req, link, req.referrer ?? "direct", ip, country, city, continent),
     );
   }
   return link;

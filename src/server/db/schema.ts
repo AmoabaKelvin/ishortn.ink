@@ -27,9 +27,7 @@ export const team = mysqlTable(
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 100 }).notNull().unique(), // subdomain: slug.ishortn.ink
     avatarUrl: text("avatarUrl"),
-    defaultDomain: varchar("defaultDomain", { length: 255 }).default(
-      "ishortn.ink"
-    ),
+    defaultDomain: varchar("defaultDomain", { length: 255 }).default("ishortn.ink"),
     ownerId: varchar("ownerId", { length: 32 }).notNull(), // Ultra user who created the team
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
@@ -39,7 +37,7 @@ export const team = mysqlTable(
     slugIdx: index("slug_idx").on(table.slug),
     ownerIdIdx: index("ownerId_idx").on(table.ownerId),
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt), // Index for cleanup job queries
-  })
+  }),
 );
 
 export const teamMember = mysqlTable(
@@ -56,7 +54,7 @@ export const teamMember = mysqlTable(
     teamUserIdx: index("team_user_idx").on(table.teamId, table.userId),
     uniqueTeamUser: unique("unique_team_user").on(table.teamId, table.userId),
     userIdx: index("user_idx").on(table.userId),
-  })
+  }),
 );
 
 export const teamInvite = mysqlTable(
@@ -75,7 +73,7 @@ export const teamInvite = mysqlTable(
   (table) => ({
     tokenIdx: index("token_idx").on(table.token),
     teamIdx: index("team_idx").on(table.teamId),
-  })
+  }),
 );
 
 // Reserved team slugs that cannot be used
@@ -149,20 +147,20 @@ export const user = mysqlTable(
       length: 32,
     }).primaryKey(), // 32 chars is the length of clerk user id
     name: varchar("name", { length: 255 }),
-  email: varchar("email", { length: 255 }).unique(),
-  createdAt: timestamp("createdAt").defaultNow(),
-  imageUrl: text("imageUrl"),
-  qrCodeCount: int("qrCodeCount").default(0),
-  monthlyLinkCount: int("monthlyLinkCount").default(0),
-  lastLinkCountReset: timestamp("lastLinkCountReset").defaultNow(),
-  monthlyEventCount: int("monthlyEventCount").default(0),
-  lastEventCountReset: timestamp("lastEventCountReset").defaultNow(),
-  eventUsageAlertLevel: int("eventUsageAlertLevel").default(0),
-  lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
-},
-(table) => ({
-  userIdx: index("userId_idx").on(table.id),
-})
+    email: varchar("email", { length: 255 }).unique(),
+    createdAt: timestamp("createdAt").defaultNow(),
+    imageUrl: text("imageUrl"),
+    qrCodeCount: int("qrCodeCount").default(0),
+    monthlyLinkCount: int("monthlyLinkCount").default(0),
+    lastLinkCountReset: timestamp("lastLinkCountReset").defaultNow(),
+    monthlyEventCount: int("monthlyEventCount").default(0),
+    lastEventCountReset: timestamp("lastEventCountReset").defaultNow(),
+    eventUsageAlertLevel: int("eventUsageAlertLevel").default(0),
+    lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
+  },
+  (table) => ({
+    userIdx: index("userId_idx").on(table.id),
+  }),
 );
 
 export const subscription = mysqlTable(
@@ -177,21 +175,21 @@ export const subscription = mysqlTable(
     orderId: int("orderId").default(0),
     subscriptionId: int("subscriptionId").default(0),
     customerId: int("customerId").default(0),
-  renewsAt: datetime("renewsAt"),
-  createdAt: timestamp("createdAt"),
-  endsAt: datetime("endsAt"),
-  status: varchar("status", { length: 255 }).default(""),
-  plan: mysqlEnum("plan", ["free", "pro", "ultra"]).default("free"),
-  variantId: int("variantId").default(0),
-  productId: int("productId").default(0),
+    renewsAt: datetime("renewsAt"),
+    createdAt: timestamp("createdAt"),
+    endsAt: datetime("endsAt"),
+    status: varchar("status", { length: 255 }).default(""),
+    plan: mysqlEnum("plan", ["free", "pro", "ultra"]).default("free"),
+    variantId: int("variantId").default(0),
+    productId: int("productId").default(0),
 
-  // details about the payment to show in the dashboard
-  cardBrand: varchar("cardBrand", { length: 255 }).default(""),
-  cardLastFour: varchar("cardLastFour", { length: 4 }).default(""),
-},
+    // details about the payment to show in the dashboard
+    cardBrand: varchar("cardBrand", { length: 255 }).default(""),
+    cardLastFour: varchar("cardLastFour", { length: 4 }).default(""),
+  },
   (table) => ({
     userIdx: index("userId_idx").on(table.userId),
-  })
+  }),
 );
 
 export const link = mysqlTable(
@@ -227,17 +225,15 @@ export const link = mysqlTable(
     tags: json("tags").$type<string[]>().default([]),
     archived: boolean("archived").default(false),
     folderId: int("folderId"),
+    cloaking: boolean("cloaking").default(false),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
-    uniqueAliasDomainIdx: unique("unique_alias_domain").on(
-      table.alias,
-      table.domain
-    ), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
+    uniqueAliasDomainIdx: unique("unique_alias_domain").on(table.alias, table.domain), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
     folderIdIdx: index("folderId_idx").on(table.folderId),
-  })
+  }),
 );
 
 export const linkVisit = mysqlTable(
@@ -257,7 +253,7 @@ export const linkVisit = mysqlTable(
   },
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
-  })
+  }),
 );
 
 export const uniqueLinkVisit = mysqlTable(
@@ -272,7 +268,7 @@ export const uniqueLinkVisit = mysqlTable(
     linkIdIdx: index("linkId_idx").on(table.linkId),
     ipHashIdx: index("ipHash_idx").on(table.ipHash),
     uniqueVisitIdx: index("unique_visit_idx").on(table.linkId, table.ipHash),
-  })
+  }),
 );
 
 export const token = mysqlTable(
@@ -285,7 +281,7 @@ export const token = mysqlTable(
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
-  })
+  }),
 );
 
 export const qrcode = mysqlTable(
@@ -334,7 +330,7 @@ export const qrcode = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
-  })
+  }),
 );
 
 // QR Code Presets for saving reusable QR code styles
@@ -373,7 +369,7 @@ export const qrPreset = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
-  })
+  }),
 );
 
 export const siteSettings = mysqlTable(
@@ -382,16 +378,14 @@ export const siteSettings = mysqlTable(
     id: serial("id").primaryKey(),
     userId: varchar("userId", { length: 32 }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
-    defaultDomain: varchar("defaultDomain", { length: 255 }).default(
-      "ishortn.ink"
-    ),
+    defaultDomain: varchar("defaultDomain", { length: 255 }).default("ishortn.ink"),
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
-  })
+  }),
 );
 
 // Tag model for storing unique tags
@@ -415,7 +409,7 @@ export const tag = mysqlTable(
     // Prevents duplicate tag names within a team (where teamId is NOT NULL)
     // Personal workspace tags (teamId=NULL) are deduplicated at application layer
     uniqueTagPerTeam: unique("unique_tag_team").on(table.name, table.teamId),
-  })
+  }),
 );
 
 // Folder model for organizing links
@@ -434,7 +428,7 @@ export const folder = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
-  })
+  }),
 );
 
 // FolderPermission join table for folder-level access control in teams
@@ -454,7 +448,7 @@ export const folderPermission = mysqlTable(
     pk: primaryKey({ columns: [table.folderId, table.userId] }),
     folderIdIdx: index("folderId_idx").on(table.folderId),
     userIdIdx: index("userId_idx").on(table.userId),
-  })
+  }),
 );
 
 // LinkTag join table for many-to-many relationship
@@ -469,7 +463,7 @@ export const linkTag = mysqlTable(
     pk: primaryKey({ columns: [table.linkId, table.tagId] }),
     linkIdIdx: index("linkId_idx").on(table.linkId),
     tagIdIdx: index("tagId_idx").on(table.tagId),
-  })
+  }),
 );
 
 // Define relations
@@ -499,17 +493,14 @@ export const customDomain = mysqlTable(
     userId: varchar("userId", { length: 32 }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
     createdAt: timestamp("createdAt").defaultNow(),
-    status: mysqlEnum("status", ["pending", "active", "invalid"]).default(
-      "pending"
-    ),
+    status: mysqlEnum("status", ["pending", "active", "invalid"]).default("pending"),
     verificationDetails: json("verificationDetails"),
     lastReminderSentAt: timestamp("lastReminderSentAt"),
     // Generated column to handle NULL teamId in unique constraint
     // MySQL treats NULLs as distinct, so we coalesce to 0 for personal workspaces
-    teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(
-      sql`COALESCE(\`teamId\`, 0)`,
-      { mode: "stored" }
-    ),
+    teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(sql`COALESCE(\`teamId\`, 0)`, {
+      mode: "stored",
+    }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
@@ -519,9 +510,9 @@ export const customDomain = mysqlTable(
     domainWorkspaceUnique: unique("domain_workspace_unique").on(
       table.domain,
       table.userId,
-      table.teamIdForUnique
+      table.teamIdForUnique,
     ),
-  })
+  }),
 );
 
 export const userRelations = relations(user, ({ many, one }) => ({
@@ -592,15 +583,12 @@ export const customDomainRelations = relations(customDomain, ({ one }) => ({
   }),
 }));
 
-export const uniqueLinkVisitRelations = relations(
-  uniqueLinkVisit,
-  ({ one }) => ({
-    link: one(link, {
-      fields: [uniqueLinkVisit.linkId],
-      references: [link.id],
-    }),
-  })
-);
+export const uniqueLinkVisitRelations = relations(uniqueLinkVisit, ({ one }) => ({
+  link: one(link, {
+    fields: [uniqueLinkVisit.linkId],
+    references: [link.id],
+  }),
+}));
 
 export const siteSettingsRelations = relations(siteSettings, ({ one }) => ({
   user: one(user, {
@@ -718,7 +706,7 @@ export const utmTemplate = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
-  })
+  }),
 );
 
 // Define relations for UtmTemplate

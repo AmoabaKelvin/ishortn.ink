@@ -1,0 +1,1 @@
+ALTER TABLE `Link` ADD `cloaking` boolean DEFAULT false;
