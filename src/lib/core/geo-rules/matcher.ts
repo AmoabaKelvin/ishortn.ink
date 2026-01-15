@@ -74,10 +74,17 @@ export function matchGeoRules(
   for (const rule of sortedRules) {
     if (ruleMatches(rule, countryCode, continentCode)) {
       if (rule.action === "redirect") {
+        // Guard against missing destination - should not happen with proper validation
+        if (!rule.destination) {
+          console.warn(
+            `Geo rule ${rule.id} has action "redirect" but missing destination. Skipping rule.`
+          );
+          continue;
+        }
         return {
           matched: true,
           action: "redirect",
-          destination: rule.destination!,
+          destination: rule.destination,
           ruleId: rule.id,
         };
       } else {
