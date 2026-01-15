@@ -8,6 +8,7 @@ import { AnalyticsTracker } from "../_components/analytics-tracker";
 
 import { BarChart } from "./_components/bar-chart";
 import { CountriesAndCitiesStats } from "./_components/countries-and-cities-stats";
+import { GeoRulesStats } from "./_components/geo-rules-stats";
 import { QuickInfoCard } from "./_components/quick-info-card";
 import { RangeSelectorWrapper } from "./_components/range-selector-wrapper";
 import { ReferrerStats } from "./_components/referrers";
@@ -37,6 +38,7 @@ export default async function LinkAnalyticsPage(
     referers,
     topReferrer,
     isProPlan,
+    geoRules,
   } = await api.link.linkVisits.query({
     id: params.alias,
     domain,
@@ -100,6 +102,10 @@ export default async function LinkAnalyticsPage(
           uniqueClicksPerDate={aggregatedVisits.uniqueClicksPerDate ?? {}}
           className="h-96"
           isProPlan={isProPlan}
+          geoRules={geoRules}
+          totalVisits={totalVisits.map((v) => ({
+            matchedGeoRuleId: v.matchedGeoRuleId,
+          }))}
         />
       </div>
 
@@ -121,6 +127,16 @@ export default async function LinkAnalyticsPage(
         />
 
         <ReferrerStats referers={referers} totalClicks={totalVisits.length} />
+
+        {geoRules.length > 0 && (
+          <GeoRulesStats
+            totalVisits={totalVisits.map((v) => ({
+              matchedGeoRuleId: v.matchedGeoRuleId,
+            }))}
+            geoRules={geoRules}
+            totalClicks={totalVisits.length}
+          />
+        )}
       </div>
 
       {isProPlan && (

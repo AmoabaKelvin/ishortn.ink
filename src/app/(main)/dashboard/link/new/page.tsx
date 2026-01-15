@@ -34,6 +34,7 @@ import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
+import { GeoRulesForm } from "../../_components/geo-rules-form";
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
 import { UtmParamsForm } from "../../_components/utm-params-form";
 import { UtmTemplateSelector } from "../../_components/utm-template-selector";
@@ -889,6 +890,14 @@ export default function CreateLinkPage() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Geotargeting Rules Section */}
+            <GeoRulesForm
+              form={form}
+              disabled={userSubscription?.data?.subscriptions?.status !== "active"}
+              maxRules={userSubscription?.data?.subscriptions?.plan === "ultra" ? undefined : 3}
+              isUnlimited={userSubscription?.data?.subscriptions?.plan === "ultra"}
+            />
 
             {/* Optional Settings Section */}
             <div className="rounded-lg border border-gray-200 p-4">

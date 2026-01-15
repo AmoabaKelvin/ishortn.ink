@@ -2,6 +2,7 @@ import { aiRouter } from "./routers/ai/ai.procedure";
 import { changelogRouter } from "./routers/changelog/changelog.procedure";
 import { customDomainRouter } from "./routers/domains/domains.procedure";
 import { folderRouter } from "./routers/folder/folder.procedure";
+import { geoRulesRouter } from "./routers/geo-rules/geo-rules.router";
 import { lemonsqueezyRouter } from "./routers/lemonsqueezy/lemonsqueezy.procedure";
 import { linkRouter } from "./routers/link/link.procedure";
 import { qrCodeRouter } from "./routers/qrcode/qrcode.procedure";
@@ -29,6 +30,7 @@ export const appRouter = createTRPCRouter({
   changelog: changelogRouter,
   team: teamRouter,
   user: userRouter,
+  geoRules: geoRulesRouter,
 });
 
 export type AppRouter = typeof appRouter;

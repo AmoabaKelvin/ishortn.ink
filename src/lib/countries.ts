@@ -242,7 +242,7 @@ export const COUNTRIES = {
   ZW: "Zimbabwe",
 } as const;
 
-const ContinentCodes = {
+export const ContinentCodes = {
   AD: "EU",
   AE: "AS",
   AF: "AS",
@@ -517,4 +517,16 @@ export function getContinentName(code: string): string {
 
 export function getCountryFullName(code: string): string {
   return COUNTRIES[code.toUpperCase() as keyof typeof COUNTRIES];
+}
+
+/**
+ * Returns the continent code for a given country code.
+ * Unlike getContinentName, this returns null for invalid codes instead of throwing.
+ */
+export function getCountryContinentCode(countryCode: string): string | null {
+  return (
+    ContinentCodes[
+      countryCode.toUpperCase() as keyof typeof ContinentCodes
+    ] ?? null
+  );
 }

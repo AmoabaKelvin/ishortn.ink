@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { GeoRulesForm } from "@/app/(main)/dashboard/_components/geo-rules-form";
 import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
 import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
 import { OgImageUploader } from "@/app/(main)/dashboard/link/new/_components/og-image-uploader";
@@ -67,6 +68,10 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
 
   const { data: userTags } = api.tag.list.useQuery();
   const userSubscription = api.subscriptions.get.useQuery();
+  const { data: existingGeoRules } = api.geoRules.getByLinkId.useQuery(
+    { linkId: link.id },
+    { enabled: open }
+  );
 
   const formUpdateMutation = api.link.update.useMutation({
     onSuccess: async () => {
@@ -74,7 +79,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     },
   });
 
-  const getFormDefaults = (linkData: typeof link) => {
+  const getFormDefaults = (linkData: typeof link, geoRules?: typeof existingGeoRules) => {
     const metadata = linkData.metadata as LinkMetadata | undefined;
     return {
       id: linkData.id,
@@ -99,18 +104,26 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
           utm_content?: string;
         }) ?? undefined,
       cloaking: linkData.cloaking ?? false,
+      geoRules: geoRules?.map((rule) => ({
+        type: rule.type,
+        condition: rule.condition,
+        values: rule.values,
+        action: rule.action,
+        destination: rule.destination ?? undefined,
+        blockMessage: rule.blockMessage ?? undefined,
+      })) ?? [],
     };
   };
 
   const form = useForm<z.infer<typeof updateLinkSchema>>({
     resolver: zodResolver(updateLinkSchema),
-    defaultValues: getFormDefaults(link),
+    defaultValues: getFormDefaults(link, existingGeoRules),
   });
 
   useEffect(() => {
-    form.reset(getFormDefaults(link));
+    form.reset(getFormDefaults(link, existingGeoRules));
     setTags((link.tags as string[]) || []);
-  }, [link]);
+  }, [link, existingGeoRules]);
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
@@ -701,6 +714,14 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       )}
                     </AnimatePresence>
                   </div>
+
+                  {/* Geotargeting Rules Section */}
+                  <GeoRulesForm
+                    form={form}
+                    disabled={!isProOrUltraUser}
+                    maxRules={isUltraUser ? undefined : 3}
+                    isUnlimited={isUltraUser}
+                  />
 
                   {/* Optional Settings Section */}
                   <div className="rounded-lg border border-gray-200 p-4">

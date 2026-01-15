@@ -38,9 +38,16 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
   const ip = ipAddress(request);
   const referer = request.headers.get("referer");
 
+  // In localhost/development, use simulated geo data or allow override via query param
+  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1");
+  const simCountry = request.nextUrl.searchParams.get("geo"); // Allow ?geo=US for testing
+  const country = simCountry || geo.country || (isLocalhost ? "US" : undefined);
+  const city = geo.city || (isLocalhost ? "San Francisco" : undefined);
+  const continent = geo.region || (isLocalhost ? "NA" : undefined);
+
   const response = await fetch(
     encodeURI(
-      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${geo.country}&city=${geo.city}&ip=${ip}`,
+      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${country}&city=${city}&continent=${continent}&ip=${ip}`,
     ),
     {
       headers: {
