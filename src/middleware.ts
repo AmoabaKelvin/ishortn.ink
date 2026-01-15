@@ -2,6 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { getCountryContinentCode } from "@/lib/countries";
 import { isBot } from "@/lib/utils/is-bot";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
@@ -43,7 +44,8 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
   const simCountry = request.nextUrl.searchParams.get("geo"); // Allow ?geo=US for testing
   const country = simCountry || geo.country || (isLocalhost ? "US" : undefined);
   const city = geo.city || (isLocalhost ? "San Francisco" : undefined);
-  const continent = geo.region || (isLocalhost ? "NA" : undefined);
+  // Derive continent from country code (geo.region is Vercel deployment region, not continent)
+  const continent = country ? getCountryContinentCode(country) : (isLocalhost ? "NA" : undefined);
 
   const response = await fetch(
     encodeURI(
