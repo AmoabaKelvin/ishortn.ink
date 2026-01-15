@@ -279,8 +279,8 @@ export async function recordUserClickWithGeoRule(
     return null;
   }
 
-  waitUntil(setInCache(cacheKey, link));
-  waitUntil(
+  await runBackgroundTask(setInCache(cacheKey, link));
+  await runBackgroundTask(
     recordClick(
       req,
       link,
