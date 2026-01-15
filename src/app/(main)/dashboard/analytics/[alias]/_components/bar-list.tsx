@@ -25,8 +25,8 @@ export function BarList({ records, totalClicks, color = "blue" }: BarListProps) 
   return (
     <div className="flex flex-col gap-1.5">
       {sortedRecords.map((record, index) => {
-        const percentage = (record.clicks / maxClicks) * 100;
-        const percentOfTotal = ((record.clicks / totalClicks) * 100).toFixed(0);
+        const percentage = maxClicks > 0 ? (record.clicks / maxClicks) * 100 : 0;
+        const percentOfTotal = totalClicks > 0 ? ((record.clicks / totalClicks) * 100).toFixed(0) : "0";
         return (
           <div
             key={record.name}
