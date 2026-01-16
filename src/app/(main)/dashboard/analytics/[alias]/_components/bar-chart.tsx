@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BarChart3, AreaChartIcon } from "lucide-react";
 import {
   Area,
@@ -72,6 +72,32 @@ type BarChartProps = {
 type ChartView = "clicks" | "geotargeting";
 type ChartType = "area" | "bar";
 
+/**
+ * Custom tooltip component for the geo pie chart.
+ * Extracted outside BarChart to avoid recreation on every render.
+ */
+function GeoChartTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; payload: { percentage: string } }>;
+}) {
+  if (active && payload && payload.length > 0) {
+    const item = payload[0];
+    if (!item) return null;
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg">
+        <p className="text-sm font-medium text-gray-900">{item.name}</p>
+        <p className="text-xs text-gray-600">
+          {item.value.toLocaleString()} clicks ({item.payload.percentage}%)
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function BarChart({
   clicksPerDate,
   uniqueClicksPerDate,
@@ -83,97 +109,101 @@ export function BarChart({
   const [chartView, setChartView] = useState<ChartView>("clicks");
   const [chartType, setChartType] = useState<ChartType>("area");
 
-  const chartData = Object.entries(clicksPerDate).map(([date, clicks]) => ({
-    date,
-    clicks,
-    uniqueClicks: uniqueClicksPerDate[date] ?? 0,
-  }));
+  // Memoize chart data transformation
+  const chartData = useMemo(
+    () =>
+      Object.entries(clicksPerDate).map(([date, clicks]) => ({
+        date,
+        clicks,
+        uniqueClicks: uniqueClicksPerDate[date] ?? 0,
+      })),
+    [clicksPerDate, uniqueClicksPerDate]
+  );
 
-  // Pad data with a zero entry for the day before if only one data point
-  const paddedChartData = chartData.length === 1 && chartData[0]
-    ? [
+  // Memoize padded chart data
+  const paddedChartData = useMemo(() => {
+    if (chartData.length === 1 && chartData[0]) {
+      return [
         {
-          date: new Date(new Date(chartData[0].date).getTime() - 86400000).toISOString().split('T')[0],
+          date: new Date(new Date(chartData[0].date).getTime() - 86400000)
+            .toISOString()
+            .split("T")[0],
           clicks: 0,
           uniqueClicks: 0,
         },
         ...chartData,
-      ]
-    : chartData;
+      ];
+    }
+    return chartData;
+  }, [chartData]);
 
-  // Calculate geo stats
-  const ruleActionMap = new Map<number, "redirect" | "block">();
-  geoRules.forEach((rule) => {
-    ruleActionMap.set(rule.id, rule.action);
-  });
+  // Memoize geo stats calculation
+  const geoStats = useMemo(() => {
+    const ruleActionMap = new Map<number, "redirect" | "block">();
+    geoRules.forEach((rule) => {
+      ruleActionMap.set(rule.id, rule.action);
+    });
 
-  const geoStats = totalVisits.reduce(
-    (acc, visit) => {
-      if (visit.matchedGeoRuleId === null) {
-        acc.defaultCount++;
-      } else {
-        const action = ruleActionMap.get(visit.matchedGeoRuleId);
-        if (action === "redirect") {
-          acc.redirectCount++;
-        } else if (action === "block") {
-          acc.blockCount++;
-        } else {
-          // Orphaned/deleted rule - count as default
+    return totalVisits.reduce(
+      (acc, visit) => {
+        if (visit.matchedGeoRuleId === null) {
           acc.defaultCount++;
+        } else {
+          const action = ruleActionMap.get(visit.matchedGeoRuleId);
+          if (action === "redirect") {
+            acc.redirectCount++;
+          } else if (action === "block") {
+            acc.blockCount++;
+          } else {
+            // Orphaned/deleted rule - count as default
+            acc.defaultCount++;
+          }
         }
-      }
-      return acc;
-    },
-    { defaultCount: 0, redirectCount: 0, blockCount: 0 }
-  );
+        return acc;
+      },
+      { defaultCount: 0, redirectCount: 0, blockCount: 0 }
+    );
+  }, [geoRules, totalVisits]);
 
   const total = totalVisits.length;
   const hasGeoRules = geoRules.length > 0;
 
-  const geoChartData = [
-    {
-      name: "Default",
-      value: geoStats.defaultCount,
-      color: "#94a3b8",
-      percentage: total > 0 ? ((geoStats.defaultCount / total) * 100).toFixed(1) : "0",
-    },
-    {
-      name: "Redirected",
-      value: geoStats.redirectCount,
-      color: "#2563eb",
-      percentage: total > 0 ? ((geoStats.redirectCount / total) * 100).toFixed(1) : "0",
-    },
-    {
-      name: "Blocked",
-      value: geoStats.blockCount,
-      color: "#ef4444",
-      percentage: total > 0 ? ((geoStats.blockCount / total) * 100).toFixed(1) : "0",
-    },
-  ].filter((d) => d.value > 0);
+  // Memoize geo chart data for pie chart
+  const geoChartData = useMemo(
+    () =>
+      [
+        {
+          name: "Default",
+          value: geoStats.defaultCount,
+          color: "#94a3b8",
+          percentage:
+            total > 0
+              ? ((geoStats.defaultCount / total) * 100).toFixed(1)
+              : "0",
+        },
+        {
+          name: "Redirected",
+          value: geoStats.redirectCount,
+          color: "#2563eb",
+          percentage:
+            total > 0
+              ? ((geoStats.redirectCount / total) * 100).toFixed(1)
+              : "0",
+        },
+        {
+          name: "Blocked",
+          value: geoStats.blockCount,
+          color: "#ef4444",
+          percentage:
+            total > 0
+              ? ((geoStats.blockCount / total) * 100).toFixed(1)
+              : "0",
+        },
+      ].filter((d) => d.value > 0),
+    [geoStats, total]
+  );
 
   const views = hasGeoRules ? ["clicks", "geotargeting"] : ["clicks"];
-
-  const CustomTooltip = ({
-    active,
-    payload,
-  }: {
-    active?: boolean;
-    payload?: Array<{ name: string; value: number; payload: { percentage: string } }>;
-  }) => {
-    if (active && payload && payload.length > 0) {
-      const item = payload[0];
-      if (!item) return null;
-      return (
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg">
-          <p className="text-sm font-medium text-gray-900">{item.name}</p>
-          <p className="text-xs text-gray-600">
-            {item.value.toLocaleString()} clicks ({item.payload.percentage}%)
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <Card className="rounded-xl border-gray-100 shadow-sm overflow-hidden">
@@ -364,7 +394,7 @@ export function BarChart({
                         <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<GeoChartTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

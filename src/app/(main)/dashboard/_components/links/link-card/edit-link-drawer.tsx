@@ -4,11 +4,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarIcon, ChevronDown, Gem, Loader2, MousePointerClick, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { GeoRulesForm } from "@/app/(main)/dashboard/_components/geo-rules-form";
+// Lazy load GeoRulesForm to reduce initial bundle size (includes framer-motion)
+const GeoRulesForm = dynamic(
+  () =>
+    import("@/app/(main)/dashboard/_components/geo-rules-form").then(
+      (mod) => mod.GeoRulesForm
+    ),
+  { ssr: false }
+);
 import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
 import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
 import { OgImageUploader } from "@/app/(main)/dashboard/link/new/_components/og-image-uploader";

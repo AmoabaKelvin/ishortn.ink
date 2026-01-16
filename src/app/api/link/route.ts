@@ -98,7 +98,8 @@ export async function GET(request: NextRequest) {
         orderBy: [asc(geoRule.priority)],
       });
       if (rulesFromDb.length > 0) {
-        await setGeoRulesInCache(link.id, rulesFromDb);
+        // Fire-and-forget cache population - don't block the response
+        void setGeoRulesInCache(link.id, rulesFromDb);
         geoRules = rulesFromDb;
       }
     }
