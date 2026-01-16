@@ -606,6 +606,32 @@ async function executeResourceTransfer(
 
   await ctx.db.transaction(async (tx) => {
     // =========================================
+    // Phase 0: Atomically claim the transfer (prevent race condition)
+    // =========================================
+    // Use conditional update to ensure only one request can claim this transfer.
+    // If another request already changed status from "pending", this will update 0 rows.
+    const claimResult = await tx
+      .update(accountTransfer)
+      .set({
+        status: "accepted",
+        acceptedAt: new Date(),
+        toUserId: toUserId,
+      })
+      .where(
+        and(
+          eq(accountTransfer.id, transferId),
+          eq(accountTransfer.status, "pending")
+        )
+      );
+
+    if (claimResult[0].affectedRows === 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "This transfer has already been processed or is no longer pending",
+      });
+    }
+
+    // =========================================
     // Phase 1: Handle Folders (by name merge)
     // =========================================
     const sourceFolders = await tx.query.folder.findMany({
@@ -802,19 +828,7 @@ async function executeResourceTransfer(
     }
 
     // =========================================
-    // Phase 10: Mark transfer as accepted
-    // =========================================
-    await tx
-      .update(accountTransfer)
-      .set({
-        status: "accepted",
-        acceptedAt: new Date(),
-        toUserId: toUserId,
-      })
-      .where(eq(accountTransfer.id, transferId));
-
-    // =========================================
-    // Phase 11: Soft-delete source account
+    // Phase 9: Soft-delete source account
     // =========================================
     await tx
       .update(user)
