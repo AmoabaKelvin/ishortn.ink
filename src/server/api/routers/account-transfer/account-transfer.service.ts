@@ -132,12 +132,18 @@ async function countUserResources(
  * Validate if account transfer is possible
  * - Target account must exist
  * - Cannot transfer to self
- * - No pending transfer exists
+ * - No pending transfer exists (unless excluded)
  * - Target plan must accommodate resources
+ *
+ * @param ctx - Protected tRPC context
+ * @param targetEmail - Email of the target account
+ * @param excludeTransferId - Optional transfer ID to exclude from pending check
+ *                            (used during revalidation in accept flow)
  */
 export async function validateAccountTransfer(
   ctx: ProtectedTRPCContext,
-  targetEmail: string
+  targetEmail: string,
+  excludeTransferId?: number
 ): Promise<TransferValidationResult> {
   const errors: TransferValidationResult["errors"] = [];
 
@@ -223,12 +229,21 @@ export async function validateAccountTransfer(
     };
   }
 
-  // Check for existing pending transfer
+  // Check for existing pending transfer (excluding the current one if specified)
+  const pendingTransferConditions = [
+    eq(accountTransfer.fromUserId, ctx.auth.userId),
+    eq(accountTransfer.status, "pending"),
+  ];
+
+  // If we're revalidating during accept, exclude the current transfer from the check
+  if (excludeTransferId !== undefined) {
+    pendingTransferConditions.push(
+      sql`${accountTransfer.id} != ${excludeTransferId}`
+    );
+  }
+
   const existingTransfer = await ctx.db.query.accountTransfer.findFirst({
-    where: and(
-      eq(accountTransfer.fromUserId, ctx.auth.userId),
-      eq(accountTransfer.status, "pending")
-    ),
+    where: and(...pendingTransferConditions),
   });
 
   if (existingTransfer) {
@@ -554,9 +569,11 @@ export async function acceptAccountTransfer(
     auth: { ...ctx.auth, userId: transfer.fromUserId },
   } as ProtectedTRPCContext;
 
+  // Pass the current transfer ID to exclude it from the pending transfer check
   const revalidation = await validateAccountTransfer(
     sourceUserContext,
-    transfer.toEmail
+    transfer.toEmail,
+    transfer.id
   );
 
   if (!revalidation.isValid) {
