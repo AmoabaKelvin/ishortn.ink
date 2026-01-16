@@ -236,6 +236,27 @@ export const link = mysqlTable(
   }),
 );
 
+// Geo targeting rules for links
+export const geoRule = mysqlTable(
+  "GeoRule",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    type: mysqlEnum("type", ["country", "continent"]).notNull(),
+    condition: mysqlEnum("condition", ["in", "not_in"]).notNull().default("in"),
+    values: json("values").$type<string[]>().notNull(), // Array of ISO country codes or continent codes
+    action: mysqlEnum("action", ["redirect", "block"]).notNull(),
+    destination: varchar("destination", { length: 2048 }), // URL for redirect action
+    blockMessage: varchar("blockMessage", { length: 500 }), // Custom message for block action
+    priority: int("priority").notNull().default(0), // Lower = higher priority
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+    priorityIdx: index("priority_idx").on(table.linkId, table.priority),
+  })
+);
+
 export const linkVisit = mysqlTable(
   "LinkVisit",
   {
@@ -249,10 +270,12 @@ export const linkVisit = mysqlTable(
     country: varchar("country", { length: 255 }),
     city: varchar("city", { length: 255 }),
     continent: varchar("continent", { length: 255 }).default("N/A"),
+    matchedGeoRuleId: int("matchedGeoRuleId"), // Reference to the geo rule that matched (for analytics)
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
+    geoRuleIdIdx: index("geoRuleId_idx").on(table.matchedGeoRuleId),
   }),
 );
 
@@ -483,6 +506,14 @@ export const linkRelations = relations(link, ({ one, many }) => ({
     fields: [link.folderId],
     references: [folder.id],
   }),
+  geoRules: many(geoRule),
+}));
+
+export const geoRuleRelations = relations(geoRule, ({ one }) => ({
+  link: one(link, {
+    fields: [geoRule.linkId],
+    references: [link.id],
+  }),
 }));
 
 export const customDomain = mysqlTable(
@@ -540,6 +571,10 @@ export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
   link: one(link, {
     fields: [linkVisit.linkId],
     references: [link.id],
+  }),
+  matchedGeoRule: one(geoRule, {
+    fields: [linkVisit.matchedGeoRuleId],
+    references: [geoRule.id],
   }),
 }));
 
@@ -686,6 +721,9 @@ export type NewFolder = typeof folder.$inferInsert;
 
 export type FolderPermission = typeof folderPermission.$inferSelect;
 export type NewFolderPermission = typeof folderPermission.$inferInsert;
+
+export type GeoRule = typeof geoRule.$inferSelect;
+export type NewGeoRule = typeof geoRule.$inferInsert;
 
 // UTM Template model for storing reusable UTM parameter configurations
 export const utmTemplate = mysqlTable(

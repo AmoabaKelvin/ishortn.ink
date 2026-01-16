@@ -54,6 +54,7 @@ async function recordClick(
   country: string,
   city: string,
   continent: string,
+  matchedGeoRuleId?: number
 ) {
   if (link.passwordHash) return;
   if (from === "metadata") return;
@@ -133,6 +134,7 @@ async function recordClick(
       country: countryName,
       city: cityName,
       continent: continentName,
+      matchedGeoRuleId: matchedGeoRuleId ?? null,
     }),
     recordUniqueClick(ipHash, link.id),
   ]);
@@ -222,4 +224,73 @@ export function parseReferrer(referrer: string | null): string {
   } catch (_error) {
     return referrer.substring(0, 50);
   }
+}
+
+/**
+ * Records a click with a matched geo rule ID for analytics.
+ * This is used when a geo rule matches and we want to track which rule was applied.
+ */
+export async function recordUserClickWithGeoRule(
+  req: Request,
+  domain: string,
+  alias: string,
+  ip: string,
+  country: string,
+  city: string,
+  continent: string,
+  matchedGeoRuleId: number
+) {
+  const cleanedDomain = domain
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "");
+  const cacheKey = `${
+    domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
+  }:${alias}`;
+  const cachedLink: Link | null = await getFromCache(cacheKey);
+
+  if (cachedLink) {
+    await recordClick(
+      req,
+      cachedLink,
+      req.referrer ?? "direct",
+      ip,
+      country,
+      city,
+      continent,
+      matchedGeoRuleId
+    );
+    return cachedLink;
+  }
+
+  // If not in cache, the link should have been fetched already by recordUserClickForLink
+  // This shouldn't normally happen, but handle it gracefully
+  const link = await db.query.link.findFirst({
+    where: (table, { and, eq }) =>
+      and(
+        eq(
+          table.domain,
+          domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
+        ),
+        sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`
+      ),
+  });
+
+  if (!link) {
+    return null;
+  }
+
+  await runBackgroundTask(setInCache(cacheKey, link));
+  await runBackgroundTask(
+    recordClick(
+      req,
+      link,
+      req.referrer ?? "direct",
+      ip,
+      country,
+      city,
+      continent,
+      matchedGeoRuleId
+    )
+  );
+  return link;
 }

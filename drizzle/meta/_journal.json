@@ -316,6 +316,13 @@
       "when": 1768314362116,
       "tag": "0044_add_link_cloaking",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1768379510205,
+      "tag": "0045_geotargeting",
+      "breakpoints": true
     }
   ]
 }
