@@ -204,6 +204,8 @@ export function BarChart({
                       : "text-gray-400 hover:text-gray-600"
                   )}
                   title="Area Chart"
+                  aria-label="Area chart"
+                  aria-pressed={chartType === "area"}
                 >
                   <AreaChartIcon className="h-4 w-4" />
                 </button>
@@ -216,6 +218,8 @@ export function BarChart({
                       : "text-gray-400 hover:text-gray-600"
                   )}
                   title="Bar Chart"
+                  aria-label="Bar chart"
+                  aria-pressed={chartType === "bar"}
                 >
                   <BarChart3 className="h-4 w-4" />
                 </button>
