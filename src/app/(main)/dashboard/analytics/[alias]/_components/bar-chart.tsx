@@ -30,6 +30,20 @@ import UpgradeText from "../../../qrcodes/_components/upgrade-text";
 
 import type { ChartConfig } from "@/components/ui/chart";
 
+/**
+ * Formats a "YYYY-MM-DD" date string as UTC to prevent timezone shifts.
+ * Parses the string manually to avoid local timezone interpretation.
+ */
+function formatDate(dateString: string): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const utcDate = new Date(Date.UTC(year!, month! - 1, day!));
+  return utcDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 const chartConfig = {
   clicks: {
     label: "Clicks",
@@ -273,23 +287,13 @@ export function BarChart({
                   axisLine={false}
                   tickMargin={8}
                   minTickGap={32}
-                  tickFormatter={(date: string) => {
-                    return new Date(date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    });
-                  }}
+                  tickFormatter={formatDate}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(value) => {
-                        return new Date(value).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        });
-                      }}
+                      labelFormatter={(value) => formatDate(String(value))}
                       indicator="dot"
                     />
                   }
@@ -319,23 +323,13 @@ export function BarChart({
                   axisLine={false}
                   tickMargin={8}
                   minTickGap={32}
-                  tickFormatter={(date: string) => {
-                    return new Date(date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    });
-                  }}
+                  tickFormatter={formatDate}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(value) => {
-                        return new Date(value).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        });
-                      }}
+                      labelFormatter={(value) => formatDate(String(value))}
                       indicator="dashed"
                     />
                   }
