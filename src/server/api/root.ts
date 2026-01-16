@@ -1,3 +1,4 @@
+import { accountTransferRouter } from "./routers/account-transfer/account-transfer.procedure";
 import { aiRouter } from "./routers/ai/ai.procedure";
 import { changelogRouter } from "./routers/changelog/changelog.procedure";
 import { customDomainRouter } from "./routers/domains/domains.procedure";
@@ -15,6 +16,7 @@ import { utmTemplateRouter } from "./routers/utm-template/utm-template.router";
 import { createTRPCRouter } from "./trpc";
 
 export const appRouter = createTRPCRouter({
+  accountTransfer: accountTransferRouter,
   link: linkRouter,
   token: tokenRouter,
   lemonsqueezy: lemonsqueezyRouter,
