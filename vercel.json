@@ -20,6 +20,10 @@
     {
       "path": "/api/cron/cleanup-expired",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-accounts",
+      "schedule": "0 1 * * *"
     }
   ]
 }

@@ -15,16 +15,18 @@ import { SettingsForm } from "./general/settings-form";
 import { ProfileForm } from "./profile/profile-form";
 import GenerateTokenTrigger from "./tokens/_components/create-token";
 import TokenCard from "./tokens/_components/token-card";
+import { AccountTransferSection } from "./transfer/account-transfer-section";
 
 export const dynamic = "force-dynamic";
 
 async function SettingsPage() {
-  const [userSettings, userDomains, subscriptions, tokens, userProfile] = await Promise.all([
+  const [userSettings, userDomains, subscriptions, tokens, userProfile, accountStatus] = await Promise.all([
     api.siteSettings.get.query(),
     api.customDomain.list.query(),
     api.subscriptions.get.query(),
     api.token.list.query(),
     api.user.getProfile.query(),
+    api.accountTransfer.getAccountStatus.query(),
   ]);
 
   return (
@@ -119,6 +121,24 @@ async function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      <Separator />
+
+      {/* Account Transfer Section */}
+      <section id="account-transfer" className="scroll-mt-20 space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Account Transfer
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Transfer your account and all resources to another user.
+          </p>
+        </div>
+        <AccountTransferSection
+          isScheduledForDeletion={accountStatus.isScheduledForDeletion}
+          deletedAt={accountStatus.deletedAt}
+        />
       </section>
     </div>
   );
