@@ -769,14 +769,20 @@ async function executeResourceTransfer(
       }
 
       // Recreate link-tag associations with new tag IDs
-      const newLinkTags: Array<{ linkId: number; tagId: number }> = [];
+      // Deduplicate by (linkId, tagId) to prevent PK conflicts when multiple
+      // source tags merge into the same target tag
+      const linkTagSet = new Map<string, { linkId: number; tagId: number }>();
       for (const lt of sourceLinkTags) {
         const newTagId = tagIdMapping.get(lt.tagId);
         if (newTagId) {
-          newLinkTags.push({ linkId: lt.linkId, tagId: newTagId });
+          const key = `${lt.linkId}:${newTagId}`;
+          if (!linkTagSet.has(key)) {
+            linkTagSet.set(key, { linkId: lt.linkId, tagId: newTagId });
+          }
         }
       }
 
+      const newLinkTags = Array.from(linkTagSet.values());
       if (newLinkTags.length > 0) {
         await tx.insert(linkTag).values(newLinkTags);
       }
