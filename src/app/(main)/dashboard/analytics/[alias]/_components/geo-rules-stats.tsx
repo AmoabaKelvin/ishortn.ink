@@ -35,6 +35,9 @@ export function GeoRulesStats({
           acc.redirectCount++;
         } else if (action === "block") {
           acc.blockCount++;
+        } else {
+          // Orphaned/deleted rule - count as default
+          acc.defaultCount++;
         }
       }
       return acc;
