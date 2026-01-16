@@ -157,9 +157,12 @@ export const user = mysqlTable(
     lastEventCountReset: timestamp("lastEventCountReset").defaultNow(),
     eventUsageAlertLevel: int("eventUsageAlertLevel").default(0),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
+    // Account transfer deletion tracking
+    deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period
   },
   (table) => ({
     userIdx: index("userId_idx").on(table.id),
+    deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),
   }),
 );
 
@@ -534,6 +537,8 @@ export const userRelations = relations(user, ({ many, one }) => ({
   utmTemplates: many(utmTemplate),
   teamMemberships: many(teamMember),
   ownedTeams: many(team),
+  outgoingTransfers: many(accountTransfer, { relationName: "outgoingTransfers" }),
+  incomingTransfers: many(accountTransfer, { relationName: "incomingTransfers" }),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -723,6 +728,62 @@ export const utmTemplateRelations = relations(utmTemplate, ({ one }) => ({
 
 export type UtmTemplate = typeof utmTemplate.$inferSelect;
 export type NewUtmTemplate = typeof utmTemplate.$inferInsert;
+
+// ============================================================================
+// ACCOUNT TRANSFER
+// ============================================================================
+
+export const accountTransfer = mysqlTable(
+  "AccountTransfer",
+  {
+    id: serial("id").primaryKey(),
+    // Source account (Account A - transferring FROM)
+    fromUserId: varchar("fromUserId", { length: 32 }).notNull(),
+    // Target account (Account B - transferring TO)
+    toEmail: varchar("toEmail", { length: 255 }).notNull(),
+    toUserId: varchar("toUserId", { length: 32 }), // Set when target accepts
+    // Security token for approval link
+    token: varchar("token", { length: 64 }).notNull().unique(),
+    // Transfer status
+    status: mysqlEnum("status", ["pending", "accepted", "cancelled", "expired"])
+      .notNull()
+      .default("pending"),
+    // Resource counts at time of initiation (for display to recipient)
+    linksCount: int("linksCount").notNull().default(0),
+    customDomainsCount: int("customDomainsCount").notNull().default(0),
+    qrCodesCount: int("qrCodesCount").notNull().default(0),
+    foldersCount: int("foldersCount").notNull().default(0),
+    tagsCount: int("tagsCount").notNull().default(0),
+    utmTemplatesCount: int("utmTemplatesCount").notNull().default(0),
+    qrPresetsCount: int("qrPresetsCount").notNull().default(0),
+    // Timestamps
+    expiresAt: timestamp("expiresAt").notNull(),
+    acceptedAt: timestamp("acceptedAt"),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    tokenIdx: index("token_idx").on(table.token),
+    fromUserIdx: index("fromUser_idx").on(table.fromUserId),
+    toEmailIdx: index("toEmail_idx").on(table.toEmail),
+    statusIdx: index("status_idx").on(table.status),
+  }),
+);
+
+export const accountTransferRelations = relations(accountTransfer, ({ one }) => ({
+  fromUser: one(user, {
+    fields: [accountTransfer.fromUserId],
+    references: [user.id],
+    relationName: "outgoingTransfers",
+  }),
+  toUser: one(user, {
+    fields: [accountTransfer.toUserId],
+    references: [user.id],
+    relationName: "incomingTransfers",
+  }),
+}));
+
+export type AccountTransfer = typeof accountTransfer.$inferSelect;
+export type NewAccountTransfer = typeof accountTransfer.$inferInsert;
 
 // ============================================================================
 // TEAM RELATIONS
