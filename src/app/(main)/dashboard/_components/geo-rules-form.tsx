@@ -12,7 +12,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,7 @@ const CONTINENTS = {
 } as const;
 
 type GeoRuleFormData = {
+  _tempId?: string;
   type: "country" | "continent";
   condition: "in" | "not_in";
   values: string[];
@@ -390,10 +391,16 @@ export function GeoRulesForm({
   isUnlimited = false,
 }: GeoRulesFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const idCounter = useRef(0);
   const geoRules: GeoRuleFormData[] = form.watch("geoRules") || [];
+
+  const generateId = useCallback(() => {
+    return `rule-${Date.now()}-${idCounter.current++}`;
+  }, []);
 
   const addRule = () => {
     const newRule: GeoRuleFormData = {
+      _tempId: generateId(),
       type: "country",
       condition: "in",
       values: [],
@@ -490,7 +497,7 @@ export function GeoRulesForm({
                   <AnimatePresence mode="popLayout">
                     {geoRules.map((rule, index) => (
                       <GeoRuleItem
-                        key={index}
+                        key={rule._tempId ?? `fallback-${index}`}
                         index={index}
                         rule={rule}
                         onChange={(updated) => updateRule(index, updated)}
