@@ -13,7 +13,6 @@ import {
   linkTag,
   qrcode,
   qrPreset,
-  siteSettings,
   tag,
   user,
   utmTemplate,
@@ -786,27 +785,7 @@ async function executeResourceTransfer(
     result.utmTemplatesTransferred = utmUpdate[0].affectedRows;
 
     // =========================================
-    // Phase 8: Transfer Site Settings (replace target's if exists)
-    // =========================================
-    const sourceSiteSettings = await tx.query.siteSettings.findFirst({
-      where: and(eq(siteSettings.userId, fromUserId), isNull(siteSettings.teamId)),
-    });
-
-    if (sourceSiteSettings) {
-      // Delete target's site settings first
-      await tx
-        .delete(siteSettings)
-        .where(and(eq(siteSettings.userId, toUserId), isNull(siteSettings.teamId)));
-
-      // Transfer source settings
-      await tx
-        .update(siteSettings)
-        .set({ userId: toUserId, teamId: null })
-        .where(eq(siteSettings.id, sourceSiteSettings.id));
-    }
-
-    // =========================================
-    // Phase 9: Clean up source folders and tags
+    // Phase 8: Clean up source folders and tags
     // =========================================
     // Delete source folders (they've been recreated or merged)
     if (sourceFolders.length > 0) {

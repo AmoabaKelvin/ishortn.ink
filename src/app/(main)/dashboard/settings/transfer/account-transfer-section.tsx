@@ -312,7 +312,6 @@ export function AccountTransferSection({
               </h4>
               <div className="grid gap-2 text-sm text-muted-foreground pl-6">
                 <p>• Links, custom domains, QR codes, UTM templates, QR presets</p>
-                <p>• Site settings and preferences</p>
                 <p>• Folders and tags (merged by name if they exist)</p>
                 <p>• Analytics data (preserved automatically)</p>
               </div>
