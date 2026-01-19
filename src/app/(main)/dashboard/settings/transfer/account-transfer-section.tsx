@@ -176,54 +176,64 @@ export function AccountTransferSection() {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Confirm transfer</DialogTitle>
-            <DialogDescription>
-              Transfer all resources to{" "}
-              <strong className="text-foreground">{targetEmail}</strong>
+            <DialogDescription className="sr-only">
+              Transfer resources to another account
             </DialogDescription>
           </DialogHeader>
 
           {validationResult && (
             <div className="space-y-4">
-              <div className="rounded-md border p-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                  Resources
-                </p>
-                <div className="grid grid-cols-2 gap-y-1 text-sm">
-                  <span className="text-muted-foreground">Links</span>
-                  <span className="text-right tabular-nums">
-                    {validationResult.resourceCounts.links}
-                  </span>
-                  <span className="text-muted-foreground">Domains</span>
-                  <span className="text-right tabular-nums">
-                    {validationResult.resourceCounts.customDomains}
-                  </span>
-                  <span className="text-muted-foreground">QR Codes</span>
-                  <span className="text-right tabular-nums">
-                    {validationResult.resourceCounts.qrCodes}
-                  </span>
-                  <span className="text-muted-foreground">Folders</span>
-                  <span className="text-right tabular-nums">
-                    {validationResult.resourceCounts.folders}
-                  </span>
-                  <span className="text-muted-foreground">Tags</span>
-                  <span className="text-right tabular-nums">
-                    {validationResult.resourceCounts.tags}
-                  </span>
-                </div>
+              {/* Recipient */}
+              <div className="rounded-lg bg-muted/50 px-3 py-2.5">
+                <p className="text-xs text-muted-foreground mb-0.5">To</p>
+                <p className="text-sm font-medium truncate">{targetEmail}</p>
               </div>
 
-              <p className="text-sm text-muted-foreground">
-                This action cannot be undone once accepted.
+              {/* Resource counts - compact inline display */}
+              <div className="flex flex-wrap gap-2">
+                {validationResult.resourceCounts.links > 0 && (
+                  <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                    {validationResult.resourceCounts.links} link{validationResult.resourceCounts.links !== 1 && "s"}
+                  </span>
+                )}
+                {validationResult.resourceCounts.customDomains > 0 && (
+                  <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                    {validationResult.resourceCounts.customDomains} domain{validationResult.resourceCounts.customDomains !== 1 && "s"}
+                  </span>
+                )}
+                {validationResult.resourceCounts.qrCodes > 0 && (
+                  <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-950/50 dark:text-green-300">
+                    {validationResult.resourceCounts.qrCodes} QR code{validationResult.resourceCounts.qrCodes !== 1 && "s"}
+                  </span>
+                )}
+                {validationResult.resourceCounts.folders > 0 && (
+                  <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                    {validationResult.resourceCounts.folders} folder{validationResult.resourceCounts.folders !== 1 && "s"}
+                  </span>
+                )}
+                {validationResult.resourceCounts.tags > 0 && (
+                  <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">
+                    {validationResult.resourceCounts.tags} tag{validationResult.resourceCounts.tags !== 1 && "s"}
+                  </span>
+                )}
+                {Object.values(validationResult.resourceCounts).every((v) => v === 0) && (
+                  <span className="text-sm text-muted-foreground">No resources to transfer</span>
+                )}
+              </div>
+
+              {/* Warning */}
+              <p className="text-xs text-muted-foreground">
+                This cannot be undone once the recipient accepts.
               </p>
             </div>
           )}
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setShowConfirmDialog(false)}
               disabled={initiateMutation.isLoading}
             >
