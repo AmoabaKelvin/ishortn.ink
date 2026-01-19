@@ -2,20 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AlertCircle,
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  Package,
-  Send,
-  Undo2,
-  XCircle,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -52,10 +41,8 @@ export function AccountTransferSection({
 
   const utils = api.useUtils();
 
-  const {
-    data: pendingTransfer,
-    isLoading: isPendingLoading,
-  } = api.accountTransfer.getPending.useQuery();
+  const { data: pendingTransfer, isLoading: isPendingLoading } =
+    api.accountTransfer.getPending.useQuery();
 
   const validateMutation = api.accountTransfer.validate.useMutation();
 
@@ -83,11 +70,9 @@ export function AccountTransferSection({
 
   const handleValidate = async () => {
     if (!targetEmail) return;
-
     try {
       const result = await validateMutation.mutateAsync({ targetEmail });
       setValidationResult(result);
-
       if (result.isValid) {
         setShowConfirmDialog(true);
       }
@@ -110,11 +95,9 @@ export function AccountTransferSection({
   };
 
   const isLoading =
-    validateMutation.isLoading ||
-    initiateMutation.isLoading ||
-    isPendingLoading;
+    validateMutation.isLoading || initiateMutation.isLoading || isPendingLoading;
 
-  // Show restore option if account is scheduled for deletion
+  // Account scheduled for deletion
   if (isScheduledForDeletion && deletedAt) {
     const deletionDate = new Date(deletedAt);
     deletionDate.setDate(deletionDate.getDate() + 30);
@@ -123,60 +106,45 @@ export function AccountTransferSection({
     );
 
     return (
-      <Card className="border-red-200 bg-red-50/30">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <CardTitle className="text-red-900">
-                Account Scheduled for Deletion
-              </CardTitle>
-              <CardDescription className="text-red-700/80">
-                {daysRemaining > 0
-                  ? `${daysRemaining} days remaining until permanent deletion`
-                  : "Deletion imminent"}
-              </CardDescription>
-            </div>
-          </div>
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="text-destructive">
+            Account Scheduled for Deletion
+          </CardTitle>
+          <CardDescription>
+            {daysRemaining > 0
+              ? `Your account will be permanently deleted in ${daysRemaining} days`
+              : "Your account deletion is imminent"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-lg border border-red-200 bg-white p-4">
-            <div className="flex items-start gap-3">
-              <Clock className="mt-0.5 h-4 w-4 text-red-500 shrink-0" />
-              <div className="space-y-1 text-sm">
-                <p className="font-medium text-red-900">
-                  Scheduled deletion: {deletionDate.toLocaleDateString(undefined, {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-                <p className="text-red-700/80">
-                  After this date, your account and all remaining data will be
-                  permanently deleted. If you transferred your resources to another
-                  account, restoring may result in duplicate data.
-                </p>
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Deletion date:{" "}
+            <span className="font-medium text-foreground">
+              {deletionDate.toLocaleDateString(undefined, {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            If you transferred resources to another account, restoring may
+            result in duplicate data.
+          </p>
           <Button
             variant="outline"
             onClick={handleRestore}
             disabled={restoreMutation.isLoading}
-            className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
           >
-            {restoreMutation.isLoading ? (
+            {restoreMutation.isLoading && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Undo2 className="mr-2 h-4 w-4" />
             )}
             Cancel Deletion & Restore Account
           </Button>
           {restoreMutation.error && (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-destructive">
               {restoreMutation.error.message}
             </p>
           )}
@@ -189,61 +157,36 @@ export function AccountTransferSection({
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-              <Package className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <CardTitle>Transfer Account</CardTitle>
-              <CardDescription>
-                Transfer all your resources to another iShortn account
-              </CardDescription>
-            </div>
-          </div>
+          <CardTitle>Transfer Account</CardTitle>
+          <CardDescription>
+            Move all your links, domains, QR codes, and other resources to
+            another iShortn account.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Pending Transfer Section */}
+          {/* Pending Transfer */}
           {pendingTransfer && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 shrink-0">
-                  <Send className="h-4 w-4 text-amber-600" />
-                </div>
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-amber-900">
-                        Transfer Pending
-                      </p>
-                      <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 text-xs">
-                        Awaiting Approval
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-amber-800/80">
-                      Transfer to <strong>{pendingTransfer.targetEmail}</strong> is
-                      waiting for approval
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-amber-700/70">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Expires: {new Date(pendingTransfer.expiresAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCancel}
-                    disabled={cancelMutation.isLoading}
-                    className="border-amber-300 bg-white text-amber-700 hover:bg-amber-50"
-                  >
-                    {cancelMutation.isLoading && (
-                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    )}
-                    Cancel Transfer
-                  </Button>
-                </div>
-              </div>
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+              <p className="font-medium text-amber-900 dark:text-amber-200">
+                Transfer pending
+              </p>
+              <p className="mt-1 text-sm text-amber-800 dark:text-amber-300/80">
+                Waiting for <strong>{pendingTransfer.targetEmail}</strong> to
+                accept. Expires{" "}
+                {new Date(pendingTransfer.expiresAt).toLocaleDateString()}.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancel}
+                disabled={cancelMutation.isLoading}
+                className="mt-3"
+              >
+                {cancelMutation.isLoading && (
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                )}
+                Cancel Transfer
+              </Button>
             </div>
           )}
 
@@ -251,8 +194,8 @@ export function AccountTransferSection({
           {!pendingTransfer && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="targetEmail">Recipient Email Address</Label>
-                <div className="flex gap-3">
+                <Label htmlFor="targetEmail">Recipient email</Label>
+                <div className="flex gap-2">
                   <Input
                     id="targetEmail"
                     type="email"
@@ -265,12 +208,9 @@ export function AccountTransferSection({
                   <Button
                     onClick={handleValidate}
                     disabled={!targetEmail || isLoading}
-                    className="bg-blue-600 hover:bg-blue-700"
                   >
-                    {validateMutation.isLoading ? (
+                    {validateMutation.isLoading && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <ArrowRight className="mr-2 h-4 w-4" />
                     )}
                     Continue
                   </Button>
@@ -280,155 +220,87 @@ export function AccountTransferSection({
               {/* Validation Errors */}
               {validationResult && !validationResult.isValid && (
                 <Alert variant="destructive">
-                  <XCircle className="h-4 w-4" />
-                  <AlertTitle>Transfer Blocked</AlertTitle>
                   <AlertDescription>
-                    <div className="space-y-2 mt-2">
-                      {validationResult.errors.map(
-                        (error: any, index: number) => (
-                          <div key={index} className="flex items-start gap-2">
-                            <span className="text-sm">• {error.message}</span>
-                            {error.resourceType && (
-                              <Badge variant="outline" className="text-xs">
-                                {error.currentCount} / {error.limit} {error.resourceType}
-                              </Badge>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </div>
+                    {validationResult.errors.map(
+                      (error: any, index: number) => (
+                        <p key={index} className="text-sm">
+                          {error.message}
+                          {error.resourceType &&
+                            ` (${error.currentCount}/${error.limit} ${error.resourceType})`}
+                        </p>
+                      )
+                    )}
                   </AlertDescription>
                 </Alert>
               )}
             </div>
           )}
 
-          {/* Information Section */}
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                What will be transferred
-              </h4>
-              <div className="grid gap-2 text-sm text-muted-foreground pl-6">
-                <p>• Links, custom domains, QR codes, UTM templates, QR presets</p>
-                <p>• Folders and tags (merged by name if they exist)</p>
-                <p>• Analytics data (preserved automatically)</p>
-              </div>
-            </div>
-
-            <div className="h-px bg-border" />
-
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <XCircle className="h-4 w-4 text-red-500" />
-                What will NOT be transferred
-              </h4>
-              <div className="grid gap-2 text-sm text-muted-foreground pl-6">
-                <p>• API tokens (for security reasons)</p>
-                <p>• Subscription (billing remains separate - cancel manually)</p>
-                <p>• Team memberships (you&apos;ll remain in teams)</p>
-              </div>
-            </div>
-
-            <div className="h-px bg-border" />
-
-            <div className="flex items-start gap-2 text-sm">
-              <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-muted-foreground">
-                <strong className="text-foreground">Important:</strong> Once accepted, your account
-                will be marked for deletion with a 30-day grace period. Your
-                subscription will NOT be cancelled automatically.
-              </p>
-            </div>
+          {/* Info */}
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              <strong className="text-foreground">Transferred:</strong> Links,
+              custom domains, QR codes, UTM templates, folders, tags, and
+              analytics data.
+            </p>
+            <p>
+              <strong className="text-foreground">Not transferred:</strong> API
+              tokens, subscription, and team memberships.
+            </p>
+            <p>
+              <strong className="text-foreground">Note:</strong> After transfer,
+              your account will be scheduled for deletion with a 30-day grace
+              period.
+            </p>
           </div>
         </CardContent>
       </Card>
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                <Package className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <DialogTitle>Confirm Account Transfer</DialogTitle>
-                <DialogDescription>
-                  Review the transfer details before proceeding
-                </DialogDescription>
-              </div>
-            </div>
+            <DialogTitle>Confirm transfer</DialogTitle>
+            <DialogDescription>
+              Transfer all resources to{" "}
+              <strong className="text-foreground">{targetEmail}</strong>
+            </DialogDescription>
           </DialogHeader>
 
           {validationResult && (
             <div className="space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="rounded-md border p-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                  Transferring to
+                  Resources
                 </p>
-                <p className="text-lg font-semibold">{targetEmail}</p>
-                <Badge variant="outline" className="mt-2 capitalize">
-                  {validationResult.targetPlan} plan
-                </Badge>
-              </div>
-
-              <div className="rounded-lg border p-4 space-y-3">
-                <p className="text-sm font-semibold">Resources to transfer</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Links</span>
-                    <span className="font-medium tabular-nums">
-                      {validationResult.resourceCounts.links}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Domains</span>
-                    <span className="font-medium tabular-nums">
-                      {validationResult.resourceCounts.customDomains}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">QR Codes</span>
-                    <span className="font-medium tabular-nums">
-                      {validationResult.resourceCounts.qrCodes}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">UTM Templates</span>
-                    <span className="font-medium tabular-nums">
-                      {validationResult.resourceCounts.utmTemplates}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">QR Presets</span>
-                    <span className="font-medium tabular-nums">
-                      {validationResult.resourceCounts.qrPresets}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Folders</span>
-                    <span className="font-medium tabular-nums">
-                      {validationResult.resourceCounts.folders}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tags</span>
-                    <span className="font-medium tabular-nums">
-                      {validationResult.resourceCounts.tags}
-                    </span>
-                  </div>
+                <div className="grid grid-cols-2 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">Links</span>
+                  <span className="text-right tabular-nums">
+                    {validationResult.resourceCounts.links}
+                  </span>
+                  <span className="text-muted-foreground">Domains</span>
+                  <span className="text-right tabular-nums">
+                    {validationResult.resourceCounts.customDomains}
+                  </span>
+                  <span className="text-muted-foreground">QR Codes</span>
+                  <span className="text-right tabular-nums">
+                    {validationResult.resourceCounts.qrCodes}
+                  </span>
+                  <span className="text-muted-foreground">Folders</span>
+                  <span className="text-right tabular-nums">
+                    {validationResult.resourceCounts.folders}
+                  </span>
+                  <span className="text-muted-foreground">Tags</span>
+                  <span className="text-right tabular-nums">
+                    {validationResult.resourceCounts.tags}
+                  </span>
                 </div>
               </div>
 
-              <Alert variant="destructive" className="border-red-200 bg-red-50">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-red-800">
-                  This action cannot be undone once the recipient accepts.
-                  Your account will be marked for deletion after transfer.
-                </AlertDescription>
-              </Alert>
+              <p className="text-sm text-muted-foreground">
+                This action cannot be undone once accepted. Your account will be
+                marked for deletion.
+              </p>
             </div>
           )}
 
@@ -443,19 +315,11 @@ export function AccountTransferSection({
             <Button
               onClick={handleInitiate}
               disabled={initiateMutation.isLoading}
-              className="bg-blue-600 hover:bg-blue-700"
             >
-              {initiateMutation.isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Send Transfer Request
-                </>
+              {initiateMutation.isLoading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
+              Send Request
             </Button>
           </DialogFooter>
         </DialogContent>
