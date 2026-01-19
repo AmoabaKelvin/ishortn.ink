@@ -96,13 +96,13 @@ export function SettingsNav() {
               className={cn(
                 "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                 activeSection === item.id
-                  ? "bg-neutral-900 text-white shadow-lg shadow-neutral-900/20"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                   : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
               )}
             >
               <span className={cn(
                 "transition-colors",
-                activeSection === item.id ? "text-amber-400" : ""
+                activeSection === item.id ? "text-blue-200" : ""
               )}>
                 {item.icon}
               </span>
@@ -112,15 +112,15 @@ export function SettingsNav() {
         </div>
 
         {/* Decorative element */}
-        <div className="mt-8 p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100">
-          <p className="text-xs font-medium text-amber-800">Need help?</p>
-          <p className="text-xs text-amber-700/80 mt-1">
+        <div className="mt-8 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
+          <p className="text-xs font-medium text-blue-800">Need help?</p>
+          <p className="text-xs text-blue-700/80 mt-1">
             Check our{" "}
             <a
               href="https://ishortn.mintlify.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-amber-900"
+              className="underline hover:text-blue-900"
             >
               documentation
             </a>

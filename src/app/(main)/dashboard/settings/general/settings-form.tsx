@@ -148,7 +148,7 @@ export function SettingsForm({
               <Button
                 type="submit"
                 disabled={isSaving || !form.formState.isDirty}
-                className="bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl px-5 h-10 shadow-sm transition-all duration-200 hover:shadow-md disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5 h-10 shadow-sm transition-all duration-200 hover:shadow-md disabled:opacity-50"
               >
                 {isSaving ? (
                   <>

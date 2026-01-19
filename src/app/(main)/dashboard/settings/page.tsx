@@ -26,11 +26,11 @@ async function SettingsPage() {
       {/* Hero Header */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 px-8 py-12 mb-10">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')] opacity-[0.03]" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
         <div className="relative">
-          <p className="text-amber-400/80 text-sm font-medium tracking-wide uppercase mb-2">
+          <p className="text-blue-400/80 text-sm font-medium tracking-wide uppercase mb-2">
             Account
           </p>
           <h1 className="font-display text-4xl md:text-5xl text-white tracking-tight">
@@ -115,7 +115,7 @@ async function SettingsPage() {
                   <Link
                     href="https://ishortn.mintlify.app/introduction"
                     target="_blank"
-                    className="text-amber-600 hover:text-amber-700 transition-colors"
+                    className="text-blue-600 hover:text-blue-700 transition-colors"
                   >
                     View docs →
                   </Link>

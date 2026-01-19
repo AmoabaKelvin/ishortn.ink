@@ -80,7 +80,7 @@ export default function Billing({ subscriptions }: BillingProps) {
             </div>
             <Button
               onClick={() => router.push("/dashboard/pricing")}
-              className="bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl px-5 h-10 shadow-sm transition-all duration-200 hover:shadow-md group"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5 h-10 shadow-sm transition-all duration-200 hover:shadow-md group"
             >
               View Plans
               <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
@@ -182,7 +182,7 @@ export default function Billing({ subscriptions }: BillingProps) {
           </Button>
           <Button
             onClick={() => router.push("/dashboard/pricing")}
-            className="bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl h-10 shadow-sm transition-all duration-200 hover:shadow-md"
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 shadow-sm transition-all duration-200 hover:shadow-md"
           >
             Change Plan
           </Button>
