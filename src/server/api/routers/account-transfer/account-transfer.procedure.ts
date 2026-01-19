@@ -39,14 +39,6 @@ export const accountTransferRouter = createTRPCRouter({
     ),
 
   /**
-   * Get account status (deletion scheduled, etc.)
-   */
-  getAccountStatus: protectedProcedure
-    .query(({ ctx }) =>
-      services.getAccountStatus(ctx)
-    ),
-
-  /**
    * Accept account transfer (executes the transfer)
    */
   accept: protectedProcedure
@@ -62,13 +54,5 @@ export const accountTransferRouter = createTRPCRouter({
     .input(inputs.cancelTransferSchema)
     .mutation(({ ctx, input }) =>
       services.cancelAccountTransfer(ctx, input)
-    ),
-
-  /**
-   * Restore account from grace period deletion
-   */
-  restore: protectedProcedure
-    .mutation(({ ctx }) =>
-      services.restoreAccount(ctx)
     ),
 });

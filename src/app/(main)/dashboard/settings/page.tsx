@@ -20,13 +20,12 @@ import { AccountTransferSection } from "./transfer/account-transfer-section";
 export const dynamic = "force-dynamic";
 
 async function SettingsPage() {
-  const [userSettings, userDomains, subscriptions, tokens, userProfile, accountStatus] = await Promise.all([
+  const [userSettings, userDomains, subscriptions, tokens, userProfile] = await Promise.all([
     api.siteSettings.get.query(),
     api.customDomain.list.query(),
     api.subscriptions.get.query(),
     api.token.list.query(),
     api.user.getProfile.query(),
-    api.accountTransfer.getAccountStatus.query(),
   ]);
 
   return (
@@ -135,10 +134,7 @@ async function SettingsPage() {
             Transfer your account and all resources to another user.
           </p>
         </div>
-        <AccountTransferSection
-          isScheduledForDeletion={accountStatus.isScheduledForDeletion}
-          deletedAt={accountStatus.deletedAt}
-        />
+        <AccountTransferSection />
       </section>
     </div>
   );

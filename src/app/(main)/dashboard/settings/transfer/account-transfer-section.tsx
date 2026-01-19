@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -25,16 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/trpc/react";
 
-interface AccountTransferSectionProps {
-  isScheduledForDeletion: boolean;
-  deletedAt: Date | null;
-}
-
-export function AccountTransferSection({
-  isScheduledForDeletion,
-  deletedAt,
-}: AccountTransferSectionProps) {
-  const router = useRouter();
+export function AccountTransferSection() {
   const [targetEmail, setTargetEmail] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [validationResult, setValidationResult] = useState<any>(null);
@@ -61,13 +51,6 @@ export function AccountTransferSection({
     },
   });
 
-  const restoreMutation = api.accountTransfer.restore.useMutation({
-    onSuccess: () => {
-      utils.accountTransfer.getAccountStatus.invalidate();
-      router.refresh();
-    },
-  });
-
   const handleValidate = async () => {
     if (!targetEmail) return;
     try {
@@ -90,68 +73,8 @@ export function AccountTransferSection({
     await cancelMutation.mutateAsync({ transferId: pendingTransfer.id });
   };
 
-  const handleRestore = async () => {
-    await restoreMutation.mutateAsync();
-  };
-
   const isLoading =
     validateMutation.isLoading || initiateMutation.isLoading || isPendingLoading;
-
-  // Account scheduled for deletion
-  if (isScheduledForDeletion && deletedAt) {
-    const deletionDate = new Date(deletedAt);
-    deletionDate.setDate(deletionDate.getDate() + 30);
-    const daysRemaining = Math.ceil(
-      (deletionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    );
-
-    return (
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="text-destructive">
-            Account Scheduled for Deletion
-          </CardTitle>
-          <CardDescription>
-            {daysRemaining > 0
-              ? `Your account will be permanently deleted in ${daysRemaining} days`
-              : "Your account deletion is imminent"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Deletion date:{" "}
-            <span className="font-medium text-foreground">
-              {deletionDate.toLocaleDateString(undefined, {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
-          </p>
-          <p className="text-sm text-muted-foreground">
-            If you transferred resources to another account, restoring may
-            result in duplicate data.
-          </p>
-          <Button
-            variant="outline"
-            onClick={handleRestore}
-            disabled={restoreMutation.isLoading}
-          >
-            {restoreMutation.isLoading && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Cancel Deletion & Restore Account
-          </Button>
-          {restoreMutation.error && (
-            <p className="text-sm text-destructive">
-              {restoreMutation.error.message}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <>
@@ -247,11 +170,6 @@ export function AccountTransferSection({
               <strong className="text-foreground">Not transferred:</strong> API
               tokens, subscription, and team memberships.
             </p>
-            <p>
-              <strong className="text-foreground">Note:</strong> After transfer,
-              your account will be scheduled for deletion with a 30-day grace
-              period.
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -298,8 +216,7 @@ export function AccountTransferSection({
               </div>
 
               <p className="text-sm text-muted-foreground">
-                This action cannot be undone once accepted. Your account will be
-                marked for deletion.
+                This action cannot be undone once accepted.
               </p>
             </div>
           )}

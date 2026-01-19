@@ -496,21 +496,6 @@ export async function getPendingTransfer(ctx: ProtectedTRPCContext) {
   };
 }
 
-/**
- * Get account deletion status for current user
- */
-export async function getAccountStatus(ctx: ProtectedTRPCContext) {
-  const userRecord = await ctx.db.query.user.findFirst({
-    where: eq(user.id, ctx.auth.userId),
-    columns: { deletedAt: true },
-  });
-
-  return {
-    isScheduledForDeletion: userRecord?.deletedAt != null,
-    deletedAt: userRecord?.deletedAt ?? null,
-  };
-}
-
 // ============================================================================
 // ACCEPT TRANSFER (Execute Resource Migration)
 // ============================================================================
@@ -850,15 +835,8 @@ async function executeResourceTransfer(
       );
     }
 
-    // =========================================
-    // Phase 9: Soft-delete source account
-    // =========================================
-    await tx
-      .update(user)
-      .set({ deletedAt: new Date() })
-      .where(eq(user.id, fromUserId));
-
     // Note: API tokens and subscriptions are NOT transferred
+    // Note: Source account is NOT deleted - user can continue using it or delete it manually
   });
 
   return result;
@@ -901,65 +879,6 @@ export async function cancelAccountTransfer(
     .update(accountTransfer)
     .set({ status: "cancelled" })
     .where(eq(accountTransfer.id, input.transferId));
-
-  return { success: true };
-}
-
-// ============================================================================
-// RESTORE ACCOUNT (Cancel grace period deletion)
-// ============================================================================
-
-export async function restoreAccount(ctx: ProtectedTRPCContext) {
-  const userRecord = await ctx.db.query.user.findFirst({
-    where: eq(user.id, ctx.auth.userId),
-  });
-
-  if (!userRecord) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "User not found",
-    });
-  }
-
-  if (userRecord.deletedAt === null) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Account is not marked for deletion",
-    });
-  }
-
-  // Check if there's an accepted transfer (can only restore if resources still exist)
-  const acceptedTransfer = await ctx.db.query.accountTransfer.findFirst({
-    where: and(
-      eq(accountTransfer.fromUserId, ctx.auth.userId),
-      eq(accountTransfer.status, "accepted")
-    ),
-  });
-
-  if (acceptedTransfer) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message:
-        "Cannot restore account. Transfer was completed and resources were moved to another account.",
-    });
-  }
-
-  // Restore account
-  await ctx.db
-    .update(user)
-    .set({ deletedAt: null })
-    .where(eq(user.id, ctx.auth.userId));
-
-  // Cancel any pending transfers
-  await ctx.db
-    .update(accountTransfer)
-    .set({ status: "cancelled" })
-    .where(
-      and(
-        eq(accountTransfer.fromUserId, ctx.auth.userId),
-        eq(accountTransfer.status, "pending")
-      )
-    );
 
   return { success: true };
 }
