@@ -44,7 +44,7 @@ export function ReferrerStats({ referers, totalClicks }: ReferrerStatsProps) {
         views={["all", "social", "search"]}
         onChangeView={handleViewChange}
       />
-      <BarList records={filteredRecords} totalClicks={totalClicks} />
+      <BarList records={filteredRecords} totalClicks={totalClicks} color="red" />
     </BarList.BarListTitle>
   );
 }

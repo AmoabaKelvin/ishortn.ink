@@ -68,6 +68,28 @@ export const listLinksSchema = z.object({
   search: z.string().optional(),
 });
 
+const geoRuleInputSchema = z
+  .object({
+    type: z.enum(["country", "continent"]),
+    condition: z.enum(["in", "not_in"]),
+    values: z.array(z.string().max(5)).min(1, "At least one value is required"),
+    action: z.enum(["redirect", "block"]),
+    destination: z.string().url().optional().or(z.literal("")),
+    blockMessage: z.string().max(500).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.action === "redirect") {
+        return data.destination && data.destination.length > 0;
+      }
+      return true;
+    },
+    {
+      message: "Destination URL is required for redirect action",
+      path: ["destination"],
+    }
+  );
+
 export const createLinkSchema = z.object({
   url: z.string(),
   name: z.string().optional(),
@@ -95,6 +117,7 @@ export const createLinkSchema = z.object({
     })
     .optional(),
   cloaking: z.boolean().optional(),
+  geoRules: z.array(geoRuleInputSchema).optional(),
 });
 
 export const quickLinkShorteningSchema = z.object({

@@ -16,15 +16,24 @@ import {
   sql,
 } from "drizzle-orm";
 
-import { resolvePlan } from "@/lib/billing/plans";
+import { canUseGeoRules, getGeoRulesLimit, isUnlimitedGeoRules, resolvePlan } from "@/lib/billing/plans";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
-import { deleteFromCache, getFromCache, setInCache } from "@/lib/core/cache";
+import { deleteFromCache, deleteGeoRulesFromCache, getFromCache, setInCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { db } from "@/server/db";
-import { link, linkTag, linkVisit, qrcode, tag, uniqueLinkVisit, user } from "@/server/db/schema";
-import { folder } from "@/server/db/schema";
+import {
+  folder,
+  geoRule,
+  link,
+  linkTag,
+  linkVisit,
+  qrcode,
+  tag,
+  uniqueLinkVisit,
+  user,
+} from "@/server/db/schema";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   getAccessibleFolderIds,
@@ -360,6 +369,38 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
     await associateTagsWithLink(ctx, linkId, tagNames);
   }
 
+  // Handle geo rules if provided
+  const geoRulesInput = input.geoRules;
+  if (geoRulesInput && geoRulesInput.length > 0) {
+    // Check plan limits
+    if (!canUseGeoRules(plan)) {
+      throw new Error(
+        "Geotargeting is only available on Pro and Ultra plans. Please upgrade to use this feature."
+      );
+    }
+
+    const geoLimit = getGeoRulesLimit(plan);
+    if (!isUnlimitedGeoRules(plan) && geoLimit !== undefined && geoRulesInput.length > geoLimit) {
+      throw new Error(
+        `Your plan allows a maximum of ${geoLimit} geo rules per link. Please upgrade to Ultra for unlimited rules.`
+      );
+    }
+
+    // Insert geo rules
+    await ctx.db.insert(geoRule).values(
+      geoRulesInput.map((rule, index) => ({
+        linkId,
+        type: rule.type,
+        condition: rule.condition,
+        values: rule.values,
+        action: rule.action,
+        destination: rule.action === "redirect" ? rule.destination : null,
+        blockMessage: rule.action === "block" ? rule.blockMessage : null,
+        priority: index,
+      }))
+    );
+  }
+
   // Upload OG image to R2 if it's base64
   if (input.metadata?.image) {
     try {
@@ -441,8 +482,8 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     }
   }
 
-  // Extract tags from input
-  const { tags: tagNames, ...linkData } = input;
+  // Extract tags and geoRules from input
+  const { tags: tagNames, geoRules: geoRulesInput, ...linkData } = input;
 
   // Upload OG image to R2 if it's base64
   if (linkData.metadata?.image) {
@@ -475,6 +516,47 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   // Update tags if provided
   if (tagNames) {
     await associateTagsWithLink(ctx, input.id, tagNames);
+  }
+
+  // Handle geo rules if provided
+  if (geoRulesInput !== undefined) {
+    // Check plan limits for new rules
+    if (geoRulesInput.length > 0) {
+      if (!canUseGeoRules(workspacePlan)) {
+        throw new Error(
+          "Geotargeting is only available on Pro and Ultra plans. Please upgrade to use this feature."
+        );
+      }
+
+      const geoLimit = getGeoRulesLimit(workspacePlan);
+      if (!isUnlimitedGeoRules(workspacePlan) && geoLimit !== undefined && geoRulesInput.length > geoLimit) {
+        throw new Error(
+          `Your plan allows a maximum of ${geoLimit} geo rules per link. Please upgrade to Ultra for unlimited rules.`
+        );
+      }
+    }
+
+    // Delete existing geo rules for this link
+    await ctx.db.delete(geoRule).where(eq(geoRule.linkId, input.id));
+
+    // Insert new geo rules if any
+    if (geoRulesInput.length > 0) {
+      await ctx.db.insert(geoRule).values(
+        geoRulesInput.map((rule, index) => ({
+          linkId: input.id,
+          type: rule.type,
+          condition: rule.condition,
+          values: rule.values,
+          action: rule.action,
+          destination: rule.action === "redirect" ? rule.destination : null,
+          blockMessage: rule.action === "block" ? rule.blockMessage : null,
+          priority: index,
+        }))
+      );
+    }
+
+    // Invalidate geo rules cache
+    await deleteGeoRulesFromCache(input.id);
   }
 
   const updatedLink = await ctx.db.query.link.findFirst({
@@ -789,6 +871,7 @@ export const getLinkVisits = async (
       referers: {},
       topReferrer: "N/A",
       isProPlan: userHasPaidPlan,
+      geoRules: [],
     };
   }
 
@@ -835,7 +918,7 @@ export const getLinkVisits = async (
       startDate = subDays(now, 7); // Default to last 7 days
   }
 
-  const [totalVisits, uniqueVisits] = await Promise.all([
+  const [totalVisits, uniqueVisits, linkGeoRules] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { eq, and, gte, lte }) =>
         and(
@@ -852,6 +935,13 @@ export const getLinkVisits = async (
           lte(visit.createdAt, now),
         ),
     }),
+    ctx.db.query.geoRule.findMany({
+      where: (rule, { eq }) => eq(rule.linkId, foundLink.id),
+      columns: {
+        id: true,
+        action: true,
+      },
+    }),
   ]);
 
   if (totalVisits.length === 0) {
@@ -862,6 +952,7 @@ export const getLinkVisits = async (
       referers: {},
       topReferrer: "N/A",
       isProPlan: userHasPaidPlan,
+      geoRules: linkGeoRules,
     };
   }
 
@@ -902,6 +993,7 @@ export const getLinkVisits = async (
     referers: referrerVisits,
     topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
     isProPlan: userHasPaidPlan,
+    geoRules: linkGeoRules,
   };
 };
 

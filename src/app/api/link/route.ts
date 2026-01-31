@@ -1,6 +1,17 @@
+import { asc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
-import { recordUserClickForLink } from "@/middlewares/record-click";
+import {
+  getGeoRulesFromCache,
+  setGeoRulesInCache,
+} from "@/lib/core/cache";
+import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
+import {
+  recordUserClickForLink,
+  recordUserClickWithGeoRule,
+} from "@/middlewares/record-click";
+import { db } from "@/server/db";
+import { geoRule } from "@/server/db/schema";
 
 type UtmParams = {
   utm_source?: string;
@@ -35,10 +46,16 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const domain = searchParams.get("domain");
   const alias = searchParams.get("alias")?.replace("/", "");
-  const country = searchParams.get("country") ?? "Unknown";
-  const city = searchParams.get("city") ?? "Unknown";
-  const continent = searchParams.get("continent") ?? "Unknown";
   const ip = searchParams.get("ip") ?? "";
+
+  // Normalize geo params - treat "undefined", "null", empty strings as Unknown
+  const rawCountry = searchParams.get("country");
+  const rawCity = searchParams.get("city");
+  const rawContinent = searchParams.get("continent");
+
+  const country = rawCountry && rawCountry !== "undefined" && rawCountry !== "null" ? rawCountry : "Unknown";
+  const city = rawCity && rawCity !== "undefined" && rawCity !== "null" ? rawCity : "Unknown";
+  const continent = rawContinent && rawContinent !== "undefined" && rawContinent !== "null" ? rawContinent : "Unknown";
 
   console.log(
     `Processing link for domain: ${domain}, alias: ${alias}, country: ${country}, city: ${city}, continent: ${continent}, ip: ${ip}`,
@@ -73,6 +90,50 @@ export async function GET(request: NextRequest) {
       return Response.json({ url: verifyUrl });
     }
 
+    // Fetch geo rules (cache first, then DB)
+    let geoRules = await getGeoRulesFromCache(link.id);
+    if (!geoRules) {
+      const rulesFromDb = await db.query.geoRule.findMany({
+        where: eq(geoRule.linkId, link.id),
+        orderBy: [asc(geoRule.priority)],
+      });
+      if (rulesFromDb.length > 0) {
+        // Fire-and-forget cache population - don't block the response
+        void setGeoRulesInCache(link.id, rulesFromDb);
+        geoRules = rulesFromDb;
+      }
+    }
+
+    // Match geo rules against visitor's country
+    const geoResult = matchGeoRules(geoRules, country !== "Unknown" ? country : null);
+
+    if (geoResult.matched) {
+      if (geoResult.action === "block") {
+        // Redirect to blocked page
+        const baseUrl = request.url.split('/api/link')[0];
+        const blockMessage = geoResult.message ? encodeURIComponent(geoResult.message) : "";
+        const blockedUrl = `${baseUrl}/blocked/${link.id}${blockMessage ? `?message=${blockMessage}` : ""}`;
+        return Response.json({ url: blockedUrl });
+      }
+
+      // Redirect to geo-targeted destination
+      // Record the click with geo rule info
+      await recordUserClickWithGeoRule(
+        request,
+        domain,
+        alias,
+        ip,
+        country,
+        city,
+        continent,
+        geoResult.ruleId
+      );
+
+      const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams as UtmParams);
+      return Response.json({ url: destinationUrl });
+    }
+
+    // No geo rule matched - continue with default flow
     // Record the click only for actual redirections (non-password protected links)
     await recordUserClickForLink(
       request,

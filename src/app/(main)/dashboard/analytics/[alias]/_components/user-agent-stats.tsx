@@ -49,7 +49,7 @@ export function UserAgentStats({
         views={["device", "os", "browser", "model"]}
         onChangeView={handleViewChange}
       />
-      <BarList records={recordsMap[currentView]} totalClicks={totalClicks} />
+      <BarList records={recordsMap[currentView]} totalClicks={totalClicks} color="green" />
     </BarList.BarListTitle>
   );
 }

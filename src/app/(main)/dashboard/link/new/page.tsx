@@ -4,6 +4,7 @@ import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp, Gem, Loader2, Sparkles, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useTransitionRouter } from "next-view-transitions";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -34,6 +35,11 @@ import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
+// Lazy load GeoRulesForm to reduce initial bundle size (includes framer-motion)
+const GeoRulesForm = dynamic(
+  () => import("../../_components/geo-rules-form").then((mod) => mod.GeoRulesForm),
+  { ssr: false }
+);
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
 import { UtmParamsForm } from "../../_components/utm-params-form";
 import { UtmTemplateSelector } from "../../_components/utm-template-selector";
@@ -889,6 +895,14 @@ export default function CreateLinkPage() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Geotargeting Rules Section */}
+            <GeoRulesForm
+              form={form}
+              disabled={userSubscription?.data?.subscriptions?.status !== "active"}
+              maxRules={userSubscription?.data?.subscriptions?.plan === "ultra" ? undefined : 3}
+              isUnlimited={userSubscription?.data?.subscriptions?.plan === "ultra"}
+            />
 
             {/* Optional Settings Section */}
             <div className="rounded-lg border border-gray-200 p-4">

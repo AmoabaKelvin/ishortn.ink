@@ -51,7 +51,7 @@ export function CountriesAndCitiesStats({
         views={viewsToShow}
         onChangeView={handleViewChange}
       />
-      <BarList records={recordsMap[currentView]} totalClicks={totalClicks} />
+      <BarList records={recordsMap[currentView]} totalClicks={totalClicks} color="blue" />
     </BarList.BarListTitle>
   );
 }

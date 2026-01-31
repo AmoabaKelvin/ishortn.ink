@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "4ce9896d-b95b-4a1e-aaae-d6743008e270",
-  "prevId": "7b1cc230-ee75-4abd-b38f-7251bd4fa0bc",
+  "id": "7b1cc230-ee75-4abd-b38f-7251bd4fa0bc",
+  "prevId": "fe4e4276-01d8-4513-99a7-3c2e8756d2ba",
   "tables": {
     "AccountTransfer": {
       "name": "AccountTransfer",
@@ -44,7 +44,7 @@
         },
         "status": {
           "name": "status",
-          "type": "enum('pending','accepted','cancelled','expired','declined')",
+          "type": "enum('pending','accepted','cancelled','expired')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,

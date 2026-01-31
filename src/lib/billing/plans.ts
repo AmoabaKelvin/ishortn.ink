@@ -8,6 +8,7 @@ type PlanCaps = {
   folderLimit?: number;
   analyticsRangeLimitDays?: number;
   domainLimit?: number;
+  geoRulesLimit?: number; // Max geo rules per link (undefined => unlimited)
 };
 
 const PRO_VARIANT_IDS = new Set([441105, 415248]);
@@ -31,12 +32,14 @@ export const PLAN_CAPS: Record<Plan, PlanCaps> = {
     linksLimit: 30,
     folderLimit: 0,
     analyticsRangeLimitDays: 7,
+    geoRulesLimit: 0, // Geotargeting not available for free plan
   },
   pro: {
     eventsLimit: 10000,
     linksLimit: 1000,
     folderLimit: 5,
     domainLimit: 3,
+    geoRulesLimit: 3, // Pro plan allows 3 geo rules per link
   },
   ultra: {
     // unlimited
@@ -88,4 +91,17 @@ export function isUnlimitedFolders(plan: Plan): boolean {
 
 export function isUnlimitedDomains(plan: Plan): boolean {
   return PLAN_CAPS[plan].domainLimit === undefined;
+}
+
+export function getGeoRulesLimit(plan: Plan): number | undefined {
+  return PLAN_CAPS[plan].geoRulesLimit;
+}
+
+export function isUnlimitedGeoRules(plan: Plan): boolean {
+  return PLAN_CAPS[plan].geoRulesLimit === undefined;
+}
+
+export function canUseGeoRules(plan: Plan): boolean {
+  const limit = PLAN_CAPS[plan].geoRulesLimit;
+  return limit === undefined || limit > 0;
 }

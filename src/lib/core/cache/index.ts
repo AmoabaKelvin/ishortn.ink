@@ -128,4 +128,97 @@ async function deleteFromCache(key: string): Promise<boolean> {
   }
 }
 
-export { deleteFromCache, getFromCache, setInCache, type Link };
+// Geo rules cache functions
+const GEO_RULES_CACHE_TTL = 60 * 60 * 24; // 24 hours
+const GEO_RULES_CACHE_PREFIX = "geoRules:";
+
+// Zod schema for geo rules
+const geoRuleSchema = z.object({
+  id: z.string().transform((str) => Number(str)),
+  linkId: z.string().transform((str) => Number(str)),
+  type: z.enum(["country", "continent"]),
+  condition: z.enum(["in", "not_in"]),
+  values: z.string().transform((str) => JSON.parse(str) as string[]),
+  action: z.enum(["redirect", "block"]),
+  destination: z.string().nullable(),
+  blockMessage: z.string().nullable(),
+  priority: z.string().transform((str) => Number(str)),
+  createdAt: z.string().transform((str) => new Date(str) as Date | null),
+});
+
+type CachedGeoRule = z.infer<typeof geoRuleSchema>;
+
+async function getGeoRulesFromCache(linkId: number): Promise<CachedGeoRule[] | null> {
+  try {
+    const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
+    const cached = await redis.get(key);
+
+    if (!cached) {
+      return null;
+    }
+
+    const parsed = JSON.parse(cached) as Record<string, string>[];
+    return parsed.map((rule) => geoRuleSchema.parse(rule));
+  } catch (_error) {
+    return null;
+  }
+}
+
+async function setGeoRulesInCache(
+  linkId: number,
+  rules: {
+    id: number;
+    linkId: number;
+    type: "country" | "continent";
+    condition: "in" | "not_in";
+    values: string[];
+    action: "redirect" | "block";
+    destination: string | null;
+    blockMessage: string | null;
+    priority: number;
+    createdAt: Date | null;
+  }[],
+  ttlSeconds: number = GEO_RULES_CACHE_TTL
+): Promise<boolean> {
+  try {
+    const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
+    const rulesToStore = rules.map((rule) => ({
+      id: String(rule.id),
+      linkId: String(rule.linkId),
+      type: rule.type,
+      condition: rule.condition,
+      values: JSON.stringify(rule.values),
+      action: rule.action,
+      destination: rule.destination,
+      blockMessage: rule.blockMessage,
+      priority: String(rule.priority),
+      createdAt: rule.createdAt?.toISOString() ?? new Date().toISOString(),
+    }));
+
+    await redis.set(key, JSON.stringify(rulesToStore), "EX", ttlSeconds);
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+async function deleteGeoRulesFromCache(linkId: number): Promise<boolean> {
+  try {
+    const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
+    const result = await redis.del(key);
+    return result > 0;
+  } catch (_error) {
+    return false;
+  }
+}
+
+export {
+  deleteFromCache,
+  deleteGeoRulesFromCache,
+  getFromCache,
+  getGeoRulesFromCache,
+  setGeoRulesInCache,
+  setInCache,
+  type CachedGeoRule,
+  type Link,
+};
