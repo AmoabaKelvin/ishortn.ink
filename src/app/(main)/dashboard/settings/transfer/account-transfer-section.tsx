@@ -90,7 +90,7 @@ export function AccountTransferSection() {
         <CardContent className="space-y-6">
           {/* Pending Transfer */}
           {pendingTransfer && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
               <p className="font-medium text-amber-900 dark:text-amber-200">
                 Transfer pending
               </p>
@@ -118,12 +118,7 @@ export function AccountTransferSection() {
           {!pendingTransfer && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label
-                  htmlFor="targetEmail"
-                  className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                >
-                  Recipient email
-                </Label>
+                <Label htmlFor="targetEmail">Recipient email</Label>
                 <div className="flex gap-2">
                   <Input
                     id="targetEmail"
@@ -132,14 +127,16 @@ export function AccountTransferSection() {
                     value={targetEmail}
                     onChange={(e) => setTargetEmail(e.target.value)}
                     disabled={isLoading}
-                    className="h-10 flex-1"
+                    className="flex-1"
                   />
                   <Button
                     onClick={handleValidate}
                     disabled={!targetEmail || isLoading}
-                    className="h-10"
                   >
-                    {validateMutation.isLoading ? "Validating..." : "Continue"}
+                    {validateMutation.isLoading && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Continue
                   </Button>
                 </div>
               </div>
@@ -180,53 +177,44 @@ export function AccountTransferSection() {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="sm:max-w-[440px]">
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Confirm Transfer</DialogTitle>
             <DialogDescription>
-              Review the resources that will be transferred
+              You&apos;re about to transfer your resources to{" "}
+              <span className="font-medium text-foreground">{targetEmail}</span>
             </DialogDescription>
           </DialogHeader>
 
           {validationResult && (
             <DialogBody className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Recipient
-                </Label>
-                <p className="text-sm font-medium">{targetEmail}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Resources
-                </Label>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <div className="rounded-lg border border-border bg-muted/30 p-4">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                   <span className="text-muted-foreground">Links</span>
-                  <span className="font-medium tabular-nums">
+                  <span className="text-right font-medium tabular-nums">
                     {validationResult.resourceCounts.links}
                   </span>
                   <span className="text-muted-foreground">Domains</span>
-                  <span className="font-medium tabular-nums">
+                  <span className="text-right font-medium tabular-nums">
                     {validationResult.resourceCounts.customDomains}
                   </span>
                   <span className="text-muted-foreground">QR Codes</span>
-                  <span className="font-medium tabular-nums">
+                  <span className="text-right font-medium tabular-nums">
                     {validationResult.resourceCounts.qrCodes}
                   </span>
                   <span className="text-muted-foreground">Folders</span>
-                  <span className="font-medium tabular-nums">
+                  <span className="text-right font-medium tabular-nums">
                     {validationResult.resourceCounts.folders}
                   </span>
                   <span className="text-muted-foreground">Tags</span>
-                  <span className="font-medium tabular-nums">
+                  <span className="text-right font-medium tabular-nums">
                     {validationResult.resourceCounts.tags}
                   </span>
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                This action cannot be undone once the recipient accepts.
+              <p className="text-sm text-muted-foreground">
+                This action cannot be undone once accepted.
               </p>
             </DialogBody>
           )}

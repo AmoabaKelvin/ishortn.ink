@@ -745,7 +745,7 @@ export const accountTransfer = mysqlTable(
     // Security token for approval link
     token: varchar("token", { length: 64 }).notNull().unique(),
     // Transfer status
-    status: mysqlEnum("status", ["pending", "accepted", "cancelled", "expired"])
+    status: mysqlEnum("status", ["pending", "accepted", "cancelled", "expired", "declined"])
       .notNull()
       .default("pending"),
     // Resource counts at time of initiation (for display to recipient)

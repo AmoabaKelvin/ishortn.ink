@@ -16,7 +16,12 @@ export const cancelTransferSchema = z.object({
   transferId: z.number().int().positive(),
 });
 
+export const declineTransferSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+});
+
 export type InitiateTransferInput = z.infer<typeof initiateTransferSchema>;
 export type GetTransferByTokenInput = z.infer<typeof getTransferByTokenSchema>;
 export type AcceptTransferInput = z.infer<typeof acceptTransferSchema>;
 export type CancelTransferInput = z.infer<typeof cancelTransferSchema>;
+export type DeclineTransferInput = z.infer<typeof declineTransferSchema>;

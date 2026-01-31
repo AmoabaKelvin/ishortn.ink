@@ -1,6 +1,5 @@
 import {
   Body,
-  Button,
   Container,
   Head,
   Hr,
@@ -12,21 +11,19 @@ import {
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
 
-type AccountTransferEmailProps = {
-  recipientName?: string | null;
-  senderName: string;
-  senderEmail: string;
-  acceptUrl: string;
+type TransferCompletedEmailProps = {
+  senderName?: string | null;
+  recipientName: string;
+  recipientEmail: string;
   resourceCounts: ResourceCounts;
 };
 
-export const AccountTransferEmail = ({
-  recipientName,
+export const TransferCompletedEmail = ({
   senderName,
-  senderEmail,
-  acceptUrl,
+  recipientName,
+  recipientEmail,
   resourceCounts,
-}: AccountTransferEmailProps) => {
+}: TransferCompletedEmailProps) => {
   const totalResources =
     resourceCounts.links +
     resourceCounts.customDomains +
@@ -39,27 +36,26 @@ export const AccountTransferEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>
-        {senderName} wants to transfer their iShortn resources to you
-      </Preview>
+      <Preview>Your iShortn resources have been transferred</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={section}>
-            <Text style={text}>Hi {recipientName || "there"},</Text>
+            <Text style={text}>Hi {senderName || "there"},</Text>
 
             <Text style={text}>
-              <strong>{senderName}</strong> ({senderEmail}) has requested to
-              transfer their iShortn resources to your account.
+              Your resource transfer to <strong>{recipientName}</strong> (
+              {recipientEmail}) has been completed successfully.
             </Text>
 
             <Hr style={hr} />
 
-            <Text style={headingText}>Resources to be transferred:</Text>
+            <Text style={headingText}>Resources transferred:</Text>
 
             <Section style={resourceList}>
               {resourceCounts.links > 0 && (
                 <Text style={resourceItem}>
-                  {resourceCounts.links} link{resourceCounts.links !== 1 ? "s" : ""}
+                  {resourceCounts.links} link
+                  {resourceCounts.links !== 1 ? "s" : ""}
                 </Text>
               )}
               {resourceCounts.customDomains > 0 && (
@@ -98,37 +94,15 @@ export const AccountTransferEmail = ({
                 </Text>
               )}
               {totalResources === 0 && (
-                <Text style={resourceItem}>No resources to transfer</Text>
+                <Text style={resourceItem}>No resources transferred</Text>
               )}
             </Section>
 
             <Hr style={hr} />
 
-            <Text style={headingText}>Important notes:</Text>
-            <Text style={smallText}>
-              - All analytics data will be preserved
-            </Text>
-            <Text style={smallText}>
-              - Folders and tags will be merged by name if they already exist
-            </Text>
-            <Text style={smallText}>
-              - API tokens and subscriptions will NOT be transferred
-            </Text>
-
-            <Section style={buttonContainer}>
-              <Button style={button} href={acceptUrl}>
-                Review & Accept Transfer
-              </Button>
-            </Section>
-
-            <Text style={smallText}>
-              Or copy and paste this URL into your browser:{" "}
-              <span style={linkText}>{acceptUrl}</span>
-            </Text>
-
-            <Text style={smallText}>
-              This invitation will expire in 7 days. If you don&apos;t want to accept
-              this transfer, you can safely ignore this email.
+            <Text style={text}>
+              These resources are now owned by {recipientName} and have been
+              removed from your account.
             </Text>
 
             <Hr style={hr} />
@@ -175,21 +149,8 @@ const headingText = {
   marginBottom: "8px",
 };
 
-const smallText = {
-  color: "#666",
-  fontSize: "14px",
-  lineHeight: "20px",
-  marginTop: "4px",
-  marginBottom: "4px",
-};
-
-const linkText = {
-  color: "#2563eb",
-  wordBreak: "break-all" as const,
-};
-
 const resourceList = {
-  backgroundColor: "#f9fafb",
+  backgroundColor: "#f0fdf4",
   borderRadius: "8px",
   padding: "16px",
   marginTop: "8px",
@@ -209,22 +170,4 @@ const hr = {
   marginBottom: "24px",
 };
 
-const buttonContainer = {
-  textAlign: "center" as const,
-  marginTop: "24px",
-  marginBottom: "24px",
-};
-
-const button = {
-  backgroundColor: "#111827",
-  borderRadius: "6px",
-  color: "#fff",
-  fontSize: "16px",
-  fontWeight: 500,
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "inline-block",
-  padding: "12px 24px",
-};
-
-export default AccountTransferEmail;
+export default TransferCompletedEmail;

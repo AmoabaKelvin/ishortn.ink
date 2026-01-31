@@ -55,4 +55,13 @@ export const accountTransferRouter = createTRPCRouter({
     .mutation(({ ctx, input }) =>
       services.cancelAccountTransfer(ctx, input)
     ),
+
+  /**
+   * Decline pending transfer (recipient only)
+   */
+  decline: protectedProcedure
+    .input(inputs.declineTransferSchema)
+    .mutation(({ ctx, input }) =>
+      services.declineAccountTransfer(ctx, input)
+    ),
 });

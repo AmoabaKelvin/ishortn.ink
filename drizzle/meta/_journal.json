@@ -323,6 +323,13 @@
       "when": 1768804091773,
       "tag": "0045_outgoing_sharon_carter",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "5",
+      "when": 1769886285321,
+      "tag": "0046_demonic_rockslide",
+      "breakpoints": true
     }
   ]
 }

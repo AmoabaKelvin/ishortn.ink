@@ -17,7 +17,11 @@ import {
   user,
   utmTemplate,
 } from "@/server/db/schema";
-import { sendAccountTransferEmail } from "@/server/lib/notifications/account-transfer";
+import {
+  sendAccountTransferEmail,
+  sendTransferCompletedEmail,
+  sendTransferDeclinedEmail,
+} from "@/server/lib/notifications/account-transfer";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 import type {
@@ -163,7 +167,7 @@ export async function validateAccountTransfer(
   if (sourceUser.email?.toLowerCase() === targetEmail.toLowerCase()) {
     errors.push({
       type: "SAME_ACCOUNT",
-      message: "Cannot transfer account to yourself",
+      message: "Cannot transfer resources to yourself",
     });
     return {
       isValid: false,
@@ -250,7 +254,7 @@ export async function validateAccountTransfer(
     errors.push({
       type: "PENDING_TRANSFER_EXISTS",
       message:
-        "You already have a pending account transfer. Cancel it before initiating a new one.",
+        "You already have a pending transfer. Cancel it before initiating a new one.",
     });
     return {
       isValid: false,
@@ -462,6 +466,7 @@ export async function getTransferByToken(
     isExpired: transfer.expiresAt < new Date(),
     isAccepted: !!transfer.acceptedAt,
     isCancelled: transfer.status === "cancelled",
+    isDeclined: transfer.status === "declined",
   };
 }
 
@@ -578,6 +583,30 @@ export async function acceptAccountTransfer(
     ctx.auth.userId,
     transfer.id
   );
+
+  // Notify the source user that transfer was completed
+  const sourceUser = await ctx.db.query.user.findFirst({
+    where: eq(user.id, transfer.fromUserId),
+    columns: { name: true, email: true },
+  });
+
+  if (sourceUser?.email) {
+    void sendTransferCompletedEmail({
+      toEmail: sourceUser.email,
+      toName: sourceUser.name,
+      recipientName: currentUser?.name ?? "the recipient",
+      recipientEmail: currentUser?.email ?? transfer.toEmail,
+      resourceCounts: {
+        links: transfer.linksCount,
+        customDomains: transfer.customDomainsCount,
+        qrCodes: transfer.qrCodesCount,
+        folders: transfer.foldersCount,
+        tags: transfer.tagsCount,
+        utmTemplates: transfer.utmTemplatesCount,
+        qrPresets: transfer.qrPresetsCount,
+      },
+    });
+  }
 
   return result;
 }
@@ -879,6 +908,68 @@ export async function cancelAccountTransfer(
     .update(accountTransfer)
     .set({ status: "cancelled" })
     .where(eq(accountTransfer.id, input.transferId));
+
+  return { success: true };
+}
+
+// ============================================================================
+// DECLINE TRANSFER (Recipient declines)
+// ============================================================================
+
+export async function declineAccountTransfer(
+  ctx: ProtectedTRPCContext,
+  input: { token: string }
+) {
+  const transfer = await ctx.db.query.accountTransfer.findFirst({
+    where: eq(accountTransfer.token, input.token),
+  });
+
+  if (!transfer) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Transfer not found",
+    });
+  }
+
+  // Verify current user is the target
+  const currentUser = await ctx.db.query.user.findFirst({
+    where: eq(user.id, ctx.auth.userId),
+  });
+
+  if (currentUser?.email?.toLowerCase() !== transfer.toEmail.toLowerCase()) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This transfer is for a different account",
+    });
+  }
+
+  if (transfer.status !== "pending") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `This transfer is ${transfer.status} and cannot be declined`,
+    });
+  }
+
+  // Mark as declined
+  await ctx.db
+    .update(accountTransfer)
+    .set({ status: "declined" })
+    .where(eq(accountTransfer.id, transfer.id));
+
+  // Notify the source user
+  const sourceUser = await ctx.db.query.user.findFirst({
+    where: eq(user.id, transfer.fromUserId),
+    columns: { name: true, email: true },
+  });
+
+  if (sourceUser?.email) {
+    void sendTransferDeclinedEmail({
+      toEmail: sourceUser.email,
+      toName: sourceUser.name,
+      recipientName: currentUser?.name ?? "the recipient",
+      recipientEmail: currentUser?.email ?? transfer.toEmail,
+    });
+  }
 
   return { success: true };
 }

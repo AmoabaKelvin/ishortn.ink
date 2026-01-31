@@ -2,6 +2,8 @@ import { Resend } from "resend";
 
 import { env } from "@/env.mjs";
 import AccountTransferEmail from "@/emails/account-transfer";
+import TransferCompletedEmail from "@/emails/transfer-completed";
+import TransferDeclinedEmail from "@/emails/transfer-declined";
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
 
@@ -33,7 +35,7 @@ export async function sendAccountTransferEmail({
     await resend.emails.send({
       from: "Kelvin from iShortn <kelvin@ishortn.ink>",
       to: toEmail,
-      subject: `${fromName} wants to transfer their iShortn account to you`,
+      subject: `${fromName} wants to transfer their iShortn resources to you`,
       react: AccountTransferEmail({
         recipientName: toName,
         senderName: fromName,
@@ -44,5 +46,70 @@ export async function sendAccountTransferEmail({
     });
   } catch (error) {
     console.error("Failed to send account transfer email", error);
+  }
+}
+
+type SendTransferCompletedEmailInput = {
+  toEmail: string;
+  toName?: string | null;
+  recipientName: string;
+  recipientEmail: string;
+  resourceCounts: ResourceCounts;
+};
+
+export async function sendTransferCompletedEmail({
+  toEmail,
+  toName,
+  recipientName,
+  recipientEmail,
+  resourceCounts,
+}: SendTransferCompletedEmailInput) {
+  if (!resend) return;
+
+  try {
+    await resend.emails.send({
+      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
+      to: toEmail,
+      subject: "Your iShortn resources have been transferred",
+      react: TransferCompletedEmail({
+        senderName: toName,
+        recipientName,
+        recipientEmail,
+        resourceCounts,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send transfer completed email", error);
+  }
+}
+
+type SendTransferDeclinedEmailInput = {
+  toEmail: string;
+  toName?: string | null;
+  recipientName: string;
+  recipientEmail: string;
+};
+
+export async function sendTransferDeclinedEmail({
+  toEmail,
+  toName,
+  recipientName,
+  recipientEmail,
+}: SendTransferDeclinedEmailInput) {
+  if (!resend) return;
+
+  try {
+    await resend.emails.send({
+      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
+      to: toEmail,
+      subject: "Your iShortn transfer request was declined",
+      react: TransferDeclinedEmail({
+        senderName: toName,
+        recipientName,
+        recipientEmail,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send transfer declined email", error);
   }
 }

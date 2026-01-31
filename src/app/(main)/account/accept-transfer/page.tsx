@@ -95,7 +95,17 @@ function AcceptTransferContent() {
 
   const acceptMutation = api.accountTransfer.accept.useMutation({
     onSuccess: () => {
-      toast.success("Account transfer completed successfully!");
+      toast.success("Transfer completed successfully!");
+      router.push("/dashboard");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const declineMutation = api.accountTransfer.decline.useMutation({
+    onSuccess: () => {
+      toast.success("Transfer declined");
       router.push("/dashboard");
     },
     onError: (error) => {
@@ -106,6 +116,12 @@ function AcceptTransferContent() {
   const handleAccept = () => {
     if (token) {
       acceptMutation.mutate({ token });
+    }
+  };
+
+  const handleDecline = () => {
+    if (token) {
+      declineMutation.mutate({ token });
     }
   };
 
@@ -141,7 +157,7 @@ function AcceptTransferContent() {
         icon={<User className="h-6 w-6 text-neutral-600" />}
         iconBg="bg-neutral-100"
         title="Sign in to continue"
-        description="You need to sign in to accept this account transfer."
+        description="You need to sign in to accept this transfer."
       >
         <Button
           onClick={() =>
@@ -212,7 +228,7 @@ function AcceptTransferContent() {
         icon={<Check className="h-6 w-6 text-emerald-500" />}
         iconBg="bg-emerald-50"
         title="Transfer completed"
-        description="This account transfer has already been completed."
+        description="This transfer has already been completed."
       >
         <Button
           onClick={() => router.push("/dashboard")}
@@ -233,6 +249,26 @@ function AcceptTransferContent() {
         iconBg="bg-red-50"
         title="Transfer cancelled"
         description="This transfer request has been cancelled by the sender."
+      >
+        <Button
+          variant="outline"
+          onClick={() => router.push("/dashboard")}
+          className="w-full"
+        >
+          Go to Dashboard
+        </Button>
+      </StateCard>
+    );
+  }
+
+  // Declined
+  if (transfer.isDeclined) {
+    return (
+      <StateCard
+        icon={<XCircle className="h-6 w-6 text-neutral-500" />}
+        iconBg="bg-neutral-100"
+        title="Transfer declined"
+        description="You have declined this transfer request."
       >
         <Button
           variant="outline"
@@ -287,13 +323,13 @@ function AcceptTransferContent() {
           {/* Title */}
           <div className="text-center mb-6">
             <h1 className="font-semibold text-2xl text-neutral-900 mb-2">
-              Account Transfer Request
+              Resource Transfer Request
             </h1>
             <p className="text-sm text-neutral-500">
               <span className="font-medium text-neutral-700">
                 {transfer.fromUser.name || "Someone"}
               </span>{" "}
-              wants to transfer their account to you
+              wants to transfer their resources to you
             </p>
             <p className="text-xs text-neutral-400 mt-1">
               {transfer.fromUser.email}
@@ -355,7 +391,7 @@ function AcceptTransferContent() {
               </li>
               <li className="flex items-start gap-2">
                 <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                <span>Sender&apos;s account will be marked for deletion</span>
+                <span>API tokens and subscriptions are NOT transferred</span>
               </li>
             </ul>
           </div>
@@ -383,14 +419,22 @@ function AcceptTransferContent() {
             <Button
               variant="outline"
               className="flex-1 h-11 border-neutral-200 hover:bg-neutral-50"
-              onClick={() => router.push("/dashboard")}
+              onClick={handleDecline}
+              disabled={declineMutation.isLoading || acceptMutation.isLoading}
             >
-              Decline
+              {declineMutation.isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Declining...
+                </>
+              ) : (
+                "Decline"
+              )}
             </Button>
             <Button
               className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20"
               onClick={handleAccept}
-              disabled={acceptMutation.isLoading}
+              disabled={acceptMutation.isLoading || declineMutation.isLoading}
             >
               {acceptMutation.isLoading ? (
                 <>
