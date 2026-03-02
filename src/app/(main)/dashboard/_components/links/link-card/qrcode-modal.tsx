@@ -1,5 +1,7 @@
-import QRCode from "qrcode.react";
-import { useRef } from "react";
+"use client";
+
+import { useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
 
 type QRCodeModalProps = {
   open: boolean;
@@ -23,20 +26,57 @@ export function QRCodeModal({
   setOpen,
   destinationUrl,
 }: QRCodeModalProps) {
-  const qrCodeCanvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const handleQRCodeDownload = () => {
-    if (!destinationUrl) return;
-    const canvas = document.getElementById("qr-gen") as HTMLCanvasElement;
-    const pngUrl = canvas
-      .toDataURL("image/png")
-      .replace("image/png", "image/octet-stream");
-    const downloadLink = document.createElement("a");
-    downloadLink.href = pngUrl;
-    downloadLink.download = "qrcode.png";
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+  const renderQRCode = useCallback(async () => {
+    if (!canvasRef.current || !destinationUrl) return;
+
+    try {
+      await generateQRCode(canvasRef.current, {
+        ...defaultGeneratorState(),
+        text: destinationUrl,
+        scale: 10,
+        margin: 2,
+      });
+    } catch (error) {
+      console.error("[QR:modal] Failed to generate QR code:", error);
+    }
+  }, [destinationUrl]);
+
+  useEffect(() => {
+    if (open) {
+      // Small delay to ensure canvas is mounted in the dialog
+      const timer = setTimeout(renderQRCode, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [open, renderQRCode]);
+
+  const handleQRCodeDownload = async () => {
+    if (!canvasRef.current || !destinationUrl) return;
+
+    try {
+      // Generate a high-quality version for download
+      const downloadCanvas = document.createElement("canvas");
+      await generateQRCode(downloadCanvas, {
+        ...defaultGeneratorState(),
+        text: destinationUrl,
+        scale: 20,
+        margin: 2,
+      });
+
+      const pngUrl = downloadCanvas
+        .toDataURL("image/png")
+        .replace("image/png", "image/octet-stream");
+      const downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = "qrcode.png";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } catch (error) {
+      console.error("[QR:modal] Failed to download QR code:", error);
+      toast.error("Failed to download QR code");
+    }
   };
 
   return (
@@ -51,14 +91,17 @@ export function QRCodeModal({
 
         <DialogBody className="flex justify-center">
           <div className="rounded-lg border border-border bg-white p-2">
-            <QRCode
-              id="qr-gen"
-              value={destinationUrl}
-              size={240}
-              level={"H"}
-              includeMargin={true}
-              ref={qrCodeCanvasRef}
-            />
+            {destinationUrl ? (
+              <canvas
+                ref={canvasRef}
+                className="block"
+                style={{ width: "240px", height: "240px" }}
+              />
+            ) : (
+              <div className="flex h-[240px] w-[240px] items-center justify-center text-sm text-gray-400">
+                No URL provided
+              </div>
+            )}
           </div>
         </DialogBody>
 
