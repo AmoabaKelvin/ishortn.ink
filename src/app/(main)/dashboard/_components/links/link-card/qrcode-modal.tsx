@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -50,17 +51,19 @@ export function QRCodeModal({
     }
   }, [open, renderQRCode]);
 
-  const handleQRCodeDownload = () => {
+  const handleQRCodeDownload = async () => {
     if (!canvasRef.current || !destinationUrl) return;
 
-    // Generate a high-quality version for download
-    const downloadCanvas = document.createElement("canvas");
-    generateQRCode(downloadCanvas, {
-      ...defaultGeneratorState(),
-      text: destinationUrl,
-      scale: 20,
-      margin: 2,
-    }).then(() => {
+    try {
+      // Generate a high-quality version for download
+      const downloadCanvas = document.createElement("canvas");
+      await generateQRCode(downloadCanvas, {
+        ...defaultGeneratorState(),
+        text: destinationUrl,
+        scale: 20,
+        margin: 2,
+      });
+
       const pngUrl = downloadCanvas
         .toDataURL("image/png")
         .replace("image/png", "image/octet-stream");
@@ -70,7 +73,10 @@ export function QRCodeModal({
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
-    });
+    } catch (error) {
+      console.error("[QR:modal] Failed to download QR code:", error);
+      toast.error("Failed to download QR code");
+    }
   };
 
   return (
