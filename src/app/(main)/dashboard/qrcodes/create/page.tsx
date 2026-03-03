@@ -170,7 +170,7 @@ function QRCodeCreationPage() {
       marginNoiseRate: parseFloat(preset.marginNoiseRate),
       // Logo settings (with defaults for older presets)
       logoImage: preset.logoImage ?? undefined,
-      logoSize: preset.logoSize ?? 25,
+      logoSize: Math.min(preset.logoSize ?? 25, 30),
       logoMargin: preset.logoMargin ?? 4,
       logoBorderRadius: preset.logoBorderRadius ?? 8,
     }));

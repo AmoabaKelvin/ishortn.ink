@@ -68,7 +68,7 @@ export const qrPresetCreateInput = z.object({
   marginNoiseRate: marginNoiseRateSchema.default("0.5"),
   // Logo settings
   logoImage: logoImageSchema,
-  logoSize: z.number().min(10).max(40).default(25),
+  logoSize: z.number().min(10).max(30).default(25),
   logoMargin: z.number().min(0).max(20).default(4),
   logoBorderRadius: z.number().min(0).max(50).default(8),
 });
@@ -90,7 +90,7 @@ export const qrPresetUpdateInput = z.object({
   marginNoiseRate: marginNoiseRateSchema,
   // Logo settings
   logoImage: logoImageSchema,
-  logoSize: z.number().min(10).max(40),
+  logoSize: z.number().min(10).max(30),
   logoMargin: z.number().min(0).max(20),
   logoBorderRadius: z.number().min(0).max(50),
 });
