@@ -814,10 +814,14 @@ export async function generateQRCode(
 }
 
 function createQrInstance(state: QRCodeGeneratorState) {
+  // When a logo is embedded, force highest error correction level ('H', ~30%
+  // recovery) so the QR code remains scannable despite covered modules.
+  const ecc = state.logoImage ? "H" : state.ecc;
+
   const qr = encode(state.text || "ishortn.ink", {
     minVersion: state.minVersion,
     maxVersion: state.maxVersion,
-    ecc: state.ecc,
+    ecc,
     maskPattern: state.maskPattern,
     boostEcc: state.boostECC,
     border: 0,
