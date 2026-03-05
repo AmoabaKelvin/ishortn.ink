@@ -1,185 +1,238 @@
 "use client";
 
-import { motion, useInView } from "framer-motion";
 import {
-  BarChart3,
-  Blocks,
-  Globe,
-  Link2,
-  Palette,
-  QrCode,
-  Shield,
-  Zap,
-} from "lucide-react";
+  IconApi,
+  IconBolt,
+  IconChartBar,
+  IconPalette,
+  IconQrcode,
+  IconShieldLock,
+} from "@tabler/icons-react";
+import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 
-const features = [
+import type { Icon } from "@tabler/icons-react";
+
+const features: { icon: Icon; title: string; description: string }[] = [
   {
-    icon: Zap,
-    title: "Lightning Fast",
+    icon: IconBolt,
+    title: "Lightning fast",
     description:
-      "Create short links instantly. Our infrastructure delivers sub-100ms redirects globally.",
-    color: "bg-amber-500",
+      "Sub-100ms redirects globally. Your links resolve before the blink of an eye.",
   },
   {
-    icon: BarChart3,
-    title: "Deep Analytics",
+    icon: IconChartBar,
+    title: "Deep analytics",
     description:
-      "Track clicks, locations, devices, and referrers. Make data-driven decisions with real-time insights.",
-    color: "bg-blue-500",
+      "Clicks, locations, devices, referrers. Real-time data to drive your decisions.",
   },
   {
-    icon: Palette,
-    title: "Custom Branding",
+    icon: IconPalette,
+    title: "Custom domains",
     description:
-      "Use your own domain. Create memorable, branded links that build trust and recognition.",
-    color: "bg-rose-500",
+      "Use your own domain for branded links that build trust and recognition.",
   },
   {
-    icon: QrCode,
-    title: "QR Codes",
+    icon: IconQrcode,
+    title: "QR codes",
     description:
-      "Generate beautiful QR codes for any link. Perfect for print materials and offline campaigns.",
-    color: "bg-purple-500",
+      "Generate customizable QR codes for any link. Perfect for print and offline.",
   },
   {
-    icon: Blocks,
+    icon: IconApi,
     title: "Developer API",
     description:
-      "RESTful API with comprehensive documentation. Integrate link shortening into your apps seamlessly.",
-    color: "bg-green-500",
+      "RESTful API with full documentation. Integrate link shortening into your stack.",
   },
   {
-    icon: Shield,
-    title: "Password Protection",
+    icon: IconShieldLock,
+    title: "Password protection",
     description:
-      "Secure sensitive links with passwords. Control who can access your shared content.",
-    color: "bg-orange-500",
+      "Secure sensitive links with passwords. Control exactly who sees your content.",
   },
 ];
 
-const FeatureCard = ({
+const FeatureRow = ({
   feature,
   index,
 }: {
-  feature: (typeof features)[0];
+  feature: (typeof features)[number];
   index: number;
 }) => {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const FeatureIcon = feature.icon;
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="feature-card group"
+      initial={{ opacity: 0, y: 16 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
+      className="group grid grid-cols-1 gap-4 border-b border-neutral-100 py-8 last:border-0 md:grid-cols-12 md:items-center md:gap-8"
     >
-      {/* Icon */}
-      <div
-        className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${feature.color} text-white shadow-lg transition-transform duration-300 group-hover:scale-110`}
-      >
-        <feature.icon className="h-7 w-7" />
+      <div className="flex items-center gap-4 md:col-span-5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-600 transition-colors group-hover:bg-neutral-900 group-hover:text-white">
+          <FeatureIcon size={20} stroke={1.5} />
+        </div>
+        <h3 className="text-base font-medium text-neutral-900">
+          {feature.title}
+        </h3>
+      </div>
+      <p className="text-[15px] leading-relaxed text-neutral-500 md:col-span-7">
+        {feature.description}
+      </p>
+    </motion.div>
+  );
+};
+
+const AnalyticsPreview = () => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+
+  const bars = [35, 52, 78, 65, 89, 72, 95, 82, 68, 91, 76, 88];
+  const countries = [
+    { name: "United States", pct: 42 },
+    { name: "United Kingdom", pct: 18 },
+    { name: "Germany", pct: 14 },
+    { name: "Canada", pct: 11 },
+    { name: "France", pct: 8 },
+  ];
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 24 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
+      transition={{ duration: 0.5 }}
+      className="mt-20 overflow-hidden rounded-xl border border-neutral-200 bg-white"
+    >
+      {/* Window chrome */}
+      <div className="flex items-center gap-2 border-b border-neutral-100 px-5 py-3">
+        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+        <span className="ml-3 text-[11px] text-neutral-400">
+          Analytics Dashboard
+        </span>
       </div>
 
-      {/* Content */}
-      <h3 className="mb-3 text-xl font-semibold text-neutral-900">
-        {feature.title}
-      </h3>
-      <p className="leading-relaxed text-neutral-600">{feature.description}</p>
+      <div className="p-6 md:p-8">
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-6 border-b border-neutral-100 pb-6">
+          {[
+            { label: "Total clicks", value: "24,847" },
+            { label: "Unique visitors", value: "18,293" },
+            { label: "Top country", value: "US (42%)" },
+          ].map((stat) => (
+            <div key={stat.label}>
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400">
+                {stat.label}
+              </p>
+              <p className="mt-1 text-lg font-semibold text-neutral-900 md:text-xl">
+                {stat.value}
+              </p>
+            </div>
+          ))}
+        </div>
 
-      {/* Decorative corner */}
-      <div className="absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-neutral-100/50 transition-transform duration-500 group-hover:scale-150" />
+        {/* Chart + geo */}
+        <div className="mt-6 grid gap-8 md:grid-cols-12">
+          {/* Bar chart */}
+          <div className="md:col-span-7">
+            <p className="mb-4 text-xs font-medium uppercase tracking-wider text-neutral-400">
+              Clicks over time
+            </p>
+            <div className="flex items-end gap-1.5" style={{ height: 120 }}>
+              {bars.map((height, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ height: 0 }}
+                  animate={isInView ? { height: `${height}%` } : { height: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 + i * 0.04 }}
+                  className="flex-1 rounded-sm bg-neutral-900"
+                />
+              ))}
+            </div>
+            <div className="mt-2 flex justify-between text-[10px] text-neutral-300">
+              <span>Jan</span>
+              <span>Jun</span>
+              <span>Dec</span>
+            </div>
+          </div>
+
+          {/* Countries */}
+          <div className="md:col-span-5">
+            <p className="mb-4 text-xs font-medium uppercase tracking-wider text-neutral-400">
+              Top locations
+            </p>
+            <div className="space-y-3">
+              {countries.map((country) => (
+                <div key={country.name} className="flex items-center gap-3">
+                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-neutral-100">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={
+                        isInView
+                          ? { width: `${country.pct}%` }
+                          : { width: 0 }
+                      }
+                      transition={{ duration: 0.5, delay: 0.5 }}
+                      className="h-full rounded-full bg-neutral-900"
+                    />
+                  </div>
+                  <span className="w-28 shrink-0 text-xs text-neutral-500">
+                    {country.name}
+                  </span>
+                  <span className="w-8 shrink-0 text-right text-xs font-medium text-neutral-700">
+                    {country.pct}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 };
 
 export const Features = () => {
   const headerRef = useRef(null);
-  const isHeaderInView = useInView(headerRef, { once: true, margin: "-100px" });
+  const isHeaderInView = useInView(headerRef, { once: true, margin: "-80px" });
 
   return (
-    <section id="features" className="landing-section relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-neutral-50/50 to-white" />
-      <div className="noise-overlay" />
-
-      <div className="landing-container relative z-10">
+    <section id="features" className="landing-section">
+      <div className="landing-container">
         {/* Section Header */}
         <motion.div
           ref={headerRef}
-          initial={{ opacity: 0, y: 20 }}
-          animate={isHeaderInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.5 }}
-          className="mb-16 text-center"
+          initial={{ opacity: 0, y: 16 }}
+          animate={
+            isHeaderInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }
+          }
+          transition={{ duration: 0.4 }}
+          className="mb-4"
         >
-          <div className="landing-badge mx-auto mb-6">
-            <Globe className="h-3.5 w-3.5 text-blue-500" />
-            <span>Powerful Features</span>
-          </div>
-          <h2 className="font-display text-4xl tracking-tight text-neutral-900 sm:text-5xl">
-            Everything you need to
-            <br />
-            <span className="relative inline-block">
-              grow your reach
-              <svg
-                className="absolute -bottom-2 left-0 w-full"
-                viewBox="0 0 200 8"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M2 6C50 2 150 2 198 6"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  className="text-amber-400"
-                />
-              </svg>
-            </span>
-          </h2>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-neutral-600">
-            From simple link shortening to advanced analytics and custom branding,
-            we have all the tools you need to make every link count.
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+            Features
           </p>
+          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 sm:text-4xl">
+            Everything you need,
+            <br />
+            nothing you don&apos;t
+          </h2>
         </motion.div>
 
-        {/* Features Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Feature list */}
+        <div className="mt-8">
           {features.map((feature, index) => (
-            <FeatureCard key={feature.title} feature={feature} index={index} />
+            <FeatureRow key={feature.title} feature={feature} index={index} />
           ))}
         </div>
 
-        {/* Bottom CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.5 }}
-          className="mt-16 flex flex-col items-center justify-center gap-4 rounded-3xl border border-neutral-200/60 bg-gradient-to-r from-neutral-50 to-white p-12 text-center sm:flex-row"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-900 text-white">
-              <Link2 className="h-6 w-6" />
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-neutral-900">
-                Ready to supercharge your links?
-              </p>
-              <p className="text-sm text-neutral-500">
-                Start free, upgrade anytime
-              </p>
-            </div>
-          </div>
-          <a
-            href="/auth/sign-up"
-            className="landing-button-primary whitespace-nowrap"
-          >
-            Get started free
-          </a>
-        </motion.div>
+        {/* Analytics preview */}
+        <AnalyticsPreview />
       </div>
     </section>
   );

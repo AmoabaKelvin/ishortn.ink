@@ -13,8 +13,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 6%;
 
-    --primary: 240 5% 12%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 217.2 91.2% 53.3%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 240 5% 96%;
     --secondary-foreground: 240 5% 12%;
@@ -104,107 +104,12 @@
 
 /* Landing page styles */
 @layer components {
-  .landing-gradient-text {
-    @apply bg-gradient-to-r from-neutral-900 via-neutral-700 to-neutral-900 bg-clip-text text-transparent;
-  }
-
-  .landing-gradient-bg {
-    background: linear-gradient(
-      135deg,
-      hsl(60, 9%, 98%) 0%,
-      hsl(40, 10%, 96%) 50%,
-      hsl(60, 9%, 98%) 100%
-    );
-  }
-
-  .landing-card {
-    @apply relative overflow-hidden rounded-2xl border border-neutral-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300;
-  }
-
-  .landing-card:hover {
-    @apply border-neutral-300/80 shadow-lg shadow-neutral-900/5;
-  }
-
-  .landing-button-primary {
-    @apply relative inline-flex items-center justify-center gap-2 rounded-full bg-neutral-900 px-8 py-4 text-sm font-medium text-white transition-all duration-300 hover:bg-neutral-800 hover:shadow-lg hover:shadow-neutral-900/20;
-  }
-
-  .landing-button-secondary {
-    @apply relative inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white px-8 py-4 text-sm font-medium text-neutral-900 transition-all duration-300 hover:border-neutral-300 hover:bg-neutral-50;
-  }
-
   .landing-section {
-    @apply relative px-4 py-24 md:py-32;
+    @apply relative px-6 py-24 md:py-32 lg:py-40;
   }
 
   .landing-container {
-    @apply mx-auto max-w-6xl;
-  }
-
-  .landing-badge {
-    @apply inline-flex items-center gap-2 rounded-full border border-neutral-200/60 bg-white/60 px-4 py-2 text-xs font-medium text-neutral-600 backdrop-blur-sm;
-  }
-
-  .feature-card {
-    @apply relative overflow-hidden rounded-3xl border border-neutral-200/50 bg-gradient-to-br from-white to-neutral-50/80 p-8 transition-all duration-500;
-  }
-
-  .feature-card::before {
-    content: "";
-    @apply absolute inset-0 bg-gradient-to-br from-transparent via-neutral-100/0 to-neutral-100/50 opacity-0 transition-opacity duration-500;
-  }
-
-  .feature-card:hover::before {
-    @apply opacity-100;
-  }
-
-  .feature-card:hover {
-    @apply border-neutral-300/80 shadow-2xl shadow-neutral-900/10 -translate-y-1;
-  }
-
-  .pricing-card {
-    @apply relative overflow-hidden rounded-3xl border border-neutral-200/60 bg-white p-8 transition-all duration-500;
-  }
-
-  .pricing-card:hover {
-    @apply shadow-2xl shadow-neutral-900/10 -translate-y-1;
-  }
-
-  .pricing-card-popular {
-    @apply border-neutral-900 bg-neutral-900 text-white;
-  }
-
-  .testimonial-card {
-    @apply relative rounded-2xl border border-neutral-200/60 bg-white/90 p-8 backdrop-blur-sm transition-all duration-300;
-  }
-
-  .testimonial-card:hover {
-    @apply shadow-lg shadow-neutral-900/5 -translate-y-0.5;
-  }
-
-  .faq-item {
-    @apply rounded-2xl border border-neutral-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300;
-  }
-
-  .faq-item:hover {
-    @apply border-neutral-300/80;
-  }
-
-  .gradient-blur {
-    @apply absolute rounded-full blur-3xl;
-  }
-
-  .noise-overlay {
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    @apply pointer-events-none absolute inset-0 opacity-[0.015];
-  }
-
-  .grid-overlay {
-    background-image:
-      linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
-    background-size: 60px 60px;
-    @apply pointer-events-none absolute inset-0;
+    @apply mx-auto max-w-5xl;
   }
 }
 

@@ -1,10 +1,13 @@
 import { Suspense } from "react";
+
 import type { Metadata } from "next";
+
 import { getChangelogEntries } from "@/lib/changelog";
-import { Header } from "../_components/header";
+
 import { Footer } from "../_components/footer";
-import { ChangelogTimeline } from "./_components/changelog-timeline";
+import { Header } from "../_components/header";
 import { ChangelogHero } from "./_components/changelog-hero";
+import { ChangelogTimeline } from "./_components/changelog-timeline";
 
 export const metadata: Metadata = {
   title: "Changelog - iShortn",
@@ -22,21 +25,16 @@ export default async function ChangelogPage() {
   const entries = await getChangelogEntries();
 
   return (
-    <main className="relative min-h-screen">
+    <main className="relative bg-white">
       <Header />
-
       <ChangelogHero />
 
-      <section className="relative px-4 pb-24">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-50/50 via-white to-white" />
-        <div className="noise-overlay" />
-
-        <div className="relative z-10 mx-auto max-w-4xl">
+      <section className="px-6 pb-24">
+        <div className="mx-auto max-w-3xl">
           <Suspense
             fallback={
               <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-900" />
               </div>
             }
           >
