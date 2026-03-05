@@ -3,49 +3,51 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function TeamSettingsLoading() {
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <Skeleton className="h-8 w-36" />
-          <Skeleton className="h-4 w-56 mt-2" />
-        </div>
+      <div className="mb-8">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="mt-1.5 h-4 w-48" />
       </div>
 
-      <div className="mt-8 space-y-8">
-        {/* General Settings */}
+      <div className="space-y-8">
+        {/* General */}
         <section>
-          <Skeleton className="h-4 w-16 mb-4" />
-          <div className="p-4 rounded-lg border border-gray-200 bg-white space-y-4">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-9 w-full" />
+          <Skeleton className="mb-3 h-4 w-16" />
+          <div className="space-y-4 rounded-xl border border-neutral-200 p-5">
+            <div className="space-y-1.5">
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-9 w-full rounded-lg" />
             </div>
-            <Skeleton className="h-9 w-16" />
+            <div className="flex justify-end">
+              <Skeleton className="h-9 w-16 rounded-lg" />
+            </div>
           </div>
         </section>
 
         {/* Team URL */}
         <section>
-          <Skeleton className="h-4 w-20 mb-4" />
-          <div className="p-4 rounded-lg border border-gray-200 bg-white space-y-4">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-9 w-full" />
+          <Skeleton className="mb-3 h-4 w-20" />
+          <div className="space-y-4 rounded-xl border border-neutral-200 p-5">
+            <div className="space-y-1.5">
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-9 w-full rounded-lg" />
             </div>
-            <Skeleton className="h-3 w-72" />
-            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-3 w-64" />
+            <div className="flex justify-end">
+              <Skeleton className="h-9 w-24 rounded-lg" />
+            </div>
           </div>
         </section>
 
         {/* Danger Zone */}
         <section>
-          <Skeleton className="h-4 w-24 mb-4" />
-          <div className="p-4 rounded-lg border border-gray-200 bg-white">
+          <Skeleton className="mb-3 h-4 w-24" />
+          <div className="rounded-xl border border-neutral-200 p-5">
             <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-3 w-48" />
+              <div>
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="mt-1 h-3 w-48" />
               </div>
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-8 w-16 rounded-lg" />
             </div>
           </div>
         </section>

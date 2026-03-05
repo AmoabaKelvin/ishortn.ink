@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  FileText,
-  Flag,
-  Globe,
-  MessageSquare,
-  Search,
-} from "lucide-react";
+  IconFileText,
+  IconSearch,
+  IconSend,
+  IconSpeakerphone,
+  IconWorld,
+} from "@tabler/icons-react";
 import type { UseFormReturn } from "react-hook-form";
 
 import {
@@ -28,31 +28,31 @@ const utmFields = [
     name: "utmParams.utm_source",
     label: "Source",
     placeholder: "google",
-    icon: Globe,
+    icon: IconWorld,
   },
   {
     name: "utmParams.utm_medium",
     label: "Medium",
     placeholder: "cpc",
-    icon: MessageSquare,
+    icon: IconSend,
   },
   {
     name: "utmParams.utm_campaign",
     label: "Campaign",
     placeholder: "summer sale",
-    icon: Flag,
+    icon: IconSpeakerphone,
   },
   {
     name: "utmParams.utm_term",
     label: "Term",
     placeholder: "running shoes",
-    icon: Search,
+    icon: IconSearch,
   },
   {
     name: "utmParams.utm_content",
     label: "Content",
     placeholder: "logo link",
-    icon: FileText,
+    icon: IconFileText,
   },
 ];
 
@@ -71,21 +71,21 @@ export function UtmParamsForm({ form, disabled = false }: UtmParamsFormProps) {
               <FormItem className="space-y-0">
                 <div
                   className={cn(
-                    "flex h-9 w-full items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors",
+                    "flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors",
                     disabled
                       ? "opacity-50"
-                      : "hover:border-gray-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20"
+                      : "hover:border-neutral-300 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300"
                   )}
                 >
-                  <FormLabel className="flex h-full w-28 shrink-0 cursor-pointer items-center gap-2 border-r border-gray-200 px-3 text-xs font-medium text-gray-600">
-                    <Icon className="h-4 w-4 text-gray-400" />
+                  <FormLabel className="flex h-full w-28 shrink-0 cursor-pointer items-center gap-2 border-r border-neutral-200 px-3 text-[11px] font-medium text-neutral-500">
+                    <Icon size={14} stroke={1.5} className="text-neutral-400" />
                     {field.label}
                   </FormLabel>
                   <FormControl>
                     <input
                       {...formField}
                       placeholder={field.placeholder}
-                      className="h-full flex-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-900 placeholder:text-gray-500 focus:outline-none disabled:cursor-not-allowed"
+                      className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none disabled:cursor-not-allowed"
                       disabled={disabled}
                     />
                   </FormControl>

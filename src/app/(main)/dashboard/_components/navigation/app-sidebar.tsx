@@ -2,23 +2,22 @@
 
 import { useClerk, useUser } from "@clerk/nextjs";
 import {
-  Bell,
-  ChartArea,
-  ChevronUp,
-  Cog,
-  CreditCard,
-  FolderOpen,
-  Globe,
-  HelpCircle,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  ScanQrCode,
-  Target,
-  User,
-  Users,
-  X,
-} from "lucide-react";
+  IconChartBar,
+  IconChevronUp,
+  IconCreditCard,
+  IconFolder,
+  IconLayoutDashboard,
+  IconLifebuoy,
+  IconLogout,
+  IconMenu2,
+  IconQrcode,
+  IconSettings,
+  IconTarget,
+  IconUser,
+  IconUsers,
+  IconWorld,
+  IconX,
+} from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -29,26 +28,33 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
+import { APP_TITLE } from "@/lib/constants/app";
 import { cn } from "@/lib/utils";
 
 import { SidebarStats } from "./sidebar-stats";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 const navigationItems = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Analytics", href: "/dashboard/analytics/overview", icon: ChartArea },
-  { name: "QR Codes", href: "/dashboard/qrcodes", icon: ScanQrCode },
-  { name: "Domains", href: "/dashboard/domains", icon: Globe },
-  { name: "Folders", href: "/dashboard/folders", icon: FolderOpen },
-  { name: "UTM Templates", href: "/dashboard/utm-templates", icon: Target },
-  { name: "Settings", href: "/dashboard/settings", icon: Cog },
+  { name: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
+  {
+    name: "Analytics",
+    href: "/dashboard/analytics/overview",
+    icon: IconChartBar,
+  },
+  { name: "QR Codes", href: "/dashboard/qrcodes", icon: IconQrcode },
+  { name: "Domains", href: "/dashboard/domains", icon: IconWorld },
+  { name: "Folders", href: "/dashboard/folders", icon: IconFolder },
+  { name: "UTM Templates", href: "/dashboard/utm-templates", icon: IconTarget },
+  { name: "Settings", href: "/dashboard/settings", icon: IconSettings },
 ];
 
-// Additional navigation items for team workspaces
 const teamNavigationItems = [
-  { name: "Team Members", href: "/dashboard/teams/members", icon: Users },
-  { name: "Team Settings", href: "/dashboard/teams/settings", icon: Cog },
+  { name: "Team Members", href: "/dashboard/teams/members", icon: IconUsers },
+  {
+    name: "Team Settings",
+    href: "/dashboard/teams/settings",
+    icon: IconSettings,
+  },
 ];
 
 type Team = {
@@ -100,68 +106,42 @@ export function AppSidebar({
   const { user } = useUser();
   const { signOut } = useClerk();
 
-  // const {
-  //   register,
-  //   handleSubmit,
-  //   reset,
-  //   formState: { errors },
-  // } = useForm<QuickLinkShorteningInput>();
-
-  // const quickLinkShorteningMutation = api.link.quickShorten.useMutation({
-  //   onSuccess() {
-  //     toast.success("Link shortened successfully");
-  //     reset({ url: "" });
-  //     revalidateHomepage();
-  //   },
-  //   onError(error) {
-  //     toast.error(error.message);
-  //   },
-  // });
-
-  // const onSubmit = async (data: QuickLinkShorteningInput) => {
-  //   quickLinkShorteningMutation.mutate({
-  //     ...data,
-  //     tags: [],
-  //   });
-  //   await revalidateHomepage();
-  // };
-
   return (
     <>
-      {/* Mobile hamburger button */}
+      {/* Mobile hamburger */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md lg:hidden hover:bg-gray-50 transition-colors"
+        className="fixed top-4 left-4 z-50 rounded-lg border border-neutral-200 bg-white p-2 shadow-sm transition-colors hover:bg-neutral-50 lg:hidden"
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? (
-          <X size={24} className="text-gray-700" />
+          <IconX size={20} stroke={1.5} className="text-neutral-700" />
         ) : (
-          <Menu size={24} className="text-gray-700" />
+          <IconMenu2 size={20} stroke={1.5} className="text-neutral-700" />
         )}
       </button>
 
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen w-[280px] flex-col border-r border-gray-200 bg-white transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed left-0 top-0 z-40 h-screen w-[280px] flex-col border-r border-neutral-200 bg-white transition-transform duration-200 ease-in-out lg:translate-x-0",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 shrink-0 items-center border-b border-gray-100 px-6">
+          <div className="flex h-14 shrink-0 items-center px-5">
             <Link
               href="/"
-              className="text-xl font-bold text-gray-900"
+              className="font-logo text-[17px] tracking-tight text-neutral-900"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              iShortn.ink
+              {APP_TITLE}
             </Link>
           </div>
 
           {/* Workspace Switcher */}
-          <div className="border-b border-gray-100 p-4">
+          <div className="px-3 pb-2">
             <WorkspaceSwitcher
               teams={teams}
               currentWorkspace={currentWorkspace}
@@ -169,111 +149,76 @@ export function AppSidebar({
             />
           </div>
 
-          {/* Main Content */}
-          <div className="flex-1 overflow-y-auto">
-            {/* Quick Shorten Form */}
-            {/* <div className="border-b border-gray-100 p-6">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-                Quick Shorten
-              </h3>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-                <Input
-                  type="url"
-                  placeholder="Paste your long URL..."
-                  className={cn(
-                    "h-10 text-sm border-gray-200 focus-visible:ring-blue-500",
-                    errors.url && "border-red-400 focus-visible:ring-red-500"
-                  )}
-                  {...register("url", { required: true })}
-                />
-                <Button
-                  type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium h-10 shadow-sm"
-                  disabled={quickLinkShorteningMutation.isLoading}
-                >
-                  {quickLinkShorteningMutation.isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Shortening...
-                    </>
-                  ) : (
-                    "Shorten Link"
-                  )}
-                </Button>
-              </form>
-            </div> */}
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto px-3 pt-2">
+            <ul className="space-y-0.5">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" &&
+                    pathname.startsWith(item.href));
 
-            {/* Navigation */}
-            <nav className="p-4">
-              <ul className="space-y-1">
-                {navigationItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive =
-                    pathname === item.href ||
-                    (item.href !== "/dashboard" &&
-                      pathname.startsWith(item.href));
+                return (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                        isActive
+                          ? "bg-neutral-100 text-neutral-900"
+                          : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900",
+                      )}
+                    >
+                      <Icon size={18} stroke={1.5} className="shrink-0" />
+                      {item.name}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
 
-                  return (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
-                          isActive
-                            ? "bg-blue-50 text-blue-600"
-                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
-                        )}
-                      >
-                        <Icon size={20} className="shrink-0" />
-                        <span>{item.name}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+            {/* Team Navigation */}
+            {currentWorkspace.type === "team" && (
+              <>
+                <div className="my-3 h-px bg-neutral-100" />
+                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                  Team
+                </p>
+                <ul className="space-y-0.5">
+                  {teamNavigationItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname.startsWith(item.href);
 
-              {/* Team Navigation (only shown in team workspaces) */}
-              {currentWorkspace.type === "team" && (
-                <>
-                  <div className="my-4 border-t border-gray-100" />
-                  <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    Team
-                  </p>
-                  <ul className="space-y-1">
-                    {teamNavigationItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = pathname.startsWith(item.href);
+                    return (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                            isActive
+                              ? "bg-neutral-100 text-neutral-900"
+                              : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900",
+                          )}
+                        >
+                          <Icon size={18} stroke={1.5} className="shrink-0" />
+                          {item.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </nav>
 
-                      return (
-                        <li key={item.name}>
-                          <Link
-                            href={item.href}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className={cn(
-                              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
-                              isActive
-                                ? "bg-purple-50 text-purple-600"
-                                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
-                            )}
-                          >
-                            <Icon size={20} className="shrink-0" />
-                            <span>{item.name}</span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </>
-              )}
-            </nav>
-          </div>
-
-          {/* Footer Section */}
-          <div className="shrink-0 border-t border-gray-100">
-            {/* Stats Section - Only show for personal workspace */}
+          {/* Footer */}
+          <div className="shrink-0">
+            {/* Stats — personal workspace only */}
             {currentWorkspace.type === "personal" && (
-              <div className="pt-3">
+              <div className="px-3 pb-2">
                 <SidebarStats
                   monthlyLinkCount={monthlyLinkCount}
                   userHasPaidPlan={userHasPaidPlan}
@@ -285,72 +230,66 @@ export function AppSidebar({
               </div>
             )}
 
-            {/* Settings & Help Links */}
-            <div className="p-3 space-y-1">
-              {/* <Link
-                href="/dashboard/settings"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-150"
-              >
-                <Cog size={18} className="shrink-0" />
-                <span>Settings</span>
-              </Link> */}
+            {/* Help */}
+            <div className="border-t border-neutral-100 px-3 py-1.5">
               <Link
                 href="https://docs.google.com/forms/d/e/1FAIpQLSfVfz9c1qkC4aDSjFnMcVnrimKiNOHA2aoQhyxNaMmDjMSNEg/viewform?usp=sf_link"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-150"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
               >
-                <HelpCircle size={18} className="shrink-0" />
-                <span>Get Help</span>
+                <IconLifebuoy size={18} stroke={1.5} className="shrink-0" />
+                Help
               </Link>
             </div>
 
-            <Separator className="bg-gray-100" />
-
-            {/* User Menu */}
-            <div className="p-3">
+            {/* User */}
+            <div className="border-t border-neutral-100 p-3">
               <Popover open={isUserMenuOpen} onOpenChange={setIsUserMenuOpen}>
                 <PopoverTrigger asChild>
-                  <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 transition-all duration-150">
-                    <Avatar className="h-9 w-9">
+                  <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50">
+                    <Avatar className="h-8 w-8">
                       <AvatarImage
                         src={user?.imageUrl}
                         alt={user?.firstName || "User"}
                       />
-                      <AvatarFallback className="bg-blue-100 text-blue-600 font-medium">
+                      <AvatarFallback className="bg-neutral-100 text-xs font-medium text-neutral-600">
                         {user?.firstName?.[0] || user?.username?.[0] || "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="truncate text-[13px] font-medium text-neutral-900">
                         {user?.firstName || user?.username || "User"}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="truncate text-[11px] text-neutral-400">
                         {user?.primaryEmailAddress?.emailAddress}
                       </p>
                     </div>
-                    <ChevronUp size={16} className="text-gray-400" />
+                    <IconChevronUp
+                      size={14}
+                      stroke={1.5}
+                      className="shrink-0 text-neutral-400"
+                    />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-64 p-2"
-                  align="end"
+                  className="w-56 p-1.5"
+                  align="start"
                   side="top"
                   sideOffset={8}
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <button
                       onClick={() => {
                         router.push("/dashboard/settings");
                         setIsUserMenuOpen(false);
                         setIsMobileMenuOpen(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
                     >
-                      <User size={16} />
-                      <span>Account</span>
+                      <IconUser size={16} stroke={1.5} />
+                      Account
                     </button>
                     <button
                       onClick={() => {
@@ -358,32 +297,22 @@ export function AppSidebar({
                         setIsUserMenuOpen(false);
                         setIsMobileMenuOpen(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
                     >
-                      <CreditCard size={16} />
-                      <span>Billing</span>
+                      <IconCreditCard size={16} stroke={1.5} />
+                      Billing
                     </button>
-                    <button
-                      onClick={() => {
-                        // Add notifications handler when ready
-                        setIsUserMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      <Bell size={16} />
-                      <span>Notifications</span>
-                    </button>
-                    <Separator className="my-2" />
+                    <div className="my-1 h-px bg-neutral-100" />
                     <button
                       onClick={() => {
                         signOut();
                         setIsUserMenuOpen(false);
                         setIsMobileMenuOpen(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-red-600 transition-colors hover:bg-red-50"
                     >
-                      <LogOut size={16} />
-                      <span>Log out</span>
+                      <IconLogout size={16} stroke={1.5} />
+                      Log out
                     </button>
                   </div>
                 </PopoverContent>
@@ -396,7 +325,7 @@ export function AppSidebar({
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/20 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

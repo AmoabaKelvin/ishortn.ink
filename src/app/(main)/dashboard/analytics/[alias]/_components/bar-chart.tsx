@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3, AreaChartIcon } from "lucide-react";
+import { IconChartAreaLine, IconChartBar } from "@tabler/icons-react";
 import {
   Area,
   AreaChart,
@@ -51,7 +51,7 @@ const chartConfig = {
   },
   uniqueClicks: {
     label: "Unique Clicks",
-    color: "#60a5fa",
+    color: "#93c5fd",
   },
 } satisfies ChartConfig;
 
@@ -87,9 +87,9 @@ function GeoChartTooltip({
     const item = payload[0];
     if (!item) return null;
     return (
-      <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg">
-        <p className="text-sm font-medium text-gray-900">{item.name}</p>
-        <p className="text-xs text-gray-600">
+      <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-md">
+        <p className="text-[13px] font-medium text-neutral-900">{item.name}</p>
+        <p className="text-[12px] text-neutral-500">
           {item.value.toLocaleString()} clicks ({item.payload.percentage}%)
         </p>
       </div>
@@ -175,7 +175,7 @@ export function BarChart({
         {
           name: "Default",
           value: geoStats.defaultCount,
-          color: "#94a3b8",
+          color: "#a3a3a3",
           percentage:
             total > 0
               ? ((geoStats.defaultCount / total) * 100).toFixed(1)
@@ -206,15 +206,15 @@ export function BarChart({
   const views = hasGeoRules ? ["clicks", "geotargeting"] : ["clicks"];
 
   return (
-    <Card className="rounded-xl border-gray-100 shadow-sm overflow-hidden">
-      {/* Header with Tab Switcher */}
-      <div className="px-5 pt-5 pb-4 border-b border-gray-50">
+    <Card className="overflow-hidden rounded-xl border-neutral-200 shadow-none">
+      {/* Header */}
+      <div className="border-b border-neutral-100 px-5 pb-4 pt-5">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <h2 className="text-base font-semibold text-gray-800 tracking-tight">
+            <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900">
               {chartView === "clicks" ? "Click Analytics" : "Geotargeting Overview"}
             </h2>
-            <p className="text-xs text-gray-400">
+            <p className="text-[12px] text-neutral-400">
               {chartView === "clicks"
                 ? "Track your link performance over time"
                 : "See how geo rules affect your traffic"}
@@ -224,50 +224,50 @@ export function BarChart({
           <div className="flex items-center gap-3">
             {/* Chart Type Switcher */}
             {chartView === "clicks" && (
-              <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-lg">
+              <div className="flex items-center gap-1 rounded-lg bg-neutral-100 p-1">
                 <button
                   onClick={() => setChartType("area")}
                   className={cn(
-                    "p-1.5 rounded-md transition-all duration-150",
+                    "rounded-md p-1.5 transition-all duration-150",
                     chartType === "area"
-                      ? "text-gray-800 bg-white shadow-sm"
-                      : "text-gray-400 hover:text-gray-600"
+                      ? "bg-white text-neutral-900 shadow-sm"
+                      : "text-neutral-400 hover:text-neutral-600"
                   )}
                   title="Area Chart"
                   aria-label="Area chart"
                   aria-pressed={chartType === "area"}
                 >
-                  <AreaChartIcon className="h-4 w-4" />
+                  <IconChartAreaLine size={16} stroke={1.5} />
                 </button>
                 <button
                   onClick={() => setChartType("bar")}
                   className={cn(
-                    "p-1.5 rounded-md transition-all duration-150",
+                    "rounded-md p-1.5 transition-all duration-150",
                     chartType === "bar"
-                      ? "text-gray-800 bg-white shadow-sm"
-                      : "text-gray-400 hover:text-gray-600"
+                      ? "bg-white text-neutral-900 shadow-sm"
+                      : "text-neutral-400 hover:text-neutral-600"
                   )}
                   title="Bar Chart"
                   aria-label="Bar chart"
                   aria-pressed={chartType === "bar"}
                 >
-                  <BarChart3 className="h-4 w-4" />
+                  <IconChartBar size={16} stroke={1.5} />
                 </button>
               </div>
             )}
 
             {/* View Switcher (Clicks/Geo) */}
             {hasGeoRules && (
-              <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-lg">
+              <div className="flex items-center gap-1 rounded-lg bg-neutral-100 p-1">
                 {views.map((view) => (
                   <button
                     key={view}
                     onClick={() => setChartView(view as ChartView)}
                     className={cn(
-                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150",
+                      "rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
                       chartView === view
-                        ? "text-gray-800 bg-white shadow-sm"
-                        : "text-gray-400 hover:text-gray-600"
+                        ? "bg-white text-neutral-900 shadow-sm"
+                        : "text-neutral-400 hover:text-neutral-600"
                     )}
                   >
                     {view === "clicks" ? "Clicks" : "Geo"}
@@ -280,7 +280,7 @@ export function BarChart({
       </div>
 
       {/* Charts */}
-      <div className="px-2 pt-4 sm:px-5 sm:pt-5 pb-5">
+      <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
         {chartView === "clicks" ? (
           <ChartContainer
             config={chartConfig}
@@ -375,8 +375,8 @@ export function BarChart({
             )}
           </ChartContainer>
         ) : (
-          <div className="flex flex-col items-center justify-center h-80 md:min-h-80">
-            <div className="flex flex-col md:flex-row items-center justify-center gap-10 w-full">
+          <div className="flex h-80 flex-col items-center justify-center md:min-h-80">
+            <div className="flex w-full flex-col items-center justify-center gap-10 md:flex-row">
               {/* Donut Chart */}
               <div className="h-56 w-56">
                 <ResponsiveContainer width="100%" height="100%">
@@ -402,19 +402,19 @@ export function BarChart({
               {/* Legend */}
               <div className="flex flex-col gap-3">
                 {geoChartData.map((entry) => (
-                  <div key={entry.name} className="group flex items-center gap-3 cursor-default">
+                  <div key={entry.name} className="group flex cursor-default items-center gap-3">
                     <div
                       className="h-2.5 w-2.5 rounded-full transition-transform duration-150 group-hover:scale-125"
                       style={{ backgroundColor: entry.color }}
                     />
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[13px] font-medium text-gray-700">
+                      <span className="text-[13px] font-medium text-neutral-700">
                         {entry.name}
                       </span>
-                      <span className="text-[13px] tabular-nums font-semibold text-gray-600">
+                      <span className="text-[13px] font-semibold tabular-nums text-neutral-600">
                         {entry.value.toLocaleString()}
                       </span>
-                      <span className="text-xs tabular-nums text-gray-400">
+                      <span className="text-[12px] tabular-nums text-neutral-400">
                         {entry.percentage}%
                       </span>
                     </div>
@@ -422,9 +422,9 @@ export function BarChart({
                 ))}
 
                 {/* Summary */}
-                <div className="mt-2 pt-3 border-t border-gray-100">
-                  <p className="text-xs text-gray-400">
-                    <span className="font-medium text-gray-600">{geoStats.redirectCount + geoStats.blockCount}</span> of {total} clicks matched geo rules
+                <div className="mt-2 border-t border-neutral-100 pt-3">
+                  <p className="text-[12px] text-neutral-400">
+                    <span className="font-medium text-neutral-600">{geoStats.redirectCount + geoStats.blockCount}</span> of {total} clicks matched geo rules
                   </p>
                 </div>
               </div>
@@ -434,7 +434,7 @@ export function BarChart({
       </div>
 
       {isProPlan === false && (
-        <div className="px-5 pb-4 text-xs text-center text-gray-400">
+        <div className="px-5 pb-4 text-center text-[12px] text-neutral-400">
           Showing data for the last 7 days.{" "}
           <UpgradeText text="Upgrade to Pro" /> for full analytics.
         </div>

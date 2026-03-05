@@ -4,44 +4,46 @@ export default function DashboardLoading() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <Skeleton className="h-8 w-32" />
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <Skeleton className="h-6 w-24" />
+          <Skeleton className="mt-2 h-4 w-32" />
+        </div>
         <div className="flex items-center gap-2">
-          <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-10 w-10" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+          <Skeleton className="h-9 w-9 rounded-lg" />
         </div>
       </div>
 
-      {/* Links Filter Skeleton */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2 mb-6">
-        <Skeleton className="h-10 w-full sm:flex-1" />
-        <Skeleton className="h-10 w-full sm:w-[140px]" />
-        <Skeleton className="h-10 w-full sm:w-[140px]" />
-        <Skeleton className="h-10 w-full sm:w-[180px]" />
+      {/* Filter bar */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Skeleton className="h-9 w-full sm:flex-1" />
+        <Skeleton className="h-9 w-full sm:w-[130px]" />
+        <Skeleton className="h-9 w-full sm:w-[130px]" />
+        <Skeleton className="h-9 w-full sm:w-[170px]" />
       </div>
 
-      {/* Links List Skeleton */}
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex flex-col rounded-md border bg-card text-card-foreground shadow-sm px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-2">
-                {/* Link Name & Copy */}
-                <div className="flex items-center gap-3">
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-6 w-6 rounded-full" />
-                </div>
-                {/* Date & URL */}
+      {/* Link list */}
+      <div className="mt-4 divide-y divide-neutral-300/60">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="px-1 py-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-4 w-4 rounded-full" /> {/* Dot */}
-                  <Skeleton className="h-4 w-64" />
+                  <Skeleton className="h-5 w-44" />
+                  <Skeleton className="h-6 w-6 rounded-md" />
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Skeleton className="h-3.5 w-10" />
+                  <Skeleton className="h-3.5 w-52" />
                 </div>
               </div>
-              {/* Right Side: Clicks & Actions */}
               <div className="flex items-center gap-2">
-                <Skeleton className="h-8 w-20 rounded-md" />
-                <Skeleton className="h-8 w-8 rounded-md" />
+                <Skeleton className="h-7 w-16 rounded-md" />
+                <Skeleton className="h-7 w-7 rounded-md" />
               </div>
             </div>
           </div>

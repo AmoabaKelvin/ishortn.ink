@@ -1,15 +1,26 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ChevronUp, CloudOff, Link2, Signal, Trash2 } from "lucide-react";
+import {
+  IconChevronDown,
+  IconLink,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { daysSinceDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -20,6 +31,7 @@ import type { RouterOutputs } from "@/trpc/shared";
 
 type DomainCardProps = {
   domain: RouterOutputs["customDomain"]["list"][0];
+  index: number;
 };
 
 type VerificationDetails = {
@@ -28,11 +40,11 @@ type VerificationDetails = {
   value: string;
 }[];
 
-export function DomainCardNew({ domain }: DomainCardProps) {
+export function DomainCardNew({ domain, index }: DomainCardProps) {
   const [status, setStatus] = useState(domain.status);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // Parse verification challenges
   let verificationChallenges: VerificationDetails = [];
   try {
     verificationChallenges = JSON.parse(
@@ -42,7 +54,6 @@ export function DomainCardNew({ domain }: DomainCardProps) {
     verificationChallenges = domain.verificationDetails as VerificationDetails;
   }
 
-  // Fetch domain statistics
   const { data: stats } = api.customDomain.getStats.useQuery(
     { domain: domain.domain! },
     { enabled: !!domain.domain }
@@ -70,111 +81,139 @@ export function DomainCardNew({ domain }: DomainCardProps) {
     }
   };
 
-  const handleDelete = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this domain? All associated links will also be deleted."
-      )
-    ) {
-      deleteMutation.mutate({ id: domain.id });
-    }
-  };
-
   const daysSinceCreation = daysSinceDate(new Date(domain.createdAt!));
   const canExpand = status === "pending" || status === "invalid";
   const linkCount = stats?.linkCount ?? 0;
 
+  const statusConfig = {
+    active: { color: "bg-emerald-500", label: "Active" },
+    pending: { color: "bg-amber-500", label: "Pending" },
+    invalid: { color: "bg-red-500", label: "Invalid" },
+  };
+
+  const currentStatus =
+    statusConfig[status as keyof typeof statusConfig] ?? statusConfig.pending;
+
   return (
-    <Card className="flex flex-col overflow-hidden border-gray-100 hover:border-gray-200 transition-colors">
-      <div className="flex items-center justify-between px-5 py-4">
-        <div className="flex flex-col gap-1.5">
-          <span className="font-medium text-gray-900">
-            {domain.domain}
-          </span>
-          <p className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
-            <span className="text-gray-400">
-              {daysSinceCreation === 0 ? "Today" : `${daysSinceCreation}d ago`}
-            </span>
-            <span className="text-gray-300">·</span>
-            <Badge
-              variant="outline"
-              className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 font-normal hover:bg-gray-100 transition-colors"
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.2, delay: index * 0.04 }}
+    >
+      <div className="group px-1 py-4">
+        <div className="flex items-center gap-3">
+          {/* Content */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="truncate text-[14px] font-medium text-neutral-900">
+                {domain.domain}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
+                <span
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${currentStatus.color}`}
+                />
+                {currentStatus.label}
+              </span>
+            </div>
+
+            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+              <span className="text-neutral-400">
+                {daysSinceCreation === 0
+                  ? "Today"
+                  : `${daysSinceCreation}d`}
+              </span>
+              <span className="text-neutral-300">&middot;</span>
+              <span className="inline-flex items-center gap-1 text-neutral-500">
+                <IconLink size={12} stroke={1.5} />
+                {linkCount} {linkCount === 1 ? "link" : "links"}
+              </span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex shrink-0 items-center gap-1">
+            {canExpand && (
+              <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <span>DNS</span>
+                <motion.div
+                  animate={{ rotate: isExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <IconChevronDown size={12} stroke={1.5} />
+                </motion.div>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={deleteMutation.isLoading}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
             >
-              <Link2 className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-              <span className="text-gray-700 font-medium text-xs">{linkCount}</span>
-              <span className="ml-1 text-gray-400 text-xs">{linkCount === 1 ? "link" : "links"}</span>
-            </Badge>
-          </p>
+              <IconTrash size={14} stroke={1.5} />
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {status === "active" ? (
-            <Badge
-              variant="outline"
-              className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 font-normal"
+        {/* Expandable DNS Configuration */}
+        <AnimatePresence initial={false}>
+          {canExpand && isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="overflow-hidden"
             >
-              <Signal className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-              <span className="text-gray-700 font-medium text-xs">Connected</span>
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 font-normal cursor-pointer hover:bg-gray-100 transition-colors"
-              onClick={() => setIsExpanded(!isExpanded)}
-            >
-              <CloudOff className="h-3.5 w-3.5 mr-1.5 text-amber-500" />
-              <span className="text-gray-700 font-medium text-xs">Pending</span>
-              {isExpanded ? (
-                <ChevronUp className="h-3 w-3 ml-1.5 text-gray-400" />
-              ) : (
-                <ChevronDown className="h-3 w-3 ml-1.5 text-gray-400" />
-              )}
-            </Badge>
-          )}
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete();
-            }}
-            disabled={deleteMutation.isLoading}
-            className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Expandable DNS Configuration Section */}
-      <AnimatePresence initial={false}>
-        {canExpand && isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-gray-100 px-5 py-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium text-gray-700">
-                  DNS Configuration
-                </span>
-                <DomainStatusChecker
-                  domain={domain.domain!}
-                  initialStatus={status}
-                  onStatusChange={handleStatusChange}
+              <div className="mt-4 rounded-lg border border-neutral-200 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="text-[13px] font-medium text-neutral-700">
+                    DNS Configuration
+                  </span>
+                  <DomainStatusChecker
+                    domain={domain.domain!}
+                    initialStatus={status}
+                    onStatusChange={handleStatusChange}
+                  />
+                </div>
+                <DNSRecordsSection
+                  verificationChallenges={verificationChallenges}
                 />
               </div>
-              <DNSRecordsSection
-                verificationChallenges={verificationChallenges}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-md rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[14px]">
+              Delete domain
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12px]">
+              This will permanently delete {domain.domain} and all associated
+              links. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-9 text-[13px]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate({ id: domain.id })}
+              className="h-9 bg-red-600 text-[13px] hover:bg-red-700"
+            >
+              {deleteMutation.isLoading ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.div>
   );
 }

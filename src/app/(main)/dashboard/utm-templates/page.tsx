@@ -1,9 +1,14 @@
 "use client";
 
-import { Gem, Plus, Target } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  IconDiamond,
+  IconLoader2,
+  IconPlus,
+  IconTarget,
+} from "@tabler/icons-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
 import { UtmTemplateCard } from "./_components/utm-template-card";
@@ -18,7 +23,8 @@ export default function UtmTemplatesPage() {
   );
 
   const { data: templates, isLoading } = api.utmTemplate.list.useQuery();
-  const { data: userSubscription, isLoading: isLoadingSubscription } = api.subscriptions.get.useQuery();
+  const { data: userSubscription, isLoading: isLoadingSubscription } =
+    api.subscriptions.get.useQuery();
 
   const isUltraUser = userSubscription?.subscriptions?.plan === "ultra";
 
@@ -37,83 +43,201 @@ export default function UtmTemplatesPage() {
   if (isLoadingSubscription) {
     return (
       <div className="flex justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" />
+        <IconLoader2
+          size={20}
+          stroke={1.5}
+          className="animate-spin text-neutral-400"
+        />
       </div>
     );
   }
 
   if (!isUltraUser) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-          <Target className="h-8 w-8 text-gray-400" />
-        </div>
-        <h2 className="mt-4 text-lg font-semibold text-gray-900">
-          UTM Templates
-        </h2>
-        <p className="mt-2 max-w-sm text-center text-sm text-gray-500">
-          Create reusable UTM parameter templates to streamline your campaign
-          tracking.
-        </p>
-        <div className="mt-4 flex items-center gap-2 rounded-full border border-gray-300 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
-          <Gem className="h-4 w-4 text-slate-500" />
-          <span>Available on Ultra plan</span>
-        </div>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative flex min-h-[400px] flex-col items-center justify-center overflow-hidden py-20"
+      >
+        {/* Dotted grid background */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, rgb(212 212 212 / 0.5) 1px, transparent 1px)",
+            backgroundSize: "20px 20px",
+            maskImage:
+              "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+          }}
+        />
+
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+          className="relative"
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100">
+            <IconTarget
+              size={24}
+              stroke={1.5}
+              className="text-neutral-400"
+            />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.25 }}
+          className="mt-6 text-center"
+        >
+          <p className="text-[14px] font-medium text-neutral-900">
+            UTM Templates
+          </p>
+          <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400">
+            Create reusable UTM parameter templates to streamline your campaign
+            tracking.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.35 }}
+        >
+          <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[12px] font-medium text-neutral-600">
+            <IconDiamond
+              size={14}
+              stroke={1.5}
+              className="text-neutral-400"
+            />
+            Available on Ultra plan
+          </span>
+        </motion.div>
+      </motion.div>
     );
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">UTM Templates</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Create and manage reusable UTM parameter templates for your links.
-          </p>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+            UTM Templates
+          </h1>
+          {templates && templates.length > 0 && (
+            <p className="mt-1 text-[13px] text-neutral-400">
+              {templates.length}{" "}
+              {templates.length === 1 ? "template" : "templates"} total
+            </p>
+          )}
         </div>
-        <Button onClick={() => setModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="mr-2 h-4 w-4" />
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          <IconPlus size={16} stroke={2} />
           New Template
-        </Button>
+        </button>
       </div>
 
-      <div className="mt-6">
-        {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="h-32 animate-pulse rounded-lg bg-gray-100"
-              />
-            ))}
-          </div>
-        ) : templates && templates.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {templates.map((template) => (
+      {isLoading ? (
+        <div className="divide-y divide-neutral-300/60">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-1 py-4">
+              <div className="min-w-0 flex-1">
+                <div className="h-4 w-40 animate-pulse rounded bg-neutral-100" />
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="h-3 w-48 animate-pulse rounded bg-neutral-100" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : templates && templates.length > 0 ? (
+        <div className="divide-y divide-neutral-300/60">
+          <AnimatePresence>
+            {templates.map((template, index) => (
               <UtmTemplateCard
                 key={template.id}
                 template={template}
+                index={index}
                 onEdit={handleEdit}
               />
             ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 py-12">
-            <Target className="h-12 w-12 text-gray-400" />
-            <h3 className="mt-4 text-sm font-medium text-gray-900">
+          </AnimatePresence>
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="relative flex min-h-[300px] flex-col items-center justify-center overflow-hidden py-16"
+        >
+          {/* Dotted grid background */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgb(212 212 212 / 0.5) 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
+              maskImage:
+                "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+            }}
+          />
+
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            className="relative"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100">
+              <IconTarget
+                size={24}
+                stroke={1.5}
+                className="text-neutral-400"
+              />
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.25 }}
+            className="mt-6 text-center"
+          >
+            <p className="text-[14px] font-medium text-neutral-900">
               No templates yet
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
+            </p>
+            <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400">
               Create your first UTM template to get started.
             </p>
-            <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => setModalOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.35 }}
+          >
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              <IconPlus size={16} stroke={2} />
               Create Template
-            </Button>
-          </div>
-        )}
-      </div>
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
 
       <UtmTemplateModal
         open={modalOpen}

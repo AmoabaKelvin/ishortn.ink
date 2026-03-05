@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Lightbulb, Plus } from "lucide-react";
+import { IconInfoCircle, IconPlus, IconWorld } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -74,13 +74,11 @@ export function AddCustomDomainModal() {
 
   const isProUser = userSubscription?.subscriptions?.status === "active";
 
-  // In team workspaces, only owners and admins can add domains
   const canAddDomains =
     workspace?.type === "personal" ||
     (workspace?.type === "team" &&
       (workspace.role === "owner" || workspace.role === "admin"));
 
-  // Don't render anything if user lacks permission in a team workspace
   if (workspace?.type === "team" && !canAddDomains) {
     return null;
   }
@@ -88,10 +86,13 @@ export function AddCustomDomainModal() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          <IconPlus size={16} stroke={2} />
           {isProUser ? "Add Domain" : "Upgrade to Add Domain"}
-        </Button>
+        </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
@@ -103,29 +104,37 @@ export function AddCustomDomainModal() {
 
         {isProUser ? (
           <DialogBody className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label
                 htmlFor="domain"
-                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                className="text-[13px] font-medium text-neutral-700"
               >
                 Domain
               </Label>
               <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <IconWorld
+                  size={16}
+                  stroke={1.5}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                />
                 <Input
                   id="domain"
-                  className="h-10 pl-10"
+                  className="h-9 border-neutral-200 bg-white pl-9 text-[13px] placeholder:text-neutral-400"
                   placeholder="links.example.com"
                   value={domain}
                   onChange={handleDomainChange}
                 />
               </div>
             </div>
-            <div className="flex items-start gap-2.5 rounded-lg bg-muted/50 border border-border px-3 py-2.5">
-              <Lightbulb className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground">
+            <div className="flex items-start gap-2.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+              <IconInfoCircle
+                size={14}
+                stroke={1.5}
+                className="mt-0.5 shrink-0 text-neutral-400"
+              />
+              <p className="text-[12px] text-neutral-500">
                 Use a subdomain like{" "}
-                <span className="font-medium text-foreground">
+                <span className="font-medium text-neutral-700">
                   links.example.com
                 </span>{" "}
                 if your main domain already has content.
@@ -134,8 +143,8 @@ export function AddCustomDomainModal() {
           </DialogBody>
         ) : (
           <DialogBody>
-            <div className="rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-center">
+              <p className="text-[13px] text-neutral-500">
                 Custom domains are available on the Pro plan.
               </p>
             </div>
@@ -147,7 +156,7 @@ export function AddCustomDomainModal() {
             type="button"
             variant="ghost"
             onClick={() => setIsOpen(false)}
-            className="h-9"
+            className="h-9 text-[13px]"
           >
             Cancel
           </Button>
@@ -156,12 +165,18 @@ export function AddCustomDomainModal() {
               type="submit"
               onClick={handleCreateDomain}
               disabled={!domain || createCustomDomainMutation.isLoading}
-              className="h-9"
+              className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
             >
-              {createCustomDomainMutation.isLoading ? "Adding..." : "Add Domain"}
+              {createCustomDomainMutation.isLoading
+                ? "Adding..."
+                : "Add Domain"}
             </Button>
           ) : (
-            <Button type="button" onClick={handleUpgrade} className="h-9">
+            <Button
+              type="button"
+              onClick={handleUpgrade}
+              className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
+            >
               Upgrade to Pro
             </Button>
           )}

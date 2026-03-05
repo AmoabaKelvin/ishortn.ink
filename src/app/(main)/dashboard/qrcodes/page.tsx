@@ -1,11 +1,10 @@
-import { Plus } from "lucide-react";
+import { IconPlus } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
-import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/server";
 
 import { QRCodeEmptyState } from "./_components/empty-state-new";
-import { QRCodeCard } from "./_components/qrcode-card-new";
+import { QRCodeList } from "./_components/qrcode-list";
 import UpgradeText from "./_components/upgrade-text";
 import { checkIfUserCanCreateMoreQRCodes } from "./utils";
 
@@ -17,49 +16,51 @@ async function QRCodePage() {
   const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(subDetails);
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
             QR Codes
-          </h1>
-          <p className="text-sm text-gray-500">
-            Create, manage, and track your QR codes
-          </p>
+          </h2>
+          {userCodes.length > 0 && (
+            <p className="mt-1 text-[13px] text-neutral-400">
+              {userCodes.length}{" "}
+              {userCodes.length === 1 ? "code" : "codes"} total
+            </p>
+          )}
         </div>
-
-        {userCodes.length > 0 && (
-          canCreateMoreQRCodes ? (
-            <Button asChild className="h-10 gap-2 shadow-sm">
-              <Link href="/dashboard/qrcodes/create">
-                <Plus className="h-4 w-4" />
-                Create QR Code
+        <div className="flex items-center gap-2">
+          {userCodes.length > 0 &&
+            (canCreateMoreQRCodes ? (
+              <Link
+                href="/dashboard/qrcodes/create"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                <IconPlus size={16} stroke={2} />
+                New QR Code
               </Link>
-            </Button>
-          ) : (
-            <Button disabled className="h-10 gap-2">
-              <Plus className="h-4 w-4" />
-              Create QR Code
-            </Button>
-          )
-        )}
+            ) : (
+              <span className="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-[13px] font-medium text-neutral-400 cursor-not-allowed">
+                <IconPlus size={16} stroke={2} />
+                New QR Code
+              </span>
+            ))}
+        </div>
       </div>
 
       {/* Upgrade Banner */}
       {!canCreateMoreQRCodes && userCodes.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium text-amber-900">
-                QR Code limit reached
-              </p>
-              <p className="text-xs text-amber-700">
-                Upgrade your plan to create unlimited QR codes
-              </p>
-            </div>
-            <UpgradeText text="Upgrade to Pro" />
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border border-amber-200/80 bg-amber-50/50 px-4 py-3">
+          <div>
+            <p className="text-[13px] font-medium text-amber-900">
+              QR code limit reached
+            </p>
+            <p className="mt-0.5 text-[12px] text-amber-700/80">
+              Upgrade to create unlimited QR codes
+            </p>
           </div>
+          <UpgradeText text="Upgrade" />
         </div>
       )}
 
@@ -67,11 +68,7 @@ async function QRCodePage() {
       {userCodes.length === 0 ? (
         <QRCodeEmptyState />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          {userCodes.map((qr) => (
-            <QRCodeCard qr={qr} key={qr.id} />
-          ))}
-        </div>
+        <QRCodeList codes={userCodes} />
       )}
     </div>
   );

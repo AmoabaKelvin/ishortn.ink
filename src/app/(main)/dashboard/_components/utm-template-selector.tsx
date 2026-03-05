@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown } from "lucide-react";
+import { IconCheck, IconChevronDown } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 type UtmParams = {
@@ -43,7 +42,7 @@ export function UtmTemplateSelector({
 
   if (error) {
     return (
-      <Button variant="outline" size="sm" disabled className="h-8">
+      <Button variant="outline" size="sm" disabled className="h-8 border-neutral-200 text-[13px]">
         Error loading templates
       </Button>
     );
@@ -51,7 +50,7 @@ export function UtmTemplateSelector({
 
   if (isLoading) {
     return (
-      <Button variant="outline" size="sm" disabled className="h-8">
+      <Button variant="outline" size="sm" disabled className="h-8 border-neutral-200 text-[13px]">
         Loading...
       </Button>
     );
@@ -67,11 +66,11 @@ export function UtmTemplateSelector({
         <Button
           variant="outline"
           size="sm"
-          className="h-8"
+          className="h-8 border-neutral-200 text-[13px]"
           disabled={disabled}
         >
           Apply Template
-          <ChevronDown className="ml-2 h-4 w-4" />
+          <IconChevronDown size={14} stroke={1.5} className="ml-2" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -82,8 +81,8 @@ export function UtmTemplateSelector({
             className="cursor-pointer"
           >
             <div className="flex flex-col">
-              <span className="font-medium">{template.name}</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-[13px] font-medium">{template.name}</span>
+              <span className="text-[12px] text-neutral-400">
                 {[
                   template.utmSource && `Source: ${template.utmSource}`,
                   template.utmMedium && `Medium: ${template.utmMedium}`,

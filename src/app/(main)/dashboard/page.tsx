@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
+import { IconPlus } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
-import { Button } from "@/components/ui/button";
 import { env } from "@/env.mjs";
 import { api } from "@/trpc/server";
 
@@ -46,19 +46,27 @@ export default async function DashboardPage(props: Props) {
       search,
     });
 
-  // const { totalLinks: totalLinksCount, activeLinks } =
-  //   await api.link.stats.query();
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-semibold leading-tight text-gray-900">
-          Links
-        </h2>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+            Links
+          </h2>
+          {totalLinks > 0 && (
+            <p className="mt-1 text-[13px] text-neutral-400">
+              {totalLinks} {totalLinks === 1 ? "link" : "links"} total
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
-          <Button asChild className="bg-blue-600 hover:bg-blue-700">
-            <Link href="/dashboard/link/new">Shorten Link</Link>
-          </Button>
+          <Link
+            href="/dashboard/link/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            <IconPlus size={16} stroke={2} />
+            New Link
+          </Link>
           <BulkLinkActions />
         </div>
       </div>

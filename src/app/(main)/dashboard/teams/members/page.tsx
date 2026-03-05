@@ -1,22 +1,22 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
 import {
-  Check,
-  Clock,
-  Copy,
-  Crown,
-  Link2,
-  Loader2,
-  Mail,
-  MoreHorizontal,
-  Shield,
-  Trash2,
-  User,
-  UserMinus,
-  UserPlus,
-  Users,
-} from "lucide-react";
+  IconCheck,
+  IconCopy,
+  IconCrown,
+  IconDots,
+  IconLink,
+  IconLoader2,
+  IconMail,
+  IconShield,
+  IconTrash,
+  IconUser,
+  IconUserMinus,
+  IconUserPlus,
+  IconUsers,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -24,7 +24,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,7 +55,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -67,7 +65,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
@@ -80,21 +77,9 @@ const inviteSchema = z.object({
 type InviteInput = z.infer<typeof inviteSchema>;
 
 const roleConfig = {
-  owner: {
-    icon: Crown,
-    label: "Owner",
-    className: "text-amber-700 bg-amber-50 border-amber-200",
-  },
-  admin: {
-    icon: Shield,
-    label: "Admin",
-    className: "text-violet-700 bg-violet-50 border-violet-200",
-  },
-  member: {
-    icon: User,
-    label: "Member",
-    className: "text-gray-600 bg-gray-50 border-gray-200",
-  },
+  owner: { color: "bg-amber-500", label: "Owner" },
+  admin: { color: "bg-violet-500", label: "Admin" },
+  member: { color: "bg-neutral-400", label: "Member" },
 };
 
 export default function TeamMembersPage() {
@@ -103,7 +88,9 @@ export default function TeamMembersPage() {
   const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(
     null
   );
-  const [transferOwnershipMemberId, setTransferOwnershipMemberId] = useState<string | null>(null);
+  const [transferOwnershipMemberId, setTransferOwnershipMemberId] = useState<
+    string | null
+  >(null);
 
   const currentWorkspace = api.team.currentWorkspace.useQuery();
   const isTeamWorkspace = currentWorkspace.data?.type === "team";
@@ -204,8 +191,12 @@ export default function TeamMembersPage() {
 
   if (currentWorkspace.isLoading || members.isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+      <div className="flex min-h-[400px] items-center justify-center">
+        <IconLoader2
+          size={20}
+          stroke={1.5}
+          className="animate-spin text-neutral-400"
+        />
       </div>
     );
   }
@@ -213,81 +204,88 @@ export default function TeamMembersPage() {
   if (!isTeamWorkspace) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-          <Users className="h-8 w-8 text-gray-400" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
+          <IconUsers size={20} stroke={1.5} className="text-neutral-400" />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-gray-900">
+        <p className="mt-4 text-[14px] font-medium text-neutral-900">
           Team Members
-        </h2>
-        <p className="mt-2 max-w-sm text-center text-sm text-gray-500">
+        </p>
+        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400">
           Switch to a team workspace to manage members and their roles.
         </p>
-        <Button
-          variant="outline"
-          className="mt-4"
+        <button
+          type="button"
           onClick={() => router.push("/dashboard")}
+          className="mt-4 rounded-lg border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
         >
           Go to Dashboard
-        </Button>
+        </button>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Members</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+            Members
+          </h1>
+          <p className="mt-1 text-[13px] text-neutral-400">
             Manage your team members and their roles.
           </p>
         </div>
         {canManageMembers && (
           <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                <IconUserPlus size={15} stroke={1.5} />
                 Invite
-              </Button>
+              </button>
             </DialogTrigger>
-            <DialogContent className="max-w-sm">
+            <DialogContent className="max-w-md rounded-xl border-neutral-200">
               <DialogHeader>
-                <DialogTitle className="text-lg font-medium">
+                <DialogTitle className="text-[14px] font-semibold text-neutral-900">
                   Invite member
                 </DialogTitle>
-                <DialogDescription className="text-sm text-gray-500">
+                <DialogDescription className="text-[12px] text-neutral-400">
                   Send an invite link to add someone to your team.
                 </DialogDescription>
               </DialogHeader>
 
               {generatedInviteUrl ? (
-                <div className="space-y-4">
-                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
-                    <div className="flex items-center gap-2 text-sm text-emerald-700">
-                      <Check className="h-4 w-4" />
-                      <span className="font-medium">Invite created</span>
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                    <div className="flex items-center gap-1.5 text-[12px] font-medium text-emerald-700">
+                      <IconCheck size={14} stroke={1.5} />
+                      Invite created
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
                       value={generatedInviteUrl}
                       readOnly
-                      className="h-10 font-mono text-xs"
+                      className="h-9 border-neutral-200 bg-white font-mono text-[11px]"
                     />
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-10 w-10 shrink-0"
                       onClick={copyInviteUrl}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-700"
                     >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+                      <IconCopy size={14} stroke={1.5} />
+                    </button>
                   </div>
                   <DialogFooter>
-                    <Button onClick={closeInviteDialog} className="w-full">
+                    <button
+                      type="button"
+                      onClick={closeInviteDialog}
+                      className="w-full rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+                    >
                       Done
-                    </Button>
+                    </button>
                   </DialogFooter>
                 </div>
               ) : (
@@ -301,17 +299,20 @@ export default function TeamMembersPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email (optional)</FormLabel>
+                          <label className="text-[13px] font-medium text-neutral-700">
+                            Email (optional)
+                          </label>
                           <FormControl>
                             <Input
                               placeholder="colleague@company.com"
+                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                               {...field}
                             />
                           </FormControl>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-[11px] text-neutral-400">
                             Leave empty to create a link-only invite.
                           </p>
-                          <FormMessage />
+                          <FormMessage className="text-[11px]" />
                         </FormItem>
                       )}
                     />
@@ -321,59 +322,76 @@ export default function TeamMembersPage() {
                       name="role"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Role</FormLabel>
+                          <label className="text-[13px] font-medium text-neutral-700">
+                            Role
+                          </label>
                           <Select
                             onValueChange={field.onChange}
                             value={field.value}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="member">
+                              <SelectItem
+                                value="member"
+                                className="text-[13px]"
+                              >
                                 <div className="flex items-center gap-2">
-                                  <User className="h-3.5 w-3.5 text-gray-500" />
-                                  <span>Member</span>
+                                  <IconUser
+                                    size={14}
+                                    stroke={1.5}
+                                    className="text-neutral-400"
+                                  />
+                                  Member
                                 </div>
                               </SelectItem>
                               {isOwner && (
-                                <SelectItem value="admin">
+                                <SelectItem
+                                  value="admin"
+                                  className="text-[13px]"
+                                >
                                   <div className="flex items-center gap-2">
-                                    <Shield className="h-3.5 w-3.5 text-violet-600" />
-                                    <span>Admin</span>
+                                    <IconShield
+                                      size={14}
+                                      stroke={1.5}
+                                      className="text-violet-500"
+                                    />
+                                    Admin
                                   </div>
                                 </SelectItem>
                               )}
                             </SelectContent>
                           </Select>
-                          <FormMessage />
+                          <FormMessage className="text-[11px]" />
                         </FormItem>
                       )}
                     />
 
                     <DialogFooter className="gap-2 pt-2">
-                      <Button
+                      <button
                         type="button"
-                        variant="outline"
                         onClick={closeInviteDialog}
+                        className="rounded-lg border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
                       >
                         Cancel
-                      </Button>
-                      <Button
+                      </button>
+                      <button
                         type="submit"
                         disabled={createInviteMutation.isLoading}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                       >
-                        {createInviteMutation.isLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                            Creating...
-                          </>
-                        ) : (
-                          "Create invite"
+                        {createInviteMutation.isLoading && (
+                          <IconLoader2
+                            size={14}
+                            stroke={1.5}
+                            className="animate-spin"
+                          />
                         )}
-                      </Button>
+                        Create invite
+                      </button>
                     </DialogFooter>
                   </form>
                 </Form>
@@ -384,58 +402,60 @@ export default function TeamMembersPage() {
       </div>
 
       {/* Members List */}
-      <div className="mt-8 rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <div className="divide-y divide-gray-100">
-          {members.data?.map((member) => {
-            const config = roleConfig[member.role];
-            const RoleIcon = config.icon;
+      <div className="divide-y divide-neutral-300/60">
+        {members.data?.map((member, index) => {
+          const config =
+            roleConfig[member.role as keyof typeof roleConfig] ??
+            roleConfig.member;
 
-            return (
-              <div
-                key={member.id}
-                className="flex items-center justify-between p-4 hover:bg-gray-50/50 transition-colors duration-150"
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage
-                      src={member.user?.imageUrl ?? undefined}
-                      alt={member.user?.name ?? "User"}
-                    />
-                    <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-medium">
-                      {member.user?.name?.[0]?.toUpperCase() ??
-                        member.user?.email?.[0]?.toUpperCase() ??
-                        "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
+          return (
+            <motion.div
+              key={member.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: index * 0.04 }}
+              className="group px-1 py-4"
+            >
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarImage
+                    src={member.user?.imageUrl ?? undefined}
+                    alt={member.user?.name ?? "User"}
+                  />
+                  <AvatarFallback className="bg-neutral-100 text-[12px] font-medium text-neutral-600">
+                    {member.user?.name?.[0]?.toUpperCase() ??
+                      member.user?.email?.[0]?.toUpperCase() ??
+                      "U"}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-[14px] font-medium text-neutral-900">
                       {member.user?.name || "Unknown"}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {member.user?.email}
-                    </p>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
+                      <span
+                        className={`inline-block h-1.5 w-1.5 rounded-full ${config.color}`}
+                      />
+                      {config.label}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-[12px] text-neutral-400">
+                    {member.user?.email}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border",
-                      config.className
-                    )}
-                  >
-                    <RoleIcon className="h-3 w-3" />
-                    {config.label}
-                  </span>
+
+                <div className="flex shrink-0 items-center gap-1">
                   {canManageMembers && member.role !== "owner" && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-gray-400 hover:text-gray-600"
+                        <button
+                          type="button"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 group-hover:opacity-100"
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                          <IconDots size={15} stroke={1.5} />
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
                         {isOwner && member.role === "member" && (
@@ -446,9 +466,13 @@ export default function TeamMembersPage() {
                                 role: "admin",
                               })
                             }
-                            className="text-sm"
+                            className="text-[13px]"
                           >
-                            <Shield className="mr-2 h-3.5 w-3.5" />
+                            <IconShield
+                              size={14}
+                              stroke={1.5}
+                              className="mr-2"
+                            />
                             Make admin
                           </DropdownMenuItem>
                         )}
@@ -460,9 +484,13 @@ export default function TeamMembersPage() {
                                 role: "member",
                               })
                             }
-                            className="text-sm"
+                            className="text-[13px]"
                           >
-                            <User className="mr-2 h-3.5 w-3.5" />
+                            <IconUser
+                              size={14}
+                              stroke={1.5}
+                              className="mr-2"
+                            />
                             Make member
                           </DropdownMenuItem>
                         )}
@@ -470,10 +498,16 @@ export default function TeamMembersPage() {
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() => setTransferOwnershipMemberId(member.userId)}
-                              className="text-sm text-amber-600"
+                              onClick={() =>
+                                setTransferOwnershipMemberId(member.userId)
+                              }
+                              className="text-[13px] text-amber-600"
                             >
-                              <Crown className="mr-2 h-3.5 w-3.5" />
+                              <IconCrown
+                                size={14}
+                                stroke={1.5}
+                                className="mr-2"
+                              />
                               Transfer ownership
                             </DropdownMenuItem>
                           </>
@@ -485,9 +519,13 @@ export default function TeamMembersPage() {
                               userId: member.userId,
                             })
                           }
-                          className="text-sm text-red-600"
+                          className="text-[13px] text-red-600"
                         >
-                          <UserMinus className="mr-2 h-3.5 w-3.5" />
+                          <IconUserMinus
+                            size={14}
+                            stroke={1.5}
+                            className="mr-2"
+                          />
                           Remove
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -495,66 +533,77 @@ export default function TeamMembersPage() {
                   )}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Pending Invites */}
       {canManageMembers && invites.data && invites.data.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-sm font-medium text-gray-900 mb-4">
+        <div className="mt-10">
+          <h2 className="mb-2 text-[14px] font-semibold text-neutral-900">
             Pending invites
           </h2>
-          <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-            <div className="divide-y divide-gray-100">
-              {invites.data.map((invite) => (
-                <div
-                  key={invite.id}
-                  className="flex items-center justify-between p-4 hover:bg-gray-50/50 transition-colors duration-150"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
-                      {invite.email ? (
-                        <Mail className="h-4 w-4 text-gray-500" />
-                      ) : (
-                        <Link2 className="h-4 w-4 text-gray-500" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
+          <div className="divide-y divide-neutral-300/60">
+            {invites.data.map((invite, index) => (
+              <motion.div
+                key={invite.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: index * 0.04 }}
+                className="group px-1 py-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100">
+                    {invite.email ? (
+                      <IconMail
+                        size={14}
+                        stroke={1.5}
+                        className="text-neutral-400"
+                      />
+                    ) : (
+                      <IconLink
+                        size={14}
+                        stroke={1.5}
+                        className="text-neutral-400"
+                      />
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-[14px] font-medium text-neutral-900">
                         {invite.email || "Open invite"}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          {invite.isExpired
-                            ? "Expired"
-                            : `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`}
-                        </span>
-                      </div>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
+                        <span
+                          className={`inline-block h-1.5 w-1.5 rounded-full ${invite.isExpired ? "bg-red-500" : "bg-emerald-500"}`}
+                        />
+                        {invite.isExpired ? "Expired" : "Active"}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+                      <span className="text-neutral-400">
+                        {invite.isExpired
+                          ? "Expired"
+                          : `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`}
+                      </span>
+                      <span className="text-neutral-300">&middot;</span>
+                      <span className="capitalize text-neutral-500">
+                        {invite.role}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border",
-                        invite.isExpired
-                          ? "text-red-600 bg-red-50 border-red-200"
-                          : roleConfig[invite.role].className
-                      )}
-                    >
-                      {invite.isExpired ? "Expired" : invite.role}
-                    </span>
+
+                  <div className="flex shrink-0 items-center gap-1">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-gray-400 hover:text-gray-600"
+                        <button
+                          type="button"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 group-hover:opacity-100"
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                          <IconDots size={15} stroke={1.5} />
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
                         <DropdownMenuItem
@@ -564,9 +613,13 @@ export default function TeamMembersPage() {
                             );
                             toast.success("Link copied");
                           }}
-                          className="text-sm"
+                          className="text-[13px]"
                         >
-                          <Copy className="mr-2 h-3.5 w-3.5" />
+                          <IconCopy
+                            size={14}
+                            stroke={1.5}
+                            className="mr-2"
+                          />
                           Copy link
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -576,35 +629,45 @@ export default function TeamMembersPage() {
                               inviteId: invite.id,
                             })
                           }
-                          className="text-sm text-red-600"
+                          className="text-[13px] text-red-600"
                         >
-                          <Trash2 className="mr-2 h-3.5 w-3.5" />
+                          <IconTrash
+                            size={14}
+                            stroke={1.5}
+                            className="mr-2"
+                          />
                           Revoke
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </div>
-              ))}
-            </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Transfer Ownership Confirmation Dialog */}
+      {/* Transfer Ownership Confirmation */}
       <AlertDialog
         open={!!transferOwnershipMemberId}
         onOpenChange={(open) => !open && setTransferOwnershipMemberId(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Transfer ownership</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action is irreversible. You will lose owner privileges and become an admin of this team. The new owner will have full control over the team, including the ability to remove you.
+            <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900">
+              Transfer ownership
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12px] text-neutral-500">
+              This action is irreversible. You will lose owner privileges and
+              become an admin of this team. The new owner will have full control
+              over the team, including the ability to remove you.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-lg border-neutral-200 text-[13px]">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (transferOwnershipMemberId) {
@@ -614,7 +677,7 @@ export default function TeamMembersPage() {
                   setTransferOwnershipMemberId(null);
                 }
               }}
-              className="bg-amber-600 hover:bg-amber-700"
+              className="rounded-lg bg-amber-600 text-[13px] text-white hover:bg-amber-700"
             >
               Transfer ownership
             </AlertDialogAction>

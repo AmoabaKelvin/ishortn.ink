@@ -25,7 +25,7 @@ const funnelSans = Funnel_Sans({
 
 export default function DashboardLayout({ children }: Props) {
   return (
-    <div className={cn("min-h-screen bg-gray-50", funnelSans.className)}>
+    <div className={cn("min-h-screen bg-neutral-50", funnelSans.className)}>
       {/* Changelog banner at the top */}
       <div className="fixed top-0 left-0 right-0 z-50 lg:left-[280px]">
         <ChangelogBanner />

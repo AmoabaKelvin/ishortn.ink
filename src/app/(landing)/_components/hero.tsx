@@ -1,132 +1,250 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { IconArrowRight, IconCheck, IconCopy } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "next-view-transitions";
+import { useEffect, useState } from "react";
 
 import { Paths } from "@/lib/constants/app";
 
-const stats = [
-  { value: "10M+", label: "Links Created" },
-  { value: "50M+", label: "Clicks Tracked" },
-  { value: "99.9%", label: "Uptime" },
+const demoLinks = [
+  {
+    original: "https://docs.google.com/spreadsheets/d/1a2b3c4d5e/edit?usp=sharing",
+    short: "ishortn.ink/q3-report",
+    clicks: "2,847",
+  },
+  {
+    original: "https://www.example.com/products/summer-collection?utm_source=email&utm_medium=newsletter",
+    short: "ishortn.ink/summer24",
+    clicks: "12,493",
+  },
+  {
+    original: "https://app.figma.com/file/abc123/Brand-Guidelines?node-id=0%3A1&t=xyz",
+    short: "ishortn.ink/brand",
+    clicks: "891",
+  },
 ];
+
+const DemoAnimation = () => {
+  const [step, setStep] = useState(0);
+  const [currentLink, setCurrentLink] = useState(0);
+
+  useEffect(() => {
+    const sequence = [
+      () => setStep(1),
+      () => setStep(2),
+      () => setStep(3),
+    ];
+
+    const timeouts: NodeJS.Timeout[] = [];
+    let delay = 1200;
+
+    sequence.forEach((fn, i) => {
+      timeouts.push(setTimeout(fn, delay));
+      delay += i === 0 ? 1800 : 1400;
+    });
+
+    const cycleTimeout = setTimeout(() => {
+      setStep(0);
+      setCurrentLink((prev) => (prev + 1) % demoLinks.length);
+    }, delay + 400);
+    timeouts.push(cycleTimeout);
+
+    return () => timeouts.forEach(clearTimeout);
+  }, [currentLink]);
+
+  const demo = demoLinks[currentLink]!;
+
+  return (
+    <div className="mx-auto mt-16 w-full max-w-2xl" style={{ minHeight: 250 }}>
+      <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
+        {/* Window chrome */}
+        <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-3">
+          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+          <span className="ml-3 text-[11px] text-neutral-400">
+            ishortn.ink
+          </span>
+        </div>
+
+        <div className="p-6">
+          {/* Input area */}
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
+            <AnimatePresence mode="wait">
+              {step === 0 && (
+                <motion.div
+                  key="placeholder"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex h-6 items-center"
+                >
+                  <span className="text-sm text-neutral-400">
+                    Paste your long URL here...
+                  </span>
+                </motion.div>
+              )}
+              {step >= 1 && (
+                <motion.div
+                  key="url"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex h-6 items-center"
+                >
+                  <span className="truncate text-sm text-neutral-700">
+                    {demo.original}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Result - overflow hidden on outer card clips the expand, minHeight reserves space outside */}
+          <AnimatePresence>
+            {step >= 2 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="overflow-hidden"
+              >
+                <div className="pt-4">
+                  <div className="flex items-center justify-between rounded-lg border border-neutral-900 bg-neutral-900 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                      <span className="text-sm font-medium text-white">
+                        {demo.short}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-neutral-400">
+                      {step === 3 ? (
+                        <motion.div
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="flex items-center gap-1.5 text-emerald-400"
+                        >
+                          <IconCheck size={14} stroke={2} />
+                          <span className="text-xs">Copied</span>
+                        </motion.div>
+                      ) : (
+                        <>
+                          <IconCopy size={14} stroke={1.5} />
+                          <span className="text-xs">Copy</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick stats preview */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="mt-3 flex items-center gap-4 px-1"
+                  >
+                    <span className="text-xs text-neutral-400">
+                      {demo.clicks} clicks
+                    </span>
+                    <span className="text-xs text-neutral-300">|</span>
+                    <span className="text-xs text-neutral-400">
+                      24 countries
+                    </span>
+                    <span className="text-xs text-neutral-300">|</span>
+                    <span className="text-xs text-neutral-400">
+                      Live analytics
+                    </span>
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const Hero = () => {
   return (
-    <section className="relative min-h-screen overflow-hidden pt-32 pb-20">
-      {/* Background Elements */}
-      <div className="absolute inset-0 landing-gradient-bg" />
-      <div className="noise-overlay" />
-      <div className="grid-overlay" />
-
-      {/* Gradient Orbs */}
-      <div className="gradient-blur -top-40 -right-40 h-96 w-96 bg-amber-200/30" />
-      <div className="gradient-blur -bottom-40 -left-40 h-96 w-96 bg-rose-200/20" />
-      <div className="gradient-blur top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] bg-neutral-200/40" />
-
-      <div className="landing-container relative z-10">
-        {/* Badge */}
+    <section className="relative overflow-hidden px-6 pt-32 pb-20 md:pt-40 md:pb-28">
+      <div className="mx-auto max-w-5xl">
+        {/* Headline */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex justify-center"
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="text-center"
         >
-          <div className="landing-badge">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>Trusted by 10,000+ creators & businesses</span>
-          </div>
-        </motion.div>
-
-        {/* Main Headline */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="mt-8 text-center"
-        >
-          <h1 className="font-display text-5xl leading-[1.1] tracking-tight text-neutral-900 sm:text-6xl md:text-7xl lg:text-8xl">
-            Short links.
+          <h1 className="font-display text-5xl leading-[1.08] tracking-tight text-neutral-900 sm:text-6xl md:text-7xl">
+            Every click tells
             <br />
-            <span className="relative">
-              Big
-              <span className="absolute -bottom-2 left-0 right-0 h-3 bg-amber-300/50 -z-10 skew-x-[-12deg]" />
-            </span>{" "}
-            impact.
+            a story
           </h1>
         </motion.div>
 
         {/* Subheadline */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mx-auto mt-8 max-w-2xl text-center text-lg text-neutral-600 md:text-xl"
+          className="mx-auto mt-6 max-w-lg text-center text-base leading-relaxed text-neutral-500 md:text-lg"
         >
-          Transform lengthy URLs into powerful branded links. Track every click,
-          understand your audience, and grow your business with actionable insights.
+          Shorten links, track every click, and understand your audience.
+          The link management platform built for modern teams.
         </motion.p>
 
-        {/* CTA Buttons */}
+        {/* CTA */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+          className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
         >
-          <Link href={Paths.Login} className="landing-button-primary group">
+          <Link
+            href={Paths.Login}
+            className="group inline-flex items-center gap-2 rounded-full bg-neutral-900 px-7 py-3 text-sm font-medium text-white transition-all hover:bg-neutral-800"
+          >
             Start for free
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            <IconArrowRight size={14} stroke={2} className="transition-transform group-hover:translate-x-0.5" />
           </Link>
-          <Link href="/#features" className="landing-button-secondary">
-            See how it works
-          </Link>
+          <span className="text-xs text-neutral-400">
+            No credit card required
+          </span>
         </motion.div>
 
-        {/* Social Proof */}
+        {/* Interactive Demo */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="mt-8 flex items-center justify-center gap-3"
+          transition={{ duration: 0.6, delay: 0.5 }}
         >
-          <div className="flex -space-x-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="h-8 w-8 rounded-full border-2 border-white bg-gradient-to-br from-neutral-200 to-neutral-300"
-                style={{
-                  backgroundImage: `linear-gradient(135deg, hsl(${i * 40}, 30%, 80%) 0%, hsl(${i * 40}, 30%, 70%) 100%)`,
-                }}
-              />
-            ))}
-          </div>
-          <p className="text-sm text-neutral-600">
-            Join <span className="font-semibold text-neutral-900">10,000+</span> users
-          </p>
+          <DemoAnimation />
         </motion.div>
 
-        {/* Stats Banner */}
+        {/* Social proof - understated */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          className="mt-20 grid grid-cols-3 gap-8 rounded-2xl border border-neutral-200/60 bg-white/60 p-8 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.8 }}
+          className="mt-16 flex items-center justify-center gap-8 text-xs text-neutral-400 md:gap-12"
         >
-          {stats.map((stat, index) => (
-            <div key={stat.label} className="text-center">
-              <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.8 + index * 0.1 }}
-                className="text-3xl font-semibold text-neutral-900 md:text-4xl"
-              >
-                {stat.value}
-              </motion.div>
-              <div className="mt-1 text-sm text-neutral-500">{stat.label}</div>
-            </div>
-          ))}
+          <span>
+            <strong className="font-medium text-neutral-600">10M+</strong> links
+            created
+          </span>
+          <span className="hidden h-3 w-px bg-neutral-200 sm:block" />
+          <span>
+            <strong className="font-medium text-neutral-600">50M+</strong> clicks
+            tracked
+          </span>
+          <span className="hidden h-3 w-px bg-neutral-200 sm:block" />
+          <span>
+            <strong className="font-medium text-neutral-600">99.9%</strong>{" "}
+            uptime
+          </span>
         </motion.div>
       </div>
     </section>

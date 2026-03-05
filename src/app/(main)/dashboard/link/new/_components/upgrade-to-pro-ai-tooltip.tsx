@@ -4,7 +4,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Sparkles } from "lucide-react";
+import { IconSparkles } from "@tabler/icons-react";
 
 function UpgradeToProAIButtonTooltip() {
   return (
@@ -12,7 +12,7 @@ function UpgradeToProAIButtonTooltip() {
       <Tooltip>
         <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
           <div className="cursor-pointer">
-            <Sparkles className="h-4 w-4 text-gray-400" />
+            <IconSparkles size={16} stroke={1.5} className="text-neutral-400" />
           </div>
         </TooltipTrigger>
         <TooltipContent>

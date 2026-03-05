@@ -12,28 +12,31 @@ async function CustomDomainsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Custom Domains</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage and configure your custom branded domains.
-          </p>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+            Custom Domains
+          </h1>
+          {userDomains.length > 0 && (
+            <p className="mt-1 text-[13px] text-neutral-400">
+              {userDomains.length}{" "}
+              {userDomains.length === 1 ? "domain" : "domains"} total
+            </p>
+          )}
         </div>
 
         {userDomains.length > 0 && <AddCustomDomainModal />}
       </div>
 
       {userDomains.length === 0 ? (
-        <div className="mt-8">
-          <EmptyState />
-        </div>
+        <EmptyState />
       ) : (
-        <div className="mt-8 space-y-6">
+        <div className="space-y-6">
           <CloudflareIssuesCard />
 
-          <div className="flex flex-col gap-4">
-            {userDomains.map((domain) => (
-              <DomainCardNew key={domain.id} domain={domain} />
+          <div className="divide-y divide-neutral-300/60">
+            {userDomains.map((domain, index) => (
+              <DomainCardNew key={domain.id} domain={domain} index={index} />
             ))}
           </div>
         </div>

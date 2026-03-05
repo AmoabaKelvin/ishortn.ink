@@ -27,8 +27,8 @@ function UpgradeText({ text }: UpgradeTextProps) {
   };
 
   return (
-    <button 
-      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+    <button
+      className="whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
       onClick={handleUpgrade}
     >
       {text ?? "Upgrade your subscription"}

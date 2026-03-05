@@ -2,12 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  FileText,
-  Flag,
-  Globe,
-  MessageSquare,
-  Search
-} from "lucide-react";
+  IconFileText,
+  IconSearch,
+  IconSend,
+  IconSpeakerphone,
+  IconWorld,
+} from "@tabler/icons-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -29,7 +29,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { api } from "@/trpc/react";
@@ -59,31 +59,31 @@ const utmFields = [
     name: "utmSource" as const,
     label: "Source",
     placeholder: "google",
-    icon: Globe,
+    icon: IconWorld,
   },
   {
     name: "utmMedium" as const,
     label: "Medium",
     placeholder: "cpc",
-    icon: MessageSquare,
+    icon: IconSend,
   },
   {
     name: "utmCampaign" as const,
     label: "Campaign",
     placeholder: "summer sale",
-    icon: Flag,
+    icon: IconSpeakerphone,
   },
   {
     name: "utmTerm" as const,
     label: "Term",
     placeholder: "running shoes",
-    icon: Search,
+    icon: IconSearch,
   },
   {
     name: "utmContent" as const,
     label: "Content",
     placeholder: "logo link",
-    icon: FileText,
+    icon: IconFileText,
   },
 ];
 
@@ -128,12 +128,12 @@ export function UtmTemplateModal({
         utmContent: "",
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template]);
 
   const createMutation = api.utmTemplate.create.useMutation({
     onSuccess: () => {
-      toast.success("Template created successfully");
+      toast.success("Template created");
       utils.utmTemplate.list.invalidate();
       onOpenChange(false);
       form.reset();
@@ -146,7 +146,7 @@ export function UtmTemplateModal({
 
   const updateMutation = api.utmTemplate.update.useMutation({
     onSuccess: () => {
-      toast.success("Template updated successfully");
+      toast.success("Template updated");
       utils.utmTemplate.list.invalidate();
       onOpenChange(false);
       onSuccess?.();
@@ -177,7 +177,9 @@ export function UtmTemplateModal({
             {isEditing ? "Edit UTM Template" : "Create UTM Template"}
           </DialogTitle>
           <DialogDescription>
-            {isEditing ? "Update your UTM template parameters" : "Create a reusable UTM template"}
+            {isEditing
+              ? "Update your UTM template parameters"
+              : "Create a reusable UTM template"}
           </DialogDescription>
         </DialogHeader>
 
@@ -190,24 +192,24 @@ export function UtmTemplateModal({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">
                       Template Name
                     </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         placeholder="New Template"
-                        className="h-10"
+                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                       />
                     </FormControl>
-                    <FormMessage className="text-xs" />
+                    <FormMessage className="text-[11px]" />
                   </FormItem>
                 )}
               />
 
               {/* UTM Parameters */}
               <div className="space-y-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-[13px] font-medium text-neutral-700">
                   Parameters
                 </p>
                 <div className="space-y-2">
@@ -221,21 +223,25 @@ export function UtmTemplateModal({
                         render={({ field: formField }) => (
                           <FormItem>
                             <FormControl>
-                              <div className="flex items-center overflow-hidden rounded-lg border border-border">
-                                <div className="flex w-32 shrink-0 items-center gap-2.5 border-r border-border bg-muted/30 px-3 py-2.5">
-                                  <Icon className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-sm font-medium text-muted-foreground">
+                              <div className="flex items-center overflow-hidden rounded-lg border border-neutral-200">
+                                <div className="flex w-32 shrink-0 items-center gap-2.5 border-r border-neutral-200 bg-neutral-50 px-3 py-2">
+                                  <Icon
+                                    size={14}
+                                    stroke={1.5}
+                                    className="text-neutral-400"
+                                  />
+                                  <span className="text-[12px] font-medium text-neutral-500">
                                     {field.label}
                                   </span>
                                 </div>
                                 <Input
                                   {...formField}
                                   placeholder={field.placeholder}
-                                  className="h-auto border-0 py-2.5 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                  className="h-auto border-0 py-2 text-[13px] placeholder:text-neutral-400 focus-visible:ring-0 focus-visible:ring-offset-0"
                                 />
                               </div>
                             </FormControl>
-                            <FormMessage className="text-xs" />
+                            <FormMessage className="text-[11px]" />
                           </FormItem>
                         )}
                       />
@@ -250,16 +256,20 @@ export function UtmTemplateModal({
                 type="button"
                 variant="ghost"
                 onClick={() => onOpenChange(false)}
-                className="h-9"
+                className="h-9 text-[13px]"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading} className="h-9">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
+              >
                 {isLoading
                   ? "Saving..."
                   : isEditing
-                  ? "Update"
-                  : "Create"}
+                    ? "Update"
+                    : "Create"}
               </Button>
             </DialogFooter>
           </form>

@@ -1,9 +1,9 @@
 "use client";
 
-import { FolderPlus } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import { IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
 import { CreateFolderModal } from "./create-folder-modal";
@@ -41,49 +41,56 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
     (currentWorkspace.data?.role === "owner" ||
       currentWorkspace.data?.role === "admin");
 
-  // We use initialFolders for rendering, but actions will invalidate queries
-  // causing page revalidation or client-side updates if we used useQuery
   const folders = initialFolders;
   const hasFolders = folders && folders.length > 0;
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Folders</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Organize your links into folders.
-          </p>
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+            Folders
+          </h2>
+          {hasFolders && (
+            <p className="mt-1 text-[13px] text-neutral-400">
+              {folders.length} {folders.length === 1 ? "folder" : "folders"} total
+            </p>
+          )}
         </div>
 
         {isProUser && hasFolders && (
-          <Button onClick={() => setCreateModalOpen(true)}>
-            <FolderPlus className="mr-2 h-4 w-4" />
-            Create Folder
-          </Button>
+          <button
+            type="button"
+            onClick={() => setCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            <IconPlus size={16} stroke={2} />
+            New Folder
+          </button>
         )}
       </div>
 
+      {/* Content */}
       {!isProUser ? (
-        <div className="mt-8">
-          <EmptyStateFree />
-        </div>
+        <EmptyStateFree />
       ) : !hasFolders ? (
-        <div className="mt-8">
-          <EmptyStatePro onCreateClick={() => setCreateModalOpen(true)} />
-        </div>
+        <EmptyStatePro onCreateClick={() => setCreateModalOpen(true)} />
       ) : (
-        <div className="mt-8 space-y-4">
-          {folders.map((folder) => (
-            <FolderCard
-              key={folder.id}
-              folder={folder}
-              onEdit={setEditingFolder}
-              onDelete={setDeletingFolder}
-              onSettings={setSettingsFolder}
-              showSettingsButton={isAdminOrOwner}
-            />
-          ))}
+        <div className="divide-y divide-neutral-300/60">
+          <AnimatePresence>
+            {folders.map((folder, index) => (
+              <FolderCard
+                key={folder.id}
+                folder={folder}
+                index={index}
+                onEdit={setEditingFolder}
+                onDelete={setDeletingFolder}
+                onSettings={setSettingsFolder}
+                showSettingsButton={isAdminOrOwner}
+              />
+            ))}
+          </AnimatePresence>
         </div>
       )}
 

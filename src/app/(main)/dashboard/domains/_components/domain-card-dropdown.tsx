@@ -1,6 +1,6 @@
 "use client";
 
-import { EllipsisVertical, Trash2 } from "lucide-react";
+import { IconDots, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -26,12 +26,10 @@ import { api } from "@/trpc/react";
 
 interface DomainCardDropdownProps {
   domainId: number;
-  // onDeleteSuccess: () => void;
 }
 
 export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  // const router = useRouter();
 
   const deleteDomainMutation = api.customDomain.delete.useMutation({
     onSuccess: async () => {
@@ -48,7 +46,6 @@ export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
   };
 
   const handleDeleteConfirm = () => {
-    // deleteDomainMutation.mutate({ id: domainId });
     toast.promise(deleteDomainMutation.mutateAsync({ id: domainId }), {
       loading: "Deleting domain...",
       success: "Domain deleted successfully",
@@ -61,16 +58,21 @@ export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <EllipsisVertical className="size-4 hover:cursor-pointer hover:opacity-60" />
+          <button
+            type="button"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+          >
+            <IconDots size={14} stroke={1.5} />
+          </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56">
+        <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuGroup>
             <DropdownMenuItem
               onClick={handleDeleteClick}
-              className="text-red-500"
+              className="text-red-600"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              <span>Delete</span>
+              <IconTrash size={14} stroke={1.5} className="mr-2" />
+              Delete
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
@@ -80,17 +82,24 @@ export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              domain and all associated links.
+            <AlertDialogTitle className="text-[14px]">
+              Delete domain
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12px]">
+              This will permanently delete the domain and all associated links.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>
+            <AlertDialogCancel className="h-9 text-[13px]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="h-9 bg-red-600 text-[13px] hover:bg-red-700"
+            >
               {deleteDomainMutation.isLoading ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>

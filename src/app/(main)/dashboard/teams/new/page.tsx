@@ -1,7 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Loader2, Users, X } from "lucide-react";
+import {
+  IconCheck,
+  IconDiamond,
+  IconLoader2,
+  IconUsers,
+  IconX,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -9,15 +15,11 @@ import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
 import { z } from "zod";
 
-import { Gem } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -99,15 +101,13 @@ export default function CreateTeamPage() {
     await createTeamMutation.mutateAsync(values);
   };
 
-  // Use canCreateTeam which checks the user's personal subscription
-  // This prevents team workspace members from seeing the create form
   const canCreateTeam = subscription.data?.canCreateTeam ?? false;
   const isLoading = subscription.isLoading;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+      <div className="flex min-h-[400px] items-center justify-center">
+        <IconLoader2 size={20} stroke={1.5} className="animate-spin text-neutral-400" />
       </div>
     );
   }
@@ -115,18 +115,18 @@ export default function CreateTeamPage() {
   if (!canCreateTeam) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-          <Users className="h-8 w-8 text-gray-400" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
+          <IconUsers size={20} stroke={1.5} className="text-neutral-400" />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-gray-900">
+        <p className="mt-4 text-[14px] font-medium text-neutral-900">
           Create a Team
-        </h2>
-        <p className="mt-2 max-w-sm text-center text-sm text-gray-500">
+        </p>
+        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400">
           Set up a shared workspace to collaborate with your team members.
         </p>
-        <div className="mt-4 flex items-center gap-2 rounded-full border border-gray-300 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-800">
-          <Gem className="h-4 w-4 text-slate-500" />
-          <span>Available on Ultra plan</span>
+        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[12px] font-medium text-neutral-600">
+          <IconDiamond size={14} stroke={1.5} className="text-neutral-400" />
+          Available on Ultra plan
         </div>
       </div>
     );
@@ -134,28 +134,34 @@ export default function CreateTeamPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Create a team</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Set up a shared workspace for your organization.
-          </p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+          Create a team
+        </h1>
+        <p className="mt-1 text-[13px] text-neutral-400">
+          Set up a shared workspace for your organization.
+        </p>
       </div>
 
-      <div className="mt-8 max-w-lg">
+      <div className="max-w-lg">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Team name</FormLabel>
+                  <label className="text-[13px] font-medium text-neutral-700">
+                    Team name
+                  </label>
                   <FormControl>
-                    <Input placeholder="Acme Inc" {...field} />
+                    <Input
+                      placeholder="Acme Inc"
+                      className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                      {...field}
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-[11px]" />
                 </FormItem>
               )}
             />
@@ -165,22 +171,24 @@ export default function CreateTeamPage() {
               name="slug"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Team URL</FormLabel>
+                  <label className="text-[13px] font-medium text-neutral-700">
+                    Team URL
+                  </label>
                   <FormControl>
                     <div className="flex items-center">
-                      <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-input bg-muted px-3 text-sm text-muted-foreground">
+                      <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 bg-neutral-50 px-3 text-[13px] text-neutral-400">
                         https://
                       </span>
                       <Input
                         placeholder="acme"
-                        className="rounded-none border-x-0"
+                        className="h-9 rounded-none border-x-0 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                         {...field}
                         onChange={(e) => {
                           setSlugTouched(true);
                           field.onChange(e.target.value.toLowerCase());
                         }}
                       />
-                      <span className="inline-flex h-9 items-center rounded-r-md border border-l-0 border-input bg-muted px-3 text-sm text-muted-foreground">
+                      <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 bg-neutral-50 px-3 text-[13px] text-neutral-400">
                         .ishortn.ink
                       </span>
                     </div>
@@ -188,66 +196,61 @@ export default function CreateTeamPage() {
                   {debouncedSlug && debouncedSlug.length >= 3 && (
                     <div className="mt-2 flex items-center gap-1.5">
                       {slugCheck.isLoading ? (
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          <span>Checking...</span>
+                        <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                          <IconLoader2 size={12} stroke={1.5} className="animate-spin" />
+                          Checking...
                         </div>
                       ) : slugCheck.data?.available ? (
-                        <div className="flex items-center gap-1.5 text-xs text-emerald-600">
-                          <Check className="h-3 w-3" />
-                          <span>Available</span>
+                        <div className="flex items-center gap-1 text-[11px] text-emerald-600">
+                          <IconCheck size={12} stroke={1.5} />
+                          Available
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 text-xs text-red-600">
-                          <X className="h-3 w-3" />
-                          <span>Already taken</span>
+                        <div className="flex items-center gap-1 text-[11px] text-red-600">
+                          <IconX size={12} stroke={1.5} />
+                          Already taken
                         </div>
                       )}
                     </div>
                   )}
-                  <FormMessage />
+                  <FormMessage className="text-[11px]" />
                 </FormItem>
               )}
             />
 
-            <div className="flex gap-3 pt-2">
-              <Button
+            <div className="flex gap-2 pt-2">
+              <button
                 type="button"
-                variant="outline"
-                className="flex-1"
                 onClick={() => router.back()}
+                className="flex-1 rounded-lg border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
               >
                 Cancel
-              </Button>
-              <Button
+              </button>
+              <button
                 type="submit"
-                className="flex-1"
                 disabled={
                   createTeamMutation.isLoading ||
                   !slugCheck.data?.available ||
                   slugCheck.isLoading
                 }
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
               >
-                {createTeamMutation.isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create team"
+                {createTeamMutation.isLoading && (
+                  <IconLoader2 size={14} stroke={1.5} className="animate-spin" />
                 )}
-              </Button>
+                Create team
+              </button>
             </div>
           </form>
         </Form>
 
-        <div className="mt-8 p-4 rounded-lg bg-muted border">
-          <p className="text-xs text-muted-foreground leading-relaxed">
+        <div className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+          <p className="text-[12px] leading-relaxed text-neutral-400">
             Your team will have its own workspace at{" "}
-            <span className="font-mono text-foreground">
+            <span className="font-mono text-neutral-600">
               {slug || "your-team"}.ishortn.ink
             </span>
-            . You'll be the owner with full access and can invite members after setup.
+            . You&apos;ll be the owner with full access and can invite members after setup.
           </p>
         </div>
       </div>

@@ -1,7 +1,15 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronLeft, Folder, FolderPlus, Loader2, Search, X } from "lucide-react";
+import {
+  IconCheck,
+  IconChevronLeft,
+  IconFolder,
+  IconFolderPlus,
+  IconLoader2,
+  IconSearch,
+  IconX,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -172,9 +180,9 @@ export function MoveToFolderModal({
                     setNewFolderName("");
                     setNewFolderDescription("");
                   }}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <IconChevronLeft size={18} stroke={1.5} />
                 </button>
                 <div>
                   <DialogTitle>Create Folder</DialogTitle>
@@ -183,10 +191,10 @@ export function MoveToFolderModal({
               </DialogHeader>
 
               <DialogBody className="space-y-4">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label
                     htmlFor="new-folder-name"
-                    className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    className="text-[13px] font-medium text-neutral-700"
                   >
                     Name
                   </Label>
@@ -195,16 +203,16 @@ export function MoveToFolderModal({
                     placeholder="Folder name"
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
-                    className="h-10"
+                    className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label
                     htmlFor="new-folder-description"
-                    className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    className="text-[13px] font-medium text-neutral-700"
                   >
                     Description
-                    <span className="ml-1.5 text-muted-foreground/60 lowercase tracking-normal font-normal">
+                    <span className="ml-1.5 text-[12px] font-normal text-neutral-400">
                       optional
                     </span>
                   </Label>
@@ -212,7 +220,7 @@ export function MoveToFolderModal({
                     id="new-folder-description"
                     placeholder="Add notes about this folder..."
                     rows={3}
-                    className="resize-none text-sm"
+                    className="resize-none border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                     value={newFolderDescription}
                     onChange={(e) => setNewFolderDescription(e.target.value)}
                   />
@@ -228,7 +236,7 @@ export function MoveToFolderModal({
                     setNewFolderName("");
                     setNewFolderDescription("");
                   }}
-                  className="h-9"
+                  className="h-9 text-[13px]"
                 >
                   Back
                 </Button>
@@ -236,11 +244,15 @@ export function MoveToFolderModal({
                   type="button"
                   onClick={handleMove}
                   disabled={isMoving || !newFolderName.trim()}
-                  className="h-9"
+                  className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
                 >
                   {isMoving ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <IconLoader2
+                        size={14}
+                        stroke={1.5}
+                        className="mr-1.5 animate-spin"
+                      />
                       Creating...
                     </>
                   ) : (
@@ -267,29 +279,37 @@ export function MoveToFolderModal({
               <DialogBody>
                 {/* Search */}
                 <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <IconSearch
+                    size={16}
+                    stroke={1.5}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                  />
                   <Input
                     placeholder="Search folders..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-10 pl-10 pr-10"
+                    className="h-9 border-neutral-200 bg-white pl-9 pr-9 text-[13px] placeholder:text-neutral-400"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
                     >
-                      <X className="h-4 w-4" />
+                      <IconX size={14} stroke={1.5} />
                     </button>
                   )}
                 </div>
 
                 {/* Folders List */}
-                <ScrollArea className="h-[260px] -mx-1 px-1">
+                <ScrollArea className="-mx-1 h-[260px] px-1">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <IconLoader2
+                        size={16}
+                        stroke={1.5}
+                        className="animate-spin text-neutral-400"
+                      />
                     </div>
                   ) : (
                     <div className="space-y-1">
@@ -297,37 +317,36 @@ export function MoveToFolderModal({
                       <button
                         type="button"
                         className={cn(
-                          "w-full flex items-center gap-3 rounded-lg p-2.5 text-left transition-all",
-                          "border",
+                          "flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-all",
                           selectedFolderId === "none"
-                            ? "border-foreground bg-foreground/[0.03] ring-1 ring-foreground/10"
-                            : "border-transparent hover:bg-muted/50"
+                            ? "border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900/10"
+                            : "border-transparent hover:bg-neutral-50"
                         )}
                         onClick={() => setSelectedFolderId("none")}
                       >
                         <div
                           className={cn(
-                            "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+                            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
                             selectedFolderId === "none"
-                              ? "bg-foreground/10"
-                              : "bg-muted"
+                              ? "bg-neutral-200"
+                              : "bg-neutral-100"
                           )}
                         >
-                          <X className="h-4 w-4 text-muted-foreground" />
+                          <IconX size={14} stroke={1.5} className="text-neutral-500" />
                         </div>
-                        <span className="font-medium flex-1 text-sm">
+                        <span className="flex-1 text-[13px] font-medium text-neutral-900">
                           No folder
                         </span>
                         <div
                           className={cn(
-                            "h-4 w-4 rounded-full border-2 flex items-center justify-center transition-colors",
+                            "flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] transition-colors",
                             selectedFolderId === "none"
-                              ? "border-foreground bg-foreground"
-                              : "border-muted-foreground/30"
+                              ? "border-blue-600 bg-blue-600"
+                              : "border-neutral-300"
                           )}
                         >
                           {selectedFolderId === "none" && (
-                            <Check className="h-2.5 w-2.5 text-background" />
+                            <IconCheck size={9} stroke={3} className="text-white" />
                           )}
                         </div>
                       </button>
@@ -339,50 +358,49 @@ export function MoveToFolderModal({
                             key={folder.id}
                             type="button"
                             className={cn(
-                              "w-full flex items-center gap-3 rounded-lg p-2.5 text-left transition-all",
-                              "border",
+                              "flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-all",
                               selectedFolderId === folder.id.toString()
-                                ? "border-foreground bg-foreground/[0.03] ring-1 ring-foreground/10"
-                                : "border-transparent hover:bg-muted/50"
+                                ? "border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900/10"
+                                : "border-transparent hover:bg-neutral-50"
                             )}
                             onClick={() => setSelectedFolderId(folder.id.toString())}
                           >
                             <div
                               className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+                                "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
                                 selectedFolderId === folder.id.toString()
-                                  ? "bg-foreground/10"
-                                  : "bg-muted"
+                                  ? "bg-neutral-200"
+                                  : "bg-neutral-100"
                               )}
                             >
-                              <Folder className="h-4 w-4 text-muted-foreground" />
+                              <IconFolder size={14} stroke={1.5} className="text-neutral-500" />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="font-medium block truncate text-sm">
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate text-[13px] font-medium text-neutral-900">
                                 {folder.name}
                               </span>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-[12px] text-neutral-400">
                                 {folder.linkCount}{" "}
                                 {folder.linkCount === 1 ? "link" : "links"}
                               </span>
                             </div>
                             <div
                               className={cn(
-                                "h-4 w-4 rounded-full border-2 flex items-center justify-center transition-colors",
+                                "flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] transition-colors",
                                 selectedFolderId === folder.id.toString()
-                                  ? "border-foreground bg-foreground"
-                                  : "border-muted-foreground/30"
+                                  ? "border-blue-600 bg-blue-600"
+                                  : "border-neutral-300"
                               )}
                             >
                               {selectedFolderId === folder.id.toString() && (
-                                <Check className="h-2.5 w-2.5 text-background" />
+                                <IconCheck size={9} stroke={3} className="text-white" />
                               )}
                             </div>
                           </button>
                         ))
                       ) : searchQuery ? (
                         <div className="py-8 text-center">
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-[13px] text-neutral-400">
                             No folders found
                           </p>
                         </div>
@@ -395,9 +413,9 @@ export function MoveToFolderModal({
                 <button
                   type="button"
                   onClick={() => setIsCreatingNew(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-border p-2.5 mt-3 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground hover:bg-muted/50"
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-200 p-2.5 text-[13px] font-medium text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900"
                 >
-                  <FolderPlus className="h-4 w-4" />
+                  <IconFolderPlus size={16} stroke={1.5} />
                   Create new folder
                 </button>
               </DialogBody>
@@ -407,7 +425,7 @@ export function MoveToFolderModal({
                   type="button"
                   variant="ghost"
                   onClick={() => handleOpenChange(false)}
-                  className="h-9"
+                  className="h-9 text-[13px]"
                 >
                   Cancel
                 </Button>
@@ -415,11 +433,15 @@ export function MoveToFolderModal({
                   type="button"
                   onClick={handleMove}
                   disabled={isMoving}
-                  className="h-9"
+                  className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
                 >
                   {isMoving ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <IconLoader2
+                        size={14}
+                        stroke={1.5}
+                        className="mr-1.5 animate-spin"
+                      />
                       Moving...
                     </>
                   ) : (

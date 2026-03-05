@@ -19,6 +19,7 @@ export function ReferrersCard({ referers, totalClicks }: ReferrersCardProps) {
       description="Click distribution by referrers"
       items={items}
       totalClicks={totalClicks}
+      color="red"
     />
   );
 }

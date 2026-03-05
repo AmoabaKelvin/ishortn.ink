@@ -86,10 +86,10 @@ export function EditFolderModal({
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogBody className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label
                 htmlFor="edit-name"
-                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                className="text-[13px] font-medium text-neutral-700"
               >
                 Name
               </Label>
@@ -97,9 +97,9 @@ export function EditFolderModal({
                 id="edit-name"
                 placeholder="Folder name"
                 className={cn(
-                  "h-10",
+                  "h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400",
                   errors.name &&
-                    "border-destructive focus-visible:ring-destructive"
+                    "border-red-300 focus-visible:ring-red-300"
                 )}
                 {...register("name", {
                   required: "Folder name is required",
@@ -110,17 +110,17 @@ export function EditFolderModal({
                 })}
               />
               {errors.name && (
-                <p className="text-xs text-destructive">{errors.name.message}</p>
+                <p className="text-[12px] text-red-500">{errors.name.message}</p>
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label
                 htmlFor="edit-description"
-                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                className="text-[13px] font-medium text-neutral-700"
               >
                 Description
-                <span className="ml-1.5 text-muted-foreground/60 lowercase tracking-normal font-normal">
+                <span className="ml-1.5 text-[12px] font-normal text-neutral-400">
                   optional
                 </span>
               </Label>
@@ -128,7 +128,7 @@ export function EditFolderModal({
                 id="edit-description"
                 placeholder="Add notes about this folder..."
                 rows={3}
-                className="resize-none text-sm"
+                className="resize-none border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                 {...register("description")}
               />
             </div>
@@ -139,14 +139,14 @@ export function EditFolderModal({
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="h-9"
+              className="h-9 text-[13px]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={updateFolderMutation.isLoading}
-              className="h-9"
+              className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
             >
               {updateFolderMutation.isLoading ? "Saving..." : "Save"}
             </Button>

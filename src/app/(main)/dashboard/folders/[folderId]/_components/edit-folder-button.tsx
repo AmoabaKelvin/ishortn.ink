@@ -1,10 +1,9 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { IconPencil } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { EditFolderModal } from "@/app/(main)/dashboard/folders/_components/edit-folder-modal";
-import { Button } from "@/components/ui/button";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -17,10 +16,14 @@ export function EditFolderButton({ folder }: EditFolderButtonProps) {
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        <Pencil className="mr-2 h-4 w-4" />
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-1.5 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+      >
+        <IconPencil size={14} stroke={1.5} />
         Edit
-      </Button>
+      </button>
       <EditFolderModal folder={folder} open={open} onOpenChange={setOpen} />
     </>
   );
