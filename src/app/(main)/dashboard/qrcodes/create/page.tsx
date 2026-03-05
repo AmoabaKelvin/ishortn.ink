@@ -1,13 +1,10 @@
 "use client";
 
 import {
-  IconCheck,
   IconDeviceFloppy,
   IconDownload,
-  IconInfoCircle,
   IconLoader2,
   IconRefresh,
-  IconSelector,
   IconSparkles,
   IconTrash,
 } from "@tabler/icons-react";
@@ -20,13 +17,6 @@ import { useDebounce } from "use-debounce";
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
   Dialog,
   DialogBody,
   DialogContent,
@@ -38,12 +28,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
@@ -81,17 +65,7 @@ function QRCodeCreationPage() {
   });
 
   const [qrCodeTitle, setQRCodeTitle] = useState<string>("");
-  const [enteredContent, setEnteredContent] = useState<string>("");
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [selectedLink, setSelectedLink] = useState<{
-    id: number;
-    alias: string;
-    domain: string;
-    url: string;
-  } | null>(null);
-  const [openCombobox, setOpenCombobox] = useState(false);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebounce(search, 500);
+  const [destinationUrl, setDestinationUrl] = useState<string>("");
 
   // Advanced QR state using the new generator
   const [qrState, setQrState] = useState<QRCodeGeneratorState>(() => ({
@@ -144,18 +118,6 @@ function QRCodeCreationPage() {
       toast.error("Failed to delete preset");
     },
   });
-
-  const { data: linksData, isLoading: isLoadingLinks } =
-    api.link.list.useQuery(
-      {
-        page: 1,
-        pageSize: 50,
-        search: debouncedSearch,
-      },
-      {
-        enabled: !isStandalone,
-      },
-    );
 
   // Update QR state helper
   const updateQrState = useCallback(
@@ -269,79 +231,45 @@ function QRCodeCreationPage() {
     });
   };
 
-  // Get current content for QR code
-  const getCurrentContent = useCallback(() => {
-    if (isStandalone && enteredContent) {
-      return enteredContent;
-    }
-    if (!isStandalone && selectedLink) {
-      return `https://${selectedLink.domain}/${selectedLink.alias}`;
-    }
-    return "https://ishortn.ink";
-  }, [isStandalone, enteredContent, selectedLink]);
-
   // Generate QR code with the new generator
   const regenerateQRCode = useCallback(async () => {
     if (!canvasRef.current) return;
 
-    const content = getCurrentContent();
     await generateQRCode(canvasRef.current, {
       ...qrState,
-      text: content,
+      text: destinationUrl || "https://ishortn.ink",
     });
-  }, [qrState, getCurrentContent]);
+  }, [qrState, destinationUrl]);
 
   // Debounce the regeneration
   const [debouncedQrState] = useDebounce(qrState, 100);
 
   useEffect(() => {
     regenerateQRCode();
-  }, [
-    debouncedQrState,
-    enteredContent,
-    selectedLink,
-    isStandalone,
-    regenerateQRCode,
-  ]);
+  }, [debouncedQrState, destinationUrl, regenerateQRCode]);
 
   const handleSaveQRCode = async () => {
     posthog.capture("qr_code_created");
 
-    let finalContent = "";
-    let wasShortened = false;
-    let finalTitle = qrCodeTitle;
-
-    if (isStandalone) {
-      if (!enteredContent) {
-        toast.error("Please enter content for the QR Code");
-        return;
-      }
-      finalContent = enteredContent;
-      wasShortened = false;
-      finalTitle = finalTitle || "Standalone QR Code";
-    } else {
-      if (!selectedLink) {
-        toast.error("Please select a link");
-        return;
-      }
-      finalContent = `https://${selectedLink.domain}/${selectedLink.alias}`;
-      wasShortened = true;
-      finalTitle = finalTitle || selectedLink.alias;
+    if (!destinationUrl) {
+      toast.error("Please enter a destination URL");
+      return;
     }
+
+    const finalTitle = qrCodeTitle || "QR Code";
 
     const finalCanvas = document.createElement("canvas");
     await generateQRCode(finalCanvas, {
       ...qrState,
-      text: finalContent,
+      text: destinationUrl,
       scale: 20,
     });
 
     const url = finalCanvas.toDataURL("image/png", 1.0);
 
     const qrCodeData = {
-      wasShortened,
       title: finalTitle,
-      content: finalContent,
+      content: destinationUrl,
       patternStyle: qrState.pixelStyle as string,
       cornerStyle: qrState.markerShape as string,
       selectedColor: qrState.darkColor,
@@ -385,164 +313,20 @@ function QRCodeCreationPage() {
               />
             </div>
 
-            {/* Mode toggle */}
-            <div className="flex items-center justify-between rounded-lg border border-neutral-200 p-4">
-              <div className="space-y-0.5">
-                <Label
-                  htmlFor="standalone-mode"
-                  className="text-[13px] font-medium text-neutral-700"
-                >
-                  Standalone Mode
-                </Label>
-                <p className="text-[12px] text-neutral-400">
-                  Create without link tracking
-                </p>
-              </div>
-              <Switch
-                id="standalone-mode"
-                checked={isStandalone}
-                onCheckedChange={setIsStandalone}
+            <div className="space-y-1.5">
+              <Label className="text-[13px] font-medium text-neutral-700">
+                Destination URL
+              </Label>
+              <Input
+                placeholder="https://example.com"
+                value={destinationUrl}
+                onChange={(e) => setDestinationUrl(e.target.value)}
+                className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
               />
+              <p className="text-[12px] text-neutral-400">
+                The URL people will be redirected to when scanning the QR code
+              </p>
             </div>
-
-            {isStandalone && (
-              <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-                <IconInfoCircle
-                  size={16}
-                  stroke={1.5}
-                  className="mt-0.5 shrink-0 text-blue-500"
-                />
-                <div>
-                  <p className="text-[13px] font-medium text-blue-900">
-                    No Analytics
-                  </p>
-                  <p className="text-[12px] text-blue-700/80">
-                    Standalone QR codes encode content directly and won't track
-                    scans.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Link Selection */}
-            {!isStandalone && (
-              <div className="space-y-1.5">
-                <Label className="text-[13px] font-medium text-neutral-700">
-                  Linked URL
-                </Label>
-                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openCombobox}
-                      className="w-full h-9 justify-between border-neutral-200 bg-white text-[13px] font-normal"
-                    >
-                      {selectedLink ? (
-                        <span className="truncate">
-                          {selectedLink.domain}/{selectedLink.alias}
-                        </span>
-                      ) : (
-                        <span className="text-neutral-400">
-                          Select a link...
-                        </span>
-                      )}
-                      <IconSelector
-                        size={16}
-                        stroke={1.5}
-                        className="ml-2 shrink-0 text-neutral-400"
-                      />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-0" align="start">
-                    <Command shouldFilter={false}>
-                      <CommandInput
-                        placeholder="Search links..."
-                        value={search}
-                        onValueChange={setSearch}
-                      />
-                      <CommandList>
-                        {isLoadingLinks && (
-                          <div className="py-8 text-center">
-                            <IconLoader2
-                              size={16}
-                              stroke={1.5}
-                              className="mx-auto animate-spin text-neutral-400"
-                            />
-                            <p className="mt-2 text-[12px] text-neutral-400">
-                              Loading links...
-                            </p>
-                          </div>
-                        )}
-                        {!isLoadingLinks &&
-                          linksData?.links.length === 0 && (
-                            <CommandEmpty>No links found.</CommandEmpty>
-                          )}
-                        {!isLoadingLinks &&
-                          linksData?.links.map((link) => (
-                            <CommandItem
-                              key={link.id}
-                              value={String(link.id)}
-                              onSelect={() => {
-                                setSelectedLink({
-                                  id: link.id,
-                                  alias: link.alias!,
-                                  domain: link.domain,
-                                  url: link.url!,
-                                });
-                                setOpenCombobox(false);
-                              }}
-                              className="py-3"
-                            >
-                              <IconCheck
-                                size={14}
-                                stroke={2}
-                                className={cn(
-                                  "mr-3 text-blue-500",
-                                  selectedLink?.id === link.id
-                                    ? "opacity-100"
-                                    : "opacity-0",
-                                )}
-                              />
-                              <div className="flex flex-col gap-0.5 min-w-0">
-                                <span className="text-[13px] font-medium text-neutral-900">
-                                  {link.domain}/{link.alias}
-                                </span>
-                                <span className="text-[12px] text-neutral-400 truncate">
-                                  {link.url}
-                                </span>
-                              </div>
-                            </CommandItem>
-                          ))}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                {selectedLink && (
-                  <p className="text-[12px] text-neutral-400 truncate">
-                    Destination: {selectedLink.url}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Standalone Content */}
-            {isStandalone && (
-              <div className="space-y-1.5">
-                <Label className="text-[13px] font-medium text-neutral-700">
-                  Content
-                </Label>
-                <Input
-                  placeholder="Enter URL, text, or any content to encode"
-                  value={enteredContent}
-                  onChange={(e) => setEnteredContent(e.target.value)}
-                  className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
-                />
-                <p className="text-[12px] text-neutral-400">
-                  This content will be encoded directly into the QR code
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Design Section */}
@@ -793,11 +577,7 @@ function QRCodeCreationPage() {
 
             <div className="mt-4 w-full max-w-[280px]">
               <p className="text-center text-[12px] text-neutral-400 truncate">
-                {isStandalone
-                  ? enteredContent || "Enter content above"
-                  : selectedLink
-                    ? `${selectedLink.domain}/${selectedLink.alias}`
-                    : "Select a link above"}
+                {destinationUrl || "Enter a destination URL above"}
               </p>
             </div>
           </div>

@@ -5,9 +5,7 @@ import {
   IconClick,
   IconDownload,
   IconExternalLink,
-  IconLink,
   IconTrash,
-  IconTypography,
 } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 import { useState } from "react";
@@ -27,7 +25,6 @@ import {
 import { daysSinceDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
-import { UpdateLinkModal } from "../../_components/links/link-card/update-modal";
 import { revalidateRoute } from "../../revalidate-homepage";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -37,12 +34,7 @@ type QRCodeCardProps = {
   index: number;
 };
 
-function isALink(s: string): boolean {
-  return s.startsWith("http://") || s.startsWith("https://");
-}
-
 export function QRCodeCard({ qr, index }: QRCodeCardProps) {
-  const [openLinkUpdateModal, setOpenLinkUpdateModal] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const deleteQrMutation = api.qrCode.delete.useMutation({
     onSuccess: async () => {
@@ -51,9 +43,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
   });
 
   const daysSinceCreation = daysSinceDate(new Date(qr.createdAt!));
-  const scans =
-    isALink(qr.content) && qr.link ? qr.link.linkVisits.length : 0;
-  const hasLink = isALink(qr.content) && qr.link;
+  const scans = qr.visitCount ?? 0;
 
   const handleDownload = () => {
     const link = document.createElement("a");
@@ -114,13 +104,13 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
 
               <span className="text-neutral-300">&middot;</span>
 
-              {hasLink ? (
+              {qr.link ? (
                 <Link
-                  href={`/dashboard/analytics/${qr.link!.alias}?domain=${qr.link!.domain ?? "ishortn.ink"}`}
+                  href={`/dashboard/qrcodes/${qr.id}`}
                   className="inline-flex items-center gap-1 text-neutral-500 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline"
                 >
                   <span className="max-w-[200px] truncate sm:max-w-[300px]">
-                    {(qr.link!.domain ?? "ishortn.ink")}/{qr.link!.alias}
+                    {qr.link.url}
                   </span>
                   <IconExternalLink
                     size={12}
@@ -133,31 +123,18 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
                   {qr.content}
                 </span>
               )}
-
-              <span className="text-neutral-300">&middot;</span>
-
-              <span className="inline-flex items-center gap-1 text-neutral-400">
-                {hasLink ? (
-                  <IconLink size={12} stroke={1.5} />
-                ) : (
-                  <IconTypography size={12} stroke={1.5} />
-                )}
-                <span>{hasLink ? "Link" : "Text"}</span>
-              </span>
             </div>
           </div>
 
           {/* Right actions */}
           <div className="flex shrink-0 items-center gap-2">
-            {hasLink && (
-              <Link
-                href={`/dashboard/analytics/${qr.link!.alias}?domain=${qr.link!.domain ?? "ishortn.ink"}`}
-                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-              >
-                <IconClick size={14} stroke={1.5} />
-                <span className="font-medium">{scans}</span>
-              </Link>
-            )}
+            <Link
+              href={`/dashboard/qrcodes/${qr.id}`}
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+            >
+              <IconClick size={14} stroke={1.5} />
+              <span className="font-medium">{scans}</span>
+            </Link>
 
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
               <button
@@ -178,19 +155,6 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
           </div>
         </div>
       </div>
-
-      {qr.link && (
-        <UpdateLinkModal
-          open={openLinkUpdateModal}
-          setOpen={setOpenLinkUpdateModal}
-          link={{
-            ...qr.link,
-            totalClicks: 0,
-            tags: qr.link.tags ?? [],
-            folder: null,
-          }}
-        />
-      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
