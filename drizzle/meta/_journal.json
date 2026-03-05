@@ -337,6 +337,13 @@
       "when": 1769886285321,
       "tag": "0047_account_transfer_declined",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1772715564440,
+      "tag": "0048_skinny_starbolt",
+      "breakpoints": true
     }
   ]
 }

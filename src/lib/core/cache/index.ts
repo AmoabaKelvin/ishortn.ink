@@ -51,6 +51,10 @@ const linkSchema = z.object({
     .string()
     .transform((val) => val === "true")
     .default("false"),
+  isQrCode: z
+    .string()
+    .transform((val) => val === "true")
+    .default("false"),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
@@ -77,6 +81,7 @@ function convertToLink(data: Record<string, string>): Link {
     utmParams: parsed.utmParams ?? null,
     createdByUserId: parsed.createdByUserId ?? null,
     cloaking: parsed.cloaking ?? false,
+    isQrCode: parsed.isQrCode ?? false,
   };
 }
 
