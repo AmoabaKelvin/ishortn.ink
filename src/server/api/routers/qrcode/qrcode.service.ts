@@ -1,6 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 
-import { link, qrcode, qrPreset } from "@/server/db/schema";
+import { generateShortLink } from "@/lib/core/links";
+import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   workspaceFilter,
@@ -35,25 +36,23 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
     }
   }
 
-  let linkId: number | null = null;
-
-  if (input.wasShortened) {
-    const popedAlias = input.content.split("/").pop();
-    if (!popedAlias) throw new Error("Invalid alias");
-
-    const foundLink = await ctx.db.query.link.findFirst({
-      where: and(
-        eq(link.alias, popedAlias),
-        workspaceFilter(ctx.workspace, link.userId, link.teamId)
-      ),
-    });
-
-    if (!foundLink) throw new Error("Link not found");
-
-    linkId = foundLink.id;
-  }
-
   const ownership = workspaceOwnership(ctx.workspace);
+
+  // Create a hidden short link for tracking
+  const alias = await generateShortLink();
+  const hiddenLinkResult = await ctx.db.insert(link).values({
+    url: input.content,
+    alias,
+    domain: "ishortn.ink",
+    name: input.title || "QR Code",
+    isQrCode: true,
+    userId: ownership.userId ?? ctx.auth.userId,
+    teamId: ownership.teamId,
+    createdByUserId: ctx.auth.userId,
+  });
+
+  const hiddenLinkId = hiddenLinkResult[0].insertId;
+  const trackingUrl = `https://ishortn.ink/${alias}`;
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const insertionResult = await ctx.db.insert(qrcode).values({
@@ -61,12 +60,12 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
     teamId: ownership.teamId,
     title: input.title,
     color: input.selectedColor,
-    content: input.content,
+    content: trackingUrl,
     cornerStyle: input.cornerStyle,
     patternStyle: input.patternStyle,
     qrCode: input.qrCodeBase64,
-    linkId: linkId ?? 0,
-    contentType: input.wasShortened ? "link" : "text",
+    linkId: hiddenLinkId,
+    contentType: "link",
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   } as any);
 
@@ -96,33 +95,50 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
     }
   }
 
-  const insertedQrCode = await ctx.db.query.qrcode.findFirst({
-    where: (table, { eq }) => eq(table.id, insertedQrCodeId),
+  return input.qrCodeBase64;
+};
+
+export async function getQrCode(ctx: WorkspaceTRPCContext, id: number) {
+  const qrCode = await ctx.db.query.qrcode.findFirst({
+    where: and(
+      eq(qrcode.id, id),
+      workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId)
+    ),
+    with: {
+      link: true,
+    },
   });
 
-  // No longer incrementing personal qrCodeCount - we now count workspace QR codes directly
+  if (!qrCode) throw new Error("QR Code not found");
 
-  return insertedQrCode?.qrCode;
-};
+  return qrCode;
+}
 
 export async function retrieveUserQrCodes(ctx: WorkspaceTRPCContext) {
   const qrCodes = await ctx.db.query.qrcode.findMany({
     where: workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
     with: {
-      link: {
-        with: {
-          linkVisits: true,
-        },
-      },
+      link: true,
     },
   });
 
-  // biome-ignore lint/complexity/noForEach: <explanation>
-  qrCodes.forEach((qrCode) => {
-    return { ...qrCode, numberOfVisits: qrCode.link?.linkVisits.length ?? 0 };
-  });
+  // Get visit counts in a single aggregation query instead of loading all visit rows
+  const linkIds = qrCodes.map((qr) => qr.linkId).filter((id): id is number => id != null && id > 0);
+  const visitCounts =
+    linkIds.length > 0
+      ? await ctx.db
+          .select({ linkId: linkVisit.linkId, count: count() })
+          .from(linkVisit)
+          .where(inArray(linkVisit.linkId, linkIds))
+          .groupBy(linkVisit.linkId)
+      : [];
 
-  return qrCodes;
+  const countMap = new Map(visitCounts.map((v) => [v.linkId, v.count]));
+
+  return qrCodes.map((qr) => ({
+    ...qr,
+    visitCount: countMap.get(qr.linkId!) ?? 0,
+  }));
 }
 
 export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
@@ -144,7 +160,18 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
     }
   }
 
-  await ctx.db.delete(qrcode).where(eq(qrcode.id, id));
+  // Delete QR code and its associated hidden link atomically
+  await ctx.db.transaction(async (tx) => {
+    await tx.delete(qrcode).where(eq(qrcode.id, id));
+
+    if (qrCode.linkId && qrCode.linkId > 0) {
+      await Promise.all([
+        tx.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, qrCode.linkId)),
+        tx.delete(linkVisit).where(eq(linkVisit.linkId, qrCode.linkId)),
+      ]);
+      await tx.delete(link).where(eq(link.id, qrCode.linkId));
+    }
+  });
 
   return true;
 }

@@ -96,8 +96,8 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     }
   }
 
-  // Base query condition - use workspace filtering
-  let baseCondition = and(workspaceFilter(ctx.workspace, link.userId, link.teamId));
+  // Base query condition - use workspace filtering, exclude QR-backing links
+  let baseCondition = and(workspaceFilter(ctx.workspace, link.userId, link.teamId), eq(link.isQrCode, false));
 
   // Add tag filtering if needed
   if (tagName && tagName.trim() !== "" && linkIdsWithTag.length > 0) {
@@ -184,7 +184,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
       .select({ totalClicks: count(linkVisit.id) })
       .from(linkVisit)
       .innerJoin(link, eq(link.id, linkVisit.linkId))
-      .where(workspaceFilter(ctx.workspace, link.userId, link.teamId)),
+      .where(and(workspaceFilter(ctx.workspace, link.userId, link.teamId), eq(link.isQrCode, false))),
     linksQuery,
   ]);
 

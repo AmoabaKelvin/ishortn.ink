@@ -6,6 +6,9 @@ export const qrCodeRouter = createTRPCRouter({
   create: workspaceProcedure.input(inputs.qrcodeInput).mutation(async ({ ctx, input }) => {
     return services.createQrCode(ctx, input);
   }),
+  get: workspaceProcedure.input(inputs.qrcodeDeleteInput).query(async ({ ctx, input }) => {
+    return services.getQrCode(ctx, input.id);
+  }),
   list: workspaceProcedure.query(async ({ ctx }) => {
     return services.retrieveUserQrCodes(ctx);
   }),

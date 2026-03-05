@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const qrcodeInput = z.object({
-  wasShortened: z.boolean(),
   title: z.string().optional(),
   content: z.string(),
   patternStyle: z.string(),
