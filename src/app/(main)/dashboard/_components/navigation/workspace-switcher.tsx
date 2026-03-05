@@ -1,6 +1,12 @@
 "use client";
 
-import { Building2, Check, ChevronsUpDown, Plus, User } from "lucide-react";
+import {
+  IconBuilding,
+  IconCheck,
+  IconPlus,
+  IconSelector,
+  IconUser,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -10,7 +16,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 type Team = {
@@ -45,15 +50,16 @@ export function WorkspaceSwitcher({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleWorkspaceSwitch = (type: "personal" | "team", teamSlug?: string) => {
+  const handleWorkspaceSwitch = (
+    type: "personal" | "team",
+    teamSlug?: string,
+  ) => {
     setIsOpen(false);
     const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
 
     if (type === "personal") {
-      // Switch to personal workspace (main domain)
       window.location.href = `${window.location.protocol}//${baseDomain}/dashboard`;
     } else if (teamSlug) {
-      // Switch to team workspace (subdomain)
       window.location.href = `${window.location.protocol}//${teamSlug}.${baseDomain}/dashboard`;
     }
   };
@@ -68,74 +74,88 @@ export function WorkspaceSwitcher({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <button className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm hover:bg-gray-50 hover:border-gray-300 transition-all duration-150">
+        <button className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50">
           {isPersonal ? (
             <>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
-                <User size={16} className="text-blue-600" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-100">
+                <IconUser
+                  size={14}
+                  stroke={1.5}
+                  className="text-neutral-600"
+                />
               </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-gray-900 truncate">
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-[13px] font-medium text-neutral-900">
                   Personal
                 </p>
-                <p className="text-xs text-gray-500 capitalize">
+                <p className="text-[11px] capitalize text-neutral-400">
                   {currentWorkspace.plan} plan
                 </p>
               </div>
             </>
           ) : (
             <>
-              <Avatar className="h-8 w-8 rounded-lg">
+              <Avatar className="h-7 w-7 rounded-md">
                 <AvatarImage
                   src={currentWorkspace.teamAvatar ?? undefined}
                   alt={currentWorkspace.teamName ?? "Team"}
                 />
-                <AvatarFallback className="rounded-lg bg-purple-100 text-purple-600 font-medium">
+                <AvatarFallback className="rounded-md bg-neutral-100 text-xs font-medium text-neutral-600">
                   {currentWorkspace.teamName?.[0]?.toUpperCase() ?? "T"}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-gray-900 truncate">
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-[13px] font-medium text-neutral-900">
                   {currentWorkspace.teamName}
                 </p>
-                <p className="text-xs text-gray-500 capitalize">
+                <p className="text-[11px] capitalize text-neutral-400">
                   {currentWorkspace.role}
                 </p>
               </div>
             </>
           )}
-          <ChevronsUpDown size={16} className="text-gray-400 shrink-0" />
+          <IconSelector
+            size={14}
+            stroke={1.5}
+            className="shrink-0 text-neutral-400"
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-64 p-1.5 rounded-xl border-gray-200"
+        className="w-60 p-1.5"
         align="start"
         side="bottom"
-        sideOffset={8}
+        sideOffset={4}
       >
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {/* Personal Workspace */}
           <button
             onClick={() => handleWorkspaceSwitch("personal")}
             className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
               isPersonal
-                ? "bg-blue-50 text-blue-700"
-                : "text-gray-700 hover:bg-gray-100"
+                ? "bg-neutral-100 text-neutral-900"
+                : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
             )}
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100">
-              <User size={14} className="text-blue-600" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-200/60">
+              <IconUser size={13} stroke={1.5} className="text-neutral-600" />
             </div>
             <span className="flex-1 text-left font-medium">Personal</span>
-            {isPersonal && <Check size={16} className="text-blue-600" />}
+            {isPersonal && (
+              <IconCheck
+                size={14}
+                stroke={2}
+                className="text-neutral-900"
+              />
+            )}
           </button>
 
-          {/* Teams Section */}
+          {/* Teams */}
           {teams.length > 0 && (
             <>
-              <Separator className="my-2" />
-              <p className="px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div className="my-1.5 h-px bg-neutral-100" />
+              <p className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
                 Teams
               </p>
               {teams.map((team) => {
@@ -148,56 +168,66 @@ export function WorkspaceSwitcher({
                     key={team.id}
                     onClick={() => handleWorkspaceSwitch("team", team.slug)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
                       isSelected
-                        ? "bg-purple-50 text-purple-700"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-neutral-100 text-neutral-900"
+                        : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
                     )}
                   >
-                    <Avatar className="h-7 w-7 rounded-lg">
+                    <Avatar className="h-6 w-6 rounded-md">
                       <AvatarImage
                         src={team.avatarUrl ?? undefined}
                         alt={team.name}
                       />
-                      <AvatarFallback className="rounded-lg bg-purple-100 text-purple-600 text-xs font-medium">
+                      <AvatarFallback className="rounded-md bg-neutral-200/60 text-[10px] font-medium text-neutral-600">
                         {team.name[0]?.toUpperCase() ?? "T"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="flex-1 text-left font-medium truncate">
+                    <span className="flex-1 truncate text-left font-medium">
                       {team.name}
                     </span>
-                    {isSelected && <Check size={16} className="text-purple-600" />}
+                    {isSelected && (
+                      <IconCheck
+                        size={14}
+                        stroke={2}
+                        className="text-neutral-900"
+                      />
+                    )}
                   </button>
                 );
               })}
             </>
           )}
 
-          {/* Create Team Option */}
+          {/* Create Team */}
           {canCreateTeam && (
             <>
-              <Separator className="my-2" />
+              <div className="my-1.5 h-px bg-neutral-100" />
               <button
                 onClick={handleCreateTeam}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-gray-300">
-                  <Plus size={14} className="text-gray-500" />
+                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-dashed border-neutral-300">
+                  <IconPlus
+                    size={12}
+                    stroke={1.5}
+                    className="text-neutral-500"
+                  />
                 </div>
-                <span className="flex-1 text-left font-medium">Create Team</span>
+                <span className="flex-1 text-left font-medium">
+                  Create Team
+                </span>
               </button>
             </>
           )}
 
-          {/* Upgrade prompt for non-Ultra users */}
+          {/* Upgrade prompt */}
           {!canCreateTeam && teams.length === 0 && (
             <>
-              <Separator className="my-2" />
-              <div className="px-3 py-2 text-xs text-gray-500">
-                <p className="flex items-center gap-2">
-                  <Building2 size={14} />
-                  <span>Upgrade to Ultra to create teams</span>
-                </p>
+              <div className="my-1.5 h-px bg-neutral-100" />
+              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-neutral-400">
+                <IconBuilding size={13} stroke={1.5} />
+                <span>Upgrade to Ultra to create teams</span>
               </div>
             </>
           )}

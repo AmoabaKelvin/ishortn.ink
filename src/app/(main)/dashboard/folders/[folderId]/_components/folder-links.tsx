@@ -1,6 +1,7 @@
 "use client";
 
-import { Link as LinkIcon } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { IconLink } from "@tabler/icons-react";
 
 import Link from "@/app/(main)/dashboard/_components/links/link-card/card";
 import { SelectionProvider } from "@/app/(main)/dashboard/_components/links/selection-context";
@@ -15,15 +16,15 @@ type FolderLinksProps = {
 export function FolderLinks({ links, folderId }: FolderLinksProps) {
   if (links.length === 0) {
     return (
-      <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-dashed bg-slate-50/50 p-8 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-          <LinkIcon className="h-8 w-8 text-gray-400" />
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
+          <IconLink size={20} stroke={1.5} className="text-neutral-400" />
         </div>
-        <h3 className="mt-4 text-lg font-semibold text-gray-900">
-          No links in this folder yet
-        </h3>
-        <p className="mt-2 text-sm text-gray-500">
-          Move links to this folder from your dashboard to organize them.
+        <p className="mt-4 text-[14px] font-medium text-neutral-900">
+          No links in this folder
+        </p>
+        <p className="mt-1 text-[13px] text-neutral-400">
+          Move links here from your dashboard to organize them.
         </p>
       </div>
     );
@@ -31,12 +32,21 @@ export function FolderLinks({ links, folderId }: FolderLinksProps) {
 
   return (
     <SelectionProvider>
-      <div className="space-y-4">
-        {links.map((link) => (
-          <Link key={link.id} link={link} />
-        ))}
+      <div className="divide-y divide-neutral-300/60">
+        <AnimatePresence>
+          {links.map((link, index) => (
+            <motion.div
+              key={link.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2, delay: index * 0.03 }}
+            >
+              <Link link={link} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </SelectionProvider>
   );
 }
-

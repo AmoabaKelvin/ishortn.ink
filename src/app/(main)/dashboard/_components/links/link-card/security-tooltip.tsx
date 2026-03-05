@@ -1,4 +1,4 @@
-import { ShieldBan, ShieldCheckIcon } from "lucide-react";
+import { IconShield, IconShieldCheck } from "@tabler/icons-react";
 
 import {
   Tooltip,
@@ -21,9 +21,9 @@ export const LinkPasswordStatusTooltip = ({
       <Tooltip>
         <TooltipTrigger asChild>
           {link.passwordHash ? (
-            <ShieldCheckIcon className="mr-2 size-4" />
+            <IconShieldCheck size={16} stroke={1.5} className="mr-2" />
           ) : (
-            <ShieldBan className="mr-2 size-4" />
+            <IconShield size={16} stroke={1.5} className="mr-2" />
           )}
         </TooltipTrigger>
         <TooltipContent>

@@ -1,17 +1,8 @@
 "use client";
 
+import { IconLoader2 } from "@tabler/icons-react";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogBody,
@@ -22,7 +13,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { api } from "@/trpc/react";
 
 export function AccountTransferSection() {
@@ -79,46 +69,43 @@ export function AccountTransferSection() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Transfer Account</CardTitle>
-          <CardDescription>
-            Move all your links, domains, QR codes, and other resources to
-            another iShortn account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <div className="rounded-xl border border-neutral-200 p-5">
+        <div className="space-y-5">
           {/* Pending Transfer */}
           {pendingTransfer && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
-              <p className="font-medium text-amber-900 dark:text-amber-200">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="text-[13px] font-medium text-amber-800">
                 Transfer pending
               </p>
-              <p className="mt-1 text-sm text-amber-800 dark:text-amber-300/80">
+              <p className="mt-1 text-[12px] text-amber-700/80">
                 Waiting for <strong>{pendingTransfer.targetEmail}</strong> to
                 accept. Expires{" "}
                 {new Date(pendingTransfer.expiresAt).toLocaleDateString()}.
               </p>
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
                 onClick={handleCancel}
                 disabled={cancelMutation.isLoading}
-                className="mt-3"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-[12px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
               >
                 {cancelMutation.isLoading && (
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  <IconLoader2 size={13} stroke={1.5} className="animate-spin" />
                 )}
                 Cancel Transfer
-              </Button>
+              </button>
             </div>
           )}
 
           {/* Transfer Form */}
           {!pendingTransfer && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="targetEmail">Recipient email</Label>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="targetEmail"
+                  className="text-[13px] font-medium text-neutral-700"
+                >
+                  Recipient email
+                </label>
                 <div className="flex gap-2">
                   <Input
                     id="targetEmail"
@@ -127,115 +114,124 @@ export function AccountTransferSection() {
                     value={targetEmail}
                     onChange={(e) => setTargetEmail(e.target.value)}
                     disabled={isLoading}
-                    className="flex-1"
+                    className="h-9 flex-1 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                   />
-                  <Button
+                  <button
+                    type="button"
                     onClick={handleValidate}
                     disabled={!targetEmail || isLoading}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                   >
                     {validateMutation.isLoading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <IconLoader2 size={14} stroke={1.5} className="animate-spin" />
                     )}
                     Continue
-                  </Button>
+                  </button>
                 </div>
               </div>
 
               {/* Validation Errors */}
               {validationResult && !validationResult.isValid && (
-                <Alert variant="destructive">
-                  <AlertDescription>
-                    {validationResult.errors.map(
-                      (error: any, index: number) => (
-                        <p key={index} className="text-sm">
-                          {error.message}
-                          {error.resourceType &&
-                            ` (${error.currentCount}/${error.limit} ${error.resourceType})`}
-                        </p>
-                      )
-                    )}
-                  </AlertDescription>
-                </Alert>
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                  {validationResult.errors.map(
+                    (error: any, index: number) => (
+                      <p key={index} className="text-[12px] text-red-700">
+                        {error.message}
+                        {error.resourceType &&
+                          ` (${error.currentCount}/${error.limit} ${error.resourceType})`}
+                      </p>
+                    )
+                  )}
+                </div>
               )}
             </div>
           )}
 
           {/* Info */}
-          <div className="space-y-3 text-sm text-muted-foreground">
+          <div className="space-y-2 text-[12px] text-neutral-400">
             <p>
-              <strong className="text-foreground">Transferred:</strong> Links,
+              <strong className="text-neutral-600">Transferred:</strong> Links,
               custom domains, QR codes, UTM templates, folders, tags, and
               analytics data.
             </p>
             <p>
-              <strong className="text-foreground">Not transferred:</strong> API
+              <strong className="text-neutral-600">Not transferred:</strong> API
               tokens, subscription, and team memberships.
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="max-w-md rounded-xl border-neutral-200">
           <DialogHeader>
-            <DialogTitle>Confirm Transfer</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[14px] font-semibold text-neutral-900">
+              Confirm Transfer
+            </DialogTitle>
+            <DialogDescription className="text-[12px] text-neutral-400">
               You&apos;re about to transfer your resources to{" "}
-              <span className="font-medium text-foreground">{targetEmail}</span>
+              <span className="font-medium text-neutral-700">{targetEmail}</span>
             </DialogDescription>
           </DialogHeader>
 
           {validationResult && (
-            <DialogBody className="space-y-4">
-              <div className="rounded-lg border border-border bg-muted/30 p-4">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                  <span className="text-muted-foreground">Links</span>
-                  <span className="text-right font-medium tabular-nums">
+            <DialogBody className="space-y-3">
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12px]">
+                  <span className="text-neutral-400">Links</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700">
                     {validationResult.resourceCounts.links}
                   </span>
-                  <span className="text-muted-foreground">Domains</span>
-                  <span className="text-right font-medium tabular-nums">
+                  <span className="text-neutral-400">Domains</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700">
                     {validationResult.resourceCounts.customDomains}
                   </span>
-                  <span className="text-muted-foreground">QR Codes</span>
-                  <span className="text-right font-medium tabular-nums">
+                  <span className="text-neutral-400">QR Codes</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700">
                     {validationResult.resourceCounts.qrCodes}
                   </span>
-                  <span className="text-muted-foreground">Folders</span>
-                  <span className="text-right font-medium tabular-nums">
+                  <span className="text-neutral-400">Folders</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700">
                     {validationResult.resourceCounts.folders}
                   </span>
-                  <span className="text-muted-foreground">Tags</span>
-                  <span className="text-right font-medium tabular-nums">
+                  <span className="text-neutral-400">Tags</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700">
                     {validationResult.resourceCounts.tags}
                   </span>
                 </div>
               </div>
 
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[11px] text-neutral-400">
                 This action cannot be undone once accepted.
               </p>
             </DialogBody>
           )}
 
           <DialogFooter>
-            <Button
+            <button
               type="button"
-              variant="ghost"
               onClick={() => setShowConfirmDialog(false)}
               disabled={initiateMutation.isLoading}
-              className="h-9"
+              className="rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
             >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={handleInitiate}
               disabled={initiateMutation.isLoading}
-              className="h-9"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
-              {initiateMutation.isLoading ? "Sending..." : "Send Request"}
-            </Button>
+              {initiateMutation.isLoading ? (
+                <>
+                  <IconLoader2 size={14} stroke={1.5} className="animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send Request"
+              )}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

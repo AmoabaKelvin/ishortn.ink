@@ -14,8 +14,8 @@ export function LinkPreviewComponent({
   favicon: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-white p-5">
-      <div className="flex items-center font-semibold">
+    <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-5">
+      <div className="flex items-center text-[14px] font-semibold text-neutral-900">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={favicon || DEFAULT_FAVICON}
@@ -27,8 +27,8 @@ export function LinkPreviewComponent({
         />
         {metaTitle}
       </div>
-      <span className="text-sm">{metaDescription}</span>
-      <span className="text-sm text-slate-500">
+      <span className="text-[13px] text-neutral-600">{metaDescription}</span>
+      <span className="text-[12px] text-neutral-400">
         {destinationURL?.replace(/(^\w+:|^)\/\//, "").split("/")[0] || "ishortn.ink"}
       </span>
       {metaImage && (

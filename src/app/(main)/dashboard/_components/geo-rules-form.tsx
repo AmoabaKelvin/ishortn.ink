@@ -2,16 +2,16 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Check,
-  ChevronDown,
-  ChevronsUpDown,
-  Gem,
-  Globe,
-  MapPin,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+  IconCheck,
+  IconChevronDown,
+  IconDiamond,
+  IconMapPin,
+  IconPlus,
+  IconSelector,
+  IconTrash,
+  IconWorld,
+  IconX,
+} from "@tabler/icons-react";
 import { useCallback, useRef, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
@@ -130,14 +130,14 @@ function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between h-auto min-h-9 px-3 py-2",
-            disabled && "opacity-50 cursor-not-allowed"
+            "h-auto min-h-9 w-full justify-between border-neutral-200 bg-white px-3 py-2 text-[13px]",
+            disabled && "cursor-not-allowed opacity-50"
           )}
           disabled={disabled}
         >
-          <div className="flex flex-wrap gap-1.5 flex-1">
+          <div className="flex flex-1 flex-wrap gap-1.5">
             {selected.length === 0 ? (
-              <span className="text-gray-500 font-normal">{placeholder}</span>
+              <span className="font-normal text-neutral-400">{placeholder}</span>
             ) : (
               selectedLabels.map((label, i) => (
                 <motion.span
@@ -146,22 +146,22 @@ function MultiSelect({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.15 }}
-                  className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-100"
+                  className="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-[12px] font-medium text-neutral-600"
                 >
                   {label}
                   <button
                     type="button"
                     onClick={(e) => handleRemove(selected[i]!, e)}
-                    className="text-blue-500 hover:text-blue-700 transition-colors"
+                    className="text-neutral-400 transition-colors hover:text-neutral-600"
                     aria-label={`Remove ${label}`}
                   >
-                    <X className="h-3 w-3" />
+                    <IconX size={12} stroke={1.5} />
                   </button>
                 </motion.span>
               ))
             )}
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <IconSelector size={14} stroke={1.5} className="ml-2 shrink-0 text-neutral-400" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
@@ -182,7 +182,7 @@ function MultiSelect({
                       "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border transition-colors",
                       selected.includes(option.value)
                         ? "border-blue-600 bg-blue-600 text-white"
-                        : "border-gray-300"
+                        : "border-neutral-300"
                     )}
                   >
                     <AnimatePresence>
@@ -193,13 +193,13 @@ function MultiSelect({
                           exit={{ opacity: 0, scale: 0 }}
                           transition={{ duration: 0.1 }}
                         >
-                          <Check className="h-3 w-3" />
+                          <IconCheck size={12} stroke={2} />
                         </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
-                  <span className="text-sm">{option.label}</span>
-                  <span className="ml-auto text-xs text-gray-400">
+                  <span className="text-[13px]">{option.label}</span>
+                  <span className="ml-auto text-[11px] text-neutral-400">
                     {option.value}
                   </span>
                 </CommandItem>
@@ -233,10 +233,10 @@ function GeoRuleItem({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10, height: 0 }}
       transition={{ duration: 0.2 }}
-      className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/50 p-4"
+      className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50/50 p-4"
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
+        <span className="text-[13px] font-medium text-neutral-600">
           Rule {index + 1}
         </span>
         <Button
@@ -245,15 +245,15 @@ function GeoRuleItem({
           size="sm"
           onClick={onRemove}
           disabled={disabled}
-          className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+          className="h-8 w-8 p-0 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500"
         >
-          <Trash2 className="h-4 w-4" />
+          <IconTrash size={14} stroke={1.5} />
         </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600">Type</label>
+          <label className="text-[11px] font-medium text-neutral-500">Type</label>
           <Select
             value={rule.type}
             onValueChange={(value: "country" | "continent") =>
@@ -261,19 +261,19 @@ function GeoRuleItem({
             }
             disabled={disabled}
           >
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="country">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-gray-500" />
+                  <IconMapPin size={14} stroke={1.5} className="text-neutral-400" />
                   Country
                 </div>
               </SelectItem>
               <SelectItem value="continent">
                 <div className="flex items-center gap-2">
-                  <Globe className="h-3.5 w-3.5 text-gray-500" />
+                  <IconWorld size={14} stroke={1.5} className="text-neutral-400" />
                   Continent
                 </div>
               </SelectItem>
@@ -282,7 +282,7 @@ function GeoRuleItem({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600">Condition</label>
+          <label className="text-[11px] font-medium text-neutral-500">Condition</label>
           <Select
             value={rule.condition}
             onValueChange={(value: "in" | "not_in") =>
@@ -290,7 +290,7 @@ function GeoRuleItem({
             }
             disabled={disabled}
           >
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -302,7 +302,7 @@ function GeoRuleItem({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-gray-600">
+        <label className="text-[11px] font-medium text-neutral-500">
           {rule.type === "country" ? "Countries" : "Continents"}
         </label>
         <MultiSelect
@@ -315,7 +315,7 @@ function GeoRuleItem({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-gray-600">Action</label>
+        <label className="text-[11px] font-medium text-neutral-500">Action</label>
         <Select
           value={rule.action}
           onValueChange={(value: "redirect" | "block") =>
@@ -323,7 +323,7 @@ function GeoRuleItem({
           }
           disabled={disabled}
         >
-          <SelectTrigger className="h-9">
+          <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -343,7 +343,7 @@ function GeoRuleItem({
             transition={{ duration: 0.2 }}
             className="space-y-1.5"
           >
-            <label className="text-xs font-medium text-gray-600">
+            <label className="text-[11px] font-medium text-neutral-500">
               Redirect URL
             </label>
             <Input
@@ -353,7 +353,7 @@ function GeoRuleItem({
               }
               placeholder="https://example.com/alternative"
               disabled={disabled}
-              className="h-9"
+              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
             />
           </motion.div>
         ) : (
@@ -365,7 +365,7 @@ function GeoRuleItem({
             transition={{ duration: 0.2 }}
             className="space-y-1.5"
           >
-            <label className="text-xs font-medium text-gray-600">
+            <label className="text-[11px] font-medium text-neutral-500">
               Block message (optional)
             </label>
             <Input
@@ -375,7 +375,7 @@ function GeoRuleItem({
               }
               placeholder="This content is not available in your region."
               disabled={disabled}
-              className="h-9"
+              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
             />
           </motion.div>
         )}
@@ -427,44 +427,46 @@ export function GeoRulesForm({
   const showLimitBadge = !isUnlimited && maxRules !== undefined;
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
+    <div className="rounded-lg border border-neutral-200 p-4">
       <button
         type="button"
         className="flex w-full items-center justify-between text-left"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <div className="flex flex-col">
-          <p className="flex items-center gap-2 text-lg font-semibold">
+        <div className="flex flex-col gap-0.5">
+          <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900">
             Geotargeting Rules
             {disabled && (
-              <span className="flex max-w-fit items-center space-x-1 whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800">
-                <Gem className="h-4 w-4 text-slate-500" />
-                <span className="uppercase">Pro</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500">
+                <IconDiamond size={12} stroke={1.5} className="text-neutral-400" />
+                Pro
               </span>
             )}
             {geoRules.length > 0 && (
               <motion.span
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+                className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600"
               >
                 {geoRules.length} {geoRules.length === 1 ? "rule" : "rules"}
               </motion.span>
             )}
           </p>
-          <span className="text-sm text-gray-500">
+          <span className="text-[12px] text-neutral-400">
             Redirect or block visitors based on their location
           </span>
         </div>
         <div className="flex items-center gap-2">
           {showLimitBadge && !disabled && (
-            <span className="text-xs text-gray-400">
+            <span className="text-[11px] text-neutral-400">
               {geoRules.length}/{maxRules}
             </span>
           )}
-          <ChevronDown
+          <IconChevronDown
+            size={16}
+            stroke={1.5}
             className={cn(
-              "h-5 w-5 transform transition-transform duration-200",
+              "shrink-0 text-neutral-400 transition-transform duration-200",
               isOpen && "rotate-180"
             )}
           />
@@ -482,12 +484,12 @@ export function GeoRulesForm({
           >
             <div className="mt-4 space-y-3">
               {disabled ? (
-                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
-                  <Globe className="mx-auto h-8 w-8 text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-600">
+                <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center">
+                  <IconWorld size={28} stroke={1.5} className="mx-auto text-neutral-300" />
+                  <p className="mt-2 text-[13px] text-neutral-600">
                     Upgrade to Pro to use geotargeting rules
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-[12px] text-neutral-400">
                     Redirect visitors to different URLs or block access based on
                     their country or continent.
                   </p>
@@ -512,13 +514,13 @@ export function GeoRulesForm({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center"
+                      className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center"
                     >
-                      <Globe className="mx-auto h-8 w-8 text-gray-400" />
-                      <p className="mt-2 text-sm text-gray-600">
+                      <IconWorld size={28} stroke={1.5} className="mx-auto text-neutral-300" />
+                      <p className="mt-2 text-[13px] text-neutral-600">
                         No geotargeting rules yet
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-[12px] text-neutral-400">
                         Add rules to redirect or block visitors based on their
                         location.
                       </p>
@@ -532,16 +534,16 @@ export function GeoRulesForm({
                     onClick={addRule}
                     disabled={!canAddMore}
                     className={cn(
-                      "w-full gap-2 transition-all",
+                      "w-full gap-2 border-neutral-200 text-[13px] transition-all",
                       canAddMore
                         ? "hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                         : "opacity-50"
                     )}
                   >
-                    <Plus className="h-4 w-4" />
+                    <IconPlus size={14} stroke={1.5} />
                     Add Rule
                     {!canAddMore && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-[11px] text-neutral-400">
                         (limit reached)
                       </span>
                     )}

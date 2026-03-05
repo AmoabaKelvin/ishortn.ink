@@ -1,8 +1,7 @@
 "use client";
 
-import { X } from "lucide-react";
+import { IconX } from "@tabler/icons-react";
 
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -90,22 +89,18 @@ export function QRAdvancedCustomization({
   setLogoBorderRadius,
 }: QRAdvancedCustomizationProps) {
   return (
-    <div className="space-y-8">
-      {/* Shape Section */}
-      <div className="space-y-5">
-        <div className="flex items-center gap-2">
-          <div className="h-1 w-1 rounded-full bg-blue-500" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Shape</span>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label className="text-xs text-gray-600">Pixel Style</Label>
+    <div className="space-y-6">
+      {/* Shape */}
+      <div className="space-y-3">
+        <p className="text-[13px] font-medium text-neutral-700">Shape</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label className="text-[12px] text-neutral-400">Pixel Style</Label>
             <Select
               value={pixelStyle}
               onValueChange={(value) => setPixelStyle(value as QRPixelStyle)}
             >
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
                 <SelectValue placeholder="Select style" />
               </SelectTrigger>
               <SelectContent>
@@ -118,13 +113,13 @@ export function QRAdvancedCustomization({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs text-gray-600">Marker Shape</Label>
+          <div className="space-y-1.5">
+            <Label className="text-[12px] text-neutral-400">Marker Shape</Label>
             <Select
               value={markerShape}
               onValueChange={(value) => setMarkerShape(value as QRMarkerShape)}
             >
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
                 <SelectValue placeholder="Select shape" />
               </SelectTrigger>
               <SelectContent>
@@ -137,13 +132,13 @@ export function QRAdvancedCustomization({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs text-gray-600">Inner Shape</Label>
+          <div className="space-y-1.5">
+            <Label className="text-[12px] text-neutral-400">Inner Shape</Label>
             <Select
               value={markerInnerShape}
               onValueChange={(value) => setMarkerInnerShape(value as QRMarkerInnerShape)}
             >
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
                 <SelectValue placeholder="Select inner" />
               </SelectTrigger>
               <SelectContent>
@@ -158,13 +153,9 @@ export function QRAdvancedCustomization({
         </div>
       </div>
 
-      {/* Colors Section */}
-      <div className="space-y-5">
-        <div className="flex items-center gap-2">
-          <div className="h-1 w-1 rounded-full bg-blue-500" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Colors</span>
-        </div>
-
+      {/* Colors */}
+      <div className="space-y-3">
+        <p className="text-[13px] font-medium text-neutral-700">Colors</p>
         <div className="space-y-4">
           <ColorSwatch
             label="QR Code Color"
@@ -183,21 +174,17 @@ export function QRAdvancedCustomization({
         </div>
       </div>
 
-      {/* Effects Section */}
-      <div className="space-y-5">
-        <div className="flex items-center gap-2">
-          <div className="h-1 w-1 rounded-full bg-blue-500" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Effects</span>
-        </div>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs text-gray-600">Effect Type</Label>
+      {/* Effects */}
+      <div className="space-y-3">
+        <p className="text-[13px] font-medium text-neutral-700">Effects</p>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-[12px] text-neutral-400">Effect Type</Label>
             <Select
               value={effect}
               onValueChange={(value) => setEffect(value as QREffect)}
             >
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
                 <SelectValue placeholder="Select effect" />
               </SelectTrigger>
               <SelectContent>
@@ -211,10 +198,10 @@ export function QRAdvancedCustomization({
           </div>
 
           {effect !== "none" && (
-            <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+            <div className="space-y-2.5 rounded-lg border border-neutral-200 p-3">
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600">Effect Intensity</Label>
-                <span className="text-xs font-medium text-gray-900">{effectRadius}</span>
+                <Label className="text-[12px] text-neutral-400">Effect Intensity</Label>
+                <span className="text-[12px] tabular-nums font-medium text-neutral-900">{effectRadius}</span>
               </div>
               <Slider
                 value={[effectRadius]}
@@ -226,12 +213,12 @@ export function QRAdvancedCustomization({
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
+          <div className="flex items-center justify-between rounded-lg border border-neutral-200 p-3">
             <div className="space-y-0.5">
-              <Label htmlFor="margin-noise" className="text-sm font-medium text-gray-900">
+              <Label htmlFor="margin-noise" className="text-[13px] font-medium text-neutral-700">
                 Margin Noise
               </Label>
-              <p className="text-xs text-gray-500">
+              <p className="text-[12px] text-neutral-400">
                 Add decorative dots around the QR code
               </p>
             </div>
@@ -243,10 +230,10 @@ export function QRAdvancedCustomization({
           </div>
 
           {marginNoise && (
-            <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+            <div className="space-y-2.5 rounded-lg border border-neutral-200 p-3">
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600">Noise Density</Label>
-                <span className="text-xs font-medium text-gray-900">{Math.round(marginNoiseRate * 100)}%</span>
+                <Label className="text-[12px] text-neutral-400">Noise Density</Label>
+                <span className="text-[12px] tabular-nums font-medium text-neutral-900">{Math.round(marginNoiseRate * 100)}%</span>
               </div>
               <Slider
                 value={[marginNoiseRate]}
@@ -260,36 +247,32 @@ export function QRAdvancedCustomization({
         </div>
       </div>
 
-      {/* Logo Section */}
-      <div className="space-y-5">
-        <div className="flex items-center gap-2">
-          <div className="h-1 w-1 rounded-full bg-blue-500" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Logo</span>
-        </div>
-
-        <div className="space-y-4">
+      {/* Logo */}
+      <div className="space-y-3">
+        <p className="text-[13px] font-medium text-neutral-700">Logo</p>
+        <div className="space-y-3">
           {logoImage ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={logoImage}
                   alt="Logo preview"
-                  className="h-20 w-20 rounded-lg object-cover border border-gray-200"
+                  className="h-16 w-16 rounded-lg object-cover border border-neutral-200"
                 />
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute -right-2 -top-2 h-6 w-6 rounded-full"
+                <button
+                  type="button"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white transition-colors hover:bg-red-600"
                   onClick={() => setLogoImage(undefined)}
                 >
-                  <X className="h-3 w-3" />
-                </Button>
+                  <IconX size={10} stroke={2} />
+                </button>
               </div>
 
-              <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+              <div className="space-y-2.5 rounded-lg border border-neutral-200 p-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-gray-600">Logo Size</Label>
-                  <span className="text-xs font-medium text-gray-900">{logoSize}%</span>
+                  <Label className="text-[12px] text-neutral-400">Logo Size</Label>
+                  <span className="text-[12px] tabular-nums font-medium text-neutral-900">{logoSize}%</span>
                 </div>
                 <Slider
                   value={[logoSize]}
@@ -300,10 +283,10 @@ export function QRAdvancedCustomization({
                 />
               </div>
 
-              <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+              <div className="space-y-2.5 rounded-lg border border-neutral-200 p-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-gray-600">Logo Padding</Label>
-                  <span className="text-xs font-medium text-gray-900">{logoMargin}px</span>
+                  <Label className="text-[12px] text-neutral-400">Logo Padding</Label>
+                  <span className="text-[12px] tabular-nums font-medium text-neutral-900">{logoMargin}px</span>
                 </div>
                 <Slider
                   value={[logoMargin]}
@@ -314,10 +297,10 @@ export function QRAdvancedCustomization({
                 />
               </div>
 
-              <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+              <div className="space-y-2.5 rounded-lg border border-neutral-200 p-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-gray-600">Corner Radius</Label>
-                  <span className="text-xs font-medium text-gray-900">{logoBorderRadius}%</span>
+                  <Label className="text-[12px] text-neutral-400">Corner Radius</Label>
+                  <span className="text-[12px] tabular-nums font-medium text-neutral-900">{logoBorderRadius}%</span>
                 </div>
                 <Slider
                   value={[logoBorderRadius]}

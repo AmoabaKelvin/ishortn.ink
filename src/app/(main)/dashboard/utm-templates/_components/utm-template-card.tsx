@@ -1,6 +1,7 @@
 "use client";
 
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -14,30 +15,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Card } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { api } from "@/trpc/react";
 
 import type { UtmTemplate } from "@/server/db/schema";
 
 type UtmTemplateCardProps = {
   template: UtmTemplate;
+  index: number;
   onEdit: (template: UtmTemplate) => void;
 };
 
-export function UtmTemplateCard({ template, onEdit }: UtmTemplateCardProps) {
+export function UtmTemplateCard({
+  template,
+  index,
+  onEdit,
+}: UtmTemplateCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const utils = api.useUtils();
 
   const deleteMutation = api.utmTemplate.delete.useMutation({
     onSuccess: () => {
       setDeleteDialogOpen(false);
-      toast.success("Template deleted successfully");
+      toast.success("Template deleted");
       utils.utmTemplate.list.invalidate();
     },
     onError: (error) => {
@@ -56,68 +55,76 @@ export function UtmTemplateCard({ template, onEdit }: UtmTemplateCardProps) {
 
   return (
     <>
-      <Card className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-900 truncate">
-              {template.name}
-            </h3>
-            <div className="mt-2 space-y-1">
-              {utmParams.length > 0 ? (
-                utmParams.map((param) => (
-                  <div
-                    key={param.label}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <span className="text-gray-500 w-20 shrink-0">
-                      {param.label}:
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -12 }}
+        transition={{ duration: 0.2, delay: index * 0.04 }}
+      >
+        <div className="group px-1 py-4">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <span className="truncate text-[14px] font-medium text-neutral-900">
+                {template.name}
+              </span>
+              <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+                {utmParams.length > 0 ? (
+                  utmParams.map((param, i) => (
+                    <span
+                      key={param.label}
+                      className="inline-flex items-center gap-x-1.5"
+                    >
+                      {i > 0 && (
+                        <span className="text-neutral-300">&middot;</span>
+                      )}
+                      <span className="text-neutral-400">{param.label}:</span>
+                      <span className="text-neutral-500">{param.value}</span>
                     </span>
-                    <span className="text-gray-700 truncate">{param.value}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500">No parameters set</p>
-              )}
+                  ))
+                ) : (
+                  <span className="text-neutral-400">No parameters set</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                type="button"
+                onClick={() => onEdit(template)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+              >
+                <IconPencil size={14} stroke={1.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(true)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                <IconTrash size={14} stroke={1.5} />
+              </button>
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="p-1 hover:bg-gray-100 rounded"
-              aria-label={`Open options for ${template.name}`}
-            >
-              <MoreVertical className="h-4 w-4 text-gray-500" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(template)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-red-600"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
-      </Card>
+      </motion.div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-[14px]">
+              Delete template
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12px]">
               Are you sure you want to delete &quot;{template.name}&quot;? This
               action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-9 text-[13px]">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteMutation.mutate({ id: template.id })}
-              className="bg-red-600 hover:bg-red-700"
+              className="h-9 bg-red-600 text-[13px] hover:bg-red-700"
             >
               Delete
             </AlertDialogAction>

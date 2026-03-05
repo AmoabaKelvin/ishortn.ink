@@ -1,22 +1,22 @@
 "use client";
 
-import { Lock, Pencil, Settings2, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import {
+  IconClick,
+  IconLock,
+  IconPencil,
+  IconSettings,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useTransitionRouter } from "next-view-transitions";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { daysSinceDate } from "@/lib/utils";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
 type FolderCardProps = {
   folder: RouterOutputs["folder"]["list"][number];
+  index: number;
   onEdit: (folder: RouterOutputs["folder"]["list"][number]) => void;
   onDelete: (folder: RouterOutputs["folder"]["list"][number]) => void;
   onSettings?: (folder: RouterOutputs["folder"]["list"][number]) => void;
@@ -25,6 +25,7 @@ type FolderCardProps = {
 
 export function FolderCard({
   folder,
+  index,
   onEdit,
   onDelete,
   onSettings,
@@ -36,101 +37,108 @@ export function FolderCard({
     router.push(`/dashboard/folders/${folder.id}`);
   };
 
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit(folder);
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete(folder);
-  };
-
-  const handleSettingsClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSettings?.(folder);
-  };
-
   const daysSinceFolderCreation = daysSinceDate(folder.createdAt ?? new Date());
-
-  // Check if folder has restrictions (only populated for admins/owners)
   const hasRestrictions = folder.hasRestrictions ?? false;
 
   return (
-    <TooltipProvider>
-      <Card
-        className="flex flex-col rounded-md px-6 py-4 cursor-pointer"
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.2, delay: index * 0.04 }}
+    >
+      <div
+        className="group relative cursor-pointer px-1 py-4 transition-colors"
         onClick={handleCardClick}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <div className="flex cursor-pointer items-center text-blue-600 hover:underline">
-                <span className="font-semibold">{folder.name}</span>
-              </div>
+        <div className="flex items-center gap-3">
+          {/* Content */}
+          <div className="min-w-0 flex-1">
+            {/* Title row */}
+            <div className="flex items-center gap-2">
+              <span className="truncate text-[14px] font-medium text-neutral-900 transition-colors group-hover:text-neutral-600">
+                {folder.name}
+              </span>
               {hasRestrictions && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 border border-amber-200">
-                      <Lock className="h-3 w-3" />
-                      <span>Restricted</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Only specific team members can access this folder</p>
-                  </TooltipContent>
-                </Tooltip>
+                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+                  <IconLock size={10} stroke={2} />
+                  Restricted
+                </span>
               )}
             </div>
-            <p className="text-sm text-gray-500 flex items-center gap-1 flex-wrap">
-              <span>
+
+            {/* Metadata row */}
+            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+              <span className="text-neutral-400">
                 {daysSinceFolderCreation === 0
                   ? "Today"
                   : `${daysSinceFolderCreation}d`}
               </span>
-              <span className="text-slate-300">•</span>
-              <span>
+              <span className="text-neutral-300">&middot;</span>
+              <span className="text-neutral-500">
                 {folder.linkCount} {folder.linkCount === 1 ? "link" : "links"}
               </span>
-            </p>
+              {folder.description && (
+                <>
+                  <span className="text-neutral-300">&middot;</span>
+                  <span className="max-w-[250px] truncate text-neutral-400">
+                    {folder.description}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {showSettingsButton && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={handleSettingsClick}
-                    className="h-8 w-8"
-                  >
-                    <Settings2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Manage folder access</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={handleEditClick}
-              className="h-8 w-8"
+
+          {/* Right actions */}
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/dashboard/folders/${folder.id}`);
+              }}
             >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={handleDeleteClick}
-              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+              <IconClick size={14} stroke={1.5} />
+              <span className="font-medium">{folder.linkCount}</span>
+            </button>
+
+            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              {showSettingsButton && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSettings?.(folder);
+                  }}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                >
+                  <IconSettings size={14} stroke={1.5} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(folder);
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+              >
+                <IconPencil size={14} stroke={1.5} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(folder);
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                <IconTrash size={14} stroke={1.5} />
+              </button>
+            </div>
           </div>
         </div>
-      </Card>
-    </TooltipProvider>
+      </div>
+    </motion.div>
   );
 }

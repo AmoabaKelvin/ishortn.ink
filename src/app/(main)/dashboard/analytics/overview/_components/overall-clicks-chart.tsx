@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Bar,
   BarChart as RechartsBarChart,
@@ -9,7 +10,6 @@ import {
 
 import { Card } from "@/components/ui/card";
 import {
-  ChartConfig,
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
@@ -17,16 +17,31 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
+import type { ChartConfig } from "@/components/ui/chart";
+
 const chartConfig = {
   clicks: {
     label: "Clicks",
-    color: "#3b82f6",
+    color: "#2563eb",
   },
   uniqueClicks: {
     label: "Unique Clicks",
-    color: "#10b981",
+    color: "#93c5fd",
   },
 } satisfies ChartConfig;
+
+/**
+ * Formats a "YYYY-MM-DD" date string as UTC to prevent timezone shifts.
+ */
+function formatDate(dateString: string): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const utcDate = new Date(Date.UTC(year!, month! - 1, day!));
+  return utcDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
 
 type OverallClicksChartProps = {
   clicksPerDate: Record<string, number>;
@@ -37,43 +52,75 @@ export function OverallClicksChart({
   clicksPerDate,
   uniqueClicksPerDate,
 }: OverallClicksChartProps) {
-  const chartData = Object.entries(clicksPerDate).map(([date, clicks]) => ({
-    date,
-    clicks,
-    uniqueClicks: uniqueClicksPerDate[date] ?? 0,
-  }));
+  const chartData = useMemo(
+    () =>
+      Object.entries(clicksPerDate).map(([date, clicks]) => ({
+        date,
+        clicks,
+        uniqueClicks: uniqueClicksPerDate[date] ?? 0,
+      })),
+    [clicksPerDate, uniqueClicksPerDate]
+  );
+
+  const paddedChartData = useMemo(() => {
+    if (chartData.length === 1 && chartData[0]) {
+      return [
+        {
+          date: new Date(new Date(chartData[0].date).getTime() - 86400000)
+            .toISOString()
+            .split("T")[0],
+          clicks: 0,
+          uniqueClicks: 0,
+        },
+        ...chartData,
+      ];
+    }
+    return chartData;
+  }, [chartData]);
 
   return (
-    <Card className="py-16">
-      <ChartContainer
-        config={chartConfig}
-        className="w-full h-96 md:h-full md:min-h-96"
-      >
-        <RechartsBarChart accessibilityLayer data={chartData}>
-          <CartesianGrid vertical={false} />
-          <XAxis
-            dataKey="date"
-            tickLine={false}
-            tickMargin={10}
-            axisLine={false}
-            tickFormatter={(date: string) => {
-              return new Date(date).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              });
-            }}
-          />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          <ChartLegend content={<ChartLegendContent />} />
-          <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
-          <Bar
-            dataKey="uniqueClicks"
-            fill="var(--color-uniqueClicks)"
-            radius={4}
-          />
-        </RechartsBarChart>
-      </ChartContainer>
+    <Card className="overflow-hidden rounded-xl border-neutral-200 shadow-none">
+      <div className="border-b border-neutral-100 px-5 pb-4 pt-5">
+        <div className="space-y-0.5">
+          <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900">
+            Click Analytics
+          </h2>
+          <p className="text-[12px] text-neutral-400">
+            Aggregated click performance across all your links
+          </p>
+        </div>
+      </div>
+
+      <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
+        <ChartContainer
+          config={chartConfig}
+          className="aspect-auto h-72 w-full"
+        >
+          <RechartsBarChart data={paddedChartData}>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="date"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              minTickGap={32}
+              tickFormatter={formatDate}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(value) => formatDate(String(value))}
+                  indicator="dashed"
+                />
+              }
+            />
+            <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
+            <Bar dataKey="uniqueClicks" fill="var(--color-uniqueClicks)" radius={4} />
+            <ChartLegend content={<ChartLegendContent />} />
+          </RechartsBarChart>
+        </ChartContainer>
+      </div>
     </Card>
   );
 }
-

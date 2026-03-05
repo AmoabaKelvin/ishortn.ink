@@ -1,11 +1,15 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Copy, Eye, Folder, MousePointerClick } from "lucide-react";
+import {
+  IconCheck,
+  IconCopy,
+  IconEye,
+  IconFolder,
+  IconClick,
+} from "@tabler/icons-react";
 import { useTransitionRouter } from "next-view-transitions";
 
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { cn, copyToClipboard, daysSinceDate } from "@/lib/utils";
 
 import { useSelection } from "../selection-context";
@@ -41,226 +45,202 @@ const Link = ({ link, onTagClick }: LinkProps) => {
   };
 
   return (
-    <motion.div
-      layout
-      initial={false}
-      animate={{
-        scale: selected ? 0.995 : 1,
-      }}
-      transition={{ duration: 0.15, ease: "easeOut" }}
+    <div
+      className={cn(
+        "group relative px-1 py-4 transition-colors",
+        isSelectionMode && "cursor-pointer",
+        selected && "bg-neutral-50",
+      )}
+      onClick={handleCardClick}
     >
-      <Card
-        className={cn(
-          "group relative flex flex-col rounded-xl border px-5 py-4 transition-all duration-200",
-          // Default state
-          "bg-white border-gray-100 hover:border-gray-200",
-          // Selection mode states
-          isSelectionMode && "cursor-pointer",
-          isSelectionMode && !selected && "hover:bg-gray-50/50",
-          // Selected state - subtle and refined
-          selected &&
-            "bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border-blue-200/60 shadow-sm shadow-blue-100/50",
-        )}
-        onClick={handleCardClick}
-      >
-        {/* Selection Indicator - Left edge accent */}
-        <AnimatePresence>
-          {selected && (
-            <motion.div
-              initial={{ scaleY: 0, opacity: 0 }}
-              animate={{ scaleY: 1, opacity: 1 }}
-              exit={{ scaleY: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="absolute left-0 top-3 bottom-3 w-1 bg-blue-500 rounded-r-full origin-center"
-            />
+      <div className="flex items-center gap-3">
+        {/* Checkbox */}
+        <div
+          className={cn(
+            "flex shrink-0 items-center transition-all duration-150",
+            isSelectionMode
+              ? "w-5 opacity-100"
+              : "w-0 overflow-hidden opacity-0 group-hover:w-5 group-hover:opacity-100",
           )}
-        </AnimatePresence>
-
-        <div className="flex items-center justify-between w-full">
-          {/* Checkbox - Shows on hover or in selection mode */}
-          <div
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSelection(link.id);
+            }}
             className={cn(
-              "flex items-center transition-all duration-200",
-              isSelectionMode
-                ? "w-8 mr-2"
-                : "w-0 mr-0 overflow-hidden opacity-0 group-hover:w-8 group-hover:mr-2 group-hover:opacity-100",
+              "flex h-[18px] w-[18px] items-center justify-center rounded border-[1.5px] transition-colors",
+              selected
+                ? "border-blue-600 bg-blue-600"
+                : "border-neutral-300 bg-white hover:border-neutral-400",
             )}
           >
-            <motion.button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleSelection(link.id);
-              }}
-              className={cn(
-                "flex h-5 w-5 items-center justify-center rounded-md border-2 transition-all duration-150",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:ring-offset-1",
-                selected
-                  ? "border-blue-500 bg-blue-500"
-                  : "border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50",
+            <AnimatePresence mode="wait">
+              {selected && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.1 }}
+                >
+                  <IconCheck size={11} stroke={3} className="text-white" />
+                </motion.div>
               )}
-              whileTap={{ scale: 0.9 }}
-            >
-              <AnimatePresence mode="wait">
-                {selected && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ duration: 0.1 }}
-                  >
-                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          </div>
+            </AnimatePresence>
+          </button>
+        </div>
 
-          {/* Main content */}
-          <div className="flex-1 flex flex-col gap-2 min-w-0">
-            <div className="flex items-center gap-2">
-              <div
-                className="flex cursor-pointer items-center text-gray-900 font-medium hover:text-blue-600 transition-colors truncate"
-                onClick={(e) => {
-                  if (!isSelectionMode) {
-                    e.stopPropagation();
-                    router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`);
-                  }
-                }}
-              >
-                {link.name !== "Untitled Link" && link.name ? (
-                  <span className="truncate">{link.name}</span>
-                ) : (
-                  <span className="truncate">
-                    {link.domain}/{link.alias}
-                  </span>
-                )}
-              </div>
-              <motion.button
-                type="button"
-                className="flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-lg bg-gray-100/80 hover:bg-gray-200/80 transition-colors"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await copyToClipboard(`https://${link.domain}/${link.alias}`);
-                }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Copy className="h-3.5 w-3.5 text-gray-500" />
-              </motion.button>
-            </div>
-            <p className="text-sm text-gray-500 flex items-center gap-1.5 flex-wrap">
-              <span className="text-gray-400">
-                {daysSinceLinkCreation === 0 ? "Today" : `${daysSinceLinkCreation}d`}
-              </span>
-              <span className="text-gray-300">·</span>
-              <span
-                className="cursor-pointer text-gray-600 hover:text-gray-900 hover:underline underline-offset-2 truncate max-w-[200px] sm:max-w-[300px]"
-                onClick={(e) => {
-                  if (!isSelectionMode) {
-                    e.stopPropagation();
-                    window.open(link.url ?? "", "_blank");
-                  }
-                }}
-              >
-                {link.url && link.url.length > 50 ? `${link.url.substring(0, 50)}...` : link.url}
-              </span>
-              {folderInfo && (
-                <>
-                  <span className="text-gray-300">·</span>
-                  <Badge
-                    variant="outline"
-                    className="cursor-pointer rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors"
-                    onClick={(e) => {
-                      if (!isSelectionMode) {
-                        e.stopPropagation();
-                        router.push(`/dashboard/folders/${folderInfo.id}`);
-                      }
-                    }}
-                  >
-                    <Folder className="h-3.5 w-3.5 mr-1.5 text-amber-500" />
-                    <span className="text-gray-700 font-medium text-xs">{folderInfo.name}</span>
-                  </Badge>
-                </>
-              )}
-              {tags.length > 0 && (
-                <>
-                  <span className="text-gray-300">·</span>
-                  <span className="inline-flex gap-1 flex-wrap">
-                    {tags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant="outline"
-                        className="cursor-pointer rounded-md bg-gray-50 hover:bg-gray-100 text-xs py-0 h-5 border-gray-200 text-gray-600"
-                        onClick={(e) => {
-                          if (!isSelectionMode) {
-                            e.stopPropagation();
-                            onTagClick && onTagClick(tag);
-                          }
-                        }}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </span>
-                </>
-              )}
-              {createdBy && (
-                <>
-                  <span className="text-gray-300">·</span>
-                  <span className="inline-flex items-center gap-1.5 text-gray-500">
-                    {createdBy.imageUrl ? (
-                      <img
-                        src={createdBy.imageUrl}
-                        alt={createdBy.name ?? "User"}
-                        className="h-4 w-4 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600">
-                        {(createdBy.name ?? "U").charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-500 max-w-[100px] truncate">
-                      {createdBy.name ?? "Unknown"}
-                    </span>
-                  </span>
-                </>
-              )}
-            </p>
-          </div>
-
-          {/* Right side actions */}
-          <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-            {link.note && <LinkNoteTooltip note={link.note} />}
-            {link.cloaking && (
-              <Badge
-                variant="outline"
-                className="rounded-lg py-1.5 px-2.5 bg-violet-50 border-violet-200 cursor-default font-normal"
-                title="Link cloaking enabled - URL stays in address bar"
-              >
-                <Eye className="h-3.5 w-3.5 mr-1.5 text-violet-500" />
-                <span className="text-violet-700 font-medium text-xs">Cloaked</span>
-              </Badge>
-            )}
-            <Badge
-              variant="outline"
-              className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 cursor-pointer font-normal hover:bg-gray-100 transition-colors"
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          {/* Title row */}
+          <div className="flex items-center gap-2">
+            <span
+              className="cursor-pointer truncate text-[14px] font-medium text-neutral-900 transition-colors hover:text-neutral-600"
               onClick={(e) => {
                 if (!isSelectionMode) {
                   e.stopPropagation();
-                  router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`);
+                  router.push(
+                    `/dashboard/analytics/${link.alias}?domain=${link.domain}`,
+                  );
                 }
               }}
             >
-              <MousePointerClick className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-              <span className="text-gray-700 font-medium">{link.totalClicks}</span>
-              <span className="ml-1 text-gray-400 hidden md:inline text-xs">clicks</span>
-            </Badge>
-            {!isSelectionMode && <LinkActions link={link} />}
+              {link.name !== "Untitled Link" && link.name
+                ? link.name
+                : `${link.domain}/${link.alias}`}
+            </span>
+            <button
+              type="button"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await copyToClipboard(`https://${link.domain}/${link.alias}`);
+              }}
+            >
+              <IconCopy size={14} stroke={1.5} />
+            </button>
+          </div>
+
+          {/* Metadata row */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+            <span className="text-neutral-400">
+              {daysSinceLinkCreation === 0
+                ? "Today"
+                : `${daysSinceLinkCreation}d`}
+            </span>
+            <span className="text-neutral-300">&middot;</span>
+            <span
+              className="max-w-[200px] cursor-pointer truncate text-neutral-500 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline sm:max-w-[300px]"
+              onClick={(e) => {
+                if (!isSelectionMode) {
+                  e.stopPropagation();
+                  window.open(link.url ?? "", "_blank");
+                }
+              }}
+            >
+              {link.url && link.url.length > 50
+                ? `${link.url.substring(0, 50)}...`
+                : link.url}
+            </span>
+
+            {folderInfo && (
+              <>
+                <span className="text-neutral-300">&middot;</span>
+                <button
+                  className="inline-flex items-center gap-1 rounded-md text-neutral-500 transition-colors hover:text-neutral-900"
+                  onClick={(e) => {
+                    if (!isSelectionMode) {
+                      e.stopPropagation();
+                      router.push(`/dashboard/folders/${folderInfo.id}`);
+                    }
+                  }}
+                >
+                  <IconFolder size={12} stroke={1.5} />
+                  <span>{folderInfo.name}</span>
+                </button>
+              </>
+            )}
+
+            {tags.length > 0 && (
+              <>
+                <span className="text-neutral-300">&middot;</span>
+                <span className="inline-flex flex-wrap gap-1">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag}
+                      className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700"
+                      onClick={(e) => {
+                        if (!isSelectionMode) {
+                          e.stopPropagation();
+                          onTagClick?.(tag);
+                        }
+                      }}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </span>
+              </>
+            )}
+
+            {createdBy && (
+              <>
+                <span className="text-neutral-300">&middot;</span>
+                <span className="inline-flex items-center gap-1 text-neutral-400">
+                  {createdBy.imageUrl ? (
+                    <img
+                      src={createdBy.imageUrl}
+                      alt={createdBy.name ?? "User"}
+                      className="h-3.5 w-3.5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-neutral-200 text-[9px] font-medium text-neutral-600">
+                      {(createdBy.name ?? "U").charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="max-w-[80px] truncate text-[11px]">
+                    {createdBy.name ?? "Unknown"}
+                  </span>
+                </span>
+              </>
+            )}
           </div>
         </div>
-      </Card>
-    </motion.div>
+
+        {/* Right actions */}
+        <div className="flex shrink-0 items-center gap-2">
+          {link.note && <LinkNoteTooltip note={link.note} />}
+
+          {link.cloaking && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md border border-neutral-200 px-2 py-1 text-[11px] font-medium text-neutral-500"
+              title="Link cloaking enabled"
+            >
+              <IconEye size={12} stroke={1.5} />
+              Cloaked
+            </span>
+          )}
+
+          <button
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+            onClick={(e) => {
+              if (!isSelectionMode) {
+                e.stopPropagation();
+                router.push(
+                  `/dashboard/analytics/${link.alias}?domain=${link.domain}`,
+                );
+              }
+            }}
+          >
+            <IconClick size={14} stroke={1.5} />
+            <span className="font-medium">{link.totalClicks}</span>
+          </button>
+
+          {!isSelectionMode && <LinkActions link={link} />}
+        </div>
+      </div>
+    </div>
   );
 };
 export default Link;

@@ -20,6 +20,7 @@ export function DestinationUrlsCard({
       description="Click distribution by destination URLs"
       items={items}
       totalClicks={totalClicks}
+      color="orange"
     />
   );
 }

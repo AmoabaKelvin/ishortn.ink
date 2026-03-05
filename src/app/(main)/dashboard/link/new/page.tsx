@@ -3,7 +3,14 @@
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ChevronUp, Gem, Loader2, Sparkles, X } from "lucide-react";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconDiamond,
+  IconLoader2,
+  IconSparkles,
+  IconX,
+} from "@tabler/icons-react";
 import dynamic from "next/dynamic";
 import { useTransitionRouter } from "next-view-transitions";
 import { useEffect, useState } from "react";
@@ -31,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
@@ -58,6 +66,70 @@ type MetaData = {
   image: string;
   favicon: string;
 };
+
+function SectionToggle({
+  title,
+  description,
+  isOpen,
+  onToggle,
+  badge,
+  children,
+}: {
+  title: string;
+  description: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-neutral-200 p-4">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between text-left"
+        onClick={onToggle}
+      >
+        <div className="flex flex-col gap-0.5">
+          <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900">
+            {title}
+            {badge}
+          </p>
+          <span className="text-[12px] text-neutral-400">{description}</span>
+        </div>
+        <IconChevronDown
+          size={16}
+          stroke={1.5}
+          className={cn(
+            "shrink-0 text-neutral-400 transition-transform duration-200",
+            isOpen && "rotate-180"
+          )}
+        />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-4 space-y-4">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function PlanBadge({ plan }: { plan: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500">
+      <IconDiamond size={12} stroke={1.5} className="text-neutral-400" />
+      {plan}
+    </span>
+  );
+}
 
 export default function CreateLinkPage() {
   const router = useTransitionRouter();
@@ -391,25 +463,29 @@ export default function CreateLinkPage() {
     };
   }, [cloakingEnabled, debouncedUrl, form]);
 
+  const isProUser = userSubscription?.data?.subscriptions?.status === "active";
+  const isUltraUser = userSubscription?.data?.subscriptions?.plan === "ultra";
+
   return (
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       <div className="md:col-span-5">
-        <h2 className="text-2xl font-semibold text-gray-900">Create a new link</h2>
-        <p className="mt-1 text-sm text-gray-500">Create a new link to share with your audience.</p>
+        <h2 className="text-xl font-semibold tracking-tight text-neutral-900">Create a new link</h2>
+        <p className="mt-1 text-[13px] text-neutral-400">Create a new link to share with your audience.</p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="mt-5 space-y-5">
-            <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+            <div className="space-y-4 rounded-lg border border-neutral-200 p-4">
               <FormField
                 control={form.control}
                 name="url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">
                       Destination URL <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="https://site.com"
+                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                         {...field}
                         onChange={(e) => {
                           setDestinationURL(e.target.value);
@@ -426,11 +502,15 @@ export default function CreateLinkPage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Link Name</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Link Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="My Awesome Link" {...field} />
+                      <Input
+                        placeholder="My Awesome Link"
+                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        {...field}
+                      />
                     </FormControl>
-                    <FormDescription>
+                    <FormDescription className="text-[12px] text-neutral-400">
                       A friendly name to identify your link (optional)
                     </FormDescription>
                     <FormMessage />
@@ -442,15 +522,15 @@ export default function CreateLinkPage() {
                 name="alias"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Link Alias</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Link Alias</FormLabel>
                     <FormControl>
-                      <div className="flex h-9 w-full items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 hover:border-gray-300">
+                      <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
                         <Select
                           onValueChange={(value) => {
                             form.setValue("domain", value);
                           }}
                         >
-                          <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-600 shadow-none ring-0 hover:text-gray-900 focus:ring-0">
+                          <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:text-neutral-700 focus:ring-0">
                             <SelectValue placeholder="ishortn.ink" />
                           </SelectTrigger>
                           <SelectContent>
@@ -465,44 +545,44 @@ export default function CreateLinkPage() {
                             </SelectGroup>
                           </SelectContent>
                         </Select>
-                        <div className="h-4 w-px bg-gray-200" />
+                        <div className="h-4 w-px bg-neutral-200" />
                         <input
                           placeholder="short-link"
-                          className="h-full flex-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                          className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
                           {...field}
                         />
-                        <div className="flex h-full items-center border-l border-gray-200 px-2">
+                        <div className="flex h-full items-center border-l border-neutral-200 px-2">
                           {generateAliasMutation.isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                            <IconLoader2 size={16} stroke={1.5} className="animate-spin text-neutral-400" />
                           ) : generatedAliases.length > 0 ? (
                             <div className="flex items-center gap-0.5">
                               <button
                                 type="button"
                                 onClick={() => cycleAlias("up")}
                                 aria-label="Previous alias suggestion"
-                                className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                                className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
                               >
-                                <ChevronUp className="h-4 w-4" />
+                                <IconChevronUp size={14} stroke={1.5} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => cycleAlias("down")}
                                 aria-label="Next alias suggestion"
-                                className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                                className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
                               >
-                                <ChevronDown className="h-4 w-4" />
+                                <IconChevronDown size={14} stroke={1.5} />
                               </button>
                             </div>
-                          ) : userSubscription?.data?.subscriptions?.status !== "active" ? (
+                          ) : !isProUser ? (
                             <UpgradeToProAIButtonTooltip />
                           ) : (
                             <button
                               type="button"
                               onClick={handleRegenerateClick}
                               aria-label="Generate alias suggestions"
-                              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                              className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
                             >
-                              <Sparkles className="h-4 w-4" />
+                              <IconSparkles size={16} stroke={1.5} />
                             </button>
                           )}
                         </div>
@@ -516,12 +596,12 @@ export default function CreateLinkPage() {
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.3 }}
                         >
-                          <FormDescription className="flex justify-between">
+                          <FormDescription className="flex justify-between text-[12px] text-neutral-400">
                             <motion.span key={currentAliasIndex}>
                               Suggestion {currentAliasIndex + 1} of {generatedAliases.length}
                             </motion.span>
                             <motion.span
-                              className="cursor-pointer"
+                              className="cursor-pointer text-neutral-500 hover:text-neutral-700"
                               onClick={handleRegenerateClick}
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
@@ -537,44 +617,48 @@ export default function CreateLinkPage() {
                 )}
               />
 
-              {/* form field for note */}
+              {/* Note */}
               <FormField
                 control={form.control}
                 name="note"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Note</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Note</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        {...field}
+                      />
                     </FormControl>
-                    <FormDescription>Add a note to your link</FormDescription>
+                    <FormDescription className="text-[12px] text-neutral-400">Add a note to your link</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
+              {/* Tags */}
               <FormField
                 control={form.control}
                 name="tags"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Tags</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Tags</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <div className="flex flex-wrap gap-2 mb-2">
+                        <div className="mb-2 flex flex-wrap gap-2">
                           {tags.map((tag) => (
                             <div
                               key={tag}
-                              className="flex items-center gap-1 px-2 py-1 text-sm bg-gray-100 rounded-md"
+                              className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1 text-[12px] text-neutral-600"
                             >
                               <span>{tag}</span>
                               <button
                                 type="button"
                                 onClick={() => removeTag(tag)}
                                 aria-label={`Remove tag ${tag}`}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="text-neutral-400 hover:text-neutral-600"
                               >
-                                <X size={14} />
+                                <IconX size={12} stroke={1.5} />
                               </button>
                             </div>
                           ))}
@@ -582,6 +666,7 @@ export default function CreateLinkPage() {
                         <div className="relative">
                           <Input
                             placeholder="Add tags (press Enter to add)"
+                            className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                             value={tagInput}
                             onChange={(e) => {
                               setTagInput(e.target.value);
@@ -598,11 +683,11 @@ export default function CreateLinkPage() {
 
                           {/* Tag dropdown */}
                           {showTagDropdown && filteredTags.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                            <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-neutral-200 bg-white shadow-md">
                               {filteredTags.map((tag) => (
                                 <div
                                   key={tag}
-                                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                  className="cursor-pointer px-4 py-2 text-[13px] hover:bg-neutral-50"
                                   onMouseDown={(e) => {
                                     e.preventDefault(); // Prevent input blur
                                     addTag(tag);
@@ -616,7 +701,7 @@ export default function CreateLinkPage() {
                         </div>
                       </div>
                     </FormControl>
-                    <FormDescription>
+                    <FormDescription className="text-[12px] text-neutral-400">
                       Add tags to categorize your links. Press Enter to add a tag or select from
                       existing tags.
                     </FormDescription>
@@ -625,399 +710,278 @@ export default function CreateLinkPage() {
                 )}
               />
             </div>
+
             {/* Custom Metadata Section */}
-            <div className="rounded-lg border border-gray-200 p-4">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between text-left"
-                onClick={() => setIsCustomMetadataOpen(!isCustomMetadataOpen)}
-              >
-                <div className="flex flex-col">
-                  <p className="flex items-center gap-2 text-lg font-semibold">
-                    Custom Social Media Previews
-                    {userSubscription?.data?.subscriptions?.status !== "active" && (
-                      <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
-                        <span className="flex items-center space-x-1">
-                          <Gem className="h-4 w-4 text-slate-500" />
-                          <p className="uppercase">Pro</p>
-                        </span>
-                      </span>
-                    )}
-                  </p>
-                  <span className="text-sm text-gray-500">
-                    Personalize your link previews with custom metadata settings.
-                  </span>
-                </div>
-                <ChevronDown
-                  className={`h-5 w-5 transform transition-transform ${
-                    isCustomMetadataOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <AnimatePresence>
-                {isCustomMetadataOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="mt-4 space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="metadata.title"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Custom Title</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="Custom title for your link"
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  setMetaData((prev) => ({
-                                    ...prev,
-                                    title: e.target.value,
-                                  }));
-                                }}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
+            <SectionToggle
+              title="Custom Social Media Previews"
+              description="Personalize your link previews with custom metadata settings"
+              isOpen={isCustomMetadataOpen}
+              onToggle={() => setIsCustomMetadataOpen(!isCustomMetadataOpen)}
+              badge={!isProUser ? <PlanBadge plan="Pro" /> : undefined}
+            >
+              <FormField
+                control={form.control}
+                name="metadata.title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Title</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Custom title for your link"
+                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setMetaData((prev) => ({
+                            ...prev,
+                            title: e.target.value,
+                          }));
+                        }}
                       />
-                      <FormField
-                        control={form.control}
-                        name="metadata.description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Custom Description</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="Custom description for your link"
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  setMetaData((prev) => ({
-                                    ...prev,
-                                    description: e.target.value,
-                                  }));
-                                }}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="metadata.image"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Custom Image</FormLabel>
-                            <FormControl>
-                              <OgImageUploader
-                                value={field.value}
-                                onChange={(image) => {
-                                  field.onChange(image);
-                                  setMetaData((prev) => ({
-                                    ...prev,
-                                    image: image || "",
-                                  }));
-                                }}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </motion.div>
+                    </FormControl>
+                  </FormItem>
                 )}
-              </AnimatePresence>
-            </div>
+              />
+              <FormField
+                control={form.control}
+                name="metadata.description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Description</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Custom description for your link"
+                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setMetaData((prev) => ({
+                            ...prev,
+                            description: e.target.value,
+                          }));
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="metadata.image"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Image</FormLabel>
+                    <FormControl>
+                      <OgImageUploader
+                        value={field.value}
+                        onChange={(image) => {
+                          field.onChange(image);
+                          setMetaData((prev) => ({
+                            ...prev,
+                            image: image || "",
+                          }));
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </SectionToggle>
 
             {/* UTM Parameters Section */}
-            <div className="rounded-lg border border-gray-200 p-4">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between text-left"
-                onClick={() => setIsUtmParamsOpen(!isUtmParamsOpen)}
-              >
-                <div className="flex flex-col">
-                  <p className="flex items-center gap-2 text-lg font-semibold">
-                    UTM Parameters
-                    {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
-                      <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
-                        <span className="flex items-center space-x-1">
-                          <Gem className="h-4 w-4 text-slate-500" />
-                          <p className="uppercase">Ultra</p>
-                        </span>
-                      </span>
-                    )}
-                  </p>
-                  <span className="text-sm text-gray-500">
-                    Add UTM parameters for campaign tracking
-                  </span>
+            <SectionToggle
+              title="UTM Parameters"
+              description="Add UTM parameters for campaign tracking"
+              isOpen={isUtmParamsOpen}
+              onToggle={() => setIsUtmParamsOpen(!isUtmParamsOpen)}
+              badge={!isUltraUser ? <PlanBadge plan="Ultra" /> : undefined}
+            >
+              {isUltraUser && (
+                <div className="flex justify-end">
+                  <UtmTemplateSelector
+                    onSelect={(params) => {
+                      form.setValue("utmParams.utm_source", params.utm_source ?? "");
+                      form.setValue("utmParams.utm_medium", params.utm_medium ?? "");
+                      form.setValue("utmParams.utm_campaign", params.utm_campaign ?? "");
+                      form.setValue("utmParams.utm_term", params.utm_term ?? "");
+                      form.setValue("utmParams.utm_content", params.utm_content ?? "");
+                    }}
+                  />
                 </div>
-                <ChevronDown
-                  className={`h-5 w-5 transform transition-transform ${
-                    isUtmParamsOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <AnimatePresence>
-                {isUtmParamsOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="mt-4 space-y-3">
-                      {userSubscription?.data?.subscriptions?.plan === "ultra" && (
-                        <div className="flex justify-end">
-                          <UtmTemplateSelector
-                            onSelect={(params) => {
-                              form.setValue("utmParams.utm_source", params.utm_source ?? "");
-                              form.setValue("utmParams.utm_medium", params.utm_medium ?? "");
-                              form.setValue("utmParams.utm_campaign", params.utm_campaign ?? "");
-                              form.setValue("utmParams.utm_term", params.utm_term ?? "");
-                              form.setValue("utmParams.utm_content", params.utm_content ?? "");
-                            }}
-                          />
-                        </div>
-                      )}
-                      <UtmParamsForm
-                        form={form}
-                        disabled={userSubscription?.data?.subscriptions?.plan !== "ultra"}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+              )}
+              <UtmParamsForm
+                form={form}
+                disabled={!isUltraUser}
+              />
+            </SectionToggle>
 
             {/* Link Cloaking Section */}
-            <div className="rounded-lg border border-gray-200 p-4">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between text-left"
-                onClick={() => setIsLinkCloakingOpen(!isLinkCloakingOpen)}
-              >
-                <div className="flex flex-col">
-                  <p className="flex items-center gap-2 text-lg font-semibold">
-                    Link Cloaking
-                    {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
-                      <span className="max-w-fit whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-px text-xs font-medium capitalize text-gray-800 transition-all hover:bg-gray-200">
-                        <span className="flex items-center space-x-1">
-                          <Gem className="h-4 w-4 text-slate-500" />
-                          <p className="uppercase">Ultra</p>
-                        </span>
-                      </span>
-                    )}
-                  </p>
-                  <span className="text-sm text-gray-500">
-                    Keep your short URL visible in the browser while showing the destination content
-                  </span>
-                </div>
-                <ChevronDown
-                  className={`h-5 w-5 transform transition-transform ${
-                    isLinkCloakingOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <AnimatePresence>
-                {isLinkCloakingOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="mt-4 space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="cloaking"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Enable Link Cloaking</FormLabel>
-                              <FormDescription>
-                                Visitors will see your short URL in their browser address bar while
-                                viewing the destination page content.
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <div className="flex items-center gap-2">
-                                {isCheckingIframeable && (
-                                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                                )}
-                                <Switch
-                                  checked={field.value ?? false}
-                                  onCheckedChange={field.onChange}
-                                  disabled={
-                                    userSubscription?.data?.subscriptions?.plan !== "ultra" ||
-                                    !destinationURL ||
-                                    isCheckingIframeable
-                                  }
-                                />
-                              </div>
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
-                        <p className="text-sm text-gray-500">
-                          Link cloaking is an Ultra plan feature. Upgrade to unlock this and other
-                          advanced features.
-                        </p>
-                      )}
-
-                      {!destinationURL &&
-                        userSubscription?.data?.subscriptions?.plan === "ultra" && (
-                          <p className="text-sm text-gray-500">
-                            Enter a destination URL above to enable link cloaking.
-                          </p>
-                        )}
-
-                      {iframeableResult === true && cloakingEnabled && (
-                        <p className="text-sm text-green-600">
-                          This URL can be cloaked successfully.
-                        </p>
-                      )}
-
-                      {iframeableResult === false && (
-                        <p className="text-sm text-amber-600">
-                          This website doesn&apos;t allow cloaking. Try a different URL.
-                        </p>
-                      )}
+            <SectionToggle
+              title="Link Cloaking"
+              description="Keep your short URL visible while showing destination content"
+              isOpen={isLinkCloakingOpen}
+              onToggle={() => setIsLinkCloakingOpen(!isLinkCloakingOpen)}
+              badge={!isUltraUser ? <PlanBadge plan="Ultra" /> : undefined}
+            >
+              <FormField
+                control={form.control}
+                name="cloaking"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-neutral-200 p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-[13px] font-medium text-neutral-700">
+                        Enable Link Cloaking
+                      </FormLabel>
+                      <FormDescription className="text-[12px] text-neutral-400">
+                        Visitors see your short URL while viewing the destination page.
+                      </FormDescription>
                     </div>
-                  </motion.div>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        {isCheckingIframeable && (
+                          <IconLoader2 size={14} stroke={1.5} className="animate-spin text-neutral-400" />
+                        )}
+                        <Switch
+                          checked={field.value ?? false}
+                          onCheckedChange={field.onChange}
+                          disabled={
+                            !isUltraUser ||
+                            !destinationURL ||
+                            isCheckingIframeable
+                          }
+                        />
+                      </div>
+                    </FormControl>
+                  </FormItem>
                 )}
-              </AnimatePresence>
-            </div>
+              />
+
+              {!isUltraUser && (
+                <p className="text-[12px] text-neutral-400">
+                  Link cloaking is an Ultra plan feature.
+                </p>
+              )}
+
+              {!destinationURL && isUltraUser && (
+                <p className="text-[12px] text-neutral-400">
+                  Enter a destination URL above to enable link cloaking.
+                </p>
+              )}
+
+              {iframeableResult === true && cloakingEnabled && (
+                <p className="text-[12px] text-green-600">
+                  This URL can be cloaked successfully.
+                </p>
+              )}
+
+              {iframeableResult === false && (
+                <p className="text-[12px] text-amber-600">
+                  This website doesn&apos;t allow cloaking. Try a different URL.
+                </p>
+              )}
+            </SectionToggle>
 
             {/* Geotargeting Rules Section */}
             <GeoRulesForm
               form={form}
-              disabled={userSubscription?.data?.subscriptions?.status !== "active"}
-              maxRules={userSubscription?.data?.subscriptions?.plan === "ultra" ? undefined : 3}
-              isUnlimited={userSubscription?.data?.subscriptions?.plan === "ultra"}
+              disabled={!isProUser}
+              maxRules={isUltraUser ? undefined : 3}
+              isUnlimited={isUltraUser}
             />
 
             {/* Optional Settings Section */}
-            <div className="rounded-lg border border-gray-200 p-4">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between text-left"
-                onClick={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
-              >
-                <div className="flex flex-col">
-                  <span className="text-lg font-semibold">Optional Settings</span>
-                  <span className="text-sm text-gray-500">
-                    Access additional configuration options for further customization.
-                  </span>
-                </div>
-                <ChevronDown
-                  className={`h-5 w-5 transform transition-transform ${
-                    isOptionalSettingsOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <AnimatePresence>
-                {isOptionalSettingsOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="mt-4 space-y-4">
-                      {/* Move the existing optional settings fields here */}
-                      <FormField
-                        control={form.control}
-                        name="disableLinkAfterClicks"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Disable after clicks</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" />
-                            </FormControl>
-                            <FormDescription>
-                              Deactivate the link after a certain number of clicks. Leave empty to
-                              never disable
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+            <SectionToggle
+              title="Optional Settings"
+              description="Configure additional options for your link"
+              isOpen={isOptionalSettingsOpen}
+              onToggle={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
+            >
+              <FormField
+                control={form.control}
+                name="disableLinkAfterClicks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after clicks</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        className="h-9 border-neutral-200 bg-white text-[13px]"
                       />
-
-                      <FormField
-                        control={form.control}
-                        name="disableLinkAfterDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Disable after date</FormLabel>
-                            <FormControl>
-                              <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
-                            </FormControl>
-                            <FormDescription>
-                              Deactivate the link after a certain date
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        disabled={userSubscription?.data?.subscriptions?.status !== "active"}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            {!userSubscription.isLoading &&
-                              userSubscription.data?.subscriptions?.status !== "active" && (
-                                <FormDescription>
-                                  You need to be on a <b>pro plan</b> to create password protected
-                                  links
-                                </FormDescription>
-                              )}
-
-                            <FormControl>
-                              <Input {...field} type="password" />
-                            </FormControl>
-                            <FormDescription>
-                              Set a password to protect your link. Users will be prompted to enter
-                              the password before being redirected
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </motion.div>
+                    </FormControl>
+                    <FormDescription className="text-[12px] text-neutral-400">
+                      Deactivate the link after a certain number of clicks. Leave empty to
+                      never disable
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </AnimatePresence>
-            </div>
+              />
+
+              <FormField
+                control={form.control}
+                name="disableLinkAfterDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after date</FormLabel>
+                    <FormControl>
+                      <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
+                    </FormControl>
+                    <FormDescription className="text-[12px] text-neutral-400">
+                      Deactivate the link after a certain date
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                disabled={!isProUser}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700">Password</FormLabel>
+                    {!userSubscription.isLoading && !isProUser && (
+                      <FormDescription className="text-[12px] text-neutral-400">
+                        You need to be on a <b>pro plan</b> to create password protected
+                        links
+                      </FormDescription>
+                    )}
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="password"
+                        className="h-9 border-neutral-200 bg-white text-[13px]"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-[12px] text-neutral-400">
+                      Set a password to protect your link
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </SectionToggle>
 
             <Button
               type="submit"
-              className="mt-10 w-full"
+              className="mt-10 w-full bg-blue-600 text-[13px] hover:bg-blue-700"
               onClick={form.handleSubmit(onSubmit)}
               disabled={formUpdateMutation.isLoading}
             >
-              Submit
+              {formUpdateMutation.isLoading ? "Creating..." : "Create Link"}
             </Button>
           </form>
         </Form>
       </div>
       <div className="hidden items-center justify-center md:flex">
-        <div className="h-screen border-r border-gray-200" />
+        <div className="h-screen border-r border-neutral-200" />
       </div>
       <div className="mt-4 flex flex-col gap-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl">How users see your link</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">How users see your link</h1>
+          <p className="text-[13px] text-neutral-400">
             This is how your link will be displayed to users on social platforms
           </p>
         </div>

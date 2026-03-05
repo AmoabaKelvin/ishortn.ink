@@ -1,9 +1,8 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { IconRefresh } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { api } from "@/trpc/react";
 
 interface DomainStatusCheckerProps {
@@ -36,20 +35,19 @@ export default function DomainStatusChecker({ domain, onStatusChange }: DomainSt
   const isLoading = isChecking || checkDomainStatus.isLoading || checkDomainStatus.isFetching;
 
   return (
-    <Badge
-      variant="outline"
-      className="rounded-lg py-1.5 px-2.5 bg-gray-50 border-gray-200 font-normal cursor-pointer hover:bg-gray-100 transition-colors"
+    <button
+      type="button"
       onClick={(e) => {
         e.stopPropagation();
         if (!isLoading) {
           handleManualCheck();
         }
       }}
+      disabled={isLoading}
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-50"
     >
-      <RefreshCw className={`h-3.5 w-3.5 mr-1.5 text-blue-500 ${isLoading ? 'animate-spin' : ''}`} />
-      <span className="text-gray-700 font-medium text-xs">
-        {isLoading ? "Checking..." : "Check Now"}
-      </span>
-    </Badge>
+      <IconRefresh size={12} stroke={1.5} className={isLoading ? "animate-spin" : ""} />
+      {isLoading ? "Checking..." : "Check Now"}
+    </button>
   );
 }

@@ -1,3 +1,4 @@
+import { IconUpload } from "@tabler/icons-react";
 import type React from "react";
 import { useCallback, useState } from "react";
 
@@ -65,61 +66,34 @@ export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
   );
 
   return (
-    <div>
-      <h2 className="mb-2 mt-6 text-lg">Add a logo</h2>
-      <div
-        className="mt-1 flex justify-center rounded-md border-2 border-dashed border-input px-6 pb-6 pt-5"
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
-        <div className="space-y-1 text-center">
-          <UploadIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-          <div className="flex text-sm text-muted-foreground">
-            <label
-              htmlFor="image"
-              className="relative cursor-pointer rounded-md bg-background font-medium text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary-foreground"
-            >
-              <span>Upload a file</span>
-              <Input
-                id="image"
-                type="file"
-                className="sr-only"
-                onChange={handleFileUpload}
-                accept="image/*"
-              />
-            </label>
-            <p className="pl-1">or drag and drop</p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            PNG, JPG, GIF up to 2MB
-          </p>
-          {error && <p className="text-xs text-red-500">{error}</p>}
-        </div>
+    <div
+      className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-200 px-4 py-5 transition-colors hover:border-neutral-300 hover:bg-neutral-50/50"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <IconUpload size={20} stroke={1.5} className="text-neutral-400" />
+      <div className="flex items-center gap-1 text-[13px]">
+        <label
+          htmlFor="logo-image"
+          className="cursor-pointer font-medium text-blue-600 hover:text-blue-700"
+        >
+          Upload a file
+          <Input
+            id="logo-image"
+            type="file"
+            className="sr-only"
+            onChange={handleFileUpload}
+            accept="image/*"
+          />
+        </label>
+        <span className="text-neutral-400">or drag and drop</span>
       </div>
+      <p className="text-[11px] text-neutral-400">
+        PNG, JPG, GIF up to 2MB
+      </p>
+      {error && <p className="text-[11px] text-red-500">{error}</p>}
     </div>
   );
 }
 
 export default LogoUploader;
-
-function UploadIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <title>Upload</title>
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" x2="12" y1="3" y2="15" />
-    </svg>
-  );
-}

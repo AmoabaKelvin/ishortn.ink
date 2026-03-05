@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useRef, useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { IconPhotoPlus, IconX } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -70,7 +70,7 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
   if (isBase64 && value) {
     return (
       <div className="space-y-2">
-        <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+        <div className="group relative overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
           <img
             src={value}
             alt="OG Preview"
@@ -84,33 +84,33 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
               className="opacity-0 transition-opacity group-hover:opacity-100"
               onClick={handleClear}
             >
-              <X className="mr-1 h-4 w-4" />
+              <IconX size={14} stroke={1.5} className="mr-1" />
               Remove
             </Button>
           </div>
         </div>
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        {error && <p className="text-[12px] text-red-500">{error}</p>}
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="flex h-9 w-full items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 hover:border-gray-300">
+      <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
         <input
           type="url"
           placeholder="https://example.com/image.jpg"
           value={value || ""}
           onChange={handleUrlChange}
-          className="h-full flex-1 border-0 bg-transparent px-3 text-sm font-medium text-gray-900 placeholder:text-gray-500 focus:outline-none"
+          className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
         />
-        <div className="flex h-full items-center border-l border-gray-200 px-1">
+        <div className="flex h-full items-center border-l border-neutral-200 px-1">
           <button
             type="button"
             onClick={handleUploadClick}
-            className="flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
           >
-            <ImagePlus className="h-4 w-4" />
+            <IconPhotoPlus size={14} stroke={1.5} />
             <span>Upload</span>
           </button>
         </div>
@@ -124,11 +124,11 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
         />
       </div>
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-[12px] text-red-500">{error}</p>}
 
       {/* URL preview */}
       {value && !isBase64 && (
-        <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+        <div className="group relative overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
           <img
             src={value}
             alt="OG Preview"

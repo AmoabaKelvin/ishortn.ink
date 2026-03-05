@@ -1,11 +1,8 @@
 "use client";
 
-import { ArrowUpRight, Sigma, TrendingUp } from "lucide-react";
-import Link from "next/link";
+import { IconArrowUpRight } from "@tabler/icons-react";
+import { Link } from "next-view-transitions";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 type SidebarStatsProps = {
@@ -22,233 +19,132 @@ export function SidebarStats({
   userHasPaidPlan,
   linkLimit,
   eventUsage,
-  folderUsage,
   plan,
 }: SidebarStatsProps) {
   const linkCap = linkLimit ?? undefined;
   const linkLimitValue = linkCap ?? (userHasPaidPlan ? undefined : 30);
-  const remaining = linkLimitValue != null ? Math.max(linkLimitValue - monthlyLinkCount, 0) : Infinity;
-  const percentage = linkLimitValue != null
-    ? Math.min((monthlyLinkCount / (linkLimitValue || 1)) * 100, 100)
-    : 0;
-  const isNearLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue * 0.83 : false;
-  const isAtLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue : false;
+  const percentage =
+    linkLimitValue != null
+      ? Math.min((monthlyLinkCount / (linkLimitValue || 1)) * 100, 100)
+      : 0;
+  const isNearLimit =
+    linkLimitValue != null
+      ? monthlyLinkCount >= linkLimitValue * 0.83
+      : false;
+  const isAtLimit =
+    linkLimitValue != null ? monthlyLinkCount >= linkLimitValue : false;
 
   const eventLimit = eventUsage?.limit ?? undefined;
   const eventCount = eventUsage?.count ?? 0;
-  const eventPercentage = eventLimit != null ? Math.min((eventCount / (eventLimit || 1)) * 100, 100) : 0;
-  const eventNearLimit = eventLimit != null ? eventCount >= eventLimit * 0.8 : false;
-  const eventAtLimit = eventLimit != null ? eventCount >= eventLimit : false;
+  const eventPercentage =
+    eventLimit != null
+      ? Math.min((eventCount / (eventLimit || 1)) * 100, 100)
+      : 0;
+  const eventAtLimit =
+    eventLimit != null ? eventCount >= eventLimit : false;
 
   if (userHasPaidPlan) {
-    const isProPlan = plan === "pro";
-
     return (
-      <div className="mx-3 mb-3 space-y-3">
-        <div className="rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {plan.charAt(0).toUpperCase() + plan.slice(1)} Plan
-                </p>
-              </div>
-            </div>
-            <Badge variant="outline" className="border-gray-300 text-gray-600">
-              Active
-            </Badge>
+      <div className="space-y-3">
+        <div className="rounded-lg border border-neutral-100 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+              {plan} plan
+            </span>
+            <span className="text-[11px] tabular-nums text-neutral-500">
+              {monthlyLinkCount} links this month
+            </span>
           </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
-            <Sigma size={14} className="text-gray-500" />
-            <span className="font-medium">{monthlyLinkCount} links</span> created this month
-          </div>
+
+          {/* Event usage — only show if limit exists */}
           {eventLimit != null && (
-            <div className="mt-3 space-y-2 rounded-lg bg-white/60 border border-gray-200 p-3">
-              <div className="flex items-center justify-between text-xs text-gray-700">
-                <span className="font-medium">Events usage</span>
-                <span className="font-semibold">
-                  {eventCount} / {eventLimit.toLocaleString()}
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                <span>Events</span>
+                <span className="tabular-nums">
+                  {eventCount.toLocaleString()} /{" "}
+                  {eventLimit.toLocaleString()}
                 </span>
               </div>
-              <Progress value={eventPercentage} className="h-2" />
-              {eventNearLimit && !eventAtLimit && (
-                <p className="text-[11px] text-gray-600">
-                  You&apos;re nearing your monthly analytics cap.
-                </p>
-              )}
+              <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-neutral-100">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    eventAtLimit ? "bg-red-500" : "bg-blue-600",
+                  )}
+                  style={{ width: `${eventPercentage}%` }}
+                />
+              </div>
               {eventAtLimit && (
-                <p className="text-[11px] text-red-700">
-                  Analytics paused until next reset or upgrade.
+                <p className="mt-1.5 text-[11px] text-red-600">
+                  Analytics paused until next reset.
                 </p>
               )}
             </div>
           )}
         </div>
 
-        {isProPlan && (
-          <Link href="/dashboard/pricing" className="block">
-            <Button
-              variant="outline"
-              className="w-full border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-medium transition-colors"
-              size="sm"
-            >
-              <span>Upgrade to Ultra</span>
-              <ArrowUpRight size={14} className="ml-2" />
-            </Button>
+        {plan === "pro" && (
+          <Link
+            href="/dashboard/pricing"
+            className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-900"
+          >
+            Upgrade to Ultra
+            <IconArrowUpRight size={12} stroke={1.5} />
           </Link>
         )}
       </div>
     );
   }
 
+  // Free plan
   return (
-    <div className="mx-3 mb-3 space-y-3">
-      {/* Usage Stats Card */}
-      <div className="rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-200">
-                <TrendingUp size={16} className="text-gray-700" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {plan.charAt(0).toUpperCase() + plan.slice(1)} Plan
-                </p>
-              </div>
-            </div>
-            <Badge variant="outline" className="border-gray-300 text-gray-600">
-              Active
-            </Badge>
-        </div>
-
-        {/* Stats */}
-        <div className="space-y-3">
-          <div>
-            <div className="flex items-baseline justify-between mb-1.5">
-              <span className="text-xs font-medium text-gray-600">
-                Links remaining
-              </span>
-              <span
-                className={cn(
-                  "text-lg font-bold tabular-nums",
-                  isAtLimit
-                    ? "text-red-600"
-                    : isNearLimit
-                    ? "text-yellow-600"
-                    : "text-gray-900"
-                )}
-              >
-                {Number.isFinite(remaining) ? remaining : "Unlimited"}
-              </span>
-            </div>
-            {linkLimitValue != null ? (
-              <>
-                <Progress
-                  value={percentage}
-                  className={cn(
-                    "h-2",
-                    isAtLimit
-                      ? "[&>div]:bg-red-500"
-                      : isNearLimit
-                      ? "[&>div]:bg-yellow-500"
-                      : "[&>div]:bg-blue-500"
-                  )}
-                />
-                <p className="text-xs text-gray-500 mt-1.5">
-                  {monthlyLinkCount} of {linkLimitValue} links used this month
-                </p>
-              </>
-            ) : (
-              <p className="text-xs text-gray-500 mt-1.5">Unlimited links on your plan.</p>
+    <div className="space-y-3">
+      <div className="rounded-lg border border-neutral-100 p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+            Free plan
+          </span>
+          <span
+            className={cn(
+              "text-[11px] font-medium tabular-nums",
+              isAtLimit ? "text-red-600" : "text-neutral-500",
             )}
-          </div>
-
-          {/* Warning Messages */}
-          {linkLimitValue != null && (
-            <>
-              {isAtLimit && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-2.5">
-                  <p className="text-xs font-medium text-red-700">
-                    ⚠️ Limit reached! Upgrade to Pro for more.
-                  </p>
-                </div>
-              )}
-              {isNearLimit && !isAtLimit && (
-                <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-2.5">
-                  <p className="text-xs font-medium text-yellow-700">
-                    ⚡ Almost at limit! Upgrade to Pro for more.
-                  </p>
-                </div>
-              )}
-            </>
-          )}
+          >
+            {monthlyLinkCount} / {linkLimitValue} links
+          </span>
         </div>
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-neutral-100">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all",
+              isAtLimit
+                ? "bg-red-500"
+                : isNearLimit
+                  ? "bg-amber-500"
+                  : "bg-blue-600",
+            )}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+        {isAtLimit && (
+          <p className="mt-2 text-[11px] text-red-600">
+            Limit reached. Upgrade for more links.
+          </p>
+        )}
+        {isNearLimit && !isAtLimit && (
+          <p className="mt-2 text-[11px] text-amber-600">
+            Almost at limit. Consider upgrading.
+          </p>
+        )}
       </div>
 
-      {eventLimit != null && (
-        <div className="rounded-xl bg-gradient-to-br from-white to-gray-50 p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
-                <TrendingUp size={16} className="text-blue-700" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Analytics usage</p>
-                <p className="text-xs text-gray-500">
-                  {eventCount} / {eventLimit.toLocaleString()} events
-                </p>
-              </div>
-            </div>
-          </div>
-          <Progress
-            value={eventPercentage}
-            className={cn(
-              "h-2",
-              eventAtLimit
-                ? "[&>div]:bg-red-500"
-                : eventNearLimit
-                ? "[&>div]:bg-yellow-500"
-                : "[&>div]:bg-blue-500"
-            )}
-          />
-          <p className="text-xs text-gray-500 mt-1.5">
-            Analytics stop recording at the cap; redirects continue.
-          </p>
-          {eventAtLimit && (
-            <div className="mt-2 rounded-lg bg-red-50 border border-red-200 p-2">
-              <p className="text-[11px] text-red-700">
-                Analytics paused. Upgrade for more events.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {folderUsage?.limit !== null && folderUsage?.limit !== undefined && (
-        <div className="rounded-xl border border-gray-200 p-3 bg-white">
-          <div className="flex items-center justify-between text-sm text-gray-800">
-            <span className="font-semibold">Folders</span>
-            <span className="font-semibold">
-              {folderUsage.count} / {folderUsage.limit === null ? "∞" : folderUsage.limit}
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            {folderUsage.limit === 0
-              ? "Upgrade to create folders."
-              : "Organize links into folders; upgrade for more."}
-          </p>
-        </div>
-      )}
-
-      {/* Upgrade Button */}
-      <Link href="/dashboard/pricing" className="block">
-        <Button
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition-colors"
-          size="sm"
-        >
-          <span>Upgrade to Pro</span>
-          <ArrowUpRight size={14} className="ml-2" />
-        </Button>
+      <Link
+        href="/dashboard/pricing"
+        className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
+      >
+        Upgrade to Pro
+        <IconArrowUpRight size={13} stroke={2} />
       </Link>
     </div>
   );

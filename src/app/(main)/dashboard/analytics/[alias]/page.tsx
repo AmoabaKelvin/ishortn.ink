@@ -1,4 +1,4 @@
-import { Crown, Fingerprint, MapPinned, MousePointerClick } from "lucide-react";
+import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-react";
 
 import { aggregateVisits } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
@@ -49,18 +49,18 @@ export default async function LinkAnalyticsPage(
   const countryData = aggregatedVisits.clicksPerCountry;
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div>
       <AnalyticsTracker alias={params.alias} domain={domain} />
       <div className="flex flex-col items-center justify-between md:flex-row">
         <div className="flex flex-col gap-1">
-          <h1 className="font-semibold leading-tight text-blue-600 cursor-pointer hover:underline md:text-3xl">
+          <h1 className="text-xl font-semibold leading-tight tracking-tight text-neutral-900 md:text-2xl">
             {searchParams?.domain}/{params.alias}
           </h1>
           {!isProPlan && (
-            <div className="mt-2 text-sm text-center text-gray-500">
-              You are viewing limited analytics data (last 7 days).{" "}
-              <UpgradeText text="Upgrade to Pro" /> for full analytics.
-            </div>
+            <p className="mt-1 text-[13px] text-neutral-400">
+              Viewing limited analytics (last 7 days).{" "}
+              <UpgradeText text="Upgrade to Pro" /> for full data.
+            </p>
           )}
         </div>
 
@@ -73,30 +73,30 @@ export default async function LinkAnalyticsPage(
       </div>
 
       {/* quick info cards */}
-      <div className="grid grid-cols-1 gap-4 mt-5 md:mt-10 md:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-4">
         <QuickInfoCard
           title="Total Visits"
           value={totalVisits.length}
-          icon={<MousePointerClick className="size-4 text-blue-600" />}
+          icon={<IconClick size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
           title="Unique Visits"
           value={uniqueVisits.length}
-          icon={<Fingerprint className="size-4 text-blue-600" />}
+          icon={<IconUsers size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
           title="Top Country"
           value={topCountry}
-          icon={<MapPinned className="size-4 text-blue-600" />}
+          icon={<IconWorld size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
           title="Top Referrer"
           value={topReferrer}
-          icon={<Crown className="size-4 text-blue-600" />}
+          icon={<IconTrendingUp size={16} stroke={1.5} className="text-blue-600" />}
         />
       </div>
 
-      <div className="mt-10 md:mt-14">
+      <div className="mt-8 md:mt-10">
         <BarChart
           clicksPerDate={aggregatedVisits.clicksPerDate}
           uniqueClicksPerDate={aggregatedVisits.uniqueClicksPerDate ?? {}}
@@ -109,7 +109,7 @@ export default async function LinkAnalyticsPage(
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 mt-5 md:mt-14 md:grid-cols-10">
+      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-10">
         <CountriesAndCitiesStats
           citiesRecords={aggregatedVisits.clicksPerCity}
           countriesRecords={aggregatedVisits.clicksPerCountry}
@@ -140,8 +140,8 @@ export default async function LinkAnalyticsPage(
       </div>
 
       {isProPlan && (
-        <div className="mt-10 md:mt-14">
-          <h2 className="mb-8 text-2xl font-semibold">
+        <div className="mt-8 md:mt-10">
+          <h2 className="mb-6 text-base font-semibold tracking-tight text-neutral-900">
             Global Link Clicks Distribution
           </h2>
           <WorldMapHeatmap data={countryData} />

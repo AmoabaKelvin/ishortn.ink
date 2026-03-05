@@ -1,4 +1,4 @@
-import { Crown, Fingerprint, MapPinned, MousePointerClick } from "lucide-react";
+import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-react";
 
 import { QuickInfoCard } from "@/app/(main)/dashboard/analytics/[alias]/_components/quick-info-card";
 import { aggregateVisits } from "@/lib/core/analytics";
@@ -65,52 +65,54 @@ export default async function AnalyticsOverviewPage(
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div>
       <AnalyticsTracker isOverview />
       {/* Header */}
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-semibold text-gray-900">
+          <h1 className="text-xl font-semibold leading-tight tracking-tight text-neutral-900 md:text-2xl">
             Analytics Overview
           </h1>
-          <p className="text-sm text-gray-500">
-            View aggregated analytics across all your links
-          </p>
+          {!isProPlan && (
+            <p className="mt-1 text-[13px] text-neutral-400">
+              Viewing limited analytics (last 7 days).{" "}
+              <UpgradeText text="Upgrade to Pro" /> for full data.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <AnalyticsFilter />
           <OverviewRangeSelector initialRange={range} isProPlan={isProPlan!} />
-          {!isProPlan && <UpgradeText text="Upgrade to Pro" />}
         </div>
       </div>
 
       {/* Quick Info Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-4">
         <QuickInfoCard
           title="Total Clicks"
           value={totalVisits.length.toLocaleString()}
-          icon={<MousePointerClick className="size-4 text-blue-600" />}
+          icon={<IconClick size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
           title="Unique Visitors"
           value={uniqueVisits.length.toLocaleString()}
-          icon={<Fingerprint className="size-4 text-blue-600" />}
+          icon={<IconUsers size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
           title="Top Country"
           value={topCountry}
-          icon={<MapPinned className="size-4 text-blue-600" />}
+          icon={<IconWorld size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
           title="Top Referrer"
           value={topReferrer}
-          icon={<Crown className="size-4 text-blue-600" />}
+          icon={<IconTrendingUp size={16} stroke={1.5} className="text-blue-600" />}
         />
       </div>
 
       {/* Time Series Chart */}
-      <div>
+      <div className="mt-8 md:mt-10">
         <OverallClicksChart
           clicksPerDate={aggregatedVisits.clicksPerDate}
           uniqueClicksPerDate={aggregatedVisits.uniqueClicksPerDate ?? {}}
@@ -118,8 +120,7 @@ export default async function AnalyticsOverviewPage(
       </div>
 
       {/* Distribution Cards Grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:auto-rows-fr">
-        {/* Row 1: Short Links | Destination URLs */}
+      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 lg:auto-rows-fr lg:grid-cols-2">
         <ShortLinksCard
           clicksByLink={clicksByLink}
           totalClicks={totalVisits.length}
@@ -129,7 +130,6 @@ export default async function AnalyticsOverviewPage(
           totalClicks={totalVisits.length}
         />
 
-        {/* Row 2: Referrers | Geographic Stats */}
         <ReferrersCard referers={referers} totalClicks={totalVisits.length} />
         <GeographicStatsCard
           clicksPerCountry={aggregatedVisits.clicksPerCountry}
@@ -138,7 +138,6 @@ export default async function AnalyticsOverviewPage(
           totalClicks={totalVisits.length}
         />
 
-        {/* Row 3: Device Stats (spans 2 columns) */}
         <div className="lg:col-span-2">
           <DeviceStatsCard
             clicksPerDevice={aggregatedVisits.clicksPerDevice}

@@ -11,11 +11,11 @@ type BarListProps = {
 };
 
 const colorMap = {
-  blue: { bg: "bg-blue-50/70", accent: "bg-blue-400" },
-  green: { bg: "bg-emerald-50/70", accent: "bg-emerald-400" },
-  red: { bg: "bg-rose-50/70", accent: "bg-rose-400" },
-  orange: { bg: "bg-amber-50/70", accent: "bg-amber-400" },
-  purple: { bg: "bg-violet-50/70", accent: "bg-violet-400" },
+  blue: { bg: "bg-blue-50", accent: "bg-blue-600" },
+  green: { bg: "bg-emerald-50", accent: "bg-emerald-600" },
+  red: { bg: "bg-rose-50", accent: "bg-rose-600" },
+  orange: { bg: "bg-amber-50", accent: "bg-amber-600" },
+  purple: { bg: "bg-violet-50", accent: "bg-violet-600" },
 };
 
 export function BarList({ records, totalClicks, color = "blue" }: BarListProps) {
@@ -24,18 +24,15 @@ export function BarList({ records, totalClicks, color = "blue" }: BarListProps) 
 
   return (
     <div className="flex flex-col gap-1.5">
-      {sortedRecords.map((record, index) => {
+      {sortedRecords.map((record) => {
         const percentage = maxClicks > 0 ? (record.clicks / maxClicks) * 100 : 0;
         const percentOfTotal = totalClicks > 0 ? ((record.clicks / totalClicks) * 100).toFixed(0) : "0";
         return (
           <div
             key={record.name}
             className="group relative flex items-center justify-between rounded-lg px-3 py-2.5 cursor-default"
-            style={{
-              animationDelay: `${index * 50}ms`,
-            }}
           >
-            {/* Background bar with smooth width */}
+            {/* Background bar */}
             <div
               className={cn(
                 "absolute inset-y-0 left-0 rounded-lg transition-all duration-300 ease-out",
@@ -44,29 +41,17 @@ export function BarList({ records, totalClicks, color = "blue" }: BarListProps) 
               style={{ width: `${percentage}%` }}
             />
 
-            {/* Left accent border - scales in on hover */}
-            <div
-              className={cn(
-                "absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-all duration-200 ease-out",
-                "scale-y-0 group-hover:scale-y-100 origin-center",
-                colorMap[color].accent
-              )}
-            />
-
             {/* Item name */}
-            <span className="relative z-10 text-[13px] font-medium text-gray-700 truncate pr-4">
+            <span className="relative z-10 truncate pr-4 text-[13px] font-medium text-neutral-700">
               {record.name}
             </span>
 
-            {/* Stats container - count and percentage */}
+            {/* Stats */}
             <div className="relative z-10 flex items-center gap-2">
-              {/* Click count */}
-              <span className="text-[13px] tabular-nums font-semibold text-gray-600">
+              <span className="text-[13px] font-semibold tabular-nums text-neutral-600">
                 {record.clicks.toLocaleString()}
               </span>
-
-              {/* Percentage - slides in from right */}
-              <span className="text-[13px] tabular-nums font-medium text-gray-400 transition-all duration-200 ease-out w-0 overflow-hidden group-hover:w-10 opacity-0 group-hover:opacity-100">
+              <span className="w-0 overflow-hidden text-[13px] font-medium tabular-nums text-neutral-400 opacity-0 transition-all duration-200 ease-out group-hover:w-10 group-hover:opacity-100">
                 {percentOfTotal}%
               </span>
             </div>
@@ -85,22 +70,22 @@ type BarListTitleProps = {
 
 function BarListTitle({ title, description, children }: BarListTitleProps) {
   return (
-    <Card className="flex h-full flex-col rounded-xl border-gray-100 p-5 md:col-span-5 shadow-sm">
+    <Card className="flex h-full flex-col rounded-xl border-neutral-200 p-5 shadow-none md:col-span-5">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="mb-4 flex items-start justify-between">
         <div className="space-y-0.5">
-          <h2 className="text-base font-semibold text-gray-800 tracking-tight">
+          <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900">
             {title}
           </h2>
-          <p className="text-xs text-gray-400">{description}</p>
+          <p className="text-[12px] text-neutral-400">{description}</p>
         </div>
-        <span className="text-[10px] font-semibold tracking-widest text-gray-300 uppercase pt-0.5">
+        <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300">
           Clicks
         </span>
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col">{children}</div>
+      <div className="flex flex-1 flex-col">{children}</div>
     </Card>
   );
 }
@@ -117,16 +102,16 @@ function BarListTabViewSwitcher({
   onChangeView,
 }: BarListTabViewSwitcherProps) {
   return (
-    <div className="mb-4 flex items-center gap-1 border-b border-gray-100 pb-2">
+    <div className="mb-4 flex items-center gap-1 border-b border-neutral-100 pb-2">
       {views.map((name) => (
         <button
           key={name}
           onClick={() => onChangeView(name.toLowerCase())}
           className={cn(
-            "relative px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150",
+            "relative rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
             currentView === name.toLowerCase()
-              ? "text-gray-800 bg-gray-100/80"
-              : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+              ? "bg-neutral-100 text-neutral-900"
+              : "text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
           )}
         >
           {name.charAt(0).toUpperCase() + name.slice(1)}

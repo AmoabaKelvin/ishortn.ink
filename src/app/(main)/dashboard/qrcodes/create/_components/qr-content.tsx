@@ -24,7 +24,7 @@ function QRCodeContent({
           value={enteredContent}
           onChange={(e) => setEnteredContent(e.target.value)}
         />
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-neutral-400">
           Enter any text, URL, or data you want to encode in the QR code
         </p>
       </div>

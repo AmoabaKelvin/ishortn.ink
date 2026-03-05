@@ -1,8 +1,7 @@
 "use client";
 
-import { FolderOpen, FolderPlus } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
+import { IconFolder, IconPlus } from "@tabler/icons-react";
+import { motion } from "framer-motion";
 
 type EmptyStateProProps = {
   onCreateClick: () => void;
@@ -10,24 +9,65 @@ type EmptyStateProProps = {
 
 export function EmptyStatePro({ onCreateClick }: EmptyStateProProps) {
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed bg-slate-50/50 p-8 text-center animate-in fade-in-50">
-      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-100">
-        <FolderOpen className="h-10 w-10 text-blue-600" />
-      </div>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="relative flex min-h-[400px] flex-col items-center justify-center overflow-hidden py-20"
+    >
+      {/* Grid background */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgb(212 212 212 / 0.5) 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
+          maskImage:
+            "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+        }}
+      />
 
-      <h3 className="mt-6 text-2xl font-semibold tracking-tight">
-        No folders yet
-      </h3>
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.15 }}
+        className="relative"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100">
+          <IconFolder size={24} stroke={1.5} className="text-neutral-400" />
+        </div>
+      </motion.div>
 
-      <p className="mt-2 mb-8 max-w-sm text-sm text-muted-foreground">
-        Create your first folder to start organizing your links. Group links by
-        project, campaign, or any way that works for you.
-      </p>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.25 }}
+        className="mt-6 text-center"
+      >
+        <p className="text-[14px] font-medium text-neutral-900">
+          No folders yet
+        </p>
+        <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400">
+          Create your first folder to organize links by project, campaign, or any way that works for you.
+        </p>
+      </motion.div>
 
-      <Button onClick={onCreateClick} className="bg-blue-600 hover:bg-blue-700">
-        <FolderPlus className="mr-2 h-4 w-4" />
-        Create Folder
-      </Button>
-    </div>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.35 }}
+      >
+        <button
+          type="button"
+          onClick={onCreateClick}
+          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          <IconPlus size={16} stroke={2} />
+          Create Folder
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }

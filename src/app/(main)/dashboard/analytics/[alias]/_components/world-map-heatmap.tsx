@@ -27,12 +27,16 @@ const WorldMapHeatmap = ({ data }: WorldMapHeatmapProps) => {
     Record<string, number>
   >({ x: 0, y: 0 });
 
-  const maxClicks = useMemo(() => Math.max(...Object.values(data)), [data]);
+  const maxClicks = useMemo(() => {
+    const values = Object.values(data);
+    if (values.length === 0) return 1;
+    return Math.max(...values) || 1;
+  }, [data]);
   const colorScale = useMemo(
     () =>
       scaleLinear<string>()
         .domain([0, maxClicks])
-        .range(["#e6e7e8", "#2563eb"]),
+        .range(["#f5f5f5", "#2563eb"]),
     [maxClicks]
   );
 
@@ -71,7 +75,7 @@ const WorldMapHeatmap = ({ data }: WorldMapHeatmapProps) => {
   };
 
   return (
-    <Card className="h-max">
+    <Card className="h-max rounded-xl border-neutral-200 shadow-none">
       <ComposableMap projection="geoMercator">
         <ZoomableGroup zoom={0.8} minZoom={0.7} center={[0, 40]}>
           <Geographies geography={geoUrl}>
@@ -102,15 +106,10 @@ const WorldMapHeatmap = ({ data }: WorldMapHeatmapProps) => {
       </ComposableMap>
       {tooltipContent && tooltipPosition && (
         <div
+          className="pointer-events-none fixed z-50 rounded-lg bg-neutral-900 px-3 py-1.5 text-[12px] font-medium text-white shadow-md"
           style={{
-            position: "fixed",
-            top: tooltipPosition.y,
-            left: tooltipPosition.x,
-            backgroundColor: "#2563eb",
-            color: "#ffffff",
-            padding: "5px 10px",
-            borderRadius: "5px",
-            fontSize: "12px",
+            top: (tooltipPosition.y ?? 0) - 10,
+            left: (tooltipPosition.x ?? 0) + 12,
           }}
         >
           {tooltipContent}

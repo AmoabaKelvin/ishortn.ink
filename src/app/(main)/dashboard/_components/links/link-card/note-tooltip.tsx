@@ -1,10 +1,10 @@
-import { NotebookText } from "lucide-react";
+import { IconNote } from "@tabler/icons-react";
 
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
 
 type LinkNoteViewerProps = {
@@ -16,7 +16,11 @@ export function LinkNoteTooltip({ note }: LinkNoteViewerProps) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <NotebookText className="h-4 w-4 text-slate-500 hover:cursor-pointer" />
+          <IconNote
+            size={16}
+            stroke={1.5}
+            className="cursor-pointer text-neutral-400 hover:text-neutral-600"
+          />
         </TooltipTrigger>
         <TooltipContent>
           <p>{note}</p>

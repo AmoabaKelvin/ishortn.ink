@@ -1,6 +1,6 @@
 "use client";
 
-import { Pipette } from "lucide-react";
+import { IconColorPicker } from "@tabler/icons-react";
 import { useCallback, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -89,26 +89,26 @@ export function ColorSwatch({
   const isCustomColor = !presetColors.includes(color);
 
   return (
-    <div className="space-y-3">
-      {label && <Label className="text-xs text-gray-600">{label}</Label>}
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-2">
+      {label && <Label className="text-[12px] text-neutral-400">{label}</Label>}
+      <div className="flex flex-wrap items-center gap-1.5">
         {/* Preset color swatches */}
         {presetColors.map((presetColor) => (
           <button
             type="button"
             key={presetColor}
             className={cn(
-              "group relative rounded-xl p-0.5 transition-all duration-200",
+              "group relative rounded-lg p-0.5 transition-all duration-150",
               color === presetColor
-                ? "ring-2 ring-blue-500 ring-offset-2"
-                : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
+                ? "ring-2 ring-blue-500 ring-offset-1"
+                : "hover:ring-2 hover:ring-neutral-300 hover:ring-offset-1"
             )}
             onClick={() => handlePresetSelect(presetColor)}
           >
             <div
               className={cn(
-                "size-8 rounded-lg shadow-sm transition-transform group-hover:scale-105",
-                showBorder && "border border-gray-200"
+                "size-7 rounded-md transition-transform group-hover:scale-105",
+                showBorder && "border border-neutral-200"
               )}
               style={{ backgroundColor: presetColor }}
             />
@@ -121,38 +121,40 @@ export function ColorSwatch({
             <button
               type="button"
               className={cn(
-                "group relative rounded-xl p-0.5 transition-all duration-200",
+                "group relative rounded-lg p-0.5 transition-all duration-150",
                 isCustomColor
-                  ? "ring-2 ring-blue-500 ring-offset-2"
-                  : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
+                  ? "ring-2 ring-blue-500 ring-offset-1"
+                  : "hover:ring-2 hover:ring-neutral-300 hover:ring-offset-1"
               )}
             >
               <div
                 className={cn(
-                  "flex size-8 items-center justify-center rounded-lg shadow-sm transition-transform group-hover:scale-105",
-                  showBorder && "border border-gray-200"
+                  "flex size-7 items-center justify-center rounded-md transition-transform group-hover:scale-105",
+                  showBorder && "border border-neutral-200"
                 )}
                 style={{
-                  backgroundColor: isCustomColor ? color : "#f3f4f6",
+                  backgroundColor: isCustomColor ? color : "#f5f5f5",
                 }}
               >
-                <Pipette
+                <IconColorPicker
+                  size={14}
+                  stroke={1.5}
                   className={cn(
-                    "h-4 w-4 transition-colors",
-                    isCustomColor ? "text-white drop-shadow-sm" : "text-gray-500"
+                    "transition-colors",
+                    isCustomColor ? "text-white drop-shadow-sm" : "text-neutral-500"
                   )}
                 />
               </div>
             </button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-64 p-4"
+            className="w-60 p-3"
             align="start"
             sideOffset={8}
           >
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-gray-700">
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-[12px] text-neutral-400">
                   Custom Color
                 </Label>
                 <div className="flex gap-2">
@@ -165,10 +167,10 @@ export function ColorSwatch({
                         onChange(e.target.value);
                         setHexInput(e.target.value);
                       }}
-                      className="absolute inset-0 h-10 w-10 cursor-pointer opacity-0"
+                      className="absolute inset-0 h-9 w-9 cursor-pointer opacity-0"
                     />
                     <div
-                      className="h-10 w-10 rounded-lg border border-gray-200 shadow-sm cursor-pointer"
+                      className="h-9 w-9 rounded-md border border-neutral-200 cursor-pointer"
                       style={{ backgroundColor: color }}
                     />
                   </div>
@@ -179,18 +181,18 @@ export function ColorSwatch({
                     value={hexInput}
                     onChange={handleHexInputChange}
                     placeholder="#000000"
-                    className="h-10 flex-1 font-mono text-sm"
+                    className="h-9 flex-1 border-neutral-200 bg-white font-mono text-[13px]"
                     maxLength={7}
                   />
                 </div>
               </div>
 
               {/* Quick presets in popover */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-gray-700">
+              <div className="space-y-1.5">
+                <Label className="text-[12px] text-neutral-400">
                   Quick Select
                 </Label>
-                <div className="grid grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-6 gap-1">
                   {[
                     "#000000",
                     "#374151",
@@ -215,10 +217,10 @@ export function ColorSwatch({
                       key={quickColor}
                       type="button"
                       className={cn(
-                        "h-6 w-6 rounded-md border transition-all hover:scale-110",
+                        "h-6 w-6 rounded border transition-all hover:scale-110",
                         color === quickColor
                           ? "border-blue-500 ring-1 ring-blue-500"
-                          : "border-gray-200"
+                          : "border-neutral-200"
                       )}
                       style={{ backgroundColor: quickColor }}
                       onClick={() => {

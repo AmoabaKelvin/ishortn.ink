@@ -1,11 +1,9 @@
 "use client";
 
+import { IconAlertTriangle, IconCheck, IconCopy, IconKey, IconLoader2, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
-import { Plus, Key, Copy, Check, AlertCircle, Loader2 } from "lucide-react";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
-import { Button } from "@/components/ui/button";
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { api } from "@/trpc/react";
 
 const GenerateTokenTrigger = () => {
@@ -49,28 +48,29 @@ const GenerateTokenTrigger = () => {
   return (
     <div>
       {/* Empty State */}
-      <div className="text-center py-8">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
-          <Key className="w-8 h-8 text-violet-600" />
+      <div className="py-6 text-center">
+        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100">
+          <IconKey size={18} stroke={1.5} className="text-neutral-400" />
         </div>
-        <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+        <p className="text-[14px] font-medium text-neutral-900">
           No API Key Yet
-        </h3>
-        <p className="text-sm text-neutral-500 max-w-sm mx-auto mb-6">
+        </p>
+        <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400">
           Create an API key to programmatically access your links, analytics, and more.
         </p>
-        <Button
+        <button
+          type="button"
           onClick={createKey}
           disabled={createAPIKeyMutation.isLoading}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5 h-10 shadow-sm transition-all duration-200 hover:shadow-md"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
         >
           {createAPIKeyMutation.isLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <IconLoader2 size={14} stroke={1.5} className="animate-spin" />
           ) : (
-            <Plus className="mr-2 h-4 w-4" />
+            <IconPlus size={14} stroke={1.5} />
           )}
           Create API Key
-        </Button>
+        </button>
       </div>
 
       {/* Success Dialog */}
@@ -81,54 +81,53 @@ const GenerateTokenTrigger = () => {
           await handlePageRevalidate();
         }}
       >
-        <DialogContent className="sm:max-w-lg rounded-2xl border-neutral-200">
+        <DialogContent className="max-w-md rounded-xl border-neutral-200">
           <DialogHeader>
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mb-4">
-              <Key className="w-6 h-6 text-emerald-600" />
-            </div>
-            <DialogTitle className="text-xl">Your API key is ready!</DialogTitle>
-            <DialogDescription className="text-neutral-500">
+            <DialogTitle className="text-[14px] font-semibold text-neutral-900">
+              Your API key is ready
+            </DialogTitle>
+            <DialogDescription className="text-[12px] text-neutral-400">
               Copy and save it somewhere safe. You won&apos;t be able to see it again.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-4">
+          <div className="space-y-3 pt-2">
             {/* Key Display */}
             <div className="relative">
-              <code className="block w-full rounded-xl bg-neutral-900 px-4 py-4 text-sm font-mono text-emerald-400 pr-20 break-all">
+              <code className="block w-full break-all rounded-lg bg-neutral-900 px-3 py-3 pr-20 font-mono text-[12px] text-emerald-400">
                 {key}
               </code>
-              <Button
-                size="sm"
+              <button
+                type="button"
                 onClick={handleCopy}
-                className={`absolute right-2 top-1/2 -translate-y-1/2 h-8 rounded-lg transition-all ${
+                className={`absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                   copied
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-neutral-700 hover:bg-neutral-600"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-neutral-700 text-neutral-300 hover:bg-neutral-600"
                 }`}
               >
                 {copied ? (
                   <>
-                    <Check className="w-3.5 h-3.5 mr-1" />
+                    <IconCheck size={12} stroke={1.5} />
                     Copied
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3.5 h-3.5 mr-1" />
+                    <IconCopy size={12} stroke={1.5} />
                     Copy
                   </>
                 )}
-              </Button>
+              </button>
             </div>
 
             {/* Warning */}
-            <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-100 p-4">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-800">
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <IconAlertTriangle size={15} stroke={1.5} className="mt-0.5 flex-shrink-0 text-amber-600" />
+              <div>
+                <p className="text-[12px] font-medium text-amber-800">
                   Store this key securely
                 </p>
-                <p className="text-amber-700/80 mt-0.5">
+                <p className="mt-0.5 text-[11px] text-amber-700/80">
                   This key grants access to your account. Never share it or commit it to version control.
                 </p>
               </div>

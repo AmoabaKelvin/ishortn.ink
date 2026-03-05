@@ -3,7 +3,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarIcon, ChevronDown, Gem, X } from "lucide-react";
+import {
+  IconCalendar,
+  IconChevronDown,
+  IconDiamond,
+  IconX,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -153,31 +158,33 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Edit Link</DialogTitle>
-          <DialogDescription>Update your link settings</DialogDescription>
+          <DialogTitle className="text-[14px] font-semibold text-neutral-900">Edit Link</DialogTitle>
+          <DialogDescription className="text-[12px] text-neutral-400">Update your link settings</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <DialogBody className="space-y-3">
               {/* Basic Information Section */}
-              <div className="rounded-lg border border-border">
+              <div className="rounded-lg border border-neutral-200">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between p-4 text-left"
                   onClick={() => setIsBasicInfoOpen(!isBasicInfoOpen)}
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium">Basic Information</span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[14px] font-semibold text-neutral-900">Basic Information</span>
+                    <span className="text-[12px] text-neutral-400">
                       Main details of your link
                     </span>
                   </div>
-                  <ChevronDown
+                  <IconChevronDown
+                    size={16}
+                    stroke={1.5}
                     className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform",
+                      "shrink-0 text-neutral-400 transition-transform duration-200",
                       isBasicInfoOpen && "rotate-180"
                     )}
                   />
@@ -191,19 +198,19 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="border-t border-border p-4 space-y-4">
+                      <div className="space-y-4 border-t border-neutral-200 p-4">
                         <FormField
                           control={form.control}
                           name="url"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <FormLabel className="text-[13px] font-medium text-neutral-700">
                                 Destination URL
                               </FormLabel>
                               <FormControl>
                                 <Input
                                   placeholder="https://site.com"
-                                  className="h-10"
+                                  className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                                   {...field}
                                 />
                               </FormControl>
@@ -216,16 +223,16 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                           name="name"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <FormLabel className="text-[13px] font-medium text-neutral-700">
                                 Link Name
-                                <span className="ml-1.5 text-muted-foreground/60 lowercase tracking-normal font-normal">
+                                <span className="ml-1.5 text-[12px] font-normal text-neutral-400">
                                   optional
                                 </span>
                               </FormLabel>
                               <FormControl>
                                 <Input
                                   placeholder="My Awesome Link"
-                                  className="h-10"
+                                  className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                                   {...field}
                                 />
                               </FormControl>
@@ -238,13 +245,13 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                           name="alias"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <FormLabel className="text-[13px] font-medium text-neutral-700">
                                 Alias
                               </FormLabel>
                               <FormControl>
                                 <section className="flex items-center">
                                   <Select>
-                                    <SelectTrigger className="w-max rounded-r-none border-r-0 bg-muted/50 h-10">
+                                    <SelectTrigger className="h-9 w-max rounded-r-none border-r-0 border-neutral-200 bg-neutral-50 text-[13px]">
                                       <SelectValue placeholder="ishortn.ink" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -257,7 +264,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                   </Select>
                                   <Input
                                     placeholder="short-link"
-                                    className="h-10 flex-grow rounded-l-none"
+                                    className="h-9 flex-grow rounded-l-none border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                                     {...field}
                                   />
                                 </section>
@@ -271,16 +278,16 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                           name="note"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <FormLabel className="text-[13px] font-medium text-neutral-700">
                                 Note
-                                <span className="ml-1.5 text-muted-foreground/60 lowercase tracking-normal font-normal">
+                                <span className="ml-1.5 text-[12px] font-normal text-neutral-400">
                                   optional
                                 </span>
                               </FormLabel>
                               <FormControl>
                                 <Input
                                   placeholder="Add a note"
-                                  className="h-10"
+                                  className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                                   {...field}
                                 />
                               </FormControl>
@@ -295,21 +302,23 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
               </div>
 
               {/* Tags Section */}
-              <div className="rounded-lg border border-border">
+              <div className="rounded-lg border border-neutral-200">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between p-4 text-left"
                   onClick={() => setIsTagsOpen(!isTagsOpen)}
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium">Tags</span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[14px] font-semibold text-neutral-900">Tags</span>
+                    <span className="text-[12px] text-neutral-400">
                       Organize with tags
                     </span>
                   </div>
-                  <ChevronDown
+                  <IconChevronDown
+                    size={16}
+                    stroke={1.5}
                     className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform",
+                      "shrink-0 text-neutral-400 transition-transform duration-200",
                       isTagsOpen && "rotate-180"
                     )}
                   />
@@ -323,7 +332,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="border-t border-border p-4">
+                      <div className="border-t border-neutral-200 p-4">
                         <FormField
                           control={form.control}
                           name="tags"
@@ -332,19 +341,19 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                               <FormControl>
                                 <div className="relative">
                                   {tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5 mb-3">
+                                    <div className="mb-3 flex flex-wrap gap-1.5">
                                       {tags.map((tag) => (
                                         <div
                                           key={tag}
-                                          className="flex items-center gap-1 px-2 py-1 text-xs bg-muted rounded-md"
+                                          className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1 text-[12px] text-neutral-600"
                                         >
                                           <span>{tag}</span>
                                           <button
                                             type="button"
                                             onClick={() => removeTag(tag)}
-                                            className="text-muted-foreground hover:text-foreground"
+                                            className="text-neutral-400 hover:text-neutral-600"
                                           >
-                                            <X size={12} />
+                                            <IconX size={12} stroke={1.5} />
                                           </button>
                                         </div>
                                       ))}
@@ -366,15 +375,15 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                         );
                                       }}
                                       onFocus={() => setShowTagDropdown(true)}
-                                      className="h-10"
+                                      className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
                                     />
                                     {showTagDropdown &&
                                       filteredTags.length > 0 && (
-                                        <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-40 overflow-auto">
+                                        <div className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-lg border border-neutral-200 bg-white shadow-md">
                                           {filteredTags.map((tag) => (
                                             <div
                                               key={tag}
-                                              className="px-3 py-2 text-sm cursor-pointer hover:bg-muted"
+                                              className="cursor-pointer px-3 py-2 text-[13px] hover:bg-neutral-50"
                                               onMouseDown={(e) => {
                                                 e.preventDefault();
                                                 addTag(tag);
@@ -388,7 +397,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                   </div>
                                 </div>
                               </FormControl>
-                              <FormDescription className="text-xs">
+                              <FormDescription className="text-[12px] text-neutral-400">
                                 Press Enter to add a tag
                               </FormDescription>
                               <FormMessage />
@@ -402,7 +411,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
               </div>
 
               {/* UTM Parameters Section */}
-              <div className="rounded-lg border border-border">
+              <div className="rounded-lg border border-neutral-200">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between p-4 text-left"
@@ -410,22 +419,24 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                 >
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">UTM Parameters</span>
+                      <span className="text-[14px] font-semibold text-neutral-900">UTM Parameters</span>
                       {userSubscription?.data?.subscriptions?.plan !==
                         "ultra" && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          <Gem className="h-3 w-3" />
-                          ULTRA
+                        <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500">
+                          <IconDiamond size={12} stroke={1.5} className="text-neutral-400" />
+                          Ultra
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[12px] text-neutral-400">
                       Campaign tracking
                     </span>
                   </div>
-                  <ChevronDown
+                  <IconChevronDown
+                    size={16}
+                    stroke={1.5}
                     className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform",
+                      "shrink-0 text-neutral-400 transition-transform duration-200",
                       isUtmParamsOpen && "rotate-180"
                     )}
                   />
@@ -439,7 +450,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="border-t border-border p-4 space-y-3">
+                      <div className="space-y-3 border-t border-neutral-200 p-4">
                         {userSubscription?.data?.subscriptions?.plan ===
                           "ultra" && (
                           <div className="flex justify-end">
@@ -483,7 +494,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
               </div>
 
               {/* Optional Settings Section */}
-              <div className="rounded-lg border border-border">
+              <div className="rounded-lg border border-neutral-200">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between p-4 text-left"
@@ -492,14 +503,16 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                   }
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium">Advanced Settings</span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[14px] font-semibold text-neutral-900">Advanced Settings</span>
+                    <span className="text-[12px] text-neutral-400">
                       Expiration options
                     </span>
                   </div>
-                  <ChevronDown
+                  <IconChevronDown
+                    size={16}
+                    stroke={1.5}
                     className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform",
+                      "shrink-0 text-neutral-400 transition-transform duration-200",
                       isOptionalSettingsOpen && "rotate-180"
                     )}
                   />
@@ -513,19 +526,19 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="border-t border-border p-4 space-y-4">
+                      <div className="space-y-4 border-t border-neutral-200 p-4">
                         <FormField
                           control={form.control}
                           name="disableLinkAfterClicks"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <FormLabel className="text-[13px] font-medium text-neutral-700">
                                 Disable After Clicks
                               </FormLabel>
                               <FormControl>
-                                <Input {...field} type="number" className="h-10" />
+                                <Input {...field} type="number" className="h-9 border-neutral-200 bg-white text-[13px]" />
                               </FormControl>
-                              <FormDescription className="text-xs">
+                              <FormDescription className="text-[12px] text-neutral-400">
                                 Leave empty to never disable
                               </FormDescription>
                               <FormMessage />
@@ -537,7 +550,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                           name="disableLinkAfterDate"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <FormLabel className="text-[13px] font-medium text-neutral-700">
                                 Disable After Date
                               </FormLabel>
                               <FormControl>
@@ -559,16 +572,16 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
             <DialogFooter>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 onClick={() => setOpen(false)}
-                className="h-9"
+                className="h-9 border-neutral-200 text-[13px]"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={formUpdateMutation.isLoading}
-                className="h-9"
+                className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
               >
                 {formUpdateMutation.isLoading ? "Saving..." : "Save"}
               </Button>
@@ -600,11 +613,11 @@ export function LinkExpirationDatePicker({
         <Button
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal h-10",
-            !date && "text-muted-foreground"
+            "h-9 w-full justify-start border-neutral-200 text-left text-[13px] font-normal",
+            !date && "text-neutral-400"
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <IconCalendar size={14} stroke={1.5} className="mr-2 text-neutral-400" />
           {date ? format(date, "PPP") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>

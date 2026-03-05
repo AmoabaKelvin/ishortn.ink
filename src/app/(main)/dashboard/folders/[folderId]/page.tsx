@@ -1,4 +1,4 @@
-import { ChevronRight, FolderOpen, Home } from "lucide-react";
+import { IconChevronRight } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 import { notFound } from "next/navigation";
 
@@ -26,62 +26,55 @@ export default async function FolderDetailPage({
     const folder = await api.folder.get.query({ id });
 
     return (
-      <div className="space-y-6 p-6 max-w-7xl mx-auto">
+      <div>
         {/* Breadcrumb */}
-        <nav className="flex items-center space-x-2 text-sm text-gray-500">
+        <nav className="mb-6 flex items-center gap-1.5 text-[13px]">
           <Link
             href="/dashboard"
-            className="flex items-center hover:text-gray-900 transition-colors"
+            className="text-neutral-400 transition-colors hover:text-neutral-900"
           >
-            <Home className="h-4 w-4 mr-1" />
             Dashboard
           </Link>
-          <ChevronRight className="h-4 w-4" />
+          <IconChevronRight size={14} stroke={1.5} className="text-neutral-300" />
           <Link
             href="/dashboard/folders"
-            className="hover:text-gray-900 transition-colors"
+            className="text-neutral-400 transition-colors hover:text-neutral-900"
           >
             Folders
           </Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="text-gray-900 font-medium">{folder.name}</span>
+          <IconChevronRight size={14} stroke={1.5} className="text-neutral-300" />
+          <span className="font-medium text-neutral-900">{folder.name}</span>
         </nav>
 
-        {/* Folder Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50">
-              <FolderOpen className="h-8 w-8" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                {folder.name}
-              </h1>
-              {folder.description && (
-                <p className="mt-2 text-gray-500">{folder.description}</p>
-              )}
-              <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-                <span className="font-medium text-gray-700">
-                  {folder.links.length}
-                </span>
-                <span>{folder.links.length === 1 ? "link" : "links"}</span>
-              </div>
-            </div>
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+              {folder.name}
+            </h2>
+            {folder.description ? (
+              <p className="mt-1 text-[13px] text-neutral-400">
+                {folder.description}
+              </p>
+            ) : (
+              <p className="mt-1 text-[13px] text-neutral-400">
+                {folder.links.length}{" "}
+                {folder.links.length === 1 ? "link" : "links"}
+              </p>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <EditFolderButton folder={folder} />
             <DeleteFolderButton folder={folder} />
           </div>
         </div>
 
-        {/* Links Section */}
-        <div className="mt-8">
-          <FolderLinks links={folder.links} folderId={folder.id} />
-        </div>
+        {/* Links */}
+        <FolderLinks links={folder.links} folderId={folder.id} />
       </div>
     );
-  } catch (error) {
+  } catch {
     notFound();
   }
 }

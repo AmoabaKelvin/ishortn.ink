@@ -20,6 +20,7 @@ export function ShortLinksCard({
       description="Click distribution by short links"
       items={items}
       totalClicks={totalClicks}
+      color="purple"
     />
   );
 }

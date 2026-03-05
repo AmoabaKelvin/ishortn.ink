@@ -1,11 +1,15 @@
 "use client";
 
-import { FileJson, FileSpreadsheet, MoreHorizontal, Upload } from "lucide-react";
+import {
+  IconDots,
+  IconFileSpreadsheet,
+  IconJson,
+  IconUpload,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,9 +32,7 @@ export function BulkLinkActions() {
 
   const { mutate: exportLinks, isLoading } =
     api.link.exportUserLinks.useMutation({
-      onSuccess: (data) => {
-        // Format will be set by the specific handler
-      },
+      onSuccess: (_data) => {},
       onError: (error) => {
         toast.error(error.message);
       },
@@ -42,9 +44,7 @@ export function BulkLinkActions() {
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
-
     link.click();
-
     document.body.removeChild(link);
   };
 
@@ -53,7 +53,9 @@ export function BulkLinkActions() {
       exportLinks(undefined, {
         onSuccess: (data) => {
           const content =
-            format === "csv" ? convertDataToCSV(data) : convertDataToJSON(data);
+            format === "csv"
+              ? convertDataToCSV(data)
+              : convertDataToJSON(data);
           const fileName = `ishortn_links.${format}`;
           triggerDownload(content, fileName);
           trackEvent(POSTHOG_EVENTS.LINKS_EXPORTED, {
@@ -77,52 +79,60 @@ export function BulkLinkActions() {
     <>
       <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          <Button
-            size="icon"
-            variant="outline"
+          <button
             disabled={isLoading}
-            className="rounded-xl border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
           >
-            <MoreHorizontal className="h-4 w-4 text-gray-500" />
-          </Button>
+            <IconDots size={16} stroke={1.5} />
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="w-48 rounded-xl border-gray-200 p-1.5 shadow-lg"
-          sideOffset={8}
+          className="w-44 border-neutral-200 p-1"
+          sideOffset={4}
         >
-          {/* Import */}
-          <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-gray-400">
+          <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
             Import
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => setIsUploadModalOpen(true)}
-            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
           >
-            <Upload className="mr-2.5 h-4 w-4 text-gray-400" />
+            <IconUpload
+              size={15}
+              stroke={1.5}
+              className="mr-2 text-neutral-400"
+            />
             Upload CSV
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="my-1.5 bg-gray-100" />
+          <DropdownMenuSeparator className="my-1 bg-neutral-100" />
 
-          {/* Export */}
-          <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-gray-400">
+          <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
             Export
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => handleExport("csv")}
             disabled={isLoading}
-            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
           >
-            <FileSpreadsheet className="mr-2.5 h-4 w-4 text-gray-400" />
+            <IconFileSpreadsheet
+              size={15}
+              stroke={1.5}
+              className="mr-2 text-neutral-400"
+            />
             Export as CSV
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => handleExport("json")}
             disabled={isLoading}
-            className="rounded-lg px-2 py-2 text-sm font-medium text-gray-700 focus:bg-gray-100"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
           >
-            <FileJson className="mr-2.5 h-4 w-4 text-gray-400" />
+            <IconJson
+              size={15}
+              stroke={1.5}
+              className="mr-2 text-neutral-400"
+            />
             Export as JSON
           </DropdownMenuItem>
         </DropdownMenuContent>

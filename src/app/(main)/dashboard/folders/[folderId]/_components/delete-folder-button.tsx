@@ -1,11 +1,10 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { IconTrash } from "@tabler/icons-react";
 import { useTransitionRouter } from "next-view-transitions";
 import { useState } from "react";
 
 import { DeleteFolderDialog } from "@/app/(main)/dashboard/folders/_components/delete-folder-dialog";
-import { Button } from "@/components/ui/button";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -23,14 +22,14 @@ export function DeleteFolderButton({ folder }: DeleteFolderButtonProps) {
 
   return (
     <>
-      <Button
-        variant="outline"
+      <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-1.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50"
       >
-        <Trash2 className="mr-2 h-4 w-4" />
+        <IconTrash size={14} stroke={1.5} />
         Delete
-      </Button>
+      </button>
       <DeleteFolderDialog
         folder={folder}
         open={open}

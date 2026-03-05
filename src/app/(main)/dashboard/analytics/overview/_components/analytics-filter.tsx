@@ -1,16 +1,16 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  ChevronRight,
-  Filter,
-  FolderIcon,
-  Globe,
-  Link2,
-  Loader2,
-  X,
-} from "lucide-react";
+  IconChevronRight,
+  IconFilter,
+  IconFolder,
+  IconLink,
+  IconLoader2,
+  IconWorld,
+  IconX,
+} from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -132,10 +132,10 @@ export function AnalyticsFilter() {
   };
 
   const categories = [
-    { value: "all" as const, label: "All Analytics", icon: Filter },
-    { value: "folder" as const, label: "Folder", icon: FolderIcon },
-    { value: "domain" as const, label: "Domain", icon: Globe },
-    { value: "link" as const, label: "Link", icon: Link2 },
+    { value: "all" as const, label: "All Analytics", icon: IconFilter },
+    { value: "folder" as const, label: "Folder", icon: IconFolder },
+    { value: "domain" as const, label: "Domain", icon: IconWorld },
+    { value: "link" as const, label: "Link", icon: IconLink },
   ];
 
   const getFolderItems = () => {
@@ -201,28 +201,30 @@ export function AnalyticsFilter() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-9 w-full sm:w-[240px] justify-between gap-2 px-3"
+          className="h-9 w-full justify-between gap-2 border-neutral-200 bg-white px-3 text-[13px] sm:w-[240px]"
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <Filter className="h-4 w-4 shrink-0 text-gray-400" />
-            <span className="truncate text-sm font-medium">{getFilterLabel()}</span>
+          <div className="flex min-w-0 items-center gap-2">
+            <IconFilter size={14} stroke={1.5} className="shrink-0 text-neutral-400" />
+            <span className="truncate font-medium">{getFilterLabel()}</span>
           </div>
           {filterType !== "all" ? (
-            <X
-              className="h-4 w-4 shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+            <IconX
+              size={14}
+              stroke={1.5}
+              className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-600"
               onClick={clearFilter}
             />
           ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+            <IconChevronRight size={14} stroke={1.5} className="shrink-0 text-neutral-400" />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl border-gray-200" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] rounded-lg border-neutral-200 p-0" align="start">
         <Command>
           {viewMode === "items" && (
             <CommandInput
               placeholder={`Search ${selectedCategory}...`}
-              className="h-11"
+              className="h-9"
             />
           )}
 
@@ -236,14 +238,14 @@ export function AnalyticsFilter() {
                       key={category.value}
                       value={category.value}
                       onSelect={() => handleCategorySelect(category.value)}
-                      className="flex items-center justify-between rounded-lg px-3 py-2.5"
+                      className="flex items-center justify-between rounded-md px-3 py-2"
                     >
                       <div className="flex items-center gap-2.5">
-                        <Icon className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium">{category.label}</span>
+                        <Icon size={14} stroke={1.5} className="text-neutral-400" />
+                        <span className="text-[13px] font-medium">{category.label}</span>
                       </div>
                       {category.value !== "all" && (
-                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                        <IconChevronRight size={14} stroke={1.5} className="text-neutral-400" />
                       )}
                     </CommandItem>
                   );
@@ -253,23 +255,23 @@ export function AnalyticsFilter() {
               <>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    <IconLoader2 size={18} stroke={1.5} className="animate-spin text-neutral-400" />
                   </div>
                 ) : (
                   <>
-                    <CommandEmpty className="py-8 text-gray-500">No {selectedCategory} found.</CommandEmpty>
+                    <CommandEmpty className="py-8 text-[13px] text-neutral-400">No {selectedCategory} found.</CommandEmpty>
                     <CommandGroup className="p-1.5">
                       {getCurrentItems().map((item) => (
                         <CommandItem
                           key={item.value}
                           value={item.value}
                           onSelect={handleItemSelect}
-                          className="rounded-lg px-3 py-2.5"
+                          className="rounded-md px-3 py-2"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span className="font-medium">{item.label}</span>
+                            <span className="text-[13px] font-medium">{item.label}</span>
                             {item.subtitle && (
-                              <span className="text-xs text-gray-500">
+                              <span className="text-[12px] text-neutral-400">
                                 {item.subtitle}
                               </span>
                             )}

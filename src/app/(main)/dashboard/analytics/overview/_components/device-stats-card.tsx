@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 
-import { cn } from "@/lib/utils";
-
-import { ColoredDistributionCard } from "./colored-distribution-card";
+import { ColoredDistributionCard, TabSwitcher } from "./colored-distribution-card";
 
 type DeviceStatsCardProps = {
   clicksPerDevice: Record<string, number>;
@@ -46,8 +44,9 @@ export function DeviceStatsCard({
       description="Click distribution by devices, OS, and browsers"
       items={recordsMap[currentView]}
       totalClicks={totalClicks}
+      color="green"
     >
-      <TabViewSwitcher
+      <TabSwitcher
         currentView={currentView}
         views={views}
         onChangeView={(view) =>
@@ -55,38 +54,5 @@ export function DeviceStatsCard({
         }
       />
     </ColoredDistributionCard>
-  );
-}
-
-type TabViewSwitcherProps = {
-  currentView: string;
-  views: string[];
-  onChangeView: (view: string) => void;
-};
-
-function TabViewSwitcher({
-  currentView,
-  views,
-  onChangeView,
-}: TabViewSwitcherProps) {
-  return (
-    <div className="border-b border-gray-200 mb-4">
-      <ul className="flex gap-4">
-        {views.map((name) => (
-          <li key={name}>
-            <button
-              onClick={() => onChangeView(name.toLowerCase())}
-              className={cn(
-                "inline-block cursor-pointer border-b-2 border-transparent py-2 text-sm font-medium transition-colors hover:border-gray-300 hover:text-gray-600",
-                currentView === name.toLowerCase() &&
-                  "border-blue-600 text-blue-600"
-              )}
-            >
-              {name.charAt(0).toUpperCase() + name.slice(1)}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
