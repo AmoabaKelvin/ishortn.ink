@@ -278,7 +278,7 @@ export function QRAdvancedCustomization({
                   value={[logoSize]}
                   onValueChange={([value]) => setLogoSize(value ?? 25)}
                   min={10}
-                  max={40}
+                  max={30}
                   step={1}
                 />
               </div>
