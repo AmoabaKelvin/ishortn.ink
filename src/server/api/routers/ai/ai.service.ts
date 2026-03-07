@@ -119,7 +119,6 @@ export async function detectPhishingLink(
 
   const result = await generateText({
     model: openai("gpt-5.2"),
-    temperature: 1,
     output: Output.object({
       schema: phishingDetectionSchema,
     }),

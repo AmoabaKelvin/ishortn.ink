@@ -153,7 +153,9 @@ const geoRuleSchema = z.object({
 
 type CachedGeoRule = z.infer<typeof geoRuleSchema>;
 
-async function getGeoRulesFromCache(linkId: number): Promise<CachedGeoRule[] | null> {
+async function getGeoRulesFromCache(
+  linkId: number,
+): Promise<CachedGeoRule[] | null> {
   try {
     const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
     const cached = await redis.get(key);
@@ -183,7 +185,7 @@ async function setGeoRulesInCache(
     priority: number;
     createdAt: Date | null;
   }[],
-  ttlSeconds: number = GEO_RULES_CACHE_TTL
+  ttlSeconds: number = GEO_RULES_CACHE_TTL,
 ): Promise<boolean> {
   try {
     const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;

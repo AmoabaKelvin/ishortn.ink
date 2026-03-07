@@ -10,6 +10,10 @@ import {
   workspaceFilter,
   workspaceOwnership,
 } from "@/server/lib/workspace";
+import {
+  checkWorkspaceLinkLimit,
+  incrementWorkspaceLinkCount,
+} from "../link/utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { QRCodeInput, QRPresetCreateInput, QRPresetUpdateInput } from "./qrcode.input";
@@ -42,6 +46,8 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
   }
 
   const ownership = workspaceOwnership(ctx.workspace);
+
+  const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
   const fetchedMetadata = await fetchMetadataInfo(input.content);
   const phishingResult = await detectPhishingLink(input.content, fetchedMetadata);
@@ -83,6 +89,8 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
 
     return { insertedQrCodeId: insertionResult[0].insertId };
   });
+
+  await incrementWorkspaceLinkCount(ctx, currentCount, limit);
 
   return { trackingUrl, id: insertedQrCodeId };
 };
