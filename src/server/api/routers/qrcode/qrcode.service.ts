@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 import { deleteFromCache } from "@/lib/core/cache";
@@ -47,7 +48,20 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
 
   const ownership = workspaceOwnership(ctx.workspace);
 
-  const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
+  let linkLimitResult: Awaited<ReturnType<typeof checkWorkspaceLinkLimit>>;
+  try {
+    linkLimitResult = await checkWorkspaceLinkLimit(ctx);
+  } catch (error) {
+    if (error instanceof TRPCError && error.code === "FORBIDDEN") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "You've reached your monthly link limit. Each QR code requires a tracking link, which counts toward your plan's link quota. Please upgrade your plan to create more QR codes.",
+      });
+    }
+    throw error;
+  }
+  const { currentCount, limit } = linkLimitResult;
 
   const fetchedMetadata = await fetchMetadataInfo(input.content);
   const phishingResult = await detectPhishingLink(input.content, fetchedMetadata);
