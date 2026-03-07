@@ -53,6 +53,7 @@ function QRCodeCreationPage() {
 
   const qrCodeCreateMutation = api.qrCode.create.useMutation();
   const qrCodeSaveImageMutation = api.qrCode.saveImage.useMutation();
+  const qrCodeDeleteMutation = api.qrCode.delete.useMutation();
 
   const [qrCodeTitle, setQRCodeTitle] = useState<string>("");
   const [destinationUrl, setDestinationUrl] = useState<string>("");
@@ -258,34 +259,40 @@ function QRCodeCreationPage() {
         selectedColor: qrState.darkColor,
       });
 
-      // Step 2: Update the live preview so it matches the final output
-      if (canvasRef.current) {
-        await generateQRCode(canvasRef.current, {
+      try {
+        // Step 2: Update the live preview so it matches the final output
+        if (canvasRef.current) {
+          await generateQRCode(canvasRef.current, {
+            ...qrState,
+            text: trackingUrl,
+          });
+        }
+
+        // Step 3: Generate the high-res QR image encoding the tracking URL for download
+        const finalCanvas = document.createElement("canvas");
+        await generateQRCode(finalCanvas, {
           ...qrState,
           text: trackingUrl,
+          scale: 20,
         });
+        const qrCodeBase64 = finalCanvas.toDataURL("image/png", 1.0);
+
+        // Step 4: Upload the correctly-encoded image
+        const imageUrl = await qrCodeSaveImageMutation.mutateAsync({
+          id,
+          qrCodeBase64,
+        });
+
+        // Trigger download
+        const link = document.createElement("a");
+        link.href = imageUrl!;
+        link.download = "qrcode.png";
+        link.click();
+      } catch (err) {
+        // Roll back the server record created in step 1 to avoid orphaned data
+        await qrCodeDeleteMutation.mutateAsync({ id }).catch(() => {});
+        throw err;
       }
-
-      // Step 3: Generate the high-res QR image encoding the tracking URL for download
-      const finalCanvas = document.createElement("canvas");
-      await generateQRCode(finalCanvas, {
-        ...qrState,
-        text: trackingUrl,
-        scale: 20,
-      });
-      const qrCodeBase64 = finalCanvas.toDataURL("image/png", 1.0);
-
-      // Step 4: Upload the correctly-encoded image
-      const imageUrl = await qrCodeSaveImageMutation.mutateAsync({
-        id,
-        qrCodeBase64,
-      });
-
-      // Trigger download
-      const link = document.createElement("a");
-      link.href = imageUrl!;
-      link.download = "qrcode.png";
-      link.click();
 
       await revalidateRoute("/dashboard/qrcodes");
       router.push("/dashboard/qrcodes");
