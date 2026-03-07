@@ -191,19 +191,22 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
     }
   }
 
+  // Collect cache key before the transaction so we can invalidate after it commits
+  let cacheKey: string | undefined;
+  if (qrCode.linkId && qrCode.linkId > 0) {
+    const hiddenLink = await ctx.db.query.link.findFirst({
+      where: eq(link.id, qrCode.linkId),
+    });
+    if (hiddenLink?.alias) {
+      cacheKey = `${hiddenLink.domain}:${hiddenLink.alias}`;
+    }
+  }
+
   // Delete QR code and its associated hidden link atomically
   await ctx.db.transaction(async (tx) => {
     await tx.delete(qrcode).where(eq(qrcode.id, id));
 
     if (qrCode.linkId && qrCode.linkId > 0) {
-      const hiddenLink = await tx.query.link.findFirst({
-        where: eq(link.id, qrCode.linkId),
-      });
-
-      if (hiddenLink?.alias) {
-        await deleteFromCache(`${hiddenLink.domain}:${hiddenLink.alias}`);
-      }
-
       await Promise.all([
         tx.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, qrCode.linkId)),
         tx.delete(linkVisit).where(eq(linkVisit.linkId, qrCode.linkId)),
@@ -211,6 +214,11 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
       await tx.delete(link).where(eq(link.id, qrCode.linkId));
     }
   });
+
+  // Invalidate cache after the transaction commits successfully
+  if (cacheKey) {
+    void deleteFromCache(cacheKey);
+  }
 
   return true;
 }
