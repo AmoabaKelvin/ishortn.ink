@@ -10,6 +10,8 @@ import {
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { QRCodeInput, QRPresetCreateInput, QRPresetUpdateInput } from "./qrcode.input";
+import type { z } from "zod";
+import type { qrcodeSaveImageInput } from "./qrcode.input";
 
 // Free tier QR code limit
 const FREE_QR_CODE_LIMIT = 5;
@@ -64,7 +66,6 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
       content: trackingUrl,
       cornerStyle: input.cornerStyle as typeof qrcode.cornerStyle.enumValues[number],
       patternStyle: input.patternStyle as typeof qrcode.patternStyle.enumValues[number],
-      qrCode: input.qrCodeBase64,
       linkId: hiddenLinkId,
       contentType: "link",
     });
@@ -72,28 +73,46 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
     return { insertedQrCodeId: insertionResult[0].insertId };
   });
 
-  // Upload QR code image to R2 if it's base64
-  if (input.qrCodeBase64) {
-    try {
-      const imageUrl = await uploadImage(ctx, {
-        image: input.qrCodeBase64,
-        resourceId: insertedQrCodeId,
-        imageType: "qr-code",
-      });
+  return { trackingUrl, id: insertedQrCodeId };
+};
 
-      // Update QR code with the R2 URL if upload was successful and URL changed
-      if (imageUrl && imageUrl !== input.qrCodeBase64) {
-        await ctx.db
-          .update(qrcode)
-          .set({ qrCode: imageUrl })
-          .where(eq(qrcode.id, insertedQrCodeId));
+export const saveQrCodeImage = async (
+  ctx: WorkspaceTRPCContext,
+  input: z.infer<typeof qrcodeSaveImageInput>,
+) => {
+  const record = await ctx.db.query.qrcode.findFirst({
+    where: and(
+      eq(qrcode.id, input.id),
+      workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
+    ),
+  });
 
-        return imageUrl;
-      }
-    } catch (error) {
-      console.error("Failed to upload QR code image to R2:", error);
-      // Don't fail QR code creation if image upload fails - base64 is already saved
+  if (!record) throw new Error("QR Code not found");
+
+  // Persist base64 immediately so we have a fallback
+  await ctx.db
+    .update(qrcode)
+    .set({ qrCode: input.qrCodeBase64 })
+    .where(eq(qrcode.id, input.id));
+
+  // Upload to R2
+  try {
+    const imageUrl = await uploadImage(ctx, {
+      image: input.qrCodeBase64,
+      resourceId: input.id,
+      imageType: "qr-code",
+    });
+
+    if (imageUrl && imageUrl !== input.qrCodeBase64) {
+      await ctx.db
+        .update(qrcode)
+        .set({ qrCode: imageUrl })
+        .where(eq(qrcode.id, input.id));
+
+      return imageUrl;
     }
+  } catch (error) {
+    console.error("Failed to upload QR code image to R2:", error);
   }
 
   return input.qrCodeBase64;

@@ -51,18 +51,8 @@ function QRCodeCreationPage() {
   const canCreateMoreQRCodes =
     checkIfUserCanCreateMoreQRCodes(userSubDetails);
 
-  const qrCodeCreateMutation = api.qrCode.create.useMutation({
-    onSuccess: async (data) => {
-      toast.success("QR Code created successfully");
-      const link = document.createElement("a");
-      link.href = data!;
-      link.download = "qrcode.png";
-      link.click();
-
-      await revalidateRoute("/dashboard/qrcodes");
-      router.push("/dashboard/qrcodes");
-    },
-  });
+  const qrCodeCreateMutation = api.qrCode.create.useMutation();
+  const qrCodeSaveImageMutation = api.qrCode.saveImage.useMutation();
 
   const [qrCodeTitle, setQRCodeTitle] = useState<string>("");
   const [destinationUrl, setDestinationUrl] = useState<string>("");
@@ -258,25 +248,42 @@ function QRCodeCreationPage() {
 
     const finalTitle = qrCodeTitle || "QR Code";
 
-    const finalCanvas = document.createElement("canvas");
-    await generateQRCode(finalCanvas, {
-      ...qrState,
-      text: destinationUrl,
-      scale: 20,
-    });
+    const promise = (async () => {
+      // Step 1: Create the hidden short link and QR record on the server
+      const { trackingUrl, id } = await qrCodeCreateMutation.mutateAsync({
+        title: finalTitle,
+        content: destinationUrl,
+        patternStyle: qrState.pixelStyle as string,
+        cornerStyle: qrState.markerShape as string,
+        selectedColor: qrState.darkColor,
+      });
 
-    const url = finalCanvas.toDataURL("image/png", 1.0);
+      // Step 2: Generate the QR image encoding the tracking URL so scans are tracked
+      const finalCanvas = document.createElement("canvas");
+      await generateQRCode(finalCanvas, {
+        ...qrState,
+        text: trackingUrl,
+        scale: 20,
+      });
+      const qrCodeBase64 = finalCanvas.toDataURL("image/png", 1.0);
 
-    const qrCodeData = {
-      title: finalTitle,
-      content: destinationUrl,
-      patternStyle: qrState.pixelStyle as string,
-      cornerStyle: qrState.markerShape as string,
-      selectedColor: qrState.darkColor,
-      qrCodeBase64: url,
-    };
+      // Step 3: Upload the correctly-encoded image
+      const imageUrl = await qrCodeSaveImageMutation.mutateAsync({
+        id,
+        qrCodeBase64,
+      });
 
-    toast.promise(qrCodeCreateMutation.mutateAsync(qrCodeData), {
+      // Trigger download
+      const link = document.createElement("a");
+      link.href = imageUrl!;
+      link.download = "qrcode.png";
+      link.click();
+
+      await revalidateRoute("/dashboard/qrcodes");
+      router.push("/dashboard/qrcodes");
+    })();
+
+    toast.promise(promise, {
       loading: "Creating QR Code...",
       success: "QR Code created successfully",
       error: "Failed to create QR Code",
