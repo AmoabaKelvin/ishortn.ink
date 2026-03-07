@@ -44,8 +44,50 @@ CALL add_matchedGeoRuleId();
 --> statement-breakpoint
 DROP PROCEDURE IF EXISTS add_matchedGeoRuleId;
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `linkId_idx` ON `GeoRule` (`linkId`);
+DROP PROCEDURE IF EXISTS add_linkId_idx;
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `priority_idx` ON `GeoRule` (`linkId`,`priority`);
+CREATE PROCEDURE add_linkId_idx()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_NAME = 'GeoRule' AND INDEX_NAME = 'linkId_idx' AND TABLE_SCHEMA = DATABASE()
+  ) THEN
+    CREATE INDEX `linkId_idx` ON `GeoRule` (`linkId`);
+  END IF;
+END;
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `geoRuleId_idx` ON `LinkVisit` (`matchedGeoRuleId`);
+CALL add_linkId_idx();
+--> statement-breakpoint
+DROP PROCEDURE IF EXISTS add_linkId_idx;
+--> statement-breakpoint
+DROP PROCEDURE IF EXISTS add_priority_idx;
+--> statement-breakpoint
+CREATE PROCEDURE add_priority_idx()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_NAME = 'GeoRule' AND INDEX_NAME = 'priority_idx' AND TABLE_SCHEMA = DATABASE()
+  ) THEN
+    CREATE INDEX `priority_idx` ON `GeoRule` (`linkId`,`priority`);
+  END IF;
+END;
+--> statement-breakpoint
+CALL add_priority_idx();
+--> statement-breakpoint
+DROP PROCEDURE IF EXISTS add_priority_idx;
+--> statement-breakpoint
+DROP PROCEDURE IF EXISTS add_geoRuleId_idx;
+--> statement-breakpoint
+CREATE PROCEDURE add_geoRuleId_idx()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_NAME = 'LinkVisit' AND INDEX_NAME = 'geoRuleId_idx' AND TABLE_SCHEMA = DATABASE()
+  ) THEN
+    CREATE INDEX `geoRuleId_idx` ON `LinkVisit` (`matchedGeoRuleId`);
+  END IF;
+END;
+--> statement-breakpoint
+CALL add_geoRuleId_idx();
+--> statement-breakpoint
+DROP PROCEDURE IF EXISTS add_geoRuleId_idx;
