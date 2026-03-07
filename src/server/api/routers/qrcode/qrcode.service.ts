@@ -38,38 +38,39 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
 
   const ownership = workspaceOwnership(ctx.workspace);
 
-  // Create a hidden short link for tracking
+  // Create a hidden short link and QR code in a single transaction
   const alias = await generateShortLink();
-  const hiddenLinkResult = await ctx.db.insert(link).values({
-    url: input.content,
-    alias,
-    domain: "ishortn.ink",
-    name: input.title || "QR Code",
-    isQrCode: true,
-    userId: ownership.userId ?? ctx.auth.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId,
-  });
-
-  const hiddenLinkId = hiddenLinkResult[0].insertId;
   const trackingUrl = `https://ishortn.ink/${alias}`;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  const insertionResult = await ctx.db.insert(qrcode).values({
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    title: input.title,
-    color: input.selectedColor,
-    content: trackingUrl,
-    cornerStyle: input.cornerStyle,
-    patternStyle: input.patternStyle,
-    qrCode: input.qrCodeBase64,
-    linkId: hiddenLinkId,
-    contentType: "link",
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  } as any);
+  const { insertedQrCodeId } = await ctx.db.transaction(async (tx) => {
+    const hiddenLinkResult = await tx.insert(link).values({
+      url: input.content,
+      alias,
+      domain: "ishortn.ink",
+      name: input.title || "QR Code",
+      isQrCode: true,
+      userId: ownership.userId ?? ctx.auth.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId,
+    });
 
-  const insertedQrCodeId = insertionResult[0].insertId;
+    const hiddenLinkId = hiddenLinkResult[0].insertId;
+
+    const insertionResult = await tx.insert(qrcode).values({
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      title: input.title,
+      color: input.selectedColor,
+      content: trackingUrl,
+      cornerStyle: input.cornerStyle as typeof qrcode.cornerStyle.enumValues[number],
+      patternStyle: input.patternStyle as typeof qrcode.patternStyle.enumValues[number],
+      qrCode: input.qrCodeBase64,
+      linkId: hiddenLinkId,
+      contentType: "link",
+    });
+
+    return { insertedQrCodeId: insertionResult[0].insertId };
+  });
 
   // Upload QR code image to R2 if it's base64
   if (input.qrCodeBase64) {

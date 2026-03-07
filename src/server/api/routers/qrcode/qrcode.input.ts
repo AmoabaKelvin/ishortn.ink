@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const qrcodeInput = z.object({
   title: z.string().optional(),
-  content: z.string(),
+  content: z.string().url("Please enter a valid URL"),
   patternStyle: z.string(),
   cornerStyle: z.string(),
   selectedColor: z.string(),
