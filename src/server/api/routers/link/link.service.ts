@@ -1012,7 +1012,7 @@ export const getAllUserAnalytics = async (
   // Fetch workspace links with optional filtering
   const userLinks = await ctx.db.query.link.findMany({
     where: (table, { eq, and, isNull }) => {
-      const conditions = [workspaceFilter(ctx.workspace, table.userId, table.teamId)];
+      const conditions = [workspaceFilter(ctx.workspace, table.userId, table.teamId), eq(table.isQrCode, false)];
 
       // Apply filter based on type
       if (input.filterType === "folder" && input.filterId !== undefined) {
