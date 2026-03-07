@@ -34,7 +34,7 @@ const linkSchema = z.object({
   tags: z
     .string()
     .transform((str) => JSON.parse(str) as string[])
-    .default("[]"),
+    .default([]),
   archived: z.boolean().default(false),
   folderId: z
     .string()
@@ -50,7 +50,11 @@ const linkSchema = z.object({
   cloaking: z
     .string()
     .transform((val) => val === "true")
-    .default("false"),
+    .default(false),
+  isQrCode: z
+    .string()
+    .transform((val) => val === "true")
+    .default(false),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
@@ -77,6 +81,7 @@ function convertToLink(data: Record<string, string>): Link {
     utmParams: parsed.utmParams ?? null,
     createdByUserId: parsed.createdByUserId ?? null,
     cloaking: parsed.cloaking ?? false,
+    isQrCode: parsed.isQrCode ?? false,
   };
 }
 
@@ -148,7 +153,9 @@ const geoRuleSchema = z.object({
 
 type CachedGeoRule = z.infer<typeof geoRuleSchema>;
 
-async function getGeoRulesFromCache(linkId: number): Promise<CachedGeoRule[] | null> {
+async function getGeoRulesFromCache(
+  linkId: number,
+): Promise<CachedGeoRule[] | null> {
   try {
     const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
     const cached = await redis.get(key);
@@ -178,7 +185,7 @@ async function setGeoRulesInCache(
     priority: number;
     createdAt: Date | null;
   }[],
-  ttlSeconds: number = GEO_RULES_CACHE_TTL
+  ttlSeconds: number = GEO_RULES_CACHE_TTL,
 ): Promise<boolean> {
   try {
     const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;

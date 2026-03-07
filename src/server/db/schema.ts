@@ -229,6 +229,7 @@ export const link = mysqlTable(
     archived: boolean("archived").default(false),
     folderId: int("folderId"),
     cloaking: boolean("cloaking").default(false),
+    isQrCode: boolean("isQrCode").default(false),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),

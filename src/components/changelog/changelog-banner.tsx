@@ -51,18 +51,21 @@ export function ChangelogBanner() {
           transition={{ duration: 0.2 }}
           className="overflow-hidden"
         >
-          <div className="bg-blue-600">
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5">
-              <p className="text-sm text-blue-100">
-                <span className="font-medium text-white">{latestEntry.title}</span>
-                <span className="mx-2 hidden text-blue-300 sm:inline">—</span>
+          <div className="border-b border-neutral-200 bg-white">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2">
+              <p className="flex items-center gap-2 text-[13px] text-neutral-500">
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
+                  New
+                </span>
+                <span className="font-medium text-neutral-900">{latestEntry.title}</span>
+                <span className="mx-1 hidden text-neutral-300 sm:inline">—</span>
                 <span className="hidden sm:inline">{latestEntry.shortDesc}</span>
               </p>
 
               <div className="flex items-center gap-3">
                 <Link
                   href="/changelog"
-                  className="text-sm font-medium text-white underline underline-offset-4 hover:text-blue-100"
+                  className="text-[13px] font-medium text-neutral-900 underline underline-offset-4 transition-colors hover:text-neutral-600"
                 >
                   View changelog
                 </Link>
@@ -70,10 +73,10 @@ export function ChangelogBanner() {
                 <button
                   type="button"
                   onClick={handleDismiss}
-                  className="text-blue-200 hover:text-white"
+                  className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
                   aria-label="Dismiss"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>

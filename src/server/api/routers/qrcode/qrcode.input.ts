@@ -1,12 +1,15 @@
 import { z } from "zod";
 
 export const qrcodeInput = z.object({
-  wasShortened: z.boolean(),
   title: z.string().optional(),
-  content: z.string(),
+  content: z.string().url("Please enter a valid URL"),
   patternStyle: z.string(),
   cornerStyle: z.string(),
   selectedColor: z.string(),
+});
+
+export const qrcodeSaveImageInput = z.object({
+  id: z.number(),
   qrCodeBase64: z.string(),
 });
 

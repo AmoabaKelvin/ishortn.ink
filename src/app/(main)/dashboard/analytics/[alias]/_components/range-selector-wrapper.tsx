@@ -9,6 +9,7 @@ type RangeSelectorWrapperProps = {
   isProPlan: boolean;
   domain: string;
   alias: string;
+  basePath?: string;
 };
 
 export function RangeSelectorWrapper({
@@ -16,13 +17,18 @@ export function RangeSelectorWrapper({
   isProPlan,
   domain,
   alias,
+  basePath,
 }: RangeSelectorWrapperProps) {
   const router = useTransitionRouter();
 
   const handleRangeChange = (newRange: string) => {
-    router.push(
-      `/dashboard/analytics/${alias}?domain=${domain}&range=${newRange}`
-    );
+    if (basePath) {
+      router.push(`${basePath}?range=${newRange}`);
+    } else {
+      router.push(
+        `/dashboard/analytics/${alias}?domain=${domain}&range=${newRange}`
+      );
+    }
   };
 
   return (

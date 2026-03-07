@@ -6,11 +6,17 @@ export const qrCodeRouter = createTRPCRouter({
   create: workspaceProcedure.input(inputs.qrcodeInput).mutation(async ({ ctx, input }) => {
     return services.createQrCode(ctx, input);
   }),
+  get: workspaceProcedure.input(inputs.qrcodeDeleteInput).query(async ({ ctx, input }) => {
+    return services.getQrCode(ctx, input.id);
+  }),
   list: workspaceProcedure.query(async ({ ctx }) => {
     return services.retrieveUserQrCodes(ctx);
   }),
   delete: workspaceProcedure.input(inputs.qrcodeDeleteInput).mutation(async ({ ctx, input }) => {
     return services.deleteQrCode(ctx, input.id);
+  }),
+  saveImage: workspaceProcedure.input(inputs.qrcodeSaveImageInput).mutation(async ({ ctx, input }) => {
+    return services.saveQrCodeImage(ctx, input);
   }),
 
   // QR Preset procedures
