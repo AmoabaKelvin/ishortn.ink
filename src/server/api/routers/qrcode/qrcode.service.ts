@@ -1,5 +1,6 @@
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 
+import { deleteFromCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
@@ -185,6 +186,14 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
     await tx.delete(qrcode).where(eq(qrcode.id, id));
 
     if (qrCode.linkId && qrCode.linkId > 0) {
+      const hiddenLink = await tx.query.link.findFirst({
+        where: eq(link.id, qrCode.linkId),
+      });
+
+      if (hiddenLink?.alias) {
+        await deleteFromCache(`${hiddenLink.domain}:${hiddenLink.alias}`);
+      }
+
       await Promise.all([
         tx.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, qrCode.linkId)),
         tx.delete(linkVisit).where(eq(linkVisit.linkId, qrCode.linkId)),
