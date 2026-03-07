@@ -258,7 +258,15 @@ function QRCodeCreationPage() {
         selectedColor: qrState.darkColor,
       });
 
-      // Step 2: Generate the QR image encoding the tracking URL so scans are tracked
+      // Step 2: Update the live preview so it matches the final output
+      if (canvasRef.current) {
+        await generateQRCode(canvasRef.current, {
+          ...qrState,
+          text: trackingUrl,
+        });
+      }
+
+      // Step 3: Generate the high-res QR image encoding the tracking URL for download
       const finalCanvas = document.createElement("canvas");
       await generateQRCode(finalCanvas, {
         ...qrState,
@@ -267,7 +275,7 @@ function QRCodeCreationPage() {
       });
       const qrCodeBase64 = finalCanvas.toDataURL("image/png", 1.0);
 
-      // Step 3: Upload the correctly-encoded image
+      // Step 4: Upload the correctly-encoded image
       const imageUrl = await qrCodeSaveImageMutation.mutateAsync({
         id,
         qrCodeBase64,
