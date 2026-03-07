@@ -1367,7 +1367,7 @@ export const exportAllUserLinks = async (ctx: WorkspaceTRPCContext) => {
       domain: true,
       createdAt: true,
     },
-    where: (table) => workspaceFilter(ctx.workspace, table.userId, table.teamId),
+    where: (table) => and(workspaceFilter(ctx.workspace, table.userId, table.teamId), eq(table.isQrCode, false)),
   });
 };
 
@@ -1405,16 +1405,18 @@ export const toggleArchive = async (ctx: WorkspaceTRPCContext, input: ToggleArch
 };
 
 export const getStats = async (ctx: WorkspaceTRPCContext) => {
+  const baseFilter = and(workspaceFilter(ctx.workspace, link.userId, link.teamId), eq(link.isQrCode, false));
+
   const [totalLinksResult, activeLinksResult] = await Promise.all([
     ctx.db
       .select({ count: count() })
       .from(link)
-      .where(workspaceFilter(ctx.workspace, link.userId, link.teamId)),
+      .where(baseFilter),
     ctx.db
       .select({ count: count() })
       .from(link)
       .where(
-        and(workspaceFilter(ctx.workspace, link.userId, link.teamId), eq(link.archived, false)),
+        and(baseFilter, eq(link.archived, false)),
       ),
   ]);
 
