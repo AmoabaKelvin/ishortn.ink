@@ -34,7 +34,7 @@ const linkSchema = z.object({
   tags: z
     .string()
     .transform((str) => JSON.parse(str) as string[])
-    .default("[]"),
+    .default([]),
   archived: z.boolean().default(false),
   folderId: z
     .string()
@@ -50,11 +50,11 @@ const linkSchema = z.object({
   cloaking: z
     .string()
     .transform((val) => val === "true")
-    .default("false"),
+    .default(false),
   isQrCode: z
     .string()
     .transform((val) => val === "true")
-    .default("false"),
+    .default(false),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
