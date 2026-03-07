@@ -74,7 +74,7 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
       teamId: ownership.teamId,
       title: input.title,
       color: input.selectedColor,
-      content: trackingUrl,
+      content: input.content,
       cornerStyle: input.cornerStyle as typeof qrcode.cornerStyle.enumValues[number],
       patternStyle: input.patternStyle as typeof qrcode.patternStyle.enumValues[number],
       linkId: hiddenLinkId,
