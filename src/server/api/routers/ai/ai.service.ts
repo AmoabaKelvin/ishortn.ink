@@ -1,6 +1,10 @@
 import { openai } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
+
+const aliasSchema = z.object({
+  recommendations: z.array(z.string()),
+});
 
 export async function generateAliasFromMetadata(metadata: {
   title?: string;
@@ -8,14 +12,12 @@ export async function generateAliasFromMetadata(metadata: {
   keywords?: string[];
   url: string;
 }): Promise<Array<string>> {
-  const result = await generateObject({
-    model: openai("gpt-4o-mini", {
-      structuredOutputs: true,
+  const result = await generateText({
+    model: openai("gpt-4o-mini"),
+    output: Output.object({
+      schema: aliasSchema,
     }),
-    schema: z.object({
-      recommendations: z.array(z.string()),
-    }),
-    prompt: `You are a helpful assistant for a url shortening service, 
+    prompt: `You are a helpful assistant for a url shortening service,
   your goal is to generate recommended aliases for the given metadata of a url in other to
   relieve the burden of thinking harrddd for an alias. Here is the metadata of the url:
   ${JSON.stringify(metadata)}
@@ -31,7 +33,8 @@ export async function generateAliasFromMetadata(metadata: {
   `,
   });
 
-  return result.object.recommendations;
+  const output = result.output as z.infer<typeof aliasSchema> | undefined;
+  return output?.recommendations ?? [];
 }
 
 interface URLFeatures {
@@ -110,16 +113,16 @@ type Metadata = {
 
 export async function detectPhishingLink(
   url: string,
-  metadata: Metadata
+  metadata: Metadata,
 ): Promise<{ url: string; phishing: boolean }> {
   const features = extractUrlFeatures(url);
 
-  const result = await generateObject({
-    model: openai("gpt-4o-mini", {
-      structuredOutputs: true,
-    }),
+  const result = await generateText({
+    model: openai("gpt-5.4"),
     temperature: 1,
-    schema: phishingDetectionSchema,
+    output: Output.object({
+      schema: phishingDetectionSchema,
+    }),
     prompt: `You are a cybersecurity expert tasked with analyzing URLs for potential phishing attempts.
     Please analyze the following URL and determine if it is a potential phishing link.
 
@@ -158,5 +161,8 @@ export async function detectPhishingLink(
     `,
   });
 
-  return result.object.response;
+  const output = result.output as
+    | z.infer<typeof phishingDetectionSchema>
+    | undefined;
+  return output?.response ?? { url, phishing: false };
 }
