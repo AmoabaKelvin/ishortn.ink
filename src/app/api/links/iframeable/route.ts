@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { isIframeable } from "@/lib/utils/is-iframeable";
 
-export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
 /**
  * API endpoint to check if a URL can be embedded in an iframe.

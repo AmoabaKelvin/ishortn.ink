@@ -7,6 +7,16 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
+      disallow: [
+        "/dashboard",
+        "/auth",
+        "/verify-password",
+        "/blocked",
+        "/cloaked",
+        "/api",
+        "/account",
+        "/teams/accept-invite",
+      ],
     },
     sitemap: absoluteUrl("/sitemap.xml"),
   };

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 
-export const runtime = "edge";
 export const fetchCache = "force-no-store";
 
 type CloakedPageProps = {

@@ -9,10 +9,11 @@ import { useEffect, useState } from "react";
 import { APP_TITLE } from "@/lib/constants/app";
 
 const routes = [
-  { name: "Features", href: "/#features" },
-  { name: "Pricing", href: "/#pricing" },
+  { name: "Features", href: "/features" },
+  { name: "Pricing", href: "/pricing" },
   { name: "FAQ", href: "/#faq" },
   { name: "Changelog", href: "/changelog" },
+  { name: "Blog", href: "/blog" },
 ] as const;
 
 const handleSmoothScroll = (
