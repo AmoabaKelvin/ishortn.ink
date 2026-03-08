@@ -179,9 +179,9 @@ export const Hero = () => {
           className="text-center"
         >
           <h1 className="font-display text-5xl leading-[1.08] tracking-tight text-neutral-900 sm:text-6xl md:text-7xl">
-            Every click tells
+            The URL Shortener
             <br />
-            a story
+            That Tracks Every Click
           </h1>
         </motion.div>
 
@@ -192,8 +192,8 @@ export const Hero = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mx-auto mt-6 max-w-lg text-center text-base leading-relaxed text-neutral-500 md:text-lg"
         >
-          Shorten links, track every click, and understand your audience.
-          The link management platform built for modern teams.
+          Create short links with powerful analytics and custom domains.
+          Track clicks, understand your audience, and grow your brand.
         </motion.p>
 
         {/* CTA */}
