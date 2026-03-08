@@ -14,14 +14,21 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   const { pathname, host, origin } = new URL(request.url);
 
+  const staticRoutes = ["/blog", "/changelog", "/privacy", "/terms", "/auth", "/features", "/pricing", "/compare"];
+
   const shouldSkip =
     pathname === "/" ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/cloaked/") ||
+    pathname.startsWith("/opengraph-image") ||
     pathname.endsWith(".png") ||
     pathname.endsWith(".ico") ||
+    pathname.endsWith(".xml") ||
+    pathname.endsWith(".txt") ||
+    pathname.endsWith(".webmanifest") ||
+    staticRoutes.some((route) => pathname.startsWith(route)) ||
     pathname.split("/").length > 2;
 
   if (shouldSkip) {
