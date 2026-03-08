@@ -19,12 +19,25 @@ import { CSPostHogProvider } from "./providers";
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ishortn.ink"),
   title: {
     default: APP_TITLE,
     template: `%s | ${APP_TITLE}`,
   },
-  description: "iShortn - Link shortening with analytics(without the fuss)",
+  description:
+    "Free URL shortener with powerful analytics. Create custom short links, track clicks, locations, and devices. QR codes, custom domains, and API included.",
   icons: [{ rel: "icon", url: "/icon.png" }],
+  openGraph: {
+    siteName: "iShortn",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  alternates: {
+    canonical: "./",
+  },
 };
 
 export const viewport: Viewport = {
@@ -44,7 +57,7 @@ export default function RootLayout({
       <ViewTransitions>
         {env.UMAMI_TRACKING_ID && (
           <Script
-            defer
+            strategy="lazyOnload"
             src={env.UMAMI_URL}
             data-website-id={env.UMAMI_TRACKING_ID}
           />
