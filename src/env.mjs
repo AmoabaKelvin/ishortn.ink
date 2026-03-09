@@ -24,6 +24,8 @@ export const env = createEnv({
     UMAMI_TRACKING_ID: z.string().optional(),
     UMAMI_URL: z.string().url().optional(),
     DISCORD_WEBHOOK_URL: z.string().url().optional(),
+    // Google Safe Browsing & Web Risk (same key, Web Risk requires billing enabled)
+    GOOGLE_SAFE_BROWSING_API_KEY: z.string().optional(),
     // Cloudflare R2 Storage (S3-compatible)
     R2_ACCOUNT_ID: z.string().optional(),
     R2_ACCESS_KEY_ID: z.string().optional(),
@@ -57,6 +59,8 @@ export const env = createEnv({
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,
     UMAMI_URL: process.env.UMAMI_URL,
     DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,
+    // Google Safe Browsing & Web Risk
+    GOOGLE_SAFE_BROWSING_API_KEY: process.env.GOOGLE_SAFE_BROWSING_API_KEY,
     // Cloudflare R2 Storage
     R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
     R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,

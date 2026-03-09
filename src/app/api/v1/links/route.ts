@@ -7,6 +7,7 @@ import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
+import { runPreLLMChecks, USER_MSG_UNSAFE } from "@/server/lib/phishing";
 
 import { validateAndGetToken } from "../utils";
 
@@ -125,12 +126,17 @@ async function createNewLink(
     throw new Error("Alias can only contain alphanumeric characters, dashes, and underscores");
   }
 
-  // check for phishing
+  // Layer 1 & 2: Deterministic checks + Google Safe Browsing
+  const preLLMResult = await runPreLLMChecks(data.url);
+  if (preLLMResult.blocked) {
+    console.warn(`Link blocked (pre-LLM, API): ${preLLMResult.reason}`);
+    throw new Error(preLLMResult.userMessage);
+  }
+
+  // Layer 3: LLM-based phishing detection
   const phishingResult = await detectPhishingLink(data.url, await fetchMetadataInfo(data.url));
   if (phishingResult.phishing) {
-    throw new Error(
-      "This URL has been detected as a potential phishing site. Shortened link will not be created.",
-    );
+    throw new Error(USER_MSG_UNSAFE);
   }
 
   const newLinkData = {
