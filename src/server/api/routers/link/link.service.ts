@@ -902,6 +902,13 @@ export const bulkToggleLinkStatus = async (
     .set({ disabled: disable })
     .where(inArray(link.id, validLinkIds));
 
+  // Invalidate cache for all affected links
+  await Promise.all(
+    linksToUpdate
+      .filter((l) => l.alias)
+      .map((l) => deleteFromCache(constructCacheKey(l.domain, l.alias!))),
+  );
+
   return { success: true, count: linksToUpdate.length, disabled: disable };
 };
 
@@ -1368,7 +1375,7 @@ export const toggleLinkStatus = async (
     return null;
   }
 
-  return ctx.db
+  const result = await ctx.db
     .update(link)
     .set({
       disabled: !fetchedLink.disabled,
@@ -1379,6 +1386,15 @@ export const toggleLinkStatus = async (
         workspaceFilter(ctx.workspace, link.userId, link.teamId),
       ),
     );
+
+  // Invalidate cache so the status change takes effect immediately
+  if (fetchedLink.alias) {
+    await deleteFromCache(
+      constructCacheKey(fetchedLink.domain, fetchedLink.alias),
+    );
+  }
+
+  return result;
 };
 
 export const resetLinkStatistics = async (

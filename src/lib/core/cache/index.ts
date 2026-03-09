@@ -233,7 +233,20 @@ async function deleteGeoRulesFromCache(linkId: number): Promise<boolean> {
   }
 }
 
+/** Normalize a raw domain by stripping protocol, www prefix, and mapping localhost to default. */
+function normalizeDomain(domain: string): string {
+  const cleaned = domain.replace(/^https?:\/\//, "").replace(/^www\./, "");
+  return domain.includes("localhost") ? "ishortn.ink" : cleaned;
+}
+
+/** Build a Redis cache key from a raw (possibly protocol-prefixed) domain and alias. */
+function buildCacheKey(domain: string, alias: string): string {
+  return `${normalizeDomain(domain)}:${alias}`;
+}
+
 export {
+  buildCacheKey,
+  normalizeDomain,
   deleteFromCache,
   deleteGeoRulesFromCache,
   getFromCache,
