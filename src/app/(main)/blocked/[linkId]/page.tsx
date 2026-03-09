@@ -1,11 +1,11 @@
 import { IconBan } from "@tabler/icons-react";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Funnel_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { db } from "@/server/db";
-import { link } from "@/server/db/schema";
+import { geoRule, link } from "@/server/db/schema";
 
 const funnelSans = Funnel_Sans({
   subsets: ["latin"],
@@ -14,10 +14,11 @@ const funnelSans = Funnel_Sans({
 
 interface BlockedPageProps {
   params: Promise<{ linkId: string }>;
+  searchParams: Promise<{ geo?: string }>;
 }
 
-export default async function BlockedPage({ params }: BlockedPageProps) {
-  const { linkId } = await params;
+export default async function BlockedPage({ params, searchParams }: BlockedPageProps) {
+  const [{ linkId }, { geo }] = await Promise.all([params, searchParams]);
 
   const linkRecord = await db.query.link.findFirst({
     where: eq(link.id, Number(linkId)),
@@ -28,10 +29,29 @@ export default async function BlockedPage({ params }: BlockedPageProps) {
     notFound();
   }
 
-  const reason = linkRecord.blocked
-    ? (linkRecord.blockedReason ??
-      "This link has been blocked for violating our terms of service.")
-    : "This link is not available in your region.";
+  let reason: string;
+
+  if (linkRecord.blocked) {
+    reason =
+      linkRecord.blockedReason ??
+      "This link has been blocked for violating our terms of service.";
+  } else if (geo) {
+    // Fetch the geo rule's custom block message server-side
+    const geoRuleId = Number(geo);
+    const rule = Number.isFinite(geoRuleId)
+      ? await db.query.geoRule.findFirst({
+          where: and(
+            eq(geoRule.id, geoRuleId),
+            eq(geoRule.linkId, linkRecord.id),
+          ),
+          columns: { blockMessage: true },
+        })
+      : null;
+    reason =
+      rule?.blockMessage ?? "This link is not available in your region.";
+  } else {
+    reason = "This link is not available in your region.";
+  }
 
   return (
     <div

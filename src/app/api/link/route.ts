@@ -116,7 +116,8 @@ export async function GET(request: NextRequest) {
     if (geoResult.matched) {
       if (geoResult.action === "block") {
         const baseUrl = request.url.split('/api/link')[0];
-        return Response.json({ url: `${baseUrl}/blocked/${link.id}` });
+        const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
+        return Response.json({ url: `${baseUrl}/blocked/${link.id}${geoParam}` });
       }
 
       // Redirect to geo-targeted destination
