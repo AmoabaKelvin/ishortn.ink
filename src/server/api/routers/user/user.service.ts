@@ -14,6 +14,7 @@ export async function getUserProfile(ctx: ProtectedTRPCContext) {
       name: true,
       email: true,
       imageUrl: true,
+      isAdmin: true,
     },
   });
 

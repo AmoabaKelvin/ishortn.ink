@@ -4,11 +4,13 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { db } from "@/server/db";
+import { user } from "@/server/db/schema";
 import {
   resolveWorkspaceContext,
   userHasUltraPlan,
   WorkspaceContext
 } from "@/server/lib/workspace";
+import { eq } from "drizzle-orm";
 
 import type { inferAsyncReturnType } from "@trpc/server";
 
@@ -49,12 +51,27 @@ export type ProtectedTRPCContext = Omit<TRPCContext, "auth"> & {
   auth: Omit<NonNullable<TRPCContext["auth"]>, "userId"> & {
     userId: string;
   };
+  /** Whether the user has isAdmin=true, fetched once during auth */
+  isAdmin: boolean;
 };
 
 // Protected procedure middleware
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.auth.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  // Single query for both ban check and admin status
+  const currentUser = await ctx.db.query.user.findFirst({
+    where: eq(user.id, ctx.auth.userId),
+    columns: { banned: true, isAdmin: true },
+  });
+
+  if (currentUser?.banned) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Your account has been suspended. Please contact support for more information.",
+    });
   }
 
   return next({
@@ -64,6 +81,7 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
         ...ctx.auth,
         userId: ctx.auth.userId,
       },
+      isAdmin: currentUser?.isAdmin ?? false,
     } as ProtectedTRPCContext,
   });
 });
@@ -137,6 +155,21 @@ export const ultraProcedure = protectedProcedure.use(async ({ ctx, next }) => {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "This feature requires an Ultra plan subscription",
+    });
+  }
+
+  return next({ ctx });
+});
+
+/**
+ * Admin procedure that requires the user to have isAdmin=true.
+ * Reads from context (already fetched in protectedProcedure) — no extra DB query.
+ */
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (!ctx.isAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Admin access required",
     });
   }
 
