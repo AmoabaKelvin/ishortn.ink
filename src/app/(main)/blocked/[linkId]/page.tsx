@@ -1,33 +1,51 @@
 "use client";
 
-import React from "react";
-import { Ban } from "lucide-react";
+import { IconBan } from "@tabler/icons-react";
+import { Funnel_Sans } from "next/font/google";
 import { useSearchParams } from "next/navigation";
 
-import { satoshi } from "@/styles/fonts";
+import { cn } from "@/lib/utils";
 
-type BlockedPageProps = {
-  params: Promise<{
-    linkId: string;
-  }>;
-};
+const funnelSans = Funnel_Sans({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
 
-export default function BlockedPage({ params }: BlockedPageProps) {
-  const { linkId } = React.use(params);
+export default function BlockedPage() {
   const searchParams = useSearchParams();
   const message = searchParams.get("message");
 
   return (
     <div
-      className={`flex h-screen flex-col items-center justify-center ${satoshi.className}`}
+      className={cn(
+        "flex min-h-screen items-center justify-center bg-neutral-50 px-4",
+        funnelSans.className,
+      )}
     >
-      <h1 className="mb-10 text-4xl font-bold">iShortn</h1>
-
-      <div className="flex flex-col items-center gap-4 text-center px-4">
-        <Ban className="h-16 w-16 text-red-500" />
-        <h1 className="text-2xl font-bold">Access Restricted</h1>
-        <p className="max-w-md text-gray-600">
-          {message || "This link is not available in your region."}
+      <div className="w-full max-w-md text-center">
+        <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+          <IconBan size={24} stroke={1.5} className="text-red-600" />
+        </div>
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+          Access Restricted
+        </h1>
+        <p className="mt-2 text-[13px] leading-relaxed text-neutral-500">
+          This link has been blocked and is no longer accessible.
+        </p>
+        {message && (
+          <div className="mt-5 rounded-lg border border-neutral-200 bg-white px-4 py-3">
+            <p className="text-[12px] font-medium text-neutral-400">Details</p>
+            <p className="mt-1 text-[13px] text-neutral-700">{message}</p>
+          </div>
+        )}
+        <p className="mt-6 text-[12px] text-neutral-400">
+          If you believe this is a mistake, please contact the link owner or{" "}
+          <a
+            href="mailto:support@ishortn.ink"
+            className="text-neutral-600 underline underline-offset-2"
+          >
+            support@ishortn.ink
+          </a>
         </p>
       </div>
     </div>

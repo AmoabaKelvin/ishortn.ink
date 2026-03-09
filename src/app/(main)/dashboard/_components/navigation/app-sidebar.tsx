@@ -2,16 +2,20 @@
 
 import { useClerk, useUser } from "@clerk/nextjs";
 import {
+  IconBan,
   IconChartBar,
   IconChevronUp,
   IconCreditCard,
+  IconFlag,
   IconFolder,
   IconLayoutDashboard,
   IconLifebuoy,
+  IconLink,
   IconLogout,
   IconMenu2,
   IconQrcode,
   IconSettings,
+  IconShieldLock,
   IconTarget,
   IconUser,
   IconUsers,
@@ -57,6 +61,14 @@ const teamNavigationItems = [
   },
 ];
 
+const adminNavigationItems = [
+  { name: "Overview", href: "/dashboard/admin", icon: IconShieldLock },
+  { name: "Links", href: "/dashboard/admin/links", icon: IconLink },
+  { name: "Users", href: "/dashboard/admin/users", icon: IconUsers },
+  { name: "Blocked Domains", href: "/dashboard/admin/domains", icon: IconBan },
+  { name: "Flagged Links", href: "/dashboard/admin/flagged", icon: IconFlag },
+];
+
 type Team = {
   id: number;
   name: string;
@@ -86,6 +98,7 @@ type AppSidebarProps = {
   teams?: Team[];
   currentWorkspace?: CurrentWorkspace;
   canCreateTeam?: boolean;
+  isAdmin?: boolean;
 };
 
 export function AppSidebar({
@@ -98,6 +111,7 @@ export function AppSidebar({
   teams = [],
   currentWorkspace = { type: "personal", plan: "free" },
   canCreateTeam = false,
+  isAdmin = false,
 }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -190,6 +204,43 @@ export function AppSidebar({
                   {teamNavigationItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname.startsWith(item.href);
+
+                    return (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                            isActive
+                              ? "bg-neutral-100 text-neutral-900"
+                              : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900",
+                          )}
+                        >
+                          <Icon size={18} stroke={1.5} className="shrink-0" />
+                          {item.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+
+            {/* Admin Navigation */}
+            {isAdmin && (
+              <>
+                <div className="my-3 h-px bg-neutral-100" />
+                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                  Admin
+                </p>
+                <ul className="space-y-0.5">
+                  {adminNavigationItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== "/dashboard/admin" &&
+                        pathname.startsWith(item.href));
 
                     return (
                       <li key={item.name}>
