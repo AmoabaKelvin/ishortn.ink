@@ -1,7 +1,8 @@
 import {
   IconBan,
-  IconFlag,
   IconLink,
+  IconTrendingUp,
+  IconUserPlus,
   IconUsers,
 } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
@@ -9,6 +10,8 @@ import { Link } from "next-view-transitions";
 import { QuickInfoCard } from "@/app/(main)/dashboard/analytics/[alias]/_components/quick-info-card";
 import { Card } from "@/components/ui/card";
 import { api } from "@/trpc/server";
+
+import { DailyActivityChart } from "./_components/daily-activity-chart";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +29,11 @@ function timeAgo(date: Date | null): string {
 }
 
 export default async function AdminPage() {
-  const [stats, activity] = await Promise.all([
+  const [stats, activity, dailyStats, recentUsers] = await Promise.all([
     api.admin.getStats.query(),
     api.admin.getRecentActivity.query(),
+    api.admin.getDailyStats.query(),
+    api.admin.getRecentUsers.query(),
   ]);
 
   return (
@@ -44,7 +49,7 @@ export default async function AdminPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <QuickInfoCard
           title="Total Links"
           value={stats.totalLinks.toLocaleString()}
@@ -56,19 +61,96 @@ export default async function AdminPage() {
           icon={<IconUsers size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
+          title="Links Today"
+          value={stats.linksToday.toLocaleString()}
+          icon={
+            <IconTrendingUp
+              size={16}
+              stroke={1.5}
+              className="text-blue-600"
+            />
+          }
+        />
+        <QuickInfoCard
+          title="Users Today"
+          value={stats.usersToday.toLocaleString()}
+          icon={
+            <IconUserPlus size={16} stroke={1.5} className="text-blue-600" />
+          }
+        />
+        <QuickInfoCard
           title="Blocked Links"
           value={stats.blockedLinks.toLocaleString()}
           icon={<IconBan size={16} stroke={1.5} className="text-blue-600" />}
         />
-        <QuickInfoCard
-          title="Pending Flags"
-          value={stats.pendingFlagged.toLocaleString()}
-          icon={<IconFlag size={16} stroke={1.5} className="text-blue-600" />}
-        />
       </div>
 
-      {/* Activity panels */}
+      {/* Daily activity chart */}
+      <div className="mt-8">
+        <DailyActivityChart data={dailyStats} />
+      </div>
+
+      {/* New users + Recent links */}
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* New users */}
+        <Card className="flex flex-col rounded-xl border-neutral-200 shadow-none">
+          <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+            <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
+              New Users
+            </p>
+            <Link
+              href="/dashboard/admin/users"
+              className="text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-600"
+            >
+              View all
+            </Link>
+          </div>
+          {recentUsers.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center px-5 py-12">
+              <p className="text-[13px] text-neutral-400">No users yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-neutral-100">
+              {recentUsers.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between px-5 py-3"
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    {u.imageUrl ? (
+                      <img
+                        src={u.imageUrl}
+                        alt=""
+                        className="h-7 w-7 shrink-0 rounded-full bg-neutral-100 object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[11px] font-medium text-neutral-500">
+                        {(u.name ?? u.email ?? "?").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium text-neutral-700">
+                        {u.name ?? "Unnamed"}
+                      </p>
+                      <p className="truncate text-[11px] text-neutral-400">
+                        {u.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 pl-4 text-right">
+                    <p className="text-[11px] tabular-nums text-neutral-400">
+                      {u.linkCount} {u.linkCount === 1 ? "link" : "links"}
+                    </p>
+                    <p className="text-[11px] text-neutral-300">
+                      {timeAgo(u.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
         {/* Recent links */}
         <Card className="flex flex-col rounded-xl border-neutral-200 shadow-none">
           <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
@@ -84,12 +166,17 @@ export default async function AdminPage() {
           </div>
           {activity.recentLinks.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <p className="text-[13px] text-neutral-400">No links created yet</p>
+              <p className="text-[13px] text-neutral-400">
+                No links created yet
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-neutral-100">
               {activity.recentLinks.map((l) => (
-                <div key={l.id} className="flex items-center justify-between px-5 py-3">
+                <div
+                  key={l.id}
+                  className="flex items-center justify-between px-5 py-3"
+                >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-neutral-700">
                       <span className="text-neutral-400">{l.domain}/</span>
@@ -100,7 +187,9 @@ export default async function AdminPage() {
                     </p>
                   </div>
                   <div className="shrink-0 pl-4 text-right">
-                    <p className="text-[11px] text-neutral-400">{l.userEmail}</p>
+                    <p className="text-[11px] text-neutral-400">
+                      {l.userEmail}
+                    </p>
                     <p className="text-[11px] text-neutral-300">
                       {timeAgo(l.createdAt)}
                     </p>
@@ -110,8 +199,10 @@ export default async function AdminPage() {
             </div>
           )}
         </Card>
+      </div>
 
-        {/* Recently blocked */}
+      {/* Recently blocked */}
+      <div className="mt-4">
         <Card className="flex flex-col rounded-xl border-neutral-200 shadow-none">
           <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
             <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
@@ -131,7 +222,10 @@ export default async function AdminPage() {
           ) : (
             <div className="divide-y divide-neutral-100">
               {activity.recentBlocked.map((l) => (
-                <div key={l.id} className="flex items-center justify-between px-5 py-3">
+                <div
+                  key={l.id}
+                  className="flex items-center justify-between px-5 py-3"
+                >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-neutral-700">
                       <span className="text-neutral-400">{l.domain}/</span>
@@ -142,7 +236,9 @@ export default async function AdminPage() {
                     </p>
                   </div>
                   <div className="shrink-0 pl-4 text-right">
-                    <p className="text-[11px] text-neutral-400">{l.userEmail}</p>
+                    <p className="text-[11px] text-neutral-400">
+                      {l.userEmail}
+                    </p>
                     <p className="text-[11px] text-neutral-300">
                       {timeAgo(l.blockedAt)}
                     </p>

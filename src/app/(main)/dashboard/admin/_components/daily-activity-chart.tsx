@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
 import {
   Bar,
   BarChart as RechartsBarChart,
   CartesianGrid,
   XAxis,
+  YAxis,
 } from "recharts";
 
 import { Card } from "@/components/ui/card";
@@ -21,60 +21,30 @@ import { formatChartDate } from "@/lib/utils";
 import type { ChartConfig } from "@/components/ui/chart";
 
 const chartConfig = {
-  clicks: {
-    label: "Clicks",
+  links: {
+    label: "Links Created",
     color: "#2563eb",
   },
-  uniqueClicks: {
-    label: "Unique Clicks",
-    color: "#93c5fd",
+  users: {
+    label: "New Users",
+    color: "#10b981",
   },
 } satisfies ChartConfig;
 
-type OverallClicksChartProps = {
-  clicksPerDate: Record<string, number>;
-  uniqueClicksPerDate: Record<string, number>;
+type DailyActivityChartProps = {
+  data: { date: string; links: number; users: number }[];
 };
 
-export function OverallClicksChart({
-  clicksPerDate,
-  uniqueClicksPerDate,
-}: OverallClicksChartProps) {
-  const chartData = useMemo(
-    () =>
-      Object.entries(clicksPerDate).map(([date, clicks]) => ({
-        date,
-        clicks,
-        uniqueClicks: uniqueClicksPerDate[date] ?? 0,
-      })),
-    [clicksPerDate, uniqueClicksPerDate]
-  );
-
-  const paddedChartData = useMemo(() => {
-    if (chartData.length === 1 && chartData[0]) {
-      return [
-        {
-          date: new Date(new Date(chartData[0].date).getTime() - 86400000)
-            .toISOString()
-            .split("T")[0],
-          clicks: 0,
-          uniqueClicks: 0,
-        },
-        ...chartData,
-      ];
-    }
-    return chartData;
-  }, [chartData]);
-
+export function DailyActivityChart({ data }: DailyActivityChartProps) {
   return (
     <Card className="overflow-hidden rounded-xl border-neutral-200 shadow-none">
       <div className="border-b border-neutral-100 px-5 pb-4 pt-5">
         <div className="space-y-0.5">
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900">
-            Click Analytics
+            Daily Activity
           </h2>
           <p className="text-[12px] text-neutral-400">
-            Aggregated click performance across all your links
+            Links created and new user signups over the last 14 days
           </p>
         </div>
       </div>
@@ -82,9 +52,9 @@ export function OverallClicksChart({
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
         <ChartContainer
           config={chartConfig}
-          className="aspect-auto h-72 w-full"
+          className="aspect-auto h-64 w-full"
         >
-          <RechartsBarChart data={paddedChartData}>
+          <RechartsBarChart data={data}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"
@@ -93,6 +63,13 @@ export function OverallClicksChart({
               tickMargin={8}
               minTickGap={32}
               tickFormatter={formatChartDate}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={4}
+              width={32}
+              allowDecimals={false}
             />
             <ChartTooltip
               cursor={false}
@@ -103,8 +80,8 @@ export function OverallClicksChart({
                 />
               }
             />
-            <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
-            <Bar dataKey="uniqueClicks" fill="var(--color-uniqueClicks)" radius={4} />
+            <Bar dataKey="links" fill="var(--color-links)" radius={4} />
+            <Bar dataKey="users" fill="var(--color-users)" radius={4} />
             <ChartLegend content={<ChartLegendContent />} />
           </RechartsBarChart>
         </ChartContainer>

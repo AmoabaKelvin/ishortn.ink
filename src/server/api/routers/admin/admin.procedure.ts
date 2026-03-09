@@ -10,6 +10,14 @@ export const adminRouter = createTRPCRouter({
     services.getRecentActivity(ctx),
   ),
 
+  getDailyStats: adminProcedure.query(({ ctx }) =>
+    services.getDailyStats(ctx),
+  ),
+
+  getRecentUsers: adminProcedure.query(({ ctx }) =>
+    services.getRecentUsers(ctx),
+  ),
+
   searchLinks: adminProcedure
     .input(inputs.searchLinksSchema)
     .query(({ ctx, input }) => services.searchLinks(ctx, input)),

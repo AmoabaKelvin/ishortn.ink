@@ -26,24 +26,29 @@ import type {
 } from "./admin.input";
 
 export async function getStats(ctx: ProtectedTRPCContext) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const [
     linkStatsResult,
     userStatsResult,
     pendingFlaggedResult,
     blockedDomainsResult,
   ] = await Promise.all([
-    // Single scan: total links + blocked links
+    // Single scan: total links + blocked links + today's links
     ctx.db
       .select({
         total: count(),
         blocked: sql<number>`SUM(${link.blocked} = true)`,
+        today: sql<number>`SUM(${link.createdAt} >= ${today})`,
       })
       .from(link),
-    // Single scan: total users + banned users
+    // Single scan: total users + banned users + today's users
     ctx.db
       .select({
         total: count(),
         banned: sql<number>`SUM(${user.banned} = true)`,
+        today: sql<number>`SUM(${user.createdAt} >= ${today})`,
       })
       .from(user),
     ctx.db
@@ -60,7 +65,76 @@ export async function getStats(ctx: ProtectedTRPCContext) {
     pendingFlagged: pendingFlaggedResult[0]?.count ?? 0,
     bannedUsers: userStatsResult[0]?.banned ?? 0,
     blockedDomains: blockedDomainsResult[0]?.count ?? 0,
+    linksToday: linkStatsResult[0]?.today ?? 0,
+    usersToday: userStatsResult[0]?.today ?? 0,
   };
+}
+
+export async function getDailyStats(ctx: ProtectedTRPCContext) {
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 13);
+  fourteenDaysAgo.setHours(0, 0, 0, 0);
+
+  const [dailyLinks, dailyUsers] = await Promise.all([
+    ctx.db
+      .select({
+        date: sql<string>`DATE(${link.createdAt})`,
+        count: count(),
+      })
+      .from(link)
+      .where(sql`${link.createdAt} >= ${fourteenDaysAgo}`)
+      .groupBy(sql`DATE(${link.createdAt})`)
+      .orderBy(sql`DATE(${link.createdAt})`),
+    ctx.db
+      .select({
+        date: sql<string>`DATE(${user.createdAt})`,
+        count: count(),
+      })
+      .from(user)
+      .where(sql`${user.createdAt} >= ${fourteenDaysAgo}`)
+      .groupBy(sql`DATE(${user.createdAt})`)
+      .orderBy(sql`DATE(${user.createdAt})`),
+  ]);
+
+  // Index by date string for O(1) lookups (normalize in case driver returns Date)
+  const linksByDate = new Map(
+    dailyLinks.map((l) => [String(l.date).split("T")[0], l.count]),
+  );
+  const usersByDate = new Map(
+    dailyUsers.map((u) => [String(u.date).split("T")[0], u.count]),
+  );
+
+  // Fill in all 14 days (including days with 0 activity)
+  const result: { date: string; links: number; users: number }[] = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(fourteenDaysAgo);
+    d.setDate(d.getDate() + i);
+    const dateStr = d.toISOString().split("T")[0]!;
+    result.push({
+      date: dateStr,
+      links: linksByDate.get(dateStr) ?? 0,
+      users: usersByDate.get(dateStr) ?? 0,
+    });
+  }
+
+  return result;
+}
+
+export async function getRecentUsers(ctx: ProtectedTRPCContext) {
+  return ctx.db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      imageUrl: user.imageUrl,
+      createdAt: user.createdAt,
+      banned: user.banned,
+      linkCount:
+        sql<number>`(SELECT COUNT(*) FROM Link WHERE Link.userId = ${user.id})`,
+    })
+    .from(user)
+    .orderBy(desc(user.createdAt))
+    .limit(8);
 }
 
 export async function getRecentActivity(ctx: ProtectedTRPCContext) {
