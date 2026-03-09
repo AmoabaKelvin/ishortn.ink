@@ -131,3 +131,17 @@ export function parseReferrer(referrer: string | null): string {
 export function normalizeAlias(alias: string): string {
   return alias.toLowerCase();
 }
+
+/**
+ * Formats a "YYYY-MM-DD" date string as UTC to prevent timezone shifts.
+ * Used by chart components for x-axis tick labels and tooltips.
+ */
+export function formatChartDate(dateString: string): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const utcDate = new Date(Date.UTC(year!, month! - 1, day!));
+  return utcDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}

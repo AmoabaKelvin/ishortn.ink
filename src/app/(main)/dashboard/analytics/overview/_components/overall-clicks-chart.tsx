@@ -16,6 +16,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { formatChartDate } from "@/lib/utils";
 
 import type { ChartConfig } from "@/components/ui/chart";
 
@@ -29,19 +30,6 @@ const chartConfig = {
     color: "#93c5fd",
   },
 } satisfies ChartConfig;
-
-/**
- * Formats a "YYYY-MM-DD" date string as UTC to prevent timezone shifts.
- */
-function formatDate(dateString: string): string {
-  const [year, month, day] = dateString.split("-").map(Number);
-  const utcDate = new Date(Date.UTC(year!, month! - 1, day!));
-  return utcDate.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
 
 type OverallClicksChartProps = {
   clicksPerDate: Record<string, number>;
@@ -104,13 +92,13 @@ export function OverallClicksChart({
               axisLine={false}
               tickMargin={8}
               minTickGap={32}
-              tickFormatter={formatDate}
+              tickFormatter={formatChartDate}
             />
             <ChartTooltip
               cursor={false}
               content={
                 <ChartTooltipContent
-                  labelFormatter={(value) => formatDate(String(value))}
+                  labelFormatter={(value) => formatChartDate(String(value))}
                   indicator="dashed"
                 />
               }
