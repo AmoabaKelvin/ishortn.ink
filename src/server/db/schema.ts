@@ -34,7 +34,6 @@ export const team = mysqlTable(
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for grace period cleanup
   },
   (table) => ({
-    slugIdx: index("slug_idx").on(table.slug),
     ownerIdIdx: index("ownerId_idx").on(table.ownerId),
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt), // Index for cleanup job queries
   }),
@@ -71,7 +70,6 @@ export const teamInvite = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
-    tokenIdx: index("token_idx").on(table.token),
     teamIdx: index("team_idx").on(table.teamId),
   }),
 );
@@ -159,9 +157,14 @@ export const user = mysqlTable(
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
     // Account transfer deletion tracking
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period
+    // Platform admin
+    isAdmin: boolean("isAdmin").default(false),
+    // Ban status
+    banned: boolean("banned").default(false),
+    bannedAt: timestamp("bannedAt"),
+    bannedReason: varchar("bannedReason", { length: 255 }),
   },
   (table) => ({
-    userIdx: index("userId_idx").on(table.id),
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),
   }),
 );
@@ -230,6 +233,10 @@ export const link = mysqlTable(
     folderId: int("folderId"),
     cloaking: boolean("cloaking").default(false),
     isQrCode: boolean("isQrCode").default(false),
+    // Admin moderation
+    blocked: boolean("blocked").default(false),
+    blockedAt: timestamp("blockedAt"),
+    blockedReason: varchar("blockedReason", { length: 255 }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
@@ -237,6 +244,10 @@ export const link = mysqlTable(
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
     uniqueAliasDomainIdx: unique("unique_alias_domain").on(table.alias, table.domain), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
     folderIdIdx: index("folderId_idx").on(table.folderId),
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
+    blockedAtIdx: index("blocked_blockedAt_idx").on(table.blocked, table.blockedAt),
+    domainIdx: index("domain_idx").on(table.domain),
+    listingIdx: index("listing_idx").on(table.userId, table.teamId, table.isQrCode, table.archived),
   }),
 );
 
@@ -280,6 +291,7 @@ export const linkVisit = mysqlTable(
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
     geoRuleIdIdx: index("geoRuleId_idx").on(table.matchedGeoRuleId),
+    linkCreatedAtIdx: index("linkId_createdAt_idx").on(table.linkId, table.createdAt),
   }),
 );
 
@@ -295,6 +307,7 @@ export const uniqueLinkVisit = mysqlTable(
     linkIdIdx: index("linkId_idx").on(table.linkId),
     ipHashIdx: index("ipHash_idx").on(table.ipHash),
     uniqueVisitIdx: index("unique_visit_idx").on(table.linkId, table.ipHash),
+    linkCreatedAtIdx: index("linkId_createdAt_idx").on(table.linkId, table.createdAt),
   }),
 );
 
@@ -302,12 +315,13 @@ export const token = mysqlTable(
   "Token",
   {
     id: serial("id").primaryKey(),
-    token: text("token"),
+    token: varchar("token", { length: 255 }),
     createdAt: timestamp("createdAt").defaultNow(),
     userId: varchar("userId", { length: 32 }).notNull(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
+    tokenIdx: index("token_idx").on(table.token),
   }),
 );
 
@@ -357,6 +371,7 @@ export const qrcode = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
+    linkIdIdx: index("linkId_idx").on(table.linkId),
   }),
 );
 
@@ -473,7 +488,6 @@ export const folderPermission = mysqlTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.folderId, table.userId] }),
-    folderIdIdx: index("folderId_idx").on(table.folderId),
     userIdIdx: index("userId_idx").on(table.userId),
   }),
 );
@@ -488,8 +502,42 @@ export const linkTag = mysqlTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.linkId, table.tagId] }),
-    linkIdIdx: index("linkId_idx").on(table.linkId),
     tagIdIdx: index("tagId_idx").on(table.tagId),
+  }),
+);
+
+// ============================================================================
+// ADMIN / MODERATION TABLES
+// ============================================================================
+
+export const blockedDomain = mysqlTable(
+  "BlockedDomain",
+  {
+    id: serial("id").primaryKey(),
+    domain: varchar("domain", { length: 255 }).notNull().unique(),
+    reason: varchar("reason", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow(),
+    createdByUserId: varchar("createdByUserId", { length: 32 }),
+  },
+  (table) => ({}),
+);
+
+export const flaggedLink = mysqlTable(
+  "FlaggedLink",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    reason: varchar("reason", { length: 255 }),
+    status: mysqlEnum("flagStatus", ["pending", "blocked", "dismissed"])
+      .notNull()
+      .default("pending"),
+    flaggedAt: timestamp("flaggedAt").defaultNow(),
+    resolvedAt: timestamp("resolvedAt"),
+    resolvedByUserId: varchar("resolvedByUserId", { length: 32 }),
+  },
+  (table) => ({
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+    statusIdx: index("status_idx").on(table.status),
   }),
 );
 
@@ -511,12 +559,31 @@ export const linkRelations = relations(link, ({ one, many }) => ({
     references: [folder.id],
   }),
   geoRules: many(geoRule),
+  flaggedLinks: many(flaggedLink),
 }));
 
 export const geoRuleRelations = relations(geoRule, ({ one }) => ({
   link: one(link, {
     fields: [geoRule.linkId],
     references: [link.id],
+  }),
+}));
+
+export const flaggedLinkRelations = relations(flaggedLink, ({ one }) => ({
+  link: one(link, {
+    fields: [flaggedLink.linkId],
+    references: [link.id],
+  }),
+  resolvedBy: one(user, {
+    fields: [flaggedLink.resolvedByUserId],
+    references: [user.id],
+  }),
+}));
+
+export const blockedDomainRelations = relations(blockedDomain, ({ one }) => ({
+  createdBy: one(user, {
+    fields: [blockedDomain.createdByUserId],
+    references: [user.id],
   }),
 }));
 
@@ -540,6 +607,7 @@ export const customDomain = mysqlTable(
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
+    statusCreatedAtIdx: index("status_createdAt_idx").on(table.status, table.createdAt),
     // Allow the same domain in different workspaces, but not in the same workspace twice
     // Uses teamIdForUnique to properly handle NULL teamId values
     domainWorkspaceUnique: unique("domain_workspace_unique").on(
@@ -801,7 +869,6 @@ export const accountTransfer = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
-    tokenIdx: index("token_idx").on(table.token),
     fromUserIdx: index("fromUser_idx").on(table.fromUserId),
     toEmailIdx: index("toEmail_idx").on(table.toEmail),
     statusIdx: index("status_idx").on(table.status),
@@ -877,3 +944,9 @@ export type NewTeamInvite = typeof teamInvite.$inferInsert;
 
 export type TeamRole = "owner" | "admin" | "member";
 export type InviteRole = "admin" | "member";
+
+export type BlockedDomain = typeof blockedDomain.$inferSelect;
+export type NewBlockedDomain = typeof blockedDomain.$inferInsert;
+
+export type FlaggedLink = typeof flaggedLink.$inferSelect;
+export type NewFlaggedLink = typeof flaggedLink.$inferInsert;
