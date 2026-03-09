@@ -1,7 +1,10 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, count, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import {
+  type Link,
+  buildCacheKey,
+  deleteFromCache,
   getGeoRulesFromCache,
   setGeoRulesInCache,
 } from "@/lib/core/cache";
@@ -11,7 +14,53 @@ import {
   recordUserClickWithGeoRule,
 } from "@/middlewares/record-click";
 import { db } from "@/server/db";
-import { geoRule } from "@/server/db/schema";
+import { geoRule, link as linkTable, linkVisit } from "@/server/db/schema";
+
+/** Fire-and-forget: mark a link as disabled in the DB and purge its cache entry. */
+function autoDisableLink(linkId: number, cacheKey: string): void {
+  void db
+    .update(linkTable)
+    .set({ disabled: true })
+    .where(eq(linkTable.id, linkId))
+    .then(() => deleteFromCache(cacheKey))
+    .catch((err) => console.error("Failed to auto-disable link:", err));
+}
+
+/**
+ * Check if a link has expired by date, click threshold, or manual disable.
+ * When a threshold is crossed, auto-disables the link in the DB and invalidates the cache.
+ */
+async function checkLinkExpiration(
+  link: Link,
+  cacheKey: string,
+): Promise<boolean> {
+  if (link.disabled) {
+    return true;
+  }
+
+  // Date-based expiration
+  if (link.disableLinkAfterDate && new Date() >= link.disableLinkAfterDate) {
+    autoDisableLink(link.id, cacheKey);
+    return true;
+  }
+
+  // Click-based expiration
+  if (link.disableLinkAfterClicks) {
+    const result = await db
+      .select({ clickCount: count(linkVisit.id) })
+      .from(linkVisit)
+      .where(eq(linkVisit.linkId, link.id));
+
+    const clickCount = result[0]?.clickCount ?? 0;
+
+    if (clickCount >= link.disableLinkAfterClicks) {
+      autoDisableLink(link.id, cacheKey);
+      return true;
+    }
+  }
+
+  return false;
+}
 
 type UtmParams = {
   utm_source?: string;
@@ -84,16 +133,22 @@ export async function GET(request: NextRequest) {
 
     console.log("Link found:", link);
 
+    const baseUrl = request.url.split("/api/link")[0];
+    const cacheKey = buildCacheKey(domain, alias);
+
     // Redirect to blocked page for admin-blocked links
     if (link.blocked) {
-      const baseUrl = request.url.split("/api/link")[0];
       return Response.json({ url: `${baseUrl}/blocked/${link.id}` });
+    }
+
+    // Check link expiration (disabled, date-based, click-based)
+    if (await checkLinkExpiration(link, cacheKey)) {
+      return Response.json({ url: `${baseUrl}/expired/${link.id}` });
     }
 
     // Redirect to password verification page for protected links
     if (link.passwordHash) {
-      const verifyUrl = `${request.url.split("/api/link")[0]}/verify-password/${link.id}`;
-      return Response.json({ url: verifyUrl });
+      return Response.json({ url: `${baseUrl}/verify-password/${link.id}` });
     }
 
     // Fetch geo rules (cache first, then DB)
@@ -115,7 +170,6 @@ export async function GET(request: NextRequest) {
 
     if (geoResult.matched) {
       if (geoResult.action === "block") {
-        const baseUrl = request.url.split('/api/link')[0];
         const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
         return Response.json({ url: `${baseUrl}/blocked/${link.id}${geoParam}` });
       }

@@ -98,6 +98,14 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
 
   if (!link) return notFound();
 
+  // Check link expiration (disabled flag and date-based)
+  if (link.disabled) {
+    redirect(`/expired/${link.id}`);
+  }
+  if (link.disableLinkAfterDate && new Date() >= link.disableLinkAfterDate) {
+    redirect(`/expired/${link.id}`);
+  }
+
   if (link.passwordHash) {
     return <LinkPasswordVerification id={link.id} />;
   }

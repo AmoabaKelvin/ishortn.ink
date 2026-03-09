@@ -3,7 +3,7 @@ import { waitUntil } from "@vercel/functions";
 import { sql } from "drizzle-orm";
 import { UAParser } from "ua-parser-js";
 
-import { type Link, getFromCache, setInCache } from "@/lib/core/cache";
+import { type Link, buildCacheKey, normalizeDomain, getFromCache, setInCache } from "@/lib/core/cache";
 import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
@@ -150,8 +150,7 @@ export async function recordUserClickForLink(
   continent: string,
   skipAnalytics = false,
 ) {
-  const cleanedDomain = domain.replace(/^https?:\/\//, "").replace(/^www\./, "");
-  const cacheKey = `${domain.includes("localhost") ? "ishortn.ink" : cleanedDomain}:${alias}`;
+  const cacheKey = buildCacheKey(domain, alias);
   const cachedLink: Link | null = await getFromCache(cacheKey);
 
   if (cachedLink) {
@@ -164,7 +163,7 @@ export async function recordUserClickForLink(
   const link = await db.query.link.findFirst({
     where: (table, { and, eq }) =>
       and(
-        eq(table.domain, domain.includes("localhost") ? "ishortn.ink" : cleanedDomain),
+        eq(table.domain, normalizeDomain(domain)),
         sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`,
       ),
   });
@@ -240,12 +239,7 @@ export async function recordUserClickWithGeoRule(
   continent: string,
   matchedGeoRuleId: number
 ) {
-  const cleanedDomain = domain
-    .replace(/^https?:\/\//, "")
-    .replace(/^www\./, "");
-  const cacheKey = `${
-    domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
-  }:${alias}`;
+  const cacheKey = buildCacheKey(domain, alias);
   const cachedLink: Link | null = await getFromCache(cacheKey);
 
   if (cachedLink) {
@@ -267,10 +261,7 @@ export async function recordUserClickWithGeoRule(
   const link = await db.query.link.findFirst({
     where: (table, { and, eq }) =>
       and(
-        eq(
-          table.domain,
-          domain.includes("localhost") ? "ishortn.ink" : cleanedDomain
-        ),
+        eq(table.domain, normalizeDomain(domain)),
         sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`
       ),
   });

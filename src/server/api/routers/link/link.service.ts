@@ -24,6 +24,7 @@ import {
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import {
+  buildCacheKey,
   deleteFromCache,
   deleteGeoRulesFromCache,
   getFromCache,
@@ -74,10 +75,6 @@ import type {
   ToggleArchiveInput,
   UpdateLinkInput,
 } from "./link.input";
-
-function constructCacheKey(domain: string, alias: string) {
-  return `${domain}:${alias}`;
-}
 
 export const getLinks = async (
   ctx: WorkspaceTRPCContext,
@@ -654,12 +651,12 @@ export const updateLink = async (
     existingLink.domain !== updatedLink.domain
   ) {
     await deleteFromCache(
-      constructCacheKey(existingLink.domain, existingLink.alias!),
+      buildCacheKey(existingLink.domain, existingLink.alias!),
     );
   }
   // Always set the new cache entry with updated values
   await setInCache(
-    constructCacheKey(updatedLink.domain, updatedLink.alias!),
+    buildCacheKey(updatedLink.domain, updatedLink.alias!),
     updatedLinkWithTags,
   );
 };
@@ -696,7 +693,7 @@ export const deleteLink = async (
 
   await Promise.all([
     deleteFromCache(
-      constructCacheKey(linkToDelete.domain, linkToDelete.alias!),
+      buildCacheKey(linkToDelete.domain, linkToDelete.alias!),
     ),
     ctx.db
       .delete(link)
@@ -788,7 +785,7 @@ export const bulkDeleteLinks = async (
   // Invalidate cache for all deleted links (async, don't block)
   void Promise.all(
     linksToDelete.map((l) =>
-      deleteFromCache(constructCacheKey(l.domain, l.alias!)),
+      deleteFromCache(buildCacheKey(l.domain, l.alias!)),
     ),
   ).catch((err) => {
     console.error("Failed to invalidate cache for deleted links:", err);
@@ -902,6 +899,13 @@ export const bulkToggleLinkStatus = async (
     .set({ disabled: disable })
     .where(inArray(link.id, validLinkIds));
 
+  // Invalidate cache for all affected links
+  await Promise.all(
+    linksToUpdate
+      .filter((l) => l.alias)
+      .map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
+  );
+
   return { success: true, count: linksToUpdate.length, disabled: disable };
 };
 
@@ -910,7 +914,7 @@ export const retrieveOriginalUrl = async (
   input: RetrieveOriginalUrlInput,
 ) => {
   const { alias, domain } = input;
-  const cacheKey = `${domain}:${alias}`;
+  const cacheKey = buildCacheKey(domain, alias);
 
   let link: Link | undefined | null = await getFromCache(cacheKey);
 
@@ -927,7 +931,7 @@ export const retrieveOriginalUrl = async (
       return null;
     }
 
-    await setInCache(`${link.domain}:${link.alias}`, link);
+    await setInCache(buildCacheKey(link.domain, link.alias!), link);
   }
 
   // waitUntil(logAnalytics(ctx, link, input.from));
@@ -1368,7 +1372,7 @@ export const toggleLinkStatus = async (
     return null;
   }
 
-  return ctx.db
+  const result = await ctx.db
     .update(link)
     .set({
       disabled: !fetchedLink.disabled,
@@ -1379,6 +1383,15 @@ export const toggleLinkStatus = async (
         workspaceFilter(ctx.workspace, link.userId, link.teamId),
       ),
     );
+
+  // Invalidate cache so the status change takes effect immediately
+  if (fetchedLink.alias) {
+    await deleteFromCache(
+      buildCacheKey(fetchedLink.domain, fetchedLink.alias),
+    );
+  }
+
+  return result;
 };
 
 export const resetLinkStatistics = async (
@@ -1473,7 +1486,7 @@ export const changeLinkPassword = async (
   });
 
   await deleteFromCache(
-    constructCacheKey(updatedLink!.domain, updatedLink!.alias!),
+    buildCacheKey(updatedLink!.domain, updatedLink!.alias!),
   );
 
   return updatedLink;
@@ -1604,7 +1617,7 @@ export const toggleArchive = async (
   // Invalidate cache if necessary (if the link was cached)
   // Consider if archived links should be cached differently or not at all
   // For simplicity, let's remove it for now
-  // await deleteFromCache(constructCacheKey(link.domain, link.alias)); // Need domain/alias
+  // await deleteFromCache(buildCacheKey(link.domain, link.alias)); // Need domain/alias
 
   return { success: true, archived: newArchivedStatus };
 };
