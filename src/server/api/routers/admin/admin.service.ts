@@ -1,0 +1,462 @@
+import { and, count, desc, eq, like, or, sql } from "drizzle-orm";
+
+import { deleteFromCache } from "@/lib/core/cache";
+import {
+  blockedDomain,
+  flaggedLink,
+  link,
+  user,
+} from "@/server/db/schema";
+
+import type { ProtectedTRPCContext } from "../../trpc";
+
+/** Discriminator used to identify links auto-blocked by a user ban */
+const BAN_CASCADE_REASON = "Owner account banned" as const;
+import type {
+  AddBlockedDomainInput,
+  BanUserInput,
+  BlockLinkInput,
+  GetFlaggedLinksInput,
+  RemoveBlockedDomainInput,
+  ResolveFlaggedLinkInput,
+  SearchLinksInput,
+  SearchUsersInput,
+  UnbanUserInput,
+  UnblockLinkInput,
+} from "./admin.input";
+
+export async function getStats(ctx: ProtectedTRPCContext) {
+  const [
+    linkStatsResult,
+    userStatsResult,
+    pendingFlaggedResult,
+    blockedDomainsResult,
+  ] = await Promise.all([
+    // Single scan: total links + blocked links
+    ctx.db
+      .select({
+        total: count(),
+        blocked: sql<number>`SUM(${link.blocked} = true)`,
+      })
+      .from(link),
+    // Single scan: total users + banned users
+    ctx.db
+      .select({
+        total: count(),
+        banned: sql<number>`SUM(${user.banned} = true)`,
+      })
+      .from(user),
+    ctx.db
+      .select({ count: count() })
+      .from(flaggedLink)
+      .where(eq(flaggedLink.status, "pending")),
+    ctx.db.select({ count: count() }).from(blockedDomain),
+  ]);
+
+  return {
+    totalLinks: linkStatsResult[0]?.total ?? 0,
+    totalUsers: userStatsResult[0]?.total ?? 0,
+    blockedLinks: linkStatsResult[0]?.blocked ?? 0,
+    pendingFlagged: pendingFlaggedResult[0]?.count ?? 0,
+    bannedUsers: userStatsResult[0]?.banned ?? 0,
+    blockedDomains: blockedDomainsResult[0]?.count ?? 0,
+  };
+}
+
+export async function getRecentActivity(ctx: ProtectedTRPCContext) {
+  const [recentLinks, recentBlocked] = await Promise.all([
+    ctx.db
+      .select({
+        id: link.id,
+        url: link.url,
+        alias: link.alias,
+        domain: link.domain,
+        createdAt: link.createdAt,
+        userEmail: user.email,
+      })
+      .from(link)
+      .leftJoin(user, eq(link.userId, user.id))
+      .orderBy(desc(link.createdAt))
+      .limit(8),
+    ctx.db
+      .select({
+        id: link.id,
+        url: link.url,
+        alias: link.alias,
+        domain: link.domain,
+        blockedAt: link.blockedAt,
+        blockedReason: link.blockedReason,
+        userEmail: user.email,
+      })
+      .from(link)
+      .leftJoin(user, eq(link.userId, user.id))
+      .where(eq(link.blocked, true))
+      .orderBy(desc(link.blockedAt))
+      .limit(5),
+  ]);
+
+  return { recentLinks, recentBlocked };
+}
+
+export async function searchLinks(
+  ctx: ProtectedTRPCContext,
+  input: SearchLinksInput,
+) {
+  const offset = (input.page - 1) * input.pageSize;
+  const searchPattern = `%${input.query}%`;
+
+  const [results, totalResult] = await Promise.all([
+    ctx.db
+      .select({
+        id: link.id,
+        url: link.url,
+        alias: link.alias,
+        domain: link.domain,
+        blocked: link.blocked,
+        blockedReason: link.blockedReason,
+        createdAt: link.createdAt,
+        userId: link.userId,
+        userName: user.name,
+        userEmail: user.email,
+      })
+      .from(link)
+      .leftJoin(user, eq(link.userId, user.id))
+      .where(
+        or(
+          like(link.url, searchPattern),
+          like(link.alias, searchPattern),
+          like(link.domain, searchPattern),
+          like(user.email, searchPattern),
+        ),
+      )
+      .orderBy(desc(link.createdAt))
+      .limit(input.pageSize)
+      .offset(offset),
+    ctx.db
+      .select({ count: count() })
+      .from(link)
+      .leftJoin(user, eq(link.userId, user.id))
+      .where(
+        or(
+          like(link.url, searchPattern),
+          like(link.alias, searchPattern),
+          like(link.domain, searchPattern),
+          like(user.email, searchPattern),
+        ),
+      ),
+  ]);
+
+  return {
+    links: results,
+    total: totalResult[0]?.count ?? 0,
+    page: input.page,
+    pageSize: input.pageSize,
+  };
+}
+
+export async function blockLink(
+  ctx: ProtectedTRPCContext,
+  input: BlockLinkInput,
+) {
+  const linkRecord = await ctx.db.query.link.findFirst({
+    where: eq(link.id, input.linkId),
+    columns: { id: true, alias: true, domain: true },
+  });
+
+  if (!linkRecord) {
+    throw new Error("Link not found");
+  }
+
+  await ctx.db
+    .update(link)
+    .set({
+      blocked: true,
+      blockedAt: new Date(),
+      blockedReason: input.reason,
+    })
+    .where(eq(link.id, input.linkId));
+
+  // Invalidate cache so the blocked status takes effect immediately
+  await deleteFromCache(`${linkRecord.domain}:${linkRecord.alias}`);
+}
+
+export async function unblockLink(
+  ctx: ProtectedTRPCContext,
+  input: UnblockLinkInput,
+) {
+  const linkRecord = await ctx.db.query.link.findFirst({
+    where: eq(link.id, input.linkId),
+    columns: { id: true, alias: true, domain: true },
+  });
+
+  if (!linkRecord) {
+    throw new Error("Link not found");
+  }
+
+  await ctx.db
+    .update(link)
+    .set({
+      blocked: false,
+      blockedAt: null,
+      blockedReason: null,
+    })
+    .where(eq(link.id, input.linkId));
+
+  await deleteFromCache(`${linkRecord.domain}:${linkRecord.alias}`);
+}
+
+export async function searchUsers(
+  ctx: ProtectedTRPCContext,
+  input: SearchUsersInput,
+) {
+  const offset = (input.page - 1) * input.pageSize;
+  const searchPattern = `%${input.query}%`;
+
+  const [results, totalResult] = await Promise.all([
+    ctx.db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt,
+        banned: user.banned,
+        bannedReason: user.bannedReason,
+        bannedAt: user.bannedAt,
+        linkCount: sql<number>`(SELECT COUNT(*) FROM Link WHERE Link.userId = ${user.id})`,
+      })
+      .from(user)
+      .where(
+        or(
+          like(user.email, searchPattern),
+          like(user.name, searchPattern),
+        ),
+      )
+      .orderBy(desc(user.createdAt))
+      .limit(input.pageSize)
+      .offset(offset),
+    ctx.db
+      .select({ count: count() })
+      .from(user)
+      .where(
+        or(
+          like(user.email, searchPattern),
+          like(user.name, searchPattern),
+        ),
+      ),
+  ]);
+
+  return {
+    users: results,
+    total: totalResult[0]?.count ?? 0,
+    page: input.page,
+    pageSize: input.pageSize,
+  };
+}
+
+export async function banUser(
+  ctx: ProtectedTRPCContext,
+  input: BanUserInput,
+) {
+  // Don't allow banning yourself
+  if (input.userId === ctx.auth.userId) {
+    throw new Error("Cannot ban yourself");
+  }
+
+  // Fetch links before transaction for cache invalidation
+  const userLinks = await ctx.db
+    .select({ id: link.id, alias: link.alias, domain: link.domain })
+    .from(link)
+    .where(eq(link.userId, input.userId));
+
+  // Ban user + block all their links atomically
+  await ctx.db.transaction(async (tx) => {
+    await tx
+      .update(user)
+      .set({
+        banned: true,
+        bannedAt: new Date(),
+        bannedReason: input.reason,
+      })
+      .where(eq(user.id, input.userId));
+
+    if (userLinks.length > 0) {
+      await tx
+        .update(link)
+        .set({
+          blocked: true,
+          blockedAt: new Date(),
+          blockedReason: BAN_CASCADE_REASON,
+        })
+        .where(eq(link.userId, input.userId));
+    }
+  });
+
+  // Invalidate cache after commit
+  if (userLinks.length > 0) {
+    await Promise.all(
+      userLinks.map((l) => deleteFromCache(`${l.domain}:${l.alias}`)),
+    );
+  }
+}
+
+export async function unbanUser(
+  ctx: ProtectedTRPCContext,
+  input: UnbanUserInput,
+) {
+  // Fetch ban-cascaded links before transaction for cache invalidation
+  const bannedLinks = await ctx.db
+    .select({ id: link.id, alias: link.alias, domain: link.domain })
+    .from(link)
+    .where(
+      and(
+        eq(link.userId, input.userId),
+        eq(link.blockedReason, BAN_CASCADE_REASON),
+      ),
+    );
+
+  // Unban user + restore ban-cascaded links atomically
+  await ctx.db.transaction(async (tx) => {
+    await tx
+      .update(user)
+      .set({
+        banned: false,
+        bannedAt: null,
+        bannedReason: null,
+      })
+      .where(eq(user.id, input.userId));
+
+    if (bannedLinks.length > 0) {
+      await tx
+        .update(link)
+        .set({
+          blocked: false,
+          blockedAt: null,
+          blockedReason: null,
+        })
+        .where(
+          and(
+            eq(link.userId, input.userId),
+            eq(link.blockedReason, BAN_CASCADE_REASON),
+          ),
+        );
+    }
+  });
+
+  // Invalidate cache after commit
+  if (bannedLinks.length > 0) {
+    await Promise.all(
+      bannedLinks.map((l) => deleteFromCache(`${l.domain}:${l.alias}`)),
+    );
+  }
+}
+
+export async function getBlockedDomains(ctx: ProtectedTRPCContext) {
+  return ctx.db.query.blockedDomain.findMany({
+    orderBy: [desc(blockedDomain.createdAt)],
+  });
+}
+
+export async function addBlockedDomain(
+  ctx: ProtectedTRPCContext,
+  input: AddBlockedDomainInput,
+) {
+  // Normalize: lowercase, strip protocol/path if a full URL was pasted
+  let domain = input.domain.toLowerCase().trim();
+  try {
+    const parsed = new URL(
+      domain.startsWith("http") ? domain : `https://${domain}`,
+    );
+    domain = parsed.hostname;
+  } catch {
+    // Use as-is if not a valid URL
+  }
+
+  await ctx.db.insert(blockedDomain).values({
+    domain,
+    reason: input.reason ?? null,
+    createdByUserId: ctx.auth.userId,
+  });
+}
+
+export async function removeBlockedDomain(
+  ctx: ProtectedTRPCContext,
+  input: RemoveBlockedDomainInput,
+) {
+  await ctx.db
+    .delete(blockedDomain)
+    .where(eq(blockedDomain.id, input.id));
+}
+
+export async function getFlaggedLinks(
+  ctx: ProtectedTRPCContext,
+  input: GetFlaggedLinksInput,
+) {
+  const offset = (input.page - 1) * input.pageSize;
+
+  const whereConditions = input.status
+    ? eq(flaggedLink.status, input.status)
+    : undefined;
+
+  const [results, totalResult] = await Promise.all([
+    ctx.db
+      .select({
+        id: flaggedLink.id,
+        linkId: flaggedLink.linkId,
+        reason: flaggedLink.reason,
+        status: flaggedLink.status,
+        flaggedAt: flaggedLink.flaggedAt,
+        resolvedAt: flaggedLink.resolvedAt,
+        linkUrl: link.url,
+        linkAlias: link.alias,
+        linkDomain: link.domain,
+        linkBlocked: link.blocked,
+      })
+      .from(flaggedLink)
+      .leftJoin(link, eq(flaggedLink.linkId, link.id))
+      .where(whereConditions)
+      .orderBy(desc(flaggedLink.flaggedAt))
+      .limit(input.pageSize)
+      .offset(offset),
+    ctx.db
+      .select({ count: count() })
+      .from(flaggedLink)
+      .where(whereConditions),
+  ]);
+
+  return {
+    flaggedLinks: results,
+    total: totalResult[0]?.count ?? 0,
+    page: input.page,
+    pageSize: input.pageSize,
+  };
+}
+
+export async function resolveFlaggedLink(
+  ctx: ProtectedTRPCContext,
+  input: ResolveFlaggedLinkInput,
+) {
+  const flagged = await ctx.db.query.flaggedLink.findFirst({
+    where: eq(flaggedLink.id, input.id),
+  });
+
+  if (!flagged) {
+    throw new Error("Flagged link not found");
+  }
+
+  await ctx.db
+    .update(flaggedLink)
+    .set({
+      status: input.action,
+      resolvedAt: new Date(),
+      resolvedByUserId: ctx.auth.userId,
+    })
+    .where(eq(flaggedLink.id, input.id));
+
+  // If the action is "blocked", also block the associated link
+  if (input.action === "blocked") {
+    await blockLink(ctx, {
+      linkId: flagged.linkId,
+      reason: flagged.reason ?? "Flagged and blocked by admin",
+    });
+  }
+}
