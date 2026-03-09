@@ -55,6 +55,16 @@ const linkSchema = z.object({
     .string()
     .transform((val) => val === "true")
     .default(false),
+  blocked: z
+    .string()
+    .transform((val) => val === "true")
+    .default(false),
+  blockedAt: z
+    .string()
+    .nullable()
+    .transform((val) => (val ? new Date(val) : null))
+    .default(null),
+  blockedReason: z.string().nullable().default(null),
 });
 
 export const redis = new Redis(env.REDIS_URL, {
@@ -82,6 +92,9 @@ function convertToLink(data: Record<string, string>): Link {
     createdByUserId: parsed.createdByUserId ?? null,
     cloaking: parsed.cloaking ?? false,
     isQrCode: parsed.isQrCode ?? false,
+    blocked: parsed.blocked ?? false,
+    blockedAt: parsed.blockedAt ?? null,
+    blockedReason: parsed.blockedReason ?? null,
   };
 }
 
@@ -109,6 +122,7 @@ async function setInCache(
       ...link,
       createdAt: link.createdAt!.toISOString(),
       disableLinkAfterDate: link.disableLinkAfterDate?.toISOString() ?? null,
+      blockedAt: link.blockedAt?.toISOString() ?? null,
       metadata: JSON.stringify(link.metadata),
       utmParams: link.utmParams ? JSON.stringify(link.utmParams) : null,
     };

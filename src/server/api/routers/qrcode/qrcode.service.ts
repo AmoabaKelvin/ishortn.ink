@@ -3,8 +3,7 @@ import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 import { deleteFromCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
-import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
-import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
+import { assertUrlSafe } from "@/server/lib/phishing";
 import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
@@ -63,14 +62,7 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
   }
   const { currentCount, limit } = linkLimitResult;
 
-  const fetchedMetadata = await fetchMetadataInfo(input.content);
-  const phishingResult = await detectPhishingLink(input.content, fetchedMetadata);
-
-  if (phishingResult.phishing) {
-    throw new Error(
-      "This URL has been detected as a potential phishing site. QR code creation will not continue.",
-    );
-  }
+  await assertUrlSafe(input.content);
 
   const alias = await generateShortLink();
   const trackingUrl = `https://ishortn.ink/${alias}`;

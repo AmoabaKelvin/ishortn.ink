@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 
 import { db } from "@/server/db";
-import { subscription, token } from "@/server/db/schema";
+import { subscription, token, user } from "@/server/db/schema";
 
 export async function validateAndGetToken(apiKey: string | null) {
   if (!apiKey) return null;
@@ -11,12 +11,20 @@ export async function validateAndGetToken(apiKey: string | null) {
 
   if (!existingToken.length) return null;
 
-  const userSubscription = await db
-    .select()
-    .from(subscription)
-    .where(eq(subscription.userId, existingToken[0]!.userId));
+  const userId = existingToken[0]!.userId;
 
-  const data = { ...existingToken[0]!, subscription: userSubscription[0] };
+  // Run ban check and subscription lookup in parallel
+  const [userRecord, userSubscription] = await Promise.all([
+    db.query.user.findFirst({
+      where: eq(user.id, userId),
+      columns: { banned: true },
+    }),
+    db.select().from(subscription).where(eq(subscription.userId, userId)),
+  ]);
 
-  return data;
+  if (userRecord?.banned) {
+    return null;
+  }
+
+  return { ...existingToken[0]!, subscription: userSubscription[0] };
 }

@@ -84,6 +84,12 @@ export async function GET(request: NextRequest) {
 
     console.log("Link found:", link);
 
+    // Redirect to blocked page for admin-blocked links
+    if (link.blocked) {
+      const baseUrl = request.url.split("/api/link")[0];
+      return Response.json({ url: `${baseUrl}/blocked/${link.id}` });
+    }
+
     // Redirect to password verification page for protected links
     if (link.passwordHash) {
       const verifyUrl = `${request.url.split("/api/link")[0]}/verify-password/${link.id}`;
@@ -109,11 +115,9 @@ export async function GET(request: NextRequest) {
 
     if (geoResult.matched) {
       if (geoResult.action === "block") {
-        // Redirect to blocked page
         const baseUrl = request.url.split('/api/link')[0];
-        const blockMessage = geoResult.message ? encodeURIComponent(geoResult.message) : "";
-        const blockedUrl = `${baseUrl}/blocked/${link.id}${blockMessage ? `?message=${blockMessage}` : ""}`;
-        return Response.json({ url: blockedUrl });
+        const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
+        return Response.json({ url: `${baseUrl}/blocked/${link.id}${geoParam}` });
       }
 
       // Redirect to geo-targeted destination
