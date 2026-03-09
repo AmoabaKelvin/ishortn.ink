@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  date,
   datetime,
   index,
   int,
@@ -308,6 +309,33 @@ export const uniqueLinkVisit = mysqlTable(
     ipHashIdx: index("ipHash_idx").on(table.ipHash),
     uniqueVisitIdx: index("unique_visit_idx").on(table.linkId, table.ipHash),
     linkCreatedAtIdx: index("linkId_createdAt_idx").on(table.linkId, table.createdAt),
+  }),
+);
+
+// Daily rollup of link visit analytics.
+// Created by the analytics cleanup job before deleting raw LinkVisit/UniqueLinkVisit
+// records, preserving historical click trends beyond the retention window.
+export const linkVisitDailySummary = mysqlTable(
+  "LinkVisitDailySummary",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    clicks: int("clicks").notNull().default(0),
+    uniqueClicks: int("uniqueClicks").notNull().default(0),
+  },
+  (table) => ({
+    linkDateUnique: unique("link_date_unique").on(table.linkId, table.date),
+  }),
+);
+
+export const linkVisitDailySummaryRelations = relations(
+  linkVisitDailySummary,
+  ({ one }) => ({
+    link: one(link, {
+      fields: [linkVisitDailySummary.linkId],
+      references: [link.id],
+    }),
   }),
 );
 

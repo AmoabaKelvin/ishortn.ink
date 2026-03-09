@@ -73,7 +73,8 @@ export async function GET(request: Request) {
     console.log(
       `[Analytics Cleanup] Completed in ${duration}ms. ` +
         `Deleted ${result.linkVisitsDeleted} link visits, ` +
-        `${result.uniqueLinkVisitsDeleted} unique visits.`
+        `${result.uniqueLinkVisitsDeleted} unique visits. ` +
+        `Created ${result.dailySummariesCreated} daily summaries.`
     );
 
     return NextResponse.json({
