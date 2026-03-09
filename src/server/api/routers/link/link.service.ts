@@ -21,7 +21,7 @@ import {
   getGeoRulesLimit,
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
-import { runPreLLMChecks, USER_MSG_UNSAFE } from "@/server/lib/phishing";
+import { assertUrlSafe } from "@/server/lib/phishing";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import {
   deleteFromCache,
@@ -31,7 +31,6 @@ import {
 } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
-import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { db } from "@/server/db";
 import {
   folder,
@@ -335,20 +334,9 @@ export const createLink = async (
   const alias =
     input.alias && input.alias !== "" ? input.alias : await generateShortLink();
 
-  // Layer 1 & 2: Deterministic checks + Google Safe Browsing (fast, before LLM)
-  const preLLMResult = await runPreLLMChecks(input.url);
-  if (preLLMResult.blocked) {
-    console.warn(`Link blocked (pre-LLM): ${preLLMResult.reason}`);
-    throw new Error(preLLMResult.userMessage);
-  }
+  await assertUrlSafe(input.url);
 
-  // Layer 3: LLM-based phishing detection
   const fetchedMetadata = await fetchMetadataInfo(input.url);
-  const phishingResult = await detectPhishingLink(input.url, fetchedMetadata);
-
-  if (phishingResult.phishing) {
-    throw new Error(USER_MSG_UNSAFE);
-  }
 
   if (input.alias) {
     await validateAlias(ctx, input.alias, domain, isPaidPlan);
@@ -956,21 +944,9 @@ export const shortenLinkWithAutoAlias = async (
   const alias = await generateShortLink();
   const domain = await getWorkspaceDefaultDomain(ctx);
 
-  // Layer 1 & 2: Deterministic checks + Google Safe Browsing (fast, before LLM)
-  const preLLMResult = await runPreLLMChecks(input.url);
-  if (preLLMResult.blocked) {
-    console.warn(`Link blocked (pre-LLM): ${preLLMResult.reason}`);
-    throw new Error(preLLMResult.userMessage);
-  }
+  await assertUrlSafe(input.url);
 
-  // Layer 3: LLM-based phishing detection
   const fetchedMetadata = await fetchMetadataInfo(input.url);
-  const phishingResult = await detectPhishingLink(input.url, fetchedMetadata);
-
-  if (phishingResult.phishing) {
-    throw new Error(USER_MSG_UNSAFE);
-  }
-
   const name = fetchedMetadata.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
@@ -1539,6 +1515,8 @@ export const bulkCreateLinks = async (
   // the rejected promises and report those to the user
   const bulkLinksCreationPromiseResults = await Promise.allSettled(
     records.map(async (record: LinkRecord) => {
+      await assertUrlSafe(record.url);
+
       const alias = record.alias ?? (await generateShortLink());
       await ctx.db.insert(link).values({
         url: record.url,

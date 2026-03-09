@@ -1,3 +1,6 @@
+import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
+import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
+
 import { checkBlocklist } from "./blocklist";
 import { checkGoogleSafeBrowsing } from "./google-safe-browsing";
 import { runHeuristicChecks } from "./heuristics";
@@ -92,4 +95,25 @@ export async function runPreLLMChecks(url: string): Promise<CheckResult> {
   }
 
   return { blocked: false, reason: "", userMessage: "" };
+}
+
+/**
+ * Run the full URL safety pipeline (pre-LLM checks + LLM phishing detection)
+ * and throw if the URL is unsafe. Call this from every link write path.
+ */
+export async function assertUrlSafe(url: string): Promise<void> {
+  // Layer 1 & 2: Deterministic checks + Google Safe Browsing / Web Risk
+  const preLLMResult = await runPreLLMChecks(url);
+  if (preLLMResult.blocked) {
+    console.warn(`Link blocked (pre-LLM): ${preLLMResult.reason}`);
+    throw new Error(preLLMResult.userMessage);
+  }
+
+  // Layer 3: LLM-based phishing detection
+  const fetchedMetadata = await fetchMetadataInfo(url);
+  const phishingResult = await detectPhishingLink(url, fetchedMetadata);
+
+  if (phishingResult.phishing) {
+    throw new Error(USER_MSG_UNSAFE);
+  }
 }
