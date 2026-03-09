@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 
-import { deleteFromCache } from "@/lib/core/cache";
+import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
@@ -212,7 +212,7 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
       where: eq(link.id, qrCode.linkId),
     });
     if (hiddenLink?.alias) {
-      cacheKey = `${hiddenLink.domain}:${hiddenLink.alias}`;
+      cacheKey = buildCacheKey(hiddenLink.domain, hiddenLink.alias);
     }
   }
 

@@ -241,7 +241,7 @@ function normalizeDomain(domain: string): string {
 
 /** Build a Redis cache key from a raw (possibly protocol-prefixed) domain and alias. */
 function buildCacheKey(domain: string, alias: string): string {
-  return `${normalizeDomain(domain)}:${alias}`;
+  return `${normalizeDomain(domain)}:${alias.toLowerCase()}`;
 }
 
 export {

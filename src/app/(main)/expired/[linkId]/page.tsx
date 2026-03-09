@@ -1,11 +1,11 @@
 import { IconClockOff } from "@tabler/icons-react";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { Funnel_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { db } from "@/server/db";
-import { link } from "@/server/db/schema";
+import { link, linkVisit } from "@/server/db/schema";
 
 const funnelSans = Funnel_Sans({
   subsets: ["latin"],
@@ -33,11 +33,30 @@ export default async function ExpiredPage({ params }: ExpiredPageProps) {
     notFound();
   }
 
+  // Determine which expiration condition is active
+  const dateExpired =
+    linkRecord.disableLinkAfterDate != null &&
+    new Date(linkRecord.disableLinkAfterDate) <= new Date();
+
+  let clicksExpired = false;
+  if (linkRecord.disableLinkAfterClicks != null) {
+    const result = await db
+      .select({ clickCount: count(linkVisit.id) })
+      .from(linkVisit)
+      .where(eq(linkVisit.linkId, linkRecord.id));
+    clicksExpired =
+      (result[0]?.clickCount ?? 0) >= linkRecord.disableLinkAfterClicks;
+  }
+
+  if (!linkRecord.disabled && !dateExpired && !clicksExpired) {
+    notFound();
+  }
+
   let reason: string;
 
-  if (linkRecord.disableLinkAfterDate) {
+  if (dateExpired) {
     reason = "This link has expired and is no longer accepting visits.";
-  } else if (linkRecord.disableLinkAfterClicks) {
+  } else if (clicksExpired) {
     reason = "This link has reached its maximum number of visits and is no longer accessible.";
   } else {
     reason = "This link has been deactivated by its owner.";

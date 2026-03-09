@@ -1,6 +1,6 @@
 import { and, count, desc, eq, like, or, sql } from "drizzle-orm";
 
-import { deleteFromCache } from "@/lib/core/cache";
+import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import {
   blockedDomain,
   flaggedLink,
@@ -177,7 +177,7 @@ export async function blockLink(
     .where(eq(link.id, input.linkId));
 
   // Invalidate cache so the blocked status takes effect immediately
-  await deleteFromCache(`${linkRecord.domain}:${linkRecord.alias}`);
+  await deleteFromCache(buildCacheKey(linkRecord.domain, linkRecord.alias!));
 }
 
 export async function unblockLink(
@@ -202,7 +202,7 @@ export async function unblockLink(
     })
     .where(eq(link.id, input.linkId));
 
-  await deleteFromCache(`${linkRecord.domain}:${linkRecord.alias}`);
+  await deleteFromCache(buildCacheKey(linkRecord.domain, linkRecord.alias!));
 }
 
 export async function searchUsers(
@@ -294,7 +294,7 @@ export async function banUser(
   // Invalidate cache after commit
   if (userLinks.length > 0) {
     await Promise.all(
-      userLinks.map((l) => deleteFromCache(`${l.domain}:${l.alias}`)),
+      userLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
     );
   }
 }
@@ -345,7 +345,7 @@ export async function unbanUser(
   // Invalidate cache after commit
   if (bannedLinks.length > 0) {
     await Promise.all(
-      bannedLinks.map((l) => deleteFromCache(`${l.domain}:${l.alias}`)),
+      bannedLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
     );
   }
 }
