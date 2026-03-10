@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { geoRuleInputSchema } from "../link/link.input";
+
 export const qrcodeInput = z.object({
   title: z.string().optional(),
   content: z.string().url("Please enter a valid URL"),
@@ -13,15 +15,29 @@ export const qrcodeSaveImageInput = z.object({
   qrCodeBase64: z.string(),
 });
 
-export const qrcodeLinkUpdate = z.object({
-  url: z.string(),
-});
-
-export const qrcodeUpdate = qrcodeLinkUpdate.extend({
+export const qrcodeUpdateInput = z.object({
   id: z.number(),
+  title: z.string().optional(),
+  url: z.string().url("Please enter a valid URL").optional(),
+  note: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  utmParams: z
+    .object({
+      utm_source: z.string().max(255).optional(),
+      utm_medium: z.string().max(255).optional(),
+      utm_campaign: z.string().max(255).optional(),
+      utm_term: z.string().max(255).optional(),
+      utm_content: z.string().max(255).optional(),
+    })
+    .optional(),
+  geoRules: z.array(geoRuleInputSchema).optional(),
+  disableLinkAfterClicks: z.number().optional(),
+  disableLinkAfterDate: z.date().optional(),
 });
 
-export const qrcodeDeleteInput = z.object({
+export type QRCodeUpdateInput = z.infer<typeof qrcodeUpdateInput>;
+
+export const qrcodeIdInput = z.object({
   id: z.number(),
 });
 

@@ -68,7 +68,7 @@ export const listLinksSchema = z.object({
   search: z.string().optional(),
 });
 
-const geoRuleInputSchema = z
+export const geoRuleInputSchema = z
   .object({
     type: z.enum(["country", "continent"]),
     condition: z.enum(["in", "not_in"]),

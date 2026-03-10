@@ -15,8 +15,10 @@ import {
   incrementWorkspaceLinkCount,
 } from "../link/utils";
 
+import { updateLink } from "../link/link.service";
+
 import type { WorkspaceTRPCContext } from "../../trpc";
-import type { QRCodeInput, QRPresetCreateInput, QRPresetUpdateInput } from "./qrcode.input";
+import type { QRCodeInput, QRCodeUpdateInput, QRPresetCreateInput, QRPresetUpdateInput } from "./qrcode.input";
 import type { z } from "zod";
 import type { qrcodeSaveImageInput } from "./qrcode.input";
 
@@ -192,6 +194,7 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
       eq(qrcode.id, id),
       workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId)
     ),
+    with: { link: true },
   });
 
   if (!qrCode) throw new Error("QR Code not found");
@@ -207,13 +210,8 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
 
   // Collect cache key before the transaction so we can invalidate after it commits
   let cacheKey: string | undefined;
-  if (qrCode.linkId && qrCode.linkId > 0) {
-    const hiddenLink = await ctx.db.query.link.findFirst({
-      where: eq(link.id, qrCode.linkId),
-    });
-    if (hiddenLink?.alias) {
-      cacheKey = buildCacheKey(hiddenLink.domain, hiddenLink.alias);
-    }
+  if (qrCode.link?.alias) {
+    cacheKey = buildCacheKey(qrCode.link.domain, qrCode.link.alias);
   }
 
   // Delete QR code and its associated hidden link atomically
@@ -232,6 +230,88 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
   // Invalidate cache after the transaction commits successfully
   if (cacheKey) {
     void deleteFromCache(cacheKey);
+  }
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// QR Code Update / Actions
+// ---------------------------------------------------------------------------
+
+/** Fetch a QR code by ID with workspace ownership check, joining the associated link. */
+async function fetchQrCodeWithLink(ctx: WorkspaceTRPCContext, id: number) {
+  const qrCode = await ctx.db.query.qrcode.findFirst({
+    where: and(
+      eq(qrcode.id, id),
+      workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
+    ),
+    with: { link: true },
+  });
+
+  if (!qrCode) throw new TRPCError({ code: "NOT_FOUND", message: "QR Code not found" });
+  if (!qrCode.linkId || !qrCode.link) throw new TRPCError({ code: "BAD_REQUEST", message: "QR Code has no associated link" });
+
+  return qrCode as typeof qrCode & { linkId: number; link: NonNullable<typeof qrCode.link> };
+}
+
+export async function updateQrCode(ctx: WorkspaceTRPCContext, input: QRCodeUpdateInput) {
+  const qrCode = await fetchQrCodeWithLink(ctx, input.id);
+
+  // Phishing check on new destination URL
+  if (input.url) {
+    await assertUrlSafe(input.url);
+  }
+
+  // Sync QR-specific fields first so that if updateLink fails,
+  // the live redirect target (link.url) is still the old safe value.
+  const qrUpdates: Partial<Pick<typeof qrcode.$inferInsert, "title" | "content">> = {};
+  if (input.title !== undefined) qrUpdates.title = input.title;
+  if (input.url !== undefined) qrUpdates.content = input.url;
+
+  if (Object.keys(qrUpdates).length > 0) {
+    await ctx.db
+      .update(qrcode)
+      .set(qrUpdates)
+      .where(eq(qrcode.id, input.id));
+  }
+
+  // Delegate to updateLink for the complex work (cache, tags, geo rules, UTM, etc.)
+  const { id: _qrId, title, url, ...linkFields } = input;
+  await updateLink(ctx, {
+    id: qrCode.linkId,
+    url,
+    name: title,
+    ...linkFields,
+  });
+
+  return true;
+}
+
+export async function resetQrCodeStatistics(ctx: WorkspaceTRPCContext, id: number) {
+  const qrCode = await fetchQrCodeWithLink(ctx, id);
+
+  // Delete both visit tables to fully reset stats (matches deleteQrCode cleanup)
+  await Promise.all([
+    ctx.db.delete(linkVisit).where(eq(linkVisit.linkId, qrCode.linkId)),
+    ctx.db.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, qrCode.linkId)),
+  ]);
+
+  return true;
+}
+
+export async function toggleQrCodeStatus(ctx: WorkspaceTRPCContext, id: number) {
+  const qrCode = await fetchQrCodeWithLink(ctx, id);
+
+  // Inline instead of delegating to toggleLinkStatusService to avoid a redundant link re-fetch
+  await ctx.db
+    .update(link)
+    .set({ disabled: !qrCode.link.disabled })
+    .where(eq(link.id, qrCode.linkId));
+
+  // Invalidate cache so the status change takes effect immediately
+  if (qrCode.link.alias) {
+    await deleteFromCache(buildCacheKey(qrCode.link.domain, qrCode.link.alias));
   }
 
   return true;
