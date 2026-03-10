@@ -45,6 +45,7 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
+import { checkAndFireMilestones } from "@/server/lib/milestone-check";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   getAccessibleFolderIds,
@@ -1462,6 +1463,9 @@ export const verifyLinkPassword = async (
     linkId: link.id,
     ...deviceDetails,
   });
+
+  // Fire milestone check for password-protected links (recordClick skips these)
+  void checkAndFireMilestones(link.id, link.userId);
 
   return link;
 };

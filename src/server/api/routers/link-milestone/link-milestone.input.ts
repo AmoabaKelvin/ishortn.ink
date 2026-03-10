@@ -4,7 +4,6 @@ export const upsertMilestonesSchema = z.object({
   linkId: z.number().int().positive(),
   thresholds: z
     .array(z.number().int().positive())
-    .max(20)
     .transform((arr) => [...new Set(arr)]), // deduplicate
 });
 
