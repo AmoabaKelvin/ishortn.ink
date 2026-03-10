@@ -6,15 +6,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   IconCalendar,
   IconClick,
-  IconLoader2,
+  IconQrcode,
   IconX,
 } from "@tabler/icons-react";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-// Lazy load GeoRulesForm to reduce initial bundle size (includes framer-motion)
 const GeoRulesForm = dynamic(
   () =>
     import("@/app/(main)/dashboard/_components/geo-rules-form").then(
@@ -22,13 +21,10 @@ const GeoRulesForm = dynamic(
     ),
   { ssr: false }
 );
-import { MilestoneEditor } from "@/app/(main)/dashboard/_components/milestone-form";
-import type { MilestoneEntry } from "@/app/(main)/dashboard/_components/milestone-form";
 import { PlanBadge, SectionToggle } from "@/app/(main)/dashboard/_components/section-toggle";
 import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
 import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
-import { OgImageUploader } from "@/app/(main)/dashboard/link/new/_components/og-image-uploader";
-import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
+import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -42,92 +38,44 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { updateLinkSchema } from "@/server/api/routers/link/link.input";
+import { qrcodeUpdateInput } from "@/server/api/routers/qrcode/qrcode.input";
 import { api } from "@/trpc/react";
-import { useDebounce } from "use-debounce";
 
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
 
-type LinkMetadata = {
-  title?: string;
-  description?: string;
-  image?: string;
-};
+type EditQRCodeFormValues = z.infer<typeof qrcodeUpdateInput>;
 
-type EditLinkDrawerProps = {
-  link: RouterOutputs["link"]["list"]["links"][number];
+type EditQRCodeDrawerProps = {
+  qr: RouterOutputs["qrCode"]["list"][number];
   open: boolean;
   onClose: () => void;
 };
 
-export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
-  const [tags, setTags] = useState<string[]>((link.tags as string[]) || []);
-  const [tagInput, setTagInput] = useState("");
-  const [showTagDropdown, setShowTagDropdown] = useState(false);
-  const [isCustomMetadataOpen, setIsCustomMetadataOpen] = useState(false);
-  const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
-  const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
-  const [isLinkCloakingOpen, setIsLinkCloakingOpen] = useState(false);
-  const [isCheckingIframeable, setIsCheckingIframeable] = useState(false);
-  const [iframeableResult, setIframeableResult] = useState<boolean | null>(null);
-  const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
-  const [milestones, setMilestones] = useState<MilestoneEntry[]>([]);
+type QRCodeData = RouterOutputs["qrCode"]["list"][number];
+type GeoRulesData = RouterOutputs["geoRules"]["getByLinkId"];
 
-  const { data: userTags } = api.tag.list.useQuery();
-  const userSubscription = api.subscriptions.get.useQuery();
-  const { data: existingGeoRules } = api.geoRules.getByLinkId.useQuery(
-    { linkId: link.id },
-    { enabled: open }
-  );
-  const { data: existingMilestones } = api.linkMilestone.getByLinkId.useQuery(
-    { linkId: link.id },
-    { enabled: open }
-  );
-
-  const formUpdateMutation = api.link.update.useMutation({
-    onSuccess: async () => {
-      await revalidateHomepage();
-    },
-  });
-  const milestoneUpsertMutation = api.linkMilestone.upsert.useMutation();
-
-  const getFormDefaults = (linkData: typeof link, geoRules?: typeof existingGeoRules) => {
-    const metadata = linkData.metadata as LinkMetadata | undefined;
-    return {
-      id: linkData.id,
-      name: linkData.name ?? "",
-      url: linkData.url ?? "",
-      alias: linkData.alias ?? "",
-      note: linkData.note ?? undefined,
-      disableLinkAfterClicks: linkData.disableLinkAfterClicks ?? undefined,
-      disableLinkAfterDate: linkData.disableLinkAfterDate ?? undefined,
-      tags: (linkData.tags as string[]) || [],
-      metadata: {
-        title: metadata?.title ?? undefined,
-        description: metadata?.description ?? undefined,
-        image: metadata?.image ?? undefined,
-      },
-      utmParams:
-        (linkData.utmParams as {
-          utm_source?: string;
-          utm_medium?: string;
-          utm_campaign?: string;
-          utm_term?: string;
-          utm_content?: string;
-        }) ?? undefined,
-      cloaking: linkData.cloaking ?? false,
-      geoRules: geoRules?.map((rule) => ({
+function getFormDefaults(
+  qrData: QRCodeData,
+  geoRules?: GeoRulesData,
+): EditQRCodeFormValues {
+  return {
+    id: qrData.id,
+    title: qrData.title ?? "",
+    url: qrData.link?.url ?? qrData.content ?? "",
+    note: qrData.link?.note ?? undefined,
+    tags: (qrData.link?.tags as string[]) || [],
+    utmParams:
+      (qrData.link?.utmParams as {
+        utm_source?: string;
+        utm_medium?: string;
+        utm_campaign?: string;
+        utm_term?: string;
+        utm_content?: string;
+      }) ?? undefined,
+    geoRules:
+      geoRules?.map((rule) => ({
         type: rule.type,
         condition: rule.condition,
         values: rule.values,
@@ -135,24 +83,48 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
         destination: rule.destination ?? undefined,
         blockMessage: rule.blockMessage ?? undefined,
       })) ?? [],
-    };
+    disableLinkAfterClicks: qrData.link?.disableLinkAfterClicks ?? undefined,
+    disableLinkAfterDate: qrData.link?.disableLinkAfterDate ?? undefined,
   };
+}
 
-  const form = useForm<z.infer<typeof updateLinkSchema>>({
-    resolver: zodResolver(updateLinkSchema),
-    defaultValues: getFormDefaults(link, existingGeoRules),
+export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
+  const [tags, setTags] = useState<string[]>((qr.link?.tags as string[]) || []);
+  const [tagInput, setTagInput] = useState("");
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
+  const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
+
+  const { data: userTags } = api.tag.list.useQuery(undefined, { enabled: open });
+  const userSubscription = api.subscriptions.get.useQuery(undefined, { enabled: open });
+  const { data: existingGeoRules } = api.geoRules.getByLinkId.useQuery(
+    { linkId: qr.link?.id ?? 0 },
+    { enabled: open && !!qr.link?.id }
+  );
+
+  const updateMutation = api.qrCode.update.useMutation({
+    onSuccess: async () => {
+      await revalidateRoute("/dashboard/qrcodes");
+      onClose();
+    },
   });
 
+  const form = useForm<EditQRCodeFormValues>({
+    resolver: zodResolver(qrcodeUpdateInput),
+    defaultValues: getFormDefaults(qr, existingGeoRules),
+  });
+
+  // Reset form when switching QR codes or when geo rules finish loading.
+  // Use qr.id (stable primitive) instead of qr (object ref) to avoid
+  // resetting on every parent re-render and discarding unsaved edits.
   useEffect(() => {
-    form.reset(getFormDefaults(link, existingGeoRules));
-    setTags((link.tags as string[]) || []);
-    setMilestones(
-      (existingMilestones ?? []).map((m) => ({
-        threshold: m.threshold,
-        notifiedAt: m.notifiedAt,
-      })),
-    );
-  }, [link, existingGeoRules, existingMilestones]);
+    if (!open) return;
+    // Wait for geo rules to load before resetting (avoids a double reset)
+    if (qr.link?.id && existingGeoRules === undefined) return;
+    form.reset(getFormDefaults(qr, existingGeoRules));
+    setTags((qr.link?.tags as string[]) || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qr.id, existingGeoRules, open]);
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
@@ -179,104 +151,34 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     form.setValue("tags", newTags);
   };
 
-  const filteredTags = userTags
-    ? userTags
-        .filter(
-          (tag) =>
-            (tagInput === "" || tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
-            !tags.includes(tag.name),
-        )
-        .map((tag) => tag.name)
-    : [];
+  const filteredTags = useMemo(
+    () =>
+      userTags
+        ? userTags
+            .filter(
+              (tag) =>
+                (tagInput === "" || tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
+                !tags.includes(tag.name),
+            )
+            .map((tag) => tag.name)
+        : [],
+    [userTags, tags, tagInput],
+  );
 
-  async function onSubmit(values: z.infer<typeof updateLinkSchema>) {
+  async function onSubmit(values: EditQRCodeFormValues) {
     values.tags = tags;
-    const thresholds = milestones.map((m) => m.threshold);
-    toast.promise(
-      Promise.all([
-        formUpdateMutation.mutateAsync(values),
-        milestoneUpsertMutation.mutateAsync({
-          linkId: link.id,
-          thresholds,
-        }),
-      ]).then(() => {
-        onClose();
-      }),
-      {
-        loading: "Updating link...",
-        success: "Link updated successfully",
-        error: "Failed to update link",
-      },
-    );
+    toast.promise(updateMutation.mutateAsync(values), {
+      loading: "Updating QR code...",
+      success: "QR code updated successfully",
+      error: "Failed to update QR code",
+    });
   }
 
   const subscriptionStatus = userSubscription?.data?.subscriptions;
   const isUltraUser = subscriptionStatus?.plan === "ultra";
   const isProOrUltraUser = subscriptionStatus?.status === "active";
 
-  // Watch the URL field for debouncing
-  const watchedUrl = form.watch("url");
-  const [debouncedUrl] = useDebounce(watchedUrl, 500);
-
-  // Check iframe compatibility when cloaking is enabled or URL changes
-  const cloakingEnabled = form.watch("cloaking");
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const checkIframeable = async () => {
-      if (!cloakingEnabled || !debouncedUrl) {
-        setIframeableResult(null);
-        return;
-      }
-
-      // Validate URL format first
-      try {
-        new URL(debouncedUrl);
-      } catch {
-        setIframeableResult(null);
-        return;
-      }
-
-      setIsCheckingIframeable(true);
-      try {
-        const response = await fetch(
-          `/api/links/iframeable?url=${encodeURIComponent(debouncedUrl)}`,
-          { signal: controller.signal },
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        setIframeableResult(data.iframeable);
-
-        if (!data.iframeable) {
-          toast.error("This website doesn't allow cloaking. Cloaking has been disabled.");
-          form.setValue("cloaking", false);
-        }
-      } catch (error) {
-        // Ignore abort errors (component unmounted or new request started)
-        if (error instanceof Error && error.name === "AbortError") {
-          return;
-        }
-        console.error("Failed to check iframe compatibility:", error);
-        setIframeableResult(false);
-        form.setValue("cloaking", false);
-        toast.error("Failed to verify if URL can be cloaked. Please try again.");
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsCheckingIframeable(false);
-        }
-      }
-    };
-
-    void checkIframeable();
-
-    return () => {
-      controller.abort();
-    };
-  }, [cloakingEnabled, debouncedUrl, form]);
+  const scans = qr.visitCount ?? 0;
 
   return (
     <AnimatePresence>
@@ -288,6 +190,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            style={{ willChange: "opacity" }}
             className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
             onClick={onClose}
           />
@@ -304,18 +207,19 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
             <div className="border-b border-neutral-200 px-6 py-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-[14px] font-semibold text-neutral-900">Edit Link</h2>
-                  <p className="mt-0.5 text-[13px] text-neutral-500">
-                    {link.domain}/{link.alias}
+                  <h2 className="text-[14px] font-semibold text-neutral-900">Edit QR Code</h2>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-neutral-500">
+                    <IconQrcode size={14} stroke={1.5} className="text-neutral-400" />
+                    {qr.title || "Untitled QR Code"}
                   </p>
                   <div className="mt-2 flex items-center gap-3 text-[12px] text-neutral-400">
                     <span className="flex items-center gap-1">
                       <IconClick size={14} stroke={1.5} className="text-blue-600" />
-                      {link.totalClicks} clicks
+                      {scans} scans
                     </span>
                     <span>
                       Created{" "}
-                      {link.createdAt ? format(new Date(link.createdAt), "MMM d, yyyy") : "Unknown"}
+                      {qr.createdAt ? format(new Date(qr.createdAt), "MMM d, yyyy") : "Unknown"}
                     </span>
                   </div>
                 </div>
@@ -348,26 +252,8 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Link Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
-                              placeholder="My Awesome Link"
-                              {...field}
-                            />
-                          </FormControl>
                           <FormDescription className="text-[12px] text-neutral-400">
-                            A friendly name to identify your link (optional)
+                            Change where this QR code redirects to
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -376,30 +262,20 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
 
                     <FormField
                       control={form.control}
-                      name="alias"
+                      name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Link Alias</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700">QR Code Title</FormLabel>
                           <FormControl>
-                            <div className="flex h-9 w-full items-center overflow-hidden rounded-md border border-neutral-200 bg-white transition-colors focus-within:ring-2 focus-within:ring-neutral-300">
-                              <Select>
-                                <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:text-neutral-900 focus:ring-0">
-                                  <SelectValue placeholder={link.domain || "ishortn.ink"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                              <div className="h-4 w-px bg-neutral-200" />
-                              <input
-                                placeholder="short-link"
-                                className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
-                                {...field}
-                              />
-                            </div>
+                            <Input
+                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              placeholder="My QR Code"
+                              {...field}
+                            />
                           </FormControl>
+                          <FormDescription className="text-[12px] text-neutral-400">
+                            A friendly name to identify your QR code (optional)
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -414,7 +290,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                           <FormControl>
                             <Input
                               className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
-                              placeholder="Add a note to your link"
+                              placeholder="Add a note to your QR code"
                               {...field}
                             />
                           </FormControl>
@@ -496,76 +372,6 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     />
                   </div>
 
-                  {/* Custom Social Media Previews */}
-                  <SectionToggle
-                    title="Custom Social Media Previews"
-                    description="Personalize your link previews with custom metadata"
-                    isOpen={isCustomMetadataOpen}
-                    onToggle={() => setIsCustomMetadataOpen(!isCustomMetadataOpen)}
-                    badge={!isProOrUltraUser ? <PlanBadge plan="Pro" /> : undefined}
-                  >
-                    <FormField
-                      control={form.control}
-                      name="metadata.title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Title</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
-                              placeholder="Custom title for your link"
-                              disabled={!isProOrUltraUser}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="metadata.description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Description</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
-                              placeholder="Custom description for your link"
-                              disabled={!isProOrUltraUser}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="metadata.image"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Image</FormLabel>
-                          <FormControl>
-                            {isProOrUltraUser ? (
-                              <OgImageUploader
-                                value={field.value}
-                                onChange={field.onChange}
-                              />
-                            ) : (
-                              <Input
-                                className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
-                                placeholder="Upgrade to Pro to add custom images"
-                                disabled
-                              />
-                            )}
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </SectionToggle>
-
                   {/* UTM Parameters */}
                   <SectionToggle
                     title="UTM Parameters"
@@ -590,68 +396,6 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     <UtmParamsForm form={form} disabled={!isUltraUser} />
                   </SectionToggle>
 
-                  {/* Link Cloaking */}
-                  <SectionToggle
-                    title="Link Cloaking"
-                    description="Keep your short URL visible while showing destination content"
-                    isOpen={isLinkCloakingOpen}
-                    onToggle={() => setIsLinkCloakingOpen(!isLinkCloakingOpen)}
-                    badge={!isUltraUser ? <PlanBadge plan="Ultra" /> : undefined}
-                  >
-                    <FormField
-                      control={form.control}
-                      name="cloaking"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border border-neutral-200 p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-[13px] font-medium text-neutral-700">
-                              Enable Link Cloaking
-                            </FormLabel>
-                            <FormDescription className="text-[12px] text-neutral-400">
-                              Visitors see your short URL while viewing the destination page.
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <div className="flex items-center gap-2">
-                              {isCheckingIframeable && (
-                                <IconLoader2 size={14} stroke={1.5} className="animate-spin text-neutral-400" />
-                              )}
-                              <Switch
-                                checked={field.value ?? false}
-                                onCheckedChange={field.onChange}
-                                disabled={!isUltraUser || !watchedUrl || isCheckingIframeable}
-                              />
-                            </div>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    {!isUltraUser && (
-                      <p className="text-[12px] text-neutral-400">
-                        Link cloaking is an Ultra plan feature.
-                      </p>
-                    )}
-
-                    {!watchedUrl && isUltraUser && (
-                      <p className="text-[12px] text-neutral-400">
-                        Enter a destination URL above to enable link cloaking.
-                      </p>
-                    )}
-
-                    {iframeableResult === true && cloakingEnabled && (
-                      <p className="text-[12px] text-green-600">
-                        This URL can be cloaked successfully.
-                      </p>
-                    )}
-
-                    {iframeableResult === false && (
-                      <p className="text-[12px] text-amber-600">
-                        This website doesn&apos;t allow cloaking. Try a different URL.
-                      </p>
-                    )}
-                  </SectionToggle>
-
                   {/* Geotargeting Rules */}
                   <GeoRulesForm
                     form={form}
@@ -660,30 +404,10 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     isUnlimited={isUltraUser}
                   />
 
-                  {/* Click Milestone Notifications */}
-                  <SectionToggle
-                    title="Click Milestones"
-                    description="Get notified when your link hits click thresholds"
-                    isOpen={isMilestonesOpen}
-                    onToggle={() => setIsMilestonesOpen(!isMilestonesOpen)}
-                    badge={!isProOrUltraUser ? <PlanBadge plan="Pro" /> : undefined}
-                  >
-                    <MilestoneEditor
-                      milestones={milestones}
-                      onChange={setMilestones}
-                      disabled={!isProOrUltraUser}
-                    />
-                    {!isProOrUltraUser && (
-                      <p className="text-[12px] text-neutral-400">
-                        Click milestones are available on Pro and Ultra plans.
-                      </p>
-                    )}
-                  </SectionToggle>
-
                   {/* Optional Settings */}
                   <SectionToggle
                     title="Optional Settings"
-                    description="Configure additional options for your link"
+                    description="Configure additional options for your QR code"
                     isOpen={isOptionalSettingsOpen}
                     onToggle={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
                   >
@@ -692,7 +416,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="disableLinkAfterClicks"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after clicks</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after scans</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
@@ -701,7 +425,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                             />
                           </FormControl>
                           <FormDescription className="text-[12px] text-neutral-400">
-                            Deactivate after a certain number of clicks. Leave empty to never disable.
+                            Deactivate after a certain number of scans. Leave empty to never disable.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -744,7 +468,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                             </Popover>
                           </FormControl>
                           <FormDescription className="text-[12px] text-neutral-400">
-                            Deactivate the link after a certain date.
+                            Deactivate the QR code after a certain date.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -769,10 +493,10 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                 <Button
                   type="button"
                   onClick={form.handleSubmit(onSubmit)}
-                  disabled={formUpdateMutation.isLoading}
+                  disabled={updateMutation.isLoading}
                   className="h-9 bg-blue-600 text-[13px] text-white hover:bg-blue-700"
                 >
-                  {formUpdateMutation.isLoading ? "Saving..." : "Save Changes"}
+                  {updateMutation.isLoading ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </div>
