@@ -1,7 +1,6 @@
-import { Resend } from "resend";
-
-import { env } from "@/env.mjs";
 import TeamInviteEmail from "@/emails/team-invite";
+
+import { resend } from "./resend-client";
 
 type SendTeamInviteEmailInput = {
   email: string;
@@ -12,8 +11,6 @@ type SendTeamInviteEmailInput = {
   role: "admin" | "member";
   token: string;
 };
-
-const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 export async function sendTeamInviteEmail({
   email,

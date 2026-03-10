@@ -24,6 +24,8 @@ const GeoRulesForm = dynamic(
     ),
   { ssr: false }
 );
+import { MilestoneEditor } from "@/app/(main)/dashboard/_components/milestone-form";
+import type { MilestoneEntry } from "@/app/(main)/dashboard/_components/milestone-form";
 import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
 import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
 import { OgImageUploader } from "@/app/(main)/dashboard/link/new/_components/og-image-uploader";
@@ -144,10 +146,16 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   const [isLinkCloakingOpen, setIsLinkCloakingOpen] = useState(false);
   const [isCheckingIframeable, setIsCheckingIframeable] = useState(false);
   const [iframeableResult, setIframeableResult] = useState<boolean | null>(null);
+  const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
+  const [milestones, setMilestones] = useState<MilestoneEntry[]>([]);
 
   const { data: userTags } = api.tag.list.useQuery();
   const userSubscription = api.subscriptions.get.useQuery();
   const { data: existingGeoRules } = api.geoRules.getByLinkId.useQuery(
+    { linkId: link.id },
+    { enabled: open }
+  );
+  const { data: existingMilestones } = api.linkMilestone.getByLinkId.useQuery(
     { linkId: link.id },
     { enabled: open }
   );
@@ -157,6 +165,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
       await revalidateHomepage();
     },
   });
+  const milestoneUpsertMutation = api.linkMilestone.upsert.useMutation();
 
   const getFormDefaults = (linkData: typeof link, geoRules?: typeof existingGeoRules) => {
     const metadata = linkData.metadata as LinkMetadata | undefined;
@@ -202,7 +211,13 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   useEffect(() => {
     form.reset(getFormDefaults(link, existingGeoRules));
     setTags((link.tags as string[]) || []);
-  }, [link, existingGeoRules]);
+    setMilestones(
+      (existingMilestones ?? []).map((m) => ({
+        threshold: m.threshold,
+        notifiedAt: m.notifiedAt,
+      })),
+    );
+  }, [link, existingGeoRules, existingMilestones]);
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
@@ -241,8 +256,15 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
 
   async function onSubmit(values: z.infer<typeof updateLinkSchema>) {
     values.tags = tags;
+    const thresholds = milestones.map((m) => m.threshold);
     toast.promise(
-      formUpdateMutation.mutateAsync(values).then(() => {
+      Promise.all([
+        formUpdateMutation.mutateAsync(values),
+        milestoneUpsertMutation.mutateAsync({
+          linkId: link.id,
+          thresholds,
+        }),
+      ]).then(() => {
         onClose();
       }),
       {
@@ -702,6 +724,26 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     maxRules={isUltraUser ? undefined : 3}
                     isUnlimited={isUltraUser}
                   />
+
+                  {/* Click Milestone Notifications */}
+                  <SectionToggle
+                    title="Click Milestones"
+                    description="Get notified when your link hits click thresholds"
+                    isOpen={isMilestonesOpen}
+                    onToggle={() => setIsMilestonesOpen(!isMilestonesOpen)}
+                    badge={!isProOrUltraUser ? <PlanBadge plan="Pro" /> : undefined}
+                  >
+                    <MilestoneEditor
+                      milestones={milestones}
+                      onChange={setMilestones}
+                      disabled={!isProOrUltraUser}
+                    />
+                    {!isProOrUltraUser && (
+                      <p className="text-[12px] text-neutral-400">
+                        Click milestones are available on Pro and Ultra plans.
+                      </p>
+                    )}
+                  </SectionToggle>
 
                   {/* Optional Settings */}
                   <SectionToggle

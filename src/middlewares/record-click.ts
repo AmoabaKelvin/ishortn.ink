@@ -9,6 +9,7 @@ import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 import { registerEventUsage } from "@/server/lib/event-usage";
+import { checkAndFireMilestones } from "@/server/lib/milestone-check";
 import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
 
 // Check if running on localhost (waitUntil doesn't work locally)
@@ -138,6 +139,9 @@ async function recordClick(
     }),
     recordUniqueClick(ipHash, link.id),
   ]);
+
+  // Check click milestones in the background (non-blocking)
+  void runBackgroundTask(checkAndFireMilestones(link.id, link.userId));
 }
 
 export async function recordUserClickForLink(

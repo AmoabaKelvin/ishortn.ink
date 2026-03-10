@@ -339,6 +339,29 @@ export const linkVisitDailySummaryRelations = relations(
   }),
 );
 
+export const linkMilestone = mysqlTable(
+  "LinkMilestone",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    threshold: int("threshold").notNull(),
+    notifiedAt: timestamp("notifiedAt"),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+    linkThresholdUnique: unique("link_threshold_unique").on(table.linkId, table.threshold),
+  }),
+);
+
+export const linkMilestoneRelations = relations(linkMilestone, ({ one }) => ({
+  link: one(link, {
+    fields: [linkMilestone.linkId],
+    references: [link.id],
+  }),
+}));
+
 export const token = mysqlTable(
   "Token",
   {
@@ -588,6 +611,7 @@ export const linkRelations = relations(link, ({ one, many }) => ({
   }),
   geoRules: many(geoRule),
   flaggedLinks: many(flaggedLink),
+  milestones: many(linkMilestone),
 }));
 
 export const geoRuleRelations = relations(geoRule, ({ one }) => ({

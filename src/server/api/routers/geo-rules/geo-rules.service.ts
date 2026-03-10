@@ -8,9 +8,8 @@ import {
 } from "@/lib/billing/plans";
 import { deleteGeoRulesFromCache } from "@/lib/core/cache";
 import { geoRule, link } from "@/server/db/schema";
-import { workspaceFilter } from "@/server/lib/workspace";
 
-import { checkWorkspaceLinkLimit } from "../link/utils";
+import { checkWorkspaceLinkLimit, verifyLinkOwnership } from "../link/utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type {
@@ -20,30 +19,6 @@ import type {
   ReorderGeoRulesInput,
   UpdateGeoRuleInput,
 } from "./geo-rules.input";
-
-/**
- * Verify that the link belongs to the current workspace
- */
-async function verifyLinkOwnership(
-  ctx: WorkspaceTRPCContext,
-  linkId: number
-) {
-  const linkRecord = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, linkId),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId)
-    ),
-  });
-
-  if (!linkRecord) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "Link not found or you don't have access to it",
-    });
-  }
-
-  return linkRecord;
-}
 
 /**
  * Check if the user can add more geo rules to a link

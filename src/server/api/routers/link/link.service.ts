@@ -37,6 +37,7 @@ import {
   folder,
   geoRule,
   link,
+  linkMilestone,
   linkTag,
   linkVisit,
   qrcode,
@@ -44,6 +45,7 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
+import { checkAndFireMilestones } from "@/server/lib/milestone-check";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   getAccessibleFolderIds,
@@ -691,6 +693,8 @@ export const deleteLink = async (
     }
   }
 
+  await ctx.db.delete(linkMilestone).where(eq(linkMilestone.linkId, input.id));
+
   await Promise.all([
     deleteFromCache(
       buildCacheKey(linkToDelete.domain, linkToDelete.alias!),
@@ -778,7 +782,10 @@ export const bulkDeleteLinks = async (
     // 4. Delete QR codes associated with links
     await tx.delete(qrcode).where(inArray(qrcode.linkId, validLinkIds));
 
-    // 5. Finally delete the links themselves
+    // 5. Delete milestone notifications
+    await tx.delete(linkMilestone).where(inArray(linkMilestone.linkId, validLinkIds));
+
+    // 6. Finally delete the links themselves
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
 
@@ -1456,6 +1463,9 @@ export const verifyLinkPassword = async (
     linkId: link.id,
     ...deviceDetails,
   });
+
+  // Fire milestone check for password-protected links (recordClick skips these)
+  void checkAndFireMilestones(link.id, link.userId);
 
   return link;
 };

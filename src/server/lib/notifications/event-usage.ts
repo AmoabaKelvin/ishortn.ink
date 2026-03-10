@@ -1,9 +1,8 @@
-import { Resend } from "resend";
-
-import { env } from "@/env.mjs";
 import EventUsageAlertEmail from "@/emails/event-usage-alert";
 
 import type { Plan } from "@/lib/billing/plans";
+
+import { resend } from "./resend-client";
 
 type SendEventUsageEmailInput = {
   email: string;
@@ -13,8 +12,6 @@ type SendEventUsageEmailInput = {
   currentCount: number;
   plan: Plan;
 };
-
-const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 export async function sendEventUsageEmail({
   email,

@@ -1,11 +1,10 @@
-import { Resend } from "resend";
-
-import { env } from "@/env.mjs";
 import AccountTransferEmail from "@/emails/account-transfer";
 import TransferCompletedEmail from "@/emails/transfer-completed";
 import TransferDeclinedEmail from "@/emails/transfer-declined";
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
+
+import { resend } from "./resend-client";
 
 type SendAccountTransferEmailInput = {
   toEmail: string;
@@ -15,8 +14,6 @@ type SendAccountTransferEmailInput = {
   token: string;
   resourceCounts: ResourceCounts;
 };
-
-const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 export async function sendAccountTransferEmail({
   toEmail,

@@ -10,9 +10,28 @@ import { link, linkVisit, siteSettings, team, uniqueLinkVisit, user } from "@/se
 import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user-plan";
 import { registerEventUsage } from "@/server/lib/event-usage";
 import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
+import { workspaceFilter } from "@/server/lib/workspace";
 
 import type { Link } from "@/server/db/schema";
 import type { ProtectedTRPCContext, PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
+
+export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: number) {
+  const linkRecord = await ctx.db.query.link.findFirst({
+    where: and(
+      eq(link.id, linkId),
+      workspaceFilter(ctx.workspace, link.userId, link.teamId),
+    ),
+  });
+
+  if (!linkRecord) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Link not found or you don't have access to it",
+    });
+  }
+
+  return linkRecord;
+}
 export async function logAnalytics(ctx: PublicTRPCContext, link: Link, from: string) {
   if (link.passwordHash) {
     return;
