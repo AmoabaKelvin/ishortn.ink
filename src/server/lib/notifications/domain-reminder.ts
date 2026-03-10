@@ -1,7 +1,7 @@
-import { Resend } from "resend";
-
 import DomainReminderEmail from "@/emails/domain-reminder";
 import { env } from "@/env.mjs";
+
+import { resend } from "./resend-client";
 
 type Challenge = {
   type: "TXT" | "A" | "CNAME";
@@ -16,8 +16,6 @@ type SendDomainReminderEmailInput = {
   daysMisconfigured: number;
   challenges: Challenge[];
 };
-
-const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 export async function sendDomainReminderEmail({
   email,
