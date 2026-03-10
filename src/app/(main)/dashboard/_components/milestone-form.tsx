@@ -21,13 +21,13 @@ type MilestoneEditorProps = {
 export function MilestoneEditor({ milestones, onChange, disabled }: MilestoneEditorProps) {
   const [milestoneInput, setMilestoneInput] = useState("");
 
-  const currentThresholds = milestones.map((m) => m.threshold);
+  const thresholdSet = new Set(milestones.map((m) => m.threshold));
   const notifiedSet = new Set(
     milestones.filter((m) => m.notifiedAt !== null).map((m) => m.threshold),
   );
 
   const addThreshold = (value: number) => {
-    if (disabled || currentThresholds.includes(value)) return;
+    if (disabled || thresholdSet.has(value)) return;
     const updated = [...milestones, { threshold: value, notifiedAt: null }]
       .sort((a, b) => a.threshold - b.threshold);
     onChange(updated);
@@ -51,9 +51,9 @@ export function MilestoneEditor({ milestones, onChange, disabled }: MilestoneEdi
   return (
     <div className="space-y-3">
       {/* Active milestones */}
-      {currentThresholds.length > 0 && (
+      {milestones.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {currentThresholds.map((threshold) => (
+          {milestones.map(({ threshold }) => (
             <span
               key={threshold}
               className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-medium ${
@@ -79,7 +79,7 @@ export function MilestoneEditor({ milestones, onChange, disabled }: MilestoneEdi
 
       {/* Preset chips */}
       <div className="flex flex-wrap gap-1.5">
-        {PRESET_MILESTONES.filter((p) => !currentThresholds.includes(p)).map((preset) => (
+        {PRESET_MILESTONES.filter((p) => !thresholdSet.has(p)).map((preset) => (
           <button
             key={preset}
             type="button"
