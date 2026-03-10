@@ -37,6 +37,7 @@ import {
   folder,
   geoRule,
   link,
+  linkMilestone,
   linkTag,
   linkVisit,
   qrcode,
@@ -691,6 +692,8 @@ export const deleteLink = async (
     }
   }
 
+  await ctx.db.delete(linkMilestone).where(eq(linkMilestone.linkId, input.id));
+
   await Promise.all([
     deleteFromCache(
       buildCacheKey(linkToDelete.domain, linkToDelete.alias!),
@@ -778,7 +781,10 @@ export const bulkDeleteLinks = async (
     // 4. Delete QR codes associated with links
     await tx.delete(qrcode).where(inArray(qrcode.linkId, validLinkIds));
 
-    // 5. Finally delete the links themselves
+    // 5. Delete milestone notifications
+    await tx.delete(linkMilestone).where(inArray(linkMilestone.linkId, validLinkIds));
+
+    // 6. Finally delete the links themselves
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
 

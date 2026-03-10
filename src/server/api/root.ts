@@ -6,6 +6,7 @@ import { customDomainRouter } from "./routers/domains/domains.procedure";
 import { folderRouter } from "./routers/folder/folder.procedure";
 import { geoRulesRouter } from "./routers/geo-rules/geo-rules.router";
 import { lemonsqueezyRouter } from "./routers/lemonsqueezy/lemonsqueezy.procedure";
+import { linkMilestoneRouter } from "./routers/link-milestone/link-milestone.procedure";
 import { linkRouter } from "./routers/link/link.procedure";
 import { qrCodeRouter } from "./routers/qrcode/qrcode.procedure";
 import { siteSettingsRouter } from "./routers/settings/settings.procedure";
@@ -35,6 +36,7 @@ export const appRouter = createTRPCRouter({
   team: teamRouter,
   user: userRouter,
   geoRules: geoRulesRouter,
+  linkMilestone: linkMilestoneRouter,
 });
 
 export type AppRouter = typeof appRouter;
