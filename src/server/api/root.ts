@@ -3,6 +3,7 @@ import { adminRouter } from "./routers/admin/admin.procedure";
 import { aiRouter } from "./routers/ai/ai.procedure";
 import { changelogRouter } from "./routers/changelog/changelog.procedure";
 import { customDomainRouter } from "./routers/domains/domains.procedure";
+import { feedbackRouter } from "./routers/feedback/feedback.procedure";
 import { folderRouter } from "./routers/folder/folder.procedure";
 import { geoRulesRouter } from "./routers/geo-rules/geo-rules.router";
 import { lemonsqueezyRouter } from "./routers/lemonsqueezy/lemonsqueezy.procedure";
@@ -27,6 +28,7 @@ export const appRouter = createTRPCRouter({
   subscriptions: subscriptionsRouter,
   qrCode: qrCodeRouter,
   customDomain: customDomainRouter,
+  feedback: feedbackRouter,
   ai: aiRouter,
   siteSettings: siteSettingsRouter,
   tag: tagRouter,

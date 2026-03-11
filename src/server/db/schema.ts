@@ -691,6 +691,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   ownedTeams: many(team),
   outgoingTransfers: many(accountTransfer, { relationName: "outgoingTransfers" }),
   incomingTransfers: many(accountTransfer, { relationName: "incomingTransfers" }),
+  feedbacks: many(feedback),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -1002,3 +1003,36 @@ export type NewBlockedDomain = typeof blockedDomain.$inferInsert;
 
 export type FlaggedLink = typeof flaggedLink.$inferSelect;
 export type NewFlaggedLink = typeof flaggedLink.$inferInsert;
+
+// ============================================================================
+// FEEDBACK
+// ============================================================================
+
+export const feedback = mysqlTable(
+  "Feedback",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    type: mysqlEnum("feedbackType", ["bug", "feature", "question"]).notNull(),
+    message: text("message").notNull(),
+    imageUrls: json("imageUrls").$type<string[]>().default([]),
+    status: mysqlEnum("feedbackStatus", ["open", "resolved", "dismissed"])
+      .notNull()
+      .default("open"),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+    statusIdx: index("status_idx").on(table.status),
+  }),
+);
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+  user: one(user, {
+    fields: [feedback.userId],
+    references: [user.id],
+  }),
+}));
+
+export type Feedback = typeof feedback.$inferSelect;
+export type NewFeedback = typeof feedback.$inferInsert;
