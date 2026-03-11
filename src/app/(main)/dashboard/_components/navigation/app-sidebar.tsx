@@ -13,6 +13,7 @@ import {
   IconLink,
   IconLogout,
   IconMenu2,
+  IconMessageReport,
   IconQrcode,
   IconSettings,
   IconShieldLock,
@@ -35,6 +36,7 @@ import {
 import { APP_TITLE } from "@/lib/constants/app";
 import { cn } from "@/lib/utils";
 
+import { FeedbackModal } from "./feedback-modal";
 import { SidebarStats } from "./sidebar-stats";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
@@ -67,6 +69,7 @@ const adminNavigationItems = [
   { name: "Users", href: "/dashboard/admin/users", icon: IconUsers },
   { name: "Blocked Domains", href: "/dashboard/admin/domains", icon: IconBan },
   { name: "Flagged Links", href: "/dashboard/admin/flagged", icon: IconFlag },
+  { name: "Feedback", href: "/dashboard/admin/feedback", icon: IconMessageReport },
 ];
 
 type Team = {
@@ -117,6 +120,7 @@ export function AppSidebar({
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const { user } = useUser();
   const { signOut } = useClerk();
 
@@ -281,19 +285,21 @@ export function AppSidebar({
               </div>
             )}
 
-            {/* Help */}
+            {/* Feedback */}
             <div className="border-t border-neutral-100 px-3 py-1.5">
-              <Link
-                href="https://docs.google.com/forms/d/e/1FAIpQLSfVfz9c1qkC4aDSjFnMcVnrimKiNOHA2aoQhyxNaMmDjMSNEg/viewform?usp=sf_link"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+              <button
+                onClick={() => {
+                  setIsFeedbackOpen(true);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
               >
                 <IconLifebuoy size={18} stroke={1.5} className="shrink-0" />
-                Help
-              </Link>
+                Feedback
+              </button>
             </div>
+
+            <FeedbackModal open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
 
             {/* User */}
             <div className="border-t border-neutral-100 p-3">
