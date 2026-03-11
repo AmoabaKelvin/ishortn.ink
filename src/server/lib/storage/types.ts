@@ -1,4 +1,4 @@
-export type ImageType = "og-image" | "qr-logo" | "qr-code";
+export type ImageType = "og-image" | "qr-logo" | "qr-code" | "feedback";
 export type WorkspaceType = "personal" | "team";
 
 export interface UploadImageParams {
