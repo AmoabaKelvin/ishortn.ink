@@ -61,6 +61,64 @@ export async function sendDiscordNotification(
   }
 }
 
+const FEEDBACK_TYPE_LABELS: Record<string, string> = {
+  bug: "Bug Report",
+  feature: "Feature Request",
+  question: "General Question",
+};
+
+const FEEDBACK_TYPE_COLORS: Record<string, number> = {
+  bug: DISCORD_COLORS.error,
+  feature: DISCORD_COLORS.info,
+  question: DISCORD_COLORS.warning,
+};
+
+export async function sendFeedbackNotification(params: {
+  userEmail: string;
+  userName?: string | null;
+  feedbackType: string;
+  message: string;
+  imageUrls?: string[];
+}): Promise<boolean> {
+  const { userEmail, userName, feedbackType, message, imageUrls } = params;
+
+  const embed: DiscordEmbed = {
+    title: FEEDBACK_TYPE_LABELS[feedbackType] ?? "Feedback",
+    color: FEEDBACK_TYPE_COLORS[feedbackType] ?? DISCORD_COLORS.info,
+    fields: [
+      {
+        name: "From",
+        value: userName ? `${userName} (${userEmail})` : userEmail,
+        inline: true,
+      },
+      {
+        name: "Type",
+        value: FEEDBACK_TYPE_LABELS[feedbackType] ?? feedbackType,
+        inline: true,
+      },
+      {
+        name: "Message",
+        value: message.length > 1024 ? message.slice(0, 1021) + "..." : message,
+        inline: false,
+      },
+    ],
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: "iShortn Feedback",
+    },
+  };
+
+  if (imageUrls && imageUrls.length > 0) {
+    embed.fields!.push({
+      name: "Attachments",
+      value: imageUrls.map((url, i) => `[Image ${i + 1}](${url})`).join(" | "),
+      inline: false,
+    });
+  }
+
+  return sendDiscordNotification({ embeds: [embed] });
+}
+
 export async function sendDowngradeFeedbackNotification(params: {
   userEmail: string;
   userName?: string | null;
