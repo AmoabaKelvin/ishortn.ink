@@ -61,4 +61,33 @@ export const adminRouter = createTRPCRouter({
   resolveFlaggedLink: adminProcedure
     .input(inputs.resolveFlaggedLinkSchema)
     .mutation(({ ctx, input }) => services.resolveFlaggedLink(ctx, input)),
+
+  // Analytics
+  getAnalytics: adminProcedure
+    .input(inputs.getAnalyticsSchema)
+    .query(({ ctx, input }) => services.getAnalytics(ctx, input)),
+
+  getActivityChart: adminProcedure
+    .input(inputs.getActivityChartSchema)
+    .query(({ ctx, input }) => services.getActivityChart(ctx, input)),
+
+  getTopUsers: adminProcedure
+    .input(inputs.getTopUsersSchema)
+    .query(({ ctx, input }) => services.getTopUsers(ctx, input)),
+
+  getTopLinks: adminProcedure
+    .input(inputs.getTopLinksSchema)
+    .query(({ ctx, input }) => services.getTopLinks(ctx, input)),
+
+  getPeakPeriods: adminProcedure
+    .input(inputs.getPeakPeriodsSchema)
+    .query(({ ctx, input }) => services.getPeakPeriods(ctx, input)),
+
+  getMonthlyBreakdown: adminProcedure
+    .input(inputs.getMonthlyBreakdownSchema)
+    .query(({ ctx, input }) => services.getMonthlyBreakdown(ctx, input)),
+
+  getSystemHealth: adminProcedure.query(({ ctx }) =>
+    services.getSystemHealth(ctx),
+  ),
 });

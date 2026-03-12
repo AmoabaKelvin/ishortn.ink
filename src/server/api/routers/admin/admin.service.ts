@@ -1,10 +1,12 @@
-import { and, count, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, between, count, desc, eq, like, or, sql } from "drizzle-orm";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import {
   blockedDomain,
+  feedback,
   flaggedLink,
   link,
+  linkVisit,
   user,
 } from "@/server/db/schema";
 
@@ -16,7 +18,13 @@ import type {
   AddBlockedDomainInput,
   BanUserInput,
   BlockLinkInput,
+  GetActivityChartInput,
+  GetAnalyticsInput,
   GetFlaggedLinksInput,
+  GetMonthlyBreakdownInput,
+  GetPeakPeriodsInput,
+  GetTopLinksInput,
+  GetTopUsersInput,
   RemoveBlockedDomainInput,
   ResolveFlaggedLinkInput,
   SearchLinksInput,
@@ -533,4 +541,427 @@ export async function resolveFlaggedLink(
       reason: flagged.reason ?? "Flagged and blocked by admin",
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+/** Compute the previous period of the same length for comparison */
+function getPreviousPeriod(from: Date, to: Date) {
+  const durationMs = to.getTime() - from.getTime();
+  const prevTo = new Date(from.getTime() - 1); // 1ms before current "from"
+  prevTo.setHours(23, 59, 59, 999);
+  const prevFrom = new Date(prevTo.getTime() - durationMs);
+  prevFrom.setHours(0, 0, 0, 0);
+  return { prevFrom, prevTo };
+}
+
+/** Compute percentage change, returning null when the previous value is 0 */
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0) return current > 0 ? 100 : null;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+async function countClicks(
+  ctx: ProtectedTRPCContext,
+  from: Date,
+  to: Date,
+): Promise<number> {
+  const result = await ctx.db
+    .select({ total: count() })
+    .from(linkVisit)
+    .where(between(linkVisit.createdAt, from, to));
+  return result[0]?.total ?? 0;
+}
+
+export async function getAnalytics(
+  ctx: ProtectedTRPCContext,
+  input: GetAnalyticsInput,
+) {
+  const { from, to } = input;
+  const { prevFrom, prevTo } = getPreviousPeriod(from, to);
+
+  const [
+    linksInRange,
+    usersInRange,
+    clicksInRange,
+    linksPrev,
+    usersPrev,
+    clicksPrev,
+  ] = await Promise.all([
+    ctx.db
+      .select({ total: count() })
+      .from(link)
+      .where(between(link.createdAt, from, to)),
+    ctx.db
+      .select({ total: count() })
+      .from(user)
+      .where(between(user.createdAt, from, to)),
+    countClicks(ctx, from, to),
+    ctx.db
+      .select({ total: count() })
+      .from(link)
+      .where(between(link.createdAt, prevFrom, prevTo)),
+    ctx.db
+      .select({ total: count() })
+      .from(user)
+      .where(between(user.createdAt, prevFrom, prevTo)),
+    countClicks(ctx, prevFrom, prevTo),
+  ]);
+
+  const currentLinks = linksInRange[0]?.total ?? 0;
+  const currentUsers = usersInRange[0]?.total ?? 0;
+  const previousLinks = linksPrev[0]?.total ?? 0;
+  const previousUsers = usersPrev[0]?.total ?? 0;
+
+  return {
+    links: currentLinks,
+    users: currentUsers,
+    clicks: clicksInRange,
+    linksGrowth: pctChange(currentLinks, previousLinks),
+    usersGrowth: pctChange(currentUsers, previousUsers),
+    clicksGrowth: pctChange(clicksInRange, clicksPrev),
+    avgLinksPerUser:
+      currentUsers > 0
+        ? Math.round((currentLinks / currentUsers) * 10) / 10
+        : 0,
+  };
+}
+
+export async function getActivityChart(
+  ctx: ProtectedTRPCContext,
+  input: GetActivityChartInput,
+) {
+  const { from, to, granularity } = input;
+
+  const dateExpr =
+    granularity === "month"
+      ? sql<string>`DATE_FORMAT(${link.createdAt}, '%Y-%m')`
+      : sql<string>`DATE(${link.createdAt})`;
+
+  const userDateExpr =
+    granularity === "month"
+      ? sql<string>`DATE_FORMAT(${user.createdAt}, '%Y-%m')`
+      : sql<string>`DATE(${user.createdAt})`;
+
+  const clickDateExpr =
+    granularity === "month"
+      ? sql<string>`DATE_FORMAT(${linkVisit.createdAt}, '%Y-%m')`
+      : sql<string>`DATE(${linkVisit.createdAt})`;
+
+  const [dailyLinks, dailyUsers, dailyClicks] = await Promise.all([
+    ctx.db
+      .select({ date: dateExpr, count: count() })
+      .from(link)
+      .where(between(link.createdAt, from, to))
+      .groupBy(dateExpr)
+      .orderBy(dateExpr),
+    ctx.db
+      .select({ date: userDateExpr, count: count() })
+      .from(user)
+      .where(between(user.createdAt, from, to))
+      .groupBy(userDateExpr)
+      .orderBy(userDateExpr),
+    ctx.db
+      .select({ date: clickDateExpr, count: count() })
+      .from(linkVisit)
+      .where(between(linkVisit.createdAt, from, to))
+      .groupBy(clickDateExpr)
+      .orderBy(clickDateExpr),
+  ]);
+
+  const linksByDate = new Map(
+    dailyLinks.map((l) => [String(l.date).split("T")[0], l.count]),
+  );
+  const usersByDate = new Map(
+    dailyUsers.map((u) => [String(u.date).split("T")[0], u.count]),
+  );
+  const clicksByDate = new Map(
+    dailyClicks.map((c) => [String(c.date).split("T")[0], c.count]),
+  );
+
+  // Fill in all periods
+  const result: {
+    date: string;
+    links: number;
+    users: number;
+    clicks: number;
+  }[] = [];
+
+  if (granularity === "month") {
+    const cursor = new Date(from);
+    cursor.setDate(1);
+    const endMonth = to.getFullYear() * 12 + to.getMonth();
+    while (cursor.getFullYear() * 12 + cursor.getMonth() <= endMonth) {
+      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+      result.push({
+        date: key,
+        links: linksByDate.get(key) ?? 0,
+        users: usersByDate.get(key) ?? 0,
+        clicks: clicksByDate.get(key) ?? 0,
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  } else {
+    const cursor = new Date(from);
+    cursor.setHours(0, 0, 0, 0);
+    while (cursor <= to) {
+      const key = cursor.toISOString().split("T")[0]!;
+      result.push({
+        date: key,
+        links: linksByDate.get(key) ?? 0,
+        users: usersByDate.get(key) ?? 0,
+        clicks: clicksByDate.get(key) ?? 0,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+
+  return result;
+}
+
+export async function getTopUsers(
+  ctx: ProtectedTRPCContext,
+  input: GetTopUsersInput,
+) {
+  const { from, to, sortBy, limit: lim } = input;
+
+  const orderExpr =
+    sortBy === "clicks"
+      ? sql`COUNT(${linkVisit.id}) DESC`
+      : sql`COUNT(DISTINCT ${link.id}) DESC`;
+
+  return ctx.db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      imageUrl: user.imageUrl,
+      createdAt: user.createdAt,
+      linkCount: sql<number>`COUNT(DISTINCT ${link.id})`,
+      clickCount: sql<number>`COUNT(${linkVisit.id})`,
+    })
+    .from(user)
+    .innerJoin(link, eq(link.userId, user.id))
+    .leftJoin(linkVisit, eq(linkVisit.linkId, link.id))
+    .where(between(link.createdAt, from, to))
+    .groupBy(user.id)
+    .orderBy(orderExpr)
+    .limit(lim);
+}
+
+export async function getTopLinks(
+  ctx: ProtectedTRPCContext,
+  input: GetTopLinksInput,
+) {
+  const { from, to, limit: lim } = input;
+
+  return ctx.db
+    .select({
+      id: link.id,
+      url: link.url,
+      alias: link.alias,
+      domain: link.domain,
+      createdAt: link.createdAt,
+      userEmail: user.email,
+      clicks: count(linkVisit.id),
+    })
+    .from(linkVisit)
+    .innerJoin(link, eq(linkVisit.linkId, link.id))
+    .leftJoin(user, eq(link.userId, user.id))
+    .where(between(linkVisit.createdAt, from, to))
+    .groupBy(link.id)
+    .orderBy(sql`COUNT(${linkVisit.id}) DESC`)
+    .limit(lim);
+}
+
+export async function getPeakPeriods(
+  ctx: ProtectedTRPCContext,
+  input: GetPeakPeriodsInput,
+) {
+  const { from, to } = input;
+
+  const [peakLinkDay, peakUserDay, peakClickDay, peakLinkMonth, peakUserMonth] =
+    await Promise.all([
+      ctx.db
+        .select({
+          date: sql<string>`DATE(${link.createdAt})`,
+          count: count(),
+        })
+        .from(link)
+        .where(between(link.createdAt, from, to))
+        .groupBy(sql`DATE(${link.createdAt})`)
+        .orderBy(sql`COUNT(*) DESC`)
+        .limit(1),
+      ctx.db
+        .select({
+          date: sql<string>`DATE(${user.createdAt})`,
+          count: count(),
+        })
+        .from(user)
+        .where(between(user.createdAt, from, to))
+        .groupBy(sql`DATE(${user.createdAt})`)
+        .orderBy(sql`COUNT(*) DESC`)
+        .limit(1),
+      ctx.db
+        .select({
+          date: sql<string>`DATE(${linkVisit.createdAt})`,
+          count: count(),
+        })
+        .from(linkVisit)
+        .where(between(linkVisit.createdAt, from, to))
+        .groupBy(sql`DATE(${linkVisit.createdAt})`)
+        .orderBy(sql`COUNT(*) DESC`)
+        .limit(1),
+      ctx.db
+        .select({
+          month: sql<string>`DATE_FORMAT(${link.createdAt}, '%Y-%m')`,
+          count: count(),
+        })
+        .from(link)
+        .where(between(link.createdAt, from, to))
+        .groupBy(sql`DATE_FORMAT(${link.createdAt}, '%Y-%m')`)
+        .orderBy(sql`COUNT(*) DESC`)
+        .limit(1),
+      ctx.db
+        .select({
+          month: sql<string>`DATE_FORMAT(${user.createdAt}, '%Y-%m')`,
+          count: count(),
+        })
+        .from(user)
+        .where(between(user.createdAt, from, to))
+        .groupBy(sql`DATE_FORMAT(${user.createdAt}, '%Y-%m')`)
+        .orderBy(sql`COUNT(*) DESC`)
+        .limit(1),
+    ]);
+
+  return {
+    peakLinkDay: peakLinkDay[0]
+      ? { date: String(peakLinkDay[0].date).split("T")[0], count: peakLinkDay[0].count }
+      : null,
+    peakUserDay: peakUserDay[0]
+      ? { date: String(peakUserDay[0].date).split("T")[0], count: peakUserDay[0].count }
+      : null,
+    peakClickDay: peakClickDay[0]
+      ? { date: String(peakClickDay[0].date).split("T")[0], count: peakClickDay[0].count }
+      : null,
+    peakLinkMonth: peakLinkMonth[0] ?? null,
+    peakUserMonth: peakUserMonth[0] ?? null,
+  };
+}
+
+export async function getMonthlyBreakdown(
+  ctx: ProtectedTRPCContext,
+  input: GetMonthlyBreakdownInput,
+) {
+  const { from, to } = input;
+
+  const [monthlyLinks, monthlyUsers, monthlyClicks] = await Promise.all([
+    ctx.db
+      .select({
+        month: sql<string>`DATE_FORMAT(${link.createdAt}, '%Y-%m')`,
+        count: count(),
+      })
+      .from(link)
+      .where(between(link.createdAt, from, to))
+      .groupBy(sql`DATE_FORMAT(${link.createdAt}, '%Y-%m')`)
+      .orderBy(sql`DATE_FORMAT(${link.createdAt}, '%Y-%m')`),
+    ctx.db
+      .select({
+        month: sql<string>`DATE_FORMAT(${user.createdAt}, '%Y-%m')`,
+        count: count(),
+      })
+      .from(user)
+      .where(between(user.createdAt, from, to))
+      .groupBy(sql`DATE_FORMAT(${user.createdAt}, '%Y-%m')`)
+      .orderBy(sql`DATE_FORMAT(${user.createdAt}, '%Y-%m')`),
+    ctx.db
+      .select({
+        month: sql<string>`DATE_FORMAT(${linkVisit.createdAt}, '%Y-%m')`,
+        count: count(),
+      })
+      .from(linkVisit)
+      .where(between(linkVisit.createdAt, from, to))
+      .groupBy(sql`DATE_FORMAT(${linkVisit.createdAt}, '%Y-%m')`)
+      .orderBy(sql`DATE_FORMAT(${linkVisit.createdAt}, '%Y-%m')`),
+  ]);
+
+  const linksByMonth = new Map(monthlyLinks.map((l) => [l.month, l.count]));
+  const usersByMonth = new Map(monthlyUsers.map((u) => [u.month, u.count]));
+  const clicksByMonth = new Map(monthlyClicks.map((c) => [c.month, c.count]));
+
+  // Fill all months in range
+  const result: {
+    month: string;
+    links: number;
+    users: number;
+    clicks: number;
+  }[] = [];
+  const cursor = new Date(from);
+  cursor.setDate(1);
+  const endMonth = to.getFullYear() * 12 + to.getMonth();
+  while (cursor.getFullYear() * 12 + cursor.getMonth() <= endMonth) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+    result.push({
+      month: key,
+      links: linksByMonth.get(key) ?? 0,
+      users: usersByMonth.get(key) ?? 0,
+      clicks: clicksByMonth.get(key) ?? 0,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return result;
+}
+
+export async function getSystemHealth(ctx: ProtectedTRPCContext) {
+  const [
+    linkStatsResult,
+    userStatsResult,
+    pendingFlaggedResult,
+    openFeedbackResult,
+    blockedDomainsResult,
+  ] = await Promise.all([
+    ctx.db
+      .select({
+        total: count(),
+        blocked: sql<number>`SUM(${link.blocked} = true)`,
+      })
+      .from(link),
+    ctx.db
+      .select({
+        total: count(),
+        banned: sql<number>`SUM(${user.banned} = true)`,
+      })
+      .from(user),
+    ctx.db
+      .select({ count: count() })
+      .from(flaggedLink)
+      .where(eq(flaggedLink.status, "pending")),
+    ctx.db
+      .select({ count: count() })
+      .from(feedback)
+      .where(eq(feedback.status, "open")),
+    ctx.db.select({ count: count() }).from(blockedDomain),
+  ]);
+
+  const totalLinks = linkStatsResult[0]?.total ?? 0;
+  const blockedLinks = linkStatsResult[0]?.blocked ?? 0;
+  const totalUsers = userStatsResult[0]?.total ?? 0;
+  const bannedUsers = userStatsResult[0]?.banned ?? 0;
+
+  return {
+    totalLinks,
+    totalUsers,
+    blockedLinks,
+    bannedUsers,
+    blockedPercent:
+      totalLinks > 0 ? Math.round((blockedLinks / totalLinks) * 100 * 10) / 10 : 0,
+    banRate:
+      totalUsers > 0 ? Math.round((bannedUsers / totalUsers) * 100 * 10) / 10 : 0,
+    pendingFlagged: pendingFlaggedResult[0]?.count ?? 0,
+    openFeedback: openFeedbackResult[0]?.count ?? 0,
+    blockedDomains: blockedDomainsResult[0]?.count ?? 0,
+  };
 }

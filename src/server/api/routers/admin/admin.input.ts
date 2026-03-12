@@ -69,3 +69,35 @@ export const resolveFlaggedLinkSchema = z.object({
 });
 
 export type ResolveFlaggedLinkInput = z.infer<typeof resolveFlaggedLinkSchema>;
+
+// --- Analytics inputs ---
+
+export const dateRangeSchema = z.object({
+  from: z.date(),
+  to: z.date(),
+});
+
+export const getAnalyticsSchema = dateRangeSchema;
+export type GetAnalyticsInput = z.infer<typeof getAnalyticsSchema>;
+
+export const getActivityChartSchema = dateRangeSchema.extend({
+  granularity: z.enum(["day", "month"]).default("day"),
+});
+export type GetActivityChartInput = z.infer<typeof getActivityChartSchema>;
+
+export const getTopUsersSchema = dateRangeSchema.extend({
+  sortBy: z.enum(["links", "clicks"]).default("links"),
+  limit: z.number().int().positive().max(100).default(20),
+});
+export type GetTopUsersInput = z.infer<typeof getTopUsersSchema>;
+
+export const getTopLinksSchema = dateRangeSchema.extend({
+  limit: z.number().int().positive().max(100).default(20),
+});
+export type GetTopLinksInput = z.infer<typeof getTopLinksSchema>;
+
+export const getPeakPeriodsSchema = dateRangeSchema;
+export type GetPeakPeriodsInput = z.infer<typeof getPeakPeriodsSchema>;
+
+export const getMonthlyBreakdownSchema = dateRangeSchema;
+export type GetMonthlyBreakdownInput = z.infer<typeof getMonthlyBreakdownSchema>;
