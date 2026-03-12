@@ -1,19 +1,31 @@
+"use client";
+
 import {
-  IconBan,
-  IconLink,
-  IconTrendingUp,
-  IconUserPlus,
-  IconUsers,
+  IconArrowDownRight,
+  IconArrowUpRight,
 } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
+import { useState } from "react";
 
-import { QuickInfoCard } from "@/app/(main)/dashboard/analytics/[alias]/_components/quick-info-card";
 import { Card } from "@/components/ui/card";
-import { api } from "@/trpc/server";
+import { api } from "@/trpc/react";
 
-import { DailyActivityChart } from "./_components/daily-activity-chart";
+import { ActivityChart } from "./_components/daily-activity-chart";
+import { DateRangePicker } from "./_components/date-range-picker";
+import { MonthlyBreakdownCard } from "./_components/monthly-breakdown-card";
+import { PeakPeriodsCard } from "./_components/peak-periods-card";
+import { SystemHealthCard } from "./_components/system-health-card";
+import { TopLinksCard } from "./_components/top-links-card";
+import { TopUsersCard } from "./_components/top-users-card";
 
-export const dynamic = "force-dynamic";
+function getDefault30d() {
+  const to = new Date();
+  to.setHours(23, 59, 59, 999);
+  const from = new Date();
+  from.setDate(from.getDate() - 29);
+  from.setHours(0, 0, 0, 0);
+  return { from, to };
+}
 
 function timeAgo(date: Date | null): string {
   if (!date) return "";
@@ -28,66 +40,130 @@ function timeAgo(date: Date | null): string {
   return date.toLocaleDateString();
 }
 
-export default async function AdminPage() {
-  const [stats, activity, dailyStats, recentUsers] = await Promise.all([
-    api.admin.getStats.query(),
-    api.admin.getRecentActivity.query(),
-    api.admin.getDailyStats.query(),
-    api.admin.getRecentUsers.query(),
-  ]);
+function StatCard({
+  title,
+  value,
+  growth,
+}: {
+  title: string;
+  value: string;
+  growth?: number | null;
+}) {
+  return (
+    <Card className="rounded-xl border-neutral-200 p-5 shadow-none">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+        {title}
+      </p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-neutral-900">
+        {value}
+      </p>
+      {growth !== undefined && growth !== null && (
+        <span
+          className={`mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium ${
+            growth >= 0 ? "text-emerald-600" : "text-red-500"
+          }`}
+        >
+          {growth >= 0 ? (
+            <IconArrowUpRight size={12} stroke={2} />
+          ) : (
+            <IconArrowDownRight size={12} stroke={2} />
+          )}
+          {Math.abs(growth)}% vs prev period
+        </span>
+      )}
+    </Card>
+  );
+}
+
+export default function AdminPage() {
+  const [dateRange, setDateRange] = useState(getDefault30d);
+  const [granularity, setGranularity] = useState<"day" | "month">("day");
+
+  const { from, to } = dateRange;
+
+  const { data: analytics, isLoading: analyticsLoading } =
+    api.admin.getAnalytics.useQuery({ from, to });
+
+  const { data: chartData, isLoading: chartLoading } =
+    api.admin.getActivityChart.useQuery({ from, to, granularity });
+
+  const { data: peakData, isLoading: peakLoading } =
+    api.admin.getPeakPeriods.useQuery({ from, to });
+
+  const { data: monthlyData, isLoading: monthlyLoading } =
+    api.admin.getMonthlyBreakdown.useQuery({ from, to });
+
+  const { data: healthData, isLoading: healthLoading } =
+    api.admin.getSystemHealth.useQuery();
+
+  const { data: activity, isLoading: activityLoading } =
+    api.admin.getRecentActivity.useQuery();
+  const { data: recentUsers, isLoading: recentUsersLoading } =
+    api.admin.getRecentUsers.useQuery();
 
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
-          Admin Dashboard
-        </h1>
-        <p className="mt-1 text-[13px] text-neutral-400">
-          Platform overview and moderation tools
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+            Admin Dashboard
+          </h1>
+          <p className="mt-1 text-[13px] text-neutral-400">
+            Platform overview and moderation tools
+          </p>
+        </div>
+        <DateRangePicker from={from} to={to} onChange={setDateRange} />
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <QuickInfoCard
-          title="Total Links"
-          value={stats.totalLinks.toLocaleString()}
-          icon={<IconLink size={16} stroke={1.5} className="text-blue-600" />}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          title="Links"
+          value={analyticsLoading ? "..." : (analytics?.links.toLocaleString() ?? "0")}
+          growth={analytics?.linksGrowth ?? null}
         />
-        <QuickInfoCard
-          title="Total Users"
-          value={stats.totalUsers.toLocaleString()}
-          icon={<IconUsers size={16} stroke={1.5} className="text-blue-600" />}
+        <StatCard
+          title="Users"
+          value={analyticsLoading ? "..." : (analytics?.users.toLocaleString() ?? "0")}
+          growth={analytics?.usersGrowth ?? null}
         />
-        <QuickInfoCard
-          title="Links Today"
-          value={stats.linksToday.toLocaleString()}
-          icon={
-            <IconTrendingUp
-              size={16}
-              stroke={1.5}
-              className="text-blue-600"
-            />
-          }
+        <StatCard
+          title="Clicks"
+          value={analyticsLoading ? "..." : (analytics?.clicks.toLocaleString() ?? "0")}
+          growth={analytics?.clicksGrowth ?? null}
         />
-        <QuickInfoCard
-          title="Users Today"
-          value={stats.usersToday.toLocaleString()}
-          icon={
-            <IconUserPlus size={16} stroke={1.5} className="text-blue-600" />
-          }
-        />
-        <QuickInfoCard
-          title="Blocked Links"
-          value={stats.blockedLinks.toLocaleString()}
-          icon={<IconBan size={16} stroke={1.5} className="text-blue-600" />}
+        <StatCard
+          title="Avg Links/User"
+          value={analyticsLoading ? "..." : (analytics?.avgLinksPerUser?.toString() ?? "0")}
         />
       </div>
 
-      {/* Daily activity chart */}
+      {/* Activity chart */}
       <div className="mt-8">
-        <DailyActivityChart data={dailyStats} />
+        <ActivityChart
+          data={chartData}
+          isLoading={chartLoading}
+          granularity={granularity}
+          onGranularityChange={setGranularity}
+        />
+      </div>
+
+      {/* Peak Periods + System Health */}
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <PeakPeriodsCard data={peakData} isLoading={peakLoading} />
+        <SystemHealthCard data={healthData} isLoading={healthLoading} />
+      </div>
+
+      {/* Top Users + Top Links */}
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TopUsersCard from={from} to={to} />
+        <TopLinksCard from={from} to={to} />
+      </div>
+
+      {/* Monthly Breakdown */}
+      <div className="mt-4">
+        <MonthlyBreakdownCard data={monthlyData} isLoading={monthlyLoading} />
       </div>
 
       {/* New users + Recent links */}
@@ -105,7 +181,11 @@ export default async function AdminPage() {
               View all
             </Link>
           </div>
-          {recentUsers.length === 0 ? (
+          {recentUsersLoading ? (
+            <div className="flex flex-1 items-center justify-center px-5 py-12">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+            </div>
+          ) : !recentUsers || recentUsers.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
               <p className="text-[13px] text-neutral-400">No users yet</p>
             </div>
@@ -164,7 +244,11 @@ export default async function AdminPage() {
               View all
             </Link>
           </div>
-          {activity.recentLinks.length === 0 ? (
+          {activityLoading ? (
+            <div className="flex flex-1 items-center justify-center px-5 py-12">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+            </div>
+          ) : !activity || activity.recentLinks.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
               <p className="text-[13px] text-neutral-400">
                 No links created yet
@@ -215,7 +299,11 @@ export default async function AdminPage() {
               View all
             </Link>
           </div>
-          {activity.recentBlocked.length === 0 ? (
+          {activityLoading ? (
+            <div className="flex flex-1 items-center justify-center px-5 py-12">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+            </div>
+          ) : !activity || activity.recentBlocked.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
               <p className="text-[13px] text-neutral-400">No blocked links</p>
             </div>

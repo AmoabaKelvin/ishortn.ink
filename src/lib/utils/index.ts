@@ -145,3 +145,13 @@ export function formatChartDate(dateString: string): string {
     timeZone: "UTC",
   });
 }
+
+/**
+ * Formats a "YYYY-MM" month string into a human-readable label.
+ * Used by chart and table components for month display.
+ */
+export function formatChartMonth(monthStr: string): string {
+  const [year, month] = monthStr.split("-").map(Number);
+  const d = new Date(year!, month! - 1);
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
