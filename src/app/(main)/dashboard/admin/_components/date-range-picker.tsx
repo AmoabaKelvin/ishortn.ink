@@ -86,17 +86,18 @@ type DateRangePickerProps = {
 export function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
 
+  const [draft, setDraft] = useState<Date | null>(null);
+
   const handleSelect = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
       const newFrom = new Date(range.from);
       newFrom.setHours(0, 0, 0, 0);
       const newTo = new Date(range.to);
       newTo.setHours(23, 59, 59, 999);
+      setDraft(null);
       onChange({ from: newFrom, to: newTo });
     } else if (range?.from) {
-      const newFrom = new Date(range.from);
-      newFrom.setHours(0, 0, 0, 0);
-      onChange({ from: newFrom, to });
+      setDraft(range.from);
     }
   };
 
@@ -139,7 +140,7 @@ export function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
         </div>
         <Calendar
           mode="range"
-          selected={{ from, to }}
+          selected={draft ? { from: draft, to: undefined } : { from, to }}
           onSelect={handleSelect}
           numberOfMonths={2}
           defaultMonth={new Date(from.getFullYear(), from.getMonth())}

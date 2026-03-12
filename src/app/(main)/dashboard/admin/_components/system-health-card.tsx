@@ -58,7 +58,7 @@ type SystemHealthCardProps = {
 };
 
 export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <Card className="rounded-xl border-neutral-200 shadow-none">
         <div className="border-b border-neutral-100 px-5 py-4">
@@ -68,6 +68,21 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
         </div>
         <div className="flex items-center justify-center px-5 py-12">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+        </div>
+      </Card>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Card className="rounded-xl border-neutral-200 shadow-none">
+        <div className="border-b border-neutral-100 px-5 py-4">
+          <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
+            System Health
+          </p>
+        </div>
+        <div className="flex items-center justify-center px-5 py-12">
+          <p className="text-[13px] text-neutral-400">Failed to load data</p>
         </div>
       </Card>
     );

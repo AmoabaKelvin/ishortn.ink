@@ -96,8 +96,10 @@ export default function AdminPage() {
   const { data: healthData, isLoading: healthLoading } =
     api.admin.getSystemHealth.useQuery();
 
-  const { data: activity } = api.admin.getRecentActivity.useQuery();
-  const { data: recentUsers } = api.admin.getRecentUsers.useQuery();
+  const { data: activity, isLoading: activityLoading } =
+    api.admin.getRecentActivity.useQuery();
+  const { data: recentUsers, isLoading: recentUsersLoading } =
+    api.admin.getRecentUsers.useQuery();
 
   return (
     <div>
@@ -179,7 +181,11 @@ export default function AdminPage() {
               View all
             </Link>
           </div>
-          {!recentUsers || recentUsers.length === 0 ? (
+          {recentUsersLoading ? (
+            <div className="flex flex-1 items-center justify-center px-5 py-12">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+            </div>
+          ) : !recentUsers || recentUsers.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
               <p className="text-[13px] text-neutral-400">No users yet</p>
             </div>
@@ -238,7 +244,11 @@ export default function AdminPage() {
               View all
             </Link>
           </div>
-          {!activity || activity.recentLinks.length === 0 ? (
+          {activityLoading ? (
+            <div className="flex flex-1 items-center justify-center px-5 py-12">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+            </div>
+          ) : !activity || activity.recentLinks.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
               <p className="text-[13px] text-neutral-400">
                 No links created yet
@@ -289,7 +299,11 @@ export default function AdminPage() {
               View all
             </Link>
           </div>
-          {!activity || activity.recentBlocked.length === 0 ? (
+          {activityLoading ? (
+            <div className="flex flex-1 items-center justify-center px-5 py-12">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+            </div>
+          ) : !activity || activity.recentBlocked.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
               <p className="text-[13px] text-neutral-400">No blocked links</p>
             </div>

@@ -727,11 +727,29 @@ export async function getTopUsers(
 ) {
   const { from, to, sortBy, limit: lim } = input;
 
-  const orderExpr =
-    sortBy === "clicks"
-      ? sql`COUNT(${linkVisit.id}) DESC`
-      : sql`COUNT(DISTINCT ${link.id}) DESC`;
+  if (sortBy === "clicks") {
+    // When ranking by clicks, filter on linkVisit.createdAt so clicks
+    // are scoped to the selected window (not all-time).
+    return ctx.db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        imageUrl: user.imageUrl,
+        createdAt: user.createdAt,
+        linkCount: sql<number>`COUNT(DISTINCT ${link.id})`,
+        clickCount: sql<number>`COUNT(${linkVisit.id})`,
+      })
+      .from(user)
+      .innerJoin(link, eq(link.userId, user.id))
+      .innerJoin(linkVisit, eq(linkVisit.linkId, link.id))
+      .where(between(linkVisit.createdAt, from, to))
+      .groupBy(user.id)
+      .orderBy(sql`COUNT(${linkVisit.id}) DESC`)
+      .limit(lim);
+  }
 
+  // When ranking by links, filter on link.createdAt.
   return ctx.db
     .select({
       id: user.id,
@@ -740,14 +758,14 @@ export async function getTopUsers(
       imageUrl: user.imageUrl,
       createdAt: user.createdAt,
       linkCount: sql<number>`COUNT(DISTINCT ${link.id})`,
-      clickCount: sql<number>`COUNT(${linkVisit.id})`,
+      clickCount: sql<number>`SUM(CASE WHEN ${linkVisit.createdAt} BETWEEN ${from} AND ${to} THEN 1 ELSE 0 END)`,
     })
     .from(user)
     .innerJoin(link, eq(link.userId, user.id))
     .leftJoin(linkVisit, eq(linkVisit.linkId, link.id))
     .where(between(link.createdAt, from, to))
     .groupBy(user.id)
-    .orderBy(orderExpr)
+    .orderBy(sql`COUNT(DISTINCT ${link.id}) DESC`)
     .limit(lim);
 }
 

@@ -98,16 +98,26 @@ export function MonthlyBreakdownCard({
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    className={`cursor-pointer px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 transition-colors hover:text-neutral-600 ${col.align}`}
-                    onClick={() => toggleSort(col.key)}
+                    className={`px-5 py-2.5 ${col.align}`}
+                    aria-sort={
+                      sortKey === col.key
+                        ? sortDir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(col.key)}
+                      className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400 transition-colors hover:text-neutral-600"
+                    >
                       {col.label}
                       <SortIcon
                         active={sortKey === col.key}
                         dir={sortDir}
                       />
-                    </span>
+                    </button>
                   </th>
                 ))}
               </tr>

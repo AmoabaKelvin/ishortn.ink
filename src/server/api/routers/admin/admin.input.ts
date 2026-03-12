@@ -72,10 +72,15 @@ export type ResolveFlaggedLinkInput = z.infer<typeof resolveFlaggedLinkSchema>;
 
 // --- Analytics inputs ---
 
-export const dateRangeSchema = z.object({
-  from: z.date(),
-  to: z.date(),
-});
+export const dateRangeSchema = z
+  .object({
+    from: z.date(),
+    to: z.date(),
+  })
+  .refine((d) => d.from <= d.to, {
+    message: "from must be before or equal to to",
+    path: ["from"],
+  });
 
 export const getAnalyticsSchema = dateRangeSchema;
 export type GetAnalyticsInput = z.infer<typeof getAnalyticsSchema>;

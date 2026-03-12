@@ -76,9 +76,13 @@ export function ActivityChart({
       </div>
 
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
-        {isLoading || !data ? (
+        {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+          </div>
+        ) : !data ? (
+          <div className="flex h-64 items-center justify-center">
+            <p className="text-[13px] text-neutral-400">No data available</p>
           </div>
         ) : (
           <ChartContainer
