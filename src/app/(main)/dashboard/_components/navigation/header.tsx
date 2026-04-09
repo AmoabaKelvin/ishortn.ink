@@ -14,7 +14,7 @@ const DashboardHeader = () => {
       <div className="flex items-center gap-3">
         <button
           onClick={() => setIsFeedbackOpen(true)}
-          className="text-[13px] text-neutral-500 transition-colors hover:text-neutral-900"
+          className="text-[13px] text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
         >
           Feedback
         </button>
@@ -22,7 +22,8 @@ const DashboardHeader = () => {
           href="https://discord.gg/S66ZvMzkU4"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-neutral-400 transition-colors hover:text-neutral-900"
+          aria-label="Discord"
+          className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
         >
           <IconBrandDiscord size={18} stroke={1.5} />
         </Link>
@@ -30,7 +31,8 @@ const DashboardHeader = () => {
           href="https://github.com/AmoabaKelvin/ishortn.ink"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-neutral-400 transition-colors hover:text-neutral-900"
+          aria-label="GitHub"
+          className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
         >
           <IconBrandGithub size={18} stroke={1.5} />
         </Link>

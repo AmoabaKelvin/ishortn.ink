@@ -70,11 +70,11 @@ export default async function AnalyticsOverviewPage(
       {/* Header */}
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold leading-tight tracking-tight text-neutral-900 md:text-2xl">
+          <h1 className="text-xl font-semibold leading-tight tracking-tight text-neutral-900 dark:text-foreground md:text-2xl">
             Analytics Overview
           </h1>
           {!isProPlan && (
-            <p className="mt-1 text-[13px] text-neutral-400">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
               Viewing limited analytics (last 7 days).{" "}
               <UpgradeText text="Upgrade to Pro" /> for full data.
             </p>
@@ -92,22 +92,22 @@ export default async function AnalyticsOverviewPage(
         <QuickInfoCard
           title="Total Clicks"
           value={totalVisits.length.toLocaleString()}
-          icon={<IconClick size={16} stroke={1.5} className="text-blue-600" />}
+          icon={<IconClick size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
         />
         <QuickInfoCard
           title="Unique Visitors"
           value={uniqueVisits.length.toLocaleString()}
-          icon={<IconUsers size={16} stroke={1.5} className="text-blue-600" />}
+          icon={<IconUsers size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
         />
         <QuickInfoCard
           title="Top Country"
           value={topCountry}
-          icon={<IconWorld size={16} stroke={1.5} className="text-blue-600" />}
+          icon={<IconWorld size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
         />
         <QuickInfoCard
           title="Top Referrer"
           value={topReferrer}
-          icon={<IconTrendingUp size={16} stroke={1.5} className="text-blue-600" />}
+          icon={<IconTrendingUp size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
         />
       </div>
 

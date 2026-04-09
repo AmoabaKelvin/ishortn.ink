@@ -64,7 +64,7 @@ export function UtmTemplateCard({
         <div className="group px-1 py-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <span className="truncate text-[14px] font-medium text-neutral-900">
+              <span className="truncate text-[14px] font-medium text-neutral-900 dark:text-foreground">
                 {template.name}
               </span>
               <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
@@ -77,12 +77,12 @@ export function UtmTemplateCard({
                       {i > 0 && (
                         <span className="text-neutral-300">&middot;</span>
                       )}
-                      <span className="text-neutral-400">{param.label}:</span>
-                      <span className="text-neutral-500">{param.value}</span>
+                      <span className="text-neutral-400 dark:text-neutral-500">{param.label}:</span>
+                      <span className="text-neutral-500 dark:text-neutral-400">{param.value}</span>
                     </span>
                   ))
                 ) : (
-                  <span className="text-neutral-400">No parameters set</span>
+                  <span className="text-neutral-400 dark:text-neutral-500">No parameters set</span>
                 )}
               </div>
             </div>
@@ -91,14 +91,14 @@ export function UtmTemplateCard({
               <button
                 type="button"
                 onClick={() => onEdit(template)}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
               >
                 <IconPencil size={14} stroke={1.5} />
               </button>
               <button
                 type="button"
                 onClick={() => setDeleteDialogOpen(true)}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600"
               >
                 <IconTrash size={14} stroke={1.5} />
               </button>

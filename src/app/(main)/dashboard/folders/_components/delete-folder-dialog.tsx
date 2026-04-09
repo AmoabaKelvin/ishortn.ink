@@ -59,19 +59,19 @@ export function DeleteFolderDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md rounded-xl">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900">
+          <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
             Delete Folder?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-[12px] text-neutral-500">
+          <AlertDialogDescription className="text-[12px] text-neutral-500 dark:text-neutral-400">
             <span>
               This will permanently delete{" "}
-              <span className="font-medium text-neutral-700">
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
                 {folder.name}
               </span>
               . This action cannot be undone.
             </span>
             {linkCount > 0 && (
-              <span className="mt-2 block text-amber-600">
+              <span className="mt-2 block text-amber-600 dark:text-amber-400">
                 This folder contains {linkCount}{" "}
                 {linkCount === 1 ? "link" : "links"}. The links will be moved
                 out and won't be deleted.
@@ -80,7 +80,7 @@ export function DeleteFolderDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-lg border-neutral-200 text-[13px]">
+          <AlertDialogCancel className="rounded-lg border-neutral-200 dark:border-border text-[13px]">
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction

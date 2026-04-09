@@ -56,12 +56,12 @@ export function UpgradeToPro() {
           }}
         >
           <div>
-            <span className="text-gray-600">Upgrade to</span>
+            <span className="text-gray-600 dark:text-neutral-400">Upgrade to</span>
             <span className="mx-2 rounded-md bg-blue-500 px-2 py-1 text-white">PRO</span>
           </div>
-          <button className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white">
-            <ArrowUpRightIcon className="h-4 w-4 text-gray-600" />
-          </button>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 dark:border-border bg-white dark:bg-card">
+            <ArrowUpRightIcon className="h-4 w-4 text-gray-600 dark:text-neutral-400" />
+          </span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

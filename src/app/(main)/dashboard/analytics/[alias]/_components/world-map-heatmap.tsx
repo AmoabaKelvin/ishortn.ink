@@ -75,7 +75,7 @@ const WorldMapHeatmap = ({ data }: WorldMapHeatmapProps) => {
   };
 
   return (
-    <Card className="h-max rounded-xl border-neutral-200 shadow-none">
+    <Card className="h-max rounded-xl border-neutral-200 dark:border-border shadow-none">
       <ComposableMap projection="geoMercator">
         <ZoomableGroup zoom={0.8} minZoom={0.7} center={[0, 40]}>
           <Geographies geography={geoUrl}>

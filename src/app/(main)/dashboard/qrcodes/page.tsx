@@ -20,11 +20,11 @@ async function QRCodePage() {
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             QR Codes
           </h2>
           {userCodes.length > 0 && (
-            <p className="mt-1 text-[13px] text-neutral-400">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
               {userCodes.length}{" "}
               {userCodes.length === 1 ? "code" : "codes"} total
             </p>
@@ -41,7 +41,7 @@ async function QRCodePage() {
                 New QR Code
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-[13px] font-medium text-neutral-400 cursor-not-allowed">
+              <span className="inline-flex items-center gap-2 rounded-lg bg-neutral-100 dark:bg-muted px-4 py-2 text-[13px] font-medium text-neutral-400 dark:text-neutral-500 cursor-not-allowed">
                 <IconPlus size={16} stroke={2} />
                 New QR Code
               </span>

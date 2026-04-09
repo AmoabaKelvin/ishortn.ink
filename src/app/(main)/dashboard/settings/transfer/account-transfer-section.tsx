@@ -69,15 +69,15 @@ export function AccountTransferSection() {
 
   return (
     <>
-      <div className="rounded-xl border border-neutral-200 p-5">
+      <div className="rounded-xl border border-neutral-200 dark:border-border p-5">
         <div className="space-y-5">
           {/* Pending Transfer */}
           {pendingTransfer && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <p className="text-[13px] font-medium text-amber-800">
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 p-4">
+              <p className="text-[13px] font-medium text-amber-800 dark:text-amber-200">
                 Transfer pending
               </p>
-              <p className="mt-1 text-[12px] text-amber-700/80">
+              <p className="mt-1 text-[12px] text-amber-700/80 dark:text-amber-300/80">
                 Waiting for <strong>{pendingTransfer.targetEmail}</strong> to
                 accept. Expires{" "}
                 {new Date(pendingTransfer.expiresAt).toLocaleDateString()}.
@@ -86,7 +86,7 @@ export function AccountTransferSection() {
                 type="button"
                 onClick={handleCancel}
                 disabled={cancelMutation.isLoading}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-[12px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-border px-3 py-1.5 text-[12px] font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 disabled:opacity-50"
               >
                 {cancelMutation.isLoading && (
                   <IconLoader2 size={13} stroke={1.5} className="animate-spin" />
@@ -102,7 +102,7 @@ export function AccountTransferSection() {
               <div className="space-y-1.5">
                 <label
                   htmlFor="targetEmail"
-                  className="text-[13px] font-medium text-neutral-700"
+                  className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
                 >
                   Recipient email
                 </label>
@@ -114,7 +114,7 @@ export function AccountTransferSection() {
                     value={targetEmail}
                     onChange={(e) => setTargetEmail(e.target.value)}
                     disabled={isLoading}
-                    className="h-9 flex-1 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                    className="h-9 flex-1 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                   />
                   <button
                     type="button"
@@ -132,10 +132,10 @@ export function AccountTransferSection() {
 
               {/* Validation Errors */}
               {validationResult && !validationResult.isValid && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-500/10 p-3">
                   {validationResult.errors.map(
                     (error: any, index: number) => (
-                      <p key={index} className="text-[12px] text-red-700">
+                      <p key={index} className="text-[12px] text-red-700 dark:text-red-400">
                         {error.message}
                         {error.resourceType &&
                           ` (${error.currentCount}/${error.limit} ${error.resourceType})`}
@@ -148,14 +148,14 @@ export function AccountTransferSection() {
           )}
 
           {/* Info */}
-          <div className="space-y-2 text-[12px] text-neutral-400">
+          <div className="space-y-2 text-[12px] text-neutral-400 dark:text-neutral-500">
             <p>
-              <strong className="text-neutral-600">Transferred:</strong> Links,
+              <strong className="text-neutral-600 dark:text-neutral-400">Transferred:</strong> Links,
               custom domains, QR codes, UTM templates, folders, tags, and
               analytics data.
             </p>
             <p>
-              <strong className="text-neutral-600">Not transferred:</strong> API
+              <strong className="text-neutral-600 dark:text-neutral-400">Not transferred:</strong> API
               tokens, subscription, and team memberships.
             </p>
           </div>
@@ -164,45 +164,45 @@ export function AccountTransferSection() {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="max-w-md rounded-xl border-neutral-200">
+        <DialogContent className="max-w-md rounded-xl border-neutral-200 dark:border-border">
           <DialogHeader>
-            <DialogTitle className="text-[14px] font-semibold text-neutral-900">
+            <DialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Confirm Transfer
             </DialogTitle>
-            <DialogDescription className="text-[12px] text-neutral-400">
+            <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
               You&apos;re about to transfer your resources to{" "}
-              <span className="font-medium text-neutral-700">{targetEmail}</span>
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">{targetEmail}</span>
             </DialogDescription>
           </DialogHeader>
 
           {validationResult && (
             <DialogBody className="space-y-3">
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+              <div className="rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 p-3">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12px]">
-                  <span className="text-neutral-400">Links</span>
-                  <span className="text-right font-medium tabular-nums text-neutral-700">
+                  <span className="text-neutral-400 dark:text-neutral-500">Links</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.links}
                   </span>
-                  <span className="text-neutral-400">Domains</span>
-                  <span className="text-right font-medium tabular-nums text-neutral-700">
+                  <span className="text-neutral-400 dark:text-neutral-500">Domains</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.customDomains}
                   </span>
-                  <span className="text-neutral-400">QR Codes</span>
-                  <span className="text-right font-medium tabular-nums text-neutral-700">
+                  <span className="text-neutral-400 dark:text-neutral-500">QR Codes</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.qrCodes}
                   </span>
-                  <span className="text-neutral-400">Folders</span>
-                  <span className="text-right font-medium tabular-nums text-neutral-700">
+                  <span className="text-neutral-400 dark:text-neutral-500">Folders</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.folders}
                   </span>
-                  <span className="text-neutral-400">Tags</span>
-                  <span className="text-right font-medium tabular-nums text-neutral-700">
+                  <span className="text-neutral-400 dark:text-neutral-500">Tags</span>
+                  <span className="text-right font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
                     {validationResult.resourceCounts.tags}
                   </span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-neutral-400">
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                 This action cannot be undone once accepted.
               </p>
             </DialogBody>
@@ -213,7 +213,7 @@ export function AccountTransferSection() {
               type="button"
               onClick={() => setShowConfirmDialog(false)}
               disabled={initiateMutation.isLoading}
-              className="rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+              className="rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
             >
               Cancel
             </button>

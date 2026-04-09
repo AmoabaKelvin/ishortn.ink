@@ -11,11 +11,11 @@ type BarListProps = {
 };
 
 const colorMap = {
-  blue: { bg: "bg-blue-50", accent: "bg-blue-600" },
-  green: { bg: "bg-emerald-50", accent: "bg-emerald-600" },
-  red: { bg: "bg-rose-50", accent: "bg-rose-600" },
-  orange: { bg: "bg-amber-50", accent: "bg-amber-600" },
-  purple: { bg: "bg-violet-50", accent: "bg-violet-600" },
+  blue: { bg: "bg-blue-50 dark:bg-blue-500/10", accent: "bg-blue-600" },
+  green: { bg: "bg-emerald-50 dark:bg-emerald-500/10", accent: "bg-emerald-600" },
+  red: { bg: "bg-rose-50 dark:bg-rose-500/10", accent: "bg-rose-600" },
+  orange: { bg: "bg-amber-50 dark:bg-amber-500/10", accent: "bg-amber-600" },
+  purple: { bg: "bg-violet-50 dark:bg-violet-500/10", accent: "bg-violet-600" },
 };
 
 export function BarList({ records, totalClicks, color = "blue" }: BarListProps) {
@@ -42,16 +42,16 @@ export function BarList({ records, totalClicks, color = "blue" }: BarListProps) 
             />
 
             {/* Item name */}
-            <span className="relative z-10 truncate pr-4 text-[13px] font-medium text-neutral-700">
+            <span className="relative z-10 truncate pr-4 text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
               {record.name}
             </span>
 
             {/* Stats */}
             <div className="relative z-10 flex items-center gap-2">
-              <span className="text-[13px] font-semibold tabular-nums text-neutral-600">
+              <span className="text-[13px] font-semibold tabular-nums text-neutral-600 dark:text-neutral-400">
                 {record.clicks.toLocaleString()}
               </span>
-              <span className="w-0 overflow-hidden text-[13px] font-medium tabular-nums text-neutral-400 opacity-0 transition-all duration-200 ease-out group-hover:w-10 group-hover:opacity-100">
+              <span className="w-0 overflow-hidden text-[13px] font-medium tabular-nums text-neutral-400 dark:text-neutral-500 opacity-0 transition-all duration-200 ease-out group-hover:w-10 group-hover:opacity-100">
                 {percentOfTotal}%
               </span>
             </div>
@@ -70,16 +70,16 @@ type BarListTitleProps = {
 
 function BarListTitle({ title, description, children }: BarListTitleProps) {
   return (
-    <Card className="flex h-full flex-col rounded-xl border-neutral-200 p-5 shadow-none md:col-span-5">
+    <Card className="flex h-full flex-col rounded-xl border-neutral-200 dark:border-border p-5 shadow-none md:col-span-5">
       {/* Header */}
       <div className="mb-4 flex items-start justify-between">
         <div className="space-y-0.5">
-          <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             {title}
           </h2>
-          <p className="text-[12px] text-neutral-400">{description}</p>
+          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">{description}</p>
         </div>
-        <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300">
+        <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300 dark:text-neutral-500">
           Clicks
         </span>
       </div>
@@ -102,7 +102,7 @@ function BarListTabViewSwitcher({
   onChangeView,
 }: BarListTabViewSwitcherProps) {
   return (
-    <div className="mb-4 flex items-center gap-1 border-b border-neutral-100 pb-2">
+    <div className="mb-4 flex items-center gap-1 border-b border-neutral-100 dark:border-border/50 pb-2">
       {views.map((name) => (
         <button
           key={name}
@@ -110,8 +110,8 @@ function BarListTabViewSwitcher({
           className={cn(
             "relative rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
             currentView === name.toLowerCase()
-              ? "bg-neutral-100 text-neutral-900"
-              : "text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
+              ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
+              : "text-neutral-400 dark:text-neutral-500 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600 dark:hover:text-neutral-300"
           )}
         >
           {name.charAt(0).toUpperCase() + name.slice(1)}

@@ -192,14 +192,14 @@ export function UtmTemplateModal({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                       Template Name
                     </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         placeholder="New Template"
-                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                       />
                     </FormControl>
                     <FormMessage className="text-[11px]" />
@@ -209,7 +209,7 @@ export function UtmTemplateModal({
 
               {/* UTM Parameters */}
               <div className="space-y-3">
-                <p className="text-[13px] font-medium text-neutral-700">
+                <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   Parameters
                 </p>
                 <div className="space-y-2">
@@ -223,14 +223,14 @@ export function UtmTemplateModal({
                         render={({ field: formField }) => (
                           <FormItem>
                             <FormControl>
-                              <div className="flex items-center overflow-hidden rounded-lg border border-neutral-200">
-                                <div className="flex w-32 shrink-0 items-center gap-2.5 border-r border-neutral-200 bg-neutral-50 px-3 py-2">
+                              <div className="flex items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-border">
+                                <div className="flex w-32 shrink-0 items-center gap-2.5 border-r border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-2">
                                   <Icon
                                     size={14}
                                     stroke={1.5}
-                                    className="text-neutral-400"
+                                    className="text-neutral-400 dark:text-neutral-500"
                                   />
-                                  <span className="text-[12px] font-medium text-neutral-500">
+                                  <span className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
                                     {field.label}
                                   </span>
                                 </div>

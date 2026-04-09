@@ -67,13 +67,13 @@ export function OverallClicksChart({
   }, [chartData]);
 
   return (
-    <Card className="overflow-hidden rounded-xl border-neutral-200 shadow-none">
-      <div className="border-b border-neutral-100 px-5 pb-4 pt-5">
+    <Card className="overflow-hidden rounded-xl border-neutral-200 dark:border-border shadow-none">
+      <div className="border-b border-neutral-100 dark:border-border/50 px-5 pb-4 pt-5">
         <div className="space-y-0.5">
-          <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Click Analytics
           </h2>
-          <p className="text-[12px] text-neutral-400">
+          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
             Aggregated click performance across all your links
           </p>
         </div>

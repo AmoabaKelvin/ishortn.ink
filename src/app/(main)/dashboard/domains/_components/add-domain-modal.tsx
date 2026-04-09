@@ -107,7 +107,7 @@ export function AddCustomDomainModal() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="domain"
-                className="text-[13px] font-medium text-neutral-700"
+                className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
               >
                 Domain
               </Label>
@@ -115,26 +115,26 @@ export function AddCustomDomainModal() {
                 <IconWorld
                   size={16}
                   stroke={1.5}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500"
                 />
                 <Input
                   id="domain"
-                  className="h-9 border-neutral-200 bg-white pl-9 text-[13px] placeholder:text-neutral-400"
+                  className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card pl-9 text-[13px] placeholder:text-neutral-400"
                   placeholder="links.example.com"
                   value={domain}
                   onChange={handleDomainChange}
                 />
               </div>
             </div>
-            <div className="flex items-start gap-2.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+            <div className="flex items-start gap-2.5 rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-2.5">
               <IconInfoCircle
                 size={14}
                 stroke={1.5}
-                className="mt-0.5 shrink-0 text-neutral-400"
+                className="mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500"
               />
-              <p className="text-[12px] text-neutral-500">
+              <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
                 Use a subdomain like{" "}
-                <span className="font-medium text-neutral-700">
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">
                   links.example.com
                 </span>{" "}
                 if your main domain already has content.
@@ -143,8 +143,8 @@ export function AddCustomDomainModal() {
           </DialogBody>
         ) : (
           <DialogBody>
-            <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-center">
-              <p className="text-[13px] text-neutral-500">
+            <div className="rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-4 py-3 text-center">
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
                 Custom domains are available on the Pro plan.
               </p>
             </div>

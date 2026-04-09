@@ -74,12 +74,10 @@ export default function RootLayout({
                 fontLogo.variable
               )}
             >
-              {/* we ship dark theme later, now light theme */}
               <ThemeProvider
                 attribute="class"
                 defaultTheme="system"
-                enableSystem={false}
-                forcedTheme="light"
+                enableSystem
                 disableTransitionOnChange
               >
                 <TRPCReactProvider>{children}</TRPCReactProvider>

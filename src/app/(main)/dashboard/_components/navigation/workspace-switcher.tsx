@@ -74,21 +74,21 @@ export function WorkspaceSwitcher({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <button className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50">
+        <button className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50">
           {isPersonal ? (
             <>
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-100">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-100 dark:bg-muted">
                 <IconUser
                   size={14}
                   stroke={1.5}
-                  className="text-neutral-600"
+                  className="text-neutral-600 dark:text-neutral-400"
                 />
               </div>
               <div className="min-w-0 flex-1 text-left">
-                <p className="truncate text-[13px] font-medium text-neutral-900">
+                <p className="truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                   Personal
                 </p>
-                <p className="text-[11px] capitalize text-neutral-400">
+                <p className="text-[11px] capitalize text-neutral-400 dark:text-neutral-500">
                   {currentWorkspace.plan} plan
                 </p>
               </div>
@@ -100,15 +100,15 @@ export function WorkspaceSwitcher({
                   src={currentWorkspace.teamAvatar ?? undefined}
                   alt={currentWorkspace.teamName ?? "Team"}
                 />
-                <AvatarFallback className="rounded-md bg-neutral-100 text-xs font-medium text-neutral-600">
+                <AvatarFallback className="rounded-md bg-neutral-100 dark:bg-muted text-xs font-medium text-neutral-600 dark:text-neutral-400">
                   {currentWorkspace.teamName?.[0]?.toUpperCase() ?? "T"}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1 text-left">
-                <p className="truncate text-[13px] font-medium text-neutral-900">
+                <p className="truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                   {currentWorkspace.teamName}
                 </p>
-                <p className="text-[11px] capitalize text-neutral-400">
+                <p className="text-[11px] capitalize text-neutral-400 dark:text-neutral-500">
                   {currentWorkspace.role}
                 </p>
               </div>
@@ -117,7 +117,7 @@ export function WorkspaceSwitcher({
           <IconSelector
             size={14}
             stroke={1.5}
-            className="shrink-0 text-neutral-400"
+            className="shrink-0 text-neutral-400 dark:text-neutral-500"
           />
         </button>
       </PopoverTrigger>
@@ -134,19 +134,19 @@ export function WorkspaceSwitcher({
             className={cn(
               "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
               isPersonal
-                ? "bg-neutral-100 text-neutral-900"
-                : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
+                ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
+                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground",
             )}
           >
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-200/60">
-              <IconUser size={13} stroke={1.5} className="text-neutral-600" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-200/60 dark:bg-muted">
+              <IconUser size={13} stroke={1.5} className="text-neutral-600 dark:text-neutral-400" />
             </div>
             <span className="flex-1 text-left font-medium">Personal</span>
             {isPersonal && (
               <IconCheck
                 size={14}
                 stroke={2}
-                className="text-neutral-900"
+                className="text-neutral-900 dark:text-foreground"
               />
             )}
           </button>
@@ -154,8 +154,8 @@ export function WorkspaceSwitcher({
           {/* Teams */}
           {teams.length > 0 && (
             <>
-              <div className="my-1.5 h-px bg-neutral-100" />
-              <p className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+              <div className="my-1.5 h-px bg-neutral-100 dark:bg-border/50" />
+              <p className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                 Teams
               </p>
               {teams.map((team) => {
@@ -170,8 +170,8 @@ export function WorkspaceSwitcher({
                     className={cn(
                       "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
                       isSelected
-                        ? "bg-neutral-100 text-neutral-900"
-                        : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
+                        ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
+                        : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground",
                     )}
                   >
                     <Avatar className="h-6 w-6 rounded-md">
@@ -179,7 +179,7 @@ export function WorkspaceSwitcher({
                         src={team.avatarUrl ?? undefined}
                         alt={team.name}
                       />
-                      <AvatarFallback className="rounded-md bg-neutral-200/60 text-[10px] font-medium text-neutral-600">
+                      <AvatarFallback className="rounded-md bg-neutral-200/60 dark:bg-muted text-[10px] font-medium text-neutral-600 dark:text-neutral-400">
                         {team.name[0]?.toUpperCase() ?? "T"}
                       </AvatarFallback>
                     </Avatar>
@@ -190,7 +190,7 @@ export function WorkspaceSwitcher({
                       <IconCheck
                         size={14}
                         stroke={2}
-                        className="text-neutral-900"
+                        className="text-neutral-900 dark:text-foreground"
                       />
                     )}
                   </button>
@@ -202,16 +202,16 @@ export function WorkspaceSwitcher({
           {/* Create Team */}
           {canCreateTeam && (
             <>
-              <div className="my-1.5 h-px bg-neutral-100" />
+              <div className="my-1.5 h-px bg-neutral-100 dark:bg-border/50" />
               <button
                 onClick={handleCreateTeam}
-                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
               >
-                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-dashed border-neutral-300">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-dashed border-neutral-300 dark:border-neutral-600">
                   <IconPlus
                     size={12}
                     stroke={1.5}
-                    className="text-neutral-500"
+                    className="text-neutral-500 dark:text-neutral-400"
                   />
                 </div>
                 <span className="flex-1 text-left font-medium">
@@ -224,8 +224,8 @@ export function WorkspaceSwitcher({
           {/* Upgrade prompt */}
           {!canCreateTeam && teams.length === 0 && (
             <>
-              <div className="my-1.5 h-px bg-neutral-100" />
-              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-neutral-400">
+              <div className="my-1.5 h-px bg-neutral-100 dark:bg-border/50" />
+              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-neutral-400 dark:text-neutral-500">
                 <IconBuilding size={13} stroke={1.5} />
                 <span>Upgrade to Ultra to create teams</span>
               </div>

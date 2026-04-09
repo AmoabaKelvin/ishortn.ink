@@ -38,26 +38,26 @@ export default async function DashboardLayout({ children }: Props) {
 
     if (currentUser?.banned) {
       return (
-        <div className={cn("flex min-h-screen items-center justify-center bg-neutral-50 px-4", funnelSans.className)}>
+        <div className={cn("flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-accent/50 px-4", funnelSans.className)}>
           <div className="w-full max-w-md text-center">
-            <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
-              <IconBan size={24} stroke={1.5} className="text-red-600" />
+            <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 dark:bg-red-500/10">
+              <IconBan size={24} stroke={1.5} className="text-red-600 dark:text-red-400" />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+            <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
               Account Suspended
             </h1>
-            <p className="mt-2 text-[13px] leading-relaxed text-neutral-500">
+            <p className="mt-2 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400">
               Your account has been suspended and you can no longer access the dashboard.
             </p>
             {currentUser.bannedReason && (
-              <div className="mt-5 rounded-lg border border-neutral-200 bg-white px-4 py-3">
-                <p className="text-[12px] font-medium text-neutral-400">Reason</p>
-                <p className="mt-1 text-[13px] text-neutral-700">{currentUser.bannedReason}</p>
+              <div className="mt-5 rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card px-4 py-3">
+                <p className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">Reason</p>
+                <p className="mt-1 text-[13px] text-neutral-700 dark:text-neutral-300">{currentUser.bannedReason}</p>
               </div>
             )}
-            <p className="mt-6 text-[12px] text-neutral-400">
+            <p className="mt-6 text-[12px] text-neutral-400 dark:text-neutral-500">
               If you believe this is a mistake, please contact us at{" "}
-              <a href="mailto:support@ishortn.ink" className="text-neutral-600 underline underline-offset-2">
+              <a href="mailto:support@ishortn.ink" className="text-neutral-600 dark:text-neutral-400 underline underline-offset-2">
                 support@ishortn.ink
               </a>
             </p>
@@ -71,7 +71,7 @@ export default async function DashboardLayout({ children }: Props) {
   }
 
   return (
-    <div className={cn("min-h-screen bg-neutral-50", funnelSans.className)}>
+    <div className={cn("min-h-screen bg-neutral-50 dark:bg-accent/50", funnelSans.className)}>
       {/* Changelog banner at the top */}
       <div className="fixed top-0 left-0 right-0 z-50 lg:left-[280px]">
         <ChangelogBanner />

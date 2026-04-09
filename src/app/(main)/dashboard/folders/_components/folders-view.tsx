@@ -49,11 +49,11 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Folders
           </h2>
           {hasFolders && (
-            <p className="mt-1 text-[13px] text-neutral-400">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
               {folders.length} {folders.length === 1 ? "folder" : "folders"} total
             </p>
           )}

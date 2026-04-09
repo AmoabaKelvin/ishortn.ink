@@ -201,20 +201,20 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-xl flex-col border-l border-neutral-200 bg-white"
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-xl flex-col border-l border-neutral-200 dark:border-border bg-white dark:bg-card"
           >
             {/* Header */}
-            <div className="border-b border-neutral-200 px-6 py-5">
+            <div className="border-b border-neutral-200 dark:border-border px-6 py-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-[14px] font-semibold text-neutral-900">Edit QR Code</h2>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-neutral-500">
-                    <IconQrcode size={14} stroke={1.5} className="text-neutral-400" />
+                  <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">Edit QR Code</h2>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+                    <IconQrcode size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
                     {qr.title || "Untitled QR Code"}
                   </p>
-                  <div className="mt-2 flex items-center gap-3 text-[12px] text-neutral-400">
+                  <div className="mt-2 flex items-center gap-3 text-[12px] text-neutral-400 dark:text-neutral-500">
                     <span className="flex items-center gap-1">
-                      <IconClick size={14} stroke={1.5} className="text-blue-600" />
+                      <IconClick size={14} stroke={1.5} className="text-blue-600 dark:text-blue-400" />
                       {scans} scans
                     </span>
                     <span>
@@ -226,7 +226,7 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                 <button
                   onClick={onClose}
                   aria-label="Close drawer"
-                  className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-50 hover:text-neutral-600"
+                  className="rounded-md p-1 text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600"
                 >
                   <IconX size={18} stroke={1.5} />
                 </button>
@@ -238,21 +238,21 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
               <Form {...form}>
                 <form className="space-y-4 p-6">
                   {/* Basic Information */}
-                  <div className="space-y-4 rounded-lg border border-neutral-200 p-4">
+                  <div className="space-y-4 rounded-lg border border-neutral-200 dark:border-border p-4">
                     <FormField
                       control={form.control}
                       name="url"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Destination URL</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Destination URL</FormLabel>
                           <FormControl>
                             <Input
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                               placeholder="https://site.com"
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             Change where this QR code redirects to
                           </FormDescription>
                           <FormMessage />
@@ -265,15 +265,15 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                       name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">QR Code Title</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">QR Code Title</FormLabel>
                           <FormControl>
                             <Input
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                               placeholder="My QR Code"
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             A friendly name to identify your QR code (optional)
                           </FormDescription>
                           <FormMessage />
@@ -286,10 +286,10 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                       name="note"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Note</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Note</FormLabel>
                           <FormControl>
                             <Input
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                               placeholder="Add a note to your QR code"
                               {...field}
                             />
@@ -305,7 +305,7 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                       name="tags"
                       render={() => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Tags</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Tags</FormLabel>
                           <FormControl>
                             <div className="relative">
                               {tags.length > 0 && (
@@ -313,14 +313,14 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                                   {tags.map((tag) => (
                                     <div
                                       key={tag}
-                                      className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-[12px] font-medium text-neutral-600"
+                                      className="inline-flex items-center gap-1 rounded-md bg-neutral-100 dark:bg-muted px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400"
                                     >
                                       <span>{tag}</span>
                                       <button
                                         type="button"
                                         onClick={() => removeTag(tag)}
                                         aria-label={`Remove tag ${tag}`}
-                                        className="text-neutral-400 transition-colors hover:text-neutral-600"
+                                        className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600"
                                       >
                                         <IconX size={12} stroke={1.5} />
                                       </button>
@@ -330,7 +330,7 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                               )}
                               <div className="relative">
                                 <Input
-                                  className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                                  className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                                   placeholder="Add tags (press Enter)"
                                   value={tagInput}
                                   onChange={(e) => {
@@ -345,11 +345,11 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                                 />
 
                                 {showTagDropdown && filteredTags.length > 0 && (
-                                  <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-neutral-200 bg-white shadow-md">
+                                  <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card shadow-md">
                                     {filteredTags.map((tag) => (
                                       <div
                                         key={tag}
-                                        className="cursor-pointer px-3 py-2 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                                        className="cursor-pointer px-3 py-2 text-[13px] text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900"
                                         onMouseDown={(e) => {
                                           e.preventDefault();
                                           addTag(tag);
@@ -363,7 +363,7 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                               </div>
                             </div>
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             Press Enter to add a tag, or select from existing tags.
                           </FormDescription>
                           <FormMessage />
@@ -416,15 +416,15 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                       name="disableLinkAfterClicks"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after scans</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Disable after scans</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               type="number"
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                             />
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             Deactivate after a certain number of scans. Leave empty to never disable.
                           </FormDescription>
                           <FormMessage />
@@ -437,18 +437,18 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                       name="disableLinkAfterDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after date</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Disable after date</FormLabel>
                           <FormControl>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button
                                   variant="outline"
                                   className={cn(
-                                    "h-9 w-full justify-start border-neutral-200 text-left text-[13px] font-normal hover:bg-neutral-50",
-                                    !field.value && "text-neutral-400",
+                                    "h-9 w-full justify-start border-neutral-200 dark:border-border text-left text-[13px] font-normal hover:bg-neutral-50 dark:hover:bg-accent/50",
+                                    !field.value && "text-neutral-400 dark:text-neutral-500",
                                   )}
                                 >
-                                  <IconCalendar size={14} stroke={1.5} className="mr-2 text-neutral-400" />
+                                  <IconCalendar size={14} stroke={1.5} className="mr-2 text-neutral-400 dark:text-neutral-500" />
                                   {field.value ? (
                                     format(new Date(field.value), "PPP")
                                   ) : (
@@ -467,7 +467,7 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                               </PopoverContent>
                             </Popover>
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             Deactivate the QR code after a certain date.
                           </FormDescription>
                           <FormMessage />
@@ -480,13 +480,13 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-neutral-200 bg-neutral-50 px-6 py-4">
+            <div className="border-t border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-6 py-4">
               <div className="flex items-center justify-end gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onClose}
-                  className="h-9 border-neutral-200 text-[13px] hover:bg-neutral-50"
+                  className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
                 >
                   Cancel
                 </Button>

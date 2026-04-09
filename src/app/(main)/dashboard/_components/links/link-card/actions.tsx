@@ -149,14 +149,14 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 focus:outline-none"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 focus:outline-none"
           >
             <IconDots size={16} stroke={1.5} />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="w-52 border-neutral-200 p-1"
+          className="w-52 border-neutral-200 dark:border-border p-1"
           sideOffset={4}
         >
           <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
@@ -164,7 +164,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => setOpenEditModal(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconPencil
               size={15}
@@ -175,7 +175,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setQrModal(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconQrcode
               size={15}
@@ -185,14 +185,14 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
             QR code
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+          <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
 
           <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
             Organize
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => setMoveToFolderModal(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconFolderShare
               size={15}
@@ -203,7 +203,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setTransferToWorkspaceModal(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconArrowsExchange
               size={15}
@@ -214,7 +214,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={handleToggleArchive}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             {link.archived ? (
               <>
@@ -237,14 +237,14 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
             )}
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+          <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
 
           <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
             Settings
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={handleLinkToggleMutation}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             {isLinkActive ? (
               <>
@@ -268,7 +268,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setOpenChangePasswordModal(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconKey
               size={15}
@@ -279,7 +279,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={handlePublicStatsToggleMutation}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconChartBar
               size={15}
@@ -293,7 +293,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
           {isPublicStatsEnabled && (
             <DropdownMenuItem
               onClick={copyPublicStatsLink}
-              className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+              className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
             >
               <IconCopy
                 size={15}
@@ -304,18 +304,18 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
             </DropdownMenuItem>
           )}
 
-          <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+          <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
 
           <DropdownMenuItem
             onClick={() => setResetStatsDialog(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-red-600 focus:bg-red-50 focus:text-red-600"
+            className="rounded-md px-2 py-1.5 text-[13px] text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400"
           >
             <IconRefresh size={15} stroke={1.5} className="mr-2" />
             Reset statistics
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setDeleteLinkDialog(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-red-600 focus:bg-red-50 focus:text-red-600"
+            className="rounded-md px-2 py-1.5 text-[13px] text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400"
           >
             <IconTrash size={15} stroke={1.5} className="mr-2" />
             Delete link
@@ -353,21 +353,21 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
 
       {/* Reset Statistics Dialog */}
       <AlertDialog open={resetStatsDialog} onOpenChange={setResetStatsDialog}>
-        <AlertDialogContent className="max-w-sm border-neutral-200">
+        <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900">
+            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
               Reset statistics?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[13px] text-neutral-500">
+            <AlertDialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
               This will permanently delete all click data for{" "}
-              <span className="font-medium text-neutral-700">
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
                 {link.alias}
               </span>
               . This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="h-9 border-neutral-200 text-[13px] hover:bg-neutral-50">
+            <AlertDialogCancel className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -392,21 +392,21 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
 
       {/* Delete Link Dialog */}
       <AlertDialog open={deleteLinkDialog} onOpenChange={setDeleteLinkDialog}>
-        <AlertDialogContent className="max-w-sm border-neutral-200">
+        <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900">
+            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
               Delete link?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[13px] text-neutral-500">
+            <AlertDialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
               This will permanently delete{" "}
-              <span className="font-medium text-neutral-700">
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
                 {link.alias}
               </span>{" "}
               and all its analytics data. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="h-9 border-neutral-200 text-[13px] hover:bg-neutral-50">
+            <AlertDialogCancel className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

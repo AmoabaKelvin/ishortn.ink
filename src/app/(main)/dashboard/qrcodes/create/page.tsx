@@ -309,20 +309,20 @@ function QRCodeCreationPage() {
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       {/* Left Column - Configuration */}
       <div className="md:col-span-5">
-        <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+        <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Create a QR code
         </h2>
-        <p className="mt-1 text-[13px] text-neutral-400">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
           Configure content, style, and generate your QR code.
         </p>
 
         <div className="mt-5 space-y-5">
           {/* Setup Section */}
-          <div className="space-y-4 rounded-lg border border-neutral-200 p-4">
+          <div className="space-y-4 rounded-lg border border-neutral-200 dark:border-border p-4">
             <div className="space-y-1.5">
               <Label
                 htmlFor="qr-title"
-                className="text-[13px] font-medium text-neutral-700"
+                className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
               >
                 Title
               </Label>
@@ -331,41 +331,41 @@ function QRCodeCreationPage() {
                 placeholder="Give your QR code a name"
                 value={qrCodeTitle}
                 onChange={(e) => setQRCodeTitle(e.target.value)}
-                className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[13px] font-medium text-neutral-700">
+              <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 Destination URL
               </Label>
               <Input
                 placeholder="https://example.com"
                 value={destinationUrl}
                 onChange={(e) => setDestinationUrl(e.target.value)}
-                className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
               />
-              <p className="text-[12px] text-neutral-400">
+              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                 The URL people will be redirected to when scanning the QR code
               </p>
             </div>
           </div>
 
           {/* Design Section */}
-          <div className="rounded-lg border border-neutral-200 p-4">
+          <div className="rounded-lg border border-neutral-200 dark:border-border p-4">
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-0.5">
-                <p className="text-[14px] font-semibold text-neutral-900">
+                <p className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                   Design
                 </p>
-                <span className="text-[12px] text-neutral-400">
+                <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                   Customize appearance and effects
                 </span>
               </div>
               {hasPresetModifications ? (
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-1.5 text-[12px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-border px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
                   onClick={handleUpdatePreset}
                   disabled={updatePresetMutation.isLoading}
                 >
@@ -388,7 +388,7 @@ function QRCodeCreationPage() {
                   <DialogTrigger asChild>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-1.5 text-[12px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-border px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
                     >
                       <IconDeviceFloppy size={14} stroke={1.5} />
                       Save Preset
@@ -405,7 +405,7 @@ function QRCodeCreationPage() {
                       <div className="space-y-1.5">
                         <Label
                           htmlFor="preset-name"
-                          className="text-[13px] font-medium text-neutral-700"
+                          className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
                         >
                           Preset Name
                         </Label>
@@ -414,7 +414,7 @@ function QRCodeCreationPage() {
                           placeholder="e.g., Brand Style, Marketing Campaign"
                           value={presetName}
                           onChange={(e) => setPresetName(e.target.value)}
-                          className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                          className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         />
                       </div>
                     </DialogBody>
@@ -447,7 +447,7 @@ function QRCodeCreationPage() {
                   <IconLoader2
                     size={16}
                     stroke={1.5}
-                    className="animate-spin text-neutral-400"
+                    className="animate-spin text-neutral-400 dark:text-neutral-500"
                   />
                 </div>
               ) : presets && presets.length > 0 ? (
@@ -458,7 +458,7 @@ function QRCodeCreationPage() {
                       stroke={1.5}
                       className="text-blue-500"
                     />
-                    <span className="text-[12px] font-medium text-neutral-400">
+                    <span className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
                       Saved Presets
                     </span>
                   </div>
@@ -469,8 +469,8 @@ function QRCodeCreationPage() {
                         className={cn(
                           "group relative inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] font-medium cursor-pointer transition-colors",
                           selectedPresetId === preset.id
-                            ? "border-blue-500 bg-blue-50 text-blue-700"
-                            : "border-neutral-200 text-neutral-600 hover:bg-neutral-50",
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700"
+                            : "border-neutral-200 dark:border-border text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-accent/50",
                         )}
                         onClick={() => loadPreset(preset.id)}
                       >
@@ -494,12 +494,12 @@ function QRCodeCreationPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-[12px] text-neutral-400">
+                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                   No presets yet. Save your first style preset for quick reuse.
                 </p>
               )}
 
-              <div className="border-t border-neutral-100" />
+              <div className="border-t border-neutral-100 dark:border-border/50" />
 
               <QRAdvancedCustomization
                 pixelStyle={qrState.pixelStyle}
@@ -565,23 +565,23 @@ function QRCodeCreationPage() {
 
       {/* Divider */}
       <div className="hidden items-center justify-center md:flex">
-        <div className="h-screen border-r border-neutral-200" />
+        <div className="h-screen border-r border-neutral-200 dark:border-border" />
       </div>
 
       {/* Right Column - Preview */}
       <div className="mt-4 flex flex-col gap-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Preview
           </h2>
-          <p className="text-[13px] text-neutral-400">
+          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
             Live preview of your QR code
           </p>
         </div>
 
         <div className="sticky top-6 space-y-5">
           {/* QR Code Preview */}
-          <div className="flex flex-col items-center rounded-lg border border-neutral-200 p-8">
+          <div className="flex flex-col items-center rounded-lg border border-neutral-200 dark:border-border p-8">
             <div
               className="rounded-xl p-4 transition-all duration-300"
               style={{ backgroundColor: qrState.lightColor }}
@@ -598,7 +598,7 @@ function QRCodeCreationPage() {
             </div>
 
             <div className="mt-4 w-full max-w-[280px]">
-              <p className="text-center text-[12px] text-neutral-400 truncate">
+              <p className="text-center text-[12px] text-neutral-400 dark:text-neutral-500 truncate">
                 {destinationUrl || "Enter a destination URL above"}
               </p>
             </div>
@@ -615,7 +615,7 @@ function QRCodeCreationPage() {
           </Button>
 
           {!canCreateMoreQRCodes && (
-            <p className="text-center text-[12px] text-neutral-400">
+            <p className="text-center text-[12px] text-neutral-400 dark:text-neutral-500">
               You've reached your QR code limit. Upgrade to create more.
             </p>
           )}

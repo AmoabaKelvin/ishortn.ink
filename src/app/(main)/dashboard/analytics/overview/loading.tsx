@@ -18,7 +18,7 @@ export default function AnalyticsLoading() {
       {/* Quick Info Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-neutral-200 p-5 shadow-none">
+          <div key={i} className="rounded-xl border border-neutral-200 dark:border-border p-5 shadow-none">
             <div className="flex items-center justify-between pb-2">
               <Skeleton className="h-3 w-20" />
               <Skeleton className="h-4 w-4 rounded-full" />
@@ -31,7 +31,7 @@ export default function AnalyticsLoading() {
       </div>
 
       {/* Time Series Chart */}
-      <div className="rounded-xl border border-neutral-200 p-5 shadow-none">
+      <div className="rounded-xl border border-neutral-200 dark:border-border p-5 shadow-none">
         <div className="mb-4">
           <Skeleton className="mb-1.5 h-5 w-36" />
           <Skeleton className="h-3 w-56" />
@@ -42,14 +42,14 @@ export default function AnalyticsLoading() {
       {/* Distribution Cards Grid */}
       <div className="grid grid-cols-1 gap-4 lg:auto-rows-fr lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-neutral-200 p-5 shadow-none">
+          <div key={i} className="rounded-xl border border-neutral-200 dark:border-border p-5 shadow-none">
             <div className="mb-4">
               <Skeleton className="mb-1.5 h-4 w-28" />
               <Skeleton className="h-3 w-44" />
             </div>
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, j) => (
-                <div key={j} className="flex items-center justify-between rounded-lg border border-neutral-100 p-3">
+                <div key={j} className="flex items-center justify-between rounded-lg border border-neutral-100 dark:border-border/50 p-3">
                   <div className="flex items-center gap-3">
                     <Skeleton className="h-7 w-7 rounded-full" />
                     <div className="space-y-1">
@@ -65,19 +65,19 @@ export default function AnalyticsLoading() {
         ))}
 
         {/* Device Stats */}
-        <div className="rounded-xl border border-neutral-200 p-5 shadow-none lg:col-span-2">
+        <div className="rounded-xl border border-neutral-200 dark:border-border p-5 shadow-none lg:col-span-2">
           <div className="mb-4">
             <Skeleton className="mb-1.5 h-4 w-40" />
             <Skeleton className="h-3 w-56" />
           </div>
-          <div className="flex gap-4 border-b border-neutral-100 pb-3">
+          <div className="flex gap-4 border-b border-neutral-100 dark:border-border/50 pb-3">
             <Skeleton className="h-4 w-16" />
             <Skeleton className="h-4 w-8" />
             <Skeleton className="h-4 w-16" />
           </div>
           <div className="mt-4 space-y-3">
             {Array.from({ length: 4 }).map((_, j) => (
-              <div key={j} className="flex items-center justify-between rounded-lg border border-neutral-100 p-3">
+              <div key={j} className="flex items-center justify-between rounded-lg border border-neutral-100 dark:border-border/50 p-3">
                 <div className="flex items-center gap-3">
                   <Skeleton className="h-7 w-7 rounded-full" />
                   <Skeleton className="h-3.5 w-28" />

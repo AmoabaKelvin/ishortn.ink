@@ -404,23 +404,23 @@ export default function CreateLinkPage() {
   return (
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       <div className="md:col-span-5">
-        <h2 className="text-xl font-semibold tracking-tight text-neutral-900">Create a new link</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">Create a new link</h2>
         <p className="mt-1 text-[13px] text-neutral-400">Create a new link to share with your audience.</p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="mt-5 space-y-5">
-            <div className="space-y-4 rounded-lg border border-neutral-200 p-4">
+            <div className="space-y-4 rounded-lg border border-neutral-200 dark:border-border p-4">
               <FormField
                 control={form.control}
                 name="url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                       Destination URL <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="https://site.com"
-                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         {...field}
                         onChange={(e) => {
                           setDestinationURL(e.target.value);
@@ -437,15 +437,15 @@ export default function CreateLinkPage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Link Name</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Link Name</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="My Awesome Link"
-                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                       A friendly name to identify your link (optional)
                     </FormDescription>
                     <FormMessage />
@@ -457,9 +457,9 @@ export default function CreateLinkPage() {
                 name="alias"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Link Alias</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Link Alias</FormLabel>
                     <FormControl>
-                      <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
+                      <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors hover:border-neutral-300 dark:hover:border-border focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
                         <Select
                           onValueChange={(value) => {
                             form.setValue("domain", value);
@@ -480,13 +480,13 @@ export default function CreateLinkPage() {
                             </SelectGroup>
                           </SelectContent>
                         </Select>
-                        <div className="h-4 w-px bg-neutral-200" />
+                        <div className="h-4 w-px bg-neutral-200 dark:bg-border" />
                         <input
                           placeholder="short-link"
-                          className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+                          className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 dark:text-foreground placeholder:text-neutral-400 focus:outline-none"
                           {...field}
                         />
-                        <div className="flex h-full items-center border-l border-neutral-200 px-2">
+                        <div className="flex h-full items-center border-l border-neutral-200 dark:border-border px-2">
                           {generateAliasMutation.isLoading ? (
                             <IconLoader2 size={16} stroke={1.5} className="animate-spin text-neutral-400" />
                           ) : generatedAliases.length > 0 ? (
@@ -495,7 +495,7 @@ export default function CreateLinkPage() {
                                 type="button"
                                 onClick={() => cycleAlias("up")}
                                 aria-label="Previous alias suggestion"
-                                className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                                className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
                               >
                                 <IconChevronUp size={14} stroke={1.5} />
                               </button>
@@ -503,7 +503,7 @@ export default function CreateLinkPage() {
                                 type="button"
                                 onClick={() => cycleAlias("down")}
                                 aria-label="Next alias suggestion"
-                                className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                                className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
                               >
                                 <IconChevronDown size={14} stroke={1.5} />
                               </button>
@@ -515,7 +515,7 @@ export default function CreateLinkPage() {
                               type="button"
                               onClick={handleRegenerateClick}
                               aria-label="Generate alias suggestions"
-                              className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                              className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
                             >
                               <IconSparkles size={16} stroke={1.5} />
                             </button>
@@ -558,14 +558,14 @@ export default function CreateLinkPage() {
                 name="note"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Note</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Note</FormLabel>
                     <FormControl>
                       <Input
-                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400">Add a note to your link</FormDescription>
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">Add a note to your link</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -577,14 +577,14 @@ export default function CreateLinkPage() {
                 name="tags"
                 render={() => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Tags</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Tags</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <div className="mb-2 flex flex-wrap gap-2">
                           {tags.map((tag) => (
                             <div
                               key={tag}
-                              className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1 text-[12px] text-neutral-600"
+                              className="flex items-center gap-1 rounded-md bg-neutral-100 dark:bg-muted px-2 py-1 text-[12px] text-neutral-600 dark:text-neutral-400"
                             >
                               <span>{tag}</span>
                               <button
@@ -601,7 +601,7 @@ export default function CreateLinkPage() {
                         <div className="relative">
                           <Input
                             placeholder="Add tags (press Enter to add)"
-                            className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                            className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                             value={tagInput}
                             onChange={(e) => {
                               setTagInput(e.target.value);
@@ -618,11 +618,11 @@ export default function CreateLinkPage() {
 
                           {/* Tag dropdown */}
                           {showTagDropdown && filteredTags.length > 0 && (
-                            <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-neutral-200 bg-white shadow-md">
+                            <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card shadow-md">
                               {filteredTags.map((tag) => (
                                 <div
                                   key={tag}
-                                  className="cursor-pointer px-4 py-2 text-[13px] hover:bg-neutral-50"
+                                  className="cursor-pointer px-4 py-2 text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
                                   onMouseDown={(e) => {
                                     e.preventDefault(); // Prevent input blur
                                     addTag(tag);
@@ -636,7 +636,7 @@ export default function CreateLinkPage() {
                         </div>
                       </div>
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                       Add tags to categorize your links. Press Enter to add a tag or select from
                       existing tags.
                     </FormDescription>
@@ -659,12 +659,12 @@ export default function CreateLinkPage() {
                 name="metadata.title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Title</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Title</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         placeholder="Custom title for your link"
-                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         onChange={(e) => {
                           field.onChange(e);
                           setMetaData((prev) => ({
@@ -682,12 +682,12 @@ export default function CreateLinkPage() {
                 name="metadata.description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Description</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Description</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         placeholder="Custom description for your link"
-                        className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         onChange={(e) => {
                           field.onChange(e);
                           setMetaData((prev) => ({
@@ -705,7 +705,7 @@ export default function CreateLinkPage() {
                 name="metadata.image"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Image</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Image</FormLabel>
                     <FormControl>
                       <OgImageUploader
                         value={field.value}
@@ -762,12 +762,12 @@ export default function CreateLinkPage() {
                 control={form.control}
                 name="cloaking"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-neutral-200 p-4">
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-neutral-200 dark:border-border p-4">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-[13px] font-medium text-neutral-700">
+                      <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                         Enable Link Cloaking
                       </FormLabel>
-                      <FormDescription className="text-[12px] text-neutral-400">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                         Visitors see your short URL while viewing the destination page.
                       </FormDescription>
                     </div>
@@ -792,25 +792,25 @@ export default function CreateLinkPage() {
               />
 
               {!isUltraUser && (
-                <p className="text-[12px] text-neutral-400">
+                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                   Link cloaking is an Ultra plan feature.
                 </p>
               )}
 
               {!destinationURL && isUltraUser && (
-                <p className="text-[12px] text-neutral-400">
+                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                   Enter a destination URL above to enable link cloaking.
                 </p>
               )}
 
               {iframeableResult === true && cloakingEnabled && (
-                <p className="text-[12px] text-green-600">
+                <p className="text-[12px] text-green-600 dark:text-emerald-400">
                   This URL can be cloaked successfully.
                 </p>
               )}
 
               {iframeableResult === false && (
-                <p className="text-[12px] text-amber-600">
+                <p className="text-[12px] text-amber-600 dark:text-amber-400">
                   This website doesn&apos;t allow cloaking. Try a different URL.
                 </p>
               )}
@@ -836,15 +836,15 @@ export default function CreateLinkPage() {
                 name="disableLinkAfterClicks"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after clicks</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Disable after clicks</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         type="number"
-                        className="h-9 border-neutral-200 bg-white text-[13px]"
+                        className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                       Deactivate the link after a certain number of clicks. Leave empty to
                       never disable
                     </FormDescription>
@@ -858,11 +858,11 @@ export default function CreateLinkPage() {
                 name="disableLinkAfterDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after date</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Disable after date</FormLabel>
                     <FormControl>
                       <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                       Deactivate the link after a certain date
                     </FormDescription>
                     <FormMessage />
@@ -876,9 +876,9 @@ export default function CreateLinkPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700">Password</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Password</FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
-                      <FormDescription className="text-[12px] text-neutral-400">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                         You need to be on a <b>pro plan</b> to create password protected
                         links
                       </FormDescription>
@@ -887,10 +887,10 @@ export default function CreateLinkPage() {
                       <Input
                         {...field}
                         type="password"
-                        className="h-9 border-neutral-200 bg-white text-[13px]"
+                        className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                       Set a password to protect your link
                     </FormDescription>
                     <FormMessage />
@@ -911,11 +911,11 @@ export default function CreateLinkPage() {
         </Form>
       </div>
       <div className="hidden items-center justify-center md:flex">
-        <div className="h-screen border-r border-neutral-200" />
+        <div className="h-screen border-r border-neutral-200 dark:border-border" />
       </div>
       <div className="mt-4 flex flex-col gap-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">How users see your link</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">How users see your link</h1>
           <p className="text-[13px] text-neutral-400">
             This is how your link will be displayed to users on social platforms
           </p>

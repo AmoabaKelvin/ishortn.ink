@@ -130,7 +130,7 @@ function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "h-auto min-h-9 w-full justify-between border-neutral-200 bg-white px-3 py-2 text-[13px]",
+            "h-auto min-h-9 w-full justify-between border-neutral-200 dark:border-border bg-white dark:bg-card px-3 py-2 text-[13px]",
             disabled && "cursor-not-allowed opacity-50"
           )}
           disabled={disabled}
@@ -146,7 +146,7 @@ function MultiSelect({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.15 }}
-                  className="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-[12px] font-medium text-neutral-600"
+                  className="inline-flex items-center gap-1 rounded-md border border-neutral-200 dark:border-border bg-neutral-100 dark:bg-muted px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400"
                 >
                   {label}
                   <button
@@ -233,10 +233,10 @@ function GeoRuleItem({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10, height: 0 }}
       transition={{ duration: 0.2 }}
-      className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50/50 p-4"
+      className="space-y-3 rounded-lg border border-neutral-200 dark:border-border bg-neutral-50/50 dark:bg-accent/30 p-4"
     >
       <div className="flex items-center justify-between">
-        <span className="text-[13px] font-medium text-neutral-600">
+        <span className="text-[13px] font-medium text-neutral-600 dark:text-neutral-400">
           Rule {index + 1}
         </span>
         <Button
@@ -253,7 +253,7 @@ function GeoRuleItem({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-neutral-500">Type</label>
+          <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Type</label>
           <Select
             value={rule.type}
             onValueChange={(value: "country" | "continent") =>
@@ -261,7 +261,7 @@ function GeoRuleItem({
             }
             disabled={disabled}
           >
-            <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
+            <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -282,7 +282,7 @@ function GeoRuleItem({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-neutral-500">Condition</label>
+          <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Condition</label>
           <Select
             value={rule.condition}
             onValueChange={(value: "in" | "not_in") =>
@@ -290,7 +290,7 @@ function GeoRuleItem({
             }
             disabled={disabled}
           >
-            <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
+            <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -302,7 +302,7 @@ function GeoRuleItem({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-[11px] font-medium text-neutral-500">
+        <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
           {rule.type === "country" ? "Countries" : "Continents"}
         </label>
         <MultiSelect
@@ -315,7 +315,7 @@ function GeoRuleItem({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-[11px] font-medium text-neutral-500">Action</label>
+        <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Action</label>
         <Select
           value={rule.action}
           onValueChange={(value: "redirect" | "block") =>
@@ -323,7 +323,7 @@ function GeoRuleItem({
           }
           disabled={disabled}
         >
-          <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
+          <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -343,7 +343,7 @@ function GeoRuleItem({
             transition={{ duration: 0.2 }}
             className="space-y-1.5"
           >
-            <label className="text-[11px] font-medium text-neutral-500">
+            <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
               Redirect URL
             </label>
             <Input
@@ -353,7 +353,7 @@ function GeoRuleItem({
               }
               placeholder="https://example.com/alternative"
               disabled={disabled}
-              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
             />
           </motion.div>
         ) : (
@@ -365,7 +365,7 @@ function GeoRuleItem({
             transition={{ duration: 0.2 }}
             className="space-y-1.5"
           >
-            <label className="text-[11px] font-medium text-neutral-500">
+            <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
               Block message (optional)
             </label>
             <Input
@@ -375,7 +375,7 @@ function GeoRuleItem({
               }
               placeholder="This content is not available in your region."
               disabled={disabled}
-              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
             />
           </motion.div>
         )}
@@ -427,17 +427,17 @@ export function GeoRulesForm({
   const showLimitBadge = !isUnlimited && maxRules !== undefined;
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-4">
+    <div className="rounded-lg border border-neutral-200 dark:border-border p-4">
       <button
         type="button"
         className="flex w-full items-center justify-between text-left"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex flex-col gap-0.5">
-          <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900">
+          <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
             Geotargeting Rules
             {disabled && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500">
+              <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500 dark:text-neutral-400">
                 <IconDiamond size={12} stroke={1.5} className="text-neutral-400" />
                 Pro
               </span>
@@ -446,7 +446,7 @@ export function GeoRulesForm({
               <motion.span
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600"
+                className="rounded-full bg-neutral-100 dark:bg-muted px-2 py-0.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-400"
               >
                 {geoRules.length} {geoRules.length === 1 ? "rule" : "rules"}
               </motion.span>
@@ -484,9 +484,9 @@ export function GeoRulesForm({
           >
             <div className="mt-4 space-y-3">
               {disabled ? (
-                <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center">
+                <div className="rounded-lg border border-dashed border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 p-6 text-center">
                   <IconWorld size={28} stroke={1.5} className="mx-auto text-neutral-300" />
-                  <p className="mt-2 text-[13px] text-neutral-600">
+                  <p className="mt-2 text-[13px] text-neutral-600 dark:text-neutral-400">
                     Upgrade to Pro to use geotargeting rules
                   </p>
                   <p className="mt-1 text-[12px] text-neutral-400">
@@ -514,10 +514,10 @@ export function GeoRulesForm({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center"
+                      className="rounded-lg border border-dashed border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 p-6 text-center"
                     >
                       <IconWorld size={28} stroke={1.5} className="mx-auto text-neutral-300" />
-                      <p className="mt-2 text-[13px] text-neutral-600">
+                      <p className="mt-2 text-[13px] text-neutral-600 dark:text-neutral-400">
                         No geotargeting rules yet
                       </p>
                       <p className="mt-1 text-[12px] text-neutral-400">
@@ -534,9 +534,9 @@ export function GeoRulesForm({
                     onClick={addRule}
                     disabled={!canAddMore}
                     className={cn(
-                      "w-full gap-2 border-neutral-200 text-[13px] transition-all",
+                      "w-full gap-2 border-neutral-200 dark:border-border text-[13px] transition-all",
                       canAddMore
-                        ? "hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+                        ? "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
                         : "opacity-50"
                     )}
                   >

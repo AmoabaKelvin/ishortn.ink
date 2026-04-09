@@ -17,13 +17,13 @@ export function FolderLinks({ links, folderId }: FolderLinksProps) {
   if (links.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
-          <IconLink size={20} stroke={1.5} className="text-neutral-400" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
+          <IconLink size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
         </div>
-        <p className="mt-4 text-[14px] font-medium text-neutral-900">
+        <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
           No links in this folder
         </p>
-        <p className="mt-1 text-[13px] text-neutral-400">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
           Move links here from your dashboard to organize them.
         </p>
       </div>

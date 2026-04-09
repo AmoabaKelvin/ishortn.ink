@@ -65,8 +65,8 @@ export function SettingsNav() {
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                   activeSection === item.id
-                    ? "bg-neutral-100 text-neutral-900"
-                    : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
+                    ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
+                    : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-700 dark:hover:text-neutral-200"
                 )}
               >
                 <Icon size={15} stroke={1.5} />

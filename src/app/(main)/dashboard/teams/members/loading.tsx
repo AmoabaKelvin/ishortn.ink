@@ -11,7 +11,7 @@ export default function TeamMembersLoading() {
         <Skeleton className="h-9 w-24 rounded-lg" />
       </div>
 
-      <div className="divide-y divide-neutral-300/60">
+      <div className="divide-y divide-neutral-300/60 dark:divide-border">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 px-1 py-4">
             <Skeleton className="h-8 w-8 shrink-0 rounded-full" />

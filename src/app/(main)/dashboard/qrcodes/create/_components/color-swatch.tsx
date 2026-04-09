@@ -90,7 +90,7 @@ export function ColorSwatch({
 
   return (
     <div className="space-y-2">
-      {label && <Label className="text-[12px] text-neutral-400">{label}</Label>}
+      {label && <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">{label}</Label>}
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Preset color swatches */}
         {presetColors.map((presetColor) => (
@@ -108,7 +108,7 @@ export function ColorSwatch({
             <div
               className={cn(
                 "size-7 rounded-md transition-transform group-hover:scale-105",
-                showBorder && "border border-neutral-200"
+                showBorder && "border border-neutral-200 dark:border-border"
               )}
               style={{ backgroundColor: presetColor }}
             />
@@ -130,7 +130,7 @@ export function ColorSwatch({
               <div
                 className={cn(
                   "flex size-7 items-center justify-center rounded-md transition-transform group-hover:scale-105",
-                  showBorder && "border border-neutral-200"
+                  showBorder && "border border-neutral-200 dark:border-border"
                 )}
                 style={{
                   backgroundColor: isCustomColor ? color : "#f5f5f5",
@@ -141,7 +141,7 @@ export function ColorSwatch({
                   stroke={1.5}
                   className={cn(
                     "transition-colors",
-                    isCustomColor ? "text-white drop-shadow-sm" : "text-neutral-500"
+                    isCustomColor ? "text-white drop-shadow-sm" : "text-neutral-500 dark:text-neutral-400"
                   )}
                 />
               </div>
@@ -154,7 +154,7 @@ export function ColorSwatch({
           >
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-[12px] text-neutral-400">
+                <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
                   Custom Color
                 </Label>
                 <div className="flex gap-2">
@@ -170,7 +170,7 @@ export function ColorSwatch({
                       className="absolute inset-0 h-9 w-9 cursor-pointer opacity-0"
                     />
                     <div
-                      className="h-9 w-9 rounded-md border border-neutral-200 cursor-pointer"
+                      className="h-9 w-9 rounded-md border border-neutral-200 dark:border-border cursor-pointer"
                       style={{ backgroundColor: color }}
                     />
                   </div>
@@ -181,7 +181,7 @@ export function ColorSwatch({
                     value={hexInput}
                     onChange={handleHexInputChange}
                     placeholder="#000000"
-                    className="h-9 flex-1 border-neutral-200 bg-white font-mono text-[13px]"
+                    className="h-9 flex-1 border-neutral-200 dark:border-border bg-white dark:bg-card font-mono text-[13px]"
                     maxLength={7}
                   />
                 </div>
@@ -189,7 +189,7 @@ export function ColorSwatch({
 
               {/* Quick presets in popover */}
               <div className="space-y-1.5">
-                <Label className="text-[12px] text-neutral-400">
+                <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
                   Quick Select
                 </Label>
                 <div className="grid grid-cols-6 gap-1">
@@ -220,7 +220,7 @@ export function ColorSwatch({
                         "h-6 w-6 rounded border transition-all hover:scale-110",
                         color === quickColor
                           ? "border-blue-500 ring-1 ring-blue-500"
-                          : "border-neutral-200"
+                          : "border-neutral-200 dark:border-border"
                       )}
                       style={{ backgroundColor: quickColor }}
                       onClick={() => {

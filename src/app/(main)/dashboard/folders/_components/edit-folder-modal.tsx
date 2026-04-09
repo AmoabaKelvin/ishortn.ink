@@ -89,7 +89,7 @@ export function EditFolderModal({
             <div className="space-y-1.5">
               <Label
                 htmlFor="edit-name"
-                className="text-[13px] font-medium text-neutral-700"
+                className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
               >
                 Name
               </Label>
@@ -97,7 +97,7 @@ export function EditFolderModal({
                 id="edit-name"
                 placeholder="Folder name"
                 className={cn(
-                  "h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400",
+                  "h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400",
                   errors.name &&
                     "border-red-300 focus-visible:ring-red-300"
                 )}
@@ -117,10 +117,10 @@ export function EditFolderModal({
             <div className="space-y-1.5">
               <Label
                 htmlFor="edit-description"
-                className="text-[13px] font-medium text-neutral-700"
+                className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
               >
                 Description
-                <span className="ml-1.5 text-[12px] font-normal text-neutral-400">
+                <span className="ml-1.5 text-[12px] font-normal text-neutral-400 dark:text-neutral-500">
                   optional
                 </span>
               </Label>
@@ -128,7 +128,7 @@ export function EditFolderModal({
                 id="edit-description"
                 placeholder="Add notes about this folder..."
                 rows={3}
-                className="resize-none border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                className="resize-none border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                 {...register("description")}
               />
             </div>

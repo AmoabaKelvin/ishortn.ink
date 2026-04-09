@@ -298,19 +298,19 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-xl flex-col border-l border-neutral-200 bg-white"
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-xl flex-col border-l border-neutral-200 dark:border-border bg-white dark:bg-card"
           >
             {/* Header */}
-            <div className="border-b border-neutral-200 px-6 py-5">
+            <div className="border-b border-neutral-200 dark:border-border px-6 py-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-[14px] font-semibold text-neutral-900">Edit Link</h2>
-                  <p className="mt-0.5 text-[13px] text-neutral-500">
+                  <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">Edit Link</h2>
+                  <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
                     {link.domain}/{link.alias}
                   </p>
                   <div className="mt-2 flex items-center gap-3 text-[12px] text-neutral-400">
                     <span className="flex items-center gap-1">
-                      <IconClick size={14} stroke={1.5} className="text-blue-600" />
+                      <IconClick size={14} stroke={1.5} className="text-blue-600 dark:text-blue-400" />
                       {link.totalClicks} clicks
                     </span>
                     <span>
@@ -322,7 +322,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                 <button
                   onClick={onClose}
                   aria-label="Close drawer"
-                  className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-50 hover:text-neutral-600"
+                  className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600"
                 >
                   <IconX size={18} stroke={1.5} />
                 </button>
@@ -334,16 +334,16 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
               <Form {...form}>
                 <form className="space-y-4 p-6">
                   {/* Basic Information */}
-                  <div className="space-y-4 rounded-lg border border-neutral-200 p-4">
+                  <div className="space-y-4 rounded-lg border border-neutral-200 dark:border-border p-4">
                     <FormField
                       control={form.control}
                       name="url"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Destination URL</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Destination URL</FormLabel>
                           <FormControl>
                             <Input
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                               placeholder="https://site.com"
                               {...field}
                             />
@@ -358,15 +358,15 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Link Name</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Link Name</FormLabel>
                           <FormControl>
                             <Input
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                               placeholder="My Awesome Link"
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             A friendly name to identify your link (optional)
                           </FormDescription>
                           <FormMessage />
@@ -379,9 +379,9 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="alias"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Link Alias</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Link Alias</FormLabel>
                           <FormControl>
-                            <div className="flex h-9 w-full items-center overflow-hidden rounded-md border border-neutral-200 bg-white transition-colors focus-within:ring-2 focus-within:ring-neutral-300">
+                            <div className="flex h-9 w-full items-center overflow-hidden rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors focus-within:ring-2 focus-within:ring-neutral-300">
                               <Select>
                                 <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:text-neutral-900 focus:ring-0">
                                   <SelectValue placeholder={link.domain || "ishortn.ink"} />
@@ -392,10 +392,10 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
-                              <div className="h-4 w-px bg-neutral-200" />
+                              <div className="h-4 w-px bg-neutral-200 dark:bg-border" />
                               <input
                                 placeholder="short-link"
-                                className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+                                className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 dark:text-foreground placeholder:text-neutral-400 focus:outline-none"
                                 {...field}
                               />
                             </div>
@@ -410,10 +410,10 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="note"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Note</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Note</FormLabel>
                           <FormControl>
                             <Input
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                               placeholder="Add a note to your link"
                               {...field}
                             />
@@ -429,7 +429,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="tags"
                       render={() => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Tags</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Tags</FormLabel>
                           <FormControl>
                             <div className="relative">
                               {tags.length > 0 && (
@@ -437,7 +437,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   {tags.map((tag) => (
                                     <div
                                       key={tag}
-                                      className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-[12px] font-medium text-neutral-600"
+                                      className="inline-flex items-center gap-1 rounded-md bg-neutral-100 dark:bg-muted px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400"
                                     >
                                       <span>{tag}</span>
                                       <button
@@ -454,7 +454,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                               )}
                               <div className="relative">
                                 <Input
-                                  className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                                  className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                                   placeholder="Add tags (press Enter)"
                                   value={tagInput}
                                   onChange={(e) => {
@@ -469,11 +469,11 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                 />
 
                                 {showTagDropdown && filteredTags.length > 0 && (
-                                  <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-neutral-200 bg-white shadow-md">
+                                  <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card shadow-md">
                                     {filteredTags.map((tag) => (
                                       <div
                                         key={tag}
-                                        className="cursor-pointer px-3 py-2 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                                        className="cursor-pointer px-3 py-2 text-[13px] text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
                                         onMouseDown={(e) => {
                                           e.preventDefault();
                                           addTag(tag);
@@ -487,7 +487,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                               </div>
                             </div>
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             Press Enter to add a tag, or select from existing tags.
                           </FormDescription>
                           <FormMessage />
@@ -509,11 +509,11 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="metadata.title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Title</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Title</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                               placeholder="Custom title for your link"
                               disabled={!isProOrUltraUser}
                             />
@@ -527,11 +527,11 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="metadata.description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Description</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Description</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                               placeholder="Custom description for your link"
                               disabled={!isProOrUltraUser}
                             />
@@ -545,7 +545,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="metadata.image"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Custom Image</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Image</FormLabel>
                           <FormControl>
                             {isProOrUltraUser ? (
                               <OgImageUploader
@@ -602,12 +602,12 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       control={form.control}
                       name="cloaking"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border border-neutral-200 p-4">
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border border-neutral-200 dark:border-border p-4">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-[13px] font-medium text-neutral-700">
+                            <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                               Enable Link Cloaking
                             </FormLabel>
-                            <FormDescription className="text-[12px] text-neutral-400">
+                            <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                               Visitors see your short URL while viewing the destination page.
                             </FormDescription>
                           </div>
@@ -628,25 +628,25 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     />
 
                     {!isUltraUser && (
-                      <p className="text-[12px] text-neutral-400">
+                      <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                         Link cloaking is an Ultra plan feature.
                       </p>
                     )}
 
                     {!watchedUrl && isUltraUser && (
-                      <p className="text-[12px] text-neutral-400">
+                      <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                         Enter a destination URL above to enable link cloaking.
                       </p>
                     )}
 
                     {iframeableResult === true && cloakingEnabled && (
-                      <p className="text-[12px] text-green-600">
+                      <p className="text-[12px] text-green-600 dark:text-emerald-400">
                         This URL can be cloaked successfully.
                       </p>
                     )}
 
                     {iframeableResult === false && (
-                      <p className="text-[12px] text-amber-600">
+                      <p className="text-[12px] text-amber-600 dark:text-amber-400">
                         This website doesn&apos;t allow cloaking. Try a different URL.
                       </p>
                     )}
@@ -674,7 +674,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       disabled={!isProOrUltraUser}
                     />
                     {!isProOrUltraUser && (
-                      <p className="text-[12px] text-neutral-400">
+                      <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                         Click milestones are available on Pro and Ultra plans.
                       </p>
                     )}
@@ -692,15 +692,15 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="disableLinkAfterClicks"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after clicks</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Disable after clicks</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               type="number"
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                             />
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             Deactivate after a certain number of clicks. Leave empty to never disable.
                           </FormDescription>
                           <FormMessage />
@@ -713,14 +713,14 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       name="disableLinkAfterDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[13px] font-medium text-neutral-700">Disable after date</FormLabel>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Disable after date</FormLabel>
                           <FormControl>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button
                                   variant="outline"
                                   className={cn(
-                                    "h-9 w-full justify-start border-neutral-200 text-left text-[13px] font-normal hover:bg-neutral-50",
+                                    "h-9 w-full justify-start border-neutral-200 dark:border-border text-left text-[13px] font-normal hover:bg-neutral-50 dark:hover:bg-accent/50",
                                     !field.value && "text-neutral-400",
                                   )}
                                 >
@@ -743,7 +743,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                               </PopoverContent>
                             </Popover>
                           </FormControl>
-                          <FormDescription className="text-[12px] text-neutral-400">
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             Deactivate the link after a certain date.
                           </FormDescription>
                           <FormMessage />
@@ -756,13 +756,13 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-neutral-200 bg-neutral-50 px-6 py-4">
+            <div className="border-t border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-6 py-4">
               <div className="flex items-center justify-end gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onClose}
-                  className="h-9 border-neutral-200 text-[13px] hover:bg-neutral-50"
+                  className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
                 >
                   Cancel
                 </Button>

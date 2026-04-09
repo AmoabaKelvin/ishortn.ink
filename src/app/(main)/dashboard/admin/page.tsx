@@ -50,17 +50,17 @@ function StatCard({
   growth?: number | null;
 }) {
   return (
-    <Card className="rounded-xl border-neutral-200 p-5 shadow-none">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+    <Card className="rounded-xl border-neutral-200 dark:border-border p-5 shadow-none">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
         {title}
       </p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-neutral-900">
+      <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-neutral-900 dark:text-foreground">
         {value}
       </p>
       {growth !== undefined && growth !== null && (
         <span
           className={`mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium ${
-            growth >= 0 ? "text-emerald-600" : "text-red-500"
+            growth >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"
           }`}
         >
           {growth >= 0 ? (
@@ -106,10 +106,10 @@ export default function AdminPage() {
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Admin Dashboard
           </h1>
-          <p className="mt-1 text-[13px] text-neutral-400">
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
             Platform overview and moderation tools
           </p>
         </div>
@@ -169,28 +169,28 @@ export default function AdminPage() {
       {/* New users + Recent links */}
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* New users */}
-        <Card className="flex flex-col rounded-xl border-neutral-200 shadow-none">
-          <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
-            <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
+        <Card className="flex flex-col rounded-xl border-neutral-200 dark:border-border shadow-none">
+          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-border/50 px-5 py-4">
+            <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
               New Users
             </p>
             <Link
               href="/dashboard/admin/users"
-              className="text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-600"
+              className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               View all
             </Link>
           </div>
           {recentUsersLoading ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 dark:border-border border-t-neutral-400 dark:border-t-neutral-500" />
             </div>
           ) : !recentUsers || recentUsers.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <p className="text-[13px] text-neutral-400">No users yet</p>
+              <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No users yet</p>
             </div>
           ) : (
-            <div className="divide-y divide-neutral-100">
+            <div className="divide-y divide-neutral-100 dark:divide-border/50">
               {recentUsers.map((u) => (
                 <div
                   key={u.id}
@@ -201,27 +201,27 @@ export default function AdminPage() {
                       <img
                         src={u.imageUrl}
                         alt=""
-                        className="h-7 w-7 shrink-0 rounded-full bg-neutral-100 object-cover"
+                        className="h-7 w-7 shrink-0 rounded-full bg-neutral-100 dark:bg-muted object-cover"
                       />
                     ) : (
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[11px] font-medium text-neutral-500">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-muted text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
                         {(u.name ?? u.email ?? "?").charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] font-medium text-neutral-700">
+                      <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                         {u.name ?? "Unnamed"}
                       </p>
-                      <p className="truncate text-[11px] text-neutral-400">
+                      <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
                         {u.email}
                       </p>
                     </div>
                   </div>
                   <div className="shrink-0 pl-4 text-right">
-                    <p className="text-[11px] tabular-nums text-neutral-400">
+                    <p className="text-[11px] tabular-nums text-neutral-400 dark:text-neutral-500">
                       {u.linkCount} {u.linkCount === 1 ? "link" : "links"}
                     </p>
-                    <p className="text-[11px] text-neutral-300">
+                    <p className="text-[11px] text-neutral-300 dark:text-neutral-600">
                       {timeAgo(u.createdAt)}
                     </p>
                   </div>
@@ -232,49 +232,49 @@ export default function AdminPage() {
         </Card>
 
         {/* Recent links */}
-        <Card className="flex flex-col rounded-xl border-neutral-200 shadow-none">
-          <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
-            <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
+        <Card className="flex flex-col rounded-xl border-neutral-200 dark:border-border shadow-none">
+          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-border/50 px-5 py-4">
+            <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
               Recent Links
             </p>
             <Link
               href="/dashboard/admin/links"
-              className="text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-600"
+              className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               View all
             </Link>
           </div>
           {activityLoading ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 dark:border-border border-t-neutral-400 dark:border-t-neutral-500" />
             </div>
           ) : !activity || activity.recentLinks.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <p className="text-[13px] text-neutral-400">
+              <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
                 No links created yet
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-neutral-100">
+            <div className="divide-y divide-neutral-100 dark:divide-border/50">
               {activity.recentLinks.map((l) => (
                 <div
                   key={l.id}
                   className="flex items-center justify-between px-5 py-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-neutral-700">
-                      <span className="text-neutral-400">{l.domain}/</span>
+                    <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      <span className="text-neutral-400 dark:text-neutral-500">{l.domain}/</span>
                       {l.alias}
                     </p>
-                    <p className="truncate text-[11px] text-neutral-400">
+                    <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
                       {l.url}
                     </p>
                   </div>
                   <div className="shrink-0 pl-4 text-right">
-                    <p className="text-[11px] text-neutral-400">
+                    <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                       {l.userEmail}
                     </p>
-                    <p className="text-[11px] text-neutral-300">
+                    <p className="text-[11px] text-neutral-300 dark:text-neutral-600">
                       {timeAgo(l.createdAt)}
                     </p>
                   </div>
@@ -287,47 +287,47 @@ export default function AdminPage() {
 
       {/* Recently blocked */}
       <div className="mt-4">
-        <Card className="flex flex-col rounded-xl border-neutral-200 shadow-none">
-          <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
-            <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
+        <Card className="flex flex-col rounded-xl border-neutral-200 dark:border-border shadow-none">
+          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-border/50 px-5 py-4">
+            <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
               Recently Blocked
             </p>
             <Link
               href="/dashboard/admin/links"
-              className="text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-600"
+              className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               View all
             </Link>
           </div>
           {activityLoading ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 dark:border-border border-t-neutral-400 dark:border-t-neutral-500" />
             </div>
           ) : !activity || activity.recentBlocked.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <p className="text-[13px] text-neutral-400">No blocked links</p>
+              <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No blocked links</p>
             </div>
           ) : (
-            <div className="divide-y divide-neutral-100">
+            <div className="divide-y divide-neutral-100 dark:divide-border/50">
               {activity.recentBlocked.map((l) => (
                 <div
                   key={l.id}
                   className="flex items-center justify-between px-5 py-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-neutral-700">
-                      <span className="text-neutral-400">{l.domain}/</span>
+                    <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      <span className="text-neutral-400 dark:text-neutral-500">{l.domain}/</span>
                       {l.alias}
                     </p>
-                    <p className="truncate text-[11px] text-neutral-400">
+                    <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
                       {l.blockedReason}
                     </p>
                   </div>
                   <div className="shrink-0 pl-4 text-right">
-                    <p className="text-[11px] text-neutral-400">
+                    <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                       {l.userEmail}
                     </p>
-                    <p className="text-[11px] text-neutral-300">
+                    <p className="text-[11px] text-neutral-300 dark:text-neutral-600">
                       {timeAgo(l.blockedAt)}
                     </p>
                   </div>

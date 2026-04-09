@@ -30,21 +30,21 @@ const TokenCard = ({
 
   return (
     <div className="flex items-center gap-4">
-      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-100">
-        <IconKey size={15} stroke={1.5} className="text-neutral-400" />
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
+        <IconKey size={15} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <code className="rounded-md bg-neutral-50 px-2 py-0.5 font-mono text-[12px] text-neutral-600">
+          <code className="rounded-md bg-neutral-50 dark:bg-accent/50 px-2 py-0.5 font-mono text-[12px] text-neutral-600 dark:text-neutral-400">
             {start}••••••••••••
           </code>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Active
           </span>
         </div>
-        <p className="mt-1 text-[11px] text-neutral-400">
+        <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
           Created{" "}
           {new Date(createdAt).toLocaleDateString("en-US", {
             year: "numeric",
@@ -58,7 +58,7 @@ const TokenCard = ({
         type="button"
         onClick={handleKeyRevoke}
         disabled={deleteAPIKeyMutation.isLoading}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-border px-3 py-1.5 text-[12px] font-medium text-red-600 dark:text-red-400 transition-colors hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50"
       >
         {deleteAPIKeyMutation.isLoading ? (
           <IconLoader2 size={13} stroke={1.5} className="animate-spin" />

@@ -44,7 +44,7 @@ export default function DomainStatusChecker({ domain, onStatusChange }: DomainSt
         }
       }}
       disabled={isLoading}
-      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-50"
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-blue-600 dark:text-blue-400 transition-colors hover:bg-blue-50 dark:hover:bg-blue-500/10"
     >
       <IconRefresh size={12} stroke={1.5} className={isLoading ? "animate-spin" : ""} />
       {isLoading ? "Checking..." : "Check Now"}

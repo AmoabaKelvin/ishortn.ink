@@ -35,8 +35,8 @@ export function EmptyStatePro({ onCreateClick }: EmptyStateProProps) {
         transition={{ duration: 0.3, delay: 0.15 }}
         className="relative"
       >
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100">
-          <IconFolder size={24} stroke={1.5} className="text-neutral-400" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
+          <IconFolder size={24} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
         </div>
       </motion.div>
 
@@ -46,10 +46,10 @@ export function EmptyStatePro({ onCreateClick }: EmptyStateProProps) {
         transition={{ duration: 0.3, delay: 0.25 }}
         className="mt-6 text-center"
       >
-        <p className="text-[14px] font-medium text-neutral-900">
+        <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
           No folders yet
         </p>
-        <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400">
+        <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
           Create your first folder to organize links by project, campaign, or any way that works for you.
         </p>
       </motion.div>

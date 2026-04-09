@@ -50,13 +50,13 @@ export function ActivityChart({
   onGranularityChange,
 }: ActivityChartProps) {
   return (
-    <Card className="overflow-hidden rounded-xl border-neutral-200 shadow-none">
-      <div className="flex items-center justify-between border-b border-neutral-100 px-5 pb-4 pt-5">
+    <Card className="overflow-hidden rounded-xl border-neutral-200 dark:border-border shadow-none">
+      <div className="flex items-center justify-between border-b border-neutral-100 dark:border-border/50 px-5 pb-4 pt-5">
         <div className="space-y-0.5">
-          <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Activity
           </h2>
-          <p className="text-[12px] text-neutral-400">
+          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
             Links, users, and clicks over time
           </p>
         </div>
@@ -78,11 +78,11 @@ export function ActivityChart({
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 dark:border-border border-t-neutral-400 dark:border-t-neutral-500" />
           </div>
         ) : !data ? (
           <div className="flex h-64 items-center justify-center">
-            <p className="text-[13px] text-neutral-400">No data available</p>
+            <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No data available</p>
           </div>
         ) : (
           <ChartContainer

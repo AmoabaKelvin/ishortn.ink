@@ -107,7 +107,7 @@ export default function CreateTeamPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <IconLoader2 size={20} stroke={1.5} className="animate-spin text-neutral-400" />
+        <IconLoader2 size={20} stroke={1.5} className="animate-spin text-neutral-400 dark:text-neutral-500" />
       </div>
     );
   }
@@ -115,17 +115,17 @@ export default function CreateTeamPage() {
   if (!canCreateTeam) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
-          <IconUsers size={20} stroke={1.5} className="text-neutral-400" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
+          <IconUsers size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
         </div>
-        <p className="mt-4 text-[14px] font-medium text-neutral-900">
+        <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
           Create a Team
         </p>
-        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400">
+        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-neutral-500">
           Set up a shared workspace to collaborate with your team members.
         </p>
-        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[12px] font-medium text-neutral-600">
-          <IconDiamond size={14} stroke={1.5} className="text-neutral-400" />
+        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400">
+          <IconDiamond size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
           Available on Ultra plan
         </div>
       </div>
@@ -135,10 +135,10 @@ export default function CreateTeamPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Create a team
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
           Set up a shared workspace for your organization.
         </p>
       </div>
@@ -151,13 +151,13 @@ export default function CreateTeamPage() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <label className="text-[13px] font-medium text-neutral-700">
+                  <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                     Team name
                   </label>
                   <FormControl>
                     <Input
                       placeholder="Acme Inc"
-                      className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                      className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                       {...field}
                     />
                   </FormControl>
@@ -171,24 +171,24 @@ export default function CreateTeamPage() {
               name="slug"
               render={({ field }) => (
                 <FormItem>
-                  <label className="text-[13px] font-medium text-neutral-700">
+                  <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                     Team URL
                   </label>
                   <FormControl>
                     <div className="flex items-center">
-                      <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 bg-neutral-50 px-3 text-[13px] text-neutral-400">
+                      <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
                         https://
                       </span>
                       <Input
                         placeholder="acme"
-                        className="h-9 rounded-none border-x-0 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                        className="h-9 rounded-none border-x-0 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         {...field}
                         onChange={(e) => {
                           setSlugTouched(true);
                           field.onChange(e.target.value.toLowerCase());
                         }}
                       />
-                      <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 bg-neutral-50 px-3 text-[13px] text-neutral-400">
+                      <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
                         .ishortn.ink
                       </span>
                     </div>
@@ -196,17 +196,17 @@ export default function CreateTeamPage() {
                   {debouncedSlug && debouncedSlug.length >= 3 && (
                     <div className="mt-2 flex items-center gap-1.5">
                       {slugCheck.isLoading ? (
-                        <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                        <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">
                           <IconLoader2 size={12} stroke={1.5} className="animate-spin" />
                           Checking...
                         </div>
                       ) : slugCheck.data?.available ? (
-                        <div className="flex items-center gap-1 text-[11px] text-emerald-600">
+                        <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
                           <IconCheck size={12} stroke={1.5} />
                           Available
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 text-[11px] text-red-600">
+                        <div className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400">
                           <IconX size={12} stroke={1.5} />
                           Already taken
                         </div>
@@ -222,7 +222,7 @@ export default function CreateTeamPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="flex-1 rounded-lg border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                className="flex-1 rounded-lg border border-neutral-200 dark:border-border px-4 py-2 text-[13px] font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
               >
                 Cancel
               </button>
@@ -244,10 +244,10 @@ export default function CreateTeamPage() {
           </form>
         </Form>
 
-        <div className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-          <p className="text-[12px] leading-relaxed text-neutral-400">
+        <div className="mt-8 rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 p-4">
+          <p className="text-[12px] leading-relaxed text-neutral-400 dark:text-neutral-500">
             Your team will have its own workspace at{" "}
-            <span className="font-mono text-neutral-600">
+            <span className="font-mono text-neutral-600 dark:text-neutral-400">
               {slug || "your-team"}.ishortn.ink
             </span>
             . You&apos;ll be the owner with full access and can invite members after setup.

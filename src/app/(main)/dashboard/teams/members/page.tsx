@@ -195,7 +195,7 @@ export default function TeamMembersPage() {
         <IconLoader2
           size={20}
           stroke={1.5}
-          className="animate-spin text-neutral-400"
+          className="animate-spin text-neutral-400 dark:text-neutral-500"
         />
       </div>
     );
@@ -204,19 +204,19 @@ export default function TeamMembersPage() {
   if (!isTeamWorkspace) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
-          <IconUsers size={20} stroke={1.5} className="text-neutral-400" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
+          <IconUsers size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
         </div>
-        <p className="mt-4 text-[14px] font-medium text-neutral-900">
+        <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
           Team Members
         </p>
-        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400">
+        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-neutral-500">
           Switch to a team workspace to manage members and their roles.
         </p>
         <button
           type="button"
           onClick={() => router.push("/dashboard")}
-          className="mt-4 rounded-lg border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+          className="mt-4 rounded-lg border border-neutral-200 dark:border-border px-4 py-2 text-[13px] font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
         >
           Go to Dashboard
         </button>
@@ -228,10 +228,10 @@ export default function TeamMembersPage() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Members
           </h1>
-          <p className="mt-1 text-[13px] text-neutral-400">
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
             Manage your team members and their roles.
           </p>
         </div>
@@ -246,19 +246,19 @@ export default function TeamMembersPage() {
                 Invite
               </button>
             </DialogTrigger>
-            <DialogContent className="max-w-md rounded-xl border-neutral-200">
+            <DialogContent className="max-w-md rounded-xl border-neutral-200 dark:border-border">
               <DialogHeader>
-                <DialogTitle className="text-[14px] font-semibold text-neutral-900">
+                <DialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                   Invite member
                 </DialogTitle>
-                <DialogDescription className="text-[12px] text-neutral-400">
+                <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                   Send an invite link to add someone to your team.
                 </DialogDescription>
               </DialogHeader>
 
               {generatedInviteUrl ? (
                 <div className="space-y-3">
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-500/10 p-3">
                     <div className="flex items-center gap-1.5 text-[12px] font-medium text-emerald-700">
                       <IconCheck size={14} stroke={1.5} />
                       Invite created
@@ -268,12 +268,12 @@ export default function TeamMembersPage() {
                     <Input
                       value={generatedInviteUrl}
                       readOnly
-                      className="h-9 border-neutral-200 bg-white font-mono text-[11px]"
+                      className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card font-mono text-[11px]"
                     />
                     <button
                       type="button"
                       onClick={copyInviteUrl}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-700"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-200 dark:border-border text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-700"
                     >
                       <IconCopy size={14} stroke={1.5} />
                     </button>
@@ -299,17 +299,17 @@ export default function TeamMembersPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <label className="text-[13px] font-medium text-neutral-700">
+                          <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                             Email (optional)
                           </label>
                           <FormControl>
                             <Input
                               placeholder="colleague@company.com"
-                              className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                               {...field}
                             />
                           </FormControl>
-                          <p className="text-[11px] text-neutral-400">
+                          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                             Leave empty to create a link-only invite.
                           </p>
                           <FormMessage className="text-[11px]" />
@@ -322,7 +322,7 @@ export default function TeamMembersPage() {
                       name="role"
                       render={({ field }) => (
                         <FormItem>
-                          <label className="text-[13px] font-medium text-neutral-700">
+                          <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                             Role
                           </label>
                           <Select
@@ -330,7 +330,7 @@ export default function TeamMembersPage() {
                             value={field.value}
                           >
                             <FormControl>
-                              <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
+                              <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -343,7 +343,7 @@ export default function TeamMembersPage() {
                                   <IconUser
                                     size={14}
                                     stroke={1.5}
-                                    className="text-neutral-400"
+                                    className="text-neutral-400 dark:text-neutral-500"
                                   />
                                   Member
                                 </div>
@@ -374,7 +374,7 @@ export default function TeamMembersPage() {
                       <button
                         type="button"
                         onClick={closeInviteDialog}
-                        className="rounded-lg border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+                        className="rounded-lg border border-neutral-200 dark:border-border px-4 py-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
                       >
                         Cancel
                       </button>
@@ -422,7 +422,7 @@ export default function TeamMembersPage() {
                     src={member.user?.imageUrl ?? undefined}
                     alt={member.user?.name ?? "User"}
                   />
-                  <AvatarFallback className="bg-neutral-100 text-[12px] font-medium text-neutral-600">
+                  <AvatarFallback className="bg-neutral-100 dark:bg-muted text-[12px] font-medium text-neutral-600 dark:text-neutral-400">
                     {member.user?.name?.[0]?.toUpperCase() ??
                       member.user?.email?.[0]?.toUpperCase() ??
                       "U"}
@@ -431,17 +431,17 @@ export default function TeamMembersPage() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate text-[14px] font-medium text-neutral-900">
+                    <span className="truncate text-[14px] font-medium text-neutral-900 dark:text-foreground">
                       {member.user?.name || "Unknown"}
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
                       <span
                         className={`inline-block h-1.5 w-1.5 rounded-full ${config.color}`}
                       />
                       {config.label}
                     </span>
                   </div>
-                  <div className="mt-1 text-[12px] text-neutral-400">
+                  <div className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
                     {member.user?.email}
                   </div>
                 </div>
@@ -452,7 +452,7 @@ export default function TeamMembersPage() {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 group-hover:opacity-100"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 opacity-0 transition-all hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 group-hover:opacity-100"
                         >
                           <IconDots size={15} stroke={1.5} />
                         </button>
@@ -501,7 +501,7 @@ export default function TeamMembersPage() {
                               onClick={() =>
                                 setTransferOwnershipMemberId(member.userId)
                               }
-                              className="text-[13px] text-amber-600"
+                              className="text-[13px] text-amber-600 dark:text-amber-400"
                             >
                               <IconCrown
                                 size={14}
@@ -519,7 +519,7 @@ export default function TeamMembersPage() {
                               userId: member.userId,
                             })
                           }
-                          className="text-[13px] text-red-600"
+                          className="text-[13px] text-red-600 dark:text-red-400"
                         >
                           <IconUserMinus
                             size={14}
@@ -541,7 +541,7 @@ export default function TeamMembersPage() {
       {/* Pending Invites */}
       {canManageMembers && invites.data && invites.data.length > 0 && (
         <div className="mt-10">
-          <h2 className="mb-2 text-[14px] font-semibold text-neutral-900">
+          <h2 className="mb-2 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
             Pending invites
           </h2>
           <div className="divide-y divide-neutral-300/60">
@@ -554,28 +554,28 @@ export default function TeamMembersPage() {
                 className="group px-1 py-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-muted">
                     {invite.email ? (
                       <IconMail
                         size={14}
                         stroke={1.5}
-                        className="text-neutral-400"
+                        className="text-neutral-400 dark:text-neutral-500"
                       />
                     ) : (
                       <IconLink
                         size={14}
                         stroke={1.5}
-                        className="text-neutral-400"
+                        className="text-neutral-400 dark:text-neutral-500"
                       />
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-[14px] font-medium text-neutral-900">
+                      <span className="truncate text-[14px] font-medium text-neutral-900 dark:text-foreground">
                         {invite.email || "Open invite"}
                       </span>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
                         <span
                           className={`inline-block h-1.5 w-1.5 rounded-full ${invite.isExpired ? "bg-red-500" : "bg-emerald-500"}`}
                         />
@@ -583,13 +583,13 @@ export default function TeamMembersPage() {
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
-                      <span className="text-neutral-400">
+                      <span className="text-neutral-400 dark:text-neutral-500">
                         {invite.isExpired
                           ? "Expired"
                           : `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`}
                       </span>
                       <span className="text-neutral-300">&middot;</span>
-                      <span className="capitalize text-neutral-500">
+                      <span className="capitalize text-neutral-500 dark:text-neutral-400">
                         {invite.role}
                       </span>
                     </div>
@@ -600,7 +600,7 @@ export default function TeamMembersPage() {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 group-hover:opacity-100"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 opacity-0 transition-all hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 group-hover:opacity-100"
                         >
                           <IconDots size={15} stroke={1.5} />
                         </button>
@@ -629,7 +629,7 @@ export default function TeamMembersPage() {
                               inviteId: invite.id,
                             })
                           }
-                          className="text-[13px] text-red-600"
+                          className="text-[13px] text-red-600 dark:text-red-400"
                         >
                           <IconTrash
                             size={14}
@@ -655,17 +655,17 @@ export default function TeamMembersPage() {
       >
         <AlertDialogContent className="max-w-md rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900">
+            <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Transfer ownership
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[12px] text-neutral-500">
+            <AlertDialogDescription className="text-[12px] text-neutral-500 dark:text-neutral-400">
               This action is irreversible. You will lose owner privileges and
               become an admin of this team. The new owner will have full control
               over the team, including the ability to remove you.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-lg border-neutral-200 text-[13px]">
+            <AlertDialogCancel className="rounded-lg border-neutral-200 dark:border-border text-[13px]">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

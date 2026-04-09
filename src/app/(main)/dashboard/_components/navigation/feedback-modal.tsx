@@ -238,7 +238,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                   {images.map((img, i) => (
                     <div
                       key={i}
-                      className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-200"
+                      className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-200 dark:border-border"
                     >
                       <img
                         src={img}
@@ -271,8 +271,8 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                   className={cn(
                     "flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed px-4 py-4 transition-colors",
                     isDragging
-                      ? "border-blue-400 bg-blue-50/50"
-                      : "border-neutral-300 bg-neutral-50/50 hover:border-neutral-400 hover:bg-neutral-50",
+                      ? "border-blue-400 bg-blue-50/50 dark:bg-blue-950/20"
+                      : "border-neutral-300 dark:border-neutral-600 bg-neutral-50/50 dark:bg-accent/30 hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-50 dark:hover:bg-accent/50",
                   )}
                 >
                   {isDragging ? (
@@ -285,22 +285,22 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                     <IconUpload
                       size={20}
                       stroke={1.5}
-                      className="text-neutral-400"
+                      className="text-neutral-400 dark:text-neutral-500"
                     />
                   )}
-                  <p className="text-[12px] text-neutral-500">
+                  <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
                     {isDragging ? (
                       "Drop here"
                     ) : (
                       <>
                         Drop images or{" "}
-                        <span className="font-medium text-neutral-700">
+                        <span className="font-medium text-neutral-700 dark:text-neutral-300">
                           browse
                         </span>
                       </>
                     )}
                   </p>
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                     PNG, JPG, GIF, WebP up to 2MB ({MAX_IMAGES - images.length}{" "}
                     remaining)
                   </p>

@@ -89,9 +89,9 @@ export function BulkLinkUploadDialog({
             <label
               htmlFor="dropzone-file"
               className={cn(
-                "flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition-all duration-300 hover:bg-gray-100",
+                "flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-border bg-gray-50 dark:bg-accent/50 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-accent",
                 {
-                  "border-gray-500": isDragActive,
+                  "border-gray-500 dark:border-neutral-400": isDragActive,
                 }
               )}
             >
@@ -100,9 +100,9 @@ export function BulkLinkUploadDialog({
                   animate={{ y: isDragActive ? -10 : 0 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <CloudUploadIcon className="mb-4 h-8 w-8 text-gray-500" />
+                  <CloudUploadIcon className="mb-4 h-8 w-8 text-gray-500 dark:text-neutral-400" />
                 </motion.div>
-                <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mb-2 text-sm text-gray-500 dark:text-neutral-400">
                   {isDragActive
                     ? "Drop the files here to upload"
                     : file

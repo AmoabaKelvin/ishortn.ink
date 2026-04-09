@@ -76,10 +76,10 @@ export default function AdminLinksPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Manage Links
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
           Search and moderate links across the platform
         </p>
       </div>
@@ -104,12 +104,12 @@ export default function AdminLinksPage() {
 
       {/* Empty state before search */}
       {!searchQuery && (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-4 py-12 text-center">
-          <IconSearch size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300" />
-          <p className="text-[13px] font-medium text-neutral-500">
+        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
+          <IconSearch size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Search for links to manage
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
             Enter a URL, short link alias, domain, or user email address
           </p>
         </div>
@@ -118,17 +118,17 @@ export default function AdminLinksPage() {
       {isLoading && searchQuery && (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-100" />
+            <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted" />
           ))}
         </div>
       )}
 
       {data && searchQuery && data.links.length === 0 && (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-4 py-12 text-center">
-          <p className="text-[13px] font-medium text-neutral-500">
+        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
+          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             No links found for &ldquo;{searchQuery}&rdquo;
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
             Try a different search term
           </p>
         </div>
@@ -136,32 +136,32 @@ export default function AdminLinksPage() {
 
       {data && data.links.length > 0 && (
         <>
-          <p className="mb-3 text-[12px] text-neutral-400">
+          <p className="mb-3 text-[12px] text-neutral-400 dark:text-neutral-500">
             {data.total} {data.total === 1 ? "result" : "results"} found
           </p>
 
-          <div className="overflow-hidden rounded-lg border border-neutral-200">
+          <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-border">
             <table className="w-full text-left text-[13px]">
               <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50">
-                  <th className="px-4 py-3 font-medium text-neutral-500">Link</th>
-                  <th className="hidden px-4 py-3 font-medium text-neutral-500 md:table-cell">User</th>
-                  <th className="hidden px-4 py-3 font-medium text-neutral-500 lg:table-cell">Created</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500">Status</th>
-                  <th className="px-4 py-3 text-right font-medium text-neutral-500">Action</th>
+                <tr className="border-b border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Link</th>
+                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 md:table-cell">User</th>
+                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 lg:table-cell">Created</th>
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Status</th>
+                  <th className="px-4 py-3 text-right font-medium text-neutral-500 dark:text-neutral-400">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="divide-y divide-neutral-100 dark:divide-border/50">
                 {data.links.map((link) => (
-                  <tr key={link.id} className="group hover:bg-neutral-50/50">
+                  <tr key={link.id} className="group hover:bg-neutral-50/50 dark:hover:bg-accent/50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="min-w-0">
-                          <p className="text-[13px] font-medium text-neutral-800">
-                            <span className="text-neutral-400">{link.domain}/</span>
+                          <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
+                            <span className="text-neutral-400 dark:text-neutral-500">{link.domain}/</span>
                             {link.alias}
                           </p>
-                          <p className="max-w-[320px] truncate text-[11px] text-neutral-400">
+                          <p className="max-w-[320px] truncate text-[11px] text-neutral-400 dark:text-neutral-500">
                             {link.url}
                           </p>
                         </div>
@@ -172,15 +172,15 @@ export default function AdminLinksPage() {
                           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
                           title="Open destination URL"
                         >
-                          <IconExternalLink size={14} className="text-neutral-400 hover:text-neutral-600" />
+                          <IconExternalLink size={14} className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300" />
                         </a>
                       </div>
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">
-                      <p className="text-[12px] text-neutral-500">{link.userEmail ?? "Unknown"}</p>
+                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">{link.userEmail ?? "Unknown"}</p>
                     </td>
                     <td className="hidden px-4 py-3 lg:table-cell">
-                      <p className="text-[12px] text-neutral-500">
+                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
                         {link.createdAt
                           ? new Date(link.createdAt).toLocaleDateString()
                           : "N/A"}
@@ -189,14 +189,14 @@ export default function AdminLinksPage() {
                     <td className="px-4 py-3">
                       {link.blocked ? (
                         <span
-                          className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700"
+                          className="inline-flex items-center gap-1 rounded-full bg-red-50 dark:bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-700 dark:text-red-400"
                           title={link.blockedReason ?? undefined}
                         >
                           <IconBan size={11} />
                           Blocked
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
                           <IconCheck size={11} />
                           Active
                         </span>
@@ -237,7 +237,7 @@ export default function AdminLinksPage() {
 
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-[12px] text-neutral-400">
+              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                 Page {page} of {totalPages}
               </p>
               <div className="flex gap-2">
@@ -275,17 +275,17 @@ export default function AdminLinksPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-4">
-            <div className="rounded-lg bg-neutral-50 p-3">
-              <p className="text-[13px] font-medium text-neutral-700">
-                <span className="text-neutral-400">{linkToBlock?.domain}/</span>
+            <div className="rounded-lg bg-neutral-50 dark:bg-accent/50 p-3">
+              <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                <span className="text-neutral-400 dark:text-neutral-500">{linkToBlock?.domain}/</span>
                 {linkToBlock?.alias}
               </p>
-              <p className="mt-0.5 truncate text-[12px] text-neutral-400">
+              <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
                 {linkToBlock?.url}
               </p>
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">
+              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 Reason for blocking
               </label>
               <Textarea

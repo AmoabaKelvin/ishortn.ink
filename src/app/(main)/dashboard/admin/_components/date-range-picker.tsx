@@ -113,7 +113,7 @@ export function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
           variant="outline"
           size="sm"
           className={cn(
-            "h-8 gap-1.5 rounded-lg border-neutral-200 px-3 text-[12px] font-medium text-neutral-600",
+            "h-8 gap-1.5 rounded-lg border-neutral-200 dark:border-border px-3 text-[12px] font-medium text-neutral-600 dark:text-neutral-400",
           )}
         >
           <IconCalendar size={14} stroke={1.5} />
@@ -127,12 +127,12 @@ export function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
         align="end"
         sideOffset={8}
       >
-        <div className="flex gap-1.5 border-b border-neutral-100 px-3 py-2.5">
+        <div className="flex gap-1.5 border-b border-neutral-100 dark:border-border/50 px-3 py-2.5">
           {presets.map((preset) => (
             <button
               key={preset.label}
               onClick={() => handlePreset(preset)}
-              className="rounded-md px-2.5 py-1 text-[11px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+              className="rounded-md px-2.5 py-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-700 dark:hover:text-neutral-300"
             >
               {preset.label}
             </button>
