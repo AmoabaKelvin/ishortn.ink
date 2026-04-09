@@ -96,7 +96,7 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors hover:border-neutral-300 dark:hover:border-border focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
+      <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors hover:border-neutral-300 dark:hover:border-neutral-500 focus-within:border-neutral-300 dark:focus-within:border-ring focus-within:ring-1 focus-within:ring-neutral-300 dark:focus-within:ring-ring/20">
         <input
           type="url"
           placeholder="https://example.com/image.jpg"

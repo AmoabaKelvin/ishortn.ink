@@ -174,14 +174,14 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
               key={plan.id}
               className={cn(
                 "relative flex flex-col rounded-2xl border bg-white dark:bg-card p-6 shadow-sm transition-shadow hover:shadow-md",
-                plan.popular && currentPlan === "free" && "border-gray-900 dark:border-gray-100 ring-1 ring-gray-900 dark:ring-gray-100",
+                plan.popular && currentPlan === "free" && "border-gray-900 dark:border-border ring-1 ring-gray-900 dark:ring-border",
                 isCurrentPlan && "border-blue-500 ring-1 ring-blue-500"
               )}
             >
               {/* Popular Badge */}
               {plan.popular && !isCurrentPlan && currentPlan === "free" && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 px-3 py-1">
+                  <Badge className="bg-gray-900 text-white dark:bg-muted dark:text-foreground px-3 py-1">
                     <Sparkles className="h-3 w-3 mr-1" />
                     Popular
                   </Badge>
@@ -237,7 +237,7 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
                     className={cn(
                       "w-full",
                       plan.popular
-                        ? "bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900"
+                        ? "bg-gray-900 hover:bg-gray-800 dark:bg-muted dark:hover:bg-accent dark:text-foreground"
                         : ""
                     )}
                     onClick={() => handleUpgrade(plan)}

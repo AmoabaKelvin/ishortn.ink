@@ -22,6 +22,7 @@ const DashboardHeader = () => {
           href="https://discord.gg/S66ZvMzkU4"
           target="_blank"
           rel="noopener noreferrer"
+          aria-label="Discord"
           className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
         >
           <IconBrandDiscord size={18} stroke={1.5} />
@@ -30,6 +31,7 @@ const DashboardHeader = () => {
           href="https://github.com/AmoabaKelvin/ishortn.ink"
           target="_blank"
           rel="noopener noreferrer"
+          aria-label="GitHub"
           className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
         >
           <IconBrandGithub size={18} stroke={1.5} />

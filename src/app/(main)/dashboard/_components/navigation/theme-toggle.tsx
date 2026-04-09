@@ -41,12 +41,14 @@ export function ThemeToggle() {
   }
 
   return (
-    <div className="flex gap-0.5 rounded-xl bg-neutral-50 p-1 dark:bg-white/5">
+    <div role="group" aria-label="Theme" className="flex gap-0.5 rounded-xl bg-neutral-50 p-1 dark:bg-white/5">
       {options.map((option) => {
         const isActive = theme === option.value;
         return (
           <button
+            type="button"
             key={option.value}
+            aria-pressed={isActive}
             onClick={() => setTheme(option.value)}
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors",

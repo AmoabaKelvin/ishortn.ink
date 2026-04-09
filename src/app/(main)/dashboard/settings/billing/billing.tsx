@@ -95,7 +95,7 @@ export default function Billing({ subscriptions }: BillingProps) {
         {subscription.cardLastFour && (
           <>
             {subscription.renewsAt && (
-              <span className="text-neutral-300">&middot;</span>
+              <span className="text-neutral-300 dark:text-neutral-600">&middot;</span>
             )}
             <span className="capitalize text-neutral-500 dark:text-neutral-400">
               {subscription.cardBrand} &bull;&bull;&bull;&bull;{" "}

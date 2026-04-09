@@ -80,6 +80,7 @@ export function BulkLinkActions() {
       <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <button
+            aria-label="Bulk actions"
             disabled={isLoading}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-700 dark:hover:text-neutral-300 disabled:opacity-50"
           >

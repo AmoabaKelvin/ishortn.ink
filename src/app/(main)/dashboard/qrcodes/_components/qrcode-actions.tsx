@@ -103,7 +103,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 focus:outline-none"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
           >
             <IconDots size={16} stroke={1.5} />
           </button>
@@ -118,7 +118,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={handleOpenEditDrawer}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconPencil
               size={15}
@@ -129,7 +129,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={handleDownload}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconDownload
               size={15}
@@ -146,7 +146,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={handleToggleStatus}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             {isActive ? (
               <>

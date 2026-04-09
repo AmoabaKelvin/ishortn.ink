@@ -40,8 +40,8 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
         </TabsList>
 
         <TabsContent value="dns-records" className="space-y-3">
-          <div className="rounded-lg border border-amber-100 bg-amber-50 dark:bg-amber-500/10 p-3">
-            <p className="text-[12px] font-medium text-amber-700">
+          <div className="rounded-lg border border-amber-100 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 p-3">
+            <p className="text-[12px] font-medium text-amber-700 dark:text-amber-400">
               DNS configuration required
             </p>
             <p className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">
@@ -85,7 +85,7 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
                           <button
                             type="button"
                             onClick={() => handleCopy(challenge.domain)}
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
                           >
                             {copiedValue === challenge.domain ? (
                               <IconCheck size={12} stroke={1.5} className="text-emerald-500" />
@@ -103,7 +103,7 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
                           <button
                             type="button"
                             onClick={() => handleCopy(challenge.value)}
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
                           >
                             {copiedValue === challenge.value ? (
                               <IconCheck size={12} stroke={1.5} className="text-emerald-500" />
@@ -150,7 +150,7 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
                   <button
                     type="button"
                     onClick={() => handleCopy(ns)}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
                   >
                     {copiedValue === ns ? (
                       <IconCheck size={12} stroke={1.5} className="text-emerald-500" />

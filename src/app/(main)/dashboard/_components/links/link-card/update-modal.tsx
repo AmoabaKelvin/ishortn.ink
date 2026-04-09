@@ -264,7 +264,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                   </Select>
                                   <Input
                                     placeholder="short-link"
-                                    className="h-9 flex-grow rounded-l-none border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                                    className="h-9 flex-grow rounded-l-none border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                                     {...field}
                                   />
                                 </section>

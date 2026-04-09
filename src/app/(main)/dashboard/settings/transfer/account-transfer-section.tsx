@@ -74,10 +74,10 @@ export function AccountTransferSection() {
           {/* Pending Transfer */}
           {pendingTransfer && (
             <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 p-4">
-              <p className="text-[13px] font-medium text-amber-800">
+              <p className="text-[13px] font-medium text-amber-800 dark:text-amber-200">
                 Transfer pending
               </p>
-              <p className="mt-1 text-[12px] text-amber-700/80">
+              <p className="mt-1 text-[12px] text-amber-700/80 dark:text-amber-300/80">
                 Waiting for <strong>{pendingTransfer.targetEmail}</strong> to
                 accept. Expires{" "}
                 {new Date(pendingTransfer.expiresAt).toLocaleDateString()}.
@@ -135,7 +135,7 @@ export function AccountTransferSection() {
                 <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-500/10 p-3">
                   {validationResult.errors.map(
                     (error: any, index: number) => (
-                      <p key={index} className="text-[12px] text-red-700">
+                      <p key={index} className="text-[12px] text-red-700 dark:text-red-400">
                         {error.message}
                         {error.resourceType &&
                           ` (${error.currentCount}/${error.limit} ${error.resourceType})`}
