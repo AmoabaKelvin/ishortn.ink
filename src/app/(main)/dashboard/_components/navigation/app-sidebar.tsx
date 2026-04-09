@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 
 import { FeedbackModal } from "./feedback-modal";
 import { SidebarStats } from "./sidebar-stats";
+import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 const navigationItems = [
@@ -129,20 +130,20 @@ export function AppSidebar({
       {/* Mobile hamburger */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="fixed top-4 left-4 z-50 rounded-lg border border-neutral-200 bg-white p-2 shadow-sm transition-colors hover:bg-neutral-50 lg:hidden"
+        className="fixed top-4 left-4 z-50 rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card p-2 shadow-sm transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 lg:hidden"
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? (
-          <IconX size={20} stroke={1.5} className="text-neutral-700" />
+          <IconX size={20} stroke={1.5} className="text-neutral-700 dark:text-neutral-300" />
         ) : (
-          <IconMenu2 size={20} stroke={1.5} className="text-neutral-700" />
+          <IconMenu2 size={20} stroke={1.5} className="text-neutral-700 dark:text-neutral-300" />
         )}
       </button>
 
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen w-[280px] flex-col border-r border-neutral-200 bg-white transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed left-0 top-0 z-40 h-screen w-[280px] flex-col border-r border-neutral-200 dark:border-border bg-white dark:bg-card transition-transform duration-200 ease-in-out lg:translate-x-0",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -151,7 +152,7 @@ export function AppSidebar({
           <div className="flex h-14 shrink-0 items-center px-5">
             <Link
               href="/"
-              className="font-logo text-[17px] tracking-tight text-neutral-900"
+              className="font-logo text-[17px] tracking-tight text-neutral-900 dark:text-foreground"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               {APP_TITLE}
@@ -185,8 +186,8 @@ export function AppSidebar({
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                         isActive
-                          ? "bg-neutral-100 text-neutral-900"
-                          : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900",
+                          ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
+                          : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground",
                       )}
                     >
                       <Icon size={18} stroke={1.5} className="shrink-0" />
@@ -200,8 +201,8 @@ export function AppSidebar({
             {/* Team Navigation */}
             {currentWorkspace.type === "team" && (
               <>
-                <div className="my-3 h-px bg-neutral-100" />
-                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                <div className="my-3 h-px bg-neutral-100 dark:bg-border/50" />
+                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                   Team
                 </p>
                 <ul className="space-y-0.5">
@@ -217,8 +218,8 @@ export function AppSidebar({
                           className={cn(
                             "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                             isActive
-                              ? "bg-neutral-100 text-neutral-900"
-                              : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900",
+                              ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
+                              : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground",
                           )}
                         >
                           <Icon size={18} stroke={1.5} className="shrink-0" />
@@ -234,8 +235,8 @@ export function AppSidebar({
             {/* Admin Navigation */}
             {isAdmin && (
               <>
-                <div className="my-3 h-px bg-neutral-100" />
-                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                <div className="my-3 h-px bg-neutral-100 dark:bg-border/50" />
+                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                   Admin
                 </p>
                 <ul className="space-y-0.5">
@@ -254,8 +255,8 @@ export function AppSidebar({
                           className={cn(
                             "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                             isActive
-                              ? "bg-neutral-100 text-neutral-900"
-                              : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900",
+                              ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
+                              : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground",
                           )}
                         >
                           <Icon size={18} stroke={1.5} className="shrink-0" />
@@ -285,14 +286,19 @@ export function AppSidebar({
               </div>
             )}
 
+            {/* Theme Toggle */}
+            <div className="px-3 pb-2">
+              <ThemeToggle />
+            </div>
+
             {/* Feedback */}
-            <div className="border-t border-neutral-100 px-3 py-1.5">
+            <div className="border-t border-neutral-100 dark:border-border/50 px-3 py-1.5">
               <button
                 onClick={() => {
                   setIsFeedbackOpen(true);
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
               >
                 <IconLifebuoy size={18} stroke={1.5} className="shrink-0" />
                 Feedback
@@ -302,31 +308,31 @@ export function AppSidebar({
             <FeedbackModal open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
 
             {/* User */}
-            <div className="border-t border-neutral-100 p-3">
+            <div className="border-t border-neutral-100 dark:border-border/50 p-3">
               <Popover open={isUserMenuOpen} onOpenChange={setIsUserMenuOpen}>
                 <PopoverTrigger asChild>
-                  <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50">
+                  <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50">
                     <Avatar className="h-8 w-8">
                       <AvatarImage
                         src={user?.imageUrl}
                         alt={user?.firstName || "User"}
                       />
-                      <AvatarFallback className="bg-neutral-100 text-xs font-medium text-neutral-600">
+                      <AvatarFallback className="bg-neutral-100 dark:bg-muted text-xs font-medium text-neutral-600 dark:text-neutral-400">
                         {user?.firstName?.[0] || user?.username?.[0] || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1 text-left">
-                      <p className="truncate text-[13px] font-medium text-neutral-900">
+                      <p className="truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                         {user?.firstName || user?.username || "User"}
                       </p>
-                      <p className="truncate text-[11px] text-neutral-400">
+                      <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
                         {user?.primaryEmailAddress?.emailAddress}
                       </p>
                     </div>
                     <IconChevronUp
                       size={14}
                       stroke={1.5}
-                      className="shrink-0 text-neutral-400"
+                      className="shrink-0 text-neutral-400 dark:text-neutral-500"
                     />
                   </button>
                 </PopoverTrigger>
@@ -343,7 +349,7 @@ export function AppSidebar({
                         setIsUserMenuOpen(false);
                         setIsMobileMenuOpen(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
                     >
                       <IconUser size={16} stroke={1.5} />
                       Account
@@ -354,19 +360,19 @@ export function AppSidebar({
                         setIsUserMenuOpen(false);
                         setIsMobileMenuOpen(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
                     >
                       <IconCreditCard size={16} stroke={1.5} />
                       Billing
                     </button>
-                    <div className="my-1 h-px bg-neutral-100" />
+                    <div className="my-1 h-px bg-neutral-100 dark:bg-border/50" />
                     <button
                       onClick={() => {
                         signOut();
                         setIsUserMenuOpen(false);
                         setIsMobileMenuOpen(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-red-600 transition-colors hover:bg-red-50"
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
                     >
                       <IconLogout size={16} stroke={1.5} />
                       Log out

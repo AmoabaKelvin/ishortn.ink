@@ -51,39 +51,50 @@
   }
 
   .dark {
-    --background: 240 10% 4%;
-    --foreground: 0 0% 98%;
+    /* Warm slate-night palette — elevated, not void-black */
+    --background: 224 14% 10%;
+    --foreground: 213 10% 90%;
 
-    --card: 240 10% 4%;
-    --card-foreground: 0 0% 98%;
+    --card: 224 14% 13%;
+    --card-foreground: 213 10% 90%;
 
-    --popover: 240 10% 4%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 224 14% 14%;
+    --popover-foreground: 213 10% 90%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5% 10%;
+    /* Keep blue primary — brand identity stays in dark mode */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 222 13% 17%;
+    --secondary-foreground: 213 10% 82%;
 
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 222 13% 17%;
+    --muted-foreground: 218 8% 52%;
 
-    --accent: 240 4% 16%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 222 13% 19%;
+    --accent-foreground: 213 10% 90%;
 
-    --destructive: 0 63% 41%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 240 5% 84%;
+    --border: 222 13% 19%;
+    --input: 222 13% 19%;
+    --ring: 217 91% 60%;
 
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-1: 217 80% 56%;
+    --chart-2: 160 55% 48%;
+    --chart-3: 30 75% 58%;
+    --chart-4: 270 60% 62%;
+    --chart-5: 340 70% 58%;
+
+    /* Landing page dark overrides */
+    --landing-bg: 224 14% 10%;
+    --landing-surface: 224 14% 13%;
+    --landing-border: 222 13% 19%;
+    --landing-text: 213 10% 90%;
+    --landing-text-muted: 218 8% 52%;
+    --landing-accent: 258 80% 72%;
+    --landing-accent-soft: 258 30% 18%;
   }
 }
 
@@ -139,6 +150,10 @@
   @apply bg-neutral-900 text-white;
 }
 
+.dark ::selection {
+  @apply bg-blue-500/30 text-white;
+}
+
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
@@ -162,6 +177,19 @@ html {
   @apply bg-neutral-400;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: hsl(224 14% 13%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(222 13% 25%);
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(222 13% 32%);
+}
+
 /* Changelog prose code blocks - use !important to override prose defaults */
 .changelog-prose pre {
   @apply rounded-xl p-4 overflow-x-auto;
@@ -183,6 +211,11 @@ html {
   color: #262626 !important;
   font-size: 0.875rem !important;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
+}
+
+.dark .changelog-prose code:not(pre code) {
+  background-color: hsl(222 13% 17%) !important;
+  color: hsl(213 10% 82%) !important;
 }
 
 .changelog-prose code:not(pre code)::before,
