@@ -50,7 +50,7 @@ export const metadata: Metadata = {
 
 const HomePage = () => {
   return (
-    <main className="relative bg-white">
+    <main className="relative bg-zinc-950">
       <JsonLd data={organizationSchema} />
       <JsonLd data={softwareApplicationSchema} />
       <JsonLd data={createFaqSchema(landingPageCopy.faq)} />
@@ -62,12 +62,12 @@ const HomePage = () => {
       <Testimonials />
 
       {/* FAQ Section */}
-      <section id="faq" className="landing-section">
-        <div className="landing-container">
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+      <section id="faq" className="bg-zinc-950 px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
             FAQ
           </p>
-          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 sm:text-4xl">
+          <h2 className="mt-3 font-heading text-4xl font-bold tracking-tight text-zinc-50 md:text-5xl">
             Common questions
           </h2>
           <div className="mt-12">

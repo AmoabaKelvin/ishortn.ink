@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { useEffect, useState } from "react";
 
-import { APP_TITLE } from "@/lib/constants/app";
+import { APP_TITLE, Paths } from "@/lib/constants/app";
 
 const routes = [
   { name: "Features", href: "/features" },
@@ -41,56 +41,56 @@ export const Header = () => {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50">
-      <motion.nav
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className={`mx-auto flex max-w-5xl items-center justify-between px-6 py-4 transition-all duration-300 ${
-          scrolled
-            ? "mt-3 rounded-full border border-neutral-200 bg-white/90 px-6 shadow-sm backdrop-blur-md"
-            : "bg-transparent"
-        }`}
-      >
+    <motion.header
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/50"
+          : "bg-transparent"
+      }`}
+    >
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         {/* Logo */}
-        <Link href="/" className="font-logo text-[20px] tracking-tight text-neutral-900">
+        <Link href="/" className="font-logo text-[17px] text-zinc-50">
           {APP_TITLE}
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-8 md:flex">
           {routes.map(({ name, href }) => (
             <Link
               key={name}
               href={href}
               onClick={(e) => handleSmoothScroll(e, href)}
-              className="text-[13px] text-neutral-500 transition-colors hover:text-neutral-900"
+              className="text-sm text-zinc-400 transition-colors hover:text-zinc-50"
             >
               {name}
             </Link>
           ))}
-        </nav>
+        </div>
 
         {/* CTA Buttons */}
         <div className="hidden items-center gap-4 md:flex">
           <SignedOut>
             <Link
-              href="/auth/sign-in"
-              className="text-[13px] text-neutral-500 transition-colors hover:text-neutral-900"
+              href={Paths.Login}
+              className="text-sm text-zinc-400 transition-colors hover:text-zinc-50"
             >
               Log in
             </Link>
             <Link
-              href="/auth/sign-up"
-              className="rounded-full bg-neutral-900 px-5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-neutral-800"
+              href={Paths.Signup}
+              className="rounded-full bg-zinc-50 px-5 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-white"
             >
               Get Started
             </Link>
           </SignedOut>
           <SignedIn>
             <Link
-              href="/dashboard"
-              className="rounded-full bg-neutral-900 px-5 py-2 text-[13px] font-medium text-white transition-colors hover:bg-neutral-800"
+              href={Paths.Dashboard}
+              className="rounded-full bg-zinc-50 px-5 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-white"
             >
               Dashboard
             </Link>
@@ -101,7 +101,7 @@ export const Header = () => {
         <button
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="rounded-md p-1.5 text-neutral-600 transition-colors hover:text-neutral-900 md:hidden"
+          className="rounded-md p-1.5 text-zinc-400 transition-colors hover:text-zinc-50 md:hidden"
         >
           {mobileMenuOpen ? (
             <IconX size={20} stroke={1.5} />
@@ -109,7 +109,7 @@ export const Header = () => {
             <IconMenu2 size={20} stroke={1.5} />
           )}
         </button>
-      </motion.nav>
+      </nav>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
@@ -117,7 +117,7 @@ export const Header = () => {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="mx-6 mt-1 rounded-2xl border border-neutral-200 bg-white p-5 shadow-lg md:hidden"
+          className="mx-6 mt-1 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 md:hidden"
         >
           <nav className="flex flex-col gap-1">
             {routes.map(({ name, href }) => (
@@ -128,30 +128,30 @@ export const Header = () => {
                   handleSmoothScroll(e, href);
                   setMobileMenuOpen(false);
                 }}
-                className="rounded-lg px-3 py-2.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                className="rounded-lg px-3 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-50"
               >
                 {name}
               </Link>
             ))}
-            <div className="my-2 h-px bg-neutral-100" />
+            <div className="my-2 h-px bg-zinc-800" />
             <SignedOut>
               <Link
-                href="/auth/sign-in"
-                className="rounded-lg px-3 py-2.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-50"
+                href={Paths.Login}
+                className="rounded-lg px-3 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-50"
               >
                 Log in
               </Link>
               <Link
-                href="/auth/sign-up"
-                className="mt-1 rounded-lg bg-neutral-900 px-3 py-2.5 text-center text-sm font-medium text-white"
+                href={Paths.Signup}
+                className="mt-1 rounded-lg bg-zinc-50 px-3 py-2.5 text-center text-sm font-medium text-zinc-950"
               >
                 Get Started
               </Link>
             </SignedOut>
             <SignedIn>
               <Link
-                href="/dashboard"
-                className="mt-1 rounded-lg bg-neutral-900 px-3 py-2.5 text-center text-sm font-medium text-white"
+                href={Paths.Dashboard}
+                className="mt-1 rounded-lg bg-zinc-50 px-3 py-2.5 text-center text-sm font-medium text-zinc-950"
               >
                 Dashboard
               </Link>
@@ -159,6 +159,6 @@ export const Header = () => {
           </nav>
         </motion.div>
       )}
-    </header>
+    </motion.header>
   );
 };

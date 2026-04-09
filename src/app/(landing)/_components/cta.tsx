@@ -12,33 +12,31 @@ export const CTA = () => {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="px-6 py-24 md:py-32">
-      <motion.div
-        ref={ref}
-        initial={{ opacity: 0, y: 20 }}
-        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-        transition={{ duration: 0.5 }}
-        className="mx-auto max-w-5xl rounded-2xl bg-neutral-900 px-8 py-16 text-center md:px-16 md:py-20"
-      >
-        <h2 className="font-display text-3xl tracking-tight text-white sm:text-4xl md:text-5xl">
-          Ready to shorten
-          <br />
-          your first link?
-        </h2>
-        <p className="mx-auto mt-4 max-w-md text-base text-neutral-400">
-          Join 10,000+ users who trust iShortn for their link management.
-          Free to start, no credit card required.
-        </p>
-        <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+    <section className="bg-zinc-950 px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-6xl">
+        <motion.div
+          ref={ref}
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          transition={{ duration: 0.5 }}
+          className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-8 py-16 text-center md:px-16 md:py-20"
+        >
+          <h2 className="font-heading text-3xl font-bold tracking-tight text-zinc-50 md:text-4xl lg:text-5xl">
+            Ready to shorten your first link?
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg text-lg text-zinc-400">
+            Join 10,000+ users who trust iShortn for their link management.
+            Free to start, no credit card required.
+          </p>
           <Link
             href={Paths.Login}
-            className="group inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-100"
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-blue-500 px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
           >
             Get started for free
-            <IconArrowRight size={14} stroke={2} className="transition-transform group-hover:translate-x-0.5" />
+            <IconArrowRight size={16} />
           </Link>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </section>
   );
 };
