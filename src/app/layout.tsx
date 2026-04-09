@@ -10,7 +10,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env.mjs";
 import { APP_TITLE } from "@/lib/constants/app";
-import { fontSans, fontDisplay, fontLogo } from "@/lib/fonts";
+import { fontSans, fontDisplay, fontHeading, fontLogo } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { TRPCReactProvider } from "@/trpc/react";
 
@@ -71,6 +71,7 @@ export default function RootLayout({
                 "min-h-screen bg-background font-sans antialiased",
                 fontSans.variable,
                 fontDisplay.variable,
+                fontHeading.variable,
                 fontLogo.variable
               )}
             >

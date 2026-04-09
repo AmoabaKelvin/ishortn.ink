@@ -1,6 +1,11 @@
 import "@/styles/globals.css";
 
-import { DM_Sans, Eagle_Lake, Instrument_Serif } from "next/font/google";
+import {
+  Bricolage_Grotesque,
+  DM_Sans,
+  Eagle_Lake,
+  Instrument_Serif,
+} from "next/font/google";
 
 export const fontSans = DM_Sans({
   subsets: ["latin"],
@@ -13,6 +18,12 @@ export const fontDisplay = Instrument_Serif({
   variable: "--font-display",
   weight: ["400"],
   style: ["normal", "italic"],
+});
+
+export const fontHeading = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  weight: ["400", "600", "700", "800"],
 });
 
 export const fontLogo = Eagle_Lake({

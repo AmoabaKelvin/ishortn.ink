@@ -29,46 +29,44 @@ export const Testimonials = () => {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section id="testimonials" className="landing-section">
-      <div className="landing-container">
+    <section id="testimonials" className="bg-zinc-950 px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-6xl">
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 16 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
           transition={{ duration: 0.4 }}
-          className="mb-12"
         >
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
             Testimonials
           </p>
-          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 sm:text-4xl">
+          <h2 className="mt-3 font-heading text-4xl font-bold tracking-tight text-zinc-50 md:text-5xl">
             Trusted by thousands
           </h2>
         </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3">
           {testimonials.map((t, i) => (
             <motion.blockquote
               key={t.name}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={
-                isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }
+                isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }
               }
-              transition={{ duration: 0.4, delay: 0.1 + i * 0.08 }}
-              className="flex flex-col rounded-xl border border-neutral-100 p-6"
+              transition={{ duration: 0.4, delay: 0.1 + i * 0.1 }}
+              className="flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8"
             >
-              <p className="flex-1 text-[15px] leading-relaxed text-neutral-600">
+              <p className="flex-1 text-[15px] leading-relaxed text-zinc-300">
                 &ldquo;{t.quote}&rdquo;
               </p>
-              <div className="mt-5 flex items-center gap-3 border-t border-neutral-100 pt-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-xs font-medium text-neutral-600">
+              <div className="my-6 h-px bg-zinc-800" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-sm font-medium text-zinc-400">
                   {t.name.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-neutral-900">
-                    {t.name}
-                  </p>
-                  <p className="text-xs text-neutral-400">{t.role}</p>
+                  <p className="text-sm font-medium text-zinc-50">{t.name}</p>
+                  <p className="text-xs text-zinc-500">{t.role}</p>
                 </div>
               </div>
             </motion.blockquote>
