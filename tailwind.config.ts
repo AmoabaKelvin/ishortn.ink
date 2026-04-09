@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
         display: ["var(--font-display)", "Georgia", "serif"],
+        heading: ["var(--font-heading)", ...fontFamily.sans],
         logo: ["var(--font-logo)", ...fontFamily.sans],
       },
       colors: {
