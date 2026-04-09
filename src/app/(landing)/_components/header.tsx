@@ -48,12 +48,12 @@ export const Header = () => {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className={`mx-auto flex max-w-5xl items-center justify-between px-6 py-4 transition-all duration-300 ${
           scrolled
-            ? "mt-3 rounded-full border border-neutral-200 dark:border-border bg-white/90 dark:bg-card/90 px-6 shadow-sm backdrop-blur-md"
+            ? "mt-3 rounded-full border border-neutral-200 bg-white/90 px-6 shadow-sm backdrop-blur-md"
             : "bg-transparent"
         }`}
       >
         {/* Logo */}
-        <Link href="/" className="font-logo text-[20px] tracking-tight text-neutral-900 dark:text-foreground">
+        <Link href="/" className="font-logo text-[20px] tracking-tight text-neutral-900">
           {APP_TITLE}
         </Link>
 
@@ -64,7 +64,7 @@ export const Header = () => {
               key={name}
               href={href}
               onClick={(e) => handleSmoothScroll(e, href)}
-              className="text-[13px] text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
+              className="text-[13px] text-neutral-500 transition-colors hover:text-neutral-900"
             >
               {name}
             </Link>
@@ -76,7 +76,7 @@ export const Header = () => {
           <SignedOut>
             <Link
               href="/auth/sign-in"
-              className="text-[13px] text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
+              className="text-[13px] text-neutral-500 transition-colors hover:text-neutral-900"
             >
               Log in
             </Link>
@@ -101,7 +101,7 @@ export const Header = () => {
         <button
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="rounded-md p-1.5 text-neutral-600 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-foreground md:hidden"
+          className="rounded-md p-1.5 text-neutral-600 transition-colors hover:text-neutral-900 md:hidden"
         >
           {mobileMenuOpen ? (
             <IconX size={20} stroke={1.5} />
@@ -117,7 +117,7 @@ export const Header = () => {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="mx-6 mt-1 rounded-2xl border border-neutral-200 dark:border-border bg-white dark:bg-card p-5 shadow-lg md:hidden"
+          className="mx-6 mt-1 rounded-2xl border border-neutral-200 bg-white p-5 shadow-lg md:hidden"
         >
           <nav className="flex flex-col gap-1">
             {routes.map(({ name, href }) => (
@@ -128,16 +128,16 @@ export const Header = () => {
                   handleSmoothScroll(e, href);
                   setMobileMenuOpen(false);
                 }}
-                className="rounded-lg px-3 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
+                className="rounded-lg px-3 py-2.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
               >
                 {name}
               </Link>
             ))}
-            <div className="my-2 h-px bg-neutral-100 dark:bg-border/50" />
+            <div className="my-2 h-px bg-neutral-100" />
             <SignedOut>
               <Link
                 href="/auth/sign-in"
-                className="rounded-lg px-3 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
+                className="rounded-lg px-3 py-2.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-50"
               >
                 Log in
               </Link>

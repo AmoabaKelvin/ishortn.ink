@@ -17,19 +17,19 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="relative bg-white dark:bg-card">
+    <main className="relative bg-white">
       <Header />
 
       {/* Hero */}
       <section className="px-6 pt-32 pb-12 md:pt-40 md:pb-16">
         <div className="mx-auto max-w-3xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
             Legal
           </p>
-          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 dark:text-foreground sm:text-5xl">
+          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 sm:text-5xl">
             Privacy Policy
           </h1>
-          <p className="mt-3 text-base text-neutral-500 dark:text-neutral-400">
+          <p className="mt-3 text-base text-neutral-500">
             Last updated: March 2026
           </p>
         </div>

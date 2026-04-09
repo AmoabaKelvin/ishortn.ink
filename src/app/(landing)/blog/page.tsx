@@ -41,19 +41,19 @@ export default async function BlogPage() {
   const posts = await getAllPosts();
 
   return (
-    <main className="relative bg-white dark:bg-card">
+    <main className="relative bg-white">
       <Header />
 
       {/* Hero */}
       <section className="px-6 pt-32 pb-12 md:pt-40 md:pb-16">
         <div className="mx-auto max-w-3xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
             Blog
           </p>
-          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 dark:text-foreground sm:text-5xl">
+          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 sm:text-5xl">
             Insights & Guides
           </h1>
-          <p className="mt-3 text-base text-neutral-500 dark:text-neutral-400">
+          <p className="mt-3 text-base text-neutral-500">
             Tips, tutorials, and updates on link management, analytics, and
             digital marketing.
           </p>
@@ -64,7 +64,7 @@ export default async function BlogPage() {
       <section className="px-6 pb-24">
         <div className="mx-auto max-w-3xl">
           {posts.length === 0 ? (
-            <p className="py-20 text-center text-neutral-400 dark:text-neutral-500">
+            <p className="py-20 text-center text-neutral-400">
               No posts yet. Check back soon.
             </p>
           ) : (
@@ -73,19 +73,19 @@ export default async function BlogPage() {
                 <Link
                   key={post.slug}
                   href={`/blog/${post.slug}`}
-                  className="group block rounded-2xl border border-neutral-100 dark:border-border/50 p-6 transition-all hover:border-neutral-200 dark:hover:border-border hover:shadow-sm"
+                  className="group block rounded-2xl border border-neutral-100 p-6 transition-all hover:border-neutral-200 hover:shadow-sm"
                 >
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
                     <time dateTime={post.date}>{formatDate(post.date)}</time>
                     <span>&middot;</span>
                     <span>{post.readingTime} min read</span>
                   </div>
 
-                  <h2 className="mt-3 text-lg font-medium tracking-tight text-neutral-900 dark:text-foreground transition-colors group-hover:text-neutral-700 dark:group-hover:text-neutral-300">
+                  <h2 className="mt-3 text-lg font-medium tracking-tight text-neutral-900 transition-colors group-hover:text-neutral-700">
                     {post.title}
                   </h2>
 
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+                  <p className="mt-2 text-sm leading-relaxed text-neutral-500">
                     {post.description}
                   </p>
 
@@ -94,7 +94,7 @@ export default async function BlogPage() {
                       {post.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-full bg-neutral-50 dark:bg-accent/50 px-2.5 py-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
+                          className="rounded-full bg-neutral-50 px-2.5 py-1 text-[11px] font-medium text-neutral-500"
                         >
                           {tag}
                         </span>

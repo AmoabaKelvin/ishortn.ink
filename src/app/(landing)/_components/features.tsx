@@ -69,17 +69,17 @@ const FeatureRow = ({
       initial={{ opacity: 0, y: 16 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="group grid grid-cols-1 gap-4 border-b border-neutral-100 dark:border-border/50 py-8 last:border-0 md:grid-cols-12 md:items-center md:gap-8"
+      className="group grid grid-cols-1 gap-4 border-b border-neutral-100 py-8 last:border-0 md:grid-cols-12 md:items-center md:gap-8"
     >
       <div className="flex items-center gap-4 md:col-span-5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted text-neutral-600 dark:text-neutral-400 transition-colors group-hover:bg-neutral-900 dark:group-hover:bg-foreground group-hover:text-white dark:group-hover:text-background">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-600 transition-colors group-hover:bg-neutral-900 group-hover:text-white">
           <FeatureIcon size={20} stroke={1.5} />
         </div>
-        <h3 className="text-base font-medium text-neutral-900 dark:text-foreground">
+        <h3 className="text-base font-medium text-neutral-900">
           {feature.title}
         </h3>
       </div>
-      <p className="text-[15px] leading-relaxed text-neutral-500 dark:text-neutral-400 md:col-span-7">
+      <p className="text-[15px] leading-relaxed text-neutral-500 md:col-span-7">
         {feature.description}
       </p>
     </motion.div>
@@ -105,31 +105,31 @@ const AnalyticsPreview = () => {
       initial={{ opacity: 0, y: 24 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
       transition={{ duration: 0.5 }}
-      className="mt-20 overflow-hidden rounded-xl border border-neutral-200 dark:border-border bg-white dark:bg-card"
+      className="mt-20 overflow-hidden rounded-xl border border-neutral-200 bg-white"
     >
       {/* Window chrome */}
-      <div className="flex items-center gap-2 border-b border-neutral-100 dark:border-border/50 px-5 py-3">
-        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200 dark:bg-accent" />
-        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200 dark:bg-accent" />
-        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200 dark:bg-accent" />
-        <span className="ml-3 text-[11px] text-neutral-400 dark:text-neutral-500">
+      <div className="flex items-center gap-2 border-b border-neutral-100 px-5 py-3">
+        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+        <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+        <span className="ml-3 text-[11px] text-neutral-400">
           Analytics Dashboard
         </span>
       </div>
 
       <div className="p-6 md:p-8">
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-6 border-b border-neutral-100 dark:border-border/50 pb-6">
+        <div className="grid grid-cols-3 gap-6 border-b border-neutral-100 pb-6">
           {[
             { label: "Total clicks", value: "24,847" },
             { label: "Unique visitors", value: "18,293" },
             { label: "Top country", value: "US (42%)" },
           ].map((stat) => (
             <div key={stat.label}>
-              <p className="text-[11px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400">
                 {stat.label}
               </p>
-              <p className="mt-1 text-lg font-semibold text-neutral-900 dark:text-foreground md:text-xl">
+              <p className="mt-1 text-lg font-semibold text-neutral-900 md:text-xl">
                 {stat.value}
               </p>
             </div>
@@ -154,7 +154,7 @@ const AnalyticsPreview = () => {
                 />
               ))}
             </div>
-            <div className="mt-2 flex justify-between text-[10px] text-neutral-300 dark:text-neutral-600">
+            <div className="mt-2 flex justify-between text-[10px] text-neutral-300">
               <span>Jan</span>
               <span>Jun</span>
               <span>Dec</span>
@@ -169,7 +169,7 @@ const AnalyticsPreview = () => {
             <div className="space-y-3">
               {countries.map((country) => (
                 <div key={country.name} className="flex items-center gap-3">
-                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-neutral-100 dark:bg-muted">
+                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-neutral-100">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={
@@ -181,10 +181,10 @@ const AnalyticsPreview = () => {
                       className="h-full rounded-full bg-neutral-900"
                     />
                   </div>
-                  <span className="w-28 shrink-0 text-xs text-neutral-500 dark:text-neutral-400">
+                  <span className="w-28 shrink-0 text-xs text-neutral-500">
                     {country.name}
                   </span>
-                  <span className="w-8 shrink-0 text-right text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                  <span className="w-8 shrink-0 text-right text-xs font-medium text-neutral-700">
                     {country.pct}%
                   </span>
                 </div>
@@ -214,10 +214,10 @@ export const Features = () => {
           transition={{ duration: 0.4 }}
           className="mb-4"
         >
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
             Features
           </p>
-          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 dark:text-foreground sm:text-4xl">
+          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 sm:text-4xl">
             Everything you need,
             <br />
             nothing you don&apos;t

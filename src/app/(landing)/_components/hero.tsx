@@ -57,20 +57,20 @@ const DemoAnimation = () => {
 
   return (
     <div className="mx-auto mt-16 w-full max-w-2xl" style={{ minHeight: 250 }}>
-      <div className="rounded-xl border border-neutral-200 dark:border-border bg-white dark:bg-card shadow-sm">
+      <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
         {/* Window chrome */}
-        <div className="flex items-center gap-2 border-b border-neutral-100 dark:border-border/50 px-4 py-3">
-          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200 dark:bg-accent" />
-          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200 dark:bg-accent" />
-          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200 dark:bg-accent" />
-          <span className="ml-3 text-[11px] text-neutral-400 dark:text-neutral-500">
+        <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-3">
+          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+          <div className="h-2.5 w-2.5 rounded-full bg-neutral-200" />
+          <span className="ml-3 text-[11px] text-neutral-400">
             ishortn.ink
           </span>
         </div>
 
         <div className="p-6">
           {/* Input area */}
-          <div className="rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-4 py-3">
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
             <AnimatePresence mode="wait">
               {step === 0 && (
                 <motion.div
@@ -80,7 +80,7 @@ const DemoAnimation = () => {
                   exit={{ opacity: 0 }}
                   className="flex h-6 items-center"
                 >
-                  <span className="text-sm text-neutral-400 dark:text-neutral-500">
+                  <span className="text-sm text-neutral-400">
                     Paste your long URL here...
                   </span>
                 </motion.div>
@@ -93,7 +93,7 @@ const DemoAnimation = () => {
                   exit={{ opacity: 0 }}
                   className="flex h-6 items-center"
                 >
-                  <span className="truncate text-sm text-neutral-700 dark:text-neutral-300">
+                  <span className="truncate text-sm text-neutral-700">
                     {demo.original}
                   </span>
                 </motion.div>
@@ -178,7 +178,7 @@ export const Hero = () => {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-center"
         >
-          <h1 className="font-display text-5xl leading-[1.08] tracking-tight text-neutral-900 dark:text-foreground sm:text-6xl md:text-7xl">
+          <h1 className="font-display text-5xl leading-[1.08] tracking-tight text-neutral-900 sm:text-6xl md:text-7xl">
             The URL Shortener
             <br />
             That Tracks Every Click
@@ -190,7 +190,7 @@ export const Hero = () => {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mx-auto mt-6 max-w-lg text-center text-base leading-relaxed text-neutral-500 dark:text-neutral-400 md:text-lg"
+          className="mx-auto mt-6 max-w-lg text-center text-base leading-relaxed text-neutral-500 md:text-lg"
         >
           Create short links with powerful analytics and custom domains.
           Track clicks, understand your audience, and grow your brand.
@@ -210,7 +210,7 @@ export const Hero = () => {
             Start for free
             <IconArrowRight size={14} stroke={2} className="transition-transform group-hover:translate-x-0.5" />
           </Link>
-          <span className="text-xs text-neutral-400 dark:text-neutral-500">
+          <span className="text-xs text-neutral-400">
             No credit card required
           </span>
         </motion.div>
@@ -229,20 +229,20 @@ export const Hero = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.8 }}
-          className="mt-16 flex items-center justify-center gap-8 text-xs text-neutral-400 dark:text-neutral-500 md:gap-12"
+          className="mt-16 flex items-center justify-center gap-8 text-xs text-neutral-400 md:gap-12"
         >
           <span>
-            <strong className="font-medium text-neutral-600 dark:text-neutral-300">10M+</strong> links
+            <strong className="font-medium text-neutral-600">10M+</strong> links
             created
           </span>
-          <span className="hidden h-3 w-px bg-neutral-200 dark:bg-border sm:block" />
+          <span className="hidden h-3 w-px bg-neutral-200 sm:block" />
           <span>
-            <strong className="font-medium text-neutral-600 dark:text-neutral-300">50M+</strong> clicks
+            <strong className="font-medium text-neutral-600">50M+</strong> clicks
             tracked
           </span>
-          <span className="hidden h-3 w-px bg-neutral-200 dark:bg-border sm:block" />
+          <span className="hidden h-3 w-px bg-neutral-200 sm:block" />
           <span>
-            <strong className="font-medium text-neutral-600 dark:text-neutral-300">99.9%</strong>{" "}
+            <strong className="font-medium text-neutral-600">99.9%</strong>{" "}
             uptime
           </span>
         </motion.div>

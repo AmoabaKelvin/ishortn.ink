@@ -86,15 +86,6 @@
     --chart-3: 30 75% 58%;
     --chart-4: 270 60% 62%;
     --chart-5: 340 70% 58%;
-
-    /* Landing page dark overrides */
-    --landing-bg: 224 14% 10%;
-    --landing-surface: 224 14% 13%;
-    --landing-border: 222 13% 19%;
-    --landing-text: 213 10% 90%;
-    --landing-text-muted: 218 8% 52%;
-    --landing-accent: 258 80% 72%;
-    --landing-accent-soft: 258 30% 18%;
   }
 }
 

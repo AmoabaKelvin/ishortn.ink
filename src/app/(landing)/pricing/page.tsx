@@ -104,12 +104,12 @@ const faqs = [
 
 function CellValue({ value }: { value: string | boolean }) {
   if (typeof value === "string") {
-    return <span className="text-sm text-neutral-900 dark:text-foreground">{value}</span>;
+    return <span className="text-sm text-neutral-900">{value}</span>;
   }
   if (value) {
     return (
       <svg
-        className="mx-auto h-5 w-5 text-neutral-900 dark:text-foreground"
+        className="mx-auto h-5 w-5 text-neutral-900"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={2}
@@ -125,7 +125,7 @@ function CellValue({ value }: { value: string | boolean }) {
   }
   return (
     <svg
-      className="mx-auto h-5 w-5 text-neutral-300 dark:text-neutral-600"
+      className="mx-auto h-5 w-5 text-neutral-300"
       fill="none"
       viewBox="0 0 24 24"
       strokeWidth={2}
@@ -142,19 +142,19 @@ function CellValue({ value }: { value: string | boolean }) {
 
 export default function PricingPage() {
   return (
-    <main className="relative bg-white dark:bg-card">
+    <main className="relative bg-white">
       <Header />
 
       {/* Hero */}
       <section className="px-6 pt-32 pb-12 md:pt-40 md:pb-16">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
             Pricing
           </p>
-          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 dark:text-foreground sm:text-5xl">
+          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 sm:text-5xl">
             Simple, transparent pricing
           </h1>
-          <p className="mt-3 text-base text-neutral-500 dark:text-neutral-400">
+          <p className="mt-3 text-base text-neutral-500">
             Start for free. Upgrade when you need to.
           </p>
         </div>
@@ -166,27 +166,27 @@ export default function PricingPage() {
       {/* Feature Comparison Table */}
       <section className="px-6 py-20">
         <div className="mx-auto max-w-4xl">
-          <h2 className="mb-10 text-center font-display text-2xl tracking-tight text-neutral-900 dark:text-foreground sm:text-3xl">
+          <h2 className="mb-10 text-center font-display text-2xl tracking-tight text-neutral-900 sm:text-3xl">
             Compare plans in detail
           </h2>
 
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-neutral-200 dark:border-border">
-                  <th className="py-4 pr-6 text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                <tr className="border-b border-neutral-200">
+                  <th className="py-4 pr-6 text-sm font-medium text-neutral-500">
                     Feature
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900 dark:text-foreground">
+                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900">
                     Free
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900 dark:text-foreground">
+                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900">
                     Pro
-                    <span className="ml-1 text-neutral-400 dark:text-neutral-500">$5/mo</span>
+                    <span className="ml-1 text-neutral-400">$5/mo</span>
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900 dark:text-foreground">
+                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900">
                     Ultra
-                    <span className="ml-1 text-neutral-400 dark:text-neutral-500">$15/mo</span>
+                    <span className="ml-1 text-neutral-400">$15/mo</span>
                   </th>
                 </tr>
               </thead>
@@ -194,9 +194,9 @@ export default function PricingPage() {
                 {comparisonFeatures.map((feature) => (
                   <tr
                     key={feature.name}
-                    className="border-b border-neutral-100 dark:border-border/50"
+                    className="border-b border-neutral-100"
                   >
-                    <td className="py-4 pr-6 text-sm text-neutral-700 dark:text-neutral-300">
+                    <td className="py-4 pr-6 text-sm text-neutral-700">
                       {feature.name}
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -219,17 +219,17 @@ export default function PricingPage() {
       {/* FAQ */}
       <section className="px-6 pb-24">
         <div className="mx-auto max-w-3xl">
-          <h2 className="mb-10 text-center font-display text-2xl tracking-tight text-neutral-900 dark:text-foreground sm:text-3xl">
+          <h2 className="mb-10 text-center font-display text-2xl tracking-tight text-neutral-900 sm:text-3xl">
             Frequently asked questions
           </h2>
 
           <dl className="space-y-8">
             {faqs.map((faq) => (
               <div key={faq.question}>
-                <dt className="text-base font-semibold text-neutral-900 dark:text-foreground">
+                <dt className="text-base font-semibold text-neutral-900">
                   {faq.question}
                 </dt>
-                <dd className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+                <dd className="mt-2 text-sm leading-relaxed text-neutral-600">
                   {faq.answer}
                 </dd>
               </div>
