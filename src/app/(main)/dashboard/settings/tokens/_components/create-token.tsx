@@ -49,13 +49,13 @@ const GenerateTokenTrigger = () => {
     <div>
       {/* Empty State */}
       <div className="py-6 text-center">
-        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100">
-          <IconKey size={18} stroke={1.5} className="text-neutral-400" />
+        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
+          <IconKey size={18} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
         </div>
-        <p className="text-[14px] font-medium text-neutral-900">
+        <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
           No API Key Yet
         </p>
-        <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400">
+        <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400 dark:text-neutral-500">
           Create an API key to programmatically access your links, analytics, and more.
         </p>
         <button
@@ -81,12 +81,12 @@ const GenerateTokenTrigger = () => {
           await handlePageRevalidate();
         }}
       >
-        <DialogContent className="max-w-md rounded-xl border-neutral-200">
+        <DialogContent className="max-w-md rounded-xl border-neutral-200 dark:border-border">
           <DialogHeader>
-            <DialogTitle className="text-[14px] font-semibold text-neutral-900">
+            <DialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Your API key is ready
             </DialogTitle>
-            <DialogDescription className="text-[12px] text-neutral-400">
+            <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
               Copy and save it somewhere safe. You won&apos;t be able to see it again.
             </DialogDescription>
           </DialogHeader>
@@ -121,8 +121,8 @@ const GenerateTokenTrigger = () => {
             </div>
 
             {/* Warning */}
-            <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <IconAlertTriangle size={15} stroke={1.5} className="mt-0.5 flex-shrink-0 text-amber-600" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 p-3">
+              <IconAlertTriangle size={15} stroke={1.5} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
                 <p className="text-[12px] font-medium text-amber-800">
                   Store this key securely

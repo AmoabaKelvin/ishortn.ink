@@ -28,17 +28,17 @@ const typeConfig = {
   bug: {
     icon: IconBug,
     label: "Bug Report",
-    className: "bg-red-50 text-red-700",
+    className: "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400",
   },
   feature: {
     icon: IconSparkles,
     label: "Feature Request",
-    className: "bg-blue-50 text-blue-700",
+    className: "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400",
   },
   question: {
     icon: IconMessage,
     label: "Question",
-    className: "bg-amber-50 text-amber-700",
+    className: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400",
   },
 };
 
@@ -69,16 +69,16 @@ export default function AdminFeedbackPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Feedback
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
           User feedback, bug reports, and feature requests
         </p>
       </div>
 
       {/* Filter tabs */}
-      <div className="mb-6 inline-flex gap-1 rounded-lg bg-neutral-100 p-1">
+      <div className="mb-6 inline-flex gap-1 rounded-lg bg-neutral-100 dark:bg-muted p-1">
         {statusTabs.map((tab) => (
           <button
             key={tab.label}
@@ -88,8 +88,8 @@ export default function AdminFeedbackPage() {
             }}
             className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
               statusFilter === tab.value
-                ? "bg-white text-neutral-900 shadow-sm"
-                : "text-neutral-500 hover:text-neutral-700"
+                ? "bg-white dark:bg-card text-neutral-900 dark:text-foreground shadow-sm"
+                : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
             }`}
           >
             {tab.label}
@@ -102,26 +102,26 @@ export default function AdminFeedbackPage() {
           {[...Array(3)].map((_, i) => (
             <div
               key={i}
-              className="h-20 animate-pulse rounded-lg bg-neutral-100"
+              className="h-20 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted"
             />
           ))}
         </div>
       )}
 
       {!isLoading && data && data.items.length === 0 && (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-4 py-12 text-center">
+        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
           <IconMessage
             size={32}
             stroke={1.5}
-            className="mx-auto mb-3 text-neutral-300"
+            className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600"
           />
-          <p className="text-[13px] font-medium text-neutral-500">
+          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             {statusFilter === "open"
               ? "No open feedback"
               : "No feedback found"}
           </p>
           {statusFilter === "open" && (
-            <p className="mt-1 text-[12px] text-neutral-400">
+            <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
               All feedback has been addressed
             </p>
           )}
@@ -138,7 +138,7 @@ export default function AdminFeedbackPage() {
               return (
                 <div
                   key={item.id}
-                  className="rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-300"
+                  className="rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card p-4 transition-colors hover:border-neutral-300 dark:hover:border-border"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
@@ -152,17 +152,17 @@ export default function AdminFeedbackPage() {
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
                             item.status === "open"
-                              ? "bg-green-50 text-green-700"
+                              ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400"
                               : item.status === "resolved"
-                                ? "bg-neutral-100 text-neutral-500"
-                                : "bg-neutral-100 text-neutral-400"
+                                ? "bg-neutral-100 dark:bg-muted text-neutral-500 dark:text-neutral-400"
+                                : "bg-neutral-100 dark:bg-muted text-neutral-400 dark:text-neutral-500"
                           }`}
                         >
                           {item.status}
                         </span>
                       </div>
 
-                      <p className="mt-2 text-[13px] leading-relaxed text-neutral-700">
+                      <p className="mt-2 text-[13px] leading-relaxed text-neutral-700 dark:text-neutral-300">
                         {item.message}
                       </p>
 
@@ -175,7 +175,7 @@ export default function AdminFeedbackPage() {
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-neutral-200 transition-colors hover:border-neutral-300"
+                              className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-neutral-200 dark:border-border transition-colors hover:border-neutral-300 dark:hover:border-border"
                             >
                               <img
                                 src={url}
@@ -193,7 +193,7 @@ export default function AdminFeedbackPage() {
                         </div>
                       )}
 
-                      <div className="mt-2 flex items-center gap-2 text-[11px] text-neutral-400">
+                      <div className="mt-2 flex items-center gap-2 text-[11px] text-neutral-400 dark:text-neutral-500">
                         <span>
                           {item.user?.name && item.user?.email
                             ? `${item.user.name} (${item.user.email})`

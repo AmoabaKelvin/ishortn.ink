@@ -90,7 +90,7 @@ export function QRCodeModal({
         </DialogHeader>
 
         <DialogBody className="flex justify-center">
-          <div className="rounded-lg border border-border bg-white p-2">
+          <div className="rounded-lg border border-border bg-white dark:bg-card p-2">
             {destinationUrl ? (
               <canvas
                 ref={canvasRef}
@@ -98,7 +98,7 @@ export function QRCodeModal({
                 style={{ width: "240px", height: "240px" }}
               />
             ) : (
-              <div className="flex h-[240px] w-[240px] items-center justify-center text-sm text-gray-400">
+              <div className="flex h-[240px] w-[240px] items-center justify-center text-sm text-gray-400 dark:text-neutral-500">
                 No URL provided
               </div>
             )}

@@ -38,10 +38,10 @@ export const Testimonials = () => {
           transition={{ duration: 0.4 }}
           className="mb-12"
         >
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
             Testimonials
           </p>
-          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 sm:text-4xl">
+          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 dark:text-foreground sm:text-4xl">
             Trusted by thousands
           </h2>
         </motion.div>
@@ -55,20 +55,20 @@ export const Testimonials = () => {
                 isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }
               }
               transition={{ duration: 0.4, delay: 0.1 + i * 0.08 }}
-              className="flex flex-col rounded-xl border border-neutral-100 p-6"
+              className="flex flex-col rounded-xl border border-neutral-100 dark:border-border/50 p-6"
             >
-              <p className="flex-1 text-[15px] leading-relaxed text-neutral-600">
+              <p className="flex-1 text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-400">
                 &ldquo;{t.quote}&rdquo;
               </p>
-              <div className="mt-5 flex items-center gap-3 border-t border-neutral-100 pt-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-xs font-medium text-neutral-600">
+              <div className="mt-5 flex items-center gap-3 border-t border-neutral-100 dark:border-border/50 pt-5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 dark:bg-muted text-xs font-medium text-neutral-600 dark:text-neutral-400">
                   {t.name.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-neutral-900">
+                  <p className="text-sm font-medium text-neutral-900 dark:text-foreground">
                     {t.name}
                   </p>
-                  <p className="text-xs text-neutral-400">{t.role}</p>
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500">{t.role}</p>
                 </div>
               </div>
             </motion.blockquote>

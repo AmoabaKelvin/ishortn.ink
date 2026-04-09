@@ -141,14 +141,14 @@ export function FolderSettingsModal({
             <IconLoader2
               size={16}
               stroke={1.5}
-              className="animate-spin text-neutral-400"
+              className="animate-spin text-neutral-400 dark:text-neutral-500"
             />
           </div>
         ) : (
           <DialogBody className="space-y-5">
             {/* Access type selection */}
             <div className="space-y-1.5">
-              <Label className="text-[13px] font-medium text-neutral-700">
+              <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 Access Level
               </Label>
               <div className="grid grid-cols-2 gap-2">
@@ -158,12 +158,12 @@ export function FolderSettingsModal({
                   className={cn(
                     "flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-all",
                     accessType === "all"
-                      ? "border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900/10"
-                      : "border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50"
+                      ? "border-neutral-900 bg-neutral-50 dark:bg-accent/50 ring-1 ring-neutral-900/10"
+                      : "border-neutral-200 dark:border-border hover:border-neutral-300 dark:hover:border-border hover:bg-neutral-50 dark:hover:bg-accent/50"
                   )}
                 >
-                  <span className="text-[13px] font-medium text-neutral-900">All members</span>
-                  <span className="text-[12px] text-neutral-400">
+                  <span className="text-[13px] font-medium text-neutral-900 dark:text-foreground">All members</span>
+                  <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                     Full team access
                   </span>
                 </button>
@@ -174,12 +174,12 @@ export function FolderSettingsModal({
                   className={cn(
                     "flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-all",
                     accessType === "specific"
-                      ? "border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900/10"
-                      : "border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50"
+                      ? "border-neutral-900 bg-neutral-50 dark:bg-accent/50 ring-1 ring-neutral-900/10"
+                      : "border-neutral-200 dark:border-border hover:border-neutral-300 dark:hover:border-border hover:bg-neutral-50 dark:hover:bg-accent/50"
                   )}
                 >
-                  <span className="text-[13px] font-medium text-neutral-900">Restricted</span>
-                  <span className="text-[12px] text-neutral-400">
+                  <span className="text-[13px] font-medium text-neutral-900 dark:text-foreground">Restricted</span>
+                  <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                     Selected members
                   </span>
                 </button>
@@ -189,12 +189,12 @@ export function FolderSettingsModal({
             {/* Member selection */}
             {accessType === "specific" && (
               <div className="space-y-3">
-                <Label className="text-[13px] font-medium text-neutral-700">
+                <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   Team Members
                 </Label>
 
                 {regularMembers.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-neutral-200 py-6 text-center text-[13px] text-neutral-400">
+                  <div className="rounded-lg border border-dashed border-neutral-200 dark:border-border py-6 text-center text-[13px] text-neutral-400 dark:text-neutral-500">
                     No regular members in this team
                   </div>
                 ) : (
@@ -203,14 +203,14 @@ export function FolderSettingsModal({
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-between h-9 border-neutral-200 bg-white text-[13px] font-normal"
+                          className="w-full justify-between h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] font-normal"
                         >
-                          <span className="text-neutral-400">
+                          <span className="text-neutral-400 dark:text-neutral-500">
                             {selectedUserIds.length > 0
                               ? `${selectedUserIds.length} selected`
                               : "Select members"}
                           </span>
-                          <span className="text-[12px] text-neutral-400">
+                          <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                             {regularMembers.length} available
                           </span>
                         </Button>
@@ -219,7 +219,7 @@ export function FolderSettingsModal({
                         <Command>
                           <CommandInput placeholder="Search..." className="h-9" />
                           <CommandList>
-                            <CommandEmpty className="py-4 text-center text-[13px] text-neutral-400">
+                            <CommandEmpty className="py-4 text-center text-[13px] text-neutral-400 dark:text-neutral-500">
                               No members found
                             </CommandEmpty>
                             <CommandGroup>
@@ -234,17 +234,17 @@ export function FolderSettingsModal({
                                     <AvatarImage
                                       src={member.user.imageUrl ?? undefined}
                                     />
-                                    <AvatarFallback className="text-[10px] bg-neutral-100 text-neutral-600">
+                                    <AvatarFallback className="text-[10px] bg-neutral-100 dark:bg-muted text-neutral-600 dark:text-neutral-400">
                                       {member.user.name?.[0]?.toUpperCase() ??
                                         member.user.email?.[0]?.toUpperCase() ??
                                         "U"}
                                     </AvatarFallback>
                                   </Avatar>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-medium text-neutral-900 truncate">
+                                    <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground truncate">
                                       {member.user.name ?? "Unknown"}
                                     </p>
-                                    <p className="text-[12px] text-neutral-400 truncate">
+                                    <p className="text-[12px] text-neutral-400 dark:text-neutral-500 truncate">
                                       {member.user.email}
                                     </p>
                                   </div>
@@ -253,7 +253,7 @@ export function FolderSettingsModal({
                                       "flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] transition-colors",
                                       selectedUserIds.includes(member.userId)
                                         ? "border-blue-600 bg-blue-600"
-                                        : "border-neutral-300"
+                                        : "border-neutral-300 dark:border-border"
                                     )}
                                   >
                                     {selectedUserIds.includes(member.userId) && (
@@ -274,23 +274,23 @@ export function FolderSettingsModal({
                         {getSelectedMembers().map((member) => (
                           <div
                             key={member.userId}
-                            className="flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white py-0.5 pl-1 pr-1.5 text-[12px]"
+                            className="flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card py-0.5 pl-1 pr-1.5 text-[12px]"
                           >
                             <Avatar className="h-4 w-4">
                               <AvatarImage
                                 src={member.user.imageUrl ?? undefined}
                               />
-                              <AvatarFallback className="text-[8px] bg-neutral-100 text-neutral-600">
+                              <AvatarFallback className="text-[8px] bg-neutral-100 dark:bg-muted text-neutral-600 dark:text-neutral-400">
                                 {member.user.name?.[0]?.toUpperCase() ?? "U"}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium text-neutral-600 max-w-[100px] truncate">
+                            <span className="font-medium text-neutral-600 dark:text-neutral-400 max-w-[100px] truncate">
                               {member.user.name?.split(" ")[0] ?? member.user.email?.split("@")[0]}
                             </span>
                             <button
                               type="button"
                               onClick={() => removeMember(member.userId)}
-                              className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                              className="rounded p-0.5 text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
                             >
                               <IconX size={10} stroke={2} />
                             </button>
@@ -300,14 +300,14 @@ export function FolderSettingsModal({
                     )}
 
                     {selectedUserIds.length === 0 && (
-                      <p className="text-[12px] text-neutral-400">
+                      <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                         Only owners and admins will have access
                       </p>
                     )}
                   </div>
                 )}
 
-                <p className="text-[12px] text-neutral-400 pt-1">
+                <p className="text-[12px] text-neutral-400 dark:text-neutral-500 pt-1">
                   Owners and admins always have access to all folders
                 </p>
               </div>

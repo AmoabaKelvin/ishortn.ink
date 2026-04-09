@@ -32,7 +32,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
       <div className="group relative px-1 py-4 transition-colors">
         <div className="flex items-center gap-4">
           {/* QR Code Thumbnail */}
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-neutral-100 bg-white p-1.5 transition-all duration-200 group-hover:border-neutral-200 group-hover:shadow-sm">
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-neutral-100 dark:border-border/50 bg-white dark:bg-card p-1.5 transition-all duration-200 group-hover:border-neutral-200 group-hover:shadow-sm">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={qr.qrCode!}
@@ -45,14 +45,14 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
           <div className="min-w-0 flex-1">
             {/* Title row */}
             <div className="flex items-center gap-2">
-              <span className="truncate text-[14px] font-medium text-neutral-900">
+              <span className="truncate text-[14px] font-medium text-neutral-900 dark:text-foreground">
                 {qr.title || "Untitled QR Code"}
               </span>
             </div>
 
             {/* Metadata row */}
             <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
-              <span className="text-neutral-400">
+              <span className="text-neutral-400 dark:text-neutral-500">
                 {daysSinceCreation === 0
                   ? "Today"
                   : `${daysSinceCreation}d`}
@@ -63,7 +63,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
               {qr.link ? (
                 <Link
                   href={`/dashboard/qrcodes/${qr.id}`}
-                  className="inline-flex items-center gap-1 text-neutral-500 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline"
+                  className="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-400 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline"
                 >
                   <span className="max-w-[200px] truncate sm:max-w-[300px]">
                     {qr.link.url}
@@ -75,7 +75,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
                   />
                 </Link>
               ) : (
-                <span className="max-w-[200px] truncate text-neutral-500 sm:max-w-[300px]">
+                <span className="max-w-[200px] truncate text-neutral-500 dark:text-neutral-400 sm:max-w-[300px]">
                   {qr.content}
                 </span>
               )}
@@ -86,7 +86,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
           <div className="flex shrink-0 items-center gap-2">
             <Link
               href={`/dashboard/qrcodes/${qr.id}`}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900"
             >
               <IconClick size={14} stroke={1.5} />
               <span className="font-medium">{scans}</span>

@@ -106,10 +106,10 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
           {/* Content */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="truncate text-[14px] font-medium text-neutral-900">
+              <span className="truncate text-[14px] font-medium text-neutral-900 dark:text-foreground">
                 {domain.domain}
               </span>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
                 <span
                   className={`inline-block h-1.5 w-1.5 rounded-full ${currentStatus.color}`}
                 />
@@ -118,13 +118,13 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
             </div>
 
             <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
-              <span className="text-neutral-400">
+              <span className="text-neutral-400 dark:text-neutral-500">
                 {daysSinceCreation === 0
                   ? "Today"
                   : `${daysSinceCreation}d`}
               </span>
               <span className="text-neutral-300">&middot;</span>
-              <span className="inline-flex items-center gap-1 text-neutral-500">
+              <span className="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-400">
                 <IconLink size={12} stroke={1.5} />
                 {linkCount} {linkCount === 1 ? "link" : "links"}
               </span>
@@ -137,7 +137,7 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
               <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+                className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-700"
               >
                 <span>DNS</span>
                 <motion.div
@@ -153,7 +153,7 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
               type="button"
               onClick={() => setDeleteDialogOpen(true)}
               disabled={deleteMutation.isLoading}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 opacity-0 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100"
             >
               <IconTrash size={14} stroke={1.5} />
             </button>
@@ -170,9 +170,9 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className="overflow-hidden"
             >
-              <div className="mt-4 rounded-lg border border-neutral-200 p-4">
+              <div className="mt-4 rounded-lg border border-neutral-200 dark:border-border p-4">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="text-[13px] font-medium text-neutral-700">
+                  <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                     DNS Configuration
                   </span>
                   <DomainStatusChecker

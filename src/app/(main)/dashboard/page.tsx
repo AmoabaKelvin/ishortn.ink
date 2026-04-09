@@ -50,11 +50,11 @@ export default async function DashboardPage(props: Props) {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Links
           </h2>
           {totalLinks > 0 && (
-            <p className="mt-1 text-[13px] text-neutral-400">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
               {totalLinks} {totalLinks === 1 ? "link" : "links"} total
             </p>
           )}

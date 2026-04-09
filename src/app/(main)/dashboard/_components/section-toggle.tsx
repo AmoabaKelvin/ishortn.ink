@@ -21,18 +21,18 @@ export function SectionToggle({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 p-4">
+    <div className="rounded-lg border border-neutral-200 dark:border-border p-4">
       <button
         type="button"
         className="flex w-full items-center justify-between text-left"
         onClick={onToggle}
       >
         <div className="flex flex-col gap-0.5">
-          <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900">
+          <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
             {title}
             {badge}
           </p>
-          <span className="text-[12px] text-neutral-400">{description}</span>
+          <span className="text-[12px] text-neutral-400 dark:text-neutral-500">{description}</span>
         </div>
         <IconChevronDown
           size={16}
@@ -62,7 +62,7 @@ export function SectionToggle({
 
 export function PlanBadge({ plan }: { plan: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500">
+    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500 dark:text-neutral-400">
       <IconDiamond size={12} stroke={1.5} className="text-neutral-400" />
       {plan}
     </span>

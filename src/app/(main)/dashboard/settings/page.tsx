@@ -25,10 +25,10 @@ async function SettingsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Settings
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
           Manage your account preferences
         </p>
       </div>
@@ -39,10 +39,10 @@ async function SettingsPage() {
         <div className="flex-1 min-w-0 space-y-12 pb-20">
           {/* Profile */}
           <section id="profile" className="scroll-mt-24">
-            <h2 className="text-[14px] font-semibold text-neutral-900">
+            <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Profile
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
               Your personal information
             </p>
             <div className="mt-4">
@@ -52,10 +52,10 @@ async function SettingsPage() {
 
           {/* General */}
           <section id="general" className="scroll-mt-24">
-            <h2 className="text-[14px] font-semibold text-neutral-900">
+            <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               General
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
               Default settings and preferences
             </p>
             <div className="mt-4">
@@ -68,10 +68,10 @@ async function SettingsPage() {
 
           {/* Billing */}
           <section id="billing" className="scroll-mt-24">
-            <h2 className="text-[14px] font-semibold text-neutral-900">
+            <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Billing
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
               Subscription and payment details
             </p>
             <div className="mt-4">
@@ -82,18 +82,18 @@ async function SettingsPage() {
           {/* API Keys */}
           <section id="api-keys" className="scroll-mt-24">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[14px] font-semibold text-neutral-900">
+              <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                 API Keys
               </h2>
               <Link
                 href="https://ishortn.mintlify.app/introduction"
                 target="_blank"
-                className="text-[12px] text-blue-600 hover:text-blue-700"
+                className="text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700"
               >
                 Docs
               </Link>
             </div>
-            <p className="mt-0.5 text-[12px] text-neutral-400">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
               Programmatic access to your account
             </p>
             <div className="mt-4">
@@ -111,10 +111,10 @@ async function SettingsPage() {
 
           {/* Account Transfer */}
           <section id="account-transfer" className="scroll-mt-24">
-            <h2 className="text-[14px] font-semibold text-neutral-900">
+            <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Account Transfer
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
               Move your resources to another user
             </p>
             <div className="mt-4">

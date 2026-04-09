@@ -46,9 +46,9 @@ export default function Billing({ subscriptions }: BillingProps) {
 
   if (!subscription) {
     return (
-      <div className="rounded-xl border border-neutral-200 p-5">
-        <p className="text-[14px] font-medium text-neutral-900">Free Plan</p>
-        <p className="mt-1 text-[12px] text-neutral-400">
+      <div className="rounded-xl border border-neutral-200 dark:border-border p-5">
+        <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">Free Plan</p>
+        <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
           Upgrade to Pro for unlimited links, custom domains, and advanced
           analytics.
         </p>
@@ -67,14 +67,14 @@ export default function Billing({ subscriptions }: BillingProps) {
   const isActive = subscription.status === "active";
 
   return (
-    <div className="rounded-xl border border-neutral-200 p-5">
+    <div className="rounded-xl border border-neutral-200 dark:border-border p-5">
       <div className="flex items-center gap-2">
-        <p className="text-[14px] font-medium capitalize text-neutral-900">
+        <p className="text-[14px] font-medium capitalize text-neutral-900 dark:text-foreground">
           {subscriptions?.plan ? `${subscriptions.plan} Plan` : "Free Plan"}
         </p>
         <span
           className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${
-            isActive ? "text-emerald-600" : "text-red-600"
+            isActive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
           }`}
         >
           <span
@@ -88,7 +88,7 @@ export default function Billing({ subscriptions }: BillingProps) {
 
       <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
         {subscription.renewsAt && (
-          <span className="text-neutral-400">
+          <span className="text-neutral-400 dark:text-neutral-500">
             Renews {format(new Date(subscription.renewsAt), "MMM d, yyyy")}
           </span>
         )}
@@ -97,7 +97,7 @@ export default function Billing({ subscriptions }: BillingProps) {
             {subscription.renewsAt && (
               <span className="text-neutral-300">&middot;</span>
             )}
-            <span className="capitalize text-neutral-500">
+            <span className="capitalize text-neutral-500 dark:text-neutral-400">
               {subscription.cardBrand} &bull;&bull;&bull;&bull;{" "}
               {subscription.cardLastFour}
             </span>
@@ -105,12 +105,12 @@ export default function Billing({ subscriptions }: BillingProps) {
         )}
       </div>
 
-      <div className="mt-4 flex items-center gap-2 border-t border-neutral-100 pt-4">
+      <div className="mt-4 flex items-center gap-2 border-t border-neutral-100 dark:border-border/50 pt-4">
         <Button
           onClick={handleManageSubscription}
           disabled={isLoading}
           variant="outline"
-          className="h-9 border-neutral-200 text-[13px]"
+          className="h-9 border-neutral-200 dark:border-border text-[13px]"
         >
           {isLoading && (
             <IconLoader2

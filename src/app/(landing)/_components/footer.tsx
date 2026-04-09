@@ -12,7 +12,7 @@ const twitterUrl = "https://twitter.com/kelamoaba";
 const isExternalHref = (href: string) => href.startsWith("http") || href.startsWith("mailto:");
 
 const FooterLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
-  const className = "text-sm text-neutral-500 transition-colors hover:text-neutral-900";
+  const className = "text-sm text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-foreground";
 
   if (isExternalHref(href)) {
     return (
@@ -58,15 +58,15 @@ const footerLinks = {
 
 export const Footer = () => {
   return (
-    <footer className="border-t border-neutral-100 px-6">
+    <footer className="border-t border-neutral-100 dark:border-border/50 px-6">
       <div className="mx-auto max-w-5xl py-16">
         <div className="grid gap-10 md:grid-cols-12">
           {/* Brand */}
           <div className="md:col-span-4">
-            <Link href="/" className="font-logo text-[20px] tracking-tight text-neutral-900">
+            <Link href="/" className="font-logo text-[20px] tracking-tight text-neutral-900 dark:text-foreground">
               {APP_TITLE}
             </Link>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-neutral-400">
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-neutral-400 dark:text-neutral-500">
               Simple, fast link shortening with analytics. Track your impact.
             </p>
             <div className="mt-5 flex gap-3">
@@ -74,7 +74,7 @@ export const Footer = () => {
                 href={twitterUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
               >
                 <IconBrandX size={18} stroke={1.5} />
               </a>
@@ -82,7 +82,7 @@ export const Footer = () => {
                 href={githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
               >
                 <IconBrandGithub size={18} stroke={1.5} />
               </a>
@@ -92,7 +92,7 @@ export const Footer = () => {
           {/* Links */}
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 md:col-span-8">
             <div>
-              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                 Product
               </h4>
               <ul className="space-y-2.5">
@@ -104,7 +104,7 @@ export const Footer = () => {
               </ul>
             </div>
             <div>
-              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                 Resources
               </h4>
               <ul className="space-y-2.5">
@@ -116,7 +116,7 @@ export const Footer = () => {
               </ul>
             </div>
             <div>
-              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                 Compare
               </h4>
               <ul className="space-y-2.5">
@@ -128,7 +128,7 @@ export const Footer = () => {
               </ul>
             </div>
             <div>
-              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                 Legal
               </h4>
               <ul className="space-y-2.5">
@@ -143,7 +143,7 @@ export const Footer = () => {
         </div>
 
         {/* Bottom */}
-        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-neutral-100 pt-8 text-xs text-neutral-400 md:flex-row">
+        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-neutral-100 dark:border-border/50 pt-8 text-xs text-neutral-400 dark:text-neutral-500 md:flex-row">
           <p>
             &copy; {new Date().getFullYear()} {APP_TITLE}. All rights reserved.
           </p>
@@ -153,7 +153,7 @@ export const Footer = () => {
               href={twitterUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-neutral-600 underline underline-offset-4 transition-colors hover:text-neutral-900"
+              className="text-neutral-600 dark:text-neutral-400 underline underline-offset-4 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
             >
               Amoaba Kelvin
             </a>

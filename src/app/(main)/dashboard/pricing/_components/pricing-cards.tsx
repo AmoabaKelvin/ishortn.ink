@@ -154,10 +154,10 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
     <div className="space-y-8">
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+        <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-foreground">
           Simple, transparent pricing
         </h2>
-        <p className="mt-3 text-gray-500 dark:text-gray-400">
+        <p className="mt-3 text-gray-500 dark:text-neutral-400">
           Choose the plan that fits your needs. Upgrade or downgrade at any time.
         </p>
       </div>
@@ -173,7 +173,7 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
             <div
               key={plan.id}
               className={cn(
-                "relative flex flex-col rounded-2xl border bg-white dark:bg-gray-950 p-6 shadow-sm transition-shadow hover:shadow-md",
+                "relative flex flex-col rounded-2xl border bg-white dark:bg-card p-6 shadow-sm transition-shadow hover:shadow-md",
                 plan.popular && currentPlan === "free" && "border-gray-900 dark:border-gray-100 ring-1 ring-gray-900 dark:ring-gray-100",
                 isCurrentPlan && "border-blue-500 ring-1 ring-blue-500"
               )}
@@ -199,10 +199,10 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
 
               {/* Plan Header */}
               <div className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-50">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-foreground">
                   {plan.name}
                 </h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
                   {plan.description}
                 </p>
               </div>
@@ -210,12 +210,12 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
               {/* Price */}
               <div className="mb-6">
                 <div className="flex items-baseline">
-                  <span className="text-sm font-medium text-gray-500">$</span>
-                  <span className="text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+                  <span className="text-sm font-medium text-gray-500 dark:text-neutral-400">$</span>
+                  <span className="text-5xl font-bold tracking-tight text-gray-900 dark:text-foreground">
                     {plan.price}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
                   {plan.period}
                 </p>
               </div>
@@ -262,14 +262,14 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
 
               {/* Features */}
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-50 mb-4">
+                <p className="text-sm font-medium text-gray-900 dark:text-foreground mb-4">
                   {plan.id === "free" ? "Features" : `Everything in ${plan.id === "pro" ? "Free" : "Pro"}, plus:`}
                 </p>
                 <ul className="space-y-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-3">
-                      <Check className="h-4 w-4 text-gray-600 dark:text-gray-400 mt-0.5 shrink-0" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <Check className="h-4 w-4 text-gray-600 dark:text-neutral-400 mt-0.5 shrink-0" />
+                      <span className="text-sm text-gray-600 dark:text-neutral-400">
                         {feature}
                       </span>
                     </li>
@@ -280,10 +280,10 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
                   <>
                     <div className="relative my-4">
                       <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-gray-200 dark:border-gray-800" />
+                        <span className="w-full border-t border-gray-200 dark:border-border" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white dark:bg-gray-950 px-2 text-gray-500">
+                        <span className="bg-white dark:bg-card px-2 text-gray-500 dark:text-neutral-400">
                           Coming Soon
                         </span>
                       </div>
@@ -291,8 +291,8 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
                     <ul className="space-y-3">
                       {plan.comingSoon.map((feature) => (
                         <li key={feature} className="flex items-start gap-3">
-                          <Check className="h-4 w-4 text-gray-400 dark:text-gray-600 mt-0.5 shrink-0" />
-                          <span className="text-sm text-gray-500 dark:text-gray-500">
+                          <Check className="h-4 w-4 text-gray-400 dark:text-neutral-500 mt-0.5 shrink-0" />
+                          <span className="text-sm text-gray-500 dark:text-neutral-400">
                             {feature}
                           </span>
                         </li>
@@ -303,11 +303,11 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
 
                 {/* Limitations for free plan */}
                 {plan.limitations && (
-                  <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
-                    <p className="text-xs font-medium text-gray-500 mb-2">Limitations:</p>
+                  <div className="mt-6 pt-4 border-t border-gray-100 dark:border-border/50">
+                    <p className="text-xs font-medium text-gray-500 dark:text-neutral-400 mb-2">Limitations:</p>
                     <ul className="space-y-1">
                       {plan.limitations.map((limitation) => (
-                        <li key={limitation} className="text-xs text-gray-400">
+                        <li key={limitation} className="text-xs text-gray-400 dark:text-neutral-500">
                           • {limitation}
                         </li>
                       ))}

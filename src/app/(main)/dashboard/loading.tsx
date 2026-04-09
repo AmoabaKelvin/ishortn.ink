@@ -24,7 +24,7 @@ export default function DashboardLoading() {
       </div>
 
       {/* Link list */}
-      <div className="mt-4 divide-y divide-neutral-300/60">
+      <div className="mt-4 divide-y divide-neutral-300/60 dark:divide-border">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}

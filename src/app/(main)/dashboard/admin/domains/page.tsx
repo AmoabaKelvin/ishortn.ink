@@ -56,10 +56,10 @@ export default function AdminDomainsPage() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Blocked Domains
           </h1>
-          <p className="mt-1 text-[13px] text-neutral-400">
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
             {domains
               ? `${domains.length} ${domains.length === 1 ? "domain" : "domains"} blocked`
               : "URLs from these domains will be rejected during link creation"}
@@ -74,18 +74,18 @@ export default function AdminDomainsPage() {
       {!domains && (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-100" />
+            <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted" />
           ))}
         </div>
       )}
 
       {domains && domains.length === 0 && (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-4 py-12 text-center">
-          <IconWorld size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300" />
-          <p className="text-[13px] font-medium text-neutral-500">
+        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
+          <IconWorld size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             No blocked domains yet
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
             Add domains to prevent users from shortening URLs from those sites
           </p>
           <Button
@@ -101,31 +101,31 @@ export default function AdminDomainsPage() {
       )}
 
       {domains && domains.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-neutral-200">
+        <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-border">
           <table className="w-full text-left text-[13px]">
             <thead>
-              <tr className="border-b border-neutral-200 bg-neutral-50">
-                <th className="px-4 py-3 font-medium text-neutral-500">Domain</th>
-                <th className="hidden px-4 py-3 font-medium text-neutral-500 md:table-cell">Reason</th>
-                <th className="hidden px-4 py-3 font-medium text-neutral-500 lg:table-cell">Added</th>
-                <th className="px-4 py-3 text-right font-medium text-neutral-500">Action</th>
+              <tr className="border-b border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
+                <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Domain</th>
+                <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 md:table-cell">Reason</th>
+                <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 lg:table-cell">Added</th>
+                <th className="px-4 py-3 text-right font-medium text-neutral-500 dark:text-neutral-400">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100">
+            <tbody className="divide-y divide-neutral-100 dark:divide-border/50">
               {domains.map((d) => (
-                <tr key={d.id} className="hover:bg-neutral-50/50">
+                <tr key={d.id} className="hover:bg-neutral-50/50 dark:hover:bg-accent/50">
                   <td className="px-4 py-3">
-                    <code className="rounded bg-neutral-100 px-1.5 py-0.5 text-[12px] text-neutral-700">
+                    <code className="rounded bg-neutral-100 dark:bg-muted px-1.5 py-0.5 text-[12px] text-neutral-700 dark:text-neutral-300">
                       {d.domain}
                     </code>
                   </td>
                   <td className="hidden px-4 py-3 md:table-cell">
-                    <p className="max-w-[300px] truncate text-[12px] text-neutral-500">
+                    <p className="max-w-[300px] truncate text-[12px] text-neutral-500 dark:text-neutral-400">
                       {d.reason || "-"}
                     </p>
                   </td>
                   <td className="hidden px-4 py-3 lg:table-cell">
-                    <p className="text-[12px] text-neutral-500">
+                    <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
                       {d.createdAt
                         ? new Date(d.createdAt).toLocaleDateString()
                         : "N/A"}
@@ -160,7 +160,7 @@ export default function AdminDomainsPage() {
           </DialogHeader>
           <DialogBody className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">
+              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 Domain
               </label>
               <Input
@@ -169,12 +169,12 @@ export default function AdminDomainsPage() {
                 placeholder="e.g. evil-phishing.com"
                 className="text-[13px]"
               />
-              <p className="mt-1 text-[11px] text-neutral-400">
+              <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
                 You can paste a full URL and the domain will be extracted automatically.
               </p>
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">
+              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 Reason (optional)
               </label>
               <Textarea

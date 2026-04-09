@@ -131,19 +131,19 @@ const features = [
 
 export default function FeaturesPage() {
   return (
-    <main className="relative bg-white">
+    <main className="relative bg-white dark:bg-card">
       <Header />
 
       {/* Hero */}
       <section className="px-6 pt-32 pb-12 md:pt-40 md:pb-16">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
             Features
           </p>
-          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 sm:text-5xl">
+          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 dark:text-foreground sm:text-5xl">
             Everything you need to manage your links
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-neutral-500">
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-neutral-500 dark:text-neutral-400">
             From detailed analytics to custom domains and AI-powered security,
             iShortn gives you the tools to shorten, share, and track your links
             with confidence.
@@ -164,13 +164,13 @@ export default function FeaturesPage() {
               >
                 {/* Text content */}
                 <div className="flex-1">
-                  <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-sm font-semibold text-neutral-500">
+                  <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted text-sm font-semibold text-neutral-500 dark:text-neutral-400">
                     {index + 1}
                   </div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-neutral-900">
+                  <h2 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
                     {feature.title}
                   </h2>
-                  <p className="mt-3 text-base leading-relaxed text-neutral-500">
+                  <p className="mt-3 text-base leading-relaxed text-neutral-500 dark:text-neutral-400">
                     {feature.description}
                   </p>
                 </div>
@@ -180,8 +180,8 @@ export default function FeaturesPage() {
                   <ul className="space-y-3">
                     {feature.subFeatures.map((sub) => (
                       <li key={sub} className="flex items-start gap-3">
-                        <span className="mt-1.5 block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-neutral-300" />
-                        <span className="text-sm leading-relaxed text-neutral-600">
+                        <span className="mt-1.5 block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                        <span className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
                           {sub}
                         </span>
                       </li>
@@ -195,12 +195,12 @@ export default function FeaturesPage() {
       </section>
 
       {/* CTA */}
-      <section className="border-t border-neutral-100 px-6 py-20">
+      <section className="border-t border-neutral-100 dark:border-border/50 px-6 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+          <h2 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-foreground sm:text-3xl">
             Ready to get started?
           </h2>
-          <p className="mt-3 text-base leading-relaxed text-neutral-500">
+          <p className="mt-3 text-base leading-relaxed text-neutral-500 dark:text-neutral-400">
             Create your free account and start shortening links with powerful
             analytics today.
           </p>
@@ -213,7 +213,7 @@ export default function FeaturesPage() {
             </a>
             <a
               href="/#pricing"
-              className="inline-flex rounded-full border border-neutral-200 px-7 py-3 text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-300 hover:text-neutral-900"
+              className="inline-flex rounded-full border border-neutral-200 dark:border-border px-7 py-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:border-neutral-300 dark:hover:border-border hover:text-neutral-900 dark:hover:text-foreground"
             >
               View Pricing
             </a>

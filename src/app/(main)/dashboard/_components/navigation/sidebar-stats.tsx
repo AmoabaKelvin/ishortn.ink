@@ -46,12 +46,12 @@ export function SidebarStats({
   if (userHasPaidPlan) {
     return (
       <div className="space-y-3">
-        <div className="rounded-lg border border-neutral-100 p-3">
+        <div className="rounded-lg border border-neutral-100 dark:border-border/50 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
               {plan} plan
             </span>
-            <span className="text-[11px] tabular-nums text-neutral-500">
+            <span className="text-[11px] tabular-nums text-neutral-500 dark:text-neutral-400">
               {monthlyLinkCount} links this month
             </span>
           </div>
@@ -59,14 +59,14 @@ export function SidebarStats({
           {/* Event usage — only show if limit exists */}
           {eventLimit != null && (
             <div className="mt-3">
-              <div className="flex items-center justify-between text-[11px] text-neutral-500">
+              <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
                 <span>Events</span>
                 <span className="tabular-nums">
                   {eventCount.toLocaleString()} /{" "}
                   {eventLimit.toLocaleString()}
                 </span>
               </div>
-              <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-neutral-100">
+              <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-muted">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all",
@@ -76,7 +76,7 @@ export function SidebarStats({
                 />
               </div>
               {eventAtLimit && (
-                <p className="mt-1.5 text-[11px] text-red-600">
+                <p className="mt-1.5 text-[11px] text-red-600 dark:text-red-400">
                   Analytics paused until next reset.
                 </p>
               )}
@@ -87,7 +87,7 @@ export function SidebarStats({
         {plan === "pro" && (
           <Link
             href="/dashboard/pricing"
-            className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-900"
+            className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
           >
             Upgrade to Ultra
             <IconArrowUpRight size={12} stroke={1.5} />
@@ -100,21 +100,21 @@ export function SidebarStats({
   // Free plan
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-neutral-100 p-3">
+      <div className="rounded-lg border border-neutral-100 dark:border-border/50 p-3">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
             Free plan
           </span>
           <span
             className={cn(
               "text-[11px] font-medium tabular-nums",
-              isAtLimit ? "text-red-600" : "text-neutral-500",
+              isAtLimit ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400",
             )}
           >
             {monthlyLinkCount} / {linkLimitValue} links
           </span>
         </div>
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-neutral-100">
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-muted">
           <div
             className={cn(
               "h-full rounded-full transition-all",
@@ -128,7 +128,7 @@ export function SidebarStats({
           />
         </div>
         {isAtLimit && (
-          <p className="mt-2 text-[11px] text-red-600">
+          <p className="mt-2 text-[11px] text-red-600 dark:text-red-400">
             Limit reached. Upgrade for more links.
           </p>
         )}

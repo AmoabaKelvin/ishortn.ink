@@ -31,17 +31,17 @@ const FAQItem = ({
       initial={{ opacity: 0, y: 12 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="border-b border-neutral-100 last:border-0"
+      className="border-b border-neutral-100 dark:border-border/50 last:border-0"
     >
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between gap-4 py-5 text-left"
       >
-        <span className="text-[15px] font-medium text-neutral-900">
+        <span className="text-[15px] font-medium text-neutral-900 dark:text-foreground">
           {faq.question}
         </span>
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center text-neutral-400">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center text-neutral-400 dark:text-neutral-500">
           {isOpen ? (
             <IconMinus size={16} stroke={1.5} />
           ) : (
@@ -58,7 +58,7 @@ const FAQItem = ({
             transition={{ duration: 0.25, ease: "easeInOut" }}
           >
             <div className="pb-5">
-              <p className="max-w-2xl text-sm leading-relaxed text-neutral-500">
+              <p className="max-w-2xl text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
                 {faq.answer}
               </p>
             </div>

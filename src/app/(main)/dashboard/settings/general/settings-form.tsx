@@ -73,7 +73,7 @@ export function SettingsForm({
   ];
 
   return (
-    <div className="rounded-xl border border-neutral-200 p-5">
+    <div className="rounded-xl border border-neutral-200 dark:border-border p-5">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -81,7 +81,7 @@ export function SettingsForm({
             name="defaultDomain"
             render={({ field }) => (
               <FormItem>
-                <label className="text-[13px] font-medium text-neutral-700">
+                <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   Default Domain
                 </label>
                 <Select
@@ -89,7 +89,7 @@ export function SettingsForm({
                   defaultValue={field.value}
                 >
                   <FormControl>
-                    <SelectTrigger className="h-9 border-neutral-200 bg-white text-[13px]">
+                    <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
                       <SelectValue placeholder="Select a domain" />
                     </SelectTrigger>
                   </FormControl>
@@ -104,7 +104,7 @@ export function SettingsForm({
                           <IconWorld
                             size={14}
                             stroke={1.5}
-                            className="text-neutral-400"
+                            className="text-neutral-400 dark:text-neutral-500"
                           />
                           <span>{domain.domain}</span>
                         </div>
@@ -112,11 +112,11 @@ export function SettingsForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-neutral-400">
+                <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                   Used when creating quick shortened links.{" "}
                   <a
                     href="/dashboard/domains"
-                    className="text-blue-600 hover:underline"
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Manage domains
                   </a>

@@ -79,7 +79,7 @@ const PricingCard = ({
       className={`relative flex flex-col rounded-2xl border p-7 transition-all ${
         isPopular
           ? "border-neutral-900 bg-neutral-900 text-white"
-          : "border-neutral-200 bg-white"
+          : "border-neutral-200 dark:border-border bg-white dark:bg-card"
       }`}
     >
       {isPopular && (
@@ -90,7 +90,7 @@ const PricingCard = ({
 
       <div>
         <h3
-          className={`text-sm font-medium ${isPopular ? "text-neutral-300" : "text-neutral-500"}`}
+          className={`text-sm font-medium ${isPopular ? "text-neutral-300" : "text-neutral-500 dark:text-neutral-400"}`}
         >
           {plan.name}
         </h3>
@@ -103,7 +103,7 @@ const PricingCard = ({
 
       <div className="mt-6">
         <span
-          className={`text-4xl font-semibold tracking-tight ${isPopular ? "text-white" : "text-neutral-900"}`}
+          className={`text-4xl font-semibold tracking-tight ${isPopular ? "text-white" : "text-neutral-900 dark:text-foreground"}`}
         >
           ${plan.price}
         </span>
@@ -135,7 +135,7 @@ const PricingCard = ({
               className={`mt-0.5 shrink-0 ${isPopular ? "text-neutral-400" : "text-neutral-400"}`}
             />
             <span
-              className={`text-sm ${isPopular ? "text-neutral-300" : "text-neutral-600"}`}
+              className={`text-sm ${isPopular ? "text-neutral-300" : "text-neutral-600 dark:text-neutral-400"}`}
             >
               {feature}
             </span>
@@ -163,13 +163,13 @@ export const Pricing = () => {
           transition={{ duration: 0.4 }}
           className="mb-12"
         >
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
             Pricing
           </p>
-          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 sm:text-4xl">
+          <h2 className="mt-3 font-display text-3xl tracking-tight text-neutral-900 dark:text-foreground sm:text-4xl">
             Simple, transparent pricing
           </h2>
-          <p className="mt-3 text-base text-neutral-500">
+          <p className="mt-3 text-base text-neutral-500 dark:text-neutral-400">
             Start free. Upgrade when you need to. No surprises.
           </p>
         </motion.div>

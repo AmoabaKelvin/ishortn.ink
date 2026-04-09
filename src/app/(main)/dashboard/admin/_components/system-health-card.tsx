@@ -38,13 +38,13 @@ function StatusRow({
     <div className="flex items-center justify-between px-5 py-3">
       <div className="flex items-center gap-2.5">
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotColor[status]}`} />
-        <span className="text-[13px] text-neutral-600">{label}</span>
+        <span className="text-[13px] text-neutral-600 dark:text-neutral-400">{label}</span>
       </div>
       <div className="flex items-center gap-2">
         {detail && (
-          <span className="text-[11px] text-neutral-400">{detail}</span>
+          <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{detail}</span>
         )}
-        <span className="min-w-[2rem] text-right text-[13px] font-semibold tabular-nums text-neutral-900">
+        <span className="min-w-[2rem] text-right text-[13px] font-semibold tabular-nums text-neutral-900 dark:text-foreground">
           {value}
         </span>
       </div>
@@ -60,14 +60,14 @@ type SystemHealthCardProps = {
 export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
   if (isLoading) {
     return (
-      <Card className="rounded-xl border-neutral-200 shadow-none">
-        <div className="border-b border-neutral-100 px-5 py-4">
-          <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
+      <Card className="rounded-xl border-neutral-200 dark:border-border shadow-none">
+        <div className="border-b border-neutral-100 dark:border-border/50 px-5 py-4">
+          <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             System Health
           </p>
         </div>
         <div className="flex items-center justify-center px-5 py-12">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-400" />
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 dark:border-border border-t-neutral-400 dark:border-t-neutral-500" />
         </div>
       </Card>
     );
@@ -75,14 +75,14 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
 
   if (!data) {
     return (
-      <Card className="rounded-xl border-neutral-200 shadow-none">
-        <div className="border-b border-neutral-100 px-5 py-4">
-          <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
+      <Card className="rounded-xl border-neutral-200 dark:border-border shadow-none">
+        <div className="border-b border-neutral-100 dark:border-border/50 px-5 py-4">
+          <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             System Health
           </p>
         </div>
         <div className="flex items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400">Failed to load data</p>
+          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">Failed to load data</p>
         </div>
       </Card>
     );
@@ -92,17 +92,17 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
     v > 5 ? "red" : v > 2 ? "amber" : "green";
 
   return (
-    <Card className="rounded-xl border-neutral-200 shadow-none">
-      <div className="border-b border-neutral-100 px-5 py-4">
-        <p className="text-[14px] font-semibold tracking-tight text-neutral-900">
+    <Card className="rounded-xl border-neutral-200 dark:border-border shadow-none">
+      <div className="border-b border-neutral-100 dark:border-border/50 px-5 py-4">
+        <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           System Health
         </p>
-        <p className="mt-0.5 text-[12px] text-neutral-400">
+        <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
           {data.totalLinks.toLocaleString()} links &middot;{" "}
           {data.totalUsers.toLocaleString()} users
         </p>
       </div>
-      <div className="divide-y divide-neutral-100">
+      <div className="divide-y divide-neutral-100 dark:divide-border/50">
         <StatusRow
           label="Blocked links"
           value={`${data.blockedPercent}%`}

@@ -81,14 +81,14 @@ export function BulkLinkActions() {
         <DropdownMenuTrigger asChild>
           <button
             disabled={isLoading}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-700 dark:hover:text-neutral-300 disabled:opacity-50"
           >
             <IconDots size={16} stroke={1.5} />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="w-44 border-neutral-200 p-1"
+          className="w-44 border-neutral-200 dark:border-border p-1"
           sideOffset={4}
         >
           <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
@@ -96,7 +96,7 @@ export function BulkLinkActions() {
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => setIsUploadModalOpen(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconUpload
               size={15}
@@ -106,7 +106,7 @@ export function BulkLinkActions() {
             Upload CSV
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+          <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
 
           <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
             Export
@@ -114,7 +114,7 @@ export function BulkLinkActions() {
           <DropdownMenuItem
             onClick={() => handleExport("csv")}
             disabled={isLoading}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconFileSpreadsheet
               size={15}
@@ -126,7 +126,7 @@ export function BulkLinkActions() {
           <DropdownMenuItem
             onClick={() => handleExport("json")}
             disabled={isLoading}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50 focus:text-neutral-900"
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
             <IconJson
               size={15}

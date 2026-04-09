@@ -180,7 +180,7 @@ const LinksContent = ({
             className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
           />
           <Input
-            className="h-9 border-neutral-200 bg-white pl-9 text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+            className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card pl-9 text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
             placeholder="Search links..."
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
@@ -191,7 +191,7 @@ const LinksContent = ({
           onValueChange={handleArchivedFilterChange}
           value={archivedFilter}
         >
-          <SelectTrigger className="h-9 w-full border-neutral-200 bg-white text-[13px] sm:w-[130px]">
+          <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[130px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -236,7 +236,7 @@ const LinksContent = ({
           }}
           value={selectedTags.length > 0 ? selectedTags[0] : "all"}
         >
-          <SelectTrigger className="h-9 w-full border-neutral-200 bg-white text-[13px] sm:w-[130px]">
+          <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[130px]">
             <SelectValue placeholder="Tags" />
           </SelectTrigger>
           <SelectContent>
@@ -265,7 +265,7 @@ const LinksContent = ({
           onValueChange={handleOrderChange}
           value={`${orderBy}-${orderDirection}`}
         >
-          <SelectTrigger className="h-9 w-full border-neutral-200 bg-white text-[13px] sm:w-[170px]">
+          <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[170px]">
             <SelectValue placeholder="Sort" />
           </SelectTrigger>
           <SelectContent>
@@ -329,7 +329,7 @@ const LinksContent = ({
             <button
               key={tag}
               onClick={() => removeTag(tag)}
-              className="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[12px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+              className="inline-flex items-center gap-1 rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
             >
               {tag}
               <IconX size={12} stroke={1.5} className="text-neutral-400" />
@@ -360,18 +360,18 @@ const LinksContent = ({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-4 py-2">
+            <div className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card px-4 py-2">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={handleSelectAllToggle}
-                  className="flex items-center gap-2 text-[13px] text-neutral-600 transition-colors hover:text-neutral-900"
+                  className="flex items-center gap-2 text-[13px] text-neutral-600 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
                 >
                   <div
                     className={`flex h-4 w-4 items-center justify-center rounded border-[1.5px] transition-colors ${
                       allSelected
                         ? "border-blue-600 bg-blue-600"
-                        : "border-neutral-300 bg-white"
+                        : "border-neutral-300 bg-white dark:bg-card"
                     }`}
                   >
                     {allSelected && (
@@ -396,7 +396,7 @@ const LinksContent = ({
               </div>
               <button
                 onClick={exitSelectionMode}
-                className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-50 hover:text-neutral-600"
+                className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600"
               >
                 <IconX size={16} stroke={1.5} />
               </button>
@@ -406,7 +406,7 @@ const LinksContent = ({
       </AnimatePresence>
 
       {/* Link list */}
-      <div className="mt-4 divide-y divide-neutral-300/60">
+      <div className="mt-4 divide-y divide-neutral-300/60 dark:divide-border">
         <AnimatePresence>
           {links.map((link, index) => (
             <motion.div
@@ -425,10 +425,10 @@ const LinksContent = ({
       {/* Empty state */}
       {links.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
             <IconSearch size={20} stroke={1.5} className="text-neutral-400" />
           </div>
-          <p className="mt-4 text-[14px] font-medium text-neutral-900">
+          <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
             No links found
           </p>
           <p className="mt-1 text-[13px] text-neutral-400">
@@ -439,7 +439,7 @@ const LinksContent = ({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between border-t border-neutral-100 pt-4">
+        <div className="mt-6 flex items-center justify-between border-t border-neutral-100 dark:border-border/50 pt-4">
           <p className="text-[12px] tabular-nums text-neutral-400">
             Page {currentPage} of {totalPages}
           </p>
@@ -447,14 +447,14 @@ const LinksContent = ({
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage <= 1}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:pointer-events-none disabled:opacity-30"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900 dark:hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
             >
               <IconChevronLeft size={16} stroke={1.5} />
             </button>
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage >= totalPages}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:pointer-events-none disabled:opacity-30"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900 dark:hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
             >
               <IconChevronRight size={16} stroke={1.5} />
             </button>

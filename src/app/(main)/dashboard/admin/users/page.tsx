@@ -71,10 +71,10 @@ export default function AdminUsersPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Manage Users
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
           Search users and manage account bans
         </p>
       </div>
@@ -99,12 +99,12 @@ export default function AdminUsersPage() {
 
       {/* Empty state before search */}
       {!searchQuery && (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-4 py-12 text-center">
-          <IconSearch size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300" />
-          <p className="text-[13px] font-medium text-neutral-500">
+        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
+          <IconSearch size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Search for users to manage
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
             Enter a user&apos;s email address or name
           </p>
         </div>
@@ -113,17 +113,17 @@ export default function AdminUsersPage() {
       {isLoading && searchQuery && (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-100" />
+            <div key={i} className="h-14 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted" />
           ))}
         </div>
       )}
 
       {data && searchQuery && data.users.length === 0 && (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-4 py-12 text-center">
-          <p className="text-[13px] font-medium text-neutral-500">
+        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
+          <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             No users found for &ldquo;{searchQuery}&rdquo;
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
             Try a different search term
           </p>
         </div>
@@ -131,37 +131,37 @@ export default function AdminUsersPage() {
 
       {data && data.users.length > 0 && (
         <>
-          <p className="mb-3 text-[12px] text-neutral-400">
+          <p className="mb-3 text-[12px] text-neutral-400 dark:text-neutral-500">
             {data.total} {data.total === 1 ? "result" : "results"} found
           </p>
 
-          <div className="overflow-hidden rounded-lg border border-neutral-200">
+          <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-border">
             <table className="w-full text-left text-[13px]">
               <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50">
-                  <th className="px-4 py-3 font-medium text-neutral-500">User</th>
-                  <th className="hidden px-4 py-3 font-medium text-neutral-500 md:table-cell">Links</th>
-                  <th className="hidden px-4 py-3 font-medium text-neutral-500 lg:table-cell">Joined</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500">Status</th>
-                  <th className="px-4 py-3 text-right font-medium text-neutral-500">Action</th>
+                <tr className="border-b border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">User</th>
+                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 md:table-cell">Links</th>
+                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 lg:table-cell">Joined</th>
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Status</th>
+                  <th className="px-4 py-3 text-right font-medium text-neutral-500 dark:text-neutral-400">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="divide-y divide-neutral-100 dark:divide-border/50">
                 {data.users.map((u) => (
-                  <tr key={u.id} className="hover:bg-neutral-50/50">
+                  <tr key={u.id} className="hover:bg-neutral-50/50 dark:hover:bg-accent/50">
                     <td className="px-4 py-3">
                       <div>
-                        <p className="text-[13px] font-medium text-neutral-800">
+                        <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
                           {u.name ?? "Unnamed"}
                         </p>
-                        <p className="text-[11px] text-neutral-400">{u.email}</p>
+                        <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{u.email}</p>
                       </div>
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">
-                      <p className="text-[12px] text-neutral-500">{u.linkCount}</p>
+                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">{u.linkCount}</p>
                     </td>
                     <td className="hidden px-4 py-3 lg:table-cell">
-                      <p className="text-[12px] text-neutral-500">
+                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
                         {u.createdAt
                           ? new Date(u.createdAt).toLocaleDateString()
                           : "N/A"}
@@ -170,14 +170,14 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3">
                       {u.banned ? (
                         <span
-                          className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700"
+                          className="inline-flex items-center gap-1 rounded-full bg-red-50 dark:bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-700 dark:text-red-400"
                           title={u.bannedReason ?? undefined}
                         >
                           <IconBan size={11} />
                           Banned
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
                           <IconCheck size={11} />
                           Active
                         </span>
@@ -218,7 +218,7 @@ export default function AdminUsersPage() {
 
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-[12px] text-neutral-400">
+              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                 Page {page} of {totalPages}
               </p>
               <div className="flex gap-2">
@@ -256,21 +256,21 @@ export default function AdminUsersPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-4">
-            <div className="rounded-lg bg-neutral-50 p-3">
-              <p className="text-[13px] font-medium text-neutral-700">
+            <div className="rounded-lg bg-neutral-50 dark:bg-accent/50 p-3">
+              <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 {userToBan?.name ?? "Unnamed"}
               </p>
-              <p className="text-[12px] text-neutral-400">
+              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                 {userToBan?.email}
               </p>
               {userToBan && userToBan.linkCount > 0 && (
-                <p className="mt-1.5 text-[11px] font-medium text-red-600">
+                <p className="mt-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
                   {userToBan.linkCount} {userToBan.linkCount === 1 ? "link" : "links"} will be blocked
                 </p>
               )}
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">
+              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 Reason for banning
               </label>
               <Textarea

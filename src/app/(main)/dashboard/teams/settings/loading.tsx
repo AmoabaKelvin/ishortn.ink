@@ -12,7 +12,7 @@ export default function TeamSettingsLoading() {
         {/* General */}
         <section>
           <Skeleton className="mb-3 h-4 w-16" />
-          <div className="space-y-4 rounded-xl border border-neutral-200 p-5">
+          <div className="space-y-4 rounded-xl border border-neutral-200 dark:border-border p-5">
             <div className="space-y-1.5">
               <Skeleton className="h-3.5 w-20" />
               <Skeleton className="h-9 w-full rounded-lg" />
@@ -26,7 +26,7 @@ export default function TeamSettingsLoading() {
         {/* Team URL */}
         <section>
           <Skeleton className="mb-3 h-4 w-20" />
-          <div className="space-y-4 rounded-xl border border-neutral-200 p-5">
+          <div className="space-y-4 rounded-xl border border-neutral-200 dark:border-border p-5">
             <div className="space-y-1.5">
               <Skeleton className="h-3.5 w-20" />
               <Skeleton className="h-9 w-full rounded-lg" />
@@ -41,7 +41,7 @@ export default function TeamSettingsLoading() {
         {/* Danger Zone */}
         <section>
           <Skeleton className="mb-3 h-4 w-24" />
-          <div className="rounded-xl border border-neutral-200 p-5">
+          <div className="rounded-xl border border-neutral-200 dark:border-border p-5">
             <div className="flex items-center justify-between">
               <div>
                 <Skeleton className="h-3.5 w-24" />

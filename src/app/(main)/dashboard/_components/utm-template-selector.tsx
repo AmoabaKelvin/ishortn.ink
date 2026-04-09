@@ -42,7 +42,7 @@ export function UtmTemplateSelector({
 
   if (error) {
     return (
-      <Button variant="outline" size="sm" disabled className="h-8 border-neutral-200 text-[13px]">
+      <Button variant="outline" size="sm" disabled className="h-8 border-neutral-200 dark:border-border text-[13px]">
         Error loading templates
       </Button>
     );
@@ -50,7 +50,7 @@ export function UtmTemplateSelector({
 
   if (isLoading) {
     return (
-      <Button variant="outline" size="sm" disabled className="h-8 border-neutral-200 text-[13px]">
+      <Button variant="outline" size="sm" disabled className="h-8 border-neutral-200 dark:border-border text-[13px]">
         Loading...
       </Button>
     );
@@ -66,7 +66,7 @@ export function UtmTemplateSelector({
         <Button
           variant="outline"
           size="sm"
-          className="h-8 border-neutral-200 text-[13px]"
+          className="h-8 border-neutral-200 dark:border-border text-[13px]"
           disabled={disabled}
         >
           Apply Template

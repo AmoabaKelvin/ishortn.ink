@@ -70,7 +70,7 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
   if (isBase64 && value) {
     return (
       <div className="space-y-2">
-        <div className="group relative overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+        <div className="group relative overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
           <img
             src={value}
             alt="OG Preview"
@@ -96,19 +96,19 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
+      <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors hover:border-neutral-300 dark:hover:border-border focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
         <input
           type="url"
           placeholder="https://example.com/image.jpg"
           value={value || ""}
           onChange={handleUrlChange}
-          className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+          className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 dark:text-foreground placeholder:text-neutral-400 focus:outline-none"
         />
-        <div className="flex h-full items-center border-l border-neutral-200 px-1">
+        <div className="flex h-full items-center border-l border-neutral-200 dark:border-border px-1">
           <button
             type="button"
             onClick={handleUploadClick}
-            className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-700 dark:hover:text-neutral-300"
           >
             <IconPhotoPlus size={14} stroke={1.5} />
             <span>Upload</span>
@@ -128,7 +128,7 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
 
       {/* URL preview */}
       {value && !isBase64 && (
-        <div className="group relative overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+        <div className="group relative overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
           <img
             src={value}
             alt="OG Preview"

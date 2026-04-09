@@ -201,25 +201,25 @@ export function AnalyticsFilter() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-9 w-full justify-between gap-2 border-neutral-200 bg-white px-3 text-[13px] sm:w-[240px]"
+          className="h-9 w-full justify-between gap-2 border-neutral-200 dark:border-border bg-white dark:bg-card px-3 text-[13px] sm:w-[240px]"
         >
           <div className="flex min-w-0 items-center gap-2">
-            <IconFilter size={14} stroke={1.5} className="shrink-0 text-neutral-400" />
+            <IconFilter size={14} stroke={1.5} className="shrink-0 text-neutral-400 dark:text-neutral-500" />
             <span className="truncate font-medium">{getFilterLabel()}</span>
           </div>
           {filterType !== "all" ? (
             <IconX
               size={14}
               stroke={1.5}
-              className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-600"
+              className="shrink-0 text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
               onClick={clearFilter}
             />
           ) : (
-            <IconChevronRight size={14} stroke={1.5} className="shrink-0 text-neutral-400" />
+            <IconChevronRight size={14} stroke={1.5} className="shrink-0 text-neutral-400 dark:text-neutral-500" />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] rounded-lg border-neutral-200 p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] rounded-lg border-neutral-200 dark:border-border p-0" align="start">
         <Command>
           {viewMode === "items" && (
             <CommandInput
@@ -241,11 +241,11 @@ export function AnalyticsFilter() {
                       className="flex items-center justify-between rounded-md px-3 py-2"
                     >
                       <div className="flex items-center gap-2.5">
-                        <Icon size={14} stroke={1.5} className="text-neutral-400" />
+                        <Icon size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
                         <span className="text-[13px] font-medium">{category.label}</span>
                       </div>
                       {category.value !== "all" && (
-                        <IconChevronRight size={14} stroke={1.5} className="text-neutral-400" />
+                        <IconChevronRight size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
                       )}
                     </CommandItem>
                   );
@@ -255,11 +255,11 @@ export function AnalyticsFilter() {
               <>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <IconLoader2 size={18} stroke={1.5} className="animate-spin text-neutral-400" />
+                    <IconLoader2 size={18} stroke={1.5} className="animate-spin text-neutral-400 dark:text-neutral-500" />
                   </div>
                 ) : (
                   <>
-                    <CommandEmpty className="py-8 text-[13px] text-neutral-400">No {selectedCategory} found.</CommandEmpty>
+                    <CommandEmpty className="py-8 text-[13px] text-neutral-400 dark:text-neutral-500">No {selectedCategory} found.</CommandEmpty>
                     <CommandGroup className="p-1.5">
                       {getCurrentItems().map((item) => (
                         <CommandItem
@@ -271,7 +271,7 @@ export function AnalyticsFilter() {
                           <div className="flex flex-col gap-0.5">
                             <span className="text-[13px] font-medium">{item.label}</span>
                             {item.subtitle && (
-                              <span className="text-[12px] text-neutral-400">
+                              <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                                 {item.subtitle}
                               </span>
                             )}

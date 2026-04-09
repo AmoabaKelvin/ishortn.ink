@@ -89,7 +89,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   ]);
 
   return (
-    <main className="relative bg-white">
+    <main className="relative bg-white dark:bg-card">
       <Header />
 
       {/* Structured Data */}
@@ -105,44 +105,44 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <article className="px-6 pt-32 pb-16 md:pt-40">
         <div className="mx-auto max-w-3xl">
           {/* Breadcrumb */}
-          <nav className="mb-8 flex items-center gap-2 text-xs text-neutral-400">
+          <nav className="mb-8 flex items-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
             <Link
               href="/"
-              className="transition-colors hover:text-neutral-600"
+              className="transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               Home
             </Link>
             <span>/</span>
             <Link
               href="/blog"
-              className="transition-colors hover:text-neutral-600"
+              className="transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               Blog
             </Link>
             <span>/</span>
-            <span className="truncate text-neutral-500">{post.title}</span>
+            <span className="truncate text-neutral-500 dark:text-neutral-400">{post.title}</span>
           </nav>
 
           {/* Post Header */}
           <header className="mb-10">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
               <time dateTime={post.date}>{formatDate(post.date)}</time>
               <span>&middot;</span>
               <span>{post.readingTime} min read</span>
             </div>
 
-            <h1 className="mt-4 font-display text-3xl tracking-tight text-neutral-900 sm:text-4xl md:text-5xl">
+            <h1 className="mt-4 font-display text-3xl tracking-tight text-neutral-900 dark:text-foreground sm:text-4xl md:text-5xl">
               {post.title}
             </h1>
 
-            <p className="mt-4 text-base leading-relaxed text-neutral-500">
+            <p className="mt-4 text-base leading-relaxed text-neutral-500 dark:text-neutral-400">
               {post.description}
             </p>
 
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-sm text-neutral-500">
+              <div className="text-sm text-neutral-500 dark:text-neutral-400">
                 By{" "}
-                <span className="font-medium text-neutral-700">
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">
                   {post.author}
                 </span>
               </div>
@@ -152,7 +152,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   {post.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full bg-neutral-50 px-2.5 py-1 text-[11px] font-medium text-neutral-500"
+                      className="rounded-full bg-neutral-50 dark:bg-accent/50 px-2.5 py-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
                     >
                       {tag}
                     </span>
@@ -163,7 +163,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </header>
 
           {/* Divider */}
-          <div className="mb-10 h-px bg-neutral-100" />
+          <div className="mb-10 h-px bg-neutral-100 dark:bg-border/50" />
 
           {/* Post Content */}
           <div
@@ -175,9 +175,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
       {/* Related Posts */}
       {relatedPosts.length > 0 && (
-        <section className="border-t border-neutral-100 px-6 py-16">
+        <section className="border-t border-neutral-100 dark:border-border/50 px-6 py-16">
           <div className="mx-auto max-w-3xl">
-            <h2 className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+            <h2 className="text-xs font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
               Related Posts
             </h2>
 
@@ -186,15 +186,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 <Link
                   key={relatedPost.slug}
                   href={`/blog/${relatedPost.slug}`}
-                  className="group rounded-xl border border-neutral-100 p-5 transition-all hover:border-neutral-200 hover:shadow-sm"
+                  className="group rounded-xl border border-neutral-100 dark:border-border/50 p-5 transition-all hover:border-neutral-200 dark:hover:border-border hover:shadow-sm"
                 >
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                     {formatDate(relatedPost.date)}
                   </p>
-                  <h3 className="mt-2 text-sm font-medium tracking-tight text-neutral-900 transition-colors group-hover:text-neutral-700">
+                  <h3 className="mt-2 text-sm font-medium tracking-tight text-neutral-900 dark:text-foreground transition-colors group-hover:text-neutral-700 dark:group-hover:text-neutral-300">
                     {relatedPost.title}
                   </h3>
-                  <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-neutral-500">
+                  <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
                     {relatedPost.description}
                   </p>
                 </Link>

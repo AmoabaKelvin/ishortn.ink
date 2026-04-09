@@ -13,7 +13,7 @@ export default function FoldersLoading() {
       </div>
 
       {/* List skeleton - flat rows */}
-      <div className="divide-y divide-neutral-300/60">
+      <div className="divide-y divide-neutral-300/60 dark:divide-border">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 px-1 py-4">
             <div className="min-w-0 flex-1">

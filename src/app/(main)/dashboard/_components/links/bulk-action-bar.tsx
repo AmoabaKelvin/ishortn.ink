@@ -154,7 +154,7 @@ export function BulkActionBar() {
           transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
           className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
         >
-          <div className="flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 py-1.5 shadow-lg">
+          <div className="flex items-center gap-1 rounded-xl border border-neutral-200 dark:border-border bg-white dark:bg-card px-2 py-1.5 shadow-lg">
             {/* Count */}
             <div className="flex items-center gap-2 px-2.5 py-1">
               <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600">
@@ -172,14 +172,14 @@ export function BulkActionBar() {
               </span>
             </div>
 
-            <div className="h-5 w-px bg-neutral-200" />
+            <div className="h-5 w-px bg-neutral-200 dark:bg-border" />
 
             {/* Actions */}
             <div className="flex items-center gap-0.5 px-1">
               <button
                 type="button"
                 onClick={() => setMoveToFolderOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
               >
                 <IconFolderShare size={15} stroke={1.5} />
                 <span className="hidden sm:inline">Folder</span>
@@ -189,7 +189,7 @@ export function BulkActionBar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                    className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
                   >
                     <span className="hidden sm:inline">More</span>
                     <IconChevronDown size={14} stroke={1.5} />
@@ -197,7 +197,7 @@ export function BulkActionBar() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="center"
-                  className="w-48 border-neutral-200 p-1"
+                  className="w-48 border-neutral-200 dark:border-border p-1"
                   sideOffset={8}
                 >
                   <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
@@ -205,7 +205,7 @@ export function BulkActionBar() {
                   </DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => setTransferOpen(true)}
-                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50"
+                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
                   >
                     <IconFolderShare
                       size={15}
@@ -216,7 +216,7 @@ export function BulkActionBar() {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => openArchiveDialog("archive")}
-                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50"
+                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
                   >
                     <IconArchive
                       size={15}
@@ -226,14 +226,14 @@ export function BulkActionBar() {
                     Archive
                   </DropdownMenuItem>
 
-                  <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+                  <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
 
                   <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
                     Settings
                   </DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => openStatusDialog("deactivate")}
-                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50"
+                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
                   >
                     <IconLinkOff
                       size={15}
@@ -244,7 +244,7 @@ export function BulkActionBar() {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => openStatusDialog("activate")}
-                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 focus:bg-neutral-50"
+                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
                   >
                     <IconLink
                       size={15}
@@ -254,11 +254,11 @@ export function BulkActionBar() {
                     Activate links
                   </DropdownMenuItem>
 
-                  <DropdownMenuSeparator className="my-1 bg-neutral-100" />
+                  <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
 
                   <DropdownMenuItem
                     onClick={() => setDeleteDialogOpen(true)}
-                    className="rounded-md px-2 py-1.5 text-[13px] text-red-600 focus:bg-red-50 focus:text-red-600"
+                    className="rounded-md px-2 py-1.5 text-[13px] text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10 focus:text-red-600 dark:focus:text-red-400"
                   >
                     <IconTrash size={15} stroke={1.5} className="mr-2" />
                     Delete links
@@ -267,12 +267,12 @@ export function BulkActionBar() {
               </DropdownMenu>
             </div>
 
-            <div className="h-5 w-px bg-neutral-200" />
+            <div className="h-5 w-px bg-neutral-200 dark:bg-border" />
 
             <button
               type="button"
               onClick={exitSelectionMode}
-              className="flex items-center justify-center rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-50 hover:text-neutral-600"
+              className="flex items-center justify-center rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600"
             >
               <IconX size={15} stroke={1.5} />
             </button>
@@ -298,20 +298,20 @@ export function BulkActionBar() {
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="max-w-sm border-neutral-200">
+        <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900">
+            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
               Delete {selectedLinkIds.length}{" "}
               {selectedLinkIds.length === 1 ? "link" : "links"}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[13px] text-neutral-500">
+            <AlertDialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
               This will permanently delete{" "}
               {selectedLinkIds.length === 1 ? "this link" : "these links"} and
               all associated analytics data. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="h-9 border-neutral-200 text-[13px] hover:bg-neutral-50">
+            <AlertDialogCancel className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -330,21 +330,21 @@ export function BulkActionBar() {
         open={archiveDialogOpen}
         onOpenChange={setArchiveDialogOpen}
       >
-        <AlertDialogContent className="max-w-sm border-neutral-200">
+        <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900">
+            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
               {archiveAction === "archive" ? "Archive" : "Restore"}{" "}
               {selectedLinkIds.length}{" "}
               {selectedLinkIds.length === 1 ? "link" : "links"}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[13px] text-neutral-500">
+            <AlertDialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
               {archiveAction === "archive"
                 ? `${selectedLinkIds.length === 1 ? "This link" : "These links"} will be archived. Archived links still work but are hidden from the main view.`
                 : `${selectedLinkIds.length === 1 ? "This link" : "These links"} will be restored and visible again.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="h-9 border-neutral-200 text-[13px] hover:bg-neutral-50">
+            <AlertDialogCancel className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -369,21 +369,21 @@ export function BulkActionBar() {
         open={statusDialogOpen}
         onOpenChange={setStatusDialogOpen}
       >
-        <AlertDialogContent className="max-w-sm border-neutral-200">
+        <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900">
+            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
               {statusAction === "deactivate" ? "Deactivate" : "Activate"}{" "}
               {selectedLinkIds.length}{" "}
               {selectedLinkIds.length === 1 ? "link" : "links"}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[13px] text-neutral-500">
+            <AlertDialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
               {statusAction === "deactivate"
                 ? `${selectedLinkIds.length === 1 ? "This link" : "These links"} will be deactivated and will no longer redirect visitors.`
                 : `${selectedLinkIds.length === 1 ? "This link" : "These links"} will be activated and start redirecting visitors again.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="h-9 border-neutral-200 text-[13px] hover:bg-neutral-50">
+            <AlertDialogCancel className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

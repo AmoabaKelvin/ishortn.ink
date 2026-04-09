@@ -49,7 +49,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
       className={cn(
         "group relative px-1 py-4 transition-colors",
         isSelectionMode && "cursor-pointer",
-        selected && "bg-neutral-50",
+        selected && "bg-neutral-50 dark:bg-accent/50",
       )}
       onClick={handleCardClick}
     >
@@ -73,7 +73,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
               "flex h-[18px] w-[18px] items-center justify-center rounded border-[1.5px] transition-colors",
               selected
                 ? "border-blue-600 bg-blue-600"
-                : "border-neutral-300 bg-white hover:border-neutral-400",
+                : "border-neutral-300 bg-white dark:bg-card hover:border-neutral-400",
             )}
           >
             <AnimatePresence mode="wait">
@@ -96,7 +96,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           {/* Title row */}
           <div className="flex items-center gap-2">
             <span
-              className="cursor-pointer truncate text-[14px] font-medium text-neutral-900 transition-colors hover:text-neutral-600"
+              className="cursor-pointer truncate text-[14px] font-medium text-neutral-900 dark:text-foreground transition-colors hover:text-neutral-600 dark:hover:text-neutral-400"
               onClick={(e) => {
                 if (!isSelectionMode) {
                   e.stopPropagation();
@@ -112,7 +112,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
             </span>
             <button
               type="button"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
               onClick={async (e) => {
                 e.stopPropagation();
                 await copyToClipboard(`https://${link.domain}/${link.alias}`);
@@ -131,7 +131,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
             </span>
             <span className="text-neutral-300">&middot;</span>
             <span
-              className="max-w-[200px] cursor-pointer truncate text-neutral-500 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline sm:max-w-[300px]"
+              className="max-w-[200px] cursor-pointer truncate text-neutral-500 dark:text-neutral-400 underline-offset-2 transition-colors hover:text-neutral-900 dark:hover:text-foreground hover:underline sm:max-w-[300px]"
               onClick={(e) => {
                 if (!isSelectionMode) {
                   e.stopPropagation();
@@ -148,7 +148,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
               <>
                 <span className="text-neutral-300">&middot;</span>
                 <button
-                  className="inline-flex items-center gap-1 rounded-md text-neutral-500 transition-colors hover:text-neutral-900"
+                  className="inline-flex items-center gap-1 rounded-md text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
                   onClick={(e) => {
                     if (!isSelectionMode) {
                       e.stopPropagation();
@@ -169,7 +169,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                   {tags.map((tag) => (
                     <button
                       key={tag}
-                      className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700"
+                      className="rounded bg-neutral-100 dark:bg-muted px-1.5 py-0.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-200 dark:hover:bg-accent hover:text-neutral-700 dark:hover:text-neutral-300"
                       onClick={(e) => {
                         if (!isSelectionMode) {
                           e.stopPropagation();
@@ -195,7 +195,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                       className="h-3.5 w-3.5 rounded-full object-cover"
                     />
                   ) : (
-                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-neutral-200 text-[9px] font-medium text-neutral-600">
+                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-neutral-200 dark:bg-accent text-[9px] font-medium text-neutral-600 dark:text-neutral-400">
                       {(createdBy.name ?? "U").charAt(0).toUpperCase()}
                     </span>
                   )}
@@ -214,7 +214,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
 
           {link.cloaking && (
             <span
-              className="inline-flex items-center gap-1 rounded-md border border-neutral-200 px-2 py-1 text-[11px] font-medium text-neutral-500"
+              className="inline-flex items-center gap-1 rounded-md border border-neutral-200 dark:border-border px-2 py-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
               title="Link cloaking enabled"
             >
               <IconEye size={12} stroke={1.5} />
@@ -223,7 +223,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           )}
 
           <button
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900 dark:hover:text-foreground"
             onClick={(e) => {
               if (!isSelectionMode) {
                 e.stopPropagation();

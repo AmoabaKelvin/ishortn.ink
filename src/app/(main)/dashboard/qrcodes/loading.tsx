@@ -13,7 +13,7 @@ export default function QRCodesLoading() {
       </div>
 
       {/* List */}
-      <div className="divide-y divide-neutral-300/60">
+      <div className="divide-y divide-neutral-300/60 dark:divide-border">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 px-1 py-4">
             {/* Thumbnail */}

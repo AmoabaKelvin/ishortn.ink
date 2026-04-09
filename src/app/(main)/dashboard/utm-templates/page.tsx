@@ -46,7 +46,7 @@ export default function UtmTemplatesPage() {
         <IconLoader2
           size={20}
           stroke={1.5}
-          className="animate-spin text-neutral-400"
+          className="animate-spin text-neutral-400 dark:text-neutral-500"
         />
       </div>
     );
@@ -80,11 +80,11 @@ export default function UtmTemplatesPage() {
           transition={{ duration: 0.3, delay: 0.15 }}
           className="relative"
         >
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
             <IconTarget
               size={24}
               stroke={1.5}
-              className="text-neutral-400"
+              className="text-neutral-400 dark:text-neutral-500"
             />
           </div>
         </motion.div>
@@ -95,10 +95,10 @@ export default function UtmTemplatesPage() {
           transition={{ duration: 0.3, delay: 0.25 }}
           className="mt-6 text-center"
         >
-          <p className="text-[14px] font-medium text-neutral-900">
+          <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
             UTM Templates
           </p>
-          <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400">
+          <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
             Create reusable UTM parameter templates to streamline your campaign
             tracking.
           </p>
@@ -109,11 +109,11 @@ export default function UtmTemplatesPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.35 }}
         >
-          <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[12px] font-medium text-neutral-600">
+          <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400">
             <IconDiamond
               size={14}
               stroke={1.5}
-              className="text-neutral-400"
+              className="text-neutral-400 dark:text-neutral-500"
             />
             Available on Ultra plan
           </span>
@@ -126,11 +126,11 @@ export default function UtmTemplatesPage() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             UTM Templates
           </h1>
           {templates && templates.length > 0 && (
-            <p className="mt-1 text-[13px] text-neutral-400">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
               {templates.length}{" "}
               {templates.length === 1 ? "template" : "templates"} total
             </p>
@@ -147,20 +147,20 @@ export default function UtmTemplatesPage() {
       </div>
 
       {isLoading ? (
-        <div className="divide-y divide-neutral-300/60">
+        <div className="divide-y divide-neutral-300/60 dark:divide-border">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-1 py-4">
               <div className="min-w-0 flex-1">
-                <div className="h-4 w-40 animate-pulse rounded bg-neutral-100" />
+                <div className="h-4 w-40 animate-pulse rounded bg-neutral-100 dark:bg-muted" />
                 <div className="mt-1.5 flex items-center gap-2">
-                  <div className="h-3 w-48 animate-pulse rounded bg-neutral-100" />
+                  <div className="h-3 w-48 animate-pulse rounded bg-neutral-100 dark:bg-muted" />
                 </div>
               </div>
             </div>
           ))}
         </div>
       ) : templates && templates.length > 0 ? (
-        <div className="divide-y divide-neutral-300/60">
+        <div className="divide-y divide-neutral-300/60 dark:divide-border">
           <AnimatePresence>
             {templates.map((template, index) => (
               <UtmTemplateCard
@@ -199,11 +199,11 @@ export default function UtmTemplatesPage() {
             transition={{ duration: 0.3, delay: 0.15 }}
             className="relative"
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100">
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
               <IconTarget
                 size={24}
                 stroke={1.5}
-                className="text-neutral-400"
+                className="text-neutral-400 dark:text-neutral-500"
               />
             </div>
           </motion.div>
@@ -214,10 +214,10 @@ export default function UtmTemplatesPage() {
             transition={{ duration: 0.3, delay: 0.25 }}
             className="mt-6 text-center"
           >
-            <p className="text-[14px] font-medium text-neutral-900">
+            <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
               No templates yet
             </p>
-            <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400">
+            <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
               Create your first UTM template to get started.
             </p>
           </motion.div>

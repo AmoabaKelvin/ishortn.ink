@@ -49,7 +49,7 @@ export const RangeSelector = ({
 
   return (
     <Select value={selectedRange} onValueChange={handleRangeChange}>
-      <SelectTrigger className="h-9 w-[180px] border-neutral-200 bg-white text-[13px]">
+      <SelectTrigger className="h-9 w-[180px] border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
         <SelectValue placeholder="Select range" />
       </SelectTrigger>
       <SelectContent>
@@ -63,7 +63,7 @@ export const RangeSelector = ({
                 !isProPlan && option.value !== "7d" && option.value !== "24h"
               }
             >
-              <Icon size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
+              <Icon size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400 dark:text-neutral-500" />
               {option.label}
             </SelectItem>
           );

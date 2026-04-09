@@ -178,7 +178,7 @@ export default function TeamSettingsPage() {
   if (currentWorkspace.isLoading || teamData.isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <IconLoader2 size={20} stroke={1.5} className="animate-spin text-neutral-400" />
+        <IconLoader2 size={20} stroke={1.5} className="animate-spin text-neutral-400 dark:text-neutral-500" />
       </div>
     );
   }
@@ -186,19 +186,19 @@ export default function TeamSettingsPage() {
   if (!isTeamWorkspace) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
-          <IconSettings size={20} stroke={1.5} className="text-neutral-400" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
+          <IconSettings size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
         </div>
-        <p className="mt-4 text-[14px] font-medium text-neutral-900">
+        <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
           Team Settings
         </p>
-        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400">
+        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-neutral-500">
           Switch to a team workspace to access these settings.
         </p>
         <button
           type="button"
           onClick={() => router.push("/dashboard")}
-          className="mt-4 rounded-lg border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+          className="mt-4 rounded-lg border border-neutral-200 dark:border-border px-4 py-2 text-[13px] font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
         >
           Go to Dashboard
         </button>
@@ -209,10 +209,10 @@ export default function TeamSettingsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Team settings
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
           Manage your team configuration.
         </p>
       </div>
@@ -220,10 +220,10 @@ export default function TeamSettingsPage() {
       <div className="space-y-8">
         {/* General Settings */}
         <section>
-          <h2 className="mb-3 text-[14px] font-semibold text-neutral-900">
+          <h2 className="mb-3 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
             General
           </h2>
-          <div className="rounded-xl border border-neutral-200 p-5">
+          <div className="rounded-xl border border-neutral-200 dark:border-border p-5">
             <Form {...teamForm}>
               <form
                 onSubmit={teamForm.handleSubmit(onUpdateTeam)}
@@ -234,14 +234,14 @@ export default function TeamSettingsPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <label className="text-[13px] font-medium text-neutral-700">
+                      <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                         Team name
                       </label>
                       <FormControl>
                         <Input
                           placeholder="Acme Inc"
                           disabled={!isAdmin}
-                          className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                          className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                           {...field}
                         />
                       </FormControl>
@@ -271,10 +271,10 @@ export default function TeamSettingsPage() {
         {/* Team URL */}
         {isOwner && (
           <section>
-            <h2 className="mb-3 text-[14px] font-semibold text-neutral-900">
+            <h2 className="mb-3 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Team URL
             </h2>
-            <div className="rounded-xl border border-neutral-200 p-5">
+            <div className="rounded-xl border border-neutral-200 dark:border-border p-5">
               <Form {...slugForm}>
                 <form
                   onSubmit={slugForm.handleSubmit(onUpdateSlug)}
@@ -285,23 +285,23 @@ export default function TeamSettingsPage() {
                     name="slug"
                     render={({ field }) => (
                       <FormItem>
-                        <label className="text-[13px] font-medium text-neutral-700">
+                        <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                           Subdomain
                         </label>
                         <FormControl>
                           <div className="flex items-center">
-                            <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 bg-neutral-50 px-3 text-[13px] text-neutral-400">
+                            <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
                               https://
                             </span>
                             <Input
                               placeholder="acme"
-                              className="h-9 rounded-none border-x-0 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                              className="h-9 rounded-none border-x-0 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                               {...field}
                               onChange={(e) =>
                                 field.onChange(e.target.value.toLowerCase())
                               }
                             />
-                            <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 bg-neutral-50 px-3 text-[13px] text-neutral-400">
+                            <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
                               .ishortn.ink
                             </span>
                           </div>
@@ -311,17 +311,17 @@ export default function TeamSettingsPage() {
                           debouncedSlug !== teamData.data?.slug && (
                             <div className="mt-2 flex items-center gap-1.5">
                               {slugCheck.isLoading ? (
-                                <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                                <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">
                                   <IconLoader2 size={12} stroke={1.5} className="animate-spin" />
                                   Checking...
                                 </div>
                               ) : slugCheck.data?.available ? (
-                                <div className="flex items-center gap-1 text-[11px] text-emerald-600">
+                                <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
                                   <IconCheck size={12} stroke={1.5} />
                                   Available
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-1 text-[11px] text-red-600">
+                                <div className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400">
                                   <IconX size={12} stroke={1.5} />
                                   Already taken
                                 </div>
@@ -332,7 +332,7 @@ export default function TeamSettingsPage() {
                       </FormItem>
                     )}
                   />
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                     Changing the URL will require members to update bookmarks.
                   </p>
                   <div className="flex justify-end">
@@ -344,7 +344,7 @@ export default function TeamSettingsPage() {
                         (debouncedSlug !== teamData.data?.slug &&
                           !slugCheck.data?.available)
                       }
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-border px-4 py-2 text-[13px] font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 disabled:opacity-50"
                     >
                       {updateSlugMutation.isLoading && (
                         <IconLoader2 size={14} stroke={1.5} className="animate-spin" />
@@ -360,15 +360,15 @@ export default function TeamSettingsPage() {
 
         {/* Danger Zone */}
         <section>
-          <h2 className="mb-3 text-[14px] font-semibold text-red-600">
+          <h2 className="mb-3 text-[14px] font-semibold text-red-600 dark:text-red-400">
             Danger zone
           </h2>
-          <div className="rounded-xl border border-red-200 bg-red-50/30 p-5">
+          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50/30 p-5">
             {!isOwner ? (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] font-medium text-neutral-900">Leave team</p>
-                  <p className="mt-0.5 text-[12px] text-neutral-400">
+                  <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">Leave team</p>
+                  <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
                     Remove yourself from this team.
                   </p>
                 </div>
@@ -376,22 +376,22 @@ export default function TeamSettingsPage() {
                   <AlertDialogTrigger asChild>
                     <button
                       type="button"
-                      className="rounded-lg border border-red-200 px-3 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-50"
+                      className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-[12px] font-medium text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
                     >
                       Leave
                     </button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="max-w-md rounded-xl">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900">
+                      <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                         Leave team?
                       </AlertDialogTitle>
-                      <AlertDialogDescription className="text-[12px] text-neutral-500">
+                      <AlertDialogDescription className="text-[12px] text-neutral-500 dark:text-neutral-400">
                         You&apos;ll need to be invited again to rejoin.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel className="rounded-lg border-neutral-200 text-[13px]">
+                      <AlertDialogCancel className="rounded-lg border-neutral-200 dark:border-border text-[13px]">
                         Cancel
                       </AlertDialogCancel>
                       <AlertDialogAction
@@ -414,8 +414,8 @@ export default function TeamSettingsPage() {
             ) : (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] font-medium text-neutral-900">Delete team</p>
-                  <p className="mt-0.5 text-[12px] text-neutral-400">
+                  <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">Delete team</p>
+                  <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
                     Permanently delete this team and all resources.
                   </p>
                 </div>
@@ -430,12 +430,12 @@ export default function TeamSettingsPage() {
                   </AlertDialogTrigger>
                   <AlertDialogContent className="max-w-md rounded-xl">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900">
+                      <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                         Delete team?
                       </AlertDialogTitle>
-                      <AlertDialogDescription className="text-[12px] text-neutral-500">
+                      <AlertDialogDescription className="text-[12px] text-neutral-500 dark:text-neutral-400">
                         This action cannot be undone. Type{" "}
-                        <span className="font-medium text-neutral-700">
+                        <span className="font-medium text-neutral-700 dark:text-neutral-300">
                           {teamData.data?.name}
                         </span>{" "}
                         to confirm.
@@ -445,12 +445,12 @@ export default function TeamSettingsPage() {
                       value={deleteConfirmation}
                       onChange={(e) => setDeleteConfirmation(e.target.value)}
                       placeholder="Type team name"
-                      className="h-9 border-neutral-200 bg-white text-[13px] placeholder:text-neutral-400"
+                      className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                     />
                     <AlertDialogFooter>
                       <AlertDialogCancel
                         onClick={() => setDeleteConfirmation("")}
-                        className="rounded-lg border-neutral-200 text-[13px]"
+                        className="rounded-lg border-neutral-200 dark:border-border text-[13px]"
                       >
                         Cancel
                       </AlertDialogCancel>

@@ -60,7 +60,7 @@ export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
           >
             <IconDots size={14} stroke={1.5} />
           </button>
@@ -69,7 +69,7 @@ export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
           <DropdownMenuGroup>
             <DropdownMenuItem
               onClick={handleDeleteClick}
-              className="text-red-600"
+              className="text-red-600 dark:text-red-400"
             >
               <IconTrash size={14} stroke={1.5} className="mr-2" />
               Delete
