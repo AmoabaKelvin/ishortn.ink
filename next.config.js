@@ -2,6 +2,9 @@ import("./src/env.mjs");
 
 /** @type {import("next").NextConfig} */
 const config = {
+  experimental: {
+    optimizePackageImports: ["@tabler/icons-react"],
+  },
   logging: {
     fetches: {
       fullUrl: true,

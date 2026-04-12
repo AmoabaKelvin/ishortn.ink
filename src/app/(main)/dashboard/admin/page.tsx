@@ -85,13 +85,19 @@ export default function AdminPage() {
     api.admin.getAnalytics.useQuery({ from, to });
 
   const { data: chartData, isLoading: chartLoading } =
-    api.admin.getActivityChart.useQuery({ from, to, granularity });
+    api.admin.getActivityChart.useQuery(
+      { from, to, granularity },
+      { keepPreviousData: true },
+    );
 
   const { data: peakData, isLoading: peakLoading } =
-    api.admin.getPeakPeriods.useQuery({ from, to });
+    api.admin.getPeakPeriods.useQuery({ from, to }, { keepPreviousData: true });
 
   const { data: monthlyData, isLoading: monthlyLoading } =
-    api.admin.getMonthlyBreakdown.useQuery({ from, to });
+    api.admin.getMonthlyBreakdown.useQuery(
+      { from, to },
+      { keepPreviousData: true },
+    );
 
   const { data: healthData, isLoading: healthLoading } =
     api.admin.getSystemHealth.useQuery();

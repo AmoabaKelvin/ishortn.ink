@@ -55,17 +55,28 @@ export type ProtectedTRPCContext = Omit<TRPCContext, "auth"> & {
   isAdmin: boolean;
 };
 
+// Per-request memo so batched procedures share one ban/admin lookup.
+// Keyed on the ctx object — same request = same ctx = same cached promise.
+const currentUserCache = new WeakMap<
+  object,
+  Promise<{ banned: boolean | null; isAdmin: boolean | null } | undefined>
+>();
+
 // Protected procedure middleware
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.auth.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  // Single query for both ban check and admin status
-  const currentUser = await ctx.db.query.user.findFirst({
-    where: eq(user.id, ctx.auth.userId),
-    columns: { banned: true, isAdmin: true },
-  });
+  let cached = currentUserCache.get(ctx);
+  if (!cached) {
+    cached = ctx.db.query.user.findFirst({
+      where: eq(user.id, ctx.auth.userId),
+      columns: { banned: true, isAdmin: true },
+    });
+    currentUserCache.set(ctx, cached);
+  }
+  const currentUser = await cached;
 
   if (currentUser?.banned) {
     throw new TRPCError({

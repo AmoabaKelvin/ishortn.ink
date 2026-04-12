@@ -167,6 +167,7 @@ export const user = mysqlTable(
   },
   (table) => ({
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
   }),
 );
 
@@ -293,6 +294,7 @@ export const linkVisit = mysqlTable(
     linkIdIdx: index("linkId_idx").on(table.linkId),
     geoRuleIdIdx: index("geoRuleId_idx").on(table.matchedGeoRuleId),
     linkCreatedAtIdx: index("linkId_createdAt_idx").on(table.linkId, table.createdAt),
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
   }),
 );
 

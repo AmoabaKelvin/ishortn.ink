@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Bar,
   BarChart as RechartsBarChart,
@@ -36,6 +37,8 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+type MetricView = "links" | "users" | "clicks";
+
 type ActivityChartProps = {
   data: { date: string; links: number; users: number; clicks: number }[] | undefined;
   isLoading: boolean;
@@ -49,30 +52,56 @@ export function ActivityChart({
   granularity,
   onGranularityChange,
 }: ActivityChartProps) {
+  const [metricView, setMetricView] = useState<MetricView>("links");
+
+  const description =
+    metricView === "links"
+      ? "Links created over time"
+      : metricView === "users"
+        ? "New users over time"
+        : "Clicks over time";
   return (
     <Card className="overflow-hidden rounded-xl border-neutral-200 dark:border-border shadow-none">
-      <div className="flex items-center justify-between border-b border-neutral-100 dark:border-border/50 px-5 pb-4 pt-5">
+      <div className="flex flex-col gap-3 border-b border-neutral-100 dark:border-border/50 px-5 pb-4 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-0.5">
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Activity
           </h2>
           <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-            Links, users, and clicks over time
+            {description}
           </p>
         </div>
-        <Tabs
-          value={granularity}
-          onValueChange={(v) => onGranularityChange(v as "day" | "month")}
-        >
-          <TabsList className="h-7">
-            <TabsTrigger value="day" className="px-2.5 text-[11px]">
-              Daily
-            </TabsTrigger>
-            <TabsTrigger value="month" className="px-2.5 text-[11px]">
-              Monthly
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2">
+          <Tabs
+            value={metricView}
+            onValueChange={(v) => setMetricView(v as MetricView)}
+          >
+            <TabsList className="h-7">
+              <TabsTrigger value="links" className="px-2.5 text-[11px]">
+                Links
+              </TabsTrigger>
+              <TabsTrigger value="users" className="px-2.5 text-[11px]">
+                Users
+              </TabsTrigger>
+              <TabsTrigger value="clicks" className="px-2.5 text-[11px]">
+                Clicks
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Tabs
+            value={granularity}
+            onValueChange={(v) => onGranularityChange(v as "day" | "month")}
+          >
+            <TabsList className="h-7">
+              <TabsTrigger value="day" className="px-2.5 text-[11px]">
+                Daily
+              </TabsTrigger>
+              <TabsTrigger value="month" className="px-2.5 text-[11px]">
+                Monthly
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
@@ -121,9 +150,11 @@ export function ActivityChart({
                   />
                 }
               />
-              <Bar dataKey="links" fill="var(--color-links)" radius={4} />
-              <Bar dataKey="users" fill="var(--color-users)" radius={4} />
-              <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
+              <Bar
+                dataKey={metricView}
+                fill={`var(--color-${metricView})`}
+                radius={4}
+              />
               <ChartLegend content={<ChartLegendContent />} />
             </RechartsBarChart>
           </ChartContainer>
