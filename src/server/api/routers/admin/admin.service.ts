@@ -1,4 +1,4 @@
-import { and, between, count, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, between, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import {
@@ -129,7 +129,7 @@ export async function getDailyStats(ctx: ProtectedTRPCContext) {
 }
 
 export async function getRecentUsers(ctx: ProtectedTRPCContext) {
-  return ctx.db
+  const recent = await ctx.db
     .select({
       id: user.id,
       name: user.name,
@@ -137,12 +137,21 @@ export async function getRecentUsers(ctx: ProtectedTRPCContext) {
       imageUrl: user.imageUrl,
       createdAt: user.createdAt,
       banned: user.banned,
-      linkCount:
-        sql<number>`(SELECT COUNT(*) FROM Link WHERE Link.userId = ${user.id})`,
     })
     .from(user)
     .orderBy(desc(user.createdAt))
     .limit(8);
+
+  if (recent.length === 0) return [];
+
+  const counts = await ctx.db
+    .select({ userId: link.userId, linkCount: count() })
+    .from(link)
+    .where(inArray(link.userId, recent.map((u) => u.id)))
+    .groupBy(link.userId);
+
+  const countsByUser = new Map(counts.map((c) => [c.userId, c.linkCount]));
+  return recent.map((u) => ({ ...u, linkCount: countsByUser.get(u.id) ?? 0 }));
 }
 
 export async function getRecentActivity(ctx: ProtectedTRPCContext) {
@@ -909,7 +918,6 @@ export async function getMonthlyBreakdown(
   const usersByMonth = new Map(monthlyUsers.map((u) => [u.month, u.count]));
   const clicksByMonth = new Map(monthlyClicks.map((c) => [c.month, c.count]));
 
-  // Fill all months in range
   const result: {
     month: string;
     links: number;
