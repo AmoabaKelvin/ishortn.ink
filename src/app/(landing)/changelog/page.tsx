@@ -25,16 +25,16 @@ export default async function ChangelogPage() {
   const entries = await getChangelogEntries();
 
   return (
-    <main className="relative bg-white">
+    <main className="relative bg-zinc-950">
       <Header />
       <ChangelogHero />
 
-      <section className="px-6 pb-24">
-        <div className="mx-auto max-w-3xl">
+      <section className="px-6 py-16 md:py-24">
+        <div className="mx-auto max-w-4xl">
           <Suspense
             fallback={
               <div className="flex items-center justify-center py-20">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-900" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-800 border-t-blue-500" />
               </div>
             }
           >
