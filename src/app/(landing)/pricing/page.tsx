@@ -1,8 +1,12 @@
+import { IconCheck, IconMinus } from "@tabler/icons-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { Pricing } from "../_components/pricing";
+
+import { Paths } from "@/lib/constants/app";
 
 export const metadata: Metadata = {
   title: "Pricing - Free URL Shortener Plans | iShortn",
@@ -104,58 +108,35 @@ const faqs = [
 
 function CellValue({ value }: { value: string | boolean }) {
   if (typeof value === "string") {
-    return <span className="text-sm text-neutral-900">{value}</span>;
+    return <span className="text-sm text-zinc-300">{value}</span>;
   }
   if (value) {
     return (
-      <svg
-        className="mx-auto h-5 w-5 text-neutral-900"
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={2}
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M4.5 12.75l6 6 9-13.5"
-        />
-      </svg>
+      <IconCheck size={18} className="mx-auto text-blue-400" stroke={2} />
     );
   }
-  return (
-    <svg
-      className="mx-auto h-5 w-5 text-neutral-300"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={2}
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M18 12H6"
-      />
-    </svg>
-  );
+  return <IconMinus size={18} className="mx-auto text-zinc-600" stroke={2} />;
 }
 
 export default function PricingPage() {
   return (
-    <main className="relative bg-white">
+    <main className="relative bg-zinc-950">
       <Header />
 
       {/* Hero */}
-      <section className="px-6 pt-32 pb-12 md:pt-40 md:pb-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-400">
+      <section className="bg-zinc-950 px-6 pt-32 pb-20 md:pt-40 md:pb-28">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
             Pricing
           </p>
-          <h1 className="mt-3 font-display text-4xl tracking-tight text-neutral-900 sm:text-5xl">
-            Simple, transparent pricing
+          <h1 className="mt-4 font-heading text-5xl font-extrabold tracking-tight text-zinc-50 leading-[1.05] md:text-6xl lg:text-[5.5rem]">
+            Simple pricing
+            <br />
+            for every team
           </h1>
-          <p className="mt-3 text-base text-neutral-500">
-            Start for free. Upgrade when you need to.
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 md:text-xl">
+            Start for free. Upgrade when you need custom domains, API access,
+            or unlimited links. No surprises, no lock-in.
           </p>
         </div>
       </section>
@@ -164,77 +145,113 @@ export default function PricingPage() {
       <Pricing />
 
       {/* Feature Comparison Table */}
-      <section className="px-6 py-20">
-        <div className="mx-auto max-w-4xl">
-          <h2 className="mb-10 text-center font-display text-2xl tracking-tight text-neutral-900 sm:text-3xl">
-            Compare plans in detail
+      <section className="bg-zinc-950 px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+            Compare plans
+          </p>
+          <h2 className="mt-4 font-heading text-4xl font-bold tracking-tight text-zinc-50 md:text-5xl">
+            Every feature, side by side
           </h2>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-400">
+            A complete breakdown of what you get on each plan.
+          </p>
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-neutral-200">
-                  <th className="py-4 pr-6 text-sm font-medium text-neutral-500">
-                    Feature
-                  </th>
-                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900">
-                    Free
-                  </th>
-                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900">
-                    Pro
-                    <span className="ml-1 text-neutral-400">$5/mo</span>
-                  </th>
-                  <th className="px-6 py-4 text-center text-sm font-medium text-neutral-900">
-                    Ultra
-                    <span className="ml-1 text-neutral-400">$15/mo</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonFeatures.map((feature) => (
-                  <tr
-                    key={feature.name}
-                    className="border-b border-neutral-100"
-                  >
-                    <td className="py-4 pr-6 text-sm text-neutral-700">
-                      {feature.name}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <CellValue value={feature.free} />
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <CellValue value={feature.pro} />
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <CellValue value={feature.ultra} />
-                    </td>
+          <div className="mt-12 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-zinc-800">
+                    <th className="px-6 py-5 font-heading text-sm font-medium text-zinc-50">
+                      Feature
+                    </th>
+                    <th className="px-6 py-5 text-center font-heading text-sm font-medium text-zinc-50">
+                      Free
+                    </th>
+                    <th className="px-6 py-5 text-center font-heading text-sm font-medium text-zinc-50">
+                      Pro
+                      <span className="ml-1 font-sans font-normal text-zinc-500">
+                        $5/mo
+                      </span>
+                    </th>
+                    <th className="px-6 py-5 text-center font-heading text-sm font-medium text-zinc-50">
+                      Ultra
+                      <span className="ml-1 font-sans font-normal text-zinc-500">
+                        $15/mo
+                      </span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {comparisonFeatures.map((feature) => (
+                    <tr key={feature.name} className="border-t border-zinc-800">
+                      <td className="px-6 py-4 text-sm text-zinc-300">
+                        {feature.name}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <CellValue value={feature.free} />
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <CellValue value={feature.pro} />
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <CellValue value={feature.ultra} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="px-6 pb-24">
-        <div className="mx-auto max-w-3xl">
-          <h2 className="mb-10 text-center font-display text-2xl tracking-tight text-neutral-900 sm:text-3xl">
+      <section className="bg-zinc-950 px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+            FAQ
+          </p>
+          <h2 className="mt-4 font-heading text-4xl font-bold tracking-tight text-zinc-50 md:text-5xl">
             Frequently asked questions
           </h2>
 
-          <dl className="space-y-8">
+          <dl className="mt-12 grid gap-6 md:grid-cols-2">
             {faqs.map((faq) => (
-              <div key={faq.question}>
-                <dt className="text-base font-semibold text-neutral-900">
+              <div
+                key={faq.question}
+                className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8"
+              >
+                <dt className="font-heading text-xl font-bold text-zinc-50">
                   {faq.question}
                 </dt>
-                <dd className="mt-2 text-sm leading-relaxed text-neutral-600">
+                <dd className="mt-3 leading-relaxed text-zinc-400">
                   {faq.answer}
                 </dd>
               </div>
             ))}
           </dl>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="bg-zinc-950 px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-8 py-16 text-center md:px-16 md:py-20">
+            <h2 className="font-heading text-3xl font-bold tracking-tight text-zinc-50 md:text-4xl lg:text-5xl">
+              Ready to get started?
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-lg text-zinc-400">
+              Join thousands of teams shortening and tracking links with
+              iShortn. No credit card required.
+            </p>
+            <Link
+              href={Paths.Login}
+              className="mt-8 inline-flex items-center gap-2 rounded-full bg-blue-500 px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+            >
+              Get started free
+            </Link>
+          </div>
         </div>
       </section>
 
