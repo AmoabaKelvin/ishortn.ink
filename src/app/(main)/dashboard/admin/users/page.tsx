@@ -18,6 +18,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/trpc/react";
 
+import { DateRangePicker } from "../_components/date-range-picker";
+import { RecentSubscriptionsCard } from "./_components/recent-subscriptions-card";
+import { SubscriptionGrowthChart } from "./_components/subscription-growth-chart";
+import { TierBreakdownCard } from "./_components/tier-breakdown-card";
+import { UserBaseStats } from "./_components/user-base-stats";
+
 type UserToBan = {
   id: string;
   name: string | null;
@@ -25,12 +31,40 @@ type UserToBan = {
   linkCount: number;
 } | null;
 
+function getDefault30d() {
+  const to = new Date();
+  to.setHours(23, 59, 59, 999);
+  const from = new Date();
+  from.setDate(from.getDate() - 29);
+  from.setHours(0, 0, 0, 0);
+  return { from, to };
+}
+
 export default function AdminUsersPage() {
+  const [dateRange, setDateRange] = useState(getDefault30d);
+
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [userToBan, setUserToBan] = useState<UserToBan>(null);
   const [banReason, setBanReason] = useState("");
+
+  const { from, to } = dateRange;
+
+  const { data: summary, isLoading: summaryLoading } =
+    api.admin.getUserBaseSummary.useQuery(
+      { from, to },
+      { keepPreviousData: true },
+    );
+
+  const { data: timeline, isLoading: timelineLoading } =
+    api.admin.getSubscriptionTimeline.useQuery(
+      { from, to },
+      { keepPreviousData: true },
+    );
+
+  const { data: recentSubs, isLoading: recentSubsLoading } =
+    api.admin.getRecentSubscriptions.useQuery({ limit: 10 });
 
   const { data, refetch, isLoading } = api.admin.searchUsers.useQuery(
     { query: searchQuery, page, pageSize: 20 },
@@ -70,12 +104,40 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
-          Manage Users
-        </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-          Search users and manage account bans
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+            Users
+          </h1>
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+            User base overview and account management
+          </p>
+        </div>
+        <DateRangePicker from={from} to={to} onChange={setDateRange} />
+      </div>
+
+      <UserBaseStats data={summary} isLoading={summaryLoading} />
+
+      <div className="mt-4">
+        <SubscriptionGrowthChart data={timeline} isLoading={timelineLoading} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TierBreakdownCard data={summary?.tiers} isLoading={summaryLoading} />
+        <RecentSubscriptionsCard
+          data={recentSubs}
+          isLoading={recentSubsLoading}
+        />
+      </div>
+
+      <div className="mt-10 mb-4 border-t border-neutral-200 dark:border-border/50" />
+
+      <div className="mb-6">
+        <h2 className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+          Find a user
+        </h2>
+        <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+          Search by email or name to manage bans
         </p>
       </div>
 
@@ -97,7 +159,6 @@ export default function AdminUsersPage() {
         </Button>
       </form>
 
-      {/* Empty state before search */}
       {!searchQuery && (
         <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
           <IconSearch size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
@@ -246,7 +307,6 @@ export default function AdminUsersPage() {
         </>
       )}
 
-      {/* Ban dialog */}
       <Dialog open={!!userToBan} onOpenChange={(open) => { if (!open) { setUserToBan(null); setBanReason(""); } }}>
         <DialogContent>
           <DialogHeader>
