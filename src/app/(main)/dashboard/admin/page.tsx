@@ -1,19 +1,17 @@
 "use client";
 
-import {
-  IconArrowDownRight,
-  IconArrowUpRight,
-} from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
+import { timeAgo } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { ActivityChart } from "./_components/daily-activity-chart";
 import { DateRangePicker } from "./_components/date-range-picker";
 import { MonthlyBreakdownCard } from "./_components/monthly-breakdown-card";
 import { PeakPeriodsCard } from "./_components/peak-periods-card";
+import { StatCard } from "./_components/stat-card";
 import { SystemHealthCard } from "./_components/system-health-card";
 import { TopLinksCard } from "./_components/top-links-card";
 import { TopUsersCard } from "./_components/top-users-card";
@@ -25,54 +23,6 @@ function getDefault30d() {
   from.setDate(from.getDate() - 29);
   from.setHours(0, 0, 0, 0);
   return { from, to };
-}
-
-function timeAgo(date: Date | null): string {
-  if (!date) return "";
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return date.toLocaleDateString();
-}
-
-function StatCard({
-  title,
-  value,
-  growth,
-}: {
-  title: string;
-  value: string;
-  growth?: number | null;
-}) {
-  return (
-    <Card className="rounded-xl border-neutral-200 dark:border-border p-5 shadow-none">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-        {title}
-      </p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-neutral-900 dark:text-foreground">
-        {value}
-      </p>
-      {growth !== undefined && growth !== null && (
-        <span
-          className={`mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium ${
-            growth >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"
-          }`}
-        >
-          {growth >= 0 ? (
-            <IconArrowUpRight size={12} stroke={2} />
-          ) : (
-            <IconArrowDownRight size={12} stroke={2} />
-          )}
-          {Math.abs(growth)}% vs prev period
-        </span>
-      )}
-    </Card>
-  );
 }
 
 export default function AdminPage() {
