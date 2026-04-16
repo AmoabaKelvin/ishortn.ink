@@ -90,4 +90,16 @@ export const adminRouter = createTRPCRouter({
   getSystemHealth: adminProcedure.query(({ ctx }) =>
     services.getSystemHealth(ctx),
   ),
+
+  getUserBaseSummary: adminProcedure
+    .input(inputs.getUserBaseSummarySchema)
+    .query(({ ctx, input }) => services.getUserBaseSummary(ctx, input)),
+
+  getSubscriptionTimeline: adminProcedure
+    .input(inputs.getSubscriptionTimelineSchema)
+    .query(({ ctx, input }) => services.getSubscriptionTimeline(ctx, input)),
+
+  getRecentSubscriptions: adminProcedure
+    .input(inputs.getRecentSubscriptionsSchema)
+    .query(({ ctx, input }) => services.getRecentSubscriptions(ctx, input)),
 });

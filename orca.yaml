@@ -1,0 +1,11 @@
+scripts:
+  setup: |
+    set -e
+    MAIN_WORKTREE=$(git worktree list --porcelain | awk '/^worktree / {print $2; exit}')
+    if [ -n "$MAIN_WORKTREE" ] && [ -f "$MAIN_WORKTREE/.env" ]; then
+      cp "$MAIN_WORKTREE/.env" .env
+      echo "Copied .env from $MAIN_WORKTREE"
+    else
+      echo "Warning: no .env found at main worktree ($MAIN_WORKTREE)"
+    fi
+    bun install

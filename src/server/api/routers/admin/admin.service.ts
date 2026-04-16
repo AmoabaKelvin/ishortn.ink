@@ -1,12 +1,14 @@
 import { and, between, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
+import { PAID_PLANS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/constants/plan-pricing";
 import {
   blockedDomain,
   feedback,
   flaggedLink,
   link,
   linkVisit,
+  subscription,
   user,
 } from "@/server/db/schema";
 
@@ -23,8 +25,11 @@ import type {
   GetFlaggedLinksInput,
   GetMonthlyBreakdownInput,
   GetPeakPeriodsInput,
+  GetRecentSubscriptionsInput,
+  GetSubscriptionTimelineInput,
   GetTopLinksInput,
   GetTopUsersInput,
+  GetUserBaseSummaryInput,
   RemoveBlockedDomainInput,
   ResolveFlaggedLinkInput,
   SearchLinksInput,
@@ -990,4 +995,205 @@ export async function getSystemHealth(ctx: ProtectedTRPCContext) {
     openFeedback: openFeedbackResult[0]?.count ?? 0,
     blockedDomains: blockedDomainsResult[0]?.count ?? 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// User-base analytics (subscriptions)
+// ---------------------------------------------------------------------------
+
+/**
+ * The webhook flips `subscription.plan` to "free" on cancel/expire, so
+ * `plan IN ('pro','ultra')` already means "currently paying". There is no
+ * historical event log, so churn-over-time is not derivable.
+ */
+
+function sharePct(part: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.round((part / total) * 1000) / 10;
+}
+
+export async function getUserBaseSummary(
+  ctx: ProtectedTRPCContext,
+  input: GetUserBaseSummaryInput,
+) {
+  const { from, to } = input;
+  const { prevFrom, prevTo } = getPreviousPeriod(from, to);
+
+  const [
+    totalUsersResult,
+    newUsersInRange,
+    newUsersPrev,
+    tierBreakdown,
+    paidPrevResult,
+    newPaidInRange,
+    newPaidPrev,
+  ] = await Promise.all([
+    ctx.db.select({ total: count() }).from(user),
+    ctx.db
+      .select({ total: count() })
+      .from(user)
+      .where(between(user.createdAt, from, to)),
+    ctx.db
+      .select({ total: count() })
+      .from(user)
+      .where(between(user.createdAt, prevFrom, prevTo)),
+    ctx.db
+      .select({ plan: subscription.plan, total: count() })
+      .from(subscription)
+      .where(inArray(subscription.plan, PAID_PLANS))
+      .groupBy(subscription.plan),
+    // Best-effort "paid at prevTo": rows that existed by prevTo and are still paid today.
+    ctx.db
+      .select({ total: count() })
+      .from(subscription)
+      .where(
+        and(
+          inArray(subscription.plan, PAID_PLANS),
+          sql`${subscription.createdAt} <= ${prevTo}`,
+        ),
+      ),
+    ctx.db
+      .select({ total: count() })
+      .from(subscription)
+      .where(
+        and(
+          inArray(subscription.plan, PAID_PLANS),
+          between(subscription.createdAt, from, to),
+        ),
+      ),
+    ctx.db
+      .select({ total: count() })
+      .from(subscription)
+      .where(
+        and(
+          inArray(subscription.plan, PAID_PLANS),
+          between(subscription.createdAt, prevFrom, prevTo),
+        ),
+      ),
+  ]);
+
+  const totalUsers = totalUsersResult[0]?.total ?? 0;
+
+  const tierMap = new Map<PaidPlan, number>();
+  for (const row of tierBreakdown) {
+    if (row.plan && (PAID_PLANS as string[]).includes(row.plan)) {
+      tierMap.set(row.plan as PaidPlan, row.total);
+    }
+  }
+  const proCount = tierMap.get("pro") ?? 0;
+  const ultraCount = tierMap.get("ultra") ?? 0;
+  const paidUsers = proCount + ultraCount;
+  const freeUsers = totalUsers - paidUsers;
+
+  const mrr =
+    proCount * PLAN_PRICES_USD.pro + ultraCount * PLAN_PRICES_USD.ultra;
+
+  return {
+    totalUsers,
+    freeUsers,
+    paidUsers,
+    paidPercent: sharePct(paidUsers, totalUsers),
+    mrr,
+    newUsers: newUsersInRange[0]?.total ?? 0,
+    newUsersGrowth: pctChange(
+      newUsersInRange[0]?.total ?? 0,
+      newUsersPrev[0]?.total ?? 0,
+    ),
+    newPaid: newPaidInRange[0]?.total ?? 0,
+    newPaidGrowth: pctChange(
+      newPaidInRange[0]?.total ?? 0,
+      newPaidPrev[0]?.total ?? 0,
+    ),
+    paidGrowth: pctChange(paidUsers, paidPrevResult[0]?.total ?? 0),
+    tiers: {
+      free: {
+        count: freeUsers,
+        share: sharePct(freeUsers, totalUsers),
+        mrr: 0,
+      },
+      pro: {
+        count: proCount,
+        share: sharePct(proCount, totalUsers),
+        mrr: proCount * PLAN_PRICES_USD.pro,
+      },
+      ultra: {
+        count: ultraCount,
+        share: sharePct(ultraCount, totalUsers),
+        mrr: ultraCount * PLAN_PRICES_USD.ultra,
+      },
+    },
+  };
+}
+
+export async function getSubscriptionTimeline(
+  ctx: ProtectedTRPCContext,
+  input: GetSubscriptionTimelineInput,
+) {
+  const { from, to } = input;
+
+  const dateExpr = sql<string>`DATE_FORMAT(${subscription.createdAt}, '%Y-%m')`;
+
+  const rows = await ctx.db
+    .select({
+      date: dateExpr,
+      plan: subscription.plan,
+      total: count(),
+    })
+    .from(subscription)
+    .where(
+      and(
+        inArray(subscription.plan, PAID_PLANS),
+        between(subscription.createdAt, from, to),
+      ),
+    )
+    .groupBy(dateExpr, subscription.plan)
+    .orderBy(dateExpr);
+
+  const byDate = new Map<string, { pro: number; ultra: number }>();
+  for (const row of rows) {
+    const key = String(row.date);
+    const entry = byDate.get(key) ?? { pro: 0, ultra: 0 };
+    if (row.plan === "pro") entry.pro = row.total;
+    else if (row.plan === "ultra") entry.ultra = row.total;
+    byDate.set(key, entry);
+  }
+
+  const result: { date: string; pro: number; ultra: number }[] = [];
+  const cursor = new Date(from);
+  cursor.setDate(1);
+  const endMonth = to.getFullYear() * 12 + to.getMonth();
+  while (cursor.getFullYear() * 12 + cursor.getMonth() <= endMonth) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+    const entry = byDate.get(key) ?? { pro: 0, ultra: 0 };
+    result.push({ date: key, pro: entry.pro, ultra: entry.ultra });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return result;
+}
+
+export async function getRecentSubscriptions(
+  ctx: ProtectedTRPCContext,
+  input: GetRecentSubscriptionsInput,
+) {
+  const rows = await ctx.db
+    .select({
+      id: subscription.id,
+      userId: subscription.userId,
+      plan: subscription.plan,
+      status: subscription.status,
+      createdAt: subscription.createdAt,
+      renewsAt: subscription.renewsAt,
+      endsAt: subscription.endsAt,
+      userName: user.name,
+      userEmail: user.email,
+      userImage: user.imageUrl,
+    })
+    .from(subscription)
+    .innerJoin(user, eq(subscription.userId, user.id))
+    .where(inArray(subscription.plan, PAID_PLANS))
+    .orderBy(desc(subscription.createdAt))
+    .limit(input.limit);
+
+  return rows;
 }
