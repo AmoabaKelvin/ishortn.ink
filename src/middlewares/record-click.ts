@@ -4,6 +4,7 @@ import { UAParser } from "ua-parser-js";
 import { type Link, buildCacheKey, normalizeDomain, getFromCache, setInCache } from "@/lib/core/cache";
 import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { resolveDeviceType } from "@/lib/utils/device-type";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
@@ -13,21 +14,6 @@ import { checkAndFireMilestones } from "@/server/lib/milestone-check";
 import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
 
 const isLocalhost = process.env.NODE_ENV === "development";
-
-const OS_TO_DEVICE_TYPE: Record<string, string> = {
-  iOS: "Mobile",
-  Android: "Mobile",
-  "Mac OS": "Desktop",
-  Windows: "Desktop",
-  Linux: "Desktop",
-  Ubuntu: "Desktop",
-  Debian: "Desktop",
-  Fedora: "Desktop",
-  "Chrome OS": "Desktop",
-  ChromeOS: "Desktop",
-  FreeBSD: "Desktop",
-  OpenBSD: "Desktop",
-};
 
 /**
  * Cache-first link lookup. No side effects except populating the cache on miss.
@@ -109,7 +95,7 @@ export async function recordClick(
   const deviceDetails = {
     browser: parsedUserAgent.browser.name ?? "Unknown",
     os: osName,
-    device: parsedUserAgent.device.type ?? OS_TO_DEVICE_TYPE[osName] ?? "Unknown",
+    device: resolveDeviceType(osName, parsedUserAgent.device.type),
     model: parsedUserAgent.device.model ?? "Unknown",
   };
 
