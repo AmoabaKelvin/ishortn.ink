@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  char,
   date,
   datetime,
   index,
@@ -303,13 +304,13 @@ export const uniqueLinkVisit = mysqlTable(
   {
     id: serial("id").primaryKey(),
     linkId: int("linkId").notNull(),
-    ipHash: varchar("ipHash", { length: 255 }).notNull(),
+    ipHash: char("ipHash", { length: 64 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
     ipHashIdx: index("ipHash_idx").on(table.ipHash),
-    uniqueVisitIdx: index("unique_visit_idx").on(table.linkId, table.ipHash),
+    uniqueVisitIdx: unique("unique_visit_idx").on(table.linkId, table.ipHash),
     linkCreatedAtIdx: index("linkId_createdAt_idx").on(table.linkId, table.createdAt),
   }),
 );

@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "260a3496-9602-42d1-b95b-523613846df0",
-  "prevId": "06a69dea-7624-48cc-b7dd-9634cbdadc54",
+  "id": "84ab11a5-61a8-4684-948a-829c1da0890d",
+  "prevId": "260a3496-9602-42d1-b95b-523613846df0",
   "tables": {
     "AccountTransfer": {
       "name": "AccountTransfer",
@@ -1269,6 +1269,13 @@
             "createdAt"
           ],
           "isUnique": false
+        },
+        "createdAt_idx": {
+          "name": "createdAt_idx",
+          "columns": [
+            "createdAt"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -2345,14 +2352,6 @@
           ],
           "isUnique": false
         },
-        "unique_visit_idx": {
-          "name": "unique_visit_idx",
-          "columns": [
-            "linkId",
-            "ipHash"
-          ],
-          "isUnique": false
-        },
         "linkId_createdAt_idx": {
           "name": "linkId_createdAt_idx",
           "columns": [
@@ -2371,7 +2370,15 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "unique_visit_idx": {
+          "name": "unique_visit_idx",
+          "columns": [
+            "linkId",
+            "ipHash"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "User": {
@@ -2511,6 +2518,13 @@
           "name": "deletedAt_idx",
           "columns": [
             "deletedAt"
+          ],
+          "isUnique": false
+        },
+        "createdAt_idx": {
+          "name": "createdAt_idx",
+          "columns": [
+            "createdAt"
           ],
           "isUnique": false
         }

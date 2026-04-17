@@ -1,0 +1,1 @@
+ALTER TABLE `UniqueLinkVisit` MODIFY COLUMN `ipHash` char(64) NOT NULL;
