@@ -97,7 +97,10 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const domain = searchParams.get("domain");
   const alias = searchParams.get("alias")?.replace("/", "");
-  const ip = searchParams.get("ip") ?? "";
+  // Visitor IP is forwarded by the middleware in a header (not the URL) so it
+  // doesn't leak into request logs. Server-to-server fetches don't preserve
+  // the original client IP, so re-deriving from the request isn't an option.
+  const ip = request.headers.get("x-client-ip") ?? "";
 
   // Normalize geo params - treat "undefined", "null", empty strings as Unknown
   const rawCountry = searchParams.get("country");

@@ -55,6 +55,9 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     "user-agent": userAgent ?? "",
     referer: referer ?? "",
   };
+  // Forward the visitor IP in a header rather than a query param so it does
+  // not end up in URL access logs (and anywhere else that captures URLs).
+  if (ip) forwardedHeaders["x-client-ip"] = ip;
   // Forward UA Client Hints so UAParser can resolve device/model/OS details
   // that modern Chrome removes from the UA string.
   const CLIENT_HINT_HEADERS = [
@@ -74,7 +77,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   const response = await fetch(
     encodeURI(
-      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${country}&city=${city}&ip=${ip}`,
+      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${country}&city=${city}`,
     ),
     { headers: forwardedHeaders },
   );
