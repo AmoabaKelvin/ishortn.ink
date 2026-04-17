@@ -789,14 +789,15 @@ export const bulkDeleteLinks = async (
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
 
-  // Invalidate cache for all deleted links (async, don't block)
-  void Promise.all(
-    linksToDelete.map((l) =>
-      deleteFromCache(buildCacheKey(l.domain, l.alias!)),
-    ),
-  ).catch((err) => {
-    console.error("Failed to invalidate cache for deleted links:", err);
-  });
+  // Invalidate cache for all deleted links in the background. waitUntil keeps
+  // the serverless function alive until every deleteFromCache settles.
+  void runBackgroundTask(
+    Promise.all(
+      linksToDelete.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
+    ).catch((err) => {
+      console.error("Failed to invalidate cache for deleted links:", err);
+    }),
+  );
 
   return { success: true, count: linksToDelete.length };
 };

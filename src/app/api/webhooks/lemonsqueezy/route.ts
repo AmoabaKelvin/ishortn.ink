@@ -5,6 +5,7 @@ import { Resend } from "resend";
 import WelcomeEmail from "@/emails/welcome-to-pro";
 import { getPlanFromIds } from "@/lib/billing/plans";
 import { webhookHasMeta } from "@/lib/typeguards";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     });
   }
 
-  void processWebhook(data);
+  void runBackgroundTask(processWebhook(data));
 
   return new Response("OK", { status: 200 });
 }

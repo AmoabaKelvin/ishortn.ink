@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 
 import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
 import type { Plan } from "@/lib/billing/plans";
+import { runBackgroundTask } from "@/lib/utils/background";
 import {
   accountTransfer,
   customDomain,
@@ -403,14 +404,16 @@ export async function initiateAccountTransfer(
   });
 
   // Send email to target account
-  void sendAccountTransferEmail({
-    toEmail: input.targetEmail,
-    toName: targetUser?.name,
-    fromEmail: sourceUser?.email ?? "unknown",
-    fromName: sourceUser?.name ?? "A user",
-    token,
-    resourceCounts: validation.resourceCounts,
-  });
+  void runBackgroundTask(
+    sendAccountTransferEmail({
+      toEmail: input.targetEmail,
+      toName: targetUser?.name,
+      fromEmail: sourceUser?.email ?? "unknown",
+      fromName: sourceUser?.name ?? "A user",
+      token,
+      resourceCounts: validation.resourceCounts,
+    }),
+  );
 
   return {
     transferId: Number(result.insertId),
@@ -591,21 +594,23 @@ export async function acceptAccountTransfer(
   });
 
   if (sourceUser?.email) {
-    void sendTransferCompletedEmail({
-      toEmail: sourceUser.email,
-      toName: sourceUser.name,
-      recipientName: currentUser?.name ?? "the recipient",
-      recipientEmail: currentUser?.email ?? transfer.toEmail,
-      resourceCounts: {
-        links: transfer.linksCount,
-        customDomains: transfer.customDomainsCount,
-        qrCodes: transfer.qrCodesCount,
-        folders: transfer.foldersCount,
-        tags: transfer.tagsCount,
-        utmTemplates: transfer.utmTemplatesCount,
-        qrPresets: transfer.qrPresetsCount,
-      },
-    });
+    void runBackgroundTask(
+      sendTransferCompletedEmail({
+        toEmail: sourceUser.email,
+        toName: sourceUser.name,
+        recipientName: currentUser?.name ?? "the recipient",
+        recipientEmail: currentUser?.email ?? transfer.toEmail,
+        resourceCounts: {
+          links: transfer.linksCount,
+          customDomains: transfer.customDomainsCount,
+          qrCodes: transfer.qrCodesCount,
+          folders: transfer.foldersCount,
+          tags: transfer.tagsCount,
+          utmTemplates: transfer.utmTemplatesCount,
+          qrPresets: transfer.qrPresetsCount,
+        },
+      }),
+    );
   }
 
   return result;
@@ -963,12 +968,14 @@ export async function declineAccountTransfer(
   });
 
   if (sourceUser?.email) {
-    void sendTransferDeclinedEmail({
-      toEmail: sourceUser.email,
-      toName: sourceUser.name,
-      recipientName: currentUser?.name ?? "the recipient",
-      recipientEmail: currentUser?.email ?? transfer.toEmail,
-    });
+    void runBackgroundTask(
+      sendTransferDeclinedEmail({
+        toEmail: sourceUser.email,
+        toName: sourceUser.name,
+        recipientName: currentUser?.name ?? "the recipient",
+        recipientEmail: currentUser?.email ?? transfer.toEmail,
+      }),
+    );
   }
 
   return { success: true };
