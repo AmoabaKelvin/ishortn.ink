@@ -51,10 +51,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { clientLogger } from "@/lib/logger/client";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 import { useDebounce } from "use-debounce";
+
+const log = clientLogger.child({ component: "edit-link-drawer" });
 
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
@@ -260,7 +263,10 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-        console.error("Failed to check iframe compatibility:", error);
+        log.error(
+          { err: error, linkId: link.id },
+          "failed to check iframe compatibility",
+        );
         setIframeableResult(false);
         form.setValue("cloaking", false);
         toast.error("Failed to verify if URL can be cloaked. Please try again.");

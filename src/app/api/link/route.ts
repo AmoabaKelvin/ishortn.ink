@@ -9,10 +9,13 @@ import {
   setGeoRulesInCache,
 } from "@/lib/core/cache";
 import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
+import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { recordClick, resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import { geoRule, link as linkTable, linkVisit } from "@/server/db/schema";
+
+const log = logger.child({ component: "link-resolver" });
 
 /**
  * Mark a link as disabled in the DB and purge its cache entry. Runs in the
@@ -24,7 +27,7 @@ async function autoDisableLink(linkId: number, cacheKey: string): Promise<void> 
     await db.update(linkTable).set({ disabled: true }).where(eq(linkTable.id, linkId));
     await deleteFromCache(cacheKey);
   } catch (err) {
-    console.error("Failed to auto-disable link:", err);
+    log.error({ err, linkId }, "failed to auto-disable link");
   }
 }
 
@@ -170,7 +173,7 @@ export async function GET(request: NextRequest) {
 
     // Validate link.url before processing
     if (!link.url) {
-      console.error("Link has no URL:", link.id);
+      log.warn({ linkId: link.id, domain, alias }, "link has no destination URL");
       return Response.json({ error: "Link has no destination URL" }, { status: 404 });
     }
 
@@ -179,7 +182,7 @@ export async function GET(request: NextRequest) {
     const destinationUrl = appendUtmParams(link.url, link.utmParams as UtmParams);
     return Response.json({ url: destinationUrl, cloaking: link.cloaking ?? false });
   } catch (error) {
-    console.error("Error processing link:", error);
+    log.error({ err: error, domain, alias }, "failed to resolve link");
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

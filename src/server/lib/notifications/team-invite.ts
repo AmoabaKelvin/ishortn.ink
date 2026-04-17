@@ -1,6 +1,9 @@
 import TeamInviteEmail from "@/emails/team-invite";
+import { logger } from "@/lib/logger";
 
 import { resend } from "./resend-client";
+
+const log = logger.child({ notification: "team-invite" });
 
 type SendTeamInviteEmailInput = {
   email: string;
@@ -41,6 +44,6 @@ export async function sendTeamInviteEmail({
       }),
     });
   } catch (error) {
-    console.error("Failed to send team invite email", error);
+    log.error({ err: error, email, teamSlug, role }, "failed to send team invite email");
   }
 }

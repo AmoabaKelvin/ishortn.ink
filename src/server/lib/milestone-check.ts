@@ -1,8 +1,11 @@
 import { and, count, eq, isNull, sum } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { link, linkMilestone, linkVisit, linkVisitDailySummary, user } from "@/server/db/schema";
 import { sendLinkMilestoneEmail } from "@/server/lib/notifications/link-milestone";
+
+const log = logger.child({ component: "milestone-check" });
 
 /**
  * Get the true total click count for a link by combining:
@@ -106,6 +109,6 @@ export async function checkAndFireMilestones(
     await Promise.all(emailPromises);
   } catch (error) {
     // Swallow errors — milestone checks must never break the redirect flow
-    console.error("[Milestone] Failed to check milestones", error);
+    log.error({ err: error, linkId, userId }, "failed to check milestones");
   }
 }

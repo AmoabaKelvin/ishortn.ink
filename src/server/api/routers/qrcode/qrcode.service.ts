@@ -3,6 +3,7 @@ import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
@@ -22,6 +23,8 @@ import type { WorkspaceTRPCContext } from "../../trpc";
 import type { QRCodeInput, QRCodeUpdateInput, QRPresetCreateInput, QRPresetUpdateInput } from "./qrcode.input";
 import type { z } from "zod";
 import type { qrcodeSaveImageInput } from "./qrcode.input";
+
+const log = logger.child({ component: "qrcode.service" });
 
 // Free tier QR code limit
 const FREE_QR_CODE_LIMIT = 5;
@@ -140,7 +143,7 @@ export const saveQrCodeImage = async (
       return imageUrl;
     }
   } catch (error) {
-    console.error("Failed to upload QR code image to R2:", error);
+    log.error({ err: error, qrCodeId: input.id }, "failed to upload QR code image to R2");
   }
 
   return input.qrCodeBase64;
@@ -205,7 +208,7 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
     try {
       await deleteImage(qrCode.qrCode);
     } catch (error) {
-      console.error("Failed to delete QR code image from R2:", error);
+      log.error({ err: error, qrCodeId: id }, "failed to delete QR code image from R2");
     }
   }
 
@@ -361,7 +364,10 @@ export async function createQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetC
           .where(eq(qrPreset.id, insertedId));
       }
     } catch (error) {
-      console.error("Failed to upload logo image to R2:", error);
+      log.error(
+        { err: error, presetId: insertedId, action: "create" },
+        "failed to upload logo image to R2",
+      );
       // Don't fail preset creation if image upload fails - base64 is already saved
     }
   }
@@ -393,7 +399,10 @@ export async function deleteQrPreset(ctx: WorkspaceTRPCContext, id: number) {
     try {
       await deleteImage(preset.logoImage);
     } catch (error) {
-      console.error("Failed to delete logo image from R2:", error);
+      log.error(
+        { err: error, presetId: id, action: "delete-preset" },
+        "failed to delete logo image from R2",
+      );
     }
   }
 
@@ -428,7 +437,10 @@ export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetU
       try {
         await deleteImage(preset.logoImage);
       } catch (error) {
-        console.error("Failed to delete logo image from R2:", error);
+        log.error(
+          { err: error, presetId: input.id, action: "remove-logo" },
+          "failed to delete logo image from R2",
+        );
       }
     }
   } else {
@@ -447,11 +459,17 @@ export async function updateQrPreset(ctx: WorkspaceTRPCContext, input: QRPresetU
         try {
           await deleteImage(preset.logoImage);
         } catch (error) {
-          console.error("Failed to delete old logo image from R2:", error);
+          log.error(
+            { err: error, presetId: input.id, action: "replace-logo" },
+            "failed to delete old logo image from R2",
+          );
         }
       }
     } catch (error) {
-      console.error("Failed to upload logo image to R2:", error);
+      log.error(
+        { err: error, presetId: input.id, action: "update-preset" },
+        "failed to upload logo image to R2",
+      );
       // Continue with the input image if upload fails
       logoImageUrl = input.logoImage;
     }

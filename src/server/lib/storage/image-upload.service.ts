@@ -1,9 +1,12 @@
 import { env } from "@/env.mjs";
+import { logger } from "@/lib/logger";
 import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 import { workspaceOwnership } from "@/server/lib/workspace";
 
 import { isR2Configured, r2DeleteImage, r2UploadImage } from "./r2";
 import type { ImageType } from "./types";
+
+const log = logger.child({ component: "image-upload" });
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024;
 
@@ -53,7 +56,7 @@ export async function uploadImage(
       extension: EXTENSION_MAP[format!] || "png",
     });
   } catch (error) {
-    console.error("Failed to upload image to R2:", error);
+    log.error({ err: error, imageType, resourceId }, "failed to upload image to R2");
     return image;
   }
 }

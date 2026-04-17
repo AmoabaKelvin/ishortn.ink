@@ -1,3 +1,7 @@
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ component: "is-iframeable" });
+
 /**
  * Check if a URL can be displayed in an iframe by examining its response headers.
  * This checks for:
@@ -137,7 +141,7 @@ export async function isIframeable({
   } catch (error) {
     // If fetch fails (timeout, network error, etc.), assume it cannot be iframed
     // This is a safe default as we don't want to promise cloaking for unreachable URLs
-    console.error(`Error checking iframe compatibility for ${url}:`, error);
+    log.error({ err: error, url }, "iframe compatibility check failed");
     return false;
   }
 }

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
+import { clientLogger } from "@/lib/logger/client";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardError({
@@ -13,8 +14,10 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error("Dashboard error:", error);
+    clientLogger.error(
+      { err: error, digest: error.digest },
+      "dashboard error boundary caught error",
+    );
   }, [error]);
 
   return (

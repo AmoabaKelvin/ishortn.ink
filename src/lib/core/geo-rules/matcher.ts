@@ -1,7 +1,10 @@
 import { getCountryContinentCode } from "@/lib/countries";
+import { logger } from "@/lib/logger";
 
 import type { GeoRule as DbGeoRule } from "@/server/db/schema";
 import type { GeoRuleMatchResult } from "@/lib/types/geo-rules";
+
+const log = logger.child({ component: "geo-rules" });
 
 /**
  * Check if a single rule matches the visitor's location
@@ -76,8 +79,9 @@ export function matchGeoRules(
       if (rule.action === "redirect") {
         // Guard against missing destination - should not happen with proper validation
         if (!rule.destination) {
-          console.warn(
-            `Geo rule ${rule.id} has action "redirect" but missing destination. Skipping rule.`
+          log.warn(
+            { ruleId: rule.id, linkId: rule.linkId },
+            'geo rule action is "redirect" but destination is missing, skipping',
           );
           continue;
         }

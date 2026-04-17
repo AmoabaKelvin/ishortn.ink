@@ -1,8 +1,11 @@
 import EventUsageAlertEmail from "@/emails/event-usage-alert";
+import { logger } from "@/lib/logger";
 
 import type { Plan } from "@/lib/billing/plans";
 
 import { resend } from "./resend-client";
+
+const log = logger.child({ notification: "event-usage" });
 
 type SendEventUsageEmailInput = {
   email: string;
@@ -37,6 +40,9 @@ export async function sendEventUsageEmail({
       }),
     });
   } catch (error) {
-    console.error("Failed to send event usage email", error);
+    log.error(
+      { err: error, email, threshold, plan },
+      "failed to send event usage email",
+    );
   }
 }

@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 
@@ -7,12 +8,12 @@ import { validateAndGetToken } from "../../utils";
 
 import type { NextRequest } from "next/server";
 
+const log = logger.child({ component: "api.v1.links" });
+
 export async function GET(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
   const params = await props.params;
   const alias = params.alias;
   const apiKey = request.headers.get("x-api-key");
-
-  console.log("api key", apiKey);
 
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("domain");
@@ -96,7 +97,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
 
     return Response.json(updatedLink);
   } catch (error) {
-    console.error("Failed to update link:", error);
+    log.error({ err: error, alias, domain }, "failed to update link");
 
     // Check for unique constraint violation (PostgreSQL error code 23505)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

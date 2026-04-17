@@ -1,10 +1,13 @@
 import AccountTransferEmail from "@/emails/account-transfer";
 import TransferCompletedEmail from "@/emails/transfer-completed";
 import TransferDeclinedEmail from "@/emails/transfer-declined";
+import { logger } from "@/lib/logger";
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
 
 import { resend } from "./resend-client";
+
+const log = logger.child({ notification: "account-transfer" });
 
 type SendAccountTransferEmailInput = {
   toEmail: string;
@@ -42,7 +45,10 @@ export async function sendAccountTransferEmail({
       }),
     });
   } catch (error) {
-    console.error("Failed to send account transfer email", error);
+    log.error(
+      { err: error, toEmail, fromEmail, stage: "transfer-request" },
+      "failed to send account transfer email",
+    );
   }
 }
 
@@ -76,7 +82,10 @@ export async function sendTransferCompletedEmail({
       }),
     });
   } catch (error) {
-    console.error("Failed to send transfer completed email", error);
+    log.error(
+      { err: error, toEmail, recipientEmail, stage: "completed" },
+      "failed to send transfer completed email",
+    );
   }
 }
 
@@ -107,6 +116,9 @@ export async function sendTransferDeclinedEmail({
       }),
     });
   } catch (error) {
-    console.error("Failed to send transfer declined email", error);
+    log.error(
+      { err: error, toEmail, recipientEmail, stage: "declined" },
+      "failed to send transfer declined email",
+    );
   }
 }

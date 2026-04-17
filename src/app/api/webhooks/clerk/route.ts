@@ -5,10 +5,12 @@ import { Webhook } from "svix";
 
 import { env } from "@/env.mjs";
 import WelcomeEmail from "@/lib/email/templates/welcome-email";
+import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 
 const resend = new Resend(env.RESEND_API_KEY);
+const log = logger.child({ webhook: "clerk" });
 
 export async function POST(req: Request) {
   // You can find this in the Clerk Dashboard -> Webhooks -> choose the webhook
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
       "svix-signature": svix_signature,
     }) as WebhookEvent;
   } catch (err) {
-    console.error("Error verifying webhook:", err);
+    log.error({ err }, "signature verification failed");
     return new Response("Error occured", {
       status: 400,
     });
@@ -59,8 +61,7 @@ export async function POST(req: Request) {
   const { id } = evt.data;
   const eventType = evt.type;
 
-  console.log(`Webhook with and ID of ${id} and type of ${eventType}`);
-  console.log("Webhook body:", body);
+  log.debug({ eventId: id, eventType }, "webhook received");
 
   // Get the user info
   const userInfo = getUserInfo(payload as Payload);
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
   });
 
   if (error) {
-    console.error("Error sending email:", error);
+    log.error({ err: error, eventId: id, eventType }, "failed to send welcome email");
   }
 
   return new Response("", { status: 201 });

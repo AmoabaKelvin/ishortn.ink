@@ -37,9 +37,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { clientLogger } from "@/lib/logger/client";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
+
+const log = clientLogger.child({ component: "create-link-page" });
 
 // Lazy load GeoRulesForm to reduce initial bundle size (includes framer-motion)
 const GeoRulesForm = dynamic(
@@ -329,7 +332,7 @@ export default function CreateLinkPage() {
           });
         }
       } catch (error) {
-        console.error("Failed to fetch metadata:", error);
+        log.error({ err: error, action: "fetch-metadata" }, "failed to fetch metadata");
         // Don't overwrite user-entered metadata on failure
         // Don't generate aliases since we don't have valid metadata
       }
@@ -380,7 +383,10 @@ export default function CreateLinkPage() {
         if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-        console.error("Failed to check cloaking compatibility:", error);
+        log.error(
+          { err: error, action: "check-cloaking" },
+          "failed to check cloaking compatibility",
+        );
         setIframeableResult(false);
         form.setValue("cloaking", false);
         toast.error("Failed to check if URL can be cloaked. Please try again.");

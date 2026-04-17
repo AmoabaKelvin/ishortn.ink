@@ -1,11 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
-import { env } from "@/env.mjs";
+import { logger } from "@/lib/logger";
 import { appRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 
 import type { NextRequest } from "next/server";
+
+const trpcLogger = logger.child({ component: "trpc" });
 
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
@@ -23,12 +25,20 @@ const handler = (req: NextRequest) =>
     req,
     router: appRouter,
     createContext: () => createContext(req),
-    onError:
-      env.NODE_ENV === "development"
-        ? ({ path, error }) => {
-            console.error(`❌ tRPC failed on ${path ?? "<no-path>"}: ${error.message}`);
-          }
-        : undefined,
+    onError: ({ path, error, type }) => {
+      // Intentionally omitting `input` — tRPC procedures accept large/PII
+      // payloads (feedback screenshots, link images, QR logo base64) that
+      // would bloat logs and leak user content on every transient failure.
+      trpcLogger.error(
+        {
+          err: error,
+          path: path ?? null,
+          type,
+          code: error.code,
+        },
+        "tRPC request failed",
+      );
+    },
   });
 
 export { handler as GET, handler as POST };

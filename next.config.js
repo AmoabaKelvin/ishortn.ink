@@ -5,6 +5,10 @@ const config = {
   experimental: {
     optimizePackageImports: ["@tabler/icons-react"],
   },
+  // Keep pino and its transport worker out of the bundler so Node can resolve
+  // `pino-pretty` (and thread-stream) from node_modules at runtime. Bundling
+  // them breaks the worker_threads path pino uses for transports.
+  serverExternalPackages: ["pino", "pino-pretty", "thread-stream"],
   logging: {
     fetches: {
       fullUrl: true,

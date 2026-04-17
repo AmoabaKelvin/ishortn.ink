@@ -1,6 +1,9 @@
 import LinkMilestoneEmail from "@/emails/link-milestone";
+import { logger } from "@/lib/logger";
 
 import { resend } from "./resend-client";
+
+const log = logger.child({ notification: "link-milestone" });
 
 type SendLinkMilestoneEmailInput = {
   email: string;
@@ -35,6 +38,9 @@ export async function sendLinkMilestoneEmail({
       }),
     });
   } catch (error) {
-    console.error("Failed to send link milestone email", error);
+    log.error(
+      { err: error, email, linkAlias, milestone },
+      "failed to send link milestone email",
+    );
   }
 }

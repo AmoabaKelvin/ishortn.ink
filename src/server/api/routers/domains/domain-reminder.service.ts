@@ -1,8 +1,11 @@
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { customDomain, team, user } from "@/server/db/schema";
 import { sendDomainReminderEmail } from "@/server/lib/notifications/domain-reminder";
+
+const log = logger.child({ component: "domain-reminder" });
 
 // Reminder throttle: don't send more than once per 7 days
 const REMINDER_INTERVAL_DAYS = 7;
@@ -10,16 +13,6 @@ const REMINDER_INTERVAL_DAYS = 7;
 type VercelConfigResponse = {
   misconfigured: boolean;
 };
-
-/**
- * Mask an email address for logging purposes (e.g., "john@example.com" -> "j***@example.com")
- */
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@");
-  if (!local || !domain) return "***";
-  const maskedLocal = local.length > 1 ? `${local[0]}***` : "***";
-  return `${maskedLocal}@${domain}`;
-}
 
 type VercelDomainResponse = {
   verified: boolean;
@@ -56,8 +49,13 @@ async function verifyDomainWithVercel(domain: string): Promise<boolean> {
 
     if (!configResponse.ok || !domainResponse.ok) {
       // If API calls fail, assume domain is still invalid to be safe
-      console.error(
-        `[Domain Reminder] Vercel API check failed for ${domain}: config=${configResponse.status}, domain=${domainResponse.status}`,
+      log.error(
+        {
+          domain,
+          configStatus: configResponse.status,
+          domainStatus: domainResponse.status,
+        },
+        "Vercel API check failed",
       );
       return false;
     }
@@ -68,13 +66,19 @@ async function verifyDomainWithVercel(domain: string): Promise<boolean> {
     // Domain is valid if it's verified and not misconfigured
     const isValid = domainData.verified && !configData.misconfigured;
 
-    console.log(
-      `[Domain Reminder] Vercel check for ${domain}: verified=${domainData.verified}, misconfigured=${configData.misconfigured}, isValid=${isValid}`,
+    log.debug(
+      {
+        domain,
+        verified: domainData.verified,
+        misconfigured: configData.misconfigured,
+        isValid,
+      },
+      "Vercel domain check result",
     );
 
     return isValid;
   } catch (error) {
-    console.error(`[Domain Reminder] Error checking Vercel API for ${domain}:`, error);
+    log.error({ err: error, domain }, "error checking Vercel API");
     // On error, assume domain is still invalid to be safe
     return false;
   }
@@ -170,7 +174,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
   result.domainsChecked = invalidDomains.length;
 
   if (invalidDomains.length === 0) {
-    console.log("[Domain Reminder] No domains need reminders");
+    log.debug("no domains need reminders");
     return result;
   }
 
@@ -191,8 +195,9 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
           .where(eq(customDomain.id, domainRecord.id));
 
         result.domainsUpdatedToActive++;
-        console.log(
-          `[Domain Reminder] Domain ${domainName} is now valid, updated status to 'active'`,
+        log.info(
+          { domain: domainName },
+          "domain now valid, updated status to 'active'",
         );
         continue;
       }
@@ -226,7 +231,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
       }
 
       if (!recipientEmail) {
-        console.error(`[Domain Reminder] No recipient email found for domain ${domainName}`);
+        log.warn({ domain: domainName }, "no recipient email found");
         result.errors.push({
           domain: domainName,
           error: "No recipient email found",
@@ -238,8 +243,9 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
       const challenges = parseVerificationDetails(domainRecord.verificationDetails);
 
       if (challenges.length === 0) {
-        console.error(
-          `[Domain Reminder] No verification challenges found for domain ${domainName}`,
+        log.warn(
+          { domain: domainName },
+          "no verification challenges found",
         );
         result.errors.push({
           domain: domainName,
@@ -269,9 +275,15 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
         .where(eq(customDomain.id, domainRecord.id));
 
       result.remindersSent++;
-      console.log(`[Domain Reminder] Sent reminder for ${domainName} to ${maskEmail(recipientEmail)}`);
+      log.info(
+        { domain: domainName, recipientEmail },
+        "reminder sent",
+      );
     } catch (error) {
-      console.error(`[Domain Reminder] Failed for ${domainName}:`, error);
+      log.error(
+        { err: error, domain: domainName },
+        "reminder processing failed",
+      );
       result.errors.push({
         domain: domainName,
         error: error instanceof Error ? error.message : "Unknown error",

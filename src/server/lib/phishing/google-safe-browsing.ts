@@ -1,4 +1,7 @@
 import { env } from "@/env.mjs";
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ component: "phishing.safe-browsing" });
 
 export type SafeBrowsingResult =
   | { status: "safe" }
@@ -42,8 +45,9 @@ export async function checkGoogleSafeBrowsing(
     );
 
     if (!response.ok) {
-      console.error(
-        `Google Safe Browsing API error: ${response.status} ${response.statusText}`,
+      log.error(
+        { status: response.status, statusText: response.statusText },
+        "Safe Browsing API returned non-ok status",
       );
       return { status: "error" };
     }
@@ -61,7 +65,7 @@ export async function checkGoogleSafeBrowsing(
 
     return { status: "safe" };
   } catch (error) {
-    console.error("Google Safe Browsing check failed:", error);
+    log.error({ err: error }, "Safe Browsing check failed");
     return { status: "error" };
   }
 }
