@@ -21,6 +21,7 @@ import {
 } from "@/lib/billing/plans";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
+import { logger } from "@/lib/logger";
 import { hashIp } from "@/lib/utils/ip-hash";
 import {
   buildCacheKey,
@@ -77,6 +78,8 @@ import type {
   ToggleArchiveInput,
   UpdateLinkInput,
 } from "./link.input";
+
+const log = logger.child({ component: "link.service" });
 
 export const getLinks = async (
   ctx: WorkspaceTRPCContext,
@@ -478,7 +481,10 @@ export const createLink = async (
           .where(eq(link.id, linkId));
       }
     } catch (error) {
-      console.error("Failed to upload OG image:", error);
+      log.error(
+        { err: error, linkId, action: "create" },
+        "failed to upload OG image",
+      );
       // Don't fail link creation if image upload fails - base64 is already saved
     }
   }
@@ -563,7 +569,10 @@ export const updateLink = async (
         };
       }
     } catch (error) {
-      console.error("Failed to upload OG image:", error);
+      log.error(
+        { err: error, linkId: input.id, action: "update" },
+        "failed to upload OG image",
+      );
       // Continue with the original image (base64 or URL) if upload fails
     }
   }
@@ -689,7 +698,10 @@ export const deleteLink = async (
     try {
       await deleteImage(metadata.image);
     } catch (error) {
-      console.error("Failed to delete OG image from R2:", error);
+      log.error(
+        { err: error, linkId: input.id },
+        "failed to delete OG image from R2",
+      );
     }
   }
 
@@ -761,7 +773,10 @@ export const bulkDeleteLinks = async (
       try {
         await deleteImage(metadata.image);
       } catch (error) {
-        console.error(`Failed to delete OG image for link ${l.id}:`, error);
+        log.error(
+          { err: error, linkId: l.id },
+          "failed to delete OG image for link",
+        );
       }
     }
   }
@@ -795,7 +810,10 @@ export const bulkDeleteLinks = async (
     Promise.all(
       linksToDelete.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
     ).catch((err) => {
-      console.error("Failed to invalidate cache for deleted links:", err);
+      log.error(
+        { err, count: linksToDelete.length },
+        "failed to invalidate cache for deleted links",
+      );
     }),
   );
 

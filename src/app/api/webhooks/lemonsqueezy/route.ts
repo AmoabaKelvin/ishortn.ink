@@ -4,6 +4,7 @@ import { Resend } from "resend";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
 import { getPlanFromIds } from "@/lib/billing/plans";
+import { logger } from "@/lib/logger";
 import { webhookHasMeta } from "@/lib/typeguards";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
@@ -15,6 +16,7 @@ import type {
 } from "@/lib/types/lemonsqueezy";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const log = logger.child({ webhook: "lemonsqueezy" });
 
 export async function POST(request: Request) {
   if (!process.env.LEMONSQUEEZY_WEBHOOK_SECRET) {
@@ -76,11 +78,10 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
       });
 
       if (!user) {
-        console.error("Lemon Squeezy webhook: user not found", {
-          event: event_name,
-          subscriptionId,
-          userId,
-        });
+        log.error(
+          { event: event_name, subscriptionId, userId },
+          "user not found for subscription_created",
+        );
         return;
       }
 
@@ -116,11 +117,10 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
       const emailPlan = plan === "ultra" ? "ultra" : "pro";
 
       if (!email) {
-        console.error("Lemon Squeezy webhook: user has no email for welcome", {
-          event: event_name,
-          subscriptionId,
-          userId,
-        });
+        log.error(
+          { event: event_name, subscriptionId, userId },
+          "user has no email for welcome",
+        );
         return;
       }
 
@@ -175,14 +175,9 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     // Catch-and-log here (rather than letting runBackgroundTask's generic
     // handler do it) so prod logs include the webhook context needed to
     // triage failures on money-moving events.
-    console.error("Lemon Squeezy webhook processing failed", {
-      event: event_name,
-      subscriptionId,
-      userId,
-      error:
-        err instanceof Error
-          ? { message: err.message, stack: err.stack }
-          : err,
-    });
+    log.error(
+      { err, event: event_name, subscriptionId, userId },
+      "processing failed",
+    );
   }
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 import { sendDomainConfigurationReminders } from "@/server/api/routers/domains/domain-reminder.service";
+
+const log = logger.child({ job: "domain-reminders" });
 
 /**
  * Cron job endpoint to send reminder emails for misconfigured domains.
@@ -22,7 +25,7 @@ function validateApiKey(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
-    console.error("CRON_SECRET environment variable is not set");
+    log.error("CRON_SECRET environment variable is not set");
     return false;
   }
 
@@ -57,23 +60,29 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log("[Domain Reminder] Starting reminder job...");
+    log.debug("starting reminder job");
     const startTime = Date.now();
 
     const result = await sendDomainConfigurationReminders();
 
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Domain Reminder] Completed in ${duration}ms. Checked ${result.domainsChecked} domains, updated ${result.domainsUpdatedToActive} to active, sent ${result.remindersSent} reminders.`,
+    const durationMs = Date.now() - startTime;
+    log.info(
+      {
+        durationMs,
+        domainsChecked: result.domainsChecked,
+        domainsUpdatedToActive: result.domainsUpdatedToActive,
+        remindersSent: result.remindersSent,
+      },
+      "reminder job complete",
     );
 
     return NextResponse.json({
       success: true,
       result,
-      duration: `${duration}ms`,
+      duration: `${durationMs}ms`,
     });
   } catch (error) {
-    console.error("[Domain Reminder] Error during reminder job:", error);
+    log.error({ err: error }, "reminder job failed");
     return NextResponse.json(
       {
         success: false,

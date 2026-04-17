@@ -3,6 +3,7 @@
 import { ArrowUpRightIcon, CheckIcon, Loader2 } from "lucide-react";
 import posthog from "posthog-js";
 
+import { clientLogger } from "@/lib/logger/client";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -41,7 +42,7 @@ export function UpgradeToPro() {
         window.location.reload();
       }
     } catch (error) {
-      console.error(error);
+      clientLogger.error({ err: error }, "upgrade mutation failed");
     }
   };
 

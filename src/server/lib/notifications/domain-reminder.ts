@@ -1,7 +1,10 @@
 import DomainReminderEmail from "@/emails/domain-reminder";
 import { env } from "@/env.mjs";
+import { logger } from "@/lib/logger";
 
 import { resend } from "./resend-client";
+
+const log = logger.child({ notification: "domain-reminder" });
 
 type Challenge = {
   type: "TXT" | "A" | "CNAME";
@@ -42,6 +45,9 @@ export async function sendDomainReminderEmail({
       }),
     });
   } catch (error) {
-    console.error("Failed to send domain reminder email", error);
+    log.error(
+      { err: error, email, domain, daysMisconfigured },
+      "failed to send domain reminder email",
+    );
   }
 }

@@ -10,9 +10,12 @@ import { z } from "zod";
 
 import { PLAN_VARIANT_IDS, resolvePlan } from "@/lib/billing/plans";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
+import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 import { subscription } from "@/server/db/schema";
+
+const log = logger.child({ component: "billing.lemonsqueezy" });
 
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
 import {
@@ -85,7 +88,10 @@ export const lemonsqueezyRouter = createTRPCRouter({
             })
             .where(eq(subscription.userId, userId));
         } catch (e) {
-          console.error("Failed to update local subscription state", e);
+          log.error(
+            { err: e, userId, subscriptionId: userSubscription.subscriptionId },
+            "failed to update local subscription state",
+          );
         }
 
         return { status: "updated", message: "Plan updated successfully!" };
@@ -169,8 +175,6 @@ export const lemonsqueezyRouter = createTRPCRouter({
     const userSubscription = await ctx.db.query.subscription.findFirst({
       where: (table, { eq }) => eq(table.userId, userId),
     });
-
-    console.log("User Subscription", userSubscription);
 
     if (!userSubscription) {
       throw new Error("No active subscription found");

@@ -1,4 +1,7 @@
 import { env } from "@/env.mjs";
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ component: "phishing.web-risk" });
 
 type WebRiskResult =
   | { status: "safe" }
@@ -34,8 +37,9 @@ export async function checkGoogleWebRisk(url: string): Promise<WebRiskResult> {
     );
 
     if (!response.ok) {
-      console.error(
-        `Google Web Risk API error: ${response.status} ${response.statusText}`,
+      log.error(
+        { status: response.status, statusText: response.statusText },
+        "Web Risk API returned non-ok status",
       );
       return { status: "error" };
     }
@@ -53,7 +57,7 @@ export async function checkGoogleWebRisk(url: string): Promise<WebRiskResult> {
 
     return { status: "safe" };
   } catch (error) {
-    console.error("Google Web Risk check failed:", error);
+    log.error({ err: error }, "Web Risk check failed");
     return { status: "error" };
   }
 }

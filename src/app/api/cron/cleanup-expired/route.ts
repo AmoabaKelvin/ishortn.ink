@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 import { cleanupExpiredData } from "@/server/api/routers/cleanup/expired-data-cleanup.service";
+
+const log = logger.child({ job: "cleanup-expired" });
 
 /**
  * Cron job endpoint to clean up expired data:
@@ -24,7 +27,7 @@ function validateApiKey(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
-    console.error("CRON_SECRET environment variable is not set");
+    log.error("CRON_SECRET environment variable is not set");
     return false;
   }
 
@@ -61,25 +64,28 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log("[Expired Data Cleanup] Starting cleanup job...");
+    log.debug("starting cleanup");
     const startTime = Date.now();
 
     const result = await cleanupExpiredData();
 
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Expired Data Cleanup] Completed in ${duration}ms. ` +
-        `Deleted ${result.expiredInvitesDeleted} expired invites, ` +
-        `${result.invalidDomainsDeleted} invalid domains.`
+    const durationMs = Date.now() - startTime;
+    log.info(
+      {
+        durationMs,
+        expiredInvitesDeleted: result.expiredInvitesDeleted,
+        invalidDomainsDeleted: result.invalidDomainsDeleted,
+      },
+      "cleanup complete",
     );
 
     return NextResponse.json({
       success: true,
       result,
-      duration: `${duration}ms`,
+      duration: `${durationMs}ms`,
     });
   } catch (error) {
-    console.error("[Expired Data Cleanup] Error during cleanup:", error);
+    log.error({ err: error }, "cleanup failed");
     return NextResponse.json(
       {
         success: false,

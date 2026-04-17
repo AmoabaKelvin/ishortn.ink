@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 
+import { logger } from "@/lib/logger";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 
 export const fetchCache = "force-no-store";
+
+const log = logger.child({ component: "cloaked-page" });
 
 type CloakedPageProps = {
   params: Promise<{ url: string }>;
@@ -69,7 +72,7 @@ export async function generateMetadata(props: CloakedPageProps): Promise<Metadat
       },
     };
   } catch (error) {
-    console.error("Error fetching metadata for cloaked page:", error);
+    log.error({ err: error, url }, "failed to fetch metadata for cloaked page");
     return {
       title: "Redirecting...",
       robots: {

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 import { cleanupAnalyticsData } from "@/server/api/routers/analytics/analytics-cleanup.service";
+
+const log = logger.child({ job: "cleanup-analytics" });
 
 /**
  * Cron job endpoint to clean up old analytics data based on user subscription plan.
@@ -27,7 +30,7 @@ function validateApiKey(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
-    console.error("CRON_SECRET environment variable is not set");
+    log.error("CRON_SECRET environment variable is not set");
     return false;
   }
 
@@ -64,26 +67,29 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log("[Analytics Cleanup] Starting cleanup job...");
+    log.debug("starting cleanup");
     const startTime = Date.now();
 
     const result = await cleanupAnalyticsData();
 
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Analytics Cleanup] Completed in ${duration}ms. ` +
-        `Deleted ${result.linkVisitsDeleted} link visits, ` +
-        `${result.uniqueLinkVisitsDeleted} unique visits. ` +
-        `Created ${result.dailySummariesCreated} daily summaries.`
+    const durationMs = Date.now() - startTime;
+    log.info(
+      {
+        durationMs,
+        linkVisitsDeleted: result.linkVisitsDeleted,
+        uniqueLinkVisitsDeleted: result.uniqueLinkVisitsDeleted,
+        dailySummariesCreated: result.dailySummariesCreated,
+      },
+      "cleanup complete",
     );
 
     return NextResponse.json({
       success: true,
       result,
-      duration: `${duration}ms`,
+      duration: `${durationMs}ms`,
     });
   } catch (error) {
-    console.error("[Analytics Cleanup] Error during cleanup:", error);
+    log.error({ err: error }, "cleanup failed");
     return NextResponse.json(
       {
         success: false,

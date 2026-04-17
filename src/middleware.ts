@@ -2,7 +2,10 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { edgeLogger } from "@/lib/logger/edge";
 import { isBot } from "@/lib/utils/is-bot";
+
+const log = edgeLogger.child({ component: "middleware" });
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
@@ -99,7 +102,10 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
     // Only allow http and https protocols (reject javascript:, data:, etc.)
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      console.error(`Blocked redirect to unsafe protocol: ${parsedUrl.protocol}`);
+      log.warn(
+        { protocol: parsedUrl.protocol, host, pathname },
+        "Blocked redirect to unsafe protocol",
+      );
       return NextResponse.next();
     }
 
@@ -113,7 +119,10 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
       }
       redirectUrl = fallbackUrl.toString();
     } catch {
-      console.error(`Invalid redirect URL: ${data.url}`);
+      log.warn(
+        { rawUrl: data.url, host, pathname },
+        "Invalid redirect URL",
+      );
       return NextResponse.next();
     }
   }

@@ -1,6 +1,8 @@
 import seedrandom from "seedrandom";
 import { encode, QrCodeDataType } from "uqr";
 
+import { clientLogger } from "@/lib/logger/client";
+
 import { effects } from "./effects";
 import Perspective from "./perspective";
 import { resolveMargin } from "./utils";
@@ -708,11 +710,13 @@ export async function generateQRCode(
     try {
       await drawLogo(realCtx, width, height, state);
     } catch (error) {
-      console.warn(
-        `Failed to draw logo (${state.logoImage.substring(0, 50)}...):`,
-        error instanceof Error ? error.message : error
+      clientLogger.warn(
+        {
+          err: error instanceof Error ? error.message : error,
+          logoImagePreview: state.logoImage.substring(0, 50),
+        },
+        "failed to draw logo; continuing without it",
       );
-      // Continue without the logo - QR code is still valid
     }
   }
 

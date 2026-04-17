@@ -2,12 +2,15 @@ import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getPlanCaps, isUnlimitedDomains, resolvePlan } from "@/lib/billing/plans";
+import { logger } from "@/lib/logger";
 import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
 import { customDomain } from "@/server/db/schema";
 import { workspaceFilter } from "@/server/lib/workspace";
 
 import * as input from "./domains.input";
 import * as services from "./domains.service";
+
+const log = logger.child({ component: "domains.procedure" });
 
 export const customDomainRouter = createTRPCRouter({
   create: workspaceProcedure
@@ -57,9 +60,8 @@ export const customDomainRouter = createTRPCRouter({
   checkStatus: workspaceProcedure
     .input(z.object({ domain: z.string() }))
     .query(async ({ ctx, input }) => {
-      console.log("Domain we are checking for", input.domain);
-
       const domain = input.domain;
+      log.debug({ domain }, "checking domain status");
 
       const [configResponse, domainResponse] = await Promise.all([
         fetch(
@@ -87,8 +89,15 @@ export const customDomainRouter = createTRPCRouter({
       const configData = (await configResponse.json()) as VercelConfigResponse;
       const domainData = (await domainResponse.json()) as VercelDomainResponse;
 
-      console.log("Config data", configData);
-      console.log("Domain data", domainData);
+      log.debug(
+        {
+          domain,
+          verified: domainData.verified,
+          misconfigured: configData.misconfigured,
+          challengeCount: configData.challenges?.length ?? 0,
+        },
+        "Vercel responses",
+      );
 
       if (configData.misconfigured && domainData.verified) {
         const isApex = domainData.name.split(".").length === 2;
@@ -132,8 +141,10 @@ export const customDomainRouter = createTRPCRouter({
 
         // Update the database with the new status and verification details
 
-        console.log("Status", status);
-        console.log("Verification details", verificationDetails);
+        log.debug(
+          { domain, status, challengeCount: verificationDetails.challenges.length },
+          "domain status resolved",
+        );
 
         if (domainData.verified) {
           await ctx.db

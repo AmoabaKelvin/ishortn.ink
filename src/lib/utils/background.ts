@@ -1,5 +1,9 @@
 import { waitUntil } from "@vercel/functions";
 
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ component: "background-task" });
+
 // In production, waitUntil keeps the serverless/edge function alive until the
 // promise settles. Locally waitUntil is a no-op, which would drop unhandled
 // rejections silently — so we await the promise inline in dev so failures
@@ -14,7 +18,7 @@ export async function runBackgroundTask<T>(promise: Promise<T>): Promise<T | und
   // after the response has already been sent.
   waitUntil(
     promise.catch((err) => {
-      console.error("Background task failed:", err);
+      log.error({ err }, "background task failed");
     }),
   );
   return undefined;

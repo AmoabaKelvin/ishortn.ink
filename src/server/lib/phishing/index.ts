@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 
@@ -5,6 +6,8 @@ import { checkBlocklist } from "./blocklist";
 import { checkGoogleSafeBrowsing } from "./google-safe-browsing";
 import { runHeuristicChecks } from "./heuristics";
 import { checkGoogleWebRisk } from "./web-risk";
+
+const log = logger.child({ component: "phishing" });
 
 type CheckResult = {
   blocked: boolean;
@@ -87,10 +90,7 @@ export async function runPreLLMChecks(url: string): Promise<CheckResult> {
 
     // Both failed — fail open, let the LLM check handle it
     if (webRiskResult.status === "error") {
-      console.warn(
-        "Both Google Safe Browsing and Web Risk failed for URL:",
-        url,
-      );
+      log.warn({ url }, "both Safe Browsing and Web Risk failed");
     }
   }
 
@@ -105,7 +105,7 @@ export async function assertUrlSafe(url: string): Promise<void> {
   // Layer 1 & 2: Deterministic checks + Google Safe Browsing / Web Risk
   const preLLMResult = await runPreLLMChecks(url);
   if (preLLMResult.blocked) {
-    console.warn(`Link blocked (pre-LLM): ${preLLMResult.reason}`);
+    log.warn({ url, reason: preLLMResult.reason }, "link blocked (pre-LLM)");
     throw new Error(preLLMResult.userMessage);
   }
 

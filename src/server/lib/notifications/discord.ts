@@ -1,4 +1,7 @@
 import { env } from "@/env.mjs";
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ notification: "discord" });
 
 export type DiscordEmbedField = {
   name: string;
@@ -36,7 +39,7 @@ export async function sendDiscordNotification(
   const webhookUrl = env.DISCORD_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    console.warn("Discord webhook URL not configured, skipping notification");
+    log.warn("DISCORD_WEBHOOK_URL not set; skipping notification");
     return false;
   }
 
@@ -50,13 +53,16 @@ export async function sendDiscordNotification(
     });
 
     if (!response.ok) {
-      console.error("Failed to send Discord notification:", response.statusText);
+      log.error(
+        { status: response.status, statusText: response.statusText },
+        "discord webhook returned non-ok status",
+      );
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error sending Discord notification:", error);
+    log.error({ err: error }, "failed to send discord notification");
     return false;
   }
 }

@@ -2,6 +2,10 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ component: "ai.service" });
+
 const aliasSchema = z.object({
   recommendations: z.array(z.string()),
 });
@@ -91,7 +95,7 @@ function extractUrlFeatures(url: string): URLFeatures {
     features.has_ip_pattern = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(url);
     features.has_suspicious_chars = /[<>{}|\[\]~]/.test(url);
   } catch (error) {
-    console.error("Error parsing URL:", error);
+    log.warn({ err: error, url }, "failed to parse URL for feature extraction");
   }
 
   return features;

@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 import { isIframeable } from "@/lib/utils/is-iframeable";
+
+const log = logger.child({ component: "api.iframeable" });
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ iframeable });
   } catch (error) {
-    console.error("Error checking iframe compatibility:", error);
+    log.error({ err: error }, "iframe compatibility check failed");
     return NextResponse.json({ error: "Failed to check iframe compatibility" }, { status: 500 });
   }
 }

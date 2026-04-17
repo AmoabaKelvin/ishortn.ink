@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
+import { clientLogger } from "@/lib/logger/client";
 import { Button } from "@/components/ui/button";
+
+const log = clientLogger.child({ component: "qr-modal" });
 import {
   Dialog,
   DialogBody,
@@ -39,7 +42,7 @@ export function QRCodeModal({
         margin: 2,
       });
     } catch (error) {
-      console.error("[QR:modal] Failed to generate QR code:", error);
+      log.error({ err: error, action: "render" }, "failed to generate QR code");
     }
   }, [destinationUrl]);
 
@@ -74,7 +77,7 @@ export function QRCodeModal({
       downloadLink.click();
       document.body.removeChild(downloadLink);
     } catch (error) {
-      console.error("[QR:modal] Failed to download QR code:", error);
+      log.error({ err: error, action: "download" }, "failed to download QR code");
       toast.error("Failed to download QR code");
     }
   };

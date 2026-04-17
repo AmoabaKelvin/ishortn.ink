@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 import { cleanupDeletedTeams } from "@/server/api/routers/team/team-cleanup.service";
+
+const log = logger.child({ job: "cleanup-teams" });
 
 /**
  * Cron job endpoint to clean up soft-deleted teams that have passed the grace period.
@@ -22,7 +25,7 @@ function validateApiKey(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
-    console.error("CRON_SECRET environment variable is not set");
+    log.error("CRON_SECRET environment variable is not set");
     return false;
   }
 
@@ -59,23 +62,24 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log("[Team Cleanup] Starting cleanup job...");
+    log.debug("starting cleanup");
     const startTime = Date.now();
 
     const result = await cleanupDeletedTeams();
 
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Team Cleanup] Completed in ${duration}ms. Deleted ${result.teamsDeleted} teams.`,
+    const durationMs = Date.now() - startTime;
+    log.info(
+      { durationMs, teamsDeleted: result.teamsDeleted },
+      "cleanup complete",
     );
 
     return NextResponse.json({
       success: true,
       result,
-      duration: `${duration}ms`,
+      duration: `${durationMs}ms`,
     });
   } catch (error) {
-    console.error("[Team Cleanup] Error during cleanup:", error);
+    log.error({ err: error }, "cleanup failed");
     return NextResponse.json(
       {
         success: false,
