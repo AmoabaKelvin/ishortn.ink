@@ -1442,7 +1442,11 @@ export const verifyLinkPassword = async (
   }
 
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
-  const ipHash = hashIp(ctx.headers.get("x-forwarded-for") ?? "");
+  // x-forwarded-for is a comma-separated proxy chain; the left-most token is
+  // the original client. Hashing the whole header instead would count the
+  // same visitor as distinct whenever the proxy chain changes.
+  const clientIp = (ctx.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
+  const ipHash = hashIp(clientIp);
 
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,
