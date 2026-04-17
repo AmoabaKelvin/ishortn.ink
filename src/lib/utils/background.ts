@@ -8,6 +8,14 @@ const isLocalhost = process.env.NODE_ENV === "development";
 
 export async function runBackgroundTask<T>(promise: Promise<T>): Promise<T | undefined> {
   if (isLocalhost) return promise;
-  waitUntil(promise);
+  // waitUntil does not attach any rejection handler; a rejected promise would
+  // become an unhandled rejection in the function's Node runtime. Swallow and
+  // log so Vercel records the failure without marking the invocation as failed
+  // after the response has already been sent.
+  waitUntil(
+    promise.catch((err) => {
+      console.error("Background task failed:", err);
+    }),
+  );
   return undefined;
 }
