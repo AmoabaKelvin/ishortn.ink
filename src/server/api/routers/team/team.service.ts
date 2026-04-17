@@ -4,6 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import crypto from "node:crypto";
 
 import { redis } from "@/lib/core/cache";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { customDomain, RESERVED_TEAM_SLUGS, team, teamInvite, teamMember, user } from "@/server/db/schema";
 import { sendTeamInviteEmail } from "@/server/lib/notifications/team-invite";
 import {
@@ -554,15 +555,17 @@ export async function createInvite(
       columns: { name: true },
     });
 
-    void sendTeamInviteEmail({
-      email: input.email,
-      recipientName: recipient?.name,
-      teamName: ctx.workspace.team.name,
-      teamSlug: ctx.workspace.team.slug,
-      inviterName: inviter?.name || "Someone",
-      role: input.role,
-      token,
-    });
+    void runBackgroundTask(
+      sendTeamInviteEmail({
+        email: input.email,
+        recipientName: recipient?.name,
+        teamName: ctx.workspace.team.name,
+        teamSlug: ctx.workspace.team.slug,
+        inviterName: inviter?.name || "Someone",
+        role: input.role,
+        token,
+      }),
+    );
   }
 
   const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";

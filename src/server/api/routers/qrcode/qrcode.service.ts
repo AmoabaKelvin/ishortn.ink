@@ -3,6 +3,7 @@ import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
@@ -229,7 +230,7 @@ export async function deleteQrCode(ctx: WorkspaceTRPCContext, id: number) {
 
   // Invalidate cache after the transaction commits successfully
   if (cacheKey) {
-    void deleteFromCache(cacheKey);
+    void runBackgroundTask(deleteFromCache(cacheKey));
   }
 
   return true;

@@ -14,8 +14,6 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import crypto from "node:crypto";
-
 import {
   canUseGeoRules,
   getGeoRulesLimit,
@@ -23,6 +21,7 @@ import {
 } from "@/lib/billing/plans";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
+import { hashIp } from "@/lib/utils/ip-hash";
 import {
   buildCacheKey,
   deleteFromCache,
@@ -31,6 +30,7 @@ import {
   setInCache,
 } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { db } from "@/server/db";
 import {
@@ -789,14 +789,15 @@ export const bulkDeleteLinks = async (
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
 
-  // Invalidate cache for all deleted links (async, don't block)
-  void Promise.all(
-    linksToDelete.map((l) =>
-      deleteFromCache(buildCacheKey(l.domain, l.alias!)),
-    ),
-  ).catch((err) => {
-    console.error("Failed to invalidate cache for deleted links:", err);
-  });
+  // Invalidate cache for all deleted links in the background. waitUntil keeps
+  // the serverless function alive until every deleteFromCache settles.
+  void runBackgroundTask(
+    Promise.all(
+      linksToDelete.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
+    ).catch((err) => {
+      console.error("Failed to invalidate cache for deleted links:", err);
+    }),
+  );
 
   return { success: true, count: linksToDelete.length };
 };
@@ -940,8 +941,6 @@ export const retrieveOriginalUrl = async (
 
     await setInCache(buildCacheKey(link.domain, link.alias!), link);
   }
-
-  // waitUntil(logAnalytics(ctx, link, input.from));
 
   return link;
 };
@@ -1443,29 +1442,24 @@ export const verifyLinkPassword = async (
   }
 
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
-  const ipHash = crypto
-    .createHash("sha256")
-    .update(ctx.headers.get("x-forwarded-for") ?? "")
-    .digest("hex");
-  const existingLinkVisit = await ctx.db.query.uniqueLinkVisit.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.linkId, link.id), eq(table.ipHash, ipHash)),
-  });
-
-  if (!existingLinkVisit) {
-    await ctx.db.insert(uniqueLinkVisit).values({
-      linkId: link.id,
-      ipHash,
-    });
-  }
+  // x-forwarded-for is a comma-separated proxy chain; the left-most token is
+  // the original client. Hashing the whole header instead would count the
+  // same visitor as distinct whenever the proxy chain changes.
+  const clientIp = (ctx.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
+  const ipHash = hashIp(clientIp);
 
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,
     ...deviceDetails,
   });
 
+  await ctx.db
+    .insert(uniqueLinkVisit)
+    .values({ linkId: link.id, ipHash })
+    .onDuplicateKeyUpdate({ set: { linkId: sql`linkId` } });
+
   // Fire milestone check for password-protected links (recordClick skips these)
-  void checkAndFireMilestones(link.id, link.userId);
+  void runBackgroundTask(checkAndFireMilestones(link.id, link.userId));
 
   return link;
 };

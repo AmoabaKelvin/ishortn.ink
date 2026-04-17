@@ -5,6 +5,7 @@ import { Resend } from "resend";
 import WelcomeEmail from "@/emails/welcome-to-pro";
 import { getPlanFromIds } from "@/lib/billing/plans";
 import { webhookHasMeta } from "@/lib/typeguards";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     });
   }
 
-  void processWebhook(data);
+  void runBackgroundTask(processWebhook(data));
 
   return new Response("OK", { status: 200 });
 }
@@ -53,111 +54,135 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
   const { user_id: userId } = custom_data;
   const subscriptionId = Number.parseInt(data.id);
 
-  const lemonsqueezySubscription = data.attributes as LemonsqueezySubscriptionAttributes;
-  const customerId = lemonsqueezySubscription.customer_id;
-  const orderId = lemonsqueezySubscription.order_id;
-  const renewsAt = new Date(lemonsqueezySubscription.renews_at);
-  const createdAt = new Date(lemonsqueezySubscription.created_at);
-  const endsAt = lemonsqueezySubscription.ends_at;
-  const status = lemonsqueezySubscription.status;
-  const productId = lemonsqueezySubscription.product_id;
-  const variantId = lemonsqueezySubscription.variant_id;
-  const plan = getPlanFromIds(variantId, productId) ?? "pro";
+  try {
+    const lemonsqueezySubscription = data.attributes as LemonsqueezySubscriptionAttributes;
+    const customerId = lemonsqueezySubscription.customer_id;
+    const orderId = lemonsqueezySubscription.order_id;
+    const renewsAt = new Date(lemonsqueezySubscription.renews_at);
+    const createdAt = new Date(lemonsqueezySubscription.created_at);
+    const endsAt = lemonsqueezySubscription.ends_at;
+    const status = lemonsqueezySubscription.status;
+    const productId = lemonsqueezySubscription.product_id;
+    const variantId = lemonsqueezySubscription.variant_id;
+    const plan = getPlanFromIds(variantId, productId) ?? "pro";
 
-  // payment data
-  const cardBrand = lemonsqueezySubscription.card_brand;
-  const cardLastFour = lemonsqueezySubscription.card_last_four;
+    // payment data
+    const cardBrand = lemonsqueezySubscription.card_brand;
+    const cardLastFour = lemonsqueezySubscription.card_last_four;
 
-  if (event_name === "subscription_created") {
-    const user = await db.query.user.findFirst({
-      where: (table, { eq }) => eq(table.id, userId),
-    });
+    if (event_name === "subscription_created") {
+      const user = await db.query.user.findFirst({
+        where: (table, { eq }) => eq(table.id, userId),
+      });
 
-    if (!user) {
-      return;
-    }
+      if (!user) {
+        console.error("Lemon Squeezy webhook: user not found", {
+          event: event_name,
+          subscriptionId,
+          userId,
+        });
+        return;
+      }
 
-    await db
-      .insert(subscription)
-      .values({
-        userId: userId,
-        subscriptionId,
-        customerId,
-        orderId,
-        status,
-        plan,
-        variantId,
-        productId,
-        cardBrand,
-        cardLastFour,
-        renewsAt: new Date(renewsAt),
-        createdAt: new Date(createdAt),
-        endsAt: endsAt ? new Date(endsAt) : null,
-      })
-      .onDuplicateKeyUpdate({
-        set: {
+      await db
+        .insert(subscription)
+        .values({
+          userId: userId,
+          subscriptionId,
+          customerId,
+          orderId,
           status,
+          plan,
+          variantId,
+          productId,
           cardBrand,
           cardLastFour,
           renewsAt: new Date(renewsAt),
+          createdAt: new Date(createdAt),
           endsAt: endsAt ? new Date(endsAt) : null,
-        },
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            status,
+            cardBrand,
+            cardLastFour,
+            renewsAt: new Date(renewsAt),
+            endsAt: endsAt ? new Date(endsAt) : null,
+          },
+        });
+
+      const email = user.email;
+      const name = user.name;
+      const emailPlan = plan === "ultra" ? "ultra" : "pro";
+
+      if (!email) {
+        console.error("Lemon Squeezy webhook: user has no email for welcome", {
+          event: event_name,
+          subscriptionId,
+          userId,
+        });
+        return;
+      }
+
+      await resend.emails.send({
+        from: "Kelvin from iShortn <kelvin@ishortn.ink>",
+        to: email,
+        subject: `Welcome to iShortn ${emailPlan === "ultra" ? "Ultra" : "Pro"}`,
+        react: WelcomeEmail({ userName: name ?? "there", plan: emailPlan }),
       });
+    } else if (event_name === "subscription_updated") {
+      // handle subscription updated. Sent when a subscription is updated
 
-    const email = user.email;
-    const name = user.name;
-    const emailPlan = plan === "ultra" ? "ultra" : "pro";
-
-    if (!email) {
-      console.error(`Cannot send welcome email: user ${userId} has no email`);
-      return;
+      await db
+        .update(subscription)
+        .set({
+          status,
+          plan,
+          variantId,
+          productId,
+          renewsAt: renewsAt ? new Date(renewsAt) : null,
+          endsAt: endsAt ? new Date(endsAt) : null,
+          cardBrand,
+          cardLastFour,
+        })
+        .where(eq(subscription.userId, userId));
+    } else if (event_name === "subscription_cancelled") {
+      await db
+        .update(subscription)
+        .set({
+          status,
+          plan: "free",
+          variantId: 0,
+          productId: 0,
+          endsAt: endsAt ? new Date(endsAt) : null,
+        })
+        .where(eq(subscription.userId, userId));
+    } else if (event_name === "subscription_expired") {
+      await db
+        .update(subscription)
+        .set({
+          status,
+          plan: "free",
+          variantId: 0,
+          productId: 0,
+          endsAt: new Date(), // set endsAt to now to indicate the subscription has ended
+        })
+        .where(eq(subscription.userId, userId));
+    } else if (event_name === "order_created") {
+      // handle order created
     }
-
-    await resend.emails.send({
-      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-      to: email,
-      subject: `Welcome to iShortn ${emailPlan === "ultra" ? "Ultra" : "Pro"}`,
-      react: WelcomeEmail({ userName: name ?? "there", plan: emailPlan }),
+  } catch (err) {
+    // Catch-and-log here (rather than letting runBackgroundTask's generic
+    // handler do it) so prod logs include the webhook context needed to
+    // triage failures on money-moving events.
+    console.error("Lemon Squeezy webhook processing failed", {
+      event: event_name,
+      subscriptionId,
+      userId,
+      error:
+        err instanceof Error
+          ? { message: err.message, stack: err.stack }
+          : err,
     });
-  } else if (event_name === "subscription_updated") {
-    // handle subscription updated. Sent when a subscription is updated
-
-    await db
-      .update(subscription)
-      .set({
-        status,
-        plan,
-        variantId,
-        productId,
-        renewsAt: renewsAt ? new Date(renewsAt) : null,
-        endsAt: endsAt ? new Date(endsAt) : null,
-        cardBrand,
-        cardLastFour,
-      })
-      .where(eq(subscription.userId, userId));
-  } else if (event_name === "subscription_cancelled") {
-    await db
-      .update(subscription)
-      .set({
-        status,
-        plan: "free",
-        variantId: 0,
-        productId: 0,
-        endsAt: endsAt ? new Date(endsAt) : null,
-      })
-      .where(eq(subscription.userId, userId));
-  } else if (event_name === "subscription_expired") {
-    await db
-      .update(subscription)
-      .set({
-        status,
-        plan: "free",
-        variantId: 0,
-        productId: 0,
-        endsAt: new Date(), // set endsAt to now to indicate the subscription has ended
-      })
-      .where(eq(subscription.userId, userId));
-  } else if (event_name === "order_created") {
-    // handle order created
   }
 }

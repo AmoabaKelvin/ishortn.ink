@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { runBackgroundTask } from "@/lib/utils/background";
 import { feedback, user } from "@/server/db/schema";
 import { sendFeedbackNotification } from "@/server/lib/notifications/discord";
 import { isR2Configured, r2UploadImage } from "@/server/lib/storage/r2";
@@ -97,14 +98,17 @@ export const feedbackRouter = createTRPCRouter({
         columns: { email: true, name: true },
       });
 
-      // Send Discord notification (fire and forget)
-      void sendFeedbackNotification({
-        userEmail: userRecord?.email ?? "unknown",
-        userName: userRecord?.name,
-        feedbackType: input.type,
-        message: input.message,
-        imageUrls,
-      });
+      // Send Discord notification — waitUntil so the serverless function
+      // stays alive until the webhook request completes.
+      void runBackgroundTask(
+        sendFeedbackNotification({
+          userEmail: userRecord?.email ?? "unknown",
+          userName: userRecord?.name,
+          feedbackType: input.type,
+          message: input.message,
+          imageUrls,
+        }),
+      );
 
       return { success: true };
     }),

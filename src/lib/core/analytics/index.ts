@@ -31,17 +31,24 @@ const getGeolocationDetails = async (ip: string) => {
   };
 };
 
-const identifyRequestingDevice = (headers: Headers) => {
+const identifyRequestingDevice = async (headers: Headers) => {
   const userAgent = headers.get("user-agent") ?? "";
 
-  const parser = new UAParser(userAgent);
-  const result = parser.getResult();
+  const result = await UAParser(userAgent, headers).withClientHints();
 
   const deviceTypesMapping: Record<string, string> = {
     iOS: "Mobile",
     Android: "Mobile",
     "Mac OS": "Desktop",
     Windows: "Desktop",
+    Linux: "Desktop",
+    Ubuntu: "Desktop",
+    Debian: "Desktop",
+    Fedora: "Desktop",
+    "Chrome OS": "Desktop",
+    ChromeOS: "Desktop",
+    FreeBSD: "Desktop",
+    OpenBSD: "Desktop",
   };
 
   const osName = result.os.name ?? "Unknown";

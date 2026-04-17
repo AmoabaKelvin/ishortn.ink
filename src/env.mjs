@@ -32,6 +32,10 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET_NAME: z.string().optional(),
     R2_PUBLIC_URL: z.string().url().optional(),
+    // Secret key used to HMAC visitor IPs before storage.
+    // Optional for backwards compatibility — when unset, we fall back to plain
+    // SHA-256, which preserves old behavior but is trivially reversible.
+    IP_HASH_SECRET: z.string().min(16).optional(),
   },
 
   /**
@@ -67,6 +71,7 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
     R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
     R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
+    IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },

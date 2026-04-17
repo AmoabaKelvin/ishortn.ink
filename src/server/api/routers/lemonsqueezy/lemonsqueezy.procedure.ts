@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import { PLAN_VARIANT_IDS, resolvePlan } from "@/lib/billing/plans";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 import { subscription } from "@/server/db/schema";
 
@@ -237,15 +238,18 @@ export const lemonsqueezyRouter = createTRPCRouter({
         );
       }
 
-      // Send feedback notification (fire and forget)
-      void sendDowngradeFeedbackNotification({
-        userEmail: userRecord?.email ?? "unknown",
-        userName: userRecord?.name,
-        fromPlan: currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1),
-        toPlan: targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1),
-        reason: downgradeReasonLabels[reason],
-        additionalFeedback,
-      });
+      // Send feedback notification (fire and forget — waitUntil keeps the
+      // function alive until the Discord webhook completes on Vercel).
+      void runBackgroundTask(
+        sendDowngradeFeedbackNotification({
+          userEmail: userRecord?.email ?? "unknown",
+          userName: userRecord?.name,
+          fromPlan: currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1),
+          toPlan: targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1),
+          reason: downgradeReasonLabels[reason],
+          additionalFeedback,
+        }),
+      );
 
       // Handle downgrade to free (cancellation)
       if (targetPlan === "free") {
