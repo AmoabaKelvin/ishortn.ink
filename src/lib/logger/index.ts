@@ -26,12 +26,13 @@ const redactPaths = [
 
 // Keys whose values are email addresses. Serializers mask these at the top
 // level of any log record so call sites can pass raw emails without leaking
-// PII. Add new keys here as they appear — the typed union documents intent.
+// PII. Keep the list to explicit email-typed names — a generic "recipient"
+// key could carry user IDs, phone numbers, or webhook URLs and produce
+// misleading output when run through maskEmail.
 const EMAIL_KEYS = [
   "email",
   "toEmail",
   "fromEmail",
-  "recipient",
   "recipientEmail",
   "userEmail",
 ] as const;

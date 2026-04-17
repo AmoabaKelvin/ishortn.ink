@@ -332,7 +332,10 @@ export default function CreateLinkPage() {
           });
         }
       } catch (error) {
-        log.error({ err: error, action: "fetch-metadata" }, "failed to fetch metadata");
+        // User-typing races and arbitrary destination URLs routinely fail
+        // this fetch — not actionable, so warn-level avoids polluting error
+        // dashboards with expected noise.
+        log.warn({ err: error, action: "fetch-metadata" }, "failed to fetch metadata");
         // Don't overwrite user-entered metadata on failure
         // Don't generate aliases since we don't have valid metadata
       }
