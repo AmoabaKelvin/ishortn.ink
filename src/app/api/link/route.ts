@@ -9,21 +9,23 @@ import {
   setGeoRulesInCache,
 } from "@/lib/core/cache";
 import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
-import {
-  recordUserClickForLink,
-  recordUserClickWithGeoRule,
-} from "@/middlewares/record-click";
+import { runBackgroundTask } from "@/lib/utils/background";
+import { recordClick, resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import { geoRule, link as linkTable, linkVisit } from "@/server/db/schema";
 
-/** Fire-and-forget: mark a link as disabled in the DB and purge its cache entry. */
-function autoDisableLink(linkId: number, cacheKey: string): void {
-  void db
-    .update(linkTable)
-    .set({ disabled: true })
-    .where(eq(linkTable.id, linkId))
-    .then(() => deleteFromCache(cacheKey))
-    .catch((err) => console.error("Failed to auto-disable link:", err));
+/**
+ * Mark a link as disabled in the DB and purge its cache entry. Runs in the
+ * background so it doesn't block the redirect response, but uses waitUntil
+ * so Vercel keeps the function alive until the update lands.
+ */
+async function autoDisableLink(linkId: number, cacheKey: string): Promise<void> {
+  try {
+    await db.update(linkTable).set({ disabled: true }).where(eq(linkTable.id, linkId));
+    await deleteFromCache(cacheKey);
+  } catch (err) {
+    console.error("Failed to auto-disable link:", err);
+  }
 }
 
 /**
@@ -40,7 +42,7 @@ async function checkLinkExpiration(
 
   // Date-based expiration
   if (link.disableLinkAfterDate && new Date() >= link.disableLinkAfterDate) {
-    autoDisableLink(link.id, cacheKey);
+    void runBackgroundTask(autoDisableLink(link.id, cacheKey));
     return true;
   }
 
@@ -54,7 +56,7 @@ async function checkLinkExpiration(
     const clickCount = result[0]?.clickCount ?? 0;
 
     if (clickCount >= link.disableLinkAfterClicks) {
-      autoDisableLink(link.id, cacheKey);
+      void runBackgroundTask(autoDisableLink(link.id, cacheKey));
       return true;
     }
   }
@@ -100,43 +102,25 @@ export async function GET(request: NextRequest) {
   // Normalize geo params - treat "undefined", "null", empty strings as Unknown
   const rawCountry = searchParams.get("country");
   const rawCity = searchParams.get("city");
-  const rawContinent = searchParams.get("continent");
 
   const country = rawCountry && rawCountry !== "undefined" && rawCountry !== "null" ? rawCountry : "Unknown";
   const city = rawCity && rawCity !== "undefined" && rawCity !== "null" ? rawCity : "Unknown";
-  const continent = rawContinent && rawContinent !== "undefined" && rawContinent !== "null" ? rawContinent : "Unknown";
-
-  console.log(
-    `Processing link for domain: ${domain}, alias: ${alias}, country: ${country}, city: ${city}, continent: ${continent}, ip: ${ip}`,
-  );
 
   if (!domain || !alias) {
     return Response.json({ error: "Missing required parameters" }, { status: 400 });
   }
 
   try {
-    const link = await recordUserClickForLink(
-      request,
-      domain,
-      alias,
-      ip,
-      country,
-      city,
-      continent,
-      true, // skipAnalytics flag
-    );
+    const link = await resolveLink(domain, alias);
 
     if (!link) {
-      console.log("Could not find the link you are looking for");
       return Response.json({ error: "Link not found" }, { status: 404 });
     }
-
-    console.log("Link found:", link);
 
     const baseUrl = request.url.split("/api/link")[0];
     const cacheKey = buildCacheKey(domain, alias);
 
-    // Redirect to blocked page for admin-blocked links
+    // Redirect to blocked page for admin-blocked links (no click recorded)
     if (link.blocked) {
       return Response.json({ url: `${baseUrl}/blocked/${link.id}` });
     }
@@ -146,7 +130,8 @@ export async function GET(request: NextRequest) {
       return Response.json({ url: `${baseUrl}/expired/${link.id}` });
     }
 
-    // Redirect to password verification page for protected links
+    // Password-protected links are tracked in verifyLinkPassword after unlock,
+    // not here — the visitor hasn't actually reached the destination yet.
     if (link.passwordHash) {
       return Response.json({ url: `${baseUrl}/verify-password/${link.id}` });
     }
@@ -159,13 +144,11 @@ export async function GET(request: NextRequest) {
         orderBy: [asc(geoRule.priority)],
       });
       if (rulesFromDb.length > 0) {
-        // Fire-and-forget cache population - don't block the response
-        void setGeoRulesInCache(link.id, rulesFromDb);
+        void runBackgroundTask(setGeoRulesInCache(link.id, rulesFromDb));
         geoRules = rulesFromDb;
       }
     }
 
-    // Match geo rules against visitor's country
     const geoResult = matchGeoRules(geoRules, country !== "Unknown" ? country : null);
 
     if (geoResult.matched) {
@@ -174,41 +157,21 @@ export async function GET(request: NextRequest) {
         return Response.json({ url: `${baseUrl}/blocked/${link.id}${geoParam}` });
       }
 
-      // Redirect to geo-targeted destination
-      // Record the click with geo rule info
-      await recordUserClickWithGeoRule(
-        request,
-        domain,
-        alias,
-        ip,
-        country,
-        city,
-        continent,
-        geoResult.ruleId
+      void runBackgroundTask(
+        recordClick(request.headers, link, ip, country, city, geoResult.ruleId),
       );
 
       const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams as UtmParams);
       return Response.json({ url: destinationUrl });
     }
 
-    // No geo rule matched - continue with default flow
-    // Record the click only for actual redirections (non-password protected links)
-    await recordUserClickForLink(
-      request,
-      domain,
-      alias,
-      ip,
-      country,
-      city,
-      continent,
-      false, // record analytics
-    );
-
     // Validate link.url before processing
     if (!link.url) {
       console.error("Link has no URL:", link.id);
       return Response.json({ error: "Link has no destination URL" }, { status: 404 });
     }
+
+    void runBackgroundTask(recordClick(request.headers, link, ip, country, city));
 
     const destinationUrl = appendUtmParams(link.url, link.utmParams as UtmParams);
     return Response.json({ url: destinationUrl, cloaking: link.cloaking ?? false });

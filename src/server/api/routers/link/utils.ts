@@ -1,19 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
-import crypto from "node:crypto";
 
-import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { redis } from "@/lib/core/cache";
-import { normalizeAlias, parseReferrer } from "@/lib/utils";
-import { isBot } from "@/lib/utils/is-bot";
-import { link, linkVisit, siteSettings, team, uniqueLinkVisit, user } from "@/server/db/schema";
+import { normalizeAlias } from "@/lib/utils";
+import { link, team, user } from "@/server/db/schema";
 import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user-plan";
-import { registerEventUsage } from "@/server/lib/event-usage";
-import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
 import { workspaceFilter } from "@/server/lib/workspace";
 
-import type { Link } from "@/server/db/schema";
-import type { ProtectedTRPCContext, PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
+import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 
 export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: number) {
   const linkRecord = await ctx.db.query.link.findFirst({
@@ -31,62 +25,6 @@ export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: num
   }
 
   return linkRecord;
-}
-export async function logAnalytics(ctx: PublicTRPCContext, link: Link, from: string) {
-  if (link.passwordHash) {
-    return;
-  }
-
-  if (from === "metadata") {
-    return;
-  }
-
-  const userAgent = ctx.headers.get("user-agent");
-
-  if (userAgent && isBot(userAgent)) {
-    return;
-  }
-
-  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
-
-  const usage = await registerEventUsage(link.userId, ctx.db);
-
-  if (usage.alertLevelTriggered && usage.limit && usage.userEmail && usage.plan) {
-    await sendEventUsageEmail({
-      email: usage.userEmail,
-      name: usage.userName,
-      threshold: usage.alertLevelTriggered,
-      limit: usage.limit,
-      currentCount: usage.currentCount,
-      plan: usage.plan,
-    });
-  }
-
-  if (!usage.allowed) {
-    return;
-  }
-
-  await ctx.db.insert(linkVisit).values({
-    linkId: link.id,
-    ...deviceDetails,
-    referer: parseReferrer(ctx.headers.get("referer")),
-  });
-
-  const ipHash = crypto
-    .createHash("sha256")
-    .update(ctx.headers.get("x-forwarded-for") ?? "")
-    .digest("hex");
-
-  const existingLinkVisit = await ctx.db.query.uniqueLinkVisit.findFirst({
-    where: (table, { eq, and }) => and(eq(table.linkId, link.id), eq(table.ipHash, ipHash)),
-  });
-
-  if (!existingLinkVisit) {
-    await ctx.db.insert(uniqueLinkVisit).values({
-      linkId: link.id,
-      ipHash,
-    });
-  }
 }
 
 export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {

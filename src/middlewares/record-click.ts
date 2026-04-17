@@ -1,10 +1,10 @@
-import crypto from "node:crypto";
-import { waitUntil } from "@vercel/functions";
 import { sql } from "drizzle-orm";
 import { UAParser } from "ua-parser-js";
 
 import { type Link, buildCacheKey, normalizeDomain, getFromCache, setInCache } from "@/lib/core/cache";
 import { getContinentName, getCountryFullName } from "@/lib/countries";
+import { runBackgroundTask } from "@/lib/utils/background";
+import { hashIp } from "@/lib/utils/ip-hash";
 import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
@@ -12,78 +12,109 @@ import { registerEventUsage } from "@/server/lib/event-usage";
 import { checkAndFireMilestones } from "@/server/lib/milestone-check";
 import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
 
-// Check if running on localhost (waitUntil doesn't work locally)
 const isLocalhost = process.env.NODE_ENV === "development";
 
-// Helper to run background tasks - awaits on localhost, uses waitUntil in production
-async function runBackgroundTask<T>(promise: Promise<T>): Promise<T | undefined> {
-  if (isLocalhost) {
-    return promise;
-  }
-  waitUntil(promise);
-  return undefined;
+const OS_TO_DEVICE_TYPE: Record<string, string> = {
+  iOS: "Mobile",
+  Android: "Mobile",
+  "Mac OS": "Desktop",
+  Windows: "Desktop",
+  Linux: "Desktop",
+  Ubuntu: "Desktop",
+  Debian: "Desktop",
+  Fedora: "Desktop",
+  "Chrome OS": "Desktop",
+  ChromeOS: "Desktop",
+  FreeBSD: "Desktop",
+  OpenBSD: "Desktop",
+};
+
+/**
+ * Cache-first link lookup. No side effects except populating the cache on miss.
+ * Returns null when the alias/domain pair doesn't resolve.
+ */
+export async function resolveLink(domain: string, alias: string): Promise<Link | null> {
+  const cacheKey = buildCacheKey(domain, alias);
+  const cached: Link | null = await getFromCache(cacheKey);
+  if (cached) return cached;
+
+  const link = await db.query.link.findFirst({
+    where: (table, { and, eq }) =>
+      and(
+        eq(table.domain, normalizeDomain(domain)),
+        sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`,
+      ),
+  });
+  if (!link) return null;
+
+  await runBackgroundTask(setInCache(cacheKey, link));
+  return link;
 }
 
 /**
- * This function records a unique click for a link.
- * It checks if there exists a unique click for this ip and link id.
- * If there is, it does not record the click.
- * If there is not, it records the click.
+ * Records a unique click. Relies on the UNIQUE(linkId, ipHash) index so
+ * concurrent inserts silently collapse to a no-op.
  */
 async function recordUniqueClick(ipHash: string, linkId: number) {
-  // CHECK IF THERE EXISTS A UNIQUE CLICK FOR THIS IP AND LINK ID
-  const existingUniqueClick = await db.query.uniqueLinkVisit.findFirst({
-    where: (table, { and, eq }) => and(eq(table.ipHash, ipHash), eq(table.linkId, linkId)),
-  });
-
-  if (existingUniqueClick) {
-    return;
-  }
-
-  // RECORD THE UNIQUE CLICK
-  await db.insert(uniqueLinkVisit).values({
-    ipHash,
-    linkId,
-  });
+  await db
+    .insert(uniqueLinkVisit)
+    .values({ ipHash, linkId })
+    .onDuplicateKeyUpdate({ set: { linkId: sql`linkId` } });
 }
 
-async function recordClick(
-  req: Request,
+function resolveGeo(country: string, city: string) {
+  if (isLocalhost) {
+    return {
+      countryName: "United States",
+      continentName: "North America",
+      cityName: "San Francisco",
+    };
+  }
+
+  if (!country || country === "undefined" || country === "Unknown") {
+    return { countryName: "Unknown", continentName: "Unknown", cityName: "Unknown" };
+  }
+
+  try {
+    return {
+      countryName: getCountryFullName(country) ?? "Unknown",
+      continentName: getContinentName(country) ?? "Unknown",
+      cityName: city && city !== "undefined" && city !== "Unknown" ? city : "Unknown",
+    };
+  } catch {
+    return { countryName: "Unknown", continentName: "Unknown", cityName: "Unknown" };
+  }
+}
+
+/**
+ * Records a click for an already-resolved link. Callers are responsible for
+ * deciding whether to record (e.g. skip for password-protected redirects that
+ * haven't been unlocked yet) — this function records unconditionally aside from
+ * bot filtering and quota enforcement.
+ */
+export async function recordClick(
+  headers: Headers,
   link: Link,
-  from: string,
   ip: string,
   country: string,
   city: string,
-  continent: string,
-  matchedGeoRuleId?: number
-) {
-  if (link.passwordHash) return;
-  if (from === "metadata") return;
-
-  const headers = new Headers(req.headers);
+  matchedGeoRuleId?: number,
+): Promise<void> {
   const userAgent = headers.get("user-agent") ?? "";
   if (userAgent && isBot(userAgent)) return;
 
-  const parsedUserAgent = new UAParser(userAgent).getResult();
+  const parsedUserAgent = await UAParser(userAgent, headers).withClientHints();
 
-  const deviceTypesMapping: Record<string, string> = {
-    iOS: "Mobile",
-    Android: "Mobile",
-    "Mac OS": "Desktop",
-    Windows: "Desktop",
-  };
-
+  const osName = parsedUserAgent.os.name ?? "Unknown";
   const deviceDetails = {
     browser: parsedUserAgent.browser.name ?? "Unknown",
-    os: parsedUserAgent.os.name ?? "Unknown",
-    device:
-      parsedUserAgent.device.type ?? deviceTypesMapping[parsedUserAgent.os.name ?? ""] ?? "Unknown",
+    os: osName,
+    device: parsedUserAgent.device.type ?? OS_TO_DEVICE_TYPE[osName] ?? "Unknown",
     model: parsedUserAgent.device.model ?? "Unknown",
   };
 
-  // On localhost, IP may be undefined - use a dummy value for hashing
   const ipForHash = ip && ip !== "undefined" ? ip : "localhost-dev";
-  const ipHash = crypto.createHash("sha256").update(ipForHash).digest("hex");
+  const ipHash = hashIp(ipForHash);
 
   const usage = await registerEventUsage(link.userId, db);
 
@@ -100,32 +131,9 @@ async function recordClick(
     );
   }
 
-  if (!usage.allowed) {
-    return;
-  }
+  if (!usage.allowed) return;
 
-  // On localhost, geolocation returns undefined - use dummy values
-  let countryName: string;
-  let continentName: string;
-  let cityName: string;
-
-  if (isLocalhost || !country || country === "undefined") {
-    // Use realistic dummy data for localhost
-    countryName = "United States";
-    continentName = "North America";
-    cityName = "San Francisco";
-  } else {
-    try {
-      countryName = getCountryFullName(country) ?? "Unknown";
-      continentName = getContinentName(country) ?? "Unknown";
-      cityName = city ?? "Unknown";
-    } catch {
-      // Invalid country code, use fallback
-      countryName = "United States";
-      continentName = "North America";
-      cityName = "San Francisco";
-    }
-  }
+  const { countryName, continentName, cityName } = resolveGeo(country, city);
 
   await Promise.all([
     db.insert(linkVisit).values({
@@ -140,61 +148,7 @@ async function recordClick(
     recordUniqueClick(ipHash, link.id),
   ]);
 
-  // Check click milestones in the background (non-blocking)
   void runBackgroundTask(checkAndFireMilestones(link.id, link.userId));
-}
-
-export async function recordUserClickForLink(
-  req: Request,
-  domain: string,
-  alias: string,
-  ip: string,
-  country: string,
-  city: string,
-  continent: string,
-  skipAnalytics = false,
-) {
-  const cacheKey = buildCacheKey(domain, alias);
-  const cachedLink: Link | null = await getFromCache(cacheKey);
-
-  if (cachedLink) {
-    if (!skipAnalytics) {
-      await recordClick(req, cachedLink, req.referrer ?? "direct", ip, country, city, continent);
-    }
-    return cachedLink;
-  }
-
-  const link = await db.query.link.findFirst({
-    where: (table, { and, eq }) =>
-      and(
-        eq(table.domain, normalizeDomain(domain)),
-        sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`,
-      ),
-  });
-
-  if (!link) {
-    return null;
-  }
-
-  // await setInCache(cacheKey, link);
-
-  // await recordClick(
-  //   req,
-  //   link,
-  //   req.referrer ?? "direct",
-  //   ip,
-  //   country,
-  //   city,
-  //   continent
-  // );
-
-  await runBackgroundTask(setInCache(cacheKey, link));
-  if (!skipAnalytics) {
-    await runBackgroundTask(
-      recordClick(req, link, req.referrer ?? "direct", ip, country, city, continent),
-    );
-  }
-  return link;
 }
 
 export function parseReferrer(referrer: string | null): string {
@@ -204,7 +158,6 @@ export function parseReferrer(referrer: string | null): string {
     const url = new URL(referrer);
     const hostname = url.hostname.replace(/^www\./, "");
 
-    // Handle common cases
     const referrerMap: Record<string, string> = {
       "t.co": "twitter",
       "l.facebook.com": "facebook",
@@ -221,71 +174,9 @@ export function parseReferrer(referrer: string | null): string {
       return referrerMap[hostname] ?? hostname;
     }
 
-    // For other cases, return up to two parts of the hostname
     const parts = hostname.split(".");
     return parts.slice(-2).join(".");
-  } catch (_error) {
-    return referrer.substring(0, 50);
+  } catch {
+    return "unknown";
   }
-}
-
-/**
- * Records a click with a matched geo rule ID for analytics.
- * This is used when a geo rule matches and we want to track which rule was applied.
- */
-export async function recordUserClickWithGeoRule(
-  req: Request,
-  domain: string,
-  alias: string,
-  ip: string,
-  country: string,
-  city: string,
-  continent: string,
-  matchedGeoRuleId: number
-) {
-  const cacheKey = buildCacheKey(domain, alias);
-  const cachedLink: Link | null = await getFromCache(cacheKey);
-
-  if (cachedLink) {
-    await recordClick(
-      req,
-      cachedLink,
-      req.referrer ?? "direct",
-      ip,
-      country,
-      city,
-      continent,
-      matchedGeoRuleId
-    );
-    return cachedLink;
-  }
-
-  // If not in cache, the link should have been fetched already by recordUserClickForLink
-  // This shouldn't normally happen, but handle it gracefully
-  const link = await db.query.link.findFirst({
-    where: (table, { and, eq }) =>
-      and(
-        eq(table.domain, normalizeDomain(domain)),
-        sql`lower(${table.alias}) = lower(${alias.replace("/", "")})`
-      ),
-  });
-
-  if (!link) {
-    return null;
-  }
-
-  await runBackgroundTask(setInCache(cacheKey, link));
-  await runBackgroundTask(
-    recordClick(
-      req,
-      link,
-      req.referrer ?? "direct",
-      ip,
-      country,
-      city,
-      continent,
-      matchedGeoRuleId
-    )
-  );
-  return link;
 }

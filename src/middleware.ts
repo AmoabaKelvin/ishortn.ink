@@ -2,7 +2,6 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getCountryContinentCode } from "@/lib/countries";
 import { isBot } from "@/lib/utils/is-bot";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
@@ -51,19 +50,33 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
   const simCountry = request.nextUrl.searchParams.get("geo"); // Allow ?geo=US for testing
   const country = simCountry || geo.country || (isLocalhost ? "US" : undefined);
   const city = geo.city || (isLocalhost ? "San Francisco" : undefined);
-  // Derive continent from country code (geo.region is Vercel deployment region, not continent)
-  const continent = country ? getCountryContinentCode(country) : (isLocalhost ? "NA" : undefined);
+
+  const forwardedHeaders: Record<string, string> = {
+    "user-agent": userAgent ?? "",
+    referer: referer ?? "",
+  };
+  // Forward UA Client Hints so UAParser can resolve device/model/OS details
+  // that modern Chrome removes from the UA string.
+  const CLIENT_HINT_HEADERS = [
+    "sec-ch-ua",
+    "sec-ch-ua-mobile",
+    "sec-ch-ua-platform",
+    "sec-ch-ua-platform-version",
+    "sec-ch-ua-model",
+    "sec-ch-ua-arch",
+    "sec-ch-ua-bitness",
+    "sec-ch-ua-full-version-list",
+  ];
+  for (const header of CLIENT_HINT_HEADERS) {
+    const value = request.headers.get(header);
+    if (value) forwardedHeaders[header] = value;
+  }
 
   const response = await fetch(
     encodeURI(
-      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${country}&city=${city}&continent=${continent}&ip=${ip}`,
+      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${country}&city=${city}&ip=${ip}`,
     ),
-    {
-      headers: {
-        "user-agent": userAgent ?? "",
-        referer: referer ?? "",
-      },
-    },
+    { headers: forwardedHeaders },
   );
 
   if (!response.ok) {
@@ -102,14 +115,22 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     }
   }
 
-  // If cloaking is enabled, rewrite to cloaked page instead of redirecting
-  // This keeps the short URL in the browser's address bar
+  // Ask the browser to send high-entropy UA Client Hints on future requests to
+  // this origin so we can recover device model / OS version that Chrome drops
+  // from the reduced User-Agent string.
+  const acceptCh =
+    "Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Arch, Sec-CH-UA-Bitness, Sec-CH-UA-Full-Version-List";
+
   if (data.cloaking) {
     const encodedUrl = encodeURIComponent(redirectUrl);
-    return NextResponse.rewrite(new URL(`/cloaked/${encodedUrl}`, request.url));
+    const rewriteResponse = NextResponse.rewrite(new URL(`/cloaked/${encodedUrl}`, request.url));
+    rewriteResponse.headers.set("Accept-CH", acceptCh);
+    return rewriteResponse;
   }
 
-  return NextResponse.redirect(redirectUrl);
+  const redirectResponse = NextResponse.redirect(redirectUrl);
+  redirectResponse.headers.set("Accept-CH", acceptCh);
+  return redirectResponse;
 }
 
 export default clerkMiddleware(async (auth, req) => {
