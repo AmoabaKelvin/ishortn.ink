@@ -2,6 +2,7 @@ import { UAParser } from "ua-parser-js";
 
 import { env } from "@/env.mjs";
 import { LOCAL_DEVELOPMENT_GEOLOCATION_DATA } from "@/lib/constants/app";
+import { resolveDeviceType } from "@/lib/utils/device-type";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -36,29 +37,12 @@ const identifyRequestingDevice = async (headers: Headers) => {
 
   const result = await UAParser(userAgent, headers).withClientHints();
 
-  const deviceTypesMapping: Record<string, string> = {
-    iOS: "Mobile",
-    Android: "Mobile",
-    "Mac OS": "Desktop",
-    Windows: "Desktop",
-    Linux: "Desktop",
-    Ubuntu: "Desktop",
-    Debian: "Desktop",
-    Fedora: "Desktop",
-    "Chrome OS": "Desktop",
-    ChromeOS: "Desktop",
-    FreeBSD: "Desktop",
-    OpenBSD: "Desktop",
-  };
-
   const osName = result.os.name ?? "Unknown";
-  const deviceType =
-    result.device.type ?? deviceTypesMapping[osName] ?? "Unknown";
 
   return {
     browser: result.browser.name ?? "Unknown",
     os: osName,
-    device: deviceType,
+    device: resolveDeviceType(osName, result.device.type),
     model: result.device.model ?? "Unknown",
   };
 };
