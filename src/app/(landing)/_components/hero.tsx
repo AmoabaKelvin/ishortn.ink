@@ -77,46 +77,54 @@ export const Hero = () => {
 
           <form
             onSubmit={shorten}
+            className="warm-hero-form"
             style={{
-              display: "flex",
-              alignItems: "stretch",
               background: "var(--warm-paper)",
-              borderRadius: 999,
-              padding: 8,
               marginTop: 40,
               border: "1px solid var(--warm-line)",
               boxShadow: "0 12px 40px -20px rgba(43,31,23,0.15)",
               maxWidth: 620,
             }}
           >
-            <div
+            <label
+              className="warm-hero-form-field"
               style={{
                 display: "flex",
                 alignItems: "center",
-                padding: "0 14px 0 18px",
-                color: "var(--warm-mute)",
-              }}
-            >
-              <Icon.Link />
-            </div>
-            <input
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="Paste a long link here..."
-              style={{
                 flex: 1,
-                border: "none",
-                background: "transparent",
-                outline: "none",
-                fontSize: 16,
-                padding: "12px 0",
-                color: "var(--warm-ink)",
                 minWidth: 0,
               }}
-            />
+            >
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0 14px 0 18px",
+                  color: "var(--warm-mute)",
+                }}
+              >
+                <Icon.Link />
+              </span>
+              <input
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="Paste a long link here..."
+                style={{
+                  flex: 1,
+                  width: "100%",
+                  border: "none",
+                  background: "transparent",
+                  outline: "none",
+                  fontSize: 16,
+                  padding: "12px 0",
+                  color: "var(--warm-ink)",
+                  minWidth: 0,
+                }}
+              />
+            </label>
             <button
               type="submit"
-              className="warm-btn warm-btn-accent warm-btn-lg"
+              className="warm-btn warm-btn-accent warm-btn-lg warm-hero-form-submit"
               style={{ margin: 0 }}
             >
               {loading ? (
@@ -277,6 +285,38 @@ export const Hero = () => {
         .warm-hero-cards {
           display: none;
         }
+
+        /* Mobile-first: form stacks vertically inside a rounded card so the
+           input stays full-width and the submit button sits below. */
+        .warm-hero-form {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 10px;
+          border-radius: 22px;
+        }
+        .warm-hero-form-field {
+          padding: 4px 0;
+        }
+        .warm-hero-form-submit {
+          width: 100%;
+          justify-content: center;
+        }
+
+        /* From ~640px up, collapse back to the single pill-shaped row. */
+        @media (min-width: 640px) {
+          .warm-hero-form {
+            flex-direction: row;
+            align-items: stretch;
+            gap: 0;
+            padding: 8px;
+            border-radius: 999px;
+          }
+          .warm-hero-form-submit {
+            width: auto;
+          }
+        }
+
         @media (min-width: 980px) {
           .warm-hero-grid {
             grid-template-columns: 1.3fr 1fr;
