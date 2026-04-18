@@ -32,7 +32,7 @@
 <br />
 
 <p align="center">
-  <img src=".github/assets/landing-hero.png" alt="iShortn landing page" width="100%" />
+  <img width="3362" height="2808" alt="CleanShot 2026-04-18 at 14 11 53@2x" src="https://github.com/user-attachments/assets/08e274b2-8712-4b59-ac36-5e0976f6ce35" />
 </p>
 
 <br />
