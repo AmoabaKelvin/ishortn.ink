@@ -3,7 +3,7 @@ date: 2025-12-26T12:00:00
 version: 1.3.0
 title: Folder Permissions
 shortDesc: Control which team members can access specific folders and their links
-category: feature
+category: new
 ---
 
 Team owners and admins can now restrict folder access to specific team members. When a folder is restricted, only permitted members can see the folder and its links on the dashboard.

@@ -3,7 +3,7 @@ date: 2026-03-10T12:00:00
 version: 2.2.0
 title: Click Milestone Notifications
 shortDesc: Get notified by email when your links hit click thresholds
-category: feature
+category: new
 ---
 
 Never miss a moment. You can now set click milestones on any link and receive an email notification the instant your link crosses a threshold you care about.

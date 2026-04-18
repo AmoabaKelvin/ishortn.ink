@@ -3,7 +3,7 @@ date: 2026-03-05T12:00:00
 version: 2.0.0
 title: Redesigned Dashboard and Landing Page
 shortDesc: A completely refreshed UI with a cleaner, more intuitive design
-category: improvement
+category: improved
 ---
 
 We have completely redesigned the iShortn dashboard and landing page. Every page has been rebuilt with a refined design system focused on clarity, consistency, and ease of use.

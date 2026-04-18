@@ -3,7 +3,7 @@ date: 2026-03-07T12:00:00
 version: 2.1.0
 title: QR Code Analytics
 shortDesc: Track scans, locations, devices, and referrers for every QR code
-category: feature
+category: new
 ---
 
 QR codes now have their own analytics. Previously, you had to create a short link first and then select it when creating a QR code in order to track scans. Now, every QR code tracks scans automatically — no extra setup needed.

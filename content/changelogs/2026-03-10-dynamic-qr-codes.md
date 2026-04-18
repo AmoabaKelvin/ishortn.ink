@@ -3,7 +3,7 @@ date: 2026-03-10T18:00:00
 version: 2.3.0
 title: Dynamic QR Codes
 shortDesc: Edit your QR code destination, toggle status, and manage everything from one menu
-category: feature
+category: new
 ---
 
 QR codes are now fully dynamic. Print a QR code once and change where it points as many times as you want — no need to reprint. Plus, every QR code now has a full actions menu for managing it right from your dashboard.

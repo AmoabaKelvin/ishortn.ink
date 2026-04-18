@@ -3,7 +3,7 @@ date: 2026-01-19T12:00:00
 version: 1.9.0
 title: Resource Transfer
 shortDesc: Move all your links, domains, and resources to another iShortn account
-category: feature
+category: new
 ---
 
 Need to move your work to a different account? Resource transfer lets you migrate everything—links, custom domains, QR codes, folders, tags, and more—to another iShortn account in one smooth operation.

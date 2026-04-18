@@ -3,7 +3,7 @@ date: 2025-12-20T12:00:00
 version: 1.2.0
 title: Team Workspaces
 shortDesc: Collaborate with your team on a shared workspace
-category: feature
+category: new
 ---
 
 Team workspaces are here. Ultra plan users can now create teams, invite members, and manage shared links, folders, and domains—all in one place.

@@ -3,7 +3,7 @@ date: 2026-04-17T12:00:00
 version: 2.3.0
 title: Verified Clicks
 shortDesc: See how many of your clicks came from real visitors, not automated traffic
-category: feature
+category: new
 ---
 
 Not every click on a short link is a person. Link scanners, security tools, preview crawlers, and other automated systems all follow links — and they all count toward your total. Verified Clicks separates the real visitors from the noise, so when you report "500 clicks" you can back it up with "and 320 of them were real people who actually opened the page."
