@@ -94,12 +94,9 @@ export const DashboardPreview = () => {
               }}
             >
               <Icon.Link style={{ width: 11, height: 11 }} />
-              app.ishortn.ink / dashboard
+              ishortn.ink / dashboard
             </div>
             <div style={{ flex: 1 }} />
-            <div style={{ fontSize: 12, color: "var(--warm-mute)" }}>
-              Live · synced 4s ago
-            </div>
           </div>
 
           <Image
