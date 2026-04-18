@@ -1,22 +1,29 @@
+import type { Metadata } from "next";
+
 import { JsonLd } from "@/components/seo/json-ld";
 import { landingPageCopy } from "@/lib/copy/landing-page";
-import { organizationSchema, softwareApplicationSchema, createFaqSchema, websiteSchema } from "@/lib/seo/structured-data";
+import {
+  createFaqSchema,
+  organizationSchema,
+  softwareApplicationSchema,
+  websiteSchema,
+} from "@/lib/seo/structured-data";
 
 import { CTA } from "./_components/cta";
+import { DashboardPreview } from "./_components/dashboard-preview";
 import { Faq } from "./_components/faq";
 import { Features } from "./_components/features";
 import { Footer } from "./_components/footer";
 import { Header } from "./_components/header";
 import { Hero } from "./_components/hero";
 import { Pricing } from "./_components/pricing";
+import { QRSection } from "./_components/qr-section";
 import { Testimonials } from "./_components/testimonials";
-
-import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
     absolute:
-      "Free URL Shortener with Analytics | iShortn - Custom Short Links",
+      "iShortn — Links, made lovely. Free URL shortener with analytics",
   },
   description:
     "Shorten URLs for free with iShortn. Create branded short links, track clicks and conversions, generate QR codes, and use custom domains. The best free URL shortener with powerful analytics.",
@@ -34,52 +41,37 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title:
-      "Free URL Shortener with Analytics | iShortn - Custom Short Links",
+      "iShortn — Links, made lovely. Free URL shortener with analytics",
     description:
-      "Shorten URLs for free with iShortn. Create branded short links, track clicks and conversions, generate QR codes, and use custom domains. The best free URL shortener with powerful analytics.",
+      "Shorten URLs for free with iShortn. Create branded short links, track clicks and conversions, generate QR codes, and use custom domains.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title:
-      "Free URL Shortener with Analytics | iShortn - Custom Short Links",
+      "iShortn — Links, made lovely. Free URL shortener with analytics",
     description:
-      "Shorten URLs for free with iShortn. Create branded short links, track clicks and conversions, generate QR codes, and use custom domains. The best free URL shortener with powerful analytics.",
+      "Shorten URLs for free with iShortn. Create branded short links, track clicks and conversions, generate QR codes, and use custom domains.",
   },
 };
 
-const HomePage = () => {
+export default function HomePage() {
   return (
-    <main className="relative bg-zinc-950">
+    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
       <JsonLd data={organizationSchema} />
       <JsonLd data={softwareApplicationSchema} />
       <JsonLd data={createFaqSchema(landingPageCopy.faq)} />
       <JsonLd data={websiteSchema} />
       <Header />
       <Hero />
+      <DashboardPreview />
       <Features />
+      <QRSection />
       <Pricing />
       <Testimonials />
-
-      {/* FAQ Section */}
-      <section id="faq" className="bg-zinc-950 px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
-            FAQ
-          </p>
-          <h2 className="mt-3 font-heading text-4xl font-bold tracking-tight text-zinc-50 md:text-5xl">
-            Common questions
-          </h2>
-          <div className="mt-12">
-            <Faq faqs={landingPageCopy.faq} />
-          </div>
-        </div>
-      </section>
-
+      <Faq />
       <CTA />
       <Footer />
     </main>
   );
-};
-
-export default HomePage;
+}

@@ -181,6 +181,649 @@ html {
   background: hsl(222 13% 32%);
 }
 
+/* ---------------------------------------------------------------------
+   Warm / humanist landing theme
+   Scoped to [data-theme="warm"] so the dashboard & signed-in app are
+   never affected. Applied by (landing)/layout.tsx and (auth)/layout.tsx.
+----------------------------------------------------------------------*/
+[data-theme="warm"] {
+  --warm-bg: #F7F1E8;
+  --warm-paper: #FFFCF5;
+  --warm-paper-2: #FCF5E8;
+  --warm-ink: #2B1F17;
+  --warm-ink-soft: #4A3A2E;
+  --warm-mute: #8A7868;
+  --warm-mute-soft: #B5A696;
+  --warm-line: #E6D9C5;
+  --warm-line-soft: #EFE6D4;
+
+  --warm-terracotta: #C85C3B;
+  --warm-terracotta-deep: #A84724;
+  --warm-sage: #8BA881;
+  --warm-sage-deep: #6E8A66;
+  --warm-cream: #FCECD4;
+  --warm-butter: #F5E1B0;
+  --warm-plum: #6B4B5E;
+
+  --warm-accent: var(--warm-terracotta);
+  --warm-accent-deep: var(--warm-terracotta-deep);
+  --warm-accent-ink: #ffffff;
+
+  --warm-radius-sm: 10px;
+  --warm-radius-md: 16px;
+  --warm-radius-lg: 24px;
+  --warm-radius-xl: 32px;
+
+  background: var(--warm-bg);
+  color: var(--warm-ink);
+  font-family: var(--font-warm-ui), -apple-system, BlinkMacSystemFont, system-ui,
+    sans-serif;
+  line-height: 1.5;
+  font-feature-settings: "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="warm"][data-accent="sage"] {
+  --warm-accent: var(--warm-sage);
+  --warm-accent-deep: var(--warm-sage-deep);
+}
+[data-theme="warm"][data-accent="plum"] {
+  --warm-accent: var(--warm-plum);
+  --warm-accent-deep: #4F3545;
+}
+
+[data-theme="warm"] .warm-display {
+  font-family: var(--font-warm-display), Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.98;
+  font-variation-settings: "opsz" 144, "SOFT" 50;
+}
+
+[data-theme="warm"] .warm-italic {
+  font-style: italic;
+}
+
+[data-theme="warm"] .warm-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (min-width: 768px) {
+  [data-theme="warm"] .warm-container {
+    padding: 0 48px;
+  }
+}
+
+[data-theme="warm"] .warm-section {
+  padding: 96px 0;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  [data-theme="warm"] .warm-section {
+    padding: 120px 0;
+  }
+}
+
+[data-theme="warm"] .warm-section-paper {
+  background: var(--warm-paper);
+}
+
+[data-theme="warm"] .warm-section-cream {
+  background: var(--warm-cream);
+}
+
+[data-theme="warm"] .warm-section-ink {
+  background: var(--warm-ink);
+  color: var(--warm-paper);
+}
+
+[data-theme="warm"] .warm-card {
+  background: var(--warm-paper);
+  border: 1px solid var(--warm-line);
+  border-radius: var(--warm-radius-lg);
+}
+
+[data-theme="warm"] .warm-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--warm-paper);
+  border: 1px solid var(--warm-line);
+  font-size: 12px;
+  color: var(--warm-mute);
+  letter-spacing: 0.01em;
+}
+
+[data-theme="warm"] .warm-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warm-sage);
+}
+
+[data-theme="warm"] .warm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  color: inherit;
+  font-family: inherit;
+}
+
+[data-theme="warm"] .warm-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+[data-theme="warm"] .warm-btn-primary {
+  background: var(--warm-ink);
+  color: var(--warm-paper);
+}
+[data-theme="warm"] .warm-btn-primary:hover {
+  background: var(--warm-ink-soft);
+}
+[data-theme="warm"] .warm-btn-accent {
+  background: var(--warm-accent);
+  color: var(--warm-accent-ink);
+}
+[data-theme="warm"] .warm-btn-accent:hover {
+  background: var(--warm-accent-deep);
+}
+[data-theme="warm"] .warm-btn-ghost {
+  border-color: var(--warm-line);
+  color: var(--warm-ink-soft);
+  background: var(--warm-paper);
+}
+[data-theme="warm"] .warm-btn-ghost:hover {
+  border-color: var(--warm-ink-soft);
+  color: var(--warm-ink);
+}
+[data-theme="warm"] .warm-btn-lg {
+  padding: 16px 28px;
+  font-size: 15px;
+}
+
+[data-theme="warm"] .warm-muted {
+  color: var(--warm-mute);
+}
+
+[data-theme="warm"] .warm-accent-text {
+  color: var(--warm-accent);
+}
+
+[data-theme="warm"] a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@keyframes warm-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Changelog — warm variant specific styles */
+[data-theme="warm"] .cl-head {
+  padding: 80px 0 48px;
+  border-bottom: 1px solid var(--warm-line-soft);
+}
+[data-theme="warm"] .cl-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  padding: 48px 0 120px;
+  align-items: start;
+}
+@media (min-width: 900px) {
+  [data-theme="warm"] .cl-grid {
+    grid-template-columns: 240px 1fr;
+    gap: 80px;
+    padding: 80px 0 160px;
+  }
+}
+[data-theme="warm"] .cl-rail {
+  font-size: 13px;
+}
+@media (min-width: 900px) {
+  [data-theme="warm"] .cl-rail {
+    position: sticky;
+    top: 100px;
+  }
+}
+[data-theme="warm"] .cl-rail-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--warm-mute);
+  margin-bottom: 16px;
+}
+[data-theme="warm"] .cl-rail a {
+  display: block;
+  padding: 8px 0 8px 14px;
+  margin-left: -14px;
+  color: var(--warm-ink-soft);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+[data-theme="warm"] .cl-rail a:hover {
+  color: var(--warm-ink);
+  border-color: var(--warm-line);
+}
+[data-theme="warm"] .cl-rail a.cl-rail-active {
+  color: var(--warm-accent);
+  border-color: var(--warm-accent);
+  font-weight: 500;
+}
+
+[data-theme="warm"] .cl-entry {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-bottom: 96px;
+}
+[data-theme="warm"] .cl-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+[data-theme="warm"] .cl-entry-date {
+  font-family: var(--font-warm-display);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--warm-mute);
+  font-variation-settings: "opsz" 14;
+}
+[data-theme="warm"] .cl-entry-version {
+  font-family: var(--font-warm-ui);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--warm-paper);
+  border: 1px solid var(--warm-line);
+  color: var(--warm-ink-soft);
+}
+[data-theme="warm"] .cl-entry-title {
+  font-family: var(--font-warm-display);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  font-size: 36px;
+  line-height: 1.05;
+  margin: 0 0 8px;
+  font-variation-settings: "opsz" 144, "SOFT" 50;
+}
+@media (min-width: 768px) {
+  [data-theme="warm"] .cl-entry-title {
+    font-size: 44px;
+  }
+}
+[data-theme="warm"] .cl-entry-title em {
+  font-style: italic;
+  color: var(--warm-accent);
+  font-weight: 400;
+}
+[data-theme="warm"] .cl-entry-lede {
+  font-family: var(--font-warm-display);
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--warm-ink-soft);
+  font-weight: 300;
+  max-width: 620px;
+  margin: 0 0 32px;
+}
+@media (min-width: 768px) {
+  [data-theme="warm"] .cl-entry-lede {
+    font-size: 19px;
+  }
+}
+
+[data-theme="warm"] .cl-entry-hero {
+  border-radius: var(--warm-radius-lg);
+  border: 1px solid var(--warm-line);
+  overflow: hidden;
+  margin-bottom: 28px;
+  aspect-ratio: 16 / 7;
+  position: relative;
+  background: var(--warm-paper);
+}
+
+[data-theme="warm"] .cl-entry-prose {
+  font-family: var(--font-warm-ui);
+  color: var(--warm-ink-soft);
+  font-size: 15px;
+  line-height: 1.7;
+}
+[data-theme="warm"] .cl-entry-prose p {
+  margin: 0 0 14px;
+}
+[data-theme="warm"] .cl-entry-prose strong {
+  color: var(--warm-ink);
+  font-weight: 500;
+}
+[data-theme="warm"] .cl-entry-prose a {
+  color: var(--warm-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+[data-theme="warm"] .cl-entry-prose ul,
+[data-theme="warm"] .cl-entry-prose ol {
+  padding-left: 1.25rem;
+  margin: 0 0 14px;
+}
+[data-theme="warm"] .cl-entry-prose li {
+  padding: 2px 0;
+}
+[data-theme="warm"] .cl-entry-prose h2,
+[data-theme="warm"] .cl-entry-prose h3 {
+  font-family: var(--font-warm-display);
+  font-weight: 500;
+  color: var(--warm-ink);
+  letter-spacing: -0.015em;
+  margin: 28px 0 10px;
+}
+[data-theme="warm"] .cl-entry-prose h2 {
+  font-size: 24px;
+}
+[data-theme="warm"] .cl-entry-prose h3 {
+  font-size: 20px;
+}
+[data-theme="warm"] .cl-entry-prose code {
+  background: var(--warm-paper-2);
+  border: 1px solid var(--warm-line-soft);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+[data-theme="warm"] .cl-entry-prose pre {
+  background: var(--warm-paper-2);
+  border: 1px solid var(--warm-line-soft);
+  border-radius: 12px;
+  padding: 16px;
+  overflow-x: auto;
+  font-size: 13px;
+}
+[data-theme="warm"] .cl-entry-prose pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+[data-theme="warm"] .cl-tag {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  justify-self: start;
+  align-self: start;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+[data-theme="warm"] .cl-tag-new {
+  background: #E4EADD;
+  color: var(--warm-sage-deep);
+}
+[data-theme="warm"] .cl-tag-improved {
+  background: var(--warm-cream);
+  color: #A85B1E;
+}
+[data-theme="warm"] .cl-tag-fixed {
+  background: #F0E6DE;
+  color: var(--warm-ink-soft);
+}
+[data-theme="warm"] .cl-tag-shipped {
+  background: #EDE1E6;
+  color: var(--warm-plum);
+}
+
+[data-theme="warm"] .cl-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--warm-mute-soft);
+  margin: 40px 0;
+  font-family: var(--font-warm-display);
+  font-size: 18px;
+}
+[data-theme="warm"] .cl-divider::before,
+[data-theme="warm"] .cl-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--warm-line-soft);
+}
+
+[data-theme="warm"] .cl-subscribe {
+  background: var(--warm-paper);
+  border: 1px solid var(--warm-line);
+  border-radius: var(--warm-radius-lg);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 60px;
+}
+@media (min-width: 720px) {
+  [data-theme="warm"] .cl-subscribe {
+    flex-direction: row;
+    align-items: center;
+    gap: 32px;
+    padding: 36px 40px;
+  }
+}
+[data-theme="warm"] .cl-subscribe-form {
+  display: flex;
+  background: var(--warm-bg);
+  border-radius: 999px;
+  padding: 6px;
+  border: 1px solid var(--warm-line);
+  flex: 1;
+  max-width: 420px;
+}
+[data-theme="warm"] .cl-subscribe-form input {
+  flex: 1;
+  padding: 10px 16px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 14px;
+  min-width: 0;
+  color: var(--warm-ink);
+}
+[data-theme="warm"] .cl-subscribe-form input::placeholder {
+  color: var(--warm-mute-soft);
+}
+
+[data-theme="warm"] .cl-older {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--warm-accent);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 14px 0;
+}
+[data-theme="warm"] .cl-older:hover {
+  color: var(--warm-accent-deep);
+}
+
+[data-theme="warm"] .warm-legal-prose {
+  color: var(--warm-ink-soft);
+  font-size: 16px;
+  line-height: 1.7;
+}
+[data-theme="warm"] .warm-legal-prose > * + * {
+  margin-top: 14px;
+}
+[data-theme="warm"] .warm-legal-prose p {
+  margin: 0 0 14px;
+  color: var(--warm-ink-soft);
+}
+[data-theme="warm"] .warm-legal-prose h2 {
+  font-family: var(--font-warm-display);
+  font-weight: 500;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+  color: var(--warm-ink);
+  margin: 56px 0 16px;
+  line-height: 1.1;
+}
+[data-theme="warm"] .warm-legal-prose h3 {
+  font-family: var(--font-warm-display);
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.015em;
+  color: var(--warm-ink);
+  margin: 36px 0 10px;
+}
+[data-theme="warm"] .warm-legal-prose a {
+  color: var(--warm-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+[data-theme="warm"] .warm-legal-prose strong {
+  color: var(--warm-ink);
+  font-weight: 500;
+}
+[data-theme="warm"] .warm-legal-prose ul,
+[data-theme="warm"] .warm-legal-prose ol {
+  padding-left: 1.4rem;
+  margin: 0 0 16px;
+}
+[data-theme="warm"] .warm-legal-prose li {
+  padding: 3px 0;
+}
+[data-theme="warm"] .warm-legal-prose hr {
+  margin: 36px 0;
+  border: 0;
+  height: 1px;
+  background: var(--warm-line-soft);
+}
+[data-theme="warm"] .warm-legal-prose blockquote {
+  margin: 24px 0;
+  padding: 12px 20px;
+  border-left: 3px solid var(--warm-accent);
+  background: var(--warm-paper);
+  border-radius: 8px;
+  color: var(--warm-ink-soft);
+}
+
+/* Make tables horizontally scrollable on narrow screens without a wrapper.
+   `display: block` on the table element forces it out of table-layout mode
+   which would break column balancing, so we keep normal table layout and
+   let the outer prose container scroll instead. */
+[data-theme="warm"] .warm-legal-prose {
+  overflow-x: auto;
+}
+[data-theme="warm"] .warm-legal-prose table {
+  width: 100%;
+  margin: 28px 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  background: var(--warm-paper);
+  border: 1px solid var(--warm-line);
+  border-radius: 14px;
+  overflow: hidden;
+  table-layout: auto;
+}
+[data-theme="warm"] .warm-legal-prose table thead {
+  background: var(--warm-paper-2);
+}
+[data-theme="warm"] .warm-legal-prose table th {
+  font-family: var(--font-warm-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--warm-ink);
+  text-align: left;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--warm-line);
+}
+[data-theme="warm"] .warm-legal-prose table td {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--warm-line-soft);
+  color: var(--warm-ink-soft);
+  vertical-align: top;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+[data-theme="warm"] .warm-legal-prose table tr:last-child td {
+  border-bottom: none;
+}
+[data-theme="warm"] .warm-legal-prose table tbody tr:nth-child(even) td {
+  background: var(--warm-paper-2);
+}
+[data-theme="warm"] .warm-legal-prose table th:first-child,
+[data-theme="warm"] .warm-legal-prose table td:first-child {
+  font-weight: 500;
+  color: var(--warm-ink);
+}
+
+/* Clerk auth (warm theme) — interaction states that can't live in the
+   appearance.elements object. Scoped to [data-theme="warm"] so Clerk
+   instances elsewhere in the app (if any) aren't affected. */
+[data-theme="warm"] .cl-formButtonPrimary,
+[data-theme="warm"] .cl-formButtonPrimary:focus,
+[data-theme="warm"] .cl-formButtonPrimary:active {
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+[data-theme="warm"] .cl-formButtonPrimary:hover {
+  background: #4A3A2E !important;
+  box-shadow: none !important;
+}
+[data-theme="warm"] .cl-formButtonPrimary:focus-visible {
+  box-shadow: 0 0 0 3px rgba(200, 92, 59, 0.28) !important;
+}
+[data-theme="warm"] .cl-formFieldInput:focus,
+[data-theme="warm"] .cl-formFieldInput:focus-within {
+  border-color: #C85C3B !important;
+  box-shadow: 0 0 0 3px rgba(200, 92, 59, 0.15) !important;
+  outline: none !important;
+}
+[data-theme="warm"] .cl-socialButtonsBlockButton {
+  min-height: 48px !important;
+  padding: 12px 18px !important;
+  font-size: 14px !important;
+}
+[data-theme="warm"] .cl-socialButtonsBlockButton:hover {
+  border-color: #4A3A2E !important;
+  color: #2B1F17 !important;
+}
+[data-theme="warm"] .cl-footerActionLink:hover {
+  color: #A84724 !important;
+}
+[data-theme="warm"] .cl-internal-b3fm6y, /* clerk dev mode badge container */
+[data-theme="warm"] .cl-badge {
+  background: transparent !important;
+}
+
 /* Changelog prose code blocks - use !important to override prose defaults */
 .changelog-prose pre {
   @apply rounded-xl p-4 overflow-x-auto;

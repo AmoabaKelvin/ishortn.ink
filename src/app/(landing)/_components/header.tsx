@@ -1,164 +1,206 @@
 "use client";
 
 import { SignedIn, SignedOut } from "@clerk/nextjs";
-import { IconMenu2, IconX } from "@tabler/icons-react";
-import { motion } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { useEffect, useState } from "react";
 
-import { APP_TITLE, Paths } from "@/lib/constants/app";
+import { Paths } from "@/lib/constants/app";
+
+import { Icon, Wordmark } from "./warm-primitives";
 
 const routes = [
   { name: "Features", href: "/features" },
   { name: "Pricing", href: "/pricing" },
-  { name: "FAQ", href: "/#faq" },
+  { name: "Stories", href: "/#stories" },
   { name: "Changelog", href: "/changelog" },
-  { name: "Blog", href: "/blog" },
 ] as const;
 
-const handleSmoothScroll = (
-  event: React.MouseEvent<HTMLAnchorElement>,
-  href: string,
-) => {
-  if (href.startsWith("/#")) {
-    event.preventDefault();
-    const targetId = href.split("#")[1];
-    const targetElement = document.getElementById(targetId!);
-    if (targetElement) {
-      targetElement.scrollIntoView({ behavior: "smooth" });
-    }
-  }
-};
-
 export const Header = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
+    const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <motion.header
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/50"
-          : "bg-transparent"
-      }`}
+    <nav
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        background: scrolled ? "rgba(247,241,232,0.85)" : "transparent",
+        backdropFilter: scrolled ? "blur(12px)" : "none",
+        WebkitBackdropFilter: scrolled ? "blur(12px)" : "none",
+        borderBottom: `1px solid ${scrolled ? "var(--warm-line-soft)" : "transparent"}`,
+        transition: "all .25s",
+      }}
     >
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        {/* Logo */}
-        <Link href="/" className="font-logo text-[17px] text-zinc-50">
-          {APP_TITLE}
+      <div
+        className="warm-container"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          height: 76,
+        }}
+      >
+        <Link href="/" aria-label="iShortn home">
+          <Wordmark />
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden items-center gap-8 md:flex">
-          {routes.map(({ name, href }) => (
+        <div className="hidden md:flex" style={{ gap: 36 }}>
+          {routes.map((x) => (
             <Link
-              key={name}
-              href={href}
-              onClick={(e) => handleSmoothScroll(e, href)}
-              className="text-sm text-zinc-400 transition-colors hover:text-zinc-50"
+              key={x.name}
+              href={x.href}
+              style={{ fontSize: 14, color: "var(--warm-ink-soft)" }}
             >
-              {name}
+              {x.name}
             </Link>
           ))}
         </div>
 
-        {/* CTA Buttons */}
-        <div className="hidden items-center gap-4 md:flex">
+        <div className="hidden md:flex" style={{ gap: 10 }}>
           <SignedOut>
             <Link
               href={Paths.Login}
-              className="text-sm text-zinc-400 transition-colors hover:text-zinc-50"
+              className="warm-btn warm-btn-ghost"
+              style={{ padding: "10px 18px" }}
             >
-              Log in
+              Sign in
             </Link>
             <Link
               href={Paths.Signup}
-              className="rounded-full bg-zinc-50 px-5 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-white"
+              className="warm-btn warm-btn-primary"
+              style={{ padding: "10px 18px" }}
             >
-              Get Started
+              Get started <Icon.Arrow />
             </Link>
           </SignedOut>
           <SignedIn>
             <Link
               href={Paths.Dashboard}
-              className="rounded-full bg-zinc-50 px-5 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-white"
+              className="warm-btn warm-btn-primary"
+              style={{ padding: "10px 18px" }}
             >
-              Dashboard
+              Dashboard <Icon.Arrow />
             </Link>
           </SignedIn>
         </div>
 
-        {/* Mobile Menu Button */}
         <button
           type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="rounded-md p-1.5 text-zinc-400 transition-colors hover:text-zinc-50 md:hidden"
+          aria-label="Menu"
+          onClick={() => setMobileOpen((o) => !o)}
+          className="md:hidden"
+          style={{
+            padding: 8,
+            background: "transparent",
+            border: 0,
+            color: "var(--warm-ink)",
+            cursor: "pointer",
+          }}
         >
-          {mobileMenuOpen ? (
-            <IconX size={20} stroke={1.5} />
-          ) : (
-            <IconMenu2 size={20} stroke={1.5} />
-          )}
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            {mobileOpen ? (
+              <path
+                d="M6 6l12 12M18 6L6 18"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ) : (
+              <path
+                d="M4 7h16M4 12h16M4 17h16"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+          </svg>
         </button>
-      </nav>
+      </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          className="mx-6 mt-1 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 md:hidden"
+      {mobileOpen && (
+        <div
+          className="md:hidden"
+          style={{
+            margin: "0 16px 8px",
+            padding: 18,
+            background: "var(--warm-paper)",
+            border: "1px solid var(--warm-line)",
+            borderRadius: 20,
+          }}
         >
-          <nav className="flex flex-col gap-1">
-            {routes.map(({ name, href }) => (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {routes.map((x) => (
               <Link
-                key={name}
-                href={href}
-                onClick={(e) => {
-                  handleSmoothScroll(e, href);
-                  setMobileMenuOpen(false);
+                key={x.name}
+                href={x.href}
+                onClick={() => setMobileOpen(false)}
+                style={{
+                  padding: "10px 12px",
+                  fontSize: 14,
+                  color: "var(--warm-ink-soft)",
+                  borderRadius: 10,
                 }}
-                className="rounded-lg px-3 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-50"
               >
-                {name}
+                {x.name}
               </Link>
             ))}
-            <div className="my-2 h-px bg-zinc-800" />
+            <div
+              style={{
+                height: 1,
+                background: "var(--warm-line-soft)",
+                margin: "8px 0",
+              }}
+            />
             <SignedOut>
               <Link
                 href={Paths.Login}
-                className="rounded-lg px-3 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-50"
+                className="warm-btn warm-btn-ghost"
+                style={{
+                  justifyContent: "center",
+                  padding: "12px 16px",
+                }}
               >
-                Log in
+                Sign in
               </Link>
               <Link
                 href={Paths.Signup}
-                className="mt-1 rounded-lg bg-zinc-50 px-3 py-2.5 text-center text-sm font-medium text-zinc-950"
+                className="warm-btn warm-btn-primary"
+                style={{
+                  justifyContent: "center",
+                  padding: "12px 16px",
+                  marginTop: 6,
+                }}
               >
-                Get Started
+                Get started <Icon.Arrow />
               </Link>
             </SignedOut>
             <SignedIn>
               <Link
                 href={Paths.Dashboard}
-                className="mt-1 rounded-lg bg-zinc-50 px-3 py-2.5 text-center text-sm font-medium text-zinc-950"
+                className="warm-btn warm-btn-primary"
+                style={{
+                  justifyContent: "center",
+                  padding: "12px 16px",
+                }}
               >
-                Dashboard
+                Dashboard <Icon.Arrow />
               </Link>
             </SignedIn>
-          </nav>
-        </motion.div>
+          </div>
+        </div>
       )}
-    </motion.header>
+    </nav>
   );
 };

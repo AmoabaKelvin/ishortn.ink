@@ -1,254 +1,291 @@
 "use client";
 
-import { IconArrowRight, IconCheck, IconCopy } from "@tabler/icons-react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Link } from "next-view-transitions";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { Paths } from "@/lib/constants/app";
+import { Icon } from "./warm-primitives";
 
-const demoLinks = [
-  {
-    original: "https://docs.google.com/spreadsheets/d/1a2b3c4d5e/edit?usp=sharing",
-    short: "ishortn.ink/q3-report",
-    clicks: "2,847",
-  },
-  {
-    original: "https://www.example-store.com/products/summer-collection?utm_source=email&utm_medium=newsletter",
-    short: "ishortn.ink/summer24",
-    clicks: "12,493",
-  },
-  {
-    original: "https://figma.com/design/abc123/Brand-Guidelines?node-id=0%3A1&t=xyz",
-    short: "ishortn.ink/brand",
-    clicks: "891",
-  },
+const heroCards = [
+  { bg: "var(--warm-paper)", slug: "open-house", count: "2,841", flag: "🇺🇸", delta: "+24%" },
+  { bg: "var(--warm-cream)", slug: "summer-zine", count: "1,204", flag: "🇬🇧", delta: "+18%" },
+  { bg: "#E4EADD", slug: "field-notes", count: "912", flag: "🇯🇵", delta: "+6%" },
 ];
 
-const fadeUp = (delay: number) => ({
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.5, delay, ease: "easeOut" },
-});
+export const Hero = () => {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
-const DemoAnimation = () => {
-  const [step, setStep] = useState(0);
-  const [currentLink, setCurrentLink] = useState(0);
-
-  useEffect(() => {
-    const sequence = [
-      () => setStep(1),
-      () => setStep(2),
-      () => setStep(3),
-    ];
-
-    const timeouts: NodeJS.Timeout[] = [];
-    let delay = 1200;
-
-    sequence.forEach((fn, i) => {
-      timeouts.push(setTimeout(fn, delay));
-      delay += i === 0 ? 1800 : 1400;
-    });
-
-    const cycleTimeout = setTimeout(() => {
-      setStep(0);
-      setCurrentLink((prev) => (prev + 1) % demoLinks.length);
-    }, delay + 400);
-    timeouts.push(cycleTimeout);
-
-    return () => timeouts.forEach(clearTimeout);
-  }, [currentLink]);
-
-  const demo = demoLinks[currentLink]!;
+  const shorten = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setLoading(true);
+    const target = `/auth/sign-up?url=${encodeURIComponent(trimmed)}`;
+    window.location.assign(target);
+  };
 
   return (
-    <div className="mx-auto mt-16 w-full max-w-3xl md:mt-20" style={{ minHeight: 250 }}>
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 md:p-8">
-        {/* Window chrome */}
-        <div className="mb-5 flex items-center gap-2">
-          <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-          <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-          <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-          <span className="ml-3 text-[11px] text-zinc-500">ishortn.ink</span>
-        </div>
-
-        {/* Input area */}
-        <div className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3">
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div
-                key="placeholder"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex h-6 items-center"
-              >
-                <span className="text-sm text-zinc-500">
-                  Paste your long URL here...
-                </span>
-              </motion.div>
-            )}
-            {step >= 1 && (
-              <motion.div
-                key="url"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex h-6 items-center"
-              >
-                <span className="truncate text-sm text-zinc-300">
-                  {demo.original}
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Result */}
-        <AnimatePresence>
-          {step >= 2 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="overflow-hidden"
+    <section
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        padding: "40px 0 96px",
+      }}
+    >
+      <div
+        className="warm-container warm-hero-grid"
+        style={{
+          display: "grid",
+          gap: 60,
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <div className="warm-eyebrow" style={{ marginBottom: 28 }}>
+            <span className="warm-eyebrow-dot" />
+            Loved by 40,000+ creators &amp; small teams
+          </div>
+          <h1
+            className="warm-display warm-hero-title"
+            style={{ margin: 0, fontSize: "clamp(54px, 9vw, 104px)" }}
+          >
+            Links, made
+            <br />
+            <em
+              style={{
+                color: "var(--warm-accent)",
+                fontWeight: 400,
+                fontStyle: "italic",
+              }}
             >
-              <div className="pt-4">
-                <div className="flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                    <span className="text-sm font-medium text-blue-400">
-                      {demo.short}
-                    </span>
+              lovely.
+            </em>
+          </h1>
+          <p
+            style={{
+              fontSize: 19,
+              color: "var(--warm-mute)",
+              lineHeight: 1.6,
+              marginTop: 28,
+              maxWidth: 500,
+              textWrap: "pretty" as const,
+            }}
+          >
+            Shorten any link in a second. See who clicked, and from where. Make
+            QR codes that match your brand. A quiet, friendly tool — no
+            spreadsheets required.
+          </p>
+
+          <form
+            onSubmit={shorten}
+            style={{
+              display: "flex",
+              alignItems: "stretch",
+              background: "var(--warm-paper)",
+              borderRadius: 999,
+              padding: 8,
+              marginTop: 40,
+              border: "1px solid var(--warm-line)",
+              boxShadow: "0 12px 40px -20px rgba(43,31,23,0.15)",
+              maxWidth: 620,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0 14px 0 18px",
+                color: "var(--warm-mute)",
+              }}
+            >
+              <Icon.Link />
+            </div>
+            <input
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="Paste a long link here..."
+              style={{
+                flex: 1,
+                border: "none",
+                background: "transparent",
+                outline: "none",
+                fontSize: 16,
+                padding: "12px 0",
+                color: "var(--warm-ink)",
+                minWidth: 0,
+              }}
+            />
+            <button
+              type="submit"
+              className="warm-btn warm-btn-accent warm-btn-lg"
+              style={{ margin: 0 }}
+            >
+              {loading ? (
+                "Taking you in…"
+              ) : (
+                <>
+                  Make it short <Icon.Arrow />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div
+            style={{
+              marginTop: 14,
+              fontSize: 13,
+              color: "var(--warm-mute)",
+            }}
+          >
+            Free to start — no credit card. Quick sign-up, your URL comes
+            along for the ride.
+          </div>
+        </div>
+
+        <div
+          className="warm-hero-cards"
+          style={{ position: "relative", height: 460 }}
+        >
+          {heroCards.map((c, i) => (
+            <div
+              key={c.slug}
+              style={{
+                position: "absolute",
+                top: i * 54,
+                left: i * 26,
+                right: -i * 8,
+                background: c.bg,
+                borderRadius: 22,
+                padding: "26px 28px",
+                border: "1px solid var(--warm-line)",
+                transform: `rotate(${(i - 1) * 1.8}deg)`,
+                boxShadow: "0 24px 50px -25px rgba(43,31,23,0.2)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "var(--font-warm-display)",
+                    fontSize: 28,
+                    fontWeight: 500,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  ishortn.ink/
+                  <span style={{ color: "var(--warm-accent)" }}>{c.slug}</span>
+                </div>
+                <span style={{ fontSize: 20 }}>{c.flag}</span>
+              </div>
+              <div
+                style={{
+                  marginTop: 20,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--warm-mute)" }}>
+                    Clicks this week
                   </div>
-                  <div className="flex items-center gap-1.5 text-zinc-500">
-                    {step === 3 ? (
-                      <motion.div
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="flex items-center gap-1.5 text-emerald-400"
-                      >
-                        <IconCheck size={14} stroke={2} />
-                        <span className="text-xs">Copied</span>
-                      </motion.div>
-                    ) : (
-                      <>
-                        <IconCopy size={14} stroke={1.5} />
-                        <span className="text-xs">Copy</span>
-                      </>
-                    )}
+                  <div
+                    style={{
+                      fontFamily: "var(--font-warm-display)",
+                      fontSize: 32,
+                      fontWeight: 500,
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {c.count}
                   </div>
                 </div>
-
-                {/* Quick stats */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.15 }}
-                  className="mt-3 flex items-center gap-4 px-1"
+                <div
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 999,
+                    background: "var(--warm-sage)",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
                 >
-                  <span className="text-xs text-zinc-500">
-                    {demo.clicks} clicks
-                  </span>
-                  <span className="text-xs text-zinc-600">&middot;</span>
-                  <span className="text-xs text-zinc-500">24 countries</span>
-                  <span className="text-xs text-zinc-600">&middot;</span>
-                  <span className="text-xs text-zinc-500">Live analytics</span>
-                </motion.div>
+                  ↑ {c.delta}
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <svg
+                viewBox="0 0 200 40"
+                width="100%"
+                height="40"
+                style={{ marginTop: 14 }}
+              >
+                <path
+                  d={`M 0 ${30 - i * 4} Q 40 ${10 + i * 5}, 80 ${20 - i * 2} T 160 ${12 + i * 3} T 200 ${8 + i * 2}`}
+                  stroke="var(--warm-accent)"
+                  strokeWidth="2"
+                  fill="none"
+                />
+              </svg>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
-};
 
-export const Hero = () => {
-  return (
-    <section className="bg-zinc-950 px-6 pt-32 pb-20 md:pt-40 md:pb-28">
-      <div className="mx-auto max-w-6xl">
-        {/* Headline */}
-        <motion.h1
-          {...fadeUp(0)}
-          className="font-heading text-5xl font-extrabold tracking-tight text-zinc-50 leading-[1.05] md:text-6xl lg:text-[5.5rem]"
-        >
-          Short links that
-          <br className="hidden md:block" />
-          <span className="md:hidden"> </span>
-          track every click
-        </motion.h1>
-
-        {/* Subtitle */}
-        <motion.p
-          {...fadeUp(0.1)}
-          className="mt-6 max-w-xl text-lg leading-relaxed text-zinc-400 md:text-xl"
-        >
-          Create branded short links with powerful analytics. Track clicks,
-          understand your audience, and grow with data.
-        </motion.p>
-
-        {/* CTA row */}
-        <motion.div
-          {...fadeUp(0.2)}
-          className="mt-10 flex items-center gap-4"
-        >
-          <Link
-            href={Paths.Login}
-            className="group inline-flex items-center gap-2 rounded-full bg-blue-500 px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+      <div
+        className="warm-container"
+        style={{
+          marginTop: 96,
+          display: "flex",
+          alignItems: "center",
+          gap: 40,
+          justifyContent: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <span style={{ fontSize: 13, color: "var(--warm-mute)" }}>
+          Featured on
+        </span>
+        {[
+          "Product Hunt #1",
+          "Indie Hackers",
+          "Sidebar",
+          "Designer News",
+          "The Newsletter",
+        ].map((x) => (
+          <span
+            key={x}
+            style={{
+              fontFamily: "var(--font-warm-display)",
+              fontSize: 18,
+              color: "var(--warm-ink-soft)",
+              opacity: 0.7,
+            }}
           >
-            Start for free
-            <IconArrowRight
-              size={15}
-              stroke={2}
-              className="transition-transform group-hover:translate-x-0.5"
-            />
-          </Link>
-          <Link
-            href="/#features"
-            className="rounded-full border border-zinc-700 px-7 py-3.5 text-sm font-medium text-zinc-400 transition-all hover:border-zinc-500 hover:text-zinc-50"
-          >
-            See how it works
-          </Link>
-        </motion.div>
-
-        <motion.p {...fadeUp(0.2)} className="mt-4 text-xs text-zinc-500">
-          No credit card required
-        </motion.p>
-
-        {/* Interactive Demo */}
-        <motion.div {...fadeUp(0.3)}>
-          <DemoAnimation />
-        </motion.div>
-
-        {/* Social Proof Stats */}
-        <motion.div
-          {...fadeUp(0.4)}
-          className="mt-16 flex items-center justify-center gap-12 md:gap-16"
-        >
-          <div className="text-center">
-            <div className="font-heading text-2xl font-bold text-zinc-50">
-              10M+
-            </div>
-            <div className="mt-1 text-sm text-zinc-500">links created</div>
-          </div>
-          <div className="h-8 w-px bg-zinc-800" />
-          <div className="text-center">
-            <div className="font-heading text-2xl font-bold text-zinc-50">
-              50M+
-            </div>
-            <div className="mt-1 text-sm text-zinc-500">clicks tracked</div>
-          </div>
-          <div className="h-8 w-px bg-zinc-800" />
-          <div className="text-center">
-            <div className="font-heading text-2xl font-bold text-zinc-50">
-              99.9%
-            </div>
-            <div className="mt-1 text-sm text-zinc-500">uptime</div>
-          </div>
-        </motion.div>
+            {x}
+          </span>
+        ))}
       </div>
+
+      <style>{`
+        .warm-hero-grid {
+          grid-template-columns: 1fr;
+        }
+        .warm-hero-cards {
+          display: none;
+        }
+        @media (min-width: 980px) {
+          .warm-hero-grid {
+            grid-template-columns: 1.3fr 1fr;
+          }
+          .warm-hero-cards {
+            display: block;
+          }
+        }
+      `}</style>
     </section>
   );
 };
