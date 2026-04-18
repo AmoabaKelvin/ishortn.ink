@@ -33,13 +33,17 @@ const GROWTH_VARIANTS: Record<
 
 export function QuickInfoCard({ title, value, icon, growth, hint }: QuickInfoCardProps) {
   const hasGrowth = growth !== undefined && growth !== null && Number.isFinite(growth);
-  const direction: GrowthDirection | null = hasGrowth
-    ? growth === 0
-      ? "flat"
-      : growth > 0
-        ? "up"
-        : "down"
-    : null;
+  // Derive direction from the same rounded value we display, so 0.4% doesn't
+  // show "↑ 0%" — the arrow and the label have to agree.
+  const roundedGrowth = hasGrowth ? Math.round(growth) : null;
+  const direction: GrowthDirection | null =
+    roundedGrowth === null
+      ? null
+      : roundedGrowth === 0
+        ? "flat"
+        : roundedGrowth > 0
+          ? "up"
+          : "down";
   const variant = direction ? GROWTH_VARIANTS[direction] : null;
 
   return (
@@ -67,7 +71,7 @@ export function QuickInfoCard({ title, value, icon, growth, hint }: QuickInfoCar
             title="vs previous period"
           >
             {variant.icon}
-            {direction === "flat" ? "0%" : `${Math.abs(Math.round(growth!))}%`}
+            {direction === "flat" ? "0%" : `${Math.abs(roundedGrowth!)}%`}
           </span>
         )}
         {hint && !hasGrowth && (

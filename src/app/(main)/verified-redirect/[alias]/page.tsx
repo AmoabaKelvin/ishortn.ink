@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
-import { buildBeaconScript } from "@/lib/utils/verified-click-token";
+import {
+  buildBeaconScript,
+  hashDestination,
+  verifyVerifiedClickToken,
+} from "@/lib/utils/verified-click-token";
 
 export const fetchCache = "force-no-store";
 export const dynamic = "force-dynamic";
@@ -26,6 +30,14 @@ function validateDestination(raw: string | undefined | null): string | null {
   }
 }
 
+function InvalidRedirect() {
+  return (
+    <div className="flex h-screen w-full items-center justify-center">
+      <p className="text-gray-500">Invalid redirect</p>
+    </div>
+  );
+}
+
 export default async function VerifiedRedirectPage(
   props: VerifiedRedirectPageProps,
 ) {
@@ -33,27 +45,26 @@ export default async function VerifiedRedirectPage(
   const to = validateDestination(
     typeof searchParams.to === "string" ? searchParams.to : null,
   );
-  const token =
+  const rawToken =
     typeof searchParams.t === "string" && searchParams.t.length > 0
       ? searchParams.t
       : null;
 
-  if (!to) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <p className="text-gray-500">Invalid redirect</p>
-      </div>
-    );
+  // `to` must match the destination signed into the token at issue time.
+  // Without this guard the page is an open redirect — any attacker-crafted
+  // `?to=` would be obediently followed by window.location.replace.
+  if (!to || !rawToken) return <InvalidRedirect />;
+  const decoded = verifyVerifiedClickToken(rawToken);
+  if (!decoded || decoded.destHash !== hashDestination(to)) {
+    return <InvalidRedirect />;
   }
 
-  const beaconAndRedirect = `${
-    token ? buildBeaconScript(token) : ""
-  }window.location.replace(${JSON.stringify(to)});`;
+  const inline = `${buildBeaconScript(rawToken)}window.location.replace(${JSON.stringify(to)});`;
 
   return (
     <>
       <meta httpEquiv="refresh" content={`0; url=${to}`} />
-      <script dangerouslySetInnerHTML={{ __html: beaconAndRedirect }} />
+      <script dangerouslySetInnerHTML={{ __html: inline }} />
       <noscript>
         <p style={{ fontFamily: "sans-serif", padding: "1rem" }}>
           Redirecting... <a href={to}>continue</a>

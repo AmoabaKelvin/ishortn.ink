@@ -17,18 +17,22 @@ export function assertCanEnableVerifiedClicks(plan: Plan): void {
 /**
  * Returns null when the feature is off, the owner isn't paid, or the signing
  * secret isn't configured. Callers treat null as "record an ordinary click,
- * skip the beacon."
+ * skip the beacon." The token is bound to `destination` so the interstitial
+ * page can reject swapped-URL requests.
  */
-export async function issueVerifiedClickToken(link: {
-  userId: string;
-  teamId: number | null;
-  verifiedClicksEnabled: boolean | null;
-}): Promise<{ visitId: string; verificationToken: string } | null> {
+export async function issueVerifiedClickToken(
+  link: {
+    userId: string;
+    teamId: number | null;
+    verifiedClicksEnabled: boolean | null;
+  },
+  destination: string,
+): Promise<{ visitId: string; verificationToken: string } | null> {
   if (!link.verifiedClicksEnabled) return null;
   if (!(await isOwnerOnPaidPlan(link.userId, link.teamId))) return null;
 
   const visitId = generateVisitId();
-  const verificationToken = signVerifiedClickToken(visitId);
+  const verificationToken = signVerifiedClickToken(visitId, destination);
   if (!verificationToken) return null;
 
   return { visitId, verificationToken };

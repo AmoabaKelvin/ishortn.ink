@@ -1078,9 +1078,10 @@ export const getLinkVisits = async (
   }
 
   // Previous-period window for % delta: same duration immediately before
-  // the current window. Skip for "all" since there is no comparable prior.
-  const hasPreviousPeriod = range !== "all";
+  // the current window. Skip for "all" and for inverted windows that can
+  // arise from calendar ranges landing on a non-positive duration.
   const windowMs = now.getTime() - startDate.getTime();
+  const hasPreviousPeriod = range !== "all" && windowMs > 0;
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
 
@@ -1506,7 +1507,9 @@ export const verifyLinkPassword = async (
   const clientIp = (ctx.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
   const ipHash = hashIp(clientIp);
 
-  const tokenIssue = await issueVerifiedClickToken(link);
+  const tokenIssue = link.url
+    ? await issueVerifiedClickToken(link, link.url)
+    : null;
 
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,

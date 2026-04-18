@@ -83,7 +83,7 @@ export default async function LinkAnalyticsPage(
       <div
         className={cn(
           "mt-6 grid grid-cols-2 gap-3 md:mt-8 md:gap-4",
-          verifiedVisits > 0 ? "md:grid-cols-4" : "md:grid-cols-3",
+          verifiedVisits > 0 ? "md:grid-cols-4" : "md:grid-cols-2",
         )}
       >
         <QuickInfoCard

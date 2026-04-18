@@ -10,10 +10,14 @@ import {
 } from "@/lib/core/cache";
 import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
 import { runBackgroundTask } from "@/lib/utils/background";
+import {
+  generateVisitId,
+  signVerifiedClickToken,
+} from "@/lib/utils/verified-click-token";
 import { recordClick, resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import { geoRule, link as linkTable, linkVisit } from "@/server/db/schema";
-import { issueVerifiedClickToken } from "@/server/lib/verified-click";
+import { isOwnerOnPaidPlan } from "@/server/lib/user-plan";
 
 /**
  * Mark a link as disabled in the DB and purge its cache entry. Runs in the
@@ -140,10 +144,14 @@ export async function GET(request: NextRequest) {
       return Response.json({ url: `${baseUrl}/verify-password/${link.id}` });
     }
 
-    // Fetch geo rules and eligibility for a verified-click token in parallel.
-    const [cachedGeoRules, tokenIssue] = await Promise.all([
+    // Geo-rules fetch and paid-plan check are independent; run them in parallel.
+    // Token signing has to wait until we know the final destination so we can
+    // bind it into the HMAC and prevent `to` tampering on the interstitial.
+    const [cachedGeoRules, ownerPaid] = await Promise.all([
       getGeoRulesFromCache(link.id),
-      issueVerifiedClickToken(link),
+      link.verifiedClicksEnabled
+        ? isOwnerOnPaidPlan(link.userId, link.teamId)
+        : Promise.resolve(false),
     ]);
 
     let geoRules = cachedGeoRules;
@@ -159,14 +167,26 @@ export async function GET(request: NextRequest) {
     }
 
     const geoResult = matchGeoRules(geoRules, country !== "Unknown" ? country : null);
-    const visitId = tokenIssue?.visitId ?? null;
-    const verificationToken = tokenIssue?.verificationToken ?? null;
+
+    const issueToken = (
+      destination: string,
+    ): { visitId: string | null; verificationToken: string | null } => {
+      if (!ownerPaid) return { visitId: null, verificationToken: null };
+      const candidate = generateVisitId();
+      const token = signVerifiedClickToken(candidate, destination);
+      return token
+        ? { visitId: candidate, verificationToken: token }
+        : { visitId: null, verificationToken: null };
+    };
 
     if (geoResult.matched) {
       if (geoResult.action === "block") {
         const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
         return Response.json({ url: `${baseUrl}/blocked/${link.id}${geoParam}` });
       }
+
+      const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams as UtmParams);
+      const { visitId, verificationToken } = issueToken(destinationUrl);
 
       void runBackgroundTask(
         recordClick({
@@ -180,7 +200,6 @@ export async function GET(request: NextRequest) {
         }),
       );
 
-      const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams as UtmParams);
       return Response.json({ url: destinationUrl, visitId, verificationToken });
     }
 
@@ -189,11 +208,13 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: "Link has no destination URL" }, { status: 404 });
     }
 
+    const destinationUrl = appendUtmParams(link.url, link.utmParams as UtmParams);
+    const { visitId, verificationToken } = issueToken(destinationUrl);
+
     void runBackgroundTask(
       recordClick({ headers: request.headers, link, ip, country, city, visitId }),
     );
 
-    const destinationUrl = appendUtmParams(link.url, link.utmParams as UtmParams);
     return Response.json({
       url: destinationUrl,
       cloaking: link.cloaking ?? false,
