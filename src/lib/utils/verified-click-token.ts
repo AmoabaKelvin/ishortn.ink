@@ -29,10 +29,24 @@ function getSecret(): string | null {
   return env.VERIFIED_CLICKS_SECRET ?? null;
 }
 
+/** Canonicalize so sign-side and verify-side produce identical bytes regardless
+ * of trailing slashes, hostname case, default ports, etc. If the URL fails to
+ * parse, fall back to the raw string so both sides still agree. */
+function canonicalizeDestination(raw: string): string {
+  try {
+    return new URL(raw).toString();
+  } catch {
+    return raw;
+  }
+}
+
 /** Short, URL-safe fingerprint that binds a token to its intended destination. */
 export function hashDestination(destination: string): string {
   return base64urlEncode(
-    createHash("sha256").update(destination).digest().subarray(0, 16),
+    createHash("sha256")
+      .update(canonicalizeDestination(destination))
+      .digest()
+      .subarray(0, 16),
   );
 }
 
