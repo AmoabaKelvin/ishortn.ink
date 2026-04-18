@@ -19,6 +19,10 @@ export const POSTHOG_EVENTS = {
   ANALYTICS_VIEWED: "analytics_viewed",
   ANALYTICS_OVERVIEW_VIEWED: "analytics_overview_viewed",
 
+  // Verified clicks feature
+  VERIFIED_CLICKS_ENABLED: "verified_clicks_enabled",
+  VERIFIED_CLICKS_DISABLED: "verified_clicks_disabled",
+
   // API events
   API_KEY_CREATED: "api_key_created",
   API_KEY_REVOKED: "api_key_revoked",

@@ -51,6 +51,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { clientLogger } from "@/lib/logger/client";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
@@ -197,6 +198,8 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   async function onSubmit(values: z.infer<typeof updateLinkSchema>) {
     values.tags = tags;
     const thresholds = milestones.map((m) => m.threshold);
+    const wasEnabled = link.verifiedClicksEnabled ?? false;
+    const isEnabled = values.verifiedClicksEnabled ?? false;
     toast.promise(
       Promise.all([
         formUpdateMutation.mutateAsync(values),
@@ -205,6 +208,18 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
           thresholds,
         }),
       ]).then(() => {
+        if (isEnabled !== wasEnabled) {
+          trackEvent(
+            isEnabled
+              ? POSTHOG_EVENTS.VERIFIED_CLICKS_ENABLED
+              : POSTHOG_EVENTS.VERIFIED_CLICKS_DISABLED,
+            {
+              linkId: link.id,
+              plan: subscriptionStatus?.plan ?? "free",
+              source: "edit",
+            },
+          );
+        }
         onClose();
       }),
       {
