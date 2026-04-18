@@ -3,7 +3,7 @@ date: 2026-01-01T12:00:00
 version: 1.4.0
 title: Advanced QR Code Styling
 shortDesc: Create stunning, on-brand QR codes with pixel styles, effects, and reusable presets
-category: feature
+category: new
 ---
 
 QR codes just got a major upgrade. You can now customize every aspect of your QR code's appearance—from pixel shapes and marker styles to visual effects and color schemes. Plus, save your favorite styles as presets for instant reuse.

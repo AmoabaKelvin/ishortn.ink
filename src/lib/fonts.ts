@@ -4,6 +4,8 @@ import {
   Bricolage_Grotesque,
   DM_Sans,
   Eagle_Lake,
+  Fraunces,
+  Inter,
   Instrument_Serif,
 } from "next/font/google";
 
@@ -30,4 +32,18 @@ export const fontLogo = Eagle_Lake({
   subsets: ["latin"],
   variable: "--font-logo",
   weight: ["400"],
+});
+
+// Warm landing theme — Fraunces for display copy, Inter for UI
+export const fontWarmDisplay = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-warm-display",
+  style: ["normal", "italic"],
+  axes: ["opsz", "SOFT"],
+});
+
+export const fontWarmUi = Inter({
+  subsets: ["latin"],
+  variable: "--font-warm-ui",
+  weight: ["300", "400", "500", "600"],
 });

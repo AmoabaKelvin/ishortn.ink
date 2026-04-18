@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 
+import { CTA } from "../_components/cta";
+import { DashboardPreview } from "../_components/dashboard-preview";
+import { Features } from "../_components/features";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
-import { FeaturesClient } from "./_components/features-client";
+import { QRSection } from "../_components/qr-section";
+import { Icon } from "../_components/warm-primitives";
 
 export const metadata: Metadata = {
-  title: "Features - Free URL Shortener with Analytics | iShortn",
+  title: "Features — iShortn",
   description:
-    "Explore iShortn's powerful features: link analytics, custom domains, QR codes, password protection, API access, and team collaboration. Everything you need to manage your links.",
+    "Everything inside iShortn: real-time analytics, custom domains, QR codes, password-protected links, bulk shorten, and a simple API.",
   keywords: [
     "url shortener features",
     "link analytics",
@@ -16,18 +20,56 @@ export const metadata: Metadata = {
     "link management features",
   ],
   openGraph: {
-    title: "Features - Free URL Shortener with Analytics | iShortn",
+    title: "Features — iShortn",
     description:
-      "Explore iShortn's powerful features: link analytics, custom domains, QR codes, password protection, API access, and team collaboration. Everything you need to manage your links.",
+      "Everything inside iShortn: real-time analytics, custom domains, QR codes, password-protected links, bulk shorten, and a simple API.",
     type: "website",
   },
 };
 
 export default function FeaturesPage() {
   return (
-    <main className="relative bg-zinc-950">
+    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
       <Header />
-      <FeaturesClient />
+
+      <section style={{ padding: "120px 0 48px" }}>
+        <div className="warm-container">
+          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
+            <Icon.Sparkle
+              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
+            />
+            Features
+          </div>
+          <h1
+            className="warm-display"
+            style={{ margin: 0, fontSize: "clamp(54px, 9vw, 104px)", maxWidth: 980 }}
+          >
+            Everything inside,
+            <br />
+            <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>
+              none of the clutter.
+            </em>
+          </h1>
+          <p
+            style={{
+              fontSize: 19,
+              color: "var(--warm-mute)",
+              marginTop: 24,
+              lineHeight: 1.6,
+              maxWidth: 620,
+            }}
+          >
+            Every feature iShortn ships — from real-time analytics to branded
+            QR codes and bulk CSV shortening. Made for creators and small teams
+            who want tools that get out of the way.
+          </p>
+        </div>
+      </section>
+
+      <Features />
+      <DashboardPreview />
+      <QRSection />
+      <CTA />
       <Footer />
     </main>
   );

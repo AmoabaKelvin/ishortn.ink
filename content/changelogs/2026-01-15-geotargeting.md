@@ -3,7 +3,7 @@ date: 2026-01-15T12:00:00
 version: 1.8.0
 title: Geotargeting
 shortDesc: Redirect or block visitors based on their country or continent
-category: feature
+category: new
 ---
 
 Your links can now make smarter decisions. With geotargeting, you can automatically redirect visitors to different destinations—or block access entirely—based on where they're located.

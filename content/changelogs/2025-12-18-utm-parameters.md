@@ -3,7 +3,7 @@ date: 2025-12-18T11:28:00
 version: 1.1.0
 title: UTM Parameters & Templates
 shortDesc: Track your marketing campaigns with built-in UTM parameter support
-category: feature
+category: new
 ---
 
 We're excited to introduce UTM parameter support, making it easier than ever to track the performance of your marketing campaigns directly within iShortn.

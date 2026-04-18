@@ -10,13 +10,13 @@ import { ChangelogHero } from "./_components/changelog-hero";
 import { ChangelogTimeline } from "./_components/changelog-timeline";
 
 export const metadata: Metadata = {
-  title: "Changelog - iShortn",
+  title: "Changelog — iShortn",
   description:
-    "Stay up to date with the latest features, improvements, and fixes to iShortn.",
+    "A public log of every iShortn release. New features, improvements, and fixes, written like letters — not press notes.",
   openGraph: {
-    title: "Changelog - iShortn",
+    title: "Changelog — iShortn",
     description:
-      "Stay up to date with the latest features, improvements, and fixes to iShortn.",
+      "A public log of every iShortn release. New features, improvements, and fixes.",
     type: "website",
   },
 };
@@ -25,23 +25,36 @@ export default async function ChangelogPage() {
   const entries = await getChangelogEntries();
 
   return (
-    <main className="relative bg-zinc-950">
+    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
       <Header />
+      <span id="top" />
       <ChangelogHero />
 
-      <section className="px-6 py-16 md:py-24">
-        <div className="mx-auto max-w-4xl">
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center py-20">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-800 border-t-blue-500" />
-              </div>
-            }
+      <Suspense
+        fallback={
+          <div
+            style={{
+              display: "grid",
+              placeItems: "center",
+              padding: "80px 0",
+            }}
           >
-            <ChangelogTimeline entries={entries} />
-          </Suspense>
-        </div>
-      </section>
+            <div
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                border: "2px solid var(--warm-line)",
+                borderTopColor: "var(--warm-accent)",
+                animation: "warm-spin .75s linear infinite",
+              }}
+            />
+            <style>{`@keyframes warm-spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        }
+      >
+        <ChangelogTimeline entries={entries} />
+      </Suspense>
 
       <Footer />
     </main>

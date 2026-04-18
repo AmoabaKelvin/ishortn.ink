@@ -3,7 +3,7 @@ date: 2026-01-13T12:00:00
 version: 1.7.0
 title: Link Cloaking
 shortDesc: Keep your short URL visible in the browser while displaying destination content
-category: feature
+category: new
 ---
 
 Your short links just got more powerful. With link cloaking, the destination website appears while your branded short URL stays in the browser's address bar—giving you complete control over how your links look when clicked.

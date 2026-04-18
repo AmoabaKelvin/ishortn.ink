@@ -3,7 +3,7 @@ date: 2026-01-10T12:00:00
 version: 1.6.0
 title: Custom Social Media Previews
 shortDesc: Upload custom images and set your own title and description for link previews
-category: feature
+category: new
 ---
 
 Take control of how your links appear when shared on social media. You can now upload custom images and set your own titles and descriptions—making every link share look exactly how you want it.

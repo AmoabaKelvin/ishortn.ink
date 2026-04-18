@@ -1,4 +1,4 @@
-export type ChangelogCategory = "feature" | "improvement" | "fix" | "breaking";
+export type ChangelogCategory = "new" | "improved" | "fixed" | "shipped";
 
 export interface ChangelogFrontmatter {
   date: string; // ISO datetime string (e.g., "2025-12-18T14:30:00" or "2025-12-18")

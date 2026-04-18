@@ -11,6 +11,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { useTransitionRouter } from "next-view-transitions";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -71,7 +72,9 @@ type MetaData = {
 
 export default function CreateLinkPage() {
   const router = useTransitionRouter();
-  const [destinationURL, setDestinationURL] = useState<string | undefined>();
+  const searchParams = useSearchParams();
+  const initialUrl = searchParams.get("url") ?? undefined;
+  const [destinationURL, setDestinationURL] = useState<string | undefined>(initialUrl);
   const [userDomains, setUserDomains] = useState<CustomDomain[]>([]);
   const [isCustomMetadataOpen, setIsCustomMetadataOpen] = useState(false);
   const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
@@ -105,6 +108,7 @@ export default function CreateLinkPage() {
 
   const form = useForm<z.infer<typeof createLinkSchema>>({
     resolver: zodResolver(createLinkSchema),
+    defaultValues: initialUrl ? { url: initialUrl } : undefined,
   });
 
   const [debouncedUrl] = useDebounce(destinationURL, 500);

@@ -1,178 +1,236 @@
-import { IconBrandGithub, IconBrandX } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
-import { APP_TITLE } from "@/lib/constants/app";
+import { Wordmark } from "./warm-primitives";
 
-const githubUrl = "https://github.com/AmoabaKelvin/ishortn.ink";
-const twitterUrl = "https://twitter.com/kelamoaba";
+const columns = [
+  {
+    title: "Product",
+    links: [
+      { label: "Features", href: "/features" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Changelog", href: "/changelog" },
+      { label: "API docs", href: "https://docs.ishortn.ink/api" },
+      { label: "Open dashboard", href: "/dashboard" },
+    ],
+  },
+  {
+    title: "Compare",
+    links: [
+      { label: "vs Bitly", href: "/compare/bitly" },
+      { label: "vs TinyURL", href: "/compare/tinyurl" },
+      { label: "vs Rebrandly", href: "/compare/rebrandly" },
+      { label: "vs Short.io", href: "/compare/short-io" },
+      { label: "vs Dub", href: "/compare/dub" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Blog", href: "/blog" },
+      { label: "Documentation", href: "https://ishortn.ink/docs" },
+      { label: "Support", href: "mailto:support@ishortn.ink" },
+      { label: "Status", href: "https://status.ishortn.ink" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+    ],
+  },
+];
 
-const isExternalHref = (href: string) =>
-  href.startsWith("http") || href.startsWith("mailto:");
-
-const FooterLink = ({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) => {
-  const className =
-    "block py-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-300";
-
-  if (isExternalHref(href)) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={className}
-      >
-        {children}
-      </a>
-    );
-  }
-
-  return (
-    <Link href={href} className={className}>
-      {children}
-    </Link>
-  );
-};
-
-const footerLinks = {
-  product: [
-    { name: "Features", href: "/features" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "API", href: "https://docs.ishortn.ink/api" },
-    { name: "Changelog", href: "/changelog" },
-  ],
-  resources: [
-    { name: "Blog", href: "/blog" },
-    { name: "Documentation", href: "https://ishortn.ink/docs" },
-    { name: "Support", href: "mailto:support@ishortn.ink" },
-    { name: "Status", href: "https://status.ishortn.ink" },
-  ],
-  compare: [
-    { name: "vs Bitly", href: "/compare/bitly" },
-    { name: "vs TinyURL", href: "/compare/tinyurl" },
-    { name: "vs Rebrandly", href: "/compare/rebrandly" },
-    { name: "vs Short.io", href: "/compare/short-io" },
-    { name: "vs Dub", href: "/compare/dub" },
-  ],
-  legal: [
-    { name: "Privacy", href: "/privacy" },
-    { name: "Terms", href: "/terms" },
-  ],
-};
+const socials = [
+  { label: "𝕏", href: "https://twitter.com/kelamoaba" },
+  { label: "GH", href: "https://github.com/AmoabaKelvin/ishortn.ink" },
+  { label: "@", href: "mailto:support@ishortn.ink" },
+];
 
 export const Footer = () => {
   return (
-    <footer className="border-t border-zinc-800 bg-zinc-950 px-6 pb-8 pt-16">
-      <div className="mx-auto max-w-6xl">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-6">
-          {/* Brand */}
-          <div className="col-span-2">
-            <Link href="/" className="font-logo text-[17px] text-zinc-50">
-              {APP_TITLE}
-            </Link>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-zinc-500">
-              Simple, fast link shortening with analytics. Track your impact.
+    <footer
+      style={{
+        background: "var(--warm-ink)",
+        color: "var(--warm-paper)",
+        padding: "80px 0 40px",
+      }}
+    >
+      <div className="warm-container">
+        <div
+          style={{
+            display: "grid",
+            gap: 60,
+            paddingBottom: 60,
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+          }}
+          className="warm-footer-grid"
+        >
+          <div>
+            <Wordmark onInk />
+            <p
+              style={{
+                fontSize: 14,
+                color: "rgba(252,245,238,0.65)",
+                marginTop: 20,
+                maxWidth: 280,
+                lineHeight: 1.6,
+              }}
+            >
+              A quietly lovely URL shortener — for people who make things on the
+              internet.
             </p>
-            <div className="mt-6 flex gap-4">
-              <a
-                href={githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-zinc-500 transition-colors hover:text-zinc-50"
-              >
-                <IconBrandGithub size={18} />
-              </a>
-              <a
-                href={twitterUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-zinc-500 transition-colors hover:text-zinc-50"
-              >
-                <IconBrandX size={18} />
-              </a>
+            <div style={{ marginTop: 28, display: "flex", gap: 10 }}>
+              {socials.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: 13,
+                    color: "rgba(252,245,238,0.7)",
+                    transition: "all .2s",
+                  }}
+                >
+                  {s.label}
+                </a>
+              ))}
             </div>
           </div>
-
-          {/* Product */}
-          <div>
-            <h4 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-400">
-              Product
-            </h4>
-            <ul>
-              {footerLinks.product.map((link) => (
-                <li key={link.name}>
-                  <FooterLink href={link.href}>{link.name}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div>
-            <h4 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-400">
-              Resources
-            </h4>
-            <ul>
-              {footerLinks.resources.map((link) => (
-                <li key={link.name}>
-                  <FooterLink href={link.href}>{link.name}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Compare */}
-          <div>
-            <h4 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-400">
-              Compare
-            </h4>
-            <ul>
-              {footerLinks.compare.map((link) => (
-                <li key={link.name}>
-                  <FooterLink href={link.href}>{link.name}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h4 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-400">
-              Legal
-            </h4>
-            <ul>
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <FooterLink href={link.href}>{link.name}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {columns.map((col) => (
+            <div key={col.title}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "rgba(252,245,238,0.5)",
+                  marginBottom: 18,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {col.title}
+              </div>
+              <ul
+                style={{
+                  listStyle: "none",
+                  padding: 0,
+                  margin: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
+                {col.links.map((l) => (
+                  <li key={l.label}>
+                    {l.href.startsWith("http") || l.href.startsWith("mailto:") ? (
+                      <a
+                        href={l.href}
+                        target={l.href.startsWith("http") ? "_blank" : undefined}
+                        rel={
+                          l.href.startsWith("http")
+                            ? "noopener noreferrer"
+                            : undefined
+                        }
+                        style={{
+                          fontSize: 14,
+                          color: "var(--warm-paper)",
+                          opacity: 0.8,
+                        }}
+                      >
+                        {l.label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={l.href}
+                        style={{
+                          fontSize: 14,
+                          color: "var(--warm-paper)",
+                          opacity: 0.8,
+                        }}
+                      >
+                        {l.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-
-        {/* Bottom bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-zinc-800 pt-8 md:flex-row">
-          <p className="text-xs text-zinc-600">
-            &copy; {new Date().getFullYear()} iShortn. All rights reserved.
-          </p>
-          <p className="text-xs text-zinc-600">
-            Built by{" "}
+        <div
+          style={{
+            paddingTop: 28,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 16,
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: 12,
+            color: "rgba(252,245,238,0.5)",
+          }}
+        >
+          <div>
+            © {new Date().getFullYear()} iShortn — built by{" "}
             <a
-              href={twitterUrl}
+              href="https://twitter.com/kelamoaba"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-zinc-500 transition-colors hover:text-zinc-300"
+              style={{ color: "rgba(252,245,238,0.75)" }}
             >
               Amoaba Kelvin
             </a>
-          </p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "var(--warm-sage)",
+              }}
+            />
+            All systems normal
+          </div>
+        </div>
+        <div
+          aria-hidden
+          style={{
+            marginTop: 60,
+            fontFamily: "var(--font-warm-display)",
+            fontSize: "clamp(120px, 20vw, 300px)",
+            lineHeight: 0.8,
+            color: "rgba(255,255,255,0.04)",
+            letterSpacing: "-0.03em",
+            textAlign: "center",
+            userSelect: "none",
+            fontStyle: "italic",
+          }}
+        >
+          iShortn
+          <span style={{ color: "var(--warm-accent)", opacity: 0.5 }}>.</span>
         </div>
       </div>
+      <style>{`
+        .warm-footer-grid {
+          grid-template-columns: 1fr;
+        }
+        @media (min-width: 720px) {
+          .warm-footer-grid {
+            grid-template-columns: 1.4fr repeat(2, 1fr);
+          }
+        }
+        @media (min-width: 1024px) {
+          .warm-footer-grid {
+            grid-template-columns: 1.4fr repeat(4, 1fr);
+          }
+        }
+      `}</style>
     </footer>
   );
 };

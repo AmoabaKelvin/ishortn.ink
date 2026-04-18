@@ -1,4 +1,3 @@
-import { IconArrowLeft, IconArrowRight } from "@tabler/icons-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Link } from "next-view-transitions";
@@ -8,9 +7,11 @@ import {
   createArticleSchema,
   createBreadcrumbSchema,
 } from "@/lib/seo/structured-data";
+import { Paths } from "@/lib/constants/app";
 
 import { Footer } from "../../_components/footer";
 import { Header } from "../../_components/header";
+import { Icon } from "../../_components/warm-primitives";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -32,7 +33,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${post.title} - iShortn Blog`,
+    title: `${post.title} — iShortn Blog`,
     description: post.description,
     keywords: post.tags,
     authors: [{ name: post.author }],
@@ -91,57 +92,113 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   ]);
 
   return (
-    <main className="relative bg-zinc-950">
+    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
       <Header />
 
-      {/* Structured Data */}
       <script
         type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
       <script
         type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
-      {/* Article Header */}
-      <section className="bg-zinc-950 px-6 pt-32 pb-16 md:pt-40 md:pb-20">
-        <div className="mx-auto max-w-3xl">
+      <section style={{ padding: "120px 0 40px" }}>
+        <div className="warm-container" style={{ maxWidth: 860 }}>
           <Link
             href="/blog"
-            className="inline-flex items-center gap-2 text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 13,
+              color: "var(--warm-mute)",
+            }}
           >
-            <IconArrowLeft size={14} /> Back to blog
+            ← Back to blog
           </Link>
 
           {primaryTag && (
-            <p className="mt-8 text-xs font-medium uppercase tracking-widest text-blue-400">
+            <div
+              style={{
+                marginTop: 32,
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--warm-accent)",
+              }}
+            >
               {primaryTag}
-            </p>
+            </div>
           )}
 
-          <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight text-zinc-50 leading-[1.1] md:text-5xl lg:text-6xl">
+          <h1
+            className="warm-display"
+            style={{
+              margin: "16px 0 0",
+              fontSize: "clamp(40px, 6vw, 64px)",
+              lineHeight: 1.1,
+            }}
+          >
             {post.title}
           </h1>
 
-          <p className="mt-6 text-lg leading-relaxed text-zinc-400 md:text-xl">
+          <p
+            style={{
+              fontSize: 19,
+              color: "var(--warm-ink-soft)",
+              marginTop: 20,
+              lineHeight: 1.55,
+              fontFamily: "var(--font-warm-display)",
+              fontWeight: 300,
+            }}
+          >
             {post.description}
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4 text-sm text-zinc-500">
+          <div
+            style={{
+              marginTop: 28,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 14,
+              fontSize: 14,
+              color: "var(--warm-mute)",
+              alignItems: "center",
+            }}
+          >
             <span>{post.author}</span>
-            <span>&middot;</span>
+            <span>·</span>
             <time dateTime={post.date}>{formatDate(post.date)}</time>
-            <span>&middot;</span>
+            <span>·</span>
             <span>{post.readingTime} min read</span>
           </div>
 
           {post.tags.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div
+              style={{
+                marginTop: 20,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
               {post.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded-full border border-zinc-800 bg-zinc-900/50 px-3 py-1 text-[11px] font-medium text-zinc-400"
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: 999,
+                    border: "1px solid var(--warm-line)",
+                    background: "var(--warm-paper)",
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: "var(--warm-ink-soft)",
+                  }}
                 >
                   {tag}
                 </span>
@@ -151,51 +208,100 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </div>
       </section>
 
-      {/* Article Body */}
-      <section className="bg-zinc-950 px-6 pb-24">
+      <section style={{ padding: "24px 0 120px" }}>
         <article
-          className="prose prose-invert prose-zinc prose-lg mx-auto max-w-3xl prose-headings:font-heading prose-headings:tracking-tight prose-headings:text-zinc-50 prose-p:text-zinc-300 prose-p:leading-relaxed prose-a:text-blue-400 prose-a:no-underline hover:prose-a:text-blue-300 prose-strong:text-zinc-50 prose-code:rounded prose-code:bg-zinc-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:text-blue-300 prose-code:before:content-none prose-code:after:content-none prose-pre:border prose-pre:border-zinc-800 prose-pre:bg-zinc-900 prose-ol:text-zinc-300 prose-ul:text-zinc-300 prose-li:text-zinc-300 prose-li:marker:text-zinc-600 prose-hr:border-zinc-800 prose-blockquote:border-l-blue-500 prose-blockquote:text-zinc-400 prose-img:rounded-xl prose-img:border prose-img:border-zinc-800"
+          className="warm-container warm-legal-prose"
+          style={{ maxWidth: 760, fontFamily: "var(--font-warm-ui)" }}
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: Markdown content is parsed server-side via remark
           dangerouslySetInnerHTML={{ __html: post.htmlContent }}
         />
       </section>
 
-      {/* Related Posts */}
       {relatedPosts.length > 0 && (
-        <section className="border-t border-zinc-800 bg-zinc-950 px-6 py-20 md:py-24">
-          <div className="mx-auto max-w-6xl">
-            <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+        <section
+          style={{
+            padding: "72px 0",
+            borderTop: "1px solid var(--warm-line-soft)",
+          }}
+        >
+          <div className="warm-container">
+            <div className="warm-eyebrow" style={{ marginBottom: 20 }}>
+              <Icon.Sparkle
+                style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
+              />
               Related posts
-            </p>
-            <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight text-zinc-50 md:text-4xl">
-              Keep reading
+            </div>
+            <h2
+              className="warm-display"
+              style={{ margin: 0, fontSize: "clamp(36px, 5vw, 48px)" }}
+            >
+              Keep reading.
             </h2>
-
-            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div
+              className="warm-blog-grid"
+              style={{ display: "grid", gap: 20, marginTop: 40 }}
+            >
               {relatedPosts.map((relatedPost) => {
                 const relatedTag = relatedPost.tags[0];
                 return (
                   <Link
                     key={relatedPost.slug}
                     href={`/blog/${relatedPost.slug}`}
-                    className="group flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 transition-colors hover:bg-zinc-900/60"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      background: "var(--warm-paper)",
+                      border: "1px solid var(--warm-line)",
+                      borderRadius: 24,
+                      padding: 28,
+                    }}
                   >
                     {relatedTag && (
-                      <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: "var(--warm-accent)",
+                        }}
+                      >
                         {relatedTag}
-                      </p>
+                      </div>
                     )}
-                    <h3 className="mt-3 font-heading text-xl font-bold text-zinc-50 md:text-2xl group-hover:text-white">
+                    <h3
+                      style={{
+                        fontFamily: "var(--font-warm-display)",
+                        fontSize: 22,
+                        fontWeight: 500,
+                        letterSpacing: "-0.02em",
+                        margin: "12px 0 12px",
+                        lineHeight: 1.2,
+                      }}
+                    >
                       {relatedPost.title}
                     </h3>
-                    <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-zinc-400">
+                    <p
+                      style={{
+                        fontSize: 14,
+                        color: "var(--warm-mute)",
+                        margin: 0,
+                        lineHeight: 1.6,
+                      }}
+                    >
                       {relatedPost.description}
                     </p>
-                    <div className="mt-6 flex items-center gap-3 text-xs text-zinc-500">
+                    <div
+                      style={{
+                        marginTop: 24,
+                        fontSize: 12,
+                        color: "var(--warm-mute)",
+                      }}
+                    >
                       <time dateTime={relatedPost.date}>
                         {formatDate(relatedPost.date)}
-                      </time>
-                      <span>&middot;</span>
-                      <span>{relatedPost.readingTime} min read</span>
+                      </time>{" "}
+                      · {relatedPost.readingTime} min read
                     </div>
                   </Link>
                 );
@@ -205,22 +311,46 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </section>
       )}
 
-      {/* Final CTA */}
-      <section className="bg-zinc-950 px-6 py-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-8 py-16 text-center md:px-16 md:py-20">
-            <h2 className="font-heading text-3xl font-bold tracking-tight text-zinc-50 md:text-4xl">
-              Start shortening links
+      <section
+        style={{
+          padding: "96px 0",
+          borderTop: "1px solid var(--warm-line-soft)",
+        }}
+      >
+        <div className="warm-container">
+          <div
+            style={{
+              background: "var(--warm-paper)",
+              border: "1px solid var(--warm-line)",
+              borderRadius: 32,
+              padding: "56px 32px",
+              textAlign: "center",
+            }}
+          >
+            <h2
+              className="warm-display"
+              style={{ margin: 0, fontSize: "clamp(36px, 5vw, 48px)" }}
+            >
+              Start <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>shortening</em>.
             </h2>
-            <p className="mx-auto mt-4 max-w-lg text-lg text-zinc-400">
-              Free forever for solo users. No credit card required.
+            <p
+              style={{
+                fontSize: 17,
+                color: "var(--warm-mute)",
+                marginTop: 16,
+                maxWidth: 460,
+                marginLeft: "auto",
+                marginRight: "auto",
+              }}
+            >
+              Free to start. No credit card required.
             </p>
             <Link
-              href="/login"
-              className="mt-8 inline-flex items-center gap-2 rounded-full bg-blue-500 px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+              href={Paths.Signup}
+              className="warm-btn warm-btn-accent warm-btn-lg"
+              style={{ marginTop: 28 }}
             >
-              Get started free
-              <IconArrowRight size={16} />
+              Get started free <Icon.Arrow />
             </Link>
           </div>
         </div>

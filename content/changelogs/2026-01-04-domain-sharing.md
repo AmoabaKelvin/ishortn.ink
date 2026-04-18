@@ -3,7 +3,7 @@ date: 2026-01-04T12:00:00
 version: 1.5.0
 title: Use Custom Domains Across Workspaces
 shortDesc: Add the same custom domain to multiple workspaces for flexible branding
-category: feature
+category: new
 ---
 
 Custom domains are now more flexible. You can add the same domain to your personal workspace and your team workspaces simultaneously—no more conflicts or workarounds needed.
