@@ -21,6 +21,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/cloaked/") ||
+    pathname.startsWith("/verified-redirect/") ||
     pathname.startsWith("/opengraph-image") ||
     pathname.endsWith(".png") ||
     pathname.endsWith(".ico") ||
@@ -124,9 +125,30 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
   const acceptCh =
     "Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Arch, Sec-CH-UA-Bitness, Sec-CH-UA-Full-Version-List";
 
+  const verificationToken =
+    typeof data.verificationToken === "string" ? data.verificationToken : null;
+
   if (data.cloaking) {
     const encodedUrl = encodeURIComponent(redirectUrl);
-    const rewriteResponse = NextResponse.rewrite(new URL(`/cloaked/${encodedUrl}`, request.url));
+    const tokenQuery = verificationToken
+      ? `?t=${encodeURIComponent(verificationToken)}`
+      : "";
+    const rewriteResponse = NextResponse.rewrite(
+      new URL(`/cloaked/${encodedUrl}${tokenQuery}`, request.url),
+    );
+    rewriteResponse.headers.set("Accept-CH", acceptCh);
+    return rewriteResponse;
+  }
+
+  if (verificationToken) {
+    const alias = pathname.replace(/^\//, "") || "link";
+    const rewriteUrl = new URL(
+      `/verified-redirect/${encodeURIComponent(alias)}`,
+      request.url,
+    );
+    rewriteUrl.searchParams.set("to", redirectUrl);
+    rewriteUrl.searchParams.set("t", verificationToken);
+    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
     rewriteResponse.headers.set("Accept-CH", acceptCh);
     return rewriteResponse;
   }

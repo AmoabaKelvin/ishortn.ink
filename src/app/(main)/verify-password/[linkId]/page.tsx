@@ -44,6 +44,19 @@ export default function VerifyPasswordPage({ params }: VerifyPasswordPageProps) 
     }
 
     toast.success("Password verified! Redirecting...");
+
+    // When the link has verified clicks on, route through the interstitial
+    // page so the beacon fires. Force a full navigation (not router.push)
+    // because the interstitial relies on an inline <script> that only runs
+    // reliably on a fresh page load.
+    if (result.verificationToken) {
+      const alias = encodeURIComponent(result.alias ?? "l");
+      const to = encodeURIComponent(result.url!);
+      const t = encodeURIComponent(result.verificationToken);
+      window.location.href = `/verified-redirect/${alias}?to=${to}&t=${t}`;
+      return;
+    }
+
     router.push(result.url!);
   };
 

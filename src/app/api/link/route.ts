@@ -13,6 +13,7 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import { recordClick, resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import { geoRule, link as linkTable, linkVisit } from "@/server/db/schema";
+import { issueVerifiedClickToken } from "@/server/lib/verified-click";
 
 /**
  * Mark a link as disabled in the DB and purge its cache entry. Runs in the
@@ -139,8 +140,13 @@ export async function GET(request: NextRequest) {
       return Response.json({ url: `${baseUrl}/verify-password/${link.id}` });
     }
 
-    // Fetch geo rules (cache first, then DB)
-    let geoRules = await getGeoRulesFromCache(link.id);
+    // Fetch geo rules and eligibility for a verified-click token in parallel.
+    const [cachedGeoRules, tokenIssue] = await Promise.all([
+      getGeoRulesFromCache(link.id),
+      issueVerifiedClickToken(link),
+    ]);
+
+    let geoRules = cachedGeoRules;
     if (!geoRules) {
       const rulesFromDb = await db.query.geoRule.findMany({
         where: eq(geoRule.linkId, link.id),
@@ -153,6 +159,8 @@ export async function GET(request: NextRequest) {
     }
 
     const geoResult = matchGeoRules(geoRules, country !== "Unknown" ? country : null);
+    const visitId = tokenIssue?.visitId ?? null;
+    const verificationToken = tokenIssue?.verificationToken ?? null;
 
     if (geoResult.matched) {
       if (geoResult.action === "block") {
@@ -161,23 +169,37 @@ export async function GET(request: NextRequest) {
       }
 
       void runBackgroundTask(
-        recordClick(request.headers, link, ip, country, city, geoResult.ruleId),
+        recordClick({
+          headers: request.headers,
+          link,
+          ip,
+          country,
+          city,
+          matchedGeoRuleId: geoResult.ruleId,
+          visitId,
+        }),
       );
 
       const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams as UtmParams);
-      return Response.json({ url: destinationUrl });
+      return Response.json({ url: destinationUrl, visitId, verificationToken });
     }
 
-    // Validate link.url before processing
     if (!link.url) {
       console.error("Link has no URL:", link.id);
       return Response.json({ error: "Link has no destination URL" }, { status: 404 });
     }
 
-    void runBackgroundTask(recordClick(request.headers, link, ip, country, city));
+    void runBackgroundTask(
+      recordClick({ headers: request.headers, link, ip, country, city, visitId }),
+    );
 
     const destinationUrl = appendUtmParams(link.url, link.utmParams as UtmParams);
-    return Response.json({ url: destinationUrl, cloaking: link.cloaking ?? false });
+    return Response.json({
+      url: destinationUrl,
+      cloaking: link.cloaking ?? false,
+      visitId,
+      verificationToken,
+    });
   } catch (error) {
     console.error("Error processing link:", error);
     return Response.json({ error: "Internal server error" }, { status: 500 });

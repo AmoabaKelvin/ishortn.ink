@@ -8,9 +8,11 @@ import {
   desc,
   eq,
   getTableColumns,
+  gte,
   inArray,
   isNull,
   like,
+  lt,
   or,
   sql,
 } from "drizzle-orm";
@@ -22,6 +24,10 @@ import {
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { hashIp } from "@/lib/utils/ip-hash";
+import {
+  assertCanEnableVerifiedClicks,
+  issueVerifiedClickToken,
+} from "@/server/lib/verified-click";
 import {
   buildCacheKey,
   deleteFromCache,
@@ -386,6 +392,8 @@ export const createLink = async (
     }
   }
 
+  if (input.verifiedClicksEnabled) assertCanEnableVerifiedClicks(plan);
+
   input.metadata = {
     title: inputMetaData?.title ?? fetchedMetadata.title,
     description: inputMetaData?.description ?? fetchedMetadata.description,
@@ -412,6 +420,7 @@ export const createLink = async (
       ...input.metadata,
     },
     cloaking: input.cloaking ?? false,
+    verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
   });
 
   // Associate tags with the link
@@ -542,6 +551,10 @@ export const updateLink = async (
       );
     }
   }
+
+  // Downgrades are caught again at token-issuance time in /api/link, so a
+  // stale `verifiedClicksEnabled=true` doesn't produce tokens for free users.
+  if (input.verifiedClicksEnabled) assertCanEnableVerifiedClicks(workspacePlan);
 
   // Extract tags and geoRules from input
   const { tags: tagNames, geoRules: geoRulesInput, ...linkData } = input;
@@ -1017,6 +1030,7 @@ export const getLinkVisits = async (
       topReferrer: "N/A",
       isProPlan: userHasPaidPlan,
       geoRules: [],
+      previous: null,
     };
   }
 
@@ -1063,7 +1077,14 @@ export const getLinkVisits = async (
       startDate = subDays(now, 7); // Default to last 7 days
   }
 
-  const [totalVisits, uniqueVisits, linkGeoRules] = await Promise.all([
+  // Previous-period window for % delta: same duration immediately before
+  // the current window. Skip for "all" since there is no comparable prior.
+  const hasPreviousPeriod = range !== "all";
+  const windowMs = now.getTime() - startDate.getTime();
+  const prevEnd = startDate;
+  const prevStart = new Date(startDate.getTime() - windowMs);
+
+  const [totalVisits, uniqueVisits, linkGeoRules, prevCounts] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { eq, and, gte, lte }) =>
         and(
@@ -1087,7 +1108,42 @@ export const getLinkVisits = async (
         action: true,
       },
     }),
+    hasPreviousPeriod
+      ? Promise.all([
+          ctx.db
+            .select({
+              total: count(),
+              verified: sql<number>`SUM(CASE WHEN ${linkVisit.verifiedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
+            })
+            .from(linkVisit)
+            .where(
+              and(
+                eq(linkVisit.linkId, foundLink.id),
+                gte(linkVisit.createdAt, prevStart),
+                lt(linkVisit.createdAt, prevEnd),
+              ),
+            ),
+          ctx.db
+            .select({ value: count() })
+            .from(uniqueLinkVisit)
+            .where(
+              and(
+                eq(uniqueLinkVisit.linkId, foundLink.id),
+                gte(uniqueLinkVisit.createdAt, prevStart),
+                lt(uniqueLinkVisit.createdAt, prevEnd),
+              ),
+            ),
+        ])
+      : Promise.resolve(null),
   ]);
+
+  const previous = prevCounts
+    ? {
+        total: prevCounts[0][0]?.total ?? 0,
+        unique: prevCounts[1][0]?.value ?? 0,
+        verified: Number(prevCounts[0][0]?.verified ?? 0),
+      }
+    : null;
 
   if (totalVisits.length === 0) {
     return {
@@ -1098,6 +1154,7 @@ export const getLinkVisits = async (
       topReferrer: "N/A",
       isProPlan: userHasPaidPlan,
       geoRules: linkGeoRules,
+      previous,
     };
   }
 
@@ -1139,6 +1196,7 @@ export const getLinkVisits = async (
     topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
     isProPlan: userHasPaidPlan,
     geoRules: linkGeoRules,
+    previous,
   };
 };
 
@@ -1448,9 +1506,12 @@ export const verifyLinkPassword = async (
   const clientIp = (ctx.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
   const ipHash = hashIp(clientIp);
 
+  const tokenIssue = await issueVerifiedClickToken(link);
+
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,
     ...deviceDetails,
+    visitId: tokenIssue?.visitId ?? null,
   });
 
   await ctx.db
@@ -1461,7 +1522,11 @@ export const verifyLinkPassword = async (
   // Fire milestone check for password-protected links (recordClick skips these)
   void runBackgroundTask(checkAndFireMilestones(link.id, link.userId));
 
-  return link;
+  return {
+    url: link.url,
+    alias: link.alias,
+    verificationToken: tokenIssue?.verificationToken ?? null,
+  };
 };
 
 export const changeLinkPassword = async (

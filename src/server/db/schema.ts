@@ -235,6 +235,7 @@ export const link = mysqlTable(
     archived: boolean("archived").default(false),
     folderId: int("folderId"),
     cloaking: boolean("cloaking").default(false),
+    verifiedClicksEnabled: boolean("verifiedClicksEnabled").default(false),
     isQrCode: boolean("isQrCode").default(false),
     // Admin moderation
     blocked: boolean("blocked").default(false),
@@ -289,6 +290,8 @@ export const linkVisit = mysqlTable(
     city: varchar("city", { length: 255 }),
     continent: varchar("continent", { length: 255 }).default("N/A"),
     matchedGeoRuleId: int("matchedGeoRuleId"), // Reference to the geo rule that matched (for analytics)
+    visitId: char("visitId", { length: 36 }), // uuid used by verified-click beacon to identify this row; null when verified clicks is disabled for the link
+    verifiedAt: timestamp("verifiedAt"), // set when the destination-page beacon POSTs back with a valid token
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
@@ -296,6 +299,7 @@ export const linkVisit = mysqlTable(
     geoRuleIdIdx: index("geoRuleId_idx").on(table.matchedGeoRuleId),
     linkCreatedAtIdx: index("linkId_createdAt_idx").on(table.linkId, table.createdAt),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
+    visitIdIdx: unique("visitId_idx").on(table.visitId),
   }),
 );
 

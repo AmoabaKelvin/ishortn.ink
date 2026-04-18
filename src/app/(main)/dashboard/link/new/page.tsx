@@ -88,6 +88,7 @@ export default function CreateLinkPage() {
   const [isLinkCloakingOpen, setIsLinkCloakingOpen] = useState(false);
   const [isCheckingIframeable, setIsCheckingIframeable] = useState(false);
   const [iframeableResult, setIframeableResult] = useState<boolean | null>(null);
+  const [isVerifiedClicksOpen, setIsVerifiedClicksOpen] = useState(false);
 
   const userSubscription = api.subscriptions.get.useQuery();
   const customDomainsQuery = api.customDomain.list.useQuery();
@@ -757,6 +758,7 @@ export default function CreateLinkPage() {
               isOpen={isLinkCloakingOpen}
               onToggle={() => setIsLinkCloakingOpen(!isLinkCloakingOpen)}
               badge={!isUltraUser ? <PlanBadge plan="Ultra" /> : undefined}
+              highlighted={!!form.watch("cloaking")}
             >
               <FormField
                 control={form.control}
@@ -812,6 +814,45 @@ export default function CreateLinkPage() {
               {iframeableResult === false && (
                 <p className="text-[12px] text-amber-600 dark:text-amber-400">
                   This website doesn&apos;t allow cloaking. Try a different URL.
+                </p>
+              )}
+            </SectionToggle>
+
+            {/* Verified Clicks Section */}
+            <SectionToggle
+              title="Verified Clicks"
+              description="Tell real visitors apart from automated traffic"
+              isOpen={isVerifiedClicksOpen}
+              onToggle={() => setIsVerifiedClicksOpen(!isVerifiedClicksOpen)}
+              badge={!isProUser ? <PlanBadge plan="Pro" /> : undefined}
+              highlighted={!!form.watch("verifiedClicksEnabled")}
+            >
+              <FormField
+                control={form.control}
+                name="verifiedClicksEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-neutral-200 dark:border-border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                        Enable Verified Clicks
+                      </FormLabel>
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                        With this on, your analytics shows which clicks came from real visitors, not automated traffic — so you can tell real engagement apart from noise.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value ?? false}
+                        onCheckedChange={field.onChange}
+                        disabled={!isProUser}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              {!isProUser && (
+                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                  Verified clicks are available on Pro and Ultra plans.
                 </p>
               )}
             </SectionToggle>

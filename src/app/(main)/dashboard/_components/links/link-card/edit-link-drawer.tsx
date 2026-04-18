@@ -81,6 +81,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   const [isLinkCloakingOpen, setIsLinkCloakingOpen] = useState(false);
   const [isCheckingIframeable, setIsCheckingIframeable] = useState(false);
   const [iframeableResult, setIframeableResult] = useState<boolean | null>(null);
+  const [isVerifiedClicksOpen, setIsVerifiedClicksOpen] = useState(false);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   const [milestones, setMilestones] = useState<MilestoneEntry[]>([]);
 
@@ -127,6 +128,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
           utm_content?: string;
         }) ?? undefined,
       cloaking: linkData.cloaking ?? false,
+      verifiedClicksEnabled: linkData.verifiedClicksEnabled ?? false,
       geoRules: geoRules?.map((rule) => ({
         type: rule.type,
         condition: rule.condition,
@@ -597,6 +599,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     isOpen={isLinkCloakingOpen}
                     onToggle={() => setIsLinkCloakingOpen(!isLinkCloakingOpen)}
                     badge={!isUltraUser ? <PlanBadge plan="Ultra" /> : undefined}
+                    highlighted={!!form.watch("cloaking")}
                   >
                     <FormField
                       control={form.control}
@@ -648,6 +651,45 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     {iframeableResult === false && (
                       <p className="text-[12px] text-amber-600 dark:text-amber-400">
                         This website doesn&apos;t allow cloaking. Try a different URL.
+                      </p>
+                    )}
+                  </SectionToggle>
+
+                  {/* Verified Clicks */}
+                  <SectionToggle
+                    title="Verified Clicks"
+                    description="Tell real visitors apart from automated traffic"
+                    isOpen={isVerifiedClicksOpen}
+                    onToggle={() => setIsVerifiedClicksOpen(!isVerifiedClicksOpen)}
+                    badge={!isProOrUltraUser ? <PlanBadge plan="Pro" /> : undefined}
+                    highlighted={!!form.watch("verifiedClicksEnabled")}
+                  >
+                    <FormField
+                      control={form.control}
+                      name="verifiedClicksEnabled"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border border-neutral-200 dark:border-border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                              Enable Verified Clicks
+                            </FormLabel>
+                            <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              With this on, your analytics shows which clicks came from real visitors, not automated traffic — so you can tell real engagement apart from noise.
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value ?? false}
+                              onCheckedChange={field.onChange}
+                              disabled={!isProOrUltraUser}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    {!isProOrUltraUser && (
+                      <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                        Verified clicks are available on Pro and Ultra plans.
                       </p>
                     )}
                   </SectionToggle>

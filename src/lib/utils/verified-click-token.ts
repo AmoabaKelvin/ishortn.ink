@@ -1,0 +1,81 @@
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+
+import { env } from "@/env.mjs";
+
+// Payload is plaintext; the only secret is the HMAC signature. Replay is
+// bounded by the 5-minute TTL plus the verify endpoint's `verifiedAt IS NULL`
+// guard, so any valid token can mark a visit verified at most once.
+
+const TOKEN_VERSION = "v1";
+const TOKEN_TTL_MS = 5 * 60 * 1000;
+const CLOCK_SKEW_TOLERANCE_MS = 5_000;
+
+function base64urlEncode(buf: Buffer): string {
+  return buf
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function base64urlDecode(str: string): Buffer {
+  const pad = str.length % 4 === 0 ? "" : "=".repeat(4 - (str.length % 4));
+  return Buffer.from(str.replace(/-/g, "+").replace(/_/g, "/") + pad, "base64");
+}
+
+function getSecret(): string | null {
+  return env.VERIFIED_CLICKS_SECRET ?? null;
+}
+
+export function generateVisitId(): string {
+  return randomUUID();
+}
+
+/** Returns null when the secret is unset; caller treats that as feature-disabled. */
+export function signVerifiedClickToken(visitId: string): string | null {
+  const secret = getSecret();
+  if (!secret) return null;
+
+  const issuedAt = Date.now();
+  const payload = `${TOKEN_VERSION}.${visitId}.${issuedAt}`;
+  const sig = base64urlEncode(
+    createHmac("sha256", secret).update(payload).digest(),
+  );
+  return `${payload}.${sig}`;
+}
+
+/** Inline JS for the beacon. Callers render it in a `<script>` tag. */
+export function buildBeaconScript(token: string): string {
+  const safeToken = JSON.stringify(token);
+  return `(function(){try{fetch('/api/v1/clicks/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:${safeToken}}),keepalive:true}).catch(function(){});}catch(e){}})();`;
+}
+
+export function verifyVerifiedClickToken(
+  token: string,
+): { visitId: string } | null {
+  const secret = getSecret();
+  if (!secret) return null;
+
+  const parts = token.split(".");
+  if (parts.length !== 4) return null;
+
+  const [version, visitId, issuedAtStr, providedSig] = parts;
+  if (version !== TOKEN_VERSION || !visitId || !issuedAtStr || !providedSig) {
+    return null;
+  }
+
+  const issuedAt = Number(issuedAtStr);
+  if (!Number.isFinite(issuedAt)) return null;
+
+  const now = Date.now();
+  if (now - issuedAt > TOKEN_TTL_MS) return null;
+  if (issuedAt - now > CLOCK_SKEW_TOLERANCE_MS) return null;
+
+  const payload = `${version}.${visitId}.${issuedAtStr}`;
+  const expected = createHmac("sha256", secret).update(payload).digest();
+  const provided = base64urlDecode(providedSig);
+  if (provided.length !== expected.length) return null;
+  if (!timingSafeEqual(provided, expected)) return null;
+
+  return { visitId };
+}
