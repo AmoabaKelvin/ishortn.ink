@@ -261,6 +261,12 @@ export default function CreateLinkPage() {
       has_expiration: !!values.disableLinkAfterDate || !!values.disableLinkAfterClicks,
       domain: values.domain || "ishortn.ink",
     });
+    if (values.verifiedClicksEnabled) {
+      trackEvent(POSTHOG_EVENTS.VERIFIED_CLICKS_ENABLED, {
+        plan: userSubscription?.data?.subscriptions?.plan ?? "free",
+        source: "create",
+      });
+    }
   }
 
   useEffect(() => {
