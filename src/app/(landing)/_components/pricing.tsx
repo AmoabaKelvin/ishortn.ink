@@ -1,46 +1,53 @@
+import { PLAN_CAPS } from "@/lib/billing/plans";
+import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+
 import { Icon } from "./warm-primitives";
+
+const fmt = (n: number) => n.toLocaleString();
+const free = PLAN_CAPS.free;
+const pro = PLAN_CAPS.pro;
 
 const buildPlans = (_annual: boolean) =>
   [
     {
       name: "Free",
-      price: 0,
+      price: PLAN_PRICES_USD.free,
       cadence: "forever",
       tagline: "For tinkering and side projects.",
       cta: "Start for free",
       style: "ghost" as const,
       featured: false,
       features: [
-        "30 links per month",
-        "1,000 tracked events",
-        "7-day analytics window",
+        `${fmt(free.linksLimit ?? 0)} links per month`,
+        `${fmt(free.eventsLimit ?? 0)} tracked events`,
+        `${free.analyticsRangeLimitDays}-day analytics window`,
         "Standard QR codes",
         "ishortn.ink links",
       ],
     },
     {
       name: "Pro",
-      price: 5,
+      price: PLAN_PRICES_USD.pro,
       cadence: "/month",
       tagline: "For creators, indie makers, and growing teams.",
       cta: "Try Pro free",
       style: "accent" as const,
       featured: true,
       features: [
-        "1,000 links per month",
-        "10,000 tracked events",
+        `${fmt(pro.linksLimit ?? 0)} links per month`,
+        `${fmt(pro.eventsLimit ?? 0)} tracked events`,
         "Unlimited analytics history",
-        "3 custom domains",
+        `${pro.domainLimit} custom domains`,
         "Branded + dynamic QR codes",
-        "Geotargeting (up to 3 rules/link)",
-        "Click milestone alerts (5/link)",
+        `Geotargeting (up to ${pro.geoRulesLimit} rules/link)`,
+        `Click milestone alerts (${pro.milestonesPerLinkLimit}/link)`,
         "Link cloaking & password protection",
         "REST API access",
       ],
     },
     {
       name: "Ultra",
-      price: 15,
+      price: PLAN_PRICES_USD.ultra,
       cadence: "/month",
       tagline: "For studios, agencies, and whoever wants no ceilings.",
       cta: "Go Ultra",
