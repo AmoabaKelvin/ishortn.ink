@@ -17,37 +17,31 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="relative bg-zinc-950">
+    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
       <Header />
 
-      {/* Hero */}
-      <section className="bg-zinc-950 px-6 pt-32 pb-12 md:pt-40 md:pb-16">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+      <section style={{ padding: "96px 0 32px" }}>
+        <div className="warm-container">
+          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
+            <span className="warm-eyebrow-dot" />
             Legal
-          </p>
-          <h1 className="mt-4 font-heading text-5xl font-extrabold tracking-tight text-zinc-50 leading-[1.05] md:text-6xl lg:text-[5.5rem]">
-            Terms of Service
+          </div>
+          <h1
+            className="warm-display"
+            style={{ margin: 0, fontSize: "clamp(54px, 9vw, 104px)" }}
+          >
+            Terms of <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>service</em>.
           </h1>
-          <p className="mt-6 text-sm text-zinc-500">
+          <p style={{ marginTop: 20, fontSize: 14, color: "var(--warm-mute)" }}>
             Last updated: March 2026
           </p>
         </div>
       </section>
 
-      {/* Content */}
-      <section className="bg-zinc-950 px-6 pb-24 md:pb-32">
+      <section style={{ padding: "24px 0 120px" }}>
         <article
-          className="mx-auto max-w-3xl prose prose-invert prose-zinc prose-lg
-            prose-headings:font-heading prose-headings:tracking-tight prose-headings:text-zinc-50
-            prose-h2:mt-16 prose-h2:mb-4 prose-h2:text-2xl md:prose-h2:text-3xl
-            prose-h3:mt-10 prose-h3:mb-3 prose-h3:text-xl
-            prose-p:text-zinc-300 prose-p:leading-relaxed
-            prose-a:text-blue-400 prose-a:no-underline hover:prose-a:text-blue-300
-            prose-strong:text-zinc-50
-            prose-ul:text-zinc-300 prose-ol:text-zinc-300 prose-li:marker:text-zinc-600
-            prose-hr:border-zinc-800
-            prose-blockquote:border-l-blue-500 prose-blockquote:text-zinc-400"
+          className="warm-container warm-legal-prose"
+          style={{ maxWidth: 760, fontFamily: "var(--font-warm-ui)" }}
         >
           <p>
             Welcome to iShortn. These Terms of Service (&quot;Terms&quot;) govern your

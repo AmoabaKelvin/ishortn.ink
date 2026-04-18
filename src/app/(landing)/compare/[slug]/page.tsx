@@ -1,21 +1,18 @@
-import { IconCheck } from "@tabler/icons-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-
-import { Footer } from "../../_components/footer";
-import { Header } from "../../_components/header";
+import { Link } from "next-view-transitions";
 
 import { Paths } from "@/lib/constants/app";
 import { competitors, type Competitor } from "@/lib/seo/competitors";
 
-/* ---------- Static generation ---------- */
+import { CTA } from "../../_components/cta";
+import { Footer } from "../../_components/footer";
+import { Header } from "../../_components/header";
+import { Icon } from "../../_components/warm-primitives";
 
 export function generateStaticParams() {
   return Object.values(competitors).map((c) => ({ slug: c.slug }));
 }
-
-/* ---------- Dynamic metadata ---------- */
 
 function getCompetitor(slug: string): Competitor | undefined {
   return Object.values(competitors).find((c) => c.slug === slug);
@@ -30,8 +27,8 @@ export async function generateMetadata({
   const competitor = getCompetitor(slug);
   if (!competitor) return {};
 
-  const title = `${competitor.name} vs iShortn - Compare URL Shorteners | iShortn`;
-  const description = `Compare ${competitor.name} and iShortn side by side. See features, pricing, and why iShortn is the best ${competitor.name} alternative.`;
+  const title = `${competitor.name} vs iShortn — a warmer URL shortener`;
+  const description = `Compare ${competitor.name} and iShortn side by side. See features, pricing, and why creators and small teams pick iShortn.`;
 
   return {
     title,
@@ -44,25 +41,19 @@ export async function generateMetadata({
       "best url shortener",
       "link shortener alternative",
     ],
-    openGraph: {
-      title,
-      description,
-      type: "website",
-    },
+    openGraph: { title, description, type: "website" },
   };
 }
 
-/* ---------- iShortn feature data ---------- */
-
 const ishortn = {
-  freeLinks: "30/month",
-  freeAnalytics: "7 days (unlimited on Pro)",
-  customDomains: "Up to 3 on Pro",
-  qrCodes: "All plans",
+  freeLinks: "30/month on Free, 1,000 on Pro, unlimited on Ultra",
+  freeAnalytics: "7 days on Free, unlimited on Pro and Ultra",
+  customDomains: "3 on Pro, unlimited on Ultra",
+  qrCodes: "All plans — branded + dynamic on Pro and Ultra",
   apiAccess: "Pro and Ultra",
   teamFeatures: "Ultra plan",
   passwordProtection: "All plans",
-  pricing: "Free, Pro $5/mo, Ultra $15/mo",
+  pricing: "Free forever, Pro $5/mo, Ultra $15/mo",
 };
 
 type FeatureRow = {
@@ -81,8 +72,6 @@ const featureRows: FeatureRow[] = [
   { label: "Pricing", competitorKey: "pricing" },
 ];
 
-/* ---------- Page component ---------- */
-
 export default async function ComparePage({
   params,
 }: {
@@ -93,66 +82,146 @@ export default async function ComparePage({
   if (!competitor) return notFound();
 
   return (
-    <main className="relative bg-zinc-950">
+    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
       <Header />
 
-      {/* Hero */}
-      <section className="bg-zinc-950 px-6 pt-32 pb-20 md:pt-40 md:pb-28">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+      <section style={{ padding: "120px 0 48px" }}>
+        <div className="warm-container">
+          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
+            <Icon.Sparkle
+              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
+            />
             Comparison
-          </p>
-          <h1 className="mt-4 font-heading text-5xl font-extrabold tracking-tight text-zinc-50 leading-[1.05] md:text-6xl lg:text-[5.5rem]">
+          </div>
+          <h1
+            className="warm-display"
+            style={{ margin: 0, fontSize: "clamp(54px, 9vw, 104px)" }}
+          >
             {competitor.name}
             <br />
-            vs iShortn
+            <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>
+              vs iShortn.
+            </em>
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 md:text-xl">
+          <p
+            style={{
+              fontSize: 19,
+              color: "var(--warm-mute)",
+              marginTop: 24,
+              lineHeight: 1.6,
+              maxWidth: 620,
+            }}
+          >
             {competitor.description}
           </p>
         </div>
       </section>
 
-      {/* Feature comparison table */}
-      <section className="bg-zinc-950 px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+      <section className="warm-section warm-section-paper">
+        <div className="warm-container">
+          <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
+            <Icon.Chart
+              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
+            />
             Features
-          </p>
-          <h2 className="mt-4 font-heading text-4xl font-bold tracking-tight text-zinc-50 md:text-5xl">
-            Feature-by-feature comparison
+          </div>
+          <h2
+            className="warm-display"
+            style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}
+          >
+            Feature-by-feature
+            <br />
+            <em style={{ fontStyle: "italic" }}>side by side.</em>
           </h2>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-400">
-            See how {competitor.name} and iShortn stack up across the features
-            that matter most.
-          </p>
 
-          <div className="mt-12 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50">
-            <div className="overflow-x-auto">
-              <div className="grid min-w-[640px] grid-cols-3 border-b border-zinc-800 bg-zinc-900/30">
-                <div className="px-6 py-5 font-heading text-sm font-medium text-zinc-50">
+          <div
+            className="warm-card"
+            style={{
+              marginTop: 40,
+              overflow: "hidden",
+              background: "var(--warm-paper-2)",
+            }}
+          >
+            <div style={{ overflowX: "auto" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, minmax(200px, 1fr))",
+                  borderBottom: "1px solid var(--warm-line)",
+                  background: "var(--warm-paper)",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "18px 22px",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "var(--warm-ink)",
+                  }}
+                >
                   Feature
                 </div>
-                <div className="border-l border-zinc-800 px-6 py-5 font-heading text-sm font-medium text-zinc-50">
+                <div
+                  style={{
+                    padding: "18px 22px",
+                    borderLeft: "1px solid var(--warm-line-soft)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
                   {competitor.name}
                 </div>
-                <div className="border-l border-zinc-800 px-6 py-5 font-heading text-sm font-medium text-blue-400">
+                <div
+                  style={{
+                    padding: "18px 22px",
+                    borderLeft: "1px solid var(--warm-line-soft)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "var(--warm-accent)",
+                  }}
+                >
                   iShortn
                 </div>
               </div>
 
-              {featureRows.map((row) => (
+              {featureRows.map((row, i) => (
                 <div
                   key={row.label}
-                  className="grid min-w-[640px] grid-cols-3 border-t border-zinc-800"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(200px, 1fr))",
+                    borderTop:
+                      i === 0 ? "none" : "1px solid var(--warm-line-soft)",
+                  }}
                 >
-                  <div className="px-6 py-4 text-sm text-zinc-300">
+                  <div
+                    style={{
+                      padding: "16px 22px",
+                      fontSize: 14,
+                      color: "var(--warm-ink-soft)",
+                    }}
+                  >
                     {row.label}
                   </div>
-                  <div className="border-l border-zinc-800 px-6 py-4 text-sm text-zinc-400">
+                  <div
+                    style={{
+                      padding: "16px 22px",
+                      borderLeft: "1px solid var(--warm-line-soft)",
+                      fontSize: 14,
+                      color: "var(--warm-mute)",
+                    }}
+                  >
                     {competitor[row.competitorKey]}
                   </div>
-                  <div className="border-l border-zinc-800 bg-zinc-900/40 px-6 py-4 text-sm text-zinc-50">
+                  <div
+                    style={{
+                      padding: "16px 22px",
+                      borderLeft: "1px solid var(--warm-line-soft)",
+                      background: "var(--warm-paper)",
+                      fontSize: 14,
+                      color: "var(--warm-ink)",
+                    }}
+                  >
                     {ishortn[row.competitorKey]}
                   </div>
                 </div>
@@ -162,117 +231,211 @@ export default async function ComparePage({
         </div>
       </section>
 
-      {/* Why teams switch */}
-      <section className="bg-zinc-950 px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+      <section className="warm-section">
+        <div className="warm-container">
+          <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
+            <Icon.Heart
+              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
+            />
             Why switch
-          </p>
-          <h2 className="mt-4 font-heading text-4xl font-bold tracking-tight text-zinc-50 md:text-5xl">
-            Why teams switch from {competitor.name}
+          </div>
+          <h2
+            className="warm-display"
+            style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}
+          >
+            Why teams leave
+            <br />
+            <em style={{ fontStyle: "italic" }}>{competitor.name}.</em>
           </h2>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-400">
-            The top reasons teams move from {competitor.name} to iShortn.
-          </p>
 
-          <ul className="mt-12 grid gap-4 md:grid-cols-2">
+          <ul
+            className="warm-switch-grid"
+            style={{
+              marginTop: 40,
+              display: "grid",
+              gap: 12,
+              padding: 0,
+              listStyle: "none",
+            }}
+          >
             {competitor.whySwitch.map((reason) => (
               <li
                 key={reason}
-                className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6"
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 14,
+                  background: "var(--warm-paper)",
+                  border: "1px solid var(--warm-line)",
+                  borderRadius: 20,
+                  padding: "20px 24px",
+                }}
               >
-                <IconCheck
-                  size={18}
-                  stroke={2}
-                  className="mt-0.5 shrink-0 text-blue-400"
+                <Icon.Check
+                  style={{
+                    width: 16,
+                    height: 16,
+                    color: "var(--warm-accent)",
+                    flexShrink: 0,
+                    marginTop: 4,
+                  }}
                 />
-                <span className="leading-relaxed text-zinc-300">{reason}</span>
+                <span
+                  style={{
+                    color: "var(--warm-ink-soft)",
+                    lineHeight: 1.6,
+                    fontSize: 15,
+                  }}
+                >
+                  {reason}
+                </span>
               </li>
             ))}
           </ul>
         </div>
       </section>
 
-      {/* Pricing comparison */}
-      <section className="bg-zinc-950 px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-blue-400">
+      <section className="warm-section warm-section-paper">
+        <div className="warm-container">
+          <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
+            <Icon.Sparkle
+              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
+            />
             Pricing
-          </p>
-          <h2 className="mt-4 font-heading text-4xl font-bold tracking-tight text-zinc-50 md:text-5xl">
-            Pricing comparison
+          </div>
+          <h2
+            className="warm-display"
+            style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}
+          >
+            Pricing,
+            <br />
+            <em style={{ fontStyle: "italic" }}>plain and simple.</em>
           </h2>
 
-          <div className="mt-12 grid gap-6 md:grid-cols-2">
-            {/* Competitor pricing */}
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 md:p-10">
-              <h3 className="font-heading text-2xl font-bold text-zinc-50 md:text-3xl">
+          <div
+            className="warm-compare-pricing"
+            style={{
+              marginTop: 40,
+              display: "grid",
+              gap: 20,
+            }}
+          >
+            <div
+              style={{
+                background: "var(--warm-paper)",
+                border: "1px solid var(--warm-line)",
+                borderRadius: 24,
+                padding: "32px 32px",
+              }}
+            >
+              <h3
+                style={{
+                  fontFamily: "var(--font-warm-display)",
+                  fontSize: 28,
+                  margin: 0,
+                  fontWeight: 500,
+                }}
+              >
                 {competitor.name}
               </h3>
-              <p className="mt-2 text-sm text-zinc-500">{competitor.tagline}</p>
-              <p className="mt-6 leading-relaxed text-zinc-400">
+              <p
+                style={{
+                  marginTop: 8,
+                  color: "var(--warm-mute)",
+                  fontSize: 13,
+                }}
+              >
+                {competitor.tagline}
+              </p>
+              <p
+                style={{
+                  marginTop: 20,
+                  color: "var(--warm-ink-soft)",
+                  lineHeight: 1.6,
+                  fontSize: 15,
+                }}
+              >
                 {competitor.pricing}
               </p>
             </div>
 
-            {/* iShortn pricing */}
-            <div className="rounded-2xl border border-blue-500/40 bg-zinc-900/50 p-8 ring-1 ring-blue-500/20 md:p-10">
-              <h3 className="font-heading text-2xl font-bold text-zinc-50 md:text-3xl">
+            <div
+              style={{
+                background: "var(--warm-ink)",
+                color: "var(--warm-paper)",
+                border: "1px solid var(--warm-ink)",
+                borderRadius: 24,
+                padding: "32px 32px",
+              }}
+            >
+              <h3
+                style={{
+                  fontFamily: "var(--font-warm-display)",
+                  fontSize: 28,
+                  margin: 0,
+                  fontWeight: 500,
+                }}
+              >
                 iShortn
               </h3>
-              <p className="mt-2 text-sm text-zinc-500">
-                Simple, powerful link shortening
+              <p
+                style={{
+                  marginTop: 8,
+                  opacity: 0.7,
+                  fontSize: 13,
+                }}
+              >
+                Simple, warm, and gets out of the way.
               </p>
-              <div className="mt-6 space-y-3 leading-relaxed text-zinc-400">
-                <p>
-                  <span className="font-medium text-zinc-50">Free</span> — 30
-                  links/month, 1,000 events, 7-day analytics
+              <div
+                style={{
+                  marginTop: 20,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  opacity: 0.85,
+                }}
+              >
+                <p style={{ margin: 0 }}>
+                  <strong style={{ color: "var(--warm-paper)" }}>Free</strong> —
+                  30 links/month, 1,000 tracked events, 7-day analytics.
                 </p>
-                <p>
-                  <span className="font-medium text-zinc-50">Pro $5/mo</span> —
-                  1,000 links/month, 10,000 events, unlimited analytics, 3
-                  custom domains, API access
+                <p style={{ margin: 0 }}>
+                  <strong style={{ color: "var(--warm-paper)" }}>Pro $5/mo</strong>{" "}
+                  — 1,000 links/month, 10,000 tracked events, unlimited
+                  analytics history, 3 custom domains, branded + dynamic QR
+                  codes, REST API.
                 </p>
-                <p>
-                  <span className="font-medium text-zinc-50">Ultra $15/mo</span>{" "}
-                  — Unlimited everything, team collaboration, priority support
+                <p style={{ margin: 0 }}>
+                  <strong style={{ color: "var(--warm-paper)" }}>Ultra $15/mo</strong>{" "}
+                  — everything in Pro plus unlimited links and events,
+                  unlimited custom domains, team workspaces, resource transfer.
                 </p>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="bg-zinc-950 px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-6xl">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-8 py-16 text-center md:px-16 md:py-20">
-            <h2 className="font-heading text-3xl font-bold tracking-tight text-zinc-50 md:text-4xl lg:text-5xl">
-              Ready to try iShortn?
-            </h2>
-            <p className="mx-auto mt-4 max-w-lg text-lg text-zinc-400">
-              Join thousands of teams who have switched from {competitor.name}.
-              Start for free — no credit card required.
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
-                href={Paths.Login}
-                className="inline-flex items-center gap-2 rounded-full bg-blue-500 px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+                href={Paths.Signup}
+                className="warm-btn warm-btn-accent"
+                style={{ marginTop: 28 }}
               >
-                Get started free
-              </Link>
-              <Link
-                href="/pricing"
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-700 px-8 py-3.5 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-50"
-              >
-                View pricing
+                Start free <Icon.Arrow />
               </Link>
             </div>
           </div>
         </div>
       </section>
 
+      <CTA />
       <Footer />
+      <style>{`
+        .warm-switch-grid { grid-template-columns: 1fr; }
+        .warm-compare-pricing { grid-template-columns: 1fr; }
+        @media (min-width: 800px) {
+          .warm-switch-grid { grid-template-columns: repeat(2, 1fr); }
+          .warm-compare-pricing { grid-template-columns: repeat(2, 1fr); }
+        }
+      `}</style>
     </main>
   );
 }
