@@ -126,13 +126,11 @@ function Entry({
           </p>
         )}
 
-        <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
-          <div
-            className="changelog-prose prose prose-invert max-w-none p-6 prose-headings:font-heading prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-zinc-50 prose-h2:mt-6 prose-h2:text-lg prose-h3:mt-4 prose-h3:text-base prose-p:text-zinc-400 prose-a:text-blue-400 prose-a:no-underline hover:prose-a:text-blue-300 prose-strong:text-zinc-100 prose-strong:font-semibold prose-li:text-zinc-400 prose-li:marker:text-zinc-600 prose-code:text-zinc-200 prose-hr:border-zinc-800 prose-table:text-sm prose-th:bg-zinc-900 prose-th:text-zinc-300 prose-th:px-4 prose-th:py-2 prose-td:px-4 prose-td:py-2 prose-td:text-zinc-400 prose-blockquote:border-zinc-800 prose-blockquote:text-zinc-400"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: Markdown content is parsed and sanitized
-            dangerouslySetInnerHTML={{ __html: entry.htmlContent }}
-          />
-        </div>
+        <div
+          className="changelog-prose prose prose-invert mt-6 max-w-none prose-headings:font-heading prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-zinc-50 prose-h2:mt-6 prose-h2:text-lg prose-h3:mt-4 prose-h3:text-base prose-p:text-zinc-400 prose-a:text-blue-400 prose-a:no-underline hover:prose-a:text-blue-300 prose-strong:text-zinc-100 prose-strong:font-semibold prose-li:text-zinc-400 prose-li:marker:text-zinc-600 prose-code:text-zinc-200 prose-hr:border-zinc-800 prose-table:text-sm prose-th:bg-zinc-900 prose-th:text-zinc-300 prose-th:px-4 prose-th:py-2 prose-td:px-4 prose-td:py-2 prose-td:text-zinc-400 prose-blockquote:border-zinc-800 prose-blockquote:text-zinc-400"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: Markdown content is parsed and sanitized
+          dangerouslySetInnerHTML={{ __html: entry.htmlContent }}
+        />
       </div>
     </motion.li>
   );

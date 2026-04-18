@@ -117,6 +117,7 @@ export const createLinkSchema = z.object({
     })
     .optional(),
   cloaking: z.boolean().optional(),
+  verifiedClicksEnabled: z.boolean().optional(),
   geoRules: z.array(geoRuleInputSchema).optional(),
 });
 
@@ -132,6 +133,7 @@ export const updateLinkSchema = createLinkSchema.partial().extend({
   publicStats: z.boolean().optional(),
   note: z.string().optional(),
   cloaking: z.boolean().optional(),
+  verifiedClicksEnabled: z.boolean().optional(),
 });
 
 export const verifyLinkPasswordSchema = z.object({

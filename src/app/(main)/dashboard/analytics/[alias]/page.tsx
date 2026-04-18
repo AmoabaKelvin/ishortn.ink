@@ -1,6 +1,7 @@
-import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-react";
+import { IconClick, IconShieldCheck, IconShieldHalf, IconUsers } from "@tabler/icons-react";
 
 import { aggregateVisits } from "@/lib/core/analytics";
+import { cn } from "@/lib/utils";
 import { api } from "@/trpc/server";
 
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
@@ -23,6 +24,13 @@ type LinksAnalyticsPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+// Null when prior is 0 — a 0→N change has no meaningful ratio, so hide the pill
+// rather than show a misleading 100%/∞.
+const percentGrowth = (current: number, prior: number | undefined | null) => {
+  if (prior === undefined || prior === null || prior === 0) return null;
+  return ((current - prior) / prior) * 100;
+};
+
 export default async function LinkAnalyticsPage(
   props: LinksAnalyticsPageProps
 ) {
@@ -31,22 +39,21 @@ export default async function LinkAnalyticsPage(
   const range = (searchParams?.range ?? "7d") as RangeEnum;
   const domain = (searchParams?.domain as string) ?? "ishortn.ink";
 
-  const {
-    totalVisits,
-    uniqueVisits,
-    topCountry,
-    referers,
-    topReferrer,
-    isProPlan,
-    geoRules,
-  } = await api.link.linkVisits.query({
-    id: params.alias,
-    domain,
-    range,
-  });
+  const { totalVisits, uniqueVisits, referers, isProPlan, geoRules, previous } =
+    await api.link.linkVisits.query({
+      id: params.alias,
+      domain,
+      range,
+    });
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
   const countryData = aggregatedVisits.clicksPerCountry;
+  const verifiedVisits = aggregatedVisits.verifiedClicks;
+
+  const totalGrowth = percentGrowth(totalVisits.length, previous?.total);
+  const uniqueGrowth = percentGrowth(uniqueVisits.length, previous?.unique);
+  const verifiedGrowth = percentGrowth(verifiedVisits, previous?.verified);
+  const verifiedRate = totalVisits.length > 0 ? (verifiedVisits / totalVisits.length) * 100 : 0;
 
   return (
     <div>
@@ -73,27 +80,40 @@ export default async function LinkAnalyticsPage(
       </div>
 
       {/* quick info cards */}
-      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-4">
+      <div
+        className={cn(
+          "mt-6 grid grid-cols-2 gap-3 md:mt-8 md:gap-4",
+          verifiedVisits > 0 ? "md:grid-cols-4" : "md:grid-cols-2",
+        )}
+      >
         <QuickInfoCard
           title="Total Visits"
-          value={totalVisits.length}
-          icon={<IconClick size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
+          value={totalVisits.length.toLocaleString()}
+          icon={<IconClick size={14} stroke={1.5} />}
+          growth={totalGrowth}
         />
         <QuickInfoCard
           title="Unique Visits"
-          value={uniqueVisits.length}
-          icon={<IconUsers size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
+          value={uniqueVisits.length.toLocaleString()}
+          icon={<IconUsers size={14} stroke={1.5} />}
+          growth={uniqueGrowth}
         />
-        <QuickInfoCard
-          title="Top Country"
-          value={topCountry}
-          icon={<IconWorld size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
-        />
-        <QuickInfoCard
-          title="Top Referrer"
-          value={topReferrer}
-          icon={<IconTrendingUp size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
-        />
+        {verifiedVisits > 0 && (
+          <>
+            <QuickInfoCard
+              title="Verified Visits"
+              value={verifiedVisits.toLocaleString()}
+              icon={<IconShieldCheck size={14} stroke={1.5} />}
+              growth={verifiedGrowth}
+            />
+            <QuickInfoCard
+              title="Verified Rate"
+              value={`${verifiedRate.toFixed(verifiedRate >= 10 ? 0 : 1)}%`}
+              icon={<IconShieldHalf size={14} stroke={1.5} />}
+              hint={`${verifiedVisits} of ${totalVisits.length}`}
+            />
+          </>
+        )}
       </div>
 
       <div className="mt-8 md:mt-10">

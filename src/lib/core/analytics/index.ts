@@ -88,6 +88,7 @@ export const aggregateVisits = (
 ) => {
   const clicksPerDate: Record<string, number> = {};
   const uniqueClicksPerDate: Record<string, number> = {};
+  const verifiedClicksPerDate: Record<string, number> = {};
   const clicksPerCountry: Record<string, number> = {};
   const clicksPerCity: Record<string, number> = {};
   const clicksPerContinent: Record<string, number> = {};
@@ -95,11 +96,19 @@ export const aggregateVisits = (
   const clicksPerOS: Record<string, number> = {};
   const clicksPerBrowser: Record<string, number> = {};
   const clicksPerModel: Record<string, number> = {};
+  let totalClicks = 0;
+  let verifiedClicks = 0;
 
   // biome-ignore lint/complexity/noForEach: <explanation>
   visits.forEach((visit) => {
     const date = new Date(visit.createdAt!).toISOString().split("T")[0];
     safeIncrement(clicksPerDate, date!);
+    totalClicks += 1;
+
+    if (visit.verifiedAt) {
+      verifiedClicks += 1;
+      safeIncrement(verifiedClicksPerDate, date!);
+    }
 
     if (visit.country) safeIncrement(clicksPerCountry, visit.country);
     if (visit.city) safeIncrement(clicksPerCity, visit.city);
@@ -112,7 +121,10 @@ export const aggregateVisits = (
 
   if (!uniqueVisits)
     return {
+      totalClicks,
+      verifiedClicks,
       clicksPerDate,
+      verifiedClicksPerDate,
       clicksPerCountry,
       clicksPerCity,
       clicksPerContinent,
@@ -129,8 +141,11 @@ export const aggregateVisits = (
   });
 
   return {
+    totalClicks,
+    verifiedClicks,
     clicksPerDate,
     uniqueClicksPerDate,
+    verifiedClicksPerDate,
     clicksPerCountry,
     clicksPerCity,
     clicksPerContinent,

@@ -36,6 +36,10 @@ export const env = createEnv({
     // Optional for backwards compatibility — when unset, we fall back to plain
     // SHA-256, which preserves old behavior but is trivially reversible.
     IP_HASH_SECRET: z.string().min(16).optional(),
+    // Secret key used to HMAC-sign verified-click tokens issued to destination-page
+    // beacons. Optional: when unset, tokens are not issued and no verification
+    // events are accepted — the feature is effectively disabled.
+    VERIFIED_CLICKS_SECRET: z.string().min(32).optional(),
   },
 
   /**
@@ -72,6 +76,7 @@ export const env = createEnv({
     R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
     R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
+    VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },

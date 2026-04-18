@@ -72,20 +72,24 @@ function resolveGeo(country: string, city: string) {
   }
 }
 
+type RecordClickOptions = {
+  headers: Headers;
+  link: Link;
+  ip: string;
+  country: string;
+  city: string;
+  matchedGeoRuleId?: number;
+  visitId?: string | null;
+};
+
 /**
  * Records a click for an already-resolved link. Callers are responsible for
  * deciding whether to record (e.g. skip for password-protected redirects that
  * haven't been unlocked yet) — this function records unconditionally aside from
  * bot filtering and quota enforcement.
  */
-export async function recordClick(
-  headers: Headers,
-  link: Link,
-  ip: string,
-  country: string,
-  city: string,
-  matchedGeoRuleId?: number,
-): Promise<void> {
+export async function recordClick(opts: RecordClickOptions): Promise<void> {
+  const { headers, link, ip, country, city, matchedGeoRuleId, visitId } = opts;
   const userAgent = headers.get("user-agent") ?? "";
   if (userAgent && isBot(userAgent)) return;
 
@@ -130,6 +134,7 @@ export async function recordClick(
       city: cityName,
       continent: continentName,
       matchedGeoRuleId: matchedGeoRuleId ?? null,
+      visitId: visitId ?? null,
     }),
     recordUniqueClick(ipHash, link.id),
   ]);

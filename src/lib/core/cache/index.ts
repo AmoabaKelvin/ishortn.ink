@@ -51,6 +51,10 @@ const linkSchema = z.object({
     .string()
     .transform((val) => val === "true")
     .default(false),
+  verifiedClicksEnabled: z
+    .string()
+    .transform((val) => val === "true")
+    .default(false),
   isQrCode: z
     .string()
     .transform((val) => val === "true")
@@ -91,6 +95,7 @@ function convertToLink(data: Record<string, string>): Link {
     utmParams: parsed.utmParams ?? null,
     createdByUserId: parsed.createdByUserId ?? null,
     cloaking: parsed.cloaking ?? false,
+    verifiedClicksEnabled: parsed.verifiedClicksEnabled ?? false,
     isQrCode: parsed.isQrCode ?? false,
     blocked: parsed.blocked ?? false,
     blockedAt: parsed.blockedAt ?? null,

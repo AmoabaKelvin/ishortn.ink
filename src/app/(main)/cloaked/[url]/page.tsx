@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { logger } from "@/lib/logger";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
+import { buildBeaconScript } from "@/lib/utils/verified-click-token";
 
 export const fetchCache = "force-no-store";
 
@@ -9,6 +10,7 @@ const log = logger.child({ component: "cloaked-page" });
 
 type CloakedPageProps = {
   params: Promise<{ url: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 /**
@@ -85,7 +87,12 @@ export async function generateMetadata(props: CloakedPageProps): Promise<Metadat
 
 export default async function CloakedPage(props: CloakedPageProps) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const url = decodeURIComponent(params.url);
+  const token =
+    typeof searchParams.t === "string" && searchParams.t.length > 0
+      ? searchParams.t
+      : null;
 
   // Validate and normalize the URL before rendering
   let validatedUrl: string;
@@ -109,25 +116,32 @@ export default async function CloakedPage(props: CloakedPageProps) {
   }
 
   return (
-    <iframe
-      src={validatedUrl}
-      title="Cloaked content"
-      className="h-screen w-full border-none"
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        border: "none",
-        margin: 0,
-        padding: 0,
-        overflow: "hidden",
-      }}
-      // Security note: allow-same-origin is required for most websites to function properly
-      // (login, cookies, storage). allow-scripts is needed for interactive content.
-      // The URL is validated above to only allow http/https protocols.
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-    />
+    <>
+      {token && (
+        <script
+          dangerouslySetInnerHTML={{ __html: buildBeaconScript(token) }}
+        />
+      )}
+      <iframe
+        src={validatedUrl}
+        title="Cloaked content"
+        className="h-screen w-full border-none"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          border: "none",
+          margin: 0,
+          padding: 0,
+          overflow: "hidden",
+        }}
+        // Security note: allow-same-origin is required for most websites to function properly
+        // (login, cookies, storage). allow-scripts is needed for interactive content.
+        // The URL is validated above to only allow http/https protocols.
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+      />
+    </>
   );
 }

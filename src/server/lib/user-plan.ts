@@ -2,12 +2,31 @@ import { eq } from "drizzle-orm";
 
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
-import { user } from "@/server/db/schema";
+import { subscription, user } from "@/server/db/schema";
 
 import type { PLAN_CAPS } from "@/lib/billing/plans";
 import type { Subscription, User } from "@/server/db/schema";
 
 type DbClient = typeof db;
+
+/**
+ * Hot-path paid-plan check used by the redirect pipeline. Avoids the full
+ * UserPlanContext query — we only need a boolean. Team-owned links
+ * short-circuit without a DB hit since teams are always on Ultra.
+ */
+export async function isOwnerOnPaidPlan(
+  userId: string,
+  teamId: number | null,
+  dbClient: DbClient = db,
+): Promise<boolean> {
+  if (teamId !== null) return true;
+
+  const sub = await dbClient.query.subscription.findFirst({
+    where: eq(subscription.userId, userId),
+  });
+
+  return resolvePlan(sub ?? null) !== "free";
+}
 
 export type UserPlanContext = {
   userRecord: User;

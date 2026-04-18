@@ -11,6 +11,7 @@ export function SectionToggle({
   isOpen,
   onToggle,
   badge,
+  highlighted,
   children,
 }: {
   title: string;
@@ -18,10 +19,19 @@ export function SectionToggle({
   isOpen: boolean;
   onToggle: () => void;
   badge?: React.ReactNode;
+  /** Light accent border to signal "feature turned on." */
+  highlighted?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-border p-4">
+    <div
+      className={cn(
+        "rounded-lg border p-4 transition-colors",
+        highlighted
+          ? "border-emerald-300 dark:border-emerald-800/70"
+          : "border-neutral-200 dark:border-border",
+      )}
+    >
       <button
         type="button"
         className="flex w-full items-center justify-between text-left"

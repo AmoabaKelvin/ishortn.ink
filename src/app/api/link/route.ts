@@ -11,9 +11,14 @@ import {
 import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
+import {
+  generateVisitId,
+  signVerifiedClickToken,
+} from "@/lib/utils/verified-click-token";
 import { recordClick, resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import { geoRule, link as linkTable, linkVisit } from "@/server/db/schema";
+import { isOwnerOnPaidPlan } from "@/server/lib/user-plan";
 
 const log = logger.child({ component: "link-resolver" });
 
@@ -142,8 +147,17 @@ export async function GET(request: NextRequest) {
       return Response.json({ url: `${baseUrl}/verify-password/${link.id}` });
     }
 
-    // Fetch geo rules (cache first, then DB)
-    let geoRules = await getGeoRulesFromCache(link.id);
+    // Geo-rules fetch and paid-plan check are independent; run them in parallel.
+    // Token signing has to wait until we know the final destination so we can
+    // bind it into the HMAC and prevent `to` tampering on the interstitial.
+    const [cachedGeoRules, ownerPaid] = await Promise.all([
+      getGeoRulesFromCache(link.id),
+      link.verifiedClicksEnabled
+        ? isOwnerOnPaidPlan(link.userId, link.teamId)
+        : Promise.resolve(false),
+    ]);
+
+    let geoRules = cachedGeoRules;
     if (!geoRules) {
       const rulesFromDb = await db.query.geoRule.findMany({
         where: eq(geoRule.linkId, link.id),
@@ -157,30 +171,59 @@ export async function GET(request: NextRequest) {
 
     const geoResult = matchGeoRules(geoRules, country !== "Unknown" ? country : null);
 
+    const issueToken = (
+      destination: string,
+    ): { visitId: string | null; verificationToken: string | null } => {
+      if (!ownerPaid) return { visitId: null, verificationToken: null };
+      const candidate = generateVisitId();
+      const token = signVerifiedClickToken(candidate, destination);
+      return token
+        ? { visitId: candidate, verificationToken: token }
+        : { visitId: null, verificationToken: null };
+    };
+
     if (geoResult.matched) {
       if (geoResult.action === "block") {
         const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
         return Response.json({ url: `${baseUrl}/blocked/${link.id}${geoParam}` });
       }
 
+      const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams as UtmParams);
+      const { visitId, verificationToken } = issueToken(destinationUrl);
+
       void runBackgroundTask(
-        recordClick(request.headers, link, ip, country, city, geoResult.ruleId),
+        recordClick({
+          headers: request.headers,
+          link,
+          ip,
+          country,
+          city,
+          matchedGeoRuleId: geoResult.ruleId,
+          visitId,
+        }),
       );
 
-      const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams as UtmParams);
-      return Response.json({ url: destinationUrl });
+      return Response.json({ url: destinationUrl, visitId, verificationToken });
     }
 
-    // Validate link.url before processing
     if (!link.url) {
       log.warn({ linkId: link.id, domain, alias }, "link has no destination URL");
       return Response.json({ error: "Link has no destination URL" }, { status: 404 });
     }
 
-    void runBackgroundTask(recordClick(request.headers, link, ip, country, city));
-
     const destinationUrl = appendUtmParams(link.url, link.utmParams as UtmParams);
-    return Response.json({ url: destinationUrl, cloaking: link.cloaking ?? false });
+    const { visitId, verificationToken } = issueToken(destinationUrl);
+
+    void runBackgroundTask(
+      recordClick({ headers: request.headers, link, ip, country, city, visitId }),
+    );
+
+    return Response.json({
+      url: destinationUrl,
+      cloaking: link.cloaking ?? false,
+      visitId,
+      verificationToken,
+    });
   } catch (error) {
     log.error({ err: error, domain, alias }, "failed to resolve link");
     return Response.json({ error: "Internal server error" }, { status: 500 });
