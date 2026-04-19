@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { getAppBaseDomain } from "@/lib/constants/domains";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -109,7 +110,7 @@ function AcceptInviteContent() {
     }
   );
 
-  const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
+  const baseDomain = getAppBaseDomain();
 
   const acceptInviteMutation = api.team.acceptInvite.useMutation({
     onSuccess: (data) => {

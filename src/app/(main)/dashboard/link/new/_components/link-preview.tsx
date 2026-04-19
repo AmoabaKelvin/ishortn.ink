@@ -1,4 +1,6 @@
-const DEFAULT_FAVICON = "https://www.google.com/s2/favicons?domain=ishortn.ink&sz=64";
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+
+const DEFAULT_FAVICON = `https://www.google.com/s2/favicons?domain=${DEFAULT_PLATFORM_DOMAIN}&sz=64`;
 
 export function LinkPreviewComponent({
   destinationURL,
@@ -29,7 +31,7 @@ export function LinkPreviewComponent({
       </div>
       <span className="text-[13px] text-neutral-600 dark:text-neutral-400">{metaDescription}</span>
       <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
-        {destinationURL?.replace(/(^\w+:|^)\/\//, "").split("/")[0] || "ishortn.ink"}
+        {destinationURL?.replace(/(^\w+:|^)\/\//, "").split("/")[0] || DEFAULT_PLATFORM_DOMAIN}
       </span>
       {metaImage && (
         /* eslint-disable-next-line @next/next/no-img-element */

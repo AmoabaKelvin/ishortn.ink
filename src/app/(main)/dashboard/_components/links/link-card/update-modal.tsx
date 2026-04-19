@@ -50,6 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
@@ -252,13 +253,15 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                 <section className="flex items-center">
                                   <Select>
                                     <SelectTrigger className="h-9 w-max rounded-r-none border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 text-[13px]">
-                                      <SelectValue placeholder="ishortn.ink" />
+                                      <SelectValue placeholder={DEFAULT_PLATFORM_DOMAIN} />
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectGroup>
-                                        <SelectItem value="ishortn.ink">
-                                          ishortn.ink
-                                        </SelectItem>
+                                        {PLATFORM_DOMAINS.map((domain) => (
+                                          <SelectItem key={domain} value={domain}>
+                                            {domain}
+                                          </SelectItem>
+                                        ))}
                                       </SelectGroup>
                                     </SelectContent>
                                   </Select>

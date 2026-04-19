@@ -1,6 +1,7 @@
 import AccountTransferEmail from "@/emails/account-transfer";
 import TransferCompletedEmail from "@/emails/transfer-completed";
 import TransferDeclinedEmail from "@/emails/transfer-declined";
+import { getAppBaseDomain } from "@/lib/constants/domains";
 import { logger } from "@/lib/logger";
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
@@ -28,7 +29,7 @@ export async function sendAccountTransferEmail({
 }: SendAccountTransferEmailInput) {
   if (!resend) return;
 
-  const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
+  const baseDomain = getAppBaseDomain();
   const acceptUrl = `https://${baseDomain}/account/accept-transfer?token=${encodeURIComponent(token)}`;
 
   try {

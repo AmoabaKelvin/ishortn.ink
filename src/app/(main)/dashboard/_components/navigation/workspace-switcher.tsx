@@ -16,6 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { getAppBaseDomain } from "@/lib/constants/domains";
 import { cn } from "@/lib/utils";
 
 type Team = {
@@ -55,7 +56,7 @@ export function WorkspaceSwitcher({
     teamSlug?: string,
   ) => {
     setIsOpen(false);
-    const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
+    const baseDomain = getAppBaseDomain();
 
     if (type === "personal") {
       window.location.href = `${window.location.protocol}//${baseDomain}/dashboard`;

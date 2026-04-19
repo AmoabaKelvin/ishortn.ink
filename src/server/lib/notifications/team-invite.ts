@@ -1,4 +1,5 @@
 import TeamInviteEmail from "@/emails/team-invite";
+import { getAppBaseDomain } from "@/lib/constants/domains";
 import { logger } from "@/lib/logger";
 
 import { resend } from "./resend-client";
@@ -26,7 +27,7 @@ export async function sendTeamInviteEmail({
 }: SendTeamInviteEmailInput) {
   if (!resend) return;
 
-  const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
+  const baseDomain = getAppBaseDomain();
   const inviteUrl = `https://${baseDomain}/teams/accept-invite?token=${encodeURIComponent(token)}`;
 
   try {

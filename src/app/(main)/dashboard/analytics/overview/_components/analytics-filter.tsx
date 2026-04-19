@@ -26,6 +26,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -148,9 +149,12 @@ export function AnalyticsFilter() {
   };
 
   const getDomainItems = () => {
-    const items = [
-      { value: "ishortn.ink", label: "ishortn.ink", subtitle: "Default" },
-    ];
+    const items: { value: string; label: string; subtitle: string }[] =
+      PLATFORM_DOMAINS.map((domain) => ({
+        value: domain,
+        label: domain,
+        subtitle: domain === DEFAULT_PLATFORM_DOMAIN ? "Default" : "Platform",
+      }));
     if (domains) {
       domains.forEach((domain) => {
         if (domain.domain) {
