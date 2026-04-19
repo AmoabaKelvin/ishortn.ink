@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ alias
 
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("domain");
-  const domain = query ?? DEFAULT_PLATFORM_DOMAIN;
+  const domain = query?.trim() || DEFAULT_PLATFORM_DOMAIN;
 
   const token = await validateAndGetToken(apiKey);
   if (!token) {
@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
 
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("domain");
-  const domain = query ?? DEFAULT_PLATFORM_DOMAIN;
+  const domain = query?.trim() || DEFAULT_PLATFORM_DOMAIN;
 
   const token = await validateAndGetToken(apiKey);
   if (!token) {

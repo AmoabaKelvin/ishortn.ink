@@ -339,7 +339,7 @@ export const createLink = async (
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
 
-  const domain = input.domain ?? DEFAULT_PLATFORM_DOMAIN;
+  const domain = input.domain?.trim() || DEFAULT_PLATFORM_DOMAIN;
   const alias =
     input.alias && input.alias !== "" ? input.alias : await generateShortLink();
 
@@ -1628,7 +1628,7 @@ export const bulkCreateLinks = async (
         userId: ownership.userId,
         teamId: ownership.teamId,
         createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-        domain: record.domain ?? DEFAULT_PLATFORM_DOMAIN,
+        domain: record.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
         note: record.note,
       });
     }),

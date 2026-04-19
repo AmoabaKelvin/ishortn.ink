@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   const parsedData = input.data as ShortenLinkInput;
-  if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, parsedData.domain ?? DEFAULT_PLATFORM_DOMAIN))) {
+  if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, parsedData.domain?.trim() || DEFAULT_PLATFORM_DOMAIN))) {
     return new Response("Alias already exists", { status: 400 });
   }
 
@@ -133,7 +133,7 @@ async function createNewLink(
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     passwordHash: data.password,
-    domain: data.domain ?? DEFAULT_PLATFORM_DOMAIN,
+    domain: data.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
     userId,
     utmParams: data.utmParams ?? null,
   };

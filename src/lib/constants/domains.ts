@@ -20,13 +20,15 @@ export function getAppBaseDomain(): string {
 
 // Returns the leading label when `host` is a team subdomain of a platform
 // domain (e.g. "acme.isht.ink" -> "acme"). Returns null for bare platform
-// hosts and anything outside the catalogue.
+// hosts and anything outside the catalogue. Host matching is case-insensitive
+// to match DNS semantics, and a trailing dot (FQDN form) is tolerated.
 export function extractPlatformSubdomain(host: string): string | null {
+  const normalized = host.trim().replace(/\.$/, "").toLowerCase();
   for (const platformDomain of PLATFORM_DOMAINS) {
-    if (!host.endsWith(`.${platformDomain}`)) continue;
-    const parts = host.split(".");
+    if (!normalized.endsWith(`.${platformDomain}`)) continue;
+    const parts = normalized.split(".");
     if (parts.length !== platformDomain.split(".").length + 1) continue;
-    const candidate = parts[0]?.trim().toLowerCase();
+    const candidate = parts[0];
     if (candidate) return candidate;
   }
   return null;
