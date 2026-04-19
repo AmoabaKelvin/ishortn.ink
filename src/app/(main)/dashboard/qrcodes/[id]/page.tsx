@@ -1,6 +1,7 @@
 import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-react";
 
 import { aggregateVisits } from "@/lib/core/analytics";
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { api } from "@/trpc/server";
 
 import UpgradeText from "../_components/upgrade-text";
@@ -36,7 +37,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
   }
 
   const alias = qrCode.link.alias!;
-  const domain = qrCode.link.domain ?? "ishortn.ink";
+  const domain = qrCode.link.domain ?? DEFAULT_PLATFORM_DOMAIN;
 
   const {
     totalVisits,

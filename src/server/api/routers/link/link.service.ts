@@ -22,6 +22,7 @@ import {
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
 import { logger } from "@/lib/logger";
 import { hashIp } from "@/lib/utils/ip-hash";
@@ -338,7 +339,7 @@ export const createLink = async (
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
 
-  const domain = input.domain ?? "ishortn.ink";
+  const domain = input.domain?.trim() || DEFAULT_PLATFORM_DOMAIN;
   const alias =
     input.alias && input.alias !== "" ? input.alias : await generateShortLink();
 
@@ -1627,7 +1628,7 @@ export const bulkCreateLinks = async (
         userId: ownership.userId,
         teamId: ownership.teamId,
         createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-        domain: record.domain ?? "ishortn.ink",
+        domain: record.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
         note: record.note,
       });
     }),

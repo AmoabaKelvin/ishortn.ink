@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { api } from "@/trpc/react";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -68,7 +69,7 @@ export function SettingsForm({
   }
 
   const activeDomains = [
-    { domain: "ishortn.ink", status: "active" as const },
+    ...PLATFORM_DOMAINS.map((domain) => ({ domain, status: "active" as const })),
     ...availableDomains.filter((d) => d.status === "active"),
   ];
 

@@ -1,5 +1,6 @@
 import { IconClick, IconShieldCheck, IconShieldHalf, IconUsers } from "@tabler/icons-react";
 
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { aggregateVisits } from "@/lib/core/analytics";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/server";
@@ -37,7 +38,7 @@ export default async function LinkAnalyticsPage(
   const searchParams = await props.searchParams;
   const params = await props.params;
   const range = (searchParams?.range ?? "7d") as RangeEnum;
-  const domain = (searchParams?.domain as string) ?? "ishortn.ink";
+  const domain = (searchParams?.domain as string) ?? DEFAULT_PLATFORM_DOMAIN;
 
   const { totalVisits, uniqueVisits, referers, isProPlan, geoRules, previous } =
     await api.link.linkVisits.query({

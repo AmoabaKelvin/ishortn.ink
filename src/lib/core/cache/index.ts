@@ -2,6 +2,7 @@ import { Redis } from "ioredis";
 import { z } from "zod";
 
 import { env } from "@/env.mjs";
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 
 import type { Link } from "@/server/db/schema";
 
@@ -241,7 +242,7 @@ async function deleteGeoRulesFromCache(linkId: number): Promise<boolean> {
 /** Normalize a raw domain by stripping protocol, www prefix, and mapping localhost to default. */
 function normalizeDomain(domain: string): string {
   const cleaned = domain.replace(/^https?:\/\//, "").replace(/^www\./, "");
-  return domain.includes("localhost") ? "ishortn.ink" : cleaned;
+  return domain.includes("localhost") ? DEFAULT_PLATFORM_DOMAIN : cleaned;
 }
 
 /** Build a Redis cache key from a raw (possibly protocol-prefixed) domain and alias. */

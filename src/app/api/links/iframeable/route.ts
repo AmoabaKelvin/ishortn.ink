@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { logger } from "@/lib/logger";
 import { isIframeable } from "@/lib/utils/is-iframeable";
 
@@ -39,7 +40,9 @@ export async function GET(request: NextRequest) {
 
     // Get the request domain (the domain that will be embedding the iframe)
     const requestDomain =
-      request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "ishortn.ink";
+      request.headers.get("x-forwarded-host") ??
+      request.headers.get("host") ??
+      DEFAULT_PLATFORM_DOMAIN;
 
     const iframeable = await isIframeable({
       url,

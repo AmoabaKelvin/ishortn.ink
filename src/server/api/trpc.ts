@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 import {
@@ -114,7 +115,7 @@ export type WorkspaceTRPCContext = ProtectedTRPCContext & {
  */
 export const workspaceProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {
-    const hostname = ctx.headers.get("host") ?? "ishortn.ink";
+    const hostname = ctx.headers.get("host") ?? DEFAULT_PLATFORM_DOMAIN;
 
     const workspace = await resolveWorkspaceContext(
       ctx.auth.userId,

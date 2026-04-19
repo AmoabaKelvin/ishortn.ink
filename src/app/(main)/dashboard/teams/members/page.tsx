@@ -65,9 +65,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/react";
 
-const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "ishortn.ink";
+const baseDomain = getAppBaseDomain();
 
 const inviteSchema = z.object({
   email: z.string().email("Invalid email").optional().or(z.literal("")),

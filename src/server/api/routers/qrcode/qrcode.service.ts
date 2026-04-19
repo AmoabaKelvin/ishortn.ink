@@ -14,6 +14,7 @@ import {
 } from "@/server/lib/workspace";
 import {
   checkWorkspaceLinkLimit,
+  getWorkspaceDefaultDomain,
   incrementWorkspaceLinkCount,
 } from "../link/utils";
 
@@ -70,14 +71,17 @@ export const createQrCode = async (ctx: WorkspaceTRPCContext, input: QRCodeInput
 
   await assertUrlSafe(input.content);
 
-  const alias = await generateShortLink();
-  const trackingUrl = `https://ishortn.ink/${alias}`;
+  const [alias, domain] = await Promise.all([
+    generateShortLink(),
+    getWorkspaceDefaultDomain(ctx),
+  ]);
+  const trackingUrl = `https://${domain}/${alias}`;
 
   const { insertedQrCodeId } = await ctx.db.transaction(async (tx) => {
     const hiddenLinkResult = await tx.insert(link).values({
       url: input.content,
       alias,
-      domain: "ishortn.ink",
+      domain,
       name: input.title || "QR Code",
       isQrCode: true,
       userId: ownership.userId ?? ctx.auth.userId,

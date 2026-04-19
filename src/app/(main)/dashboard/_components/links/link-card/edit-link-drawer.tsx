@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { clientLogger } from "@/lib/logger/client";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
@@ -407,11 +408,15 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                             <div className="flex h-9 w-full items-center overflow-hidden rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors focus-within:ring-2 focus-within:ring-neutral-300">
                               <Select>
                                 <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:text-neutral-900 focus:ring-0">
-                                  <SelectValue placeholder={link.domain || "ishortn.ink"} />
+                                  <SelectValue placeholder={link.domain || DEFAULT_PLATFORM_DOMAIN} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectGroup>
-                                    <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
+                                    {PLATFORM_DOMAINS.map((domain) => (
+                                      <SelectItem key={domain} value={domain}>
+                                        {domain}
+                                      </SelectItem>
+                                    ))}
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>

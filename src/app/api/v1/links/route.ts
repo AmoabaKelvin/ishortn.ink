@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { generateShortLink } from "@/lib/core/links";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   const parsedData = input.data as ShortenLinkInput;
-  if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, parsedData.domain ?? "ishortn.ink"))) {
+  if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, parsedData.domain?.trim() || DEFAULT_PLATFORM_DOMAIN))) {
     return new Response("Alias already exists", { status: 400 });
   }
 
@@ -132,7 +133,7 @@ async function createNewLink(
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     passwordHash: data.password,
-    domain: data.domain ?? "ishortn.ink",
+    domain: data.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
     userId,
     utmParams: data.utmParams ?? null,
   };

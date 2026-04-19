@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { clientLogger } from "@/lib/logger/client";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
@@ -108,12 +109,15 @@ export default function CreateLinkPage() {
 
   const form = useForm<z.infer<typeof createLinkSchema>>({
     resolver: zodResolver(createLinkSchema),
-    defaultValues: initialUrl ? { url: initialUrl } : undefined,
+    defaultValues: {
+      domain: DEFAULT_PLATFORM_DOMAIN,
+      ...(initialUrl ? { url: initialUrl } : {}),
+    },
   });
 
   const [debouncedUrl] = useDebounce(destinationURL, 500);
   const [debouncedAlias] = useDebounce(form.watch("alias"), 500);
-  const selectedDomain = form.watch("domain") ?? "ishortn.ink";
+  const selectedDomain = form.watch("domain") ?? DEFAULT_PLATFORM_DOMAIN;
 
   async function generateAliases(metadata: {
     title: string;
@@ -263,7 +267,7 @@ export default function CreateLinkPage() {
       has_custom_alias: !!values.alias,
       has_password: !!values.password,
       has_expiration: !!values.disableLinkAfterDate || !!values.disableLinkAfterClicks,
-      domain: values.domain || "ishortn.ink",
+      domain: values.domain,
     });
     if (values.verifiedClicksEnabled) {
       trackEvent(POSTHOG_EVENTS.VERIFIED_CLICKS_ENABLED, {
@@ -279,10 +283,10 @@ export default function CreateLinkPage() {
     }
   }, [customDomainsQuery.data]);
 
-  // Fetch ishortn.ink metadata on initial load
+  // Fetch platform-default metadata on initial load
   useEffect(() => {
     if (isInitialLoad) {
-      fetchMetadataInfo("https://ishortn.ink")
+      fetchMetadataInfo(`https://${DEFAULT_PLATFORM_DOMAIN}`)
         .then((metadata) => {
           setMetaData(metadata);
         })
@@ -481,16 +485,21 @@ export default function CreateLinkPage() {
                     <FormControl>
                       <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors hover:border-neutral-300 dark:hover:border-border focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
                         <Select
+                          value={selectedDomain}
                           onValueChange={(value) => {
                             form.setValue("domain", value);
                           }}
                         >
                           <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:text-neutral-700 focus:ring-0">
-                            <SelectValue placeholder="ishortn.ink" />
+                            <SelectValue placeholder={DEFAULT_PLATFORM_DOMAIN} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              <SelectItem value="ishortn.ink">ishortn.ink</SelectItem>
+                              {PLATFORM_DOMAINS.map((domain) => (
+                                <SelectItem key={domain} value={domain}>
+                                  {domain}
+                                </SelectItem>
+                              ))}
                               {userDomains.length > 0 &&
                                 userDomains.map((domain) => (
                                   <SelectItem key={domain.id} value={domain.domain!}>

@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { resolvePlan } from "@/lib/billing/plans";
+import { extractPlatformSubdomain } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import { RESERVED_TEAM_SLUGS, team, teamMember } from "@/server/db/schema";
 
@@ -12,9 +13,13 @@ type DbClient = typeof db;
 /**
  * Extracts the subdomain from a hostname.
  *
+ * Any catalogue platform domain is accepted, so `acme.isht.ink` and
+ * `acme.ishortn.ink` both resolve to team slug `acme`.
+ *
  * Examples:
+ * - "acme.isht.ink" -> "acme"
  * - "acme.ishortn.ink" -> "acme"
- * - "ishortn.ink" -> null
+ * - "isht.ink" -> null
  * - "localhost:3000" -> null
  * - "acme.localhost:3000" -> "acme" (for local development)
  *
@@ -25,18 +30,7 @@ export function extractSubdomain(hostname: string): string | null {
   // Remove port if present
   const host = hostname.split(":")[0] ?? hostname;
 
-  let subdomain: string | null = null;
-
-  // Check for production subdomains (*.ishortn.ink)
-  if (host.endsWith(".ishortn.ink")) {
-    const parts = host.split(".");
-    if (parts.length === 3) {
-      const candidate = parts[0]?.trim().toLowerCase();
-      if (candidate && candidate.length > 0) {
-        subdomain = candidate;
-      }
-    }
-  }
+  let subdomain: string | null = extractPlatformSubdomain(host);
 
   // Check for local development subdomains (*.localhost)
   if (!subdomain && host.endsWith(".localhost")) {
