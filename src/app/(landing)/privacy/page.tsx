@@ -20,7 +20,7 @@ export default function PrivacyPage() {
     <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
       <Header />
 
-      <section style={{ padding: "96px 0 32px" }}>
+      <section className="warm-subhero">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
             <span className="warm-eyebrow-dot" />
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           </div>
           <h1
             className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(54px, 9vw, 104px)" }}
+            style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}
           >
             Privacy <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>policy</em>.
           </h1>

@@ -53,7 +53,8 @@ export const Footer = () => {
       style={{
         background: "var(--warm-ink)",
         color: "var(--warm-paper)",
-        padding: "80px 0 40px",
+        padding: "64px 0 32px",
+        overflow: "hidden",
       }}
     >
       <div className="warm-container">
@@ -201,15 +202,16 @@ export const Footer = () => {
         <div
           aria-hidden
           style={{
-            marginTop: 60,
+            marginTop: 48,
             fontFamily: "var(--font-warm-display)",
-            fontSize: "clamp(120px, 20vw, 300px)",
+            fontSize: "clamp(80px, 20vw, 300px)",
             lineHeight: 0.8,
             color: "rgba(255,255,255,0.04)",
             letterSpacing: "-0.03em",
             textAlign: "center",
             userSelect: "none",
             fontStyle: "italic",
+            whiteSpace: "nowrap",
           }}
         >
           iShortn

@@ -106,7 +106,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
-      <section style={{ padding: "120px 0 40px" }}>
+      <section className="warm-subhero">
         <div className="warm-container" style={{ maxWidth: 860 }}>
           <Link
             href="/blog"

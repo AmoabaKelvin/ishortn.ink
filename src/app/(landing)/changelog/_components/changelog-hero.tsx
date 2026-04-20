@@ -11,7 +11,8 @@ export function ChangelogHero() {
           style={{
             margin: 0,
             maxWidth: 900,
-            fontSize: "clamp(54px, 9vw, 84px)",
+            fontSize: "clamp(44px, 9vw, 84px)",
+            overflowWrap: "break-word",
           }}
         >
           What we've{" "}
@@ -24,10 +25,10 @@ export function ChangelogHero() {
         </h1>
         <p
           style={{
-            fontSize: 19,
+            fontSize: 17,
             color: "var(--warm-ink-soft)",
             maxWidth: 620,
-            marginTop: 24,
+            marginTop: 20,
             lineHeight: 1.5,
           }}
         >

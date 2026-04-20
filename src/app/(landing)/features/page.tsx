@@ -32,7 +32,7 @@ export default function FeaturesPage() {
     <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
       <Header />
 
-      <section style={{ padding: "120px 0 48px" }}>
+      <section className="warm-subhero">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
             <Icon.Sparkle
@@ -42,7 +42,7 @@ export default function FeaturesPage() {
           </div>
           <h1
             className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(54px, 9vw, 104px)", maxWidth: 980 }}
+            style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)", maxWidth: 980 }}
           >
             Everything inside,
             <br />
