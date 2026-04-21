@@ -6,7 +6,7 @@ import { generateShortLink } from "@/lib/core/links";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { assertUrlSafe } from "@/server/lib/phishing";
-import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
+import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit, user } from "@/server/db/schema";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   workspaceFilter,
@@ -15,7 +15,6 @@ import {
 import {
   checkWorkspaceLinkLimit,
   getWorkspaceDefaultDomain,
-  incrementWorkspaceLinkCount,
 } from "../link/utils";
 
 import { updateLink } from "../link/link.service";
@@ -100,6 +99,12 @@ export const createQrCode = userFacing(
     ]);
     const trackingUrl = `https://${domain}/${alias}`;
 
+    // Personal workspaces with a plan-defined quota have their monthly
+    // link count bumped inside the same transaction, so a count-update
+    // failure rolls the QR and hidden link back together — no orphan rows.
+    const shouldIncrementCount =
+      ctx.workspace.type !== "team" && limit !== undefined;
+
     const { insertedQrCodeId } = await ctx.db.transaction(async (tx) => {
       const hiddenLinkResult = await tx.insert(link).values({
         url: input.content,
@@ -126,10 +131,15 @@ export const createQrCode = userFacing(
         contentType: "link",
       });
 
+      if (shouldIncrementCount) {
+        await tx
+          .update(user)
+          .set({ monthlyLinkCount: currentCount + 1 })
+          .where(eq(user.id, ctx.auth.userId));
+      }
+
       return { insertedQrCodeId: insertionResult[0].insertId };
     });
-
-    await incrementWorkspaceLinkCount(ctx, currentCount, limit);
 
     return { trackingUrl, id: insertedQrCodeId };
   },
@@ -336,20 +346,13 @@ export const updateQrCode = userFacing(
       await assertUrlSafe(input.url);
     }
 
-    // Sync QR-specific fields first so that if updateLink fails,
-    // the live redirect target (link.url) is still the old safe value.
     const qrUpdates: Partial<Pick<typeof qrcode.$inferInsert, "title" | "content">> = {};
     if (input.title !== undefined) qrUpdates.title = input.title;
     if (input.url !== undefined) qrUpdates.content = input.url;
 
-    if (Object.keys(qrUpdates).length > 0) {
-      await ctx.db
-        .update(qrcode)
-        .set(qrUpdates)
-        .where(eq(qrcode.id, input.id));
-    }
-
-    // Delegate to updateLink for the complex work (cache, tags, geo rules, UTM, etc.)
+    // Apply the link update first so a failure there leaves both the live
+    // redirect target and the QR metadata at their prior values. assertUrlSafe
+    // has already validated the new URL, so there's no safety window to close.
     const { id: _qrId, title, url, ...linkFields } = input;
     await updateLink(ctx, {
       id: qrCode.linkId,
@@ -357,6 +360,13 @@ export const updateQrCode = userFacing(
       name: title,
       ...linkFields,
     });
+
+    if (Object.keys(qrUpdates).length > 0) {
+      await ctx.db
+        .update(qrcode)
+        .set(qrUpdates)
+        .where(eq(qrcode.id, input.id));
+    }
 
     return true;
   },
