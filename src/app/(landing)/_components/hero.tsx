@@ -46,7 +46,7 @@ export const Hero = () => {
           </div>
           <h1
             className="warm-display warm-hero-title"
-            style={{ margin: 0, fontSize: "clamp(54px, 9vw, 104px)" }}
+            style={{ margin: 0, fontSize: "clamp(48px, 11vw, 104px)" }}
           >
             Links, made
             <br />
@@ -244,12 +244,11 @@ export const Hero = () => {
       </div>
 
       <div
-        className="warm-container"
+        className="warm-container warm-hero-featured"
         style={{
-          marginTop: 96,
+          marginTop: 72,
           display: "flex",
           alignItems: "center",
-          gap: 40,
           justifyContent: "center",
           flexWrap: "wrap",
         }}
@@ -266,9 +265,9 @@ export const Hero = () => {
         ].map((x) => (
           <span
             key={x}
+            className="warm-hero-featured-item"
             style={{
               fontFamily: "var(--font-warm-display)",
-              fontSize: 18,
               color: "var(--warm-ink-soft)",
               opacity: 0.7,
             }}
@@ -279,6 +278,21 @@ export const Hero = () => {
       </div>
 
       <style>{`
+        .warm-hero-featured {
+          gap: 16px 20px;
+        }
+        .warm-hero-featured-item {
+          font-size: 15px;
+        }
+        @media (min-width: 640px) {
+          .warm-hero-featured {
+            margin-top: 96px !important;
+            gap: 40px;
+          }
+          .warm-hero-featured-item {
+            font-size: 18px;
+          }
+        }
         .warm-hero-grid {
           grid-template-columns: 1fr;
         }

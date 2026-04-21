@@ -109,13 +109,14 @@ export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqShape[] }) => {
               <button
                 type="button"
                 onClick={() => setOpen(open === i ? -1 : i)}
+                className="warm-faq-button"
                 style={{
                   width: "100%",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "26px 0",
-                  gap: 40,
+                  padding: "22px 0",
+                  gap: 16,
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
@@ -125,12 +126,13 @@ export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqShape[] }) => {
                 }}
               >
                 <span
+                  className="warm-faq-question"
                   style={{
                     fontFamily: "var(--font-warm-display)",
-                    fontSize: 24,
                     fontWeight: 500,
                     letterSpacing: "-0.015em",
                     lineHeight: 1.2,
+                    minWidth: 0,
                   }}
                 >
                   {it.q}
@@ -181,6 +183,15 @@ export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqShape[] }) => {
       </div>
       <style>{`
         .warm-faq-grid { grid-template-columns: 1fr; }
+        .warm-faq-question { font-size: 18px; }
+        .warm-faq-button { padding: 20px 0 !important; gap: 16px !important; }
+        @media (min-width: 480px) {
+          .warm-faq-question { font-size: 20px; }
+        }
+        @media (min-width: 768px) {
+          .warm-faq-question { font-size: 24px; }
+          .warm-faq-button { padding: 26px 0 !important; gap: 40px !important; }
+        }
         @media (min-width: 860px) {
           .warm-faq-grid { grid-template-columns: 340px 1fr; gap: 80px; }
           .warm-faq-intro { position: sticky; top: 100px; }

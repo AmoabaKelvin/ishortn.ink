@@ -100,11 +100,11 @@ export function ChangelogTimeline({ entries }: ChangelogTimelineProps) {
 
       <main>
         <section className="cl-subscribe">
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div
+              className="cl-subscribe-title"
               style={{
                 fontFamily: "var(--font-warm-display)",
-                fontSize: 22,
                 fontWeight: 500,
                 letterSpacing: "-0.01em",
               }}
@@ -113,7 +113,7 @@ export function ChangelogTimeline({ entries }: ChangelogTimelineProps) {
             </div>
             <div
               style={{
-                fontSize: 14,
+                fontSize: 13,
                 color: "var(--warm-mute)",
                 marginTop: 4,
               }}

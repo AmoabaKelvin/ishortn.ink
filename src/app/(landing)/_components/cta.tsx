@@ -7,13 +7,12 @@ import { Icon } from "./warm-primitives";
 export const CTA = () => {
   return (
     <section
-      className="warm-section"
+      className="warm-section warm-cta"
       style={{
         background: "var(--warm-ink)",
         color: "var(--warm-paper)",
         position: "relative",
         overflow: "hidden",
-        padding: "160px 0",
       }}
     >
       <div
@@ -61,7 +60,7 @@ export const CTA = () => {
         </div>
         <h2
           className="warm-display"
-          style={{ margin: 0, fontSize: "clamp(72px, 12vw, 140px)" }}
+          style={{ margin: 0, fontSize: "clamp(52px, 14vw, 140px)", overflowWrap: "break-word" }}
         >
           Your links
           <br />
