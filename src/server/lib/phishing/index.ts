@@ -1,3 +1,5 @@
+import { TRPCError } from "@trpc/server";
+
 import { logger } from "@/lib/logger";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
@@ -106,7 +108,10 @@ export async function assertUrlSafe(url: string): Promise<void> {
   const preLLMResult = await runPreLLMChecks(url);
   if (preLLMResult.blocked) {
     log.warn({ url, reason: preLLMResult.reason }, "link blocked (pre-LLM)");
-    throw new Error(preLLMResult.userMessage);
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: preLLMResult.userMessage,
+    });
   }
 
   // Layer 3: LLM-based phishing detection
@@ -114,6 +119,9 @@ export async function assertUrlSafe(url: string): Promise<void> {
   const phishingResult = await detectPhishingLink(url, fetchedMetadata);
 
   if (phishingResult.phishing) {
-    throw new Error(USER_MSG_UNSAFE);
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: USER_MSG_UNSAFE,
+    });
   }
 }
