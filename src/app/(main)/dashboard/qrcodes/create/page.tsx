@@ -301,7 +301,10 @@ function QRCodeCreationPage() {
     toast.promise(promise, {
       loading: "Creating QR Code...",
       success: "QR Code created successfully",
-      error: "Failed to create QR Code",
+      error: (err: unknown) =>
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to create QR Code",
     });
   };
 
