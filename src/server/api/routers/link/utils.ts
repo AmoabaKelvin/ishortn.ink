@@ -1,10 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { redis } from "@/lib/core/cache";
 import { normalizeAlias } from "@/lib/utils";
-import { link, team, user } from "@/server/db/schema";
+import { customDomain, link, team, user } from "@/server/db/schema";
 import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user-plan";
 import { workspaceFilter } from "@/server/lib/workspace";
 
@@ -165,6 +165,35 @@ export async function getWorkspaceDefaultDomain(ctx: WorkspaceTRPCContext): Prom
 
   // Personal workspace: use user's default domain
   return getUserDefaultDomain(ctx);
+}
+
+/**
+ * Guards against clients submitting arbitrary `domain` values on link/QR
+ * writes. Accepts platform-owned domains, or custom domains that are both
+ * verified ("active") and scoped to the caller's workspace. Throws on
+ * anything else — DNS is case-insensitive, so we normalize before lookup.
+ */
+export async function assertDomainAllowed(
+  ctx: WorkspaceTRPCContext,
+  domain: string,
+): Promise<void> {
+  const normalized = domain.trim().toLowerCase();
+  if (isPlatformDomain(normalized)) return;
+
+  const owned = await ctx.db.query.customDomain.findFirst({
+    where: and(
+      sql`lower(${customDomain.domain}) = ${normalized}`,
+      eq(customDomain.status, "active"),
+      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
+    ),
+  });
+
+  if (!owned) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Selected domain is not available for this workspace.",
+    });
+  }
 }
 
 const MINIMUM_ALIAS_LENGTH_FREE = 6;

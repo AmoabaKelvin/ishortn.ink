@@ -8,6 +8,7 @@ export const qrcodeInput = z.object({
   patternStyle: z.string(),
   cornerStyle: z.string(),
   selectedColor: z.string(),
+  domain: z.string().optional(),
 });
 
 export const qrcodeSaveImageInput = z.object({
