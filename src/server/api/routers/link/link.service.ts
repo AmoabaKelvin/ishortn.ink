@@ -66,6 +66,7 @@ import {
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 
 import {
+  assertDomainAllowed,
   checkWorkspaceLinkLimit,
   getWorkspaceDefaultDomain,
   incrementWorkspaceLinkCount,
@@ -340,6 +341,7 @@ export const createLink = async (
   const isPaidPlan = plan !== "free";
 
   const domain = input.domain?.trim() || DEFAULT_PLATFORM_DOMAIN;
+  await assertDomainAllowed(ctx, domain);
   const alias =
     input.alias && input.alias !== "" ? input.alias : await generateShortLink();
 
@@ -528,6 +530,12 @@ export const updateLink = async (
   // Use workspace plan - team workspaces have Ultra features
   const workspacePlan = ctx.workspace.plan;
   const isPaidUser = workspacePlan !== "free";
+
+  // If domain is being changed, it must be platform-owned or a verified
+  // custom domain for this workspace.
+  if (input.domain !== undefined && input.domain !== existingLink.domain) {
+    await assertDomainAllowed(ctx, input.domain);
+  }
 
   // If alias is being changed, validate it
   if (input.alias && input.alias !== existingLink.alias) {
