@@ -13,6 +13,7 @@ import {
   workspaceOwnership,
 } from "@/server/lib/workspace";
 import {
+  assertDomainAllowed,
   checkWorkspaceLinkLimit,
   getWorkspaceDefaultDomain,
 } from "../link/utils";
@@ -93,9 +94,13 @@ export const createQrCode = userFacing(
 
     await assertUrlSafe(input.content);
 
+    const requestedDomain = input.domain?.trim();
+    if (requestedDomain) {
+      await assertDomainAllowed(ctx, requestedDomain);
+    }
     const [alias, domain] = await Promise.all([
       generateShortLink(),
-      getWorkspaceDefaultDomain(ctx),
+      requestedDomain ? Promise.resolve(requestedDomain) : getWorkspaceDefaultDomain(ctx),
     ]);
     const trackingUrl = `https://${domain}/${alias}`;
 

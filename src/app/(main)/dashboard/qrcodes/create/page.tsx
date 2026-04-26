@@ -5,7 +5,6 @@ import {
   IconDownload,
   IconLoader2,
   IconRefresh,
-  IconSparkles,
   IconTrash,
 } from "@tabler/icons-react";
 import { useTransitionRouter } from "next-view-transitions";
@@ -28,6 +27,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
@@ -57,6 +65,23 @@ function QRCodeCreationPage() {
 
   const [qrCodeTitle, setQRCodeTitle] = useState<string>("");
   const [destinationUrl, setDestinationUrl] = useState<string>("");
+  const [selectedDomain, setSelectedDomain] = useState<string>(
+    DEFAULT_PLATFORM_DOMAIN,
+  );
+
+  const customDomainsQuery = api.customDomain.list.useQuery();
+  const userDomains = customDomainsQuery.data ?? [];
+
+  const destinationLooksValid = useMemo(() => {
+    const value = destinationUrl.trim();
+    if (!value || !value.includes(".")) return false;
+    try {
+      const url = new URL(value.includes("://") ? value : `https://${value}`);
+      return url.hostname.includes(".");
+    } catch {
+      return false;
+    }
+  }, [destinationUrl]);
 
   // Advanced QR state using the new generator
   const [qrState, setQrState] = useState<QRCodeGeneratorState>(() => ({
@@ -257,6 +282,7 @@ function QRCodeCreationPage() {
         patternStyle: qrState.pixelStyle as string,
         cornerStyle: qrState.markerShape as string,
         selectedColor: qrState.darkColor,
+        domain: selectedDomain,
       });
 
       try {
@@ -311,7 +337,7 @@ function QRCodeCreationPage() {
   return (
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       {/* Left Column - Configuration */}
-      <div className="md:col-span-5">
+      <div className="min-w-0 md:col-span-5">
         <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Create a QR code
         </h2>
@@ -352,6 +378,36 @@ function QRCodeCreationPage() {
                 The URL people will be redirected to when scanning the QR code
               </p>
             </div>
+
+            {destinationLooksValid && (
+              <div className="space-y-1.5">
+                <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                  Link domain
+                </Label>
+                <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+                  <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] text-neutral-700 dark:text-neutral-300">
+                    <SelectValue placeholder={DEFAULT_PLATFORM_DOMAIN} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {PLATFORM_DOMAINS.map((domain) => (
+                        <SelectItem key={domain} value={domain}>
+                          {domain}
+                        </SelectItem>
+                      ))}
+                      {userDomains.map((domain) => (
+                        <SelectItem key={domain.id} value={domain.domain!}>
+                          {domain.domain}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                  Pick the domain shown when someone scans your QR code.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Design Section */}
@@ -455,45 +511,40 @@ function QRCodeCreationPage() {
                 </div>
               ) : presets && presets.length > 0 ? (
                 <div className="space-y-2">
+                  <span className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
+                    Saved Presets
+                  </span>
                   <div className="flex items-center gap-2">
-                    <IconSparkles
-                      size={14}
-                      stroke={1.5}
-                      className="text-blue-500"
-                    />
-                    <span className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
-                      Saved Presets
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {presets.map((preset) => (
-                      <div
-                        key={preset.id}
-                        className={cn(
-                          "group relative inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] font-medium cursor-pointer transition-colors",
-                          selectedPresetId === preset.id
-                            ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700"
-                            : "border-neutral-200 dark:border-border text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-accent/50",
-                        )}
-                        onClick={() => loadPreset(preset.id)}
+                    <Select
+                      value={selectedPresetId ? String(selectedPresetId) : undefined}
+                      onValueChange={(value) => loadPreset(Number(value))}
+                    >
+                      <SelectTrigger className="h-9 flex-1 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] text-neutral-700 dark:text-neutral-300">
+                        <SelectValue placeholder="Select a preset" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {presets.map((preset) => (
+                            <SelectItem key={preset.id} value={String(preset.id)}>
+                              {preset.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {selectedPresetId !== null && (
+                      <button
+                        type="button"
+                        aria-label="Delete selected preset"
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-neutral-200 dark:border-border text-neutral-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-red-500/10"
+                        onClick={() =>
+                          deletePresetMutation.mutate({ id: selectedPresetId })
+                        }
+                        disabled={deletePresetMutation.isLoading}
                       >
-                        <span>{preset.name}</span>
-                        <button
-                          type="button"
-                          className="rounded p-0.5 opacity-0 transition-all hover:bg-red-100 group-hover:opacity-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deletePresetMutation.mutate({ id: preset.id });
-                          }}
-                        >
-                          <IconTrash
-                            size={12}
-                            stroke={1.5}
-                            className="text-red-500"
-                          />
-                        </button>
-                      </div>
-                    ))}
+                        <IconTrash size={14} stroke={1.5} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -572,7 +623,7 @@ function QRCodeCreationPage() {
       </div>
 
       {/* Right Column - Preview */}
-      <div className="mt-4 flex flex-col gap-4 md:col-span-5 md:mt-0">
+      <div className="mt-4 flex min-w-0 flex-col gap-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">
           <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Preview
