@@ -18,9 +18,12 @@ export function isPlatformDomain(domain: string | null | undefined): domain is P
 
 // Base host for authenticated app URLs (team invites, workspace switching,
 // accept-invite redirects). Keep this separate from DEFAULT_PLATFORM_DOMAIN so
-// Clerk-authenticated pages stay on the domain configured in Clerk.
+// Clerk-authenticated pages stay on the domain configured in Clerk. Honor
+// NEXT_PUBLIC_APP_DOMAIN so staging/dev can point email and absolute-URL flows
+// at a non-prod host instead of baking ishortn.ink into outbound links.
 export function getAppBaseDomain(): string {
-  return APP_BASE_DOMAIN;
+  const configured = process.env.NEXT_PUBLIC_APP_DOMAIN?.trim();
+  return configured || APP_BASE_DOMAIN;
 }
 
 // Returns the leading label when `host` is a team subdomain of a platform
