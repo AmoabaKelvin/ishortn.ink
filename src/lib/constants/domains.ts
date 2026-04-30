@@ -1,5 +1,5 @@
 // Platform-provided short-link domains. First entry is the default for new
-// links and the preferred host for marketing/team subdomain previews. All
+// links and the preferred host for short-link previews. All
 // entries must be wired at the infrastructure layer (DNS + SSL + host) and
 // resolve to this Next.js app.
 export const PLATFORM_DOMAINS = ["isht.ink", "ishortn.ink"] as const;
@@ -8,14 +8,22 @@ export type PlatformDomain = (typeof PLATFORM_DOMAINS)[number];
 
 export const DEFAULT_PLATFORM_DOMAIN: PlatformDomain = PLATFORM_DOMAINS[0];
 
+// Clerk is configured on the full iShortn domain, so authenticated app/team
+// navigation must stay on this host instead of the shorter link domain.
+export const APP_BASE_DOMAIN = "ishortn.ink";
+
 export function isPlatformDomain(domain: string | null | undefined): domain is PlatformDomain {
   return !!domain && (PLATFORM_DOMAINS as readonly string[]).includes(domain);
 }
 
-// Base host for user-facing app URLs (team invites, workspace switching,
-// accept-invite redirects). Respects NEXT_PUBLIC_APP_DOMAIN override.
+// Base host for authenticated app URLs (team invites, workspace switching,
+// accept-invite redirects). Keep this separate from DEFAULT_PLATFORM_DOMAIN so
+// Clerk-authenticated pages stay on the domain configured in Clerk. Honor
+// NEXT_PUBLIC_APP_DOMAIN so staging/dev can point email and absolute-URL flows
+// at a non-prod host instead of baking ishortn.ink into outbound links.
 export function getAppBaseDomain(): string {
-  return process.env.NEXT_PUBLIC_APP_DOMAIN || DEFAULT_PLATFORM_DOMAIN;
+  const configured = process.env.NEXT_PUBLIC_APP_DOMAIN?.trim();
+  return configured || APP_BASE_DOMAIN;
 }
 
 // Returns the leading label when `host` is a team subdomain of a platform

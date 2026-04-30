@@ -33,7 +33,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { DEFAULT_PLATFORM_DOMAIN, getAppBaseDomain } from "@/lib/constants/domains";
+import { APP_BASE_DOMAIN, getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/react";
 
 const slugRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
@@ -303,7 +303,7 @@ export default function TeamSettingsPage() {
                               }
                             />
                             <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
-                              .{DEFAULT_PLATFORM_DOMAIN}
+                              .{APP_BASE_DOMAIN}
                             </span>
                           </div>
                         </FormControl>
