@@ -699,6 +699,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   outgoingTransfers: many(accountTransfer, { relationName: "outgoingTransfers" }),
   incomingTransfers: many(accountTransfer, { relationName: "incomingTransfers" }),
   feedbacks: many(feedback),
+  audienceFeedback: one(audienceFeedback),
 }));
 
 export const linkVisitRelations = relations(linkVisit, ({ one }) => ({
@@ -1043,3 +1044,42 @@ export const feedbackRelations = relations(feedback, ({ one }) => ({
 
 export type Feedback = typeof feedback.$inferSelect;
 export type NewFeedback = typeof feedback.$inferInsert;
+
+export const audienceFeedback = mysqlTable(
+  "AudienceFeedback",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull().unique(),
+    role: varchar("role", { length: 64 }),
+    useCase: varchar("useCase", { length: 64 }),
+    monthlyVolume: varchar("monthlyVolume", { length: 64 }),
+    acquisitionChannel: varchar("acquisitionChannel", { length: 64 }),
+    acquisitionDetail: text("acquisitionDetail"),
+    priorTool: varchar("priorTool", { length: 64 }),
+    switchReason: text("switchReason"),
+    magicFeature: varchar("magicFeature", { length: 64 }),
+    upgradeReason: varchar("upgradeReason", { length: 64 }),
+    upgradeBlocker: text("upgradeBlocker"),
+    improvementWish: text("improvementWish"),
+    planSnapshot: mysqlEnum("planSnapshot", ["free", "pro", "ultra"]),
+    submittedAt: timestamp("submittedAt"),
+    dismissedAt: timestamp("dismissedAt"),
+    dismissCount: int("dismissCount").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+    submittedAtIdx: index("submittedAt_idx").on(table.submittedAt),
+  }),
+);
+
+export const audienceFeedbackRelations = relations(audienceFeedback, ({ one }) => ({
+  user: one(user, {
+    fields: [audienceFeedback.userId],
+    references: [user.id],
+  }),
+}));
+
+export type AudienceFeedback = typeof audienceFeedback.$inferSelect;
+export type NewAudienceFeedback = typeof audienceFeedback.$inferInsert;
