@@ -1,6 +1,7 @@
 import { accountTransferRouter } from "./routers/account-transfer/account-transfer.procedure";
 import { adminRouter } from "./routers/admin/admin.procedure";
 import { aiRouter } from "./routers/ai/ai.procedure";
+import { audienceFeedbackRouter } from "./routers/audience-feedback/audience-feedback.procedure";
 import { changelogRouter } from "./routers/changelog/changelog.procedure";
 import { customDomainRouter } from "./routers/domains/domains.procedure";
 import { feedbackRouter } from "./routers/feedback/feedback.procedure";
@@ -29,6 +30,7 @@ export const appRouter = createTRPCRouter({
   qrCode: qrCodeRouter,
   customDomain: customDomainRouter,
   feedback: feedbackRouter,
+  audienceFeedback: audienceFeedbackRouter,
   ai: aiRouter,
   siteSettings: siteSettingsRouter,
   tag: tagRouter,
