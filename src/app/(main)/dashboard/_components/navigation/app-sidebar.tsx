@@ -14,6 +14,7 @@ import {
   IconLogout,
   IconMenu2,
   IconMessageReport,
+  IconMicrophone2,
   IconQrcode,
   IconSettings,
   IconShieldLock,
@@ -36,6 +37,7 @@ import {
 import { APP_TITLE } from "@/lib/constants/app";
 import { cn } from "@/lib/utils";
 
+import { AudienceFeedbackPrompt } from "./audience-feedback-prompt";
 import { FeedbackModal } from "./feedback-modal";
 import { SidebarStats } from "./sidebar-stats";
 import { ThemeToggle } from "./theme-toggle";
@@ -71,6 +73,11 @@ const adminNavigationItems = [
   { name: "Blocked Domains", href: "/dashboard/admin/domains", icon: IconBan },
   { name: "Flagged Links", href: "/dashboard/admin/flagged", icon: IconFlag },
   { name: "Feedback", href: "/dashboard/admin/feedback", icon: IconMessageReport },
+  {
+    name: "Audience Feedback",
+    href: "/dashboard/admin/audience-feedback",
+    icon: IconMicrophone2,
+  },
 ];
 
 type Team = {
@@ -292,7 +299,11 @@ export function AppSidebar({
             </div>
 
             {/* Feedback */}
-            <div className="border-t border-neutral-100 dark:border-border/50 px-3 py-1.5">
+            <div className="space-y-0.5 border-t border-neutral-100 dark:border-border/50 px-3 py-1.5">
+              <AudienceFeedbackPrompt
+                plan={plan}
+                onTriggerClick={() => setIsMobileMenuOpen(false)}
+              />
               <button
                 onClick={() => {
                   setIsFeedbackOpen(true);

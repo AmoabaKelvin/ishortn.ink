@@ -6,6 +6,7 @@ import { Link } from "next-view-transitions";
 import { env } from "@/env.mjs";
 import { api } from "@/trpc/server";
 
+import { AudienceFeedbackCard } from "./_components/audience-feedback-card";
 import { BulkLinkActions } from "./_components/bulk-actions/bulk-actions";
 import { Links } from "./_components/links/links";
 
@@ -77,6 +78,8 @@ export default async function DashboardPage(props: Props) {
         currentPage={currentPage as number}
         totalLinks={totalLinks as number}
       />
+
+      <AudienceFeedbackCard hasLinks={totalLinks > 0} />
     </div>
   );
 }

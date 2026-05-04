@@ -414,6 +414,20 @@
       "when": 1776425374368,
       "tag": "0058_violet_timeslip",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1777882645049,
+      "tag": "0059_clumsy_madame_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "5",
+      "when": 1777891200000,
+      "tag": "0060_fix_audience_feedback_collation",
+      "breakpoints": true
     }
   ]
 }
