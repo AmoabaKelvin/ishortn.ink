@@ -2,13 +2,12 @@ import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { generateShortLink } from "@/lib/core/links";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
 
-import { validateAndGetToken } from "../utils";
+import { resolveApiDomainForUser, validateAndGetToken } from "../utils";
 
 export async function POST(request: Request) {
   const apiKey = request.headers.get("x-api-key");
@@ -26,7 +25,8 @@ export async function POST(request: Request) {
   }
 
   const parsedData = input.data as ShortenLinkInput;
-  if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, parsedData.domain?.trim() || DEFAULT_PLATFORM_DOMAIN))) {
+  const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
+  if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, requestedDomain))) {
     return new Response("Alias already exists", { status: 400 });
   }
 
@@ -35,7 +35,8 @@ export async function POST(request: Request) {
       parsedData,
       token.userId,
       token.subscription?.status,
-      token.subscription?.plan
+      token.subscription?.plan,
+      requestedDomain,
     );
     return new Response(JSON.stringify(newLink), {
       status: 201,
@@ -84,11 +85,10 @@ type ShortenLinkInput = {
 };
 
 async function checkLinkAliasCollision(alias: string, domain: string) {
-  const domainToUse = domain;
   const existingLink = await db
     .select()
     .from(link)
-    .where(and(eq(link.alias, alias), eq(link.domain, domainToUse)));
+    .where(and(eq(link.alias, alias), eq(link.domain, domain)));
   return existingLink.length > 0;
 }
 
@@ -96,7 +96,8 @@ async function createNewLink(
   data: ShortenLinkInput,
   userId: string,
   subStatus: string | undefined | null,
-  plan: string | undefined | null
+  plan: string | undefined | null,
+  domain: string,
 ) {
   if (data.password) {
     if (subStatus !== "active" || subStatus === undefined) {
@@ -111,11 +112,11 @@ async function createNewLink(
   if (data.utmParams) {
     const utmParamsValues = Object.values(data.utmParams);
     const hasUtmParams = utmParamsValues.some(
-      (value) => value !== undefined && value !== null && value !== ""
+      (value) => value !== undefined && value !== null && value !== "",
     );
     if (hasUtmParams && plan !== "ultra") {
       throw new Error(
-        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature."
+        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
       );
     }
   }
@@ -133,7 +134,7 @@ async function createNewLink(
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     passwordHash: data.password,
-    domain: data.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
+    domain,
     userId,
     utmParams: data.utmParams ?? null,
   };

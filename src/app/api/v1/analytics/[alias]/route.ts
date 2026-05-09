@@ -1,8 +1,11 @@
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { aggregateVisits } from "@/lib/core/analytics";
 import { db } from "@/server/db";
 
-import { validateAndGetToken } from "../../utils";
+import {
+  getApiDomainParamsFromSearchParams,
+  resolveApiDomainForUser,
+  validateAndGetToken,
+} from "../../utils";
 
 import type { NextRequest } from "next/server";
 export async function GET(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
@@ -10,14 +13,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ alias
   const alias = params.alias;
   const apiKey = request.headers.get("x-api-key");
 
-  const searchParams = request.nextUrl.searchParams
-  const query = searchParams.get('domain')
-  const domain = query?.trim() || DEFAULT_PLATFORM_DOMAIN
-
   const token = await validateAndGetToken(apiKey);
   if (!token) {
     return new Response("Invalid or missing API key", { status: 401 });
   }
+
+  const domain = await resolveApiDomainForUser(
+    token.userId,
+    getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
+  );
 
   const link = await db.query.link.findFirst({
     where: (table, { eq, and }) => and(eq(table.alias, alias), eq(table.domain, domain)),

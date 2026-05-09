@@ -1,11 +1,14 @@
 import { and, eq } from "drizzle-orm";
 
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 
-import { validateAndGetToken } from "../../utils";
+import {
+  getApiDomainParamsFromSearchParams,
+  resolveApiDomainForUser,
+  validateAndGetToken,
+} from "../../utils";
 
 import type { NextRequest } from "next/server";
 
@@ -16,14 +19,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ alias
   const alias = params.alias;
   const apiKey = request.headers.get("x-api-key");
 
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get("domain");
-  const domain = query?.trim() || DEFAULT_PLATFORM_DOMAIN;
-
   const token = await validateAndGetToken(apiKey);
   if (!token) {
     return new Response("Invalid or missing API key", { status: 401 });
   }
+
+  const domain = await resolveApiDomainForUser(
+    token.userId,
+    getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
+  );
 
   const retrievedLink = await getLinkByAlias(alias, domain);
   if (!retrievedLink) {
@@ -38,14 +42,15 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
   const alias = params.alias;
   const apiKey = request.headers.get("x-api-key");
 
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get("domain");
-  const domain = query?.trim() || DEFAULT_PLATFORM_DOMAIN;
-
   const token = await validateAndGetToken(apiKey);
   if (!token) {
     return new Response("Invalid or missing API key", { status: 401 });
   }
+
+  const domain = await resolveApiDomainForUser(
+    token.userId,
+    getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
+  );
 
   let updateData: {
     url?: string;
@@ -73,7 +78,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
       }
       return acc;
     },
-    {} as typeof updateData
+    {} as typeof updateData,
   );
 
   if (Object.keys(filteredUpdateData).length === 0) {

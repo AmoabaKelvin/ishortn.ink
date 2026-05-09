@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { db } from "@/server/db";
-import { subscription, token, user } from "@/server/db/schema";
+import { siteSettings, subscription, token, user } from "@/server/db/schema";
 
 export async function validateAndGetToken(apiKey: string | null) {
   if (!apiKey) return null;
@@ -27,4 +28,41 @@ export async function validateAndGetToken(apiKey: string | null) {
   }
 
   return { ...existingToken[0]!, subscription: userSubscription[0] };
+}
+
+function normalizeApiDomain(domain: string | null | undefined) {
+  const normalized = domain?.trim().replace(/\.$/, "").toLowerCase();
+  return normalized || null;
+}
+
+async function getUserDefaultDomain(userId: string) {
+  const settings = await db.query.siteSettings.findFirst({
+    where: eq(siteSettings.userId, userId),
+    columns: {
+      defaultDomain: true,
+    },
+  });
+
+  return normalizeApiDomain(settings?.defaultDomain) ?? DEFAULT_PLATFORM_DOMAIN;
+}
+
+export async function resolveApiDomainForUser(
+  userId: string,
+  input: {
+    domain?: string | null;
+  },
+) {
+  const explicitDomain = normalizeApiDomain(input.domain);
+
+  if (explicitDomain) {
+    return explicitDomain;
+  }
+
+  return getUserDefaultDomain(userId);
+}
+
+export function getApiDomainParamsFromSearchParams(searchParams: URLSearchParams) {
+  return {
+    domain: searchParams.get("domain"),
+  };
 }
