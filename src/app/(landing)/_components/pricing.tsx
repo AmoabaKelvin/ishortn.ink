@@ -1,11 +1,9 @@
-import { PLAN_CAPS } from "@/lib/billing/plans";
+import Link from "next/link";
+
+import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
 import { Icon } from "./warm-primitives";
-
-const fmt = (n: number) => n.toLocaleString();
-const free = PLAN_CAPS.free;
-const pro = PLAN_CAPS.pro;
 
 const buildPlans = (_annual: boolean) =>
   [
@@ -15,35 +13,21 @@ const buildPlans = (_annual: boolean) =>
       cadence: "forever",
       tagline: "For tinkering and side projects.",
       cta: "Start for free",
+      href: "/auth/sign-up?next=%2Fdashboard",
       style: "ghost" as const,
       featured: false,
-      features: [
-        `${fmt(free.linksLimit ?? 0)} links per month`,
-        `${fmt(free.eventsLimit ?? 0)} tracked events`,
-        `${free.analyticsRangeLimitDays}-day analytics window`,
-        "Standard QR codes",
-        "ishortn.ink links",
-      ],
+      features: PLAN_FEATURES.free.features,
     },
     {
       name: "Pro",
       price: PLAN_PRICES_USD.pro,
       cadence: "/month",
       tagline: "For creators, indie makers, and growing teams.",
-      cta: "Try Pro free",
+      cta: "Get Pro",
+      href: "/auth/sign-up?next=%2Fdashboard%2Fpricing%3Fplan%3Dpro",
       style: "accent" as const,
       featured: true,
-      features: [
-        `${fmt(pro.linksLimit ?? 0)} links per month`,
-        `${fmt(pro.eventsLimit ?? 0)} tracked events`,
-        "Unlimited analytics history",
-        `${pro.domainLimit} custom domains`,
-        "Branded + dynamic QR codes",
-        `Geotargeting (up to ${pro.geoRulesLimit} rules/link)`,
-        `Click milestone alerts (${pro.milestonesPerLinkLimit}/link)`,
-        "Link cloaking & password protection",
-        "REST API access",
-      ],
+      features: PLAN_FEATURES.pro.features,
     },
     {
       name: "Ultra",
@@ -51,17 +35,10 @@ const buildPlans = (_annual: boolean) =>
       cadence: "/month",
       tagline: "For studios, agencies, and whoever wants no ceilings.",
       cta: "Go Ultra",
+      href: "/auth/sign-up?next=%2Fdashboard%2Fpricing%3Fplan%3Dultra",
       style: "primary" as const,
       featured: false,
-      features: [
-        "Everything in Pro",
-        "Unlimited links & events",
-        "Unlimited custom domains",
-        "Unlimited geo rules & milestones",
-        "Team workspaces & shared library",
-        "Resource transfer between accounts",
-        "Priority support",
-      ],
+      features: PLAN_FEATURES.ultra.features,
     },
   ];
 
@@ -191,8 +168,8 @@ export const Pricing = () => {
                 </span>
                 <span style={{ fontSize: 13, opacity: 0.6 }}>{p.cadence}</span>
               </div>
-              <button
-                type="button"
+              <Link
+                href={p.href}
                 className={`warm-btn warm-btn-lg ${
                   p.style === "accent"
                     ? "warm-btn-accent"
@@ -207,7 +184,7 @@ export const Pricing = () => {
                 }}
               >
                 {p.cta} <Icon.Arrow />
-              </button>
+              </Link>
               <div
                 style={{
                   height: 1,

@@ -6,7 +6,7 @@ shortDesc: Track your marketing campaigns with built-in UTM parameter support
 category: new
 ---
 
-We're excited to introduce UTM parameter support, making it easier than ever to track the performance of your marketing campaigns directly within iShortn.
+We're excited to introduce UTM parameter support on the Ultra plan, making it easier than ever to track the performance of your marketing campaigns directly within iShortn.
 
 ## What are UTM parameters?
 
@@ -14,7 +14,7 @@ UTM parameters are tags you add to URLs to track where your traffic comes from. 
 
 ## Adding UTM parameters to links
 
-You can now add UTM parameters directly when creating or editing any link:
+On the Ultra plan, you can now add UTM parameters directly when creating or editing a link:
 
 - **utm_source** — Identify where your traffic comes from (e.g., `google`, `newsletter`, `twitter`)
 - **utm_medium** — Track the marketing medium (e.g., `cpc`, `email`, `social`)

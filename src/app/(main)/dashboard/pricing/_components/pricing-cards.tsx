@@ -1,12 +1,14 @@
 "use client";
 
 import { Check, Loader2, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -25,14 +27,7 @@ const plans = [
     description: "For personal use with basic features",
     price: 0,
     period: "forever",
-    features: [
-      "30 links per month",
-      "1,000 tracked events",
-      "7 days analytics history",
-      "30 days data retention",
-      "Basic link customization",
-      "Standard support",
-    ],
+    features: PLAN_FEATURES.free.features,
     limitations: [
       "No custom domains",
       "No folders",
@@ -46,16 +41,7 @@ const plans = [
     price: 5,
     period: "per month",
     popular: true,
-    features: [
-      "1,000 links per month",
-      "10,000 tracked events",
-      "Unlimited analytics history",
-      "1 year data retention",
-      "3 custom domains",
-      "5 folders",
-      "Priority support",
-      "API access",
-    ],
+    features: PLAN_FEATURES.pro.features,
   },
   {
     id: "ultra" as Plan,
@@ -63,29 +49,14 @@ const plans = [
     description: "For teams and power users",
     price: 15,
     period: "per month",
-    features: [
-      "Unlimited links",
-      "Unlimited tracked events",
-      "Unlimited custom domains",
-      "Unlimited folders",
-      "Unlimited data retention",
-      "Dedicated support",
-      "Full API access",
-      "Advanced analytics",
-      "UTM tracking",
-      "Team collaboration",
-    ],
-    comingSoon: [
-      "Customization of password protected pages",
-      "Device targeting",
-      "Geo targeting",
-      "Time-based routing",
-      "Conversion tracking",
-    ],
+    features: PLAN_FEATURES.ultra.features,
+    comingSoon: PLAN_FEATURES.ultra.comingSoon,
   },
 ];
 
 export function PricingCards({ currentPlan }: PricingCardsProps) {
+  const searchParams = useSearchParams();
+  const autoCheckoutFired = useRef(false);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
   const [targetDowngradePlan, setTargetDowngradePlan] = useState<Exclude<
@@ -149,6 +120,24 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
     setTargetDowngradePlan(targetPlan as Exclude<Plan, "ultra">);
     setDowngradeModalOpen(true);
   };
+
+  // Auto-start checkout when arriving with ?plan=pro|ultra (e.g. right after signup).
+  useEffect(() => {
+    if (autoCheckoutFired.current) return;
+
+    const requestedPlan = searchParams?.get("plan");
+    if (requestedPlan !== "pro" && requestedPlan !== "ultra") return;
+
+    const targetPlan = plans.find((p) => p.id === requestedPlan);
+    if (!targetPlan) return;
+
+    const canUpgrade =
+      getPlanOrder(targetPlan.id) > getPlanOrder(currentPlan);
+    if (!canUpgrade) return;
+
+    autoCheckoutFired.current = true;
+    handleUpgrade(targetPlan);
+  }, [searchParams, currentPlan]);
 
   return (
     <div className="space-y-8">

@@ -55,14 +55,14 @@ const items: FeatureItem[] = [
   {
     title: "Password-protect & cloak",
     body:
-      "Gate sensitive links behind a password, or keep your short URL visible while the destination loads. Both ship on every plan.",
+      "Gate sensitive links behind a password, or keep your short URL visible while the destination loads. Password protection comes with every paid plan; cloaking is an Ultra feature.",
     bg: "#F0E6CF",
     visual: "lock",
   },
   {
     title: "UTM templates that auto-apply",
     body:
-      "Save your UTM presets once, apply them to any link with a click. No more hand-typing utm_source on every campaign.",
+      "Save your UTM presets once, then apply them with a click on Ultra. No more hand-typing utm_source on every campaign.",
     bg: "var(--warm-paper)",
     visual: "utm",
   },
