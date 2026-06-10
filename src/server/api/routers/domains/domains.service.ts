@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, ne } from "drizzle-orm";
 
+import { PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
 import { customDomain, link, linkVisit } from "@/server/db/schema";
 import {
   requirePermission,
@@ -29,6 +30,25 @@ export async function addDomainToUserAccount(
 
   if (!userSubscription || userSubscription.status !== "active") {
     throw new Error("You need to have an active subscription to add a custom domain");
+  }
+
+  // Enforce the per-plan custom-domain cap (workspace-scoped)
+  const plan = resolvePlan(userSubscription);
+  const domainLimit = PLAN_CAPS[plan].domainLimit;
+
+  if (domainLimit !== undefined) {
+    const existingDomainsCount = await ctx.db
+      .select({ count: count() })
+      .from(customDomain)
+      .where(workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId));
+
+    const existingCount = existingDomainsCount[0]?.count ?? 0;
+
+    if (existingCount >= domainLimit) {
+      throw new Error(
+        `You've reached your plan's limit of ${domainLimit} custom domains. Upgrade to add more.`,
+      );
+    }
   }
 
   // remove http, https, and www. from the domain
