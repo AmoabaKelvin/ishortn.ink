@@ -26,7 +26,7 @@ export const metadata: Metadata = {
       "iShortn — Links, made lovely. Free URL shortener with analytics",
   },
   description:
-    "Shorten URLs for free with iShortn. Create branded short links, track clicks and conversions, generate QR codes, and use custom domains. The best free URL shortener with powerful analytics.",
+    "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains. The best free URL shortener with powerful analytics.",
   keywords: [
     "url shortener",
     "free url shortener",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     title:
       "iShortn — Links, made lovely. Free URL shortener with analytics",
     description:
-      "Shorten URLs for free with iShortn. Create branded short links, track clicks and conversions, generate QR codes, and use custom domains.",
+      "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
     type: "website",
   },
   twitter: {
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     title:
       "iShortn — Links, made lovely. Free URL shortener with analytics",
     description:
-      "Shorten URLs for free with iShortn. Create branded short links, track clicks and conversions, generate QR codes, and use custom domains.",
+      "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
   },
 };
 

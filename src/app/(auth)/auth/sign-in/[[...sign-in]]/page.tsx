@@ -5,12 +5,17 @@ import { warmClerkAppearance } from "../../_shared/clerk-appearance";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ url?: string }>;
+  searchParams: Promise<{ url?: string; next?: string }>;
 }) {
-  const { url } = await searchParams;
-  const afterSignInUrl = url
-    ? `/dashboard/link/new?url=${encodeURIComponent(url)}`
-    : "/dashboard";
+  const { url, next } = await searchParams;
+  // `next` is an internal destination to land on after auth (e.g. checkout).
+  // Restrict to same-origin paths to avoid open redirects.
+  const safeNext = next && /^\/(?![/\\])/.test(next) ? next : null;
+  const afterSignInUrl = safeNext
+    ? safeNext
+    : url
+      ? `/dashboard/link/new?url=${encodeURIComponent(url)}`
+      : "/dashboard";
 
   return (
     <SignIn

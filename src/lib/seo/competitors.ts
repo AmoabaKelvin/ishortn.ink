@@ -17,7 +17,7 @@ export const competitors = {
       "Bitly's free plan only allows 5 links per month — iShortn gives you 30",
       "Bitly free links may show interstitial ad pages before redirecting",
       "Bitly charges $35/month for Core — iShortn Pro is just $5/month",
-      "iShortn includes full analytics, QR codes, and password protection on all plans",
+      "iShortn includes full analytics and QR codes on all plans, plus password protection on Pro and Ultra",
       "No API access on Bitly free — iShortn Pro includes full API for $5/month",
     ],
   },

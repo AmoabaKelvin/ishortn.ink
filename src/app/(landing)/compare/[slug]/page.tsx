@@ -52,7 +52,7 @@ const ishortn = {
   qrCodes: "All plans — branded + dynamic on Pro and Ultra",
   apiAccess: "Pro and Ultra",
   teamFeatures: "Ultra plan",
-  passwordProtection: "All plans",
+  passwordProtection: "Pro and Ultra",
   pricing: "Free forever, Pro $5/mo, Ultra $15/mo",
 };
 
