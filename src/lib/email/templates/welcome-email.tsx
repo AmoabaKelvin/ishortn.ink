@@ -1,15 +1,14 @@
 import {
-	Body,
-	Button,
-	Container,
-	Head,
-	Hr,
-	Html,
-	Img,
-	Link,
-	Preview,
-	Section,
-	Text,
+  Body,
+  Button,
+  Container,
+  Head,
+  Hr,
+  Html,
+  Link,
+  Preview,
+  Section,
+  Text,
 } from "@react-email/components";
 import { render } from "@react-email/render";
 
@@ -17,29 +16,20 @@ interface WelcomeEmailProps {
   userFirstname: string;
 }
 
-const baseUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000/";
-
 export const WelcomeEmail = ({ userFirstname }: WelcomeEmailProps) => (
   <Html>
     <Head />
     <Preview>iShortn - Free and open-source URL shortener</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img
-          src={`${baseUrl}/images/logo-text-white.png`}
-          width="170"
-          height="70"
-          alt="iShortn"
-          style={logo}
-        />
         <Text style={paragraph}>Hi {userFirstname ? userFirstname : "there"},</Text>
         <Text style={paragraph}>Welcome and signing up to iShortn!</Text>
         <Text style={paragraph}>
           It&apos;s great to have you onboard our fleet of users. Just incase you have a concern or
           a feature request you will want to share with us, feel free to reach out to me at{" "}
-          <Link href="mailto:kelvin@ishortn.ink">kelvin@ishortn.ink</Link>
+          <Link href="mailto:kelvin@ishortn.ink" style={link}>
+            kelvin@ishortn.ink
+          </Link>
         </Text>
         <Section style={btnContainer}>
           <Button style={button} href="https://ishortn.ink/dashboard">
@@ -56,7 +46,10 @@ export const WelcomeEmail = ({ userFirstname }: WelcomeEmailProps) => (
         <Hr style={hr} />
         <Text style={footer}>
           Incase you need an engineer on your team or a freelancer, I am available for hire. You can
-          check out my portfolio at <Link href="https://kelvinamoaba.lice">kelvinamoaba.live</Link>
+          check out my portfolio at{" "}
+          <Link href="https://kelvinamoaba.com" style={link}>
+            kelvinamoaba.com
+          </Link>
         </Text>
       </Container>
     </Body>
@@ -74,24 +67,27 @@ WelcomeEmail.PreviewProps = {
 export default WelcomeEmail;
 
 const main = {
-  backgroundColor: "#111827",
-  color: "#f0f0f0",
+  backgroundColor: "#ffffff",
+  color: "#000000",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
 
 const container = {
   margin: "0 auto",
-  padding: "20px 0 48px",
-};
-
-const logo = {
-  margin: "0 auto",
+  maxWidth: "560px",
+  padding: "32px 20px 48px",
 };
 
 const paragraph = {
+  color: "#000000",
   fontSize: "16px",
   lineHeight: "26px",
+};
+
+const link = {
+  color: "#000000",
+  textDecoration: "underline",
 };
 
 const btnContainer = {
@@ -99,22 +95,23 @@ const btnContainer = {
 };
 
 const button = {
-  backgroundColor: "#5F51E8",
-  borderRadius: "3px",
+  backgroundColor: "#2563eb",
+  borderRadius: "4px",
   color: "#fff",
   fontSize: "16px",
   textDecoration: "none",
   textAlign: "center" as const,
-  display: "block",
-  padding: "12px",
+  display: "inline-block",
+  padding: "12px 18px",
 };
 
 const hr = {
-  borderColor: "#cccccc",
+  borderColor: "#e5e5e5",
   margin: "20px 0",
 };
 
 const footer = {
-  color: "#8898aa",
+  color: "#000000",
   fontSize: "12px",
+  lineHeight: "20px",
 };
