@@ -428,6 +428,20 @@
       "when": 1777891200000,
       "tag": "0060_fix_audience_feedback_collation",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1781808197767,
+      "tag": "0061_tan_supreme_intelligence",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "5",
+      "when": 1781810597825,
+      "tag": "0062_abnormal_stranger",
+      "breakpoints": true
     }
   ]
 }
