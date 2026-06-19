@@ -1,8 +1,9 @@
 "use client";
 
 import { ArrowUpRightIcon, CheckIcon, Loader2 } from "lucide-react";
-import posthog from "posthog-js";
 
+import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { clientLogger } from "@/lib/logger/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,18 +18,7 @@ import {
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
 
-const proPlanBenefits = [
-  "Custom domains for link shortening",
-  "Unlimited advanced QR codes",
-  "Advanced analytics",
-  "Unlimited tracked links",
-  "1 year of analytics data retention",
-  "Password-protected links",
-  "Bulk link creation via CSV",
-  "API access",
-  "Geotargeting",
-  "Priority support",
-];
+const proPlanBenefits = PLAN_FEATURES.pro.features;
 
 export function UpgradeToPro() {
   const upgradeMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation();
@@ -53,7 +43,7 @@ export function UpgradeToPro() {
           className="flex justify-between py-6"
           variant="outline"
           onClick={() => {
-            posthog.capture("upgrade_to_pro_clicked");
+            trackUpgradeClick("upgrade_modal");
           }}
         >
           <div>

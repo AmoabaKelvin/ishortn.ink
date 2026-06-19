@@ -1,6 +1,7 @@
 import type { Subscription } from "@/server/db/schema";
 
 export type Plan = "free" | "pro" | "ultra";
+export type BillingInterval = "monthly" | "annual";
 
 type PlanCaps = {
   eventsLimit?: number; // undefined => unlimited
@@ -12,20 +13,40 @@ type PlanCaps = {
   milestonesPerLinkLimit?: number; // Max milestones per link (undefined => unlimited)
 };
 
-const PRO_VARIANT_IDS = new Set([441105, 415248]);
+// Lemon Squeezy variant IDs per plan + billing interval.
+// NOTE: these are hardcoded live IDs. The recommended hardening is to move them
+// to env vars so Live/Test never drift (see billing follow-up).
+const PRO_MONTHLY_VARIANT_ID = 1811616; // $8/mo — new signups
+const PRO_LEGACY_MONTHLY_VARIANT_ID = 441105; // $5/mo — grandfathered subscribers
+const PRO_ANNUAL_VARIANT_ID = 1809620;
+const ULTRA_MONTHLY_VARIANT_ID = 1108002;
+const ULTRA_ANNUAL_VARIANT_ID = 1809627;
+
+// Recognition sets for getPlanFromIds (include legacy/test-mode variant ids).
+const PRO_VARIANT_IDS = new Set([
+  PRO_MONTHLY_VARIANT_ID,
+  PRO_LEGACY_MONTHLY_VARIANT_ID,
+  PRO_ANNUAL_VARIANT_ID,
+  415248,
+]);
 const PRO_PRODUCT_IDS = new Set([441105, 306137]); // include known sample payload product_id
-const ULTRA_VARIANT_IDS = new Set([1108002, 1134595]);
+const ULTRA_VARIANT_IDS = new Set([ULTRA_MONTHLY_VARIANT_ID, ULTRA_ANNUAL_VARIANT_ID, 1134595]);
 const ULTRA_PRODUCT_IDS = new Set([1108002]);
 
-export const PLAN_VARIANT_IDS: Record<Exclude<Plan, "free">, number> = {
-  // todo: make sure you change these back before pushing
-  pro: 441105,
-  ultra: 1108002,
+const ANNUAL_VARIANT_IDS = new Set([PRO_ANNUAL_VARIANT_ID, ULTRA_ANNUAL_VARIANT_ID]);
 
-  // test mode ids
-  // pro: 415248,
-  // ultra: 1134595,
+export const PLAN_VARIANT_IDS: Record<Exclude<Plan, "free">, Record<BillingInterval, number>> = {
+  pro: { monthly: PRO_MONTHLY_VARIANT_ID, annual: PRO_ANNUAL_VARIANT_ID },
+  ultra: { monthly: ULTRA_MONTHLY_VARIANT_ID, annual: ULTRA_ANNUAL_VARIANT_ID },
 };
+
+export function getVariantId(plan: Exclude<Plan, "free">, interval: BillingInterval): number {
+  return PLAN_VARIANT_IDS[plan][interval];
+}
+
+export function getIntervalFromVariantId(variantId?: number | null): BillingInterval {
+  return variantId && ANNUAL_VARIANT_IDS.has(variantId) ? "annual" : "monthly";
+}
 
 export const PLAN_CAPS: Record<Plan, PlanCaps> = {
   free: {
@@ -49,10 +70,7 @@ export const PLAN_CAPS: Record<Plan, PlanCaps> = {
   },
 };
 
-export function getPlanFromIds(
-  variantId?: number | null,
-  productId?: number | null
-): Plan | null {
+export function getPlanFromIds(variantId?: number | null, productId?: number | null): Plan | null {
   if (variantId && ULTRA_VARIANT_IDS.has(variantId)) return "ultra";
   if (productId && ULTRA_PRODUCT_IDS.has(productId)) return "ultra";
   if (variantId && PRO_VARIANT_IDS.has(variantId)) return "pro";
@@ -60,20 +78,41 @@ export function getPlanFromIds(
   return null;
 }
 
+// Lemon Squeezy statuses that grant paid access outright.
+const ENTITLED_STATUSES = new Set(["active", "on_trial", "past_due"]);
+
+/**
+ * Whether a subscription currently grants paid access. Honors the paid period:
+ * active/on_trial/past_due are entitled, and a `cancelled` subscription stays
+ * entitled until its `endsAt` passes (users keep access until the end of the
+ * period they already paid for).
+ */
+export function isSubscriptionEntitled(subscription?: Subscription | null): boolean {
+  if (!subscription) return false;
+
+  const status = subscription.status ?? "";
+  if (ENTITLED_STATUSES.has(status)) return true;
+
+  if (status === "cancelled" && subscription.endsAt) {
+    return subscription.endsAt.getTime() > Date.now();
+  }
+
+  return false;
+}
+
 export function resolvePlan(subscription?: Subscription | null): Plan {
-  if (!subscription || subscription.status !== "active") {
+  if (!subscription || !isSubscriptionEntitled(subscription)) {
     return "free";
   }
 
   const mappedPlan =
-    getPlanFromIds(subscription.variantId, subscription.productId) ??
-    subscription.plan;
+    getPlanFromIds(subscription.variantId, subscription.productId) ?? subscription.plan;
 
   if (mappedPlan === "ultra" || mappedPlan === "pro") {
     return mappedPlan;
   }
 
-  return "pro"; // active subscription without recognized plan defaults to pro
+  return "pro"; // entitled subscription without recognized plan defaults to pro
 }
 
 export function getPlanCaps(plan: Plan): PlanCaps {

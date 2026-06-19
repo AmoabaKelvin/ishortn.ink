@@ -72,7 +72,7 @@ export function AddCustomDomainModal() {
     });
   };
 
-  const isProUser = userSubscription?.subscriptions?.status === "active";
+  const isProUser = (userSubscription?.plan ?? "free") !== "free";
 
   const canAddDomains =
     workspace?.type === "personal" ||

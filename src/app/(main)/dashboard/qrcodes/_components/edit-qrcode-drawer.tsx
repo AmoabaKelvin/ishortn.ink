@@ -174,9 +174,9 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
     });
   }
 
-  const subscriptionStatus = userSubscription?.data?.subscriptions;
-  const isUltraUser = subscriptionStatus?.plan === "ultra";
-  const isProOrUltraUser = subscriptionStatus?.status === "active";
+  const resolvedPlan = userSubscription?.data?.plan ?? "free";
+  const isUltraUser = resolvedPlan === "ultra";
+  const isProOrUltraUser = resolvedPlan !== "free";
 
   const scans = qr.visitCount ?? 0;
 

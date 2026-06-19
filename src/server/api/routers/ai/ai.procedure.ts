@@ -1,4 +1,7 @@
 import { z } from "zod";
+
+import { isSubscriptionEntitled } from "@/lib/billing/plans";
+
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
 import { generateAliasFromMetadata } from "./ai.service";
 
@@ -14,7 +17,7 @@ export const aiRouter = createTRPCRouter({
       where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
     });
 
-    if (!userSubscription || userSubscription.status !== "active") {
+    if (!isSubscriptionEntitled(userSubscription)) {
       throw new Error("You need an active subscription to use AI features");
     }
     const alias = await generateAliasFromMetadata(input);

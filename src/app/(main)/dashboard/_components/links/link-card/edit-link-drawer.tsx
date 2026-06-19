@@ -216,7 +216,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
               : POSTHOG_EVENTS.VERIFIED_CLICKS_DISABLED,
             {
               linkId: link.id,
-              plan: subscriptionStatus?.plan ?? "free",
+              plan: userSubscription?.data?.plan ?? "free",
               source: "edit",
             },
           );
@@ -231,9 +231,9 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     );
   }
 
-  const subscriptionStatus = userSubscription?.data?.subscriptions;
-  const isUltraUser = subscriptionStatus?.plan === "ultra";
-  const isProOrUltraUser = subscriptionStatus?.status === "active";
+  const resolvedPlan = userSubscription?.data?.plan ?? "free";
+  const isUltraUser = resolvedPlan === "ultra";
+  const isProOrUltraUser = resolvedPlan !== "free";
 
   // Watch the URL field for debouncing
   const watchedUrl = form.watch("url");

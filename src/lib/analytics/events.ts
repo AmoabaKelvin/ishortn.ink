@@ -41,6 +41,10 @@ export const POSTHOG_EVENTS = {
   // Subscription events
   SUBSCRIPTION_UPGRADED: "subscription_upgraded",
   SUBSCRIPTION_DOWNGRADED: "subscription_downgraded",
+
+  // Upgrade prompt events
+  PLAN_LIMIT_REACHED: "plan_limit_reached",
+  UPGRADE_PROMPT_CLICKED: "upgrade_prompt_clicked",
 } as const;
 
 type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];
@@ -48,10 +52,7 @@ type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];
 /**
  * Track an event in PostHog
  */
-export function trackEvent(
-  eventName: PostHogEventName,
-  properties?: Record<string, unknown>
-) {
+export function trackEvent(eventName: PostHogEventName, properties?: Record<string, unknown>) {
   if (typeof window !== "undefined") {
     posthog.capture(eventName, properties);
   }

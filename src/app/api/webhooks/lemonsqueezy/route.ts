@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
+import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
-import { getPlanFromIds } from "@/lib/billing/plans";
+import { getIntervalFromVariantId, getPlanFromIds } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
 import { webhookHasMeta } from "@/lib/typeguards";
 import { runBackgroundTask } from "@/lib/utils/background";
@@ -67,6 +67,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     const productId = lemonsqueezySubscription.product_id;
     const variantId = lemonsqueezySubscription.variant_id;
     const plan = getPlanFromIds(variantId, productId) ?? "pro";
+    const billingInterval = getIntervalFromVariantId(variantId);
 
     // payment data
     const cardBrand = lemonsqueezySubscription.card_brand;
@@ -94,6 +95,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
           orderId,
           status,
           plan,
+          billingInterval,
           variantId,
           productId,
           cardBrand,
@@ -103,8 +105,18 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
           endsAt: endsAt ? new Date(endsAt) : null,
         })
         .onDuplicateKeyUpdate({
+          // A returning customer already has a row, so refresh the full
+          // subscription state — not just status/dates — or their plan,
+          // interval, and subscriptionId would stay stale.
           set: {
+            subscriptionId,
+            customerId,
+            orderId,
             status,
+            plan,
+            billingInterval,
+            variantId,
+            productId,
             cardBrand,
             cardLastFour,
             renewsAt: new Date(renewsAt),
@@ -117,10 +129,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
       const emailPlan = plan === "ultra" ? "ultra" : "pro";
 
       if (!email) {
-        log.error(
-          { event: event_name, subscriptionId, userId },
-          "user has no email for welcome",
-        );
+        log.error({ event: event_name, subscriptionId, userId }, "user has no email for welcome");
         return;
       }
 
@@ -138,6 +147,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
         .set({
           status,
           plan,
+          billingInterval,
           variantId,
           productId,
           renewsAt: renewsAt ? new Date(renewsAt) : null,
@@ -147,13 +157,12 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
         })
         .where(eq(subscription.userId, userId));
     } else if (event_name === "subscription_cancelled") {
+      // Keep the plan/variant intact — a cancelled subscription stays entitled
+      // until endsAt. resolvePlan() drops it to free once that date passes.
       await db
         .update(subscription)
         .set({
           status,
-          plan: "free",
-          variantId: 0,
-          productId: 0,
           endsAt: endsAt ? new Date(endsAt) : null,
         })
         .where(eq(subscription.userId, userId));
@@ -175,9 +184,6 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     // Catch-and-log here (rather than letting runBackgroundTask's generic
     // handler do it) so prod logs include the webhook context needed to
     // triage failures on money-moving events.
-    log.error(
-      { err, event: event_name, subscriptionId, userId },
-      "processing failed",
-    );
+    log.error({ err, event: event_name, subscriptionId, userId }, "processing failed");
   }
 }

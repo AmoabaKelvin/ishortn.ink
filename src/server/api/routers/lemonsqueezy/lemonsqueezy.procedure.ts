@@ -8,7 +8,11 @@ import {
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { PLAN_VARIANT_IDS, resolvePlan } from "@/lib/billing/plans";
+import {
+  getIntervalFromVariantId,
+  getVariantId,
+  resolvePlan,
+} from "@/lib/billing/plans";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
@@ -28,13 +32,14 @@ export const lemonsqueezyRouter = createTRPCRouter({
     .input(
       z.object({
         plan: z.enum(["pro", "ultra"]),
+        interval: z.enum(["monthly", "annual"]).default("monthly"),
       })
     )
     .mutation(async ({ ctx, input }) => {
       configureLemonSqueezy();
 
       const userId = ctx.auth.userId;
-      const variantId = PLAN_VARIANT_IDS[input.plan];
+      const variantId = getVariantId(input.plan, input.interval);
 
       const user = await ctx.db.query.user.findFirst({
         where: (table, { eq }) => eq(table.id, userId),
@@ -77,6 +82,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
             .update(subscription)
             .set({
               plan: input.plan,
+              billingInterval: input.interval,
               variantId: variantId,
               status: updatedSub.data.data.attributes.status,
               endsAt: updatedSub.data.data.attributes.ends_at
@@ -151,10 +157,9 @@ export const lemonsqueezyRouter = createTRPCRouter({
       await ctx.db
         .update(subscription)
         .set({
+          // Keep plan/variant — access is retained until endsAt; resolvePlan()
+          // drops the user to free once that date passes.
           status: cancelledSub.data?.data.attributes.status,
-          plan: "free",
-          variantId: 0,
-          productId: 0,
           endsAt: cancelledSub.data?.data.attributes.ends_at
             ? new Date(cancelledSub.data?.data.attributes.ends_at)
             : null,
@@ -268,10 +273,9 @@ export const lemonsqueezyRouter = createTRPCRouter({
         await ctx.db
           .update(subscription)
           .set({
+            // Keep plan/variant — access is retained until endsAt, matching the
+            // message below; resolvePlan() drops to free once that date passes.
             status: cancelledSub.data?.data.attributes.status,
-            plan: "free",
-            variantId: 0,
-            productId: 0,
             endsAt: cancelledSub.data?.data.attributes.ends_at
               ? new Date(cancelledSub.data?.data.attributes.ends_at)
               : null,
@@ -285,8 +289,9 @@ export const lemonsqueezyRouter = createTRPCRouter({
         };
       }
 
-      // Handle downgrade to pro (from ultra)
-      const variantId = PLAN_VARIANT_IDS[targetPlan];
+      // Handle downgrade to pro (from ultra) — preserve the current interval.
+      const interval = getIntervalFromVariantId(userSubscription.variantId);
+      const variantId = getVariantId(targetPlan, interval);
 
       const updatedSub = await updateSubscription(
         userSubscription.subscriptionId!,
@@ -304,6 +309,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
         .update(subscription)
         .set({
           plan: targetPlan,
+          billingInterval: interval,
           variantId: variantId,
           status: updatedSub.data.data.attributes.status,
           endsAt: updatedSub.data.data.attributes.ends_at
