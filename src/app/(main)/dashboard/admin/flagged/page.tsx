@@ -148,6 +148,18 @@ export default function AdminFlaggedLinksPage() {
                         {f.reason}
                       </p>
                     )}
+                    {f.details && (
+                      <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
+                        <span className="font-medium text-neutral-600 dark:text-neutral-400">Details:</span>{" "}
+                        {f.details}
+                      </p>
+                    )}
+                    {f.reporterEmail && (
+                      <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
+                        <span className="font-medium text-neutral-600 dark:text-neutral-400">Reporter:</span>{" "}
+                        {f.reporterEmail}
+                      </p>
+                    )}
                     <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
                       Flagged{" "}
                       {f.flaggedAt

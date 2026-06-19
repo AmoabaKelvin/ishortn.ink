@@ -33,13 +33,10 @@ const getDomain = (incomingDomain: string | null): string => {
   return DEFAULT_DOMAIN;
 };
 
-export async function generateMetadata(
-  props: LinkRedirectionPageProps
-): Promise<Metadata> {
+export async function generateMetadata(props: LinkRedirectionPageProps): Promise<Metadata> {
   const params = await props.params;
   const headersList = await headers();
-  const incomingDomain =
-    headersList.get("x-forwarded-host") ?? headersList.get("host");
+  const incomingDomain = headersList.get("x-forwarded-host") ?? headersList.get("host");
   const domain = getDomain(incomingDomain);
 
   if (params.linkAlias.toLowerCase().endsWith(".png")) {
@@ -82,8 +79,7 @@ const cleanAlias = (incomingAlias: string): string => {
 const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
   const params = await props.params;
   const headersList = await headers();
-  const incomingDomain =
-    headersList.get("x-forwarded-host") ?? headersList.get("host");
+  const incomingDomain = headersList.get("x-forwarded-host") ?? headersList.get("host");
   const userAgent = headersList.get("user-agent");
   const domain = getDomain(incomingDomain);
 
@@ -98,6 +94,11 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
   });
 
   if (!link) return notFound();
+
+  // Blocked links must never resolve, preview, or redirect.
+  if (link.blocked) {
+    redirect(`/blocked/${link.id}`);
+  }
 
   // Check link expiration (disabled flag and date-based)
   if (link.disabled) {

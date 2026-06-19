@@ -1,3 +1,4 @@
+import { abuseRouter } from "./routers/abuse/abuse.procedure";
 import { accountTransferRouter } from "./routers/account-transfer/account-transfer.procedure";
 import { adminRouter } from "./routers/admin/admin.procedure";
 import { aiRouter } from "./routers/ai/ai.procedure";
@@ -21,6 +22,7 @@ import { utmTemplateRouter } from "./routers/utm-template/utm-template.router";
 import { createTRPCRouter } from "./trpc";
 
 export const appRouter = createTRPCRouter({
+  abuse: abuseRouter,
   accountTransfer: accountTransferRouter,
   admin: adminRouter,
   link: linkRouter,

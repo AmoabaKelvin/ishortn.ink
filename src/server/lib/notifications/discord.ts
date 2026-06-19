@@ -1,5 +1,5 @@
-import { formatAudienceFeedbackLabel } from "@/lib/audience-feedback/labels";
 import { env } from "@/env.mjs";
+import { formatAudienceFeedbackLabel } from "@/lib/audience-feedback/labels";
 import { logger } from "@/lib/logger";
 
 const log = logger.child({ notification: "discord" });
@@ -182,6 +182,43 @@ function formatOptionalDiscordValue(value?: string | null): string {
   return truncateDiscordField(value);
 }
 
+export async function sendAbuseReportNotification(params: {
+  shortUrl: string;
+  destinationUrl?: string | null;
+  category: string;
+  reporterEmail?: string | null;
+  details?: string | null;
+}): Promise<boolean> {
+  const embed: DiscordEmbed = {
+    title: "Abuse Report",
+    color: DISCORD_COLORS.error,
+    fields: [
+      { name: "Short Link", value: truncateDiscordField(params.shortUrl), inline: true },
+      { name: "Category", value: params.category, inline: true },
+      {
+        name: "Destination",
+        value: formatOptionalDiscordValue(params.destinationUrl),
+        inline: false,
+      },
+      {
+        name: "Reporter Email",
+        value: formatOptionalDiscordValue(params.reporterEmail),
+        inline: true,
+      },
+      {
+        name: "Details",
+        value: formatOptionalDiscordValue(params.details),
+        inline: false,
+      },
+    ],
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: "iShortn Abuse Report",
+    },
+  };
+
+  return sendDiscordNotification({ embeds: [embed] });
+}
 
 export async function sendAudienceFeedbackNotification(params: {
   userEmail: string;

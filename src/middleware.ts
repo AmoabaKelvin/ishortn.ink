@@ -16,7 +16,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   const { pathname, host, origin } = new URL(request.url);
 
-  const staticRoutes = ["/blog", "/changelog", "/privacy", "/terms", "/auth", "/features", "/pricing", "/compare"];
+  const staticRoutes = ["/blog", "/changelog", "/privacy", "/terms", "/abuse", "/auth", "/features", "/pricing", "/compare"];
 
   const shouldSkip =
     pathname === "/" ||
