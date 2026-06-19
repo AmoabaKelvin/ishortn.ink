@@ -14,11 +14,16 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
+import {
+  buildPlanChangeCopy,
+  PlanChangeConfirmDialog,
+} from "./plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan } from "@/lib/billing/plans";
 
 type PricingCardsProps = {
   currentPlan: Plan;
+  currentInterval: BillingInterval;
 };
 
 const plans = [
@@ -51,7 +56,7 @@ const plans = [
   },
 ];
 
-export function PricingCards({ currentPlan }: PricingCardsProps) {
+export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps) {
   const searchParams = useSearchParams();
   const autoCheckoutFired = useRef(false);
   const [interval, setIntervalState] = useState<BillingInterval>(
@@ -62,6 +67,11 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
   const [targetDowngradePlan, setTargetDowngradePlan] = useState<Exclude<Plan, "ultra"> | null>(
     null,
   );
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingChange, setPendingChange] = useState<{
+    plan: (typeof plans)[number];
+    kind: "switch" | "upgrade";
+  } | null>(null);
 
   const createCheckoutOrUpdateMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
     onSuccess: (data) => {
@@ -98,13 +108,26 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
     },
   });
 
-  const handleUpgrade = (plan: (typeof plans)[number]) => {
+  const runUpgrade = (plan: (typeof plans)[number]) => {
     if (plan.id === "free") return;
     setLoadingPlan(plan.id);
     createCheckoutOrUpdateMutation.mutate({
       plan: plan.id as Exclude<Plan, "free">,
       interval,
     });
+  };
+
+  const requestUpgrade = (plan: (typeof plans)[number], kind: "switch" | "upgrade") => {
+    if (plan.id === "free") return;
+    // Free → paid goes through the Lemon Squeezy hosted checkout (its own
+    // confirmation). In-place changes for an existing paid subscriber charge
+    // the card immediately, so confirm those first.
+    if (currentPlan === "free") {
+      runUpgrade(plan);
+      return;
+    }
+    setPendingChange({ plan, kind });
+    setConfirmOpen(true);
   };
 
   const handleManageSubscription = (planId: Plan) => {
@@ -137,8 +160,16 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
     if (!canUpgrade) return;
 
     autoCheckoutFired.current = true;
-    handleUpgrade(targetPlan);
+    requestUpgrade(targetPlan, "upgrade");
   }, [searchParams, currentPlan]);
+
+  const confirmCopy = pendingChange
+    ? buildPlanChangeCopy(
+        pendingChange.kind,
+        pendingChange.plan.id as Exclude<Plan, "free">,
+        interval,
+      )
+    : null;
 
   return (
     <div className="space-y-8">
@@ -182,6 +213,10 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
           const isCurrentPlan = plan.id === currentPlan;
           const canUpgrade = getPlanOrder(plan.id) > getPlanOrder(currentPlan);
           const canDowngrade = getPlanOrder(plan.id) < getPlanOrder(currentPlan);
+          // Same tier, but the toggle points at the other billing interval —
+          // offer a switch instead of "Manage Subscription".
+          const canSwitchInterval =
+            isCurrentPlan && plan.id !== "free" && interval !== currentInterval;
 
           return (
             <div
@@ -240,7 +275,16 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
 
               {/* CTA Button */}
               <div className="mb-6">
-                {isCurrentPlan ? (
+                {canSwitchInterval ? (
+                  <Button
+                    className="w-full"
+                    onClick={() => requestUpgrade(plan, "switch")}
+                    disabled={loadingPlan !== null}
+                  >
+                    {loadingPlan === plan.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Switch to {interval === "annual" ? "annual" : "monthly"} billing
+                  </Button>
+                ) : isCurrentPlan ? (
                   <Button
                     variant="outline"
                     className="w-full"
@@ -258,7 +302,7 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
                         ? "bg-gray-900 hover:bg-gray-800 dark:bg-muted dark:hover:bg-accent dark:text-foreground"
                         : "",
                     )}
-                    onClick={() => handleUpgrade(plan)}
+                    onClick={() => requestUpgrade(plan, "upgrade")}
                     disabled={loadingPlan !== null}
                   >
                     {loadingPlan === plan.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -350,6 +394,19 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
           targetPlanName={
             plans.find((p) => p.id === targetDowngradePlan)?.name ?? targetDowngradePlan
           }
+        />
+      )}
+
+      {pendingChange && confirmCopy && (
+        <PlanChangeConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={confirmCopy.title}
+          description={confirmCopy.description}
+          note={confirmCopy.note}
+          confirmLabel={confirmCopy.confirmLabel}
+          isLoading={createCheckoutOrUpdateMutation.isLoading}
+          onConfirm={() => runUpgrade(pendingChange.plan)}
         />
       )}
     </div>
