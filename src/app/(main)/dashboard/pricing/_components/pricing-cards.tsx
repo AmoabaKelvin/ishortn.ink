@@ -9,12 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
+import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
 
-import type { Plan } from "@/lib/billing/plans";
+import type { BillingInterval, Plan } from "@/lib/billing/plans";
 
 type PricingCardsProps = {
   currentPlan: Plan;
@@ -25,21 +26,17 @@ const plans = [
     id: "free" as Plan,
     name: "Free",
     description: "For personal use with basic features",
-    price: 0,
-    period: "forever",
+    monthlyPrice: PLAN_PRICES_USD.free,
+    annualPrice: PLAN_PRICES_USD.free,
     features: PLAN_FEATURES.free.features,
-    limitations: [
-      "No custom domains",
-      "No folders",
-      "Limited analytics",
-    ],
+    limitations: ["No custom domains", "No folders", "Limited analytics"],
   },
   {
     id: "pro" as Plan,
     name: "Pro",
     description: "For creators and small businesses",
-    price: 5,
-    period: "per month",
+    monthlyPrice: PLAN_PRICES_USD.pro,
+    annualPrice: PLAN_PRICES_ANNUAL_USD.pro,
     popular: true,
     features: PLAN_FEATURES.pro.features,
   },
@@ -47,8 +44,8 @@ const plans = [
     id: "ultra" as Plan,
     name: "Ultra",
     description: "For teams and power users",
-    price: 15,
-    period: "per month",
+    monthlyPrice: PLAN_PRICES_USD.ultra,
+    annualPrice: PLAN_PRICES_ANNUAL_USD.ultra,
     features: PLAN_FEATURES.ultra.features,
     comingSoon: PLAN_FEATURES.ultra.comingSoon,
   },
@@ -57,12 +54,14 @@ const plans = [
 export function PricingCards({ currentPlan }: PricingCardsProps) {
   const searchParams = useSearchParams();
   const autoCheckoutFired = useRef(false);
+  const [interval, setIntervalState] = useState<BillingInterval>(
+    searchParams?.get("interval") === "annual" ? "annual" : "monthly",
+  );
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
-  const [targetDowngradePlan, setTargetDowngradePlan] = useState<Exclude<
-    Plan,
-    "ultra"
-  > | null>(null);
+  const [targetDowngradePlan, setTargetDowngradePlan] = useState<Exclude<Plan, "ultra"> | null>(
+    null,
+  );
 
   const createCheckoutOrUpdateMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
     onSuccess: (data) => {
@@ -99,10 +98,13 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
     },
   });
 
-  const handleUpgrade = (plan: typeof plans[number]) => {
+  const handleUpgrade = (plan: (typeof plans)[number]) => {
     if (plan.id === "free") return;
     setLoadingPlan(plan.id);
-    createCheckoutOrUpdateMutation.mutate({ plan: plan.id });
+    createCheckoutOrUpdateMutation.mutate({
+      plan: plan.id as Exclude<Plan, "free">,
+      interval,
+    });
   };
 
   const handleManageSubscription = (planId: Plan) => {
@@ -131,8 +133,7 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
     const targetPlan = plans.find((p) => p.id === requestedPlan);
     if (!targetPlan) return;
 
-    const canUpgrade =
-      getPlanOrder(targetPlan.id) > getPlanOrder(currentPlan);
+    const canUpgrade = getPlanOrder(targetPlan.id) > getPlanOrder(currentPlan);
     if (!canUpgrade) return;
 
     autoCheckoutFired.current = true;
@@ -151,6 +152,30 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
         </p>
       </div>
 
+      {/* Billing interval toggle */}
+      <div className="flex items-center justify-center gap-3">
+        <div className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-border bg-white dark:bg-card p-1">
+          {(["monthly", "annual"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setIntervalState(value)}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                interval === value
+                  ? "bg-gray-900 text-white dark:bg-muted dark:text-foreground"
+                  : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-foreground",
+              )}
+            >
+              {value === "monthly" ? "Monthly" : "Annual"}
+            </button>
+          ))}
+        </div>
+        <Badge className="bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 hover:bg-green-100">
+          Save 2 months
+        </Badge>
+      </div>
+
       {/* Pricing Cards */}
       <div className="grid gap-6 lg:grid-cols-3">
         {plans.map((plan) => {
@@ -163,8 +188,10 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
               key={plan.id}
               className={cn(
                 "relative flex flex-col rounded-2xl border bg-white dark:bg-card p-6 shadow-sm transition-shadow hover:shadow-md",
-                plan.popular && currentPlan === "free" && "border-gray-900 dark:border-border ring-1 ring-gray-900 dark:ring-border",
-                isCurrentPlan && "border-blue-500 ring-1 ring-blue-500"
+                plan.popular &&
+                  currentPlan === "free" &&
+                  "border-gray-900 dark:border-border ring-1 ring-gray-900 dark:ring-border",
+                isCurrentPlan && "border-blue-500 ring-1 ring-blue-500",
               )}
             >
               {/* Popular Badge */}
@@ -180,9 +207,7 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
               {/* Current Plan Badge */}
               {isCurrentPlan && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-blue-600 text-white px-3 py-1">
-                    Current Plan
-                  </Badge>
+                  <Badge className="bg-blue-600 text-white px-3 py-1">Current Plan</Badge>
                 </div>
               )}
 
@@ -201,11 +226,15 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
                 <div className="flex items-baseline">
                   <span className="text-sm font-medium text-gray-500 dark:text-neutral-400">$</span>
                   <span className="text-5xl font-bold tracking-tight text-gray-900 dark:text-foreground">
-                    {plan.price}
+                    {interval === "annual" ? plan.annualPrice : plan.monthlyPrice}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
-                  {plan.period}
+                  {plan.id === "free"
+                    ? "forever"
+                    : interval === "annual"
+                      ? "per year"
+                      : "per month"}
                 </p>
               </div>
 
@@ -227,7 +256,7 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
                       "w-full",
                       plan.popular
                         ? "bg-gray-900 hover:bg-gray-800 dark:bg-muted dark:hover:bg-accent dark:text-foreground"
-                        : ""
+                        : "",
                     )}
                     onClick={() => handleUpgrade(plan)}
                     disabled={loadingPlan !== null}
@@ -247,20 +276,18 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
                 ) : null}
               </div>
 
-
-
               {/* Features */}
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900 dark:text-foreground mb-4">
-                  {plan.id === "free" ? "Features" : `Everything in ${plan.id === "pro" ? "Free" : "Pro"}, plus:`}
+                  {plan.id === "free"
+                    ? "Features"
+                    : `Everything in ${plan.id === "pro" ? "Free" : "Pro"}, plus:`}
                 </p>
                 <ul className="space-y-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-3">
                       <Check className="h-4 w-4 text-gray-600 dark:text-neutral-400 mt-0.5 shrink-0" />
-                      <span className="text-sm text-gray-600 dark:text-neutral-400">
-                        {feature}
-                      </span>
+                      <span className="text-sm text-gray-600 dark:text-neutral-400">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -293,10 +320,15 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
                 {/* Limitations for free plan */}
                 {plan.limitations && (
                   <div className="mt-6 pt-4 border-t border-gray-100 dark:border-border/50">
-                    <p className="text-xs font-medium text-gray-500 dark:text-neutral-400 mb-2">Limitations:</p>
+                    <p className="text-xs font-medium text-gray-500 dark:text-neutral-400 mb-2">
+                      Limitations:
+                    </p>
                     <ul className="space-y-1">
                       {plan.limitations.map((limitation) => (
-                        <li key={limitation} className="text-xs text-gray-400 dark:text-neutral-500">
+                        <li
+                          key={limitation}
+                          className="text-xs text-gray-400 dark:text-neutral-500"
+                        >
                           • {limitation}
                         </li>
                       ))}
@@ -314,12 +346,9 @@ export function PricingCards({ currentPlan }: PricingCardsProps) {
           open={downgradeModalOpen}
           onOpenChange={setDowngradeModalOpen}
           targetPlan={targetDowngradePlan}
-          currentPlanName={
-            plans.find((p) => p.id === currentPlan)?.name ?? currentPlan
-          }
+          currentPlanName={plans.find((p) => p.id === currentPlan)?.name ?? currentPlan}
           targetPlanName={
-            plans.find((p) => p.id === targetDowngradePlan)?.name ??
-            targetDowngradePlan
+            plans.find((p) => p.id === targetDowngradePlan)?.name ?? targetDowngradePlan
           }
         />
       )}

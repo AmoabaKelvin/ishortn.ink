@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, ne } from "drizzle-orm";
 
-import { PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
+import { isSubscriptionEntitled, PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
 import { customDomain, link, linkVisit } from "@/server/db/schema";
 import {
   requirePermission,
@@ -28,7 +28,7 @@ export async function addDomainToUserAccount(
     where: (table, { eq }) => eq(table.userId, userId),
   });
 
-  if (!userSubscription || userSubscription.status !== "active") {
+  if (!isSubscriptionEntitled(userSubscription)) {
     throw new Error("You need to have an active subscription to add a custom domain");
   }
 

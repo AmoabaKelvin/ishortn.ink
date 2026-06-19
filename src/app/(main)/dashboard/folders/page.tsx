@@ -10,7 +10,7 @@ export default async function FoldersPage() {
     api.subscriptions.get.query(),
   ]);
 
-  const isProUser = subDetails?.subscriptions?.status === "active";
+  const isProUser = (subDetails?.plan ?? "free") !== "free";
 
   return <FoldersView initialFolders={folders} isProUser={isProUser} />;
 }

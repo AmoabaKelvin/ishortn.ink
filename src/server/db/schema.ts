@@ -189,6 +189,7 @@ export const subscription = mysqlTable(
     endsAt: datetime("endsAt"),
     status: varchar("status", { length: 255 }).default(""),
     plan: mysqlEnum("plan", ["free", "pro", "ultra"]).default("free"),
+    billingInterval: mysqlEnum("billingInterval", ["monthly", "annual"]).default("monthly"),
     variantId: int("variantId").default(0),
     productId: int("productId").default(0),
 
@@ -586,6 +587,8 @@ export const flaggedLink = mysqlTable(
     id: serial("id").primaryKey(),
     linkId: int("linkId").notNull(),
     reason: varchar("reason", { length: 255 }),
+    reporterEmail: varchar("reporterEmail", { length: 320 }),
+    details: text("details"),
     status: mysqlEnum("flagStatus", ["pending", "blocked", "dismissed"])
       .notNull()
       .default("pending"),

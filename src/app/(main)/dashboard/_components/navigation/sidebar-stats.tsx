@@ -3,6 +3,7 @@
 import { IconArrowUpRight } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
+import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
 import { cn } from "@/lib/utils";
 
 type SidebarStatsProps = {
@@ -87,6 +88,7 @@ export function SidebarStats({
         {plan === "pro" && (
           <Link
             href="/dashboard/pricing"
+            onClick={() => trackUpgradeClick("sidebar_pro")}
             className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
           >
             Upgrade to Ultra
@@ -141,6 +143,7 @@ export function SidebarStats({
 
       <Link
         href="/dashboard/pricing"
+        onClick={() => trackUpgradeClick(isAtLimit ? "sidebar_free_at_limit" : "sidebar_free")}
         className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
       >
         Upgrade to Pro

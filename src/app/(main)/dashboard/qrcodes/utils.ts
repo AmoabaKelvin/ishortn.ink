@@ -1,13 +1,13 @@
 import type { RouterOutputs } from "@/trpc/shared";
 
 export function checkIfUserCanCreateMoreQRCodes(
-  subDetails: RouterOutputs["subscriptions"]["get"] | undefined
+  subDetails: RouterOutputs["subscriptions"]["get"] | undefined,
 ) {
   if (!subDetails) {
     return false;
   }
 
-  if (subDetails?.subscriptions && subDetails.subscriptions.status === "active") {
+  if (subDetails.plan !== "free") {
     return true;
   }
 

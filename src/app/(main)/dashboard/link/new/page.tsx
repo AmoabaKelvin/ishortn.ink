@@ -1,6 +1,7 @@
 "use client";
 
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -199,7 +200,11 @@ export default function CreateLinkPage() {
       router.push("/dashboard");
     },
     onError: (error) => {
-      toast.error(error.message);
+      if (error.data?.code === "FORBIDDEN" || /upgrade/i.test(error.message)) {
+        notifyPlanLimit(error.message, "link_create");
+      } else {
+        toast.error(error.message);
+      }
     },
   });
 
@@ -339,7 +344,7 @@ export default function CreateLinkPage() {
           favicon: fetchedMetadata.favicon,
         }));
 
-        if (userSubscription?.data?.subscriptions?.status === "active") {
+        if ((userSubscription?.data?.plan ?? "free") !== "free") {
           generateAliasMutation.mutate({
             url: debouncedUrl,
             title: customTitle || fetchedMetadata.title,
@@ -422,8 +427,8 @@ export default function CreateLinkPage() {
     };
   }, [cloakingEnabled, debouncedUrl, form]);
 
-  const isProUser = userSubscription?.data?.subscriptions?.status === "active";
-  const isUltraUser = userSubscription?.data?.subscriptions?.plan === "ultra";
+  const isProUser = (userSubscription?.data?.plan ?? "free") !== "free";
+  const isUltraUser = userSubscription?.data?.plan === "ultra";
 
   return (
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">

@@ -141,7 +141,7 @@ export function BulkLinkActions() {
       <BulkLinkUploadDialog
         open={isUploadModalOpen && !isDropdownOpen}
         setOpen={setIsUploadModalOpen}
-        proMembership={subStatus?.subscriptions?.status === "active"}
+        proMembership={(subStatus?.plan ?? "free") !== "free"}
       />
     </>
   );

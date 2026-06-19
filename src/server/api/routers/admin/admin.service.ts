@@ -499,6 +499,8 @@ export async function getFlaggedLinks(
         id: flaggedLink.id,
         linkId: flaggedLink.linkId,
         reason: flaggedLink.reason,
+        reporterEmail: flaggedLink.reporterEmail,
+        details: flaggedLink.details,
         status: flaggedLink.status,
         flaggedAt: flaggedLink.flaggedAt,
         resolvedAt: flaggedLink.resolvedAt,
