@@ -2,7 +2,9 @@ import { Suspense } from "react";
 
 import type { Metadata } from "next";
 
+import { JsonLd } from "@/components/seo/json-ld";
 import { getChangelogEntries } from "@/lib/changelog";
+import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
@@ -26,6 +28,12 @@ export default async function ChangelogPage() {
 
   return (
     <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+      <JsonLd
+        data={createBreadcrumbSchema([
+          { name: "Home", url: "https://ishortn.ink" },
+          { name: "Changelog", url: "https://ishortn.ink/changelog" },
+        ])}
+      />
       <Header />
       <span id="top" />
       <ChangelogHero />

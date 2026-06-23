@@ -80,7 +80,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     description: post.description,
     url: `https://ishortn.ink/blog/${slug}`,
     datePublished: post.date,
-    dateModified: post.date,
+    dateModified: post.updated ?? post.date,
     author: post.author,
     image: post.image,
   });

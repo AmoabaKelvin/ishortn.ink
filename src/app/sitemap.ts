@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getAllPosts } from "@/lib/blog";
+import { competitors } from "@/lib/seo/competitors";
 import { absoluteUrl } from "@/lib/utils";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -8,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const blogPostEntries: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `https://ishortn.ink/blog/${post.slug}`,
-    lastModified: new Date(post.date).toISOString(),
+    lastModified: new Date(post.updated ?? post.date).toISOString(),
     changeFrequency: "monthly",
     priority: 0.8,
   }));
@@ -21,6 +22,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
+      url: absoluteUrl("/pricing"),
+      lastModified: new Date().toISOString(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: absoluteUrl("/features"),
+      lastModified: new Date().toISOString(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
       url: absoluteUrl("/blog"),
       lastModified: new Date().toISOString(),
       changeFrequency: "daily",
@@ -31,6 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date().toISOString(),
       changeFrequency: "weekly",
       priority: 0.7,
+    },
+    {
+      url: absoluteUrl("/abuse"),
+      lastModified: new Date().toISOString(),
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
     {
       url: absoluteUrl("/privacy"),
@@ -46,5 +65,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  return [...staticRoutes, ...blogPostEntries];
+  // High-intent comparison pages, one per competitor (src/lib/seo/competitors.ts).
+  const compareEntries: MetadataRoute.Sitemap = Object.values(competitors).map((c) => ({
+    url: absoluteUrl(`/compare/${c.slug}`),
+    lastModified: new Date().toISOString(),
+    changeFrequency: "monthly",
+    priority: 0.8,
+  }));
+
+  return [...staticRoutes, ...compareEntries, ...blogPostEntries];
 }

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Link } from "next-view-transitions";
 
+import { JsonLd } from "@/components/seo/json-ld";
 import { Paths } from "@/lib/constants/app";
 import { competitors, type Competitor } from "@/lib/seo/competitors";
+import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 
 import { CTA } from "../../_components/cta";
 import { Footer } from "../../_components/footer";
@@ -53,7 +55,7 @@ const ishortn = {
   apiAccess: "Pro and Ultra",
   teamFeatures: "Ultra plan",
   passwordProtection: "Pro and Ultra",
-  pricing: "Free forever, Pro $5/mo, Ultra $15/mo",
+  pricing: "Free forever, Pro $8/mo, Ultra $15/mo",
 };
 
 type FeatureRow = {
@@ -83,6 +85,15 @@ export default async function ComparePage({
 
   return (
     <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+      <JsonLd
+        data={createBreadcrumbSchema([
+          { name: "Home", url: "https://ishortn.ink" },
+          {
+            name: `${competitor.name} vs iShortn`,
+            url: `https://ishortn.ink/compare/${competitor.slug}`,
+          },
+        ])}
+      />
       <Header />
 
       <section className="warm-subhero">
@@ -403,7 +414,7 @@ export default async function ComparePage({
                   30 links/month, 1,000 tracked events, 7-day analytics.
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong style={{ color: "var(--warm-paper)" }}>Pro $5/mo</strong>{" "}
+                  <strong style={{ color: "var(--warm-paper)" }}>Pro $8/mo</strong>{" "}
                   — 1,000 links/month, 10,000 tracked events, unlimited
                   analytics history, 3 custom domains, branded + dynamic QR
                   codes, REST API.

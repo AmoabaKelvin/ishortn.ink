@@ -24,6 +24,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: { absolute: title },
     description,
+    // A bio page with a custom domain is canonically served there; otherwise
+    // /p/<slug> is its own canonical (resolved against metadataBase).
+    alternates: {
+      canonical: page.customDomain ? `https://${page.customDomain}` : `/p/${slug}`,
+    },
     openGraph: { title, description, type: "profile" },
     twitter: { card: "summary_large_image", title, description },
   };

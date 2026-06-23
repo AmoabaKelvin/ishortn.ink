@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Link } from "next-view-transitions";
 
+import { JsonLd } from "@/components/seo/json-ld";
 import { getAllPosts } from "@/lib/blog";
+import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
@@ -43,6 +45,12 @@ export default async function BlogPage() {
 
   return (
     <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+      <JsonLd
+        data={createBreadcrumbSchema([
+          { name: "Home", url: "https://ishortn.ink" },
+          { name: "Blog", url: "https://ishortn.ink/blog" },
+        ])}
+      />
       <Header />
 
       <section className="warm-subhero">

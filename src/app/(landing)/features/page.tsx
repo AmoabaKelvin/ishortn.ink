@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import { JsonLd } from "@/components/seo/json-ld";
+import { createBreadcrumbSchema, softwareApplicationSchema } from "@/lib/seo/structured-data";
+
 import { CTA } from "../_components/cta";
 import { DashboardPreview } from "../_components/dashboard-preview";
 import { Features } from "../_components/features";
@@ -30,6 +33,13 @@ export const metadata: Metadata = {
 export default function FeaturesPage() {
   return (
     <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+      <JsonLd data={softwareApplicationSchema} />
+      <JsonLd
+        data={createBreadcrumbSchema([
+          { name: "Home", url: "https://ishortn.ink" },
+          { name: "Features", url: "https://ishortn.ink/features" },
+        ])}
+      />
       <Header />
 
       <section className="warm-subhero">
