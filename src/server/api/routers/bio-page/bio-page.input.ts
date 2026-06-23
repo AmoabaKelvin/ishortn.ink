@@ -29,7 +29,9 @@ export const bioThemeSchema = z.object({
 
 export const bioSocialLinkSchema = z.object({
   platform: z.string().min(1).max(50),
-  url: z.string().url().max(2048),
+  // Accept a handle, email, bare domain, or full URL; the service canonicalizes
+  // it into a real href via normalizeSocialUrl, so don't force .url() here.
+  url: z.string().trim().min(1).max(2048),
 });
 
 export const bioSlugSchema = z

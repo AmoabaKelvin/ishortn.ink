@@ -9,6 +9,7 @@ import {
   canUseBioCustomThemes,
   getPlanCaps,
 } from "@/lib/billing/plans";
+import { normalizeSocialUrl } from "@/components/bio/social-links";
 import { isPlatformDomain } from "@/lib/constants/domains";
 import {
   bioBlock,
@@ -78,6 +79,25 @@ function parseSocials(content: string | null): BioSocialLink[] {
   } catch {
     return [];
   }
+}
+
+// Canonicalize each social entry to a real href before storing, so the public
+// renderer can use the value directly. Rejects entries that can't be resolved
+// (e.g. a non-email typed for the Email platform) with a clear message.
+function normalizeSocials(socials: BioSocialLink[]): BioSocialLink[] {
+  return socials.map((s) => {
+    const url = normalizeSocialUrl(s.platform, s.url);
+    if (!url) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          s.platform === "email"
+            ? "Enter a valid email address for the Email link."
+            : `Enter a valid handle or URL for the ${s.platform} link.`,
+      });
+    }
+    return { platform: s.platform, url };
+  });
 }
 
 function themeHasCustomization(theme: BioPageTheme): boolean {
@@ -379,7 +399,9 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
   const position = Number(row?.maxPos ?? -1) + 1;
 
   const content =
-    input.type === "social" ? JSON.stringify(input.socials ?? []) : input.content ?? null;
+    input.type === "social"
+      ? JSON.stringify(normalizeSocials(input.socials ?? []))
+      : input.content ?? null;
 
   if (input.type === "link") {
     const destination = input.url?.trim();
@@ -435,7 +457,7 @@ export async function updateBlock(ctx: WorkspaceTRPCContext, input: UpdateBioBlo
   if (input.scheduledUntil !== undefined) updates.scheduledUntil = input.scheduledUntil;
 
   if (block.type === "social") {
-    if (input.socials !== undefined) updates.content = JSON.stringify(input.socials);
+    if (input.socials !== undefined) updates.content = JSON.stringify(normalizeSocials(input.socials));
   } else if (input.content !== undefined) {
     updates.content = input.content;
   }
