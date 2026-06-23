@@ -1,3 +1,5 @@
+import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+
 export const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -18,34 +20,30 @@ export const softwareApplicationSchema = {
   url: "https://ishortn.ink",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
+  // Prices derive from the pricing source of truth so the JSON-LD can't drift.
   offers: [
     {
       "@type": "Offer",
-      price: "0",
+      price: String(PLAN_PRICES_USD.free),
       priceCurrency: "USD",
       name: "Free",
       description: "30 links per month with basic analytics",
     },
     {
       "@type": "Offer",
-      price: "5",
+      price: String(PLAN_PRICES_USD.pro),
       priceCurrency: "USD",
       name: "Pro",
       description: "1,000 links per month with full analytics and custom domains",
     },
     {
       "@type": "Offer",
-      price: "15",
+      price: String(PLAN_PRICES_USD.ultra),
       priceCurrency: "USD",
       name: "Ultra",
       description: "Unlimited links with team collaboration",
     },
   ],
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.8",
-    ratingCount: "150",
-  },
 };
 
 export function createFaqSchema(faqs: { question: string; answer: string }[]) {

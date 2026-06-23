@@ -16,9 +16,9 @@ export const competitors = {
     whySwitch: [
       "Bitly's free plan only allows 5 links per month — iShortn gives you 30",
       "Bitly free links may show interstitial ad pages before redirecting",
-      "Bitly charges $35/month for Core — iShortn Pro is just $5/month",
+      "Bitly charges $35/month for Core — iShortn Pro is just $8/month",
       "iShortn includes full analytics and QR codes on all plans, plus password protection on Pro and Ultra",
-      "No API access on Bitly free — iShortn Pro includes full API for $5/month",
+      "No API access on Bitly free — iShortn Pro includes full API for $8/month",
     ],
   },
   tinyurl: {
@@ -59,7 +59,7 @@ export const competitors = {
     pricing: "Free, Essentials $13/mo, Professional $32/mo",
     whySwitch: [
       "Rebrandly free gives 500 total links — iShortn gives 30 new links every month, ongoing",
-      "Rebrandly Essentials costs $13/month — iShortn Pro is just $5/month",
+      "Rebrandly Essentials costs $13/month — iShortn Pro is just $8/month",
       "Rebrandly QR codes have watermarks on free — iShortn QR codes are clean on all plans",
       "iShortn includes geo-targeting and AI-powered security that Rebrandly charges extra for",
     ],
@@ -81,7 +81,7 @@ export const competitors = {
     whySwitch: [
       "Short.io requires you to bring your own domain even to get started — iShortn works instantly",
       "Short.io free gives 1,000 links total lifetime — iShortn gives fresh links every month",
-      "Short.io Business plan is $48/month — iShortn Pro is just $5/month",
+      "Short.io Business plan is $48/month — iShortn Pro is just $8/month",
       "iShortn includes password protection and AI-powered phishing detection on all links",
     ],
   },
@@ -98,10 +98,10 @@ export const competitors = {
     apiAccess: "Yes (limited)",
     teamFeatures: "Paid only",
     passwordProtection: "Paid only",
-    pricing: "Free, Pro $24/mo, Business $59/mo",
+    pricing: "Free, Pro $24/mo, Business $89/mo",
     whySwitch: [
-      "Dub Pro costs $24/month — iShortn Pro is just $5/month for similar features",
-      "Dub free analytics only goes back 30 days — same as iShortn free, but iShortn Pro unlocks unlimited retention for $5 vs Dub's $24",
+      "Dub Pro costs $24/month — iShortn Pro is just $8/month for similar features",
+      "Dub free analytics only goes back 30 days — same as iShortn free, but iShortn Pro unlocks unlimited retention for $8 vs Dub's $24",
       "iShortn offers 30 free links/month vs Dub's 25",
       "iShortn includes password protection and geo-targeting on the Pro plan",
     ],

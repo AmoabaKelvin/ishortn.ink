@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import { JsonLd } from "@/components/seo/json-ld";
+import { createFaqSchema, softwareApplicationSchema } from "@/lib/seo/structured-data";
+
 import { CTA } from "../_components/cta";
 import { Faq } from "../_components/faq";
 import { Footer } from "../_components/footer";
@@ -51,6 +54,10 @@ const pricingFaqs = [
 export default function PricingPage() {
   return (
     <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+      <JsonLd data={softwareApplicationSchema} />
+      <JsonLd
+        data={createFaqSchema(pricingFaqs.map((f) => ({ question: f.q, answer: f.a })))}
+      />
       <Header />
 
       <section className="warm-subhero">
