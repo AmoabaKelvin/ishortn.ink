@@ -11,6 +11,7 @@ export interface BlogPostFrontmatter {
   title: string;
   description: string;
   date: string;
+  updated?: string;
   author: string;
   tags: string[];
   image?: string;
@@ -91,6 +92,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     title: String(data.title),
     description: String(data.description),
     date: parseDateString(data.date),
+    updated: data.updated ? parseDateString(data.updated) : undefined,
     author: data.author ? String(data.author) : "Kelvin Amoaba",
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     image: data.image ? String(data.image) : undefined,

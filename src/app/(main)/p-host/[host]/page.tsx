@@ -35,6 +35,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: { absolute: title },
     description,
+    // This custom-domain root is the canonical URL for the page.
+    alternates: { canonical: `https://${domain}` },
     openGraph: { title, description, type: "profile" },
     twitter: { card: "summary_large_image", title, description },
   };
