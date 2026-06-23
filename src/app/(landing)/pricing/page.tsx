@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 
 import { JsonLd } from "@/components/seo/json-ld";
-import { createFaqSchema, softwareApplicationSchema } from "@/lib/seo/structured-data";
+import {
+  createBreadcrumbSchema,
+  createFaqSchema,
+  softwareApplicationSchema,
+} from "@/lib/seo/structured-data";
 
 import { CTA } from "../_components/cta";
 import { Faq } from "../_components/faq";
@@ -54,6 +58,12 @@ const pricingFaqs = [
 export default function PricingPage() {
   return (
     <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+      <JsonLd
+        data={createBreadcrumbSchema([
+          { name: "Home", url: "https://ishortn.ink" },
+          { name: "Pricing", url: "https://ishortn.ink/pricing" },
+        ])}
+      />
       <JsonLd data={softwareApplicationSchema} />
       <JsonLd
         data={createFaqSchema(pricingFaqs.map((f) => ({ question: f.q, answer: f.a })))}

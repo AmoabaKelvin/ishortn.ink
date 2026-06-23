@@ -40,6 +40,14 @@ function parseDateString(dateValue: unknown): string {
   return strValue.includes("T") ? (strValue.split("T")[0] as string) : strValue;
 }
 
+// Drop a missing or malformed `updated` value so it can't propagate to
+// new Date(...).toISOString() (sitemap) or Article.dateModified as an invalid date.
+function parseOptionalDate(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = parseDateString(value);
+  return Number.isNaN(new Date(parsed).getTime()) ? undefined : parsed;
+}
+
 export async function getAllPosts(): Promise<BlogPost[]> {
   if (!fs.existsSync(blogDirectory)) {
     return [];
@@ -92,7 +100,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     title: String(data.title),
     description: String(data.description),
     date: parseDateString(data.date),
-    updated: data.updated ? parseDateString(data.updated) : undefined,
+    updated: parseOptionalDate(data.updated),
     author: data.author ? String(data.author) : "Kelvin Amoaba",
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     image: data.image ? String(data.image) : undefined,
