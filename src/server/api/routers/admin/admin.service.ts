@@ -3,6 +3,7 @@ import { and, between, count, desc, eq, inArray, like, or, sql } from "drizzle-o
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { PAID_PLANS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/constants/plan-pricing";
 import {
+  bioPage,
   blockedDomain,
   feedback,
   flaggedLink,
@@ -949,12 +950,16 @@ export async function getMonthlyBreakdown(
 }
 
 export async function getSystemHealth(ctx: ProtectedTRPCContext) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const [
     linkStatsResult,
     userStatsResult,
     pendingFlaggedResult,
     openFeedbackResult,
     blockedDomainsResult,
+    bioPageStatsResult,
   ] = await Promise.all([
     ctx.db
       .select({
@@ -977,6 +982,12 @@ export async function getSystemHealth(ctx: ProtectedTRPCContext) {
       .from(feedback)
       .where(eq(feedback.status, "open")),
     ctx.db.select({ count: count() }).from(blockedDomain),
+    ctx.db
+      .select({
+        total: count(),
+        today: sql<number>`SUM(${bioPage.createdAt} >= ${today})`,
+      })
+      .from(bioPage),
   ]);
 
   const totalLinks = linkStatsResult[0]?.total ?? 0;
@@ -996,6 +1007,8 @@ export async function getSystemHealth(ctx: ProtectedTRPCContext) {
     pendingFlagged: pendingFlaggedResult[0]?.count ?? 0,
     openFeedback: openFeedbackResult[0]?.count ?? 0,
     blockedDomains: blockedDomainsResult[0]?.count ?? 0,
+    totalBioPages: bioPageStatsResult[0]?.total ?? 0,
+    bioPagesToday: Number(bioPageStatsResult[0]?.today ?? 0),
   };
 }
 
