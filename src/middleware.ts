@@ -24,6 +24,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     pathname === "/" &&
     bareHost &&
     !bareHost.includes("localhost") &&
+    !bareHost.endsWith(".vercel.app") && // preview/deploy URLs keep the marketing root
     !isPlatformDomain(bareHost) &&
     extractPlatformSubdomain(bareHost) === null
   ) {
