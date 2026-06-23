@@ -246,7 +246,13 @@ export function BlockFormDialog({
                               prev.map((s, idx) => (idx === i ? { ...s, url: e.target.value } : s)),
                             )
                           }
-                          placeholder="https://…"
+                          placeholder={
+                            social.platform === "email"
+                              ? "you@example.com"
+                              : social.platform === "website"
+                                ? "https://yoursite.com"
+                                : "@handle or URL"
+                          }
                           className="flex-1"
                         />
                         <button
