@@ -11,6 +11,7 @@ type PlanCaps = {
   domainLimit?: number;
   geoRulesLimit?: number; // Max geo rules per link (undefined => unlimited)
   milestonesPerLinkLimit?: number; // Max milestones per link (undefined => unlimited)
+  bioPageLimit?: number; // Max bio pages (undefined => unlimited)
 };
 
 // Lemon Squeezy variant IDs per plan + billing interval.
@@ -56,6 +57,7 @@ export const PLAN_CAPS: Record<Plan, PlanCaps> = {
     analyticsRangeLimitDays: 7,
     geoRulesLimit: 0, // Geotargeting not available for free plan
     milestonesPerLinkLimit: 0,
+    bioPageLimit: 1,
   },
   pro: {
     eventsLimit: 10000,
@@ -64,6 +66,7 @@ export const PLAN_CAPS: Record<Plan, PlanCaps> = {
     domainLimit: 3,
     geoRulesLimit: 3, // Pro plan allows 3 geo rules per link
     milestonesPerLinkLimit: 5,
+    bioPageLimit: 3,
   },
   ultra: {
     // unlimited
@@ -155,4 +158,37 @@ export function getMilestonesPerLinkLimit(plan: Plan): number | undefined {
 export function canUseMilestones(plan: Plan): boolean {
   const limit = PLAN_CAPS[plan].milestonesPerLinkLimit;
   return limit === undefined || limit > 0;
+}
+
+// ----------------------------------------------------------------------------
+// Bio pages (link-in-bio)
+// ----------------------------------------------------------------------------
+
+export function getBioPageLimit(plan: Plan): number | undefined {
+  return PLAN_CAPS[plan].bioPageLimit;
+}
+
+/** Pro+ may remove the "Made with iShortn" badge from their bio page. */
+export function canRemoveBioBranding(plan: Plan): boolean {
+  return plan !== "free";
+}
+
+/** Pro+ may customize bio-page themes beyond the curated presets. */
+export function canUseBioCustomThemes(plan: Plan): boolean {
+  return plan !== "free";
+}
+
+/** Pro+ may serve a bio page on a custom domain. */
+export function canUseBioCustomDomain(plan: Plan): boolean {
+  return plan !== "free";
+}
+
+/** Ultra-only: per-block UTM attribution on bio links. */
+export function canUseBioUtmPerBlock(plan: Plan): boolean {
+  return plan === "ultra";
+}
+
+/** Ultra-only: schedule bio blocks to reveal/hide at set times. */
+export function canScheduleBioBlocks(plan: Plan): boolean {
+  return plan === "ultra";
 }

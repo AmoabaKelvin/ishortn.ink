@@ -8,6 +8,7 @@ import type { Plan } from "@/lib/billing/plans";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
   accountTransfer,
+  bioPage,
   customDomain,
   folder,
   link,
@@ -77,6 +78,7 @@ export interface TransferResult {
   tagsMerged: number;
   utmTemplatesTransferred: number;
   qrPresetsTransferred: number;
+  bioPagesTransferred: number;
 }
 
 // ============================================================================
@@ -340,6 +342,33 @@ export async function validateAccountTransfer(
         currentCount: newTotal,
         limit: targetCaps.folderLimit,
       });
+    }
+  }
+
+  // Bio pages: block the transfer if it would exceed the target's bio-page cap.
+  if (targetCaps.bioPageLimit !== undefined) {
+    const [srcBioRows, tgtBioRows] = await Promise.all([
+      ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(bioPage)
+        .where(and(eq(bioPage.userId, ctx.auth.userId), isNull(bioPage.teamId))),
+      ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(bioPage)
+        .where(and(eq(bioPage.userId, targetUser.id), isNull(bioPage.teamId))),
+    ]);
+    const srcBioPages = Number(srcBioRows[0]?.count ?? 0);
+    if (srcBioPages > 0) {
+      const newTotal = Number(tgtBioRows[0]?.count ?? 0) + srcBioPages;
+      if (newTotal > targetCaps.bioPageLimit) {
+        errors.push({
+          type: "LIMIT_EXCEEDED",
+          message: `Transfer would exceed target account's bio page limit`,
+          resourceType: "bioPages",
+          currentCount: newTotal,
+          limit: targetCaps.bioPageLimit,
+        });
+      }
     }
   }
 
@@ -638,6 +667,7 @@ async function executeResourceTransfer(
     tagsMerged: 0,
     utmTemplatesTransferred: 0,
     qrPresetsTransferred: 0,
+    bioPagesTransferred: 0,
   };
 
   await ctx.db.transaction(async (tx) => {
@@ -851,6 +881,19 @@ async function executeResourceTransfer(
       .where(and(eq(utmTemplate.userId, fromUserId), isNull(utmTemplate.teamId)));
 
     result.utmTemplatesTransferred = utmUpdate[0].affectedRows;
+
+    // =========================================
+    // Phase 7b: Transfer Bio Pages
+    // =========================================
+    // Backing links already moved in Phase 3 (they're personal links).
+    // Reassigning BioPage ownership keeps the page + its blocks consistent with
+    // those links. bioBlock / bioPageView rows reference ids, so need no change.
+    const bioPagesUpdate = await tx
+      .update(bioPage)
+      .set({ userId: toUserId, teamId: null })
+      .where(and(eq(bioPage.userId, fromUserId), isNull(bioPage.teamId)));
+
+    result.bioPagesTransferred = bioPagesUpdate[0].affectedRows;
 
     // =========================================
     // Phase 8: Clean up source folders and tags

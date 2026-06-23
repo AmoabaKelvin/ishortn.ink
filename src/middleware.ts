@@ -2,6 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { extractPlatformSubdomain, isPlatformDomain } from "@/lib/constants/domains";
 import { edgeLogger } from "@/lib/logger/edge";
 import { isBot } from "@/lib/utils/is-bot";
 
@@ -15,6 +16,20 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
   }
 
   const { pathname, host, origin } = new URL(request.url);
+
+  // A verified custom domain serves its owner's bio page at the domain root.
+  // Short links on the same domain are deeper paths and keep resolving normally.
+  const bareHost = host.split(":")[0] ?? host;
+  if (
+    pathname === "/" &&
+    bareHost &&
+    !bareHost.includes("localhost") &&
+    !bareHost.endsWith(".vercel.app") && // preview/deploy URLs keep the marketing root
+    !isPlatformDomain(bareHost) &&
+    extractPlatformSubdomain(bareHost) === null
+  ) {
+    return NextResponse.rewrite(new URL(`/p-host/${encodeURIComponent(bareHost)}`, request.url));
+  }
 
   const staticRoutes = ["/blog", "/changelog", "/privacy", "/terms", "/abuse", "/auth", "/features", "/pricing", "/compare"];
 

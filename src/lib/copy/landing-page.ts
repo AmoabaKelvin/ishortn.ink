@@ -35,6 +35,11 @@ export const landingPageCopy = {
         "Every short link you create can be turned into a QR code. When someone scans the QR code, they're directed through your short link, so you get the same detailed analytics — scans, locations, devices — just as you would with a regular click.",
     },
     {
+      question: "Can I create a link-in-bio page?",
+      answer:
+        "Yes. Build one public page for all your links — link buttons, social icons, headings, and text — with curated themes and a QR code. Every link block is a tracked short link, so clicks show up in your analytics alongside everything else. Free includes one page; Pro adds custom domains, theme customization, and branding removal; Ultra adds unlimited pages and scheduled blocks.",
+    },
+    {
       question: "Is there an API available?",
       answer:
         "Yes, iShortn provides a RESTful API on the Pro plan and above. You can programmatically create short links, retrieve analytics, and manage your links. Full API documentation is available in our developer docs.",

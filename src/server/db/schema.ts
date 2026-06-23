@@ -238,6 +238,7 @@ export const link = mysqlTable(
     cloaking: boolean("cloaking").default(false),
     verifiedClicksEnabled: boolean("verifiedClicksEnabled").default(false),
     isQrCode: boolean("isQrCode").default(false),
+    isBioLink: boolean("isBioLink").default(false), // hidden link backing a bio-page link block
     // Admin moderation
     blocked: boolean("blocked").default(false),
     blockedAt: timestamp("blockedAt"),
@@ -1086,3 +1087,182 @@ export const audienceFeedbackRelations = relations(audienceFeedback, ({ one }) =
 
 export type AudienceFeedback = typeof audienceFeedback.$inferSelect;
 export type NewAudienceFeedback = typeof audienceFeedback.$inferInsert;
+
+// ============================================================================
+// BIO PAGES (Link-in-Bio)
+// ============================================================================
+
+export type BioPageTheme = {
+  preset?: string; // named preset id, e.g. "minimal", "midnight"
+  accentColor?: string; // hex, used for buttons/links
+  buttonStyle?: "rounded" | "pill" | "sharp" | "outline";
+  background?: {
+    type: "solid" | "gradient";
+    color?: string; // solid background
+    from?: string; // gradient start
+    to?: string; // gradient end
+  };
+  font?: string; // named font key
+};
+
+export type BioSocialLink = {
+  platform: string; // twitter, instagram, tiktok, youtube, github, linkedin, website, ...
+  url: string;
+};
+
+export const bioPage = mysqlTable(
+  "BioPage",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    createdByUserId: varchar("createdByUserId", { length: 32 }), // immutable original creator
+    slug: varchar("slug", { length: 100 }).notNull(), // global public handle: /p/<slug>
+    title: varchar("title", { length: 255 }),
+    description: text("description"),
+    avatarUrl: text("avatarUrl"),
+    theme: json("theme").$type<BioPageTheme>(),
+    socialImageUrl: text("socialImageUrl"), // Pro custom social preview (OG) image
+    seoTitle: varchar("seoTitle", { length: 255 }),
+    seoDescription: varchar("seoDescription", { length: 500 }),
+    customDomain: varchar("customDomain", { length: 255 }), // verified custom domain to serve at its root
+    removeBranding: boolean("removeBranding").default(false),
+    isPublished: boolean("isPublished").default(false),
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
+    slugUnique: unique("bio_slug_unique").on(table.slug), // handles are globally unique
+    customDomainUnique: unique("bio_custom_domain_unique").on(table.customDomain), // one primary page per domain (NULLs are distinct)
+    publishedIdx: index("isPublished_idx").on(table.isPublished),
+  }),
+);
+
+export const bioBlock = mysqlTable(
+  "BioBlock",
+  {
+    id: serial("id").primaryKey(),
+    bioPageId: int("bioPageId").notNull(),
+    type: mysqlEnum("blockType", [
+      "link",
+      "heading",
+      "text",
+      "social",
+      "divider",
+      "email",
+    ]).notNull(),
+    title: varchar("title", { length: 255 }), // button/heading label
+    content: text("content"), // text body, or JSON array of BioSocialLink for social blocks
+    url: text("url"), // destination for link blocks, email/mailto for email blocks
+    linkId: int("linkId"), // backing hidden Link row for link blocks (clicks reuse the redirect pipeline)
+    position: int("position").notNull().default(0),
+    isVisible: boolean("isVisible").default(true).notNull(),
+    scheduledAt: datetime("scheduledAt"), // Ultra: reveal at
+    scheduledUntil: datetime("scheduledUntil"), // Ultra: hide after
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    bioPageIdIdx: index("bioPageId_idx").on(table.bioPageId),
+    positionIdx: index("position_idx").on(table.bioPageId, table.position),
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+  }),
+);
+
+// Raw bio-page view events (mirror LinkVisit). Recording consumes the owner's
+// monthly event quota via registerEventUsage; over quota the view is skipped.
+export const bioPageView = mysqlTable(
+  "BioPageView",
+  {
+    id: serial("id").primaryKey(),
+    bioPageId: int("bioPageId").notNull(),
+    device: varchar("device", { length: 255 }),
+    browser: varchar("browser", { length: 255 }),
+    os: varchar("os", { length: 255 }),
+    model: varchar("model", { length: 255 }).default(""),
+    referer: varchar("referer", { length: 255 }),
+    country: varchar("country", { length: 255 }),
+    city: varchar("city", { length: 255 }),
+    continent: varchar("continent", { length: 255 }).default("N/A"),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    bioPageIdIdx: index("bioPageId_idx").on(table.bioPageId),
+    bioPageCreatedAtIdx: index("bioPageId_createdAt_idx").on(table.bioPageId, table.createdAt),
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
+  }),
+);
+
+export const uniqueBioPageView = mysqlTable(
+  "UniqueBioPageView",
+  {
+    id: serial("id").primaryKey(),
+    bioPageId: int("bioPageId").notNull(),
+    ipHash: char("ipHash", { length: 64 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    bioPageIdIdx: index("bioPageId_idx").on(table.bioPageId),
+    uniqueViewIdx: unique("unique_bio_view_idx").on(table.bioPageId, table.ipHash),
+    bioPageCreatedAtIdx: index("bioPageId_createdAt_idx").on(table.bioPageId, table.createdAt),
+  }),
+);
+
+// Daily rollup of bio-page views (mirror LinkVisitDailySummary), written by the
+// analytics cleanup job before pruning raw rows beyond the retention window.
+export const bioPageViewDailySummary = mysqlTable(
+  "BioPageViewDailySummary",
+  {
+    id: serial("id").primaryKey(),
+    bioPageId: int("bioPageId").notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    views: int("views").notNull().default(0),
+    uniqueViews: int("uniqueViews").notNull().default(0),
+  },
+  (table) => ({
+    bioPageDateUnique: unique("bio_page_date_unique").on(table.bioPageId, table.date),
+  }),
+);
+
+export const bioPageRelations = relations(bioPage, ({ one, many }) => ({
+  user: one(user, {
+    fields: [bioPage.userId],
+    references: [user.id],
+  }),
+  team: one(team, {
+    fields: [bioPage.teamId],
+    references: [team.id],
+  }),
+  blocks: many(bioBlock),
+}));
+
+export const bioBlockRelations = relations(bioBlock, ({ one }) => ({
+  bioPage: one(bioPage, {
+    fields: [bioBlock.bioPageId],
+    references: [bioPage.id],
+  }),
+  link: one(link, {
+    fields: [bioBlock.linkId],
+    references: [link.id],
+  }),
+}));
+
+export const bioPageViewDailySummaryRelations = relations(
+  bioPageViewDailySummary,
+  ({ one }) => ({
+    bioPage: one(bioPage, {
+      fields: [bioPageViewDailySummary.bioPageId],
+      references: [bioPage.id],
+    }),
+  }),
+);
+
+export type BioPage = typeof bioPage.$inferSelect;
+export type NewBioPage = typeof bioPage.$inferInsert;
+export type BioBlock = typeof bioBlock.$inferSelect;
+export type NewBioBlock = typeof bioBlock.$inferInsert;
+export type BioBlockType = BioBlock["type"];
+export type BioPageView = typeof bioPageView.$inferSelect;
+export type NewBioPageView = typeof bioPageView.$inferInsert;

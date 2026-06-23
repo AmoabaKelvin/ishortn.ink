@@ -7,6 +7,7 @@ import { Icon } from "./warm-primitives";
 
 type VisualKind =
   | "analytics"
+  | "bio"
   | "domain"
   | "lock"
   | "geo"
@@ -30,6 +31,13 @@ const items: FeatureItem[] = [
       "Clicks, unique visitors, countries, cities, devices, referrers, and a timeline. All on a warm, readable dashboard — no cookie banners to install.",
     bg: "var(--warm-cream)",
     visual: "analytics",
+  },
+  {
+    title: "Link-in-bio, fully tracked",
+    body:
+      "One page for all your links — buttons, social icons, and headings. Every link block is a real short link, so clicks land in your analytics. Themes and a QR code included.",
+    bg: "#F0E6CF",
+    visual: "bio",
   },
   {
     title: "Your own custom domain",
@@ -204,6 +212,44 @@ const FeatureVisual = ({ kind }: { kind: VisualKind }) => {
             strokeWidth="1"
           />
         </svg>
+      </div>
+    );
+  }
+
+  if (kind === "bio") {
+    return (
+      <div style={boxStyle}>
+        <div
+          style={{
+            width: 132,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 7,
+          }}
+        >
+          <div
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: "var(--warm-accent)",
+            }}
+          />
+          <div style={{ width: 56, height: 6, borderRadius: 3, background: "var(--warm-ink)" }} />
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                width: "100%",
+                height: 17,
+                borderRadius: 9,
+                background: "var(--warm-paper)",
+                border: "1px solid var(--warm-line)",
+              }}
+            />
+          ))}
+        </div>
       </div>
     );
   }

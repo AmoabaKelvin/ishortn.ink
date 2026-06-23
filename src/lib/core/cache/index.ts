@@ -60,6 +60,10 @@ const linkSchema = z.object({
     .string()
     .transform((val) => val === "true")
     .default(false),
+  isBioLink: z
+    .string()
+    .transform((val) => val === "true")
+    .default(false),
   blocked: z
     .string()
     .transform((val) => val === "true")
@@ -98,6 +102,7 @@ function convertToLink(data: Record<string, string>): Link {
     cloaking: parsed.cloaking ?? false,
     verifiedClicksEnabled: parsed.verifiedClicksEnabled ?? false,
     isQrCode: parsed.isQrCode ?? false,
+    isBioLink: parsed.isBioLink ?? false,
     blocked: parsed.blocked ?? false,
     blockedAt: parsed.blockedAt ?? null,
     blockedReason: parsed.blockedReason ?? null,
