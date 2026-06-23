@@ -111,6 +111,8 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
                   className="h-14 w-14 rounded-full object-cover"
                 />
                 <button
+                  type="button"
+                  aria-label="Remove avatar"
                   onClick={() => onChange({ avatarUrl: null })}
                   className="absolute -right-1 -top-1 rounded-full bg-neutral-800 p-0.5 text-white"
                 >
@@ -283,6 +285,8 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
                   className="h-12 w-20 rounded object-cover"
                 />
                 <button
+                  type="button"
+                  aria-label="Remove social preview image"
                   onClick={() => onChange({ socialImageUrl: null })}
                   className="absolute -right-1 -top-1 rounded-full bg-neutral-800 p-0.5 text-white"
                 >

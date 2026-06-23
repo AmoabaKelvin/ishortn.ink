@@ -106,6 +106,9 @@ export function BlockList({
   });
 
   function handleDragEnd(event: DragEndEvent) {
+    // Serialize reorders: ignore a new drop while a write is in flight, so a
+    // slower earlier request can't land last and overwrite the newer order.
+    if (reorder.isLoading) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = items.findIndex((b) => b.id === active.id);

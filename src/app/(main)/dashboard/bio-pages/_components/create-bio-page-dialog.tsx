@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/trpc/react";
 
+const MAX_SLUG_LENGTH = 100;
+
 export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -35,7 +37,9 @@ export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
   });
 
   const normalizedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-");
-  const canCreate = normalizedSlug.length >= 3 && !create.isLoading;
+  // Mirror the server's slug constraint (3–100 chars) to avoid failed submissions.
+  const canCreate =
+    normalizedSlug.length >= 3 && normalizedSlug.length <= MAX_SLUG_LENGTH && !create.isLoading;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -60,6 +64,7 @@ export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
                 value={normalizedSlug}
                 onChange={(e) => setSlug(e.target.value)}
                 placeholder="yourname"
+                maxLength={MAX_SLUG_LENGTH}
                 className="h-full flex-1 bg-transparent px-3 text-sm font-medium text-gray-900 outline-none placeholder:text-gray-500 dark:text-foreground dark:placeholder:text-gray-400"
                 autoFocus
               />

@@ -55,7 +55,7 @@ analytics, themes, QR, custom domain, and tier gating.
 
 ## 3. Architecture overview
 
-```
+```text
 Public bio page (HTML, SSG/ISR)          Link block click
   ishortn.ink/p/yourname          ->      ishortn.ink/<alias>  (existing redirect route)
   - renders BioBlocks                       -> /api/link -> recordClick() -> linkVisit

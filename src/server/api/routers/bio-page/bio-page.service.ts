@@ -105,14 +105,13 @@ async function resolveImageUpdate(
   imageType: ImageType,
   next: string | null | undefined,
   previous: string | null,
-): Promise<string | null> {
-  const resolved = next
+): Promise<{ value: string | null; previousToDelete: string | null }> {
+  const value = next
     ? (await uploadImage(ctx, { image: next, resourceId, imageType })) ?? next
     : null;
-  if (previous && previous !== resolved) {
-    await deleteImage(previous).catch(() => {});
-  }
-  return resolved;
+  // Return the old object instead of deleting it here, so the caller can clean
+  // up only after the new value is committed to the DB.
+  return { value, previousToDelete: previous && previous !== value ? previous : null };
 }
 
 async function fetchBioPageForWorkspace(ctx: WorkspaceTRPCContext, id: number) {
@@ -258,7 +257,9 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
       if (!canUseBioCustomDomain(plan)) {
         throw forbidden("Custom domains for bio pages are available on Pro and Ultra plans.");
       }
-      const normalized = input.customDomain.trim().toLowerCase();
+      // Canonicalize the same way getByDomain looks it up (lowercase, no www),
+      // so a domain saved as "www.brand.com" still resolves at "brand.com".
+      const normalized = input.customDomain.trim().toLowerCase().replace(/^www\./, "");
       if (isPlatformDomain(normalized)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -272,23 +273,28 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
     }
   }
 
+  const imagesToDelete: string[] = [];
   if (input.avatarUrl !== undefined) {
-    updates.avatarUrl = await resolveImageUpdate(
+    const { value, previousToDelete } = await resolveImageUpdate(
       ctx,
       page.id,
       "bio-avatar",
       input.avatarUrl,
       page.avatarUrl,
     );
+    updates.avatarUrl = value;
+    if (previousToDelete) imagesToDelete.push(previousToDelete);
   }
   if (input.socialImageUrl !== undefined) {
-    updates.socialImageUrl = await resolveImageUpdate(
+    const { value, previousToDelete } = await resolveImageUpdate(
       ctx,
       page.id,
       "bio-og",
       input.socialImageUrl,
       page.socialImageUrl,
     );
+    updates.socialImageUrl = value;
+    if (previousToDelete) imagesToDelete.push(previousToDelete);
   }
 
   if (Object.keys(updates).length > 0) {
@@ -298,6 +304,10 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
       rethrowBioDuplicate(error);
     }
   }
+
+  // Only after the row is updated do we delete replaced images, so a failed
+  // update (e.g. duplicate slug) never strands the page on a deleted image.
+  for (const url of imagesToDelete) await deleteImage(url).catch(() => {});
   revalidateBioPath(page.slug);
   if (updates.slug && updates.slug !== page.slug) revalidateBioPath(updates.slug);
   return { success: true };
@@ -474,7 +484,18 @@ export async function reorderBlocks(ctx: WorkspaceTRPCContext, input: ReorderBlo
     columns: { id: true },
   });
   const validIds = new Set(blocks.map((b) => b.id));
-  const ordered = input.blockIds.filter((id) => validIds.has(id));
+  const seen = new Set<number>();
+  const ordered = input.blockIds.filter(
+    (id) => validIds.has(id) && !seen.has(id) && (seen.add(id), true),
+  );
+  // The client always sends the full ordering; a partial or duplicated payload
+  // would leave some blocks with stale positions, so reject it outright.
+  if (ordered.length !== validIds.size) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Reorder must include every block exactly once.",
+    });
+  }
 
   await ctx.db.transaction(async (tx) => {
     for (let i = 0; i < ordered.length; i++) {

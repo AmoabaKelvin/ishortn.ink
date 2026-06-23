@@ -126,6 +126,7 @@ export function BioPagesList({ pages, bioPageLimit }: BioPagesListProps) {
                     href={`/p/${page.slug}`}
                     target="_blank"
                     rel="noreferrer"
+                    aria-label="View live page"
                     className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
                     title="View live page"
                   >
@@ -135,6 +136,7 @@ export function BioPagesList({ pages, bioPageLimit }: BioPagesListProps) {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button
+                      aria-label="Delete page"
                       className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
                       title="Delete page"
                     >

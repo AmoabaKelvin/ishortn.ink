@@ -31,7 +31,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PublicBioPageRoute({ params }: Props) {
   const { slug } = await params;
-  const page = await api.bioPage.getBySlug.query({ slug }).catch(() => null);
+  // Not-found returns null; a real fetch error throws so it surfaces as a 5xx
+  // rather than being masked as a missing page.
+  const page = await api.bioPage.getBySlug.query({ slug });
   if (!page) notFound();
   return <PublicBioView page={page} />;
 }

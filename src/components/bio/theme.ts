@@ -99,6 +99,18 @@ export function resolveBioTheme(theme?: BioPageTheme | null): ResolvedBioTheme {
   const buttonStyle = theme?.buttonStyle ?? preset.buttonStyle;
 
   let backgroundCss = preset.background;
+  let textColor = preset.text;
+  let mutedColor = preset.muted;
+
+  // A custom background may not match the preset's text color (e.g. a dark color
+  // on a light preset), so derive a legible foreground from it.
+  const customBg =
+    theme?.background?.type === "solid"
+      ? theme.background.color
+      : theme?.background?.type === "gradient"
+        ? theme.background.from
+        : undefined;
+
   if (theme?.background) {
     if (theme.background.type === "solid" && theme.background.color) {
       backgroundCss = theme.background.color;
@@ -111,12 +123,17 @@ export function resolveBioTheme(theme?: BioPageTheme | null): ResolvedBioTheme {
     }
   }
 
+  if (customBg) {
+    textColor = readableTextOn(customBg);
+    mutedColor = textColor === "#ffffff" ? "rgba(255, 255, 255, 0.72)" : "rgba(10, 10, 10, 0.6)";
+  }
+
   const accentColor = theme?.accentColor ?? preset.accent;
 
   return {
     backgroundCss,
-    textColor: preset.text,
-    mutedColor: preset.muted,
+    textColor,
+    mutedColor,
     accentColor,
     accentTextColor: readableTextOn(accentColor),
     buttonRadius: BUTTON_RADIUS[buttonStyle] ?? "0.75rem",
