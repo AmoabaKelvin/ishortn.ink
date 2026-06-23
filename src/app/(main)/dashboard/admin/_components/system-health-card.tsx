@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card";
 type HealthData = {
   totalLinks: number;
   totalUsers: number;
+  totalBioPages: number;
+  bioPagesToday: number;
   blockedLinks: number;
   bannedUsers: number;
   blockedPercent: number;
@@ -103,6 +105,12 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
         </p>
       </div>
       <div className="divide-y divide-neutral-100 dark:divide-border/50">
+        <StatusRow
+          label="Bio pages"
+          value={data.totalBioPages.toLocaleString()}
+          detail={`${data.bioPagesToday.toLocaleString()} today`}
+          status="neutral"
+        />
         <StatusRow
           label="Blocked links"
           value={`${data.blockedPercent}%`}
