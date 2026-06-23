@@ -1,6 +1,7 @@
 "use client";
 
 import { IconLock, IconUpload, IconX } from "@tabler/icons-react";
+import { Link } from "next-view-transitions";
 import { useRef } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Plan } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
+import { api } from "@/trpc/react";
 import type { BioPageTheme } from "@/server/db/schema";
 
 export type BioSettingsDraft = {
@@ -33,6 +35,9 @@ export type BioSettingsDraft = {
 };
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
+// Radix Select forbids empty-string item values, so use a sentinel for "no domain".
+const NO_DOMAIN = "__none__";
 
 const BUTTON_STYLES = [
   { value: "rounded", label: "Rounded" },
@@ -60,6 +65,17 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
   const fileRef = useRef<HTMLInputElement>(null);
   const socialFileRef = useRef<HTMLInputElement>(null);
   const isPaid = plan !== "free";
+
+  // Only verified domains in this workspace can serve a bio page (the server
+  // enforces this on save), so offer exactly those instead of a free-text field.
+  const { data: domains } = api.customDomain.list.useQuery(undefined, { enabled: isPaid });
+  const domainOptions = (domains ?? [])
+    .filter((d) => d.status === "active" && d.domain)
+    .map((d) => d.domain!);
+  // Keep an already-saved domain selectable even if it's no longer listed/active.
+  if (value.customDomain && !domainOptions.includes(value.customDomain)) {
+    domainOptions.unshift(value.customDomain);
+  }
 
   function patchTheme(patch: Partial<BioPageTheme>) {
     onChange({ theme: { ...value.theme, ...patch } });
@@ -259,15 +275,40 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
             Custom domain
             {!isPaid && <IconLock size={13} className="text-amber-500" />}
           </Label>
-          <Input
-            value={value.customDomain}
-            disabled={!isPaid}
-            onChange={(e) => onChange({ customDomain: e.target.value })}
-            placeholder="links.yourbrand.com"
-          />
-          <p className="text-[12px] text-muted-foreground">
-            Use a domain you've already verified under Domains. Your bio page loads at its root.
-          </p>
+          {isPaid && domainOptions.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground">
+              No verified domains yet.{" "}
+              <Link href="/dashboard/domains" className="font-medium text-blue-600 hover:underline">
+                Add and verify a domain
+              </Link>{" "}
+              to serve your bio page from it.
+            </p>
+          ) : (
+            <>
+              <Select
+                value={value.customDomain || NO_DOMAIN}
+                disabled={!isPaid}
+                onValueChange={(v) => onChange({ customDomain: v === NO_DOMAIN ? "" : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a domain" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_DOMAIN}>
+                    None — use ishortn.ink/p/{value.slug || "your-handle"}
+                  </SelectItem>
+                  {domainOptions.map((domain) => (
+                    <SelectItem key={domain} value={domain}>
+                      {domain}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[12px] text-muted-foreground">
+                Pick a verified domain. Your bio page loads at its root.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="space-y-1.5">
