@@ -94,6 +94,7 @@
     "resend": "^3.3.0",
     "seedrandom": "^3.0.5",
     "server-only": "^0.0.1",
+    "sharp": "0.34.5",
     "sonner": "^1.4.41",
     "stackblur-canvas": "^2.7.0",
     "superjson": "^2.2.1",

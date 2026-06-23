@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 import { workspaceOwnership } from "@/server/lib/workspace";
 
+import { normalizeImageOrientation } from "./image-orientation";
 import { isR2Configured, r2DeleteImage, r2UploadImage } from "./r2";
 import type { ImageType } from "./types";
 
@@ -38,11 +39,15 @@ export async function uploadImage(
 
   try {
     const [, format, base64Data] = match;
-    const buffer = Buffer.from(base64Data!, "base64");
+    const rawBuffer = Buffer.from(base64Data!, "base64");
 
-    if (buffer.length > MAX_SIZE_BYTES) {
+    if (rawBuffer.length > MAX_SIZE_BYTES) {
       throw new Error("Image exceeds maximum size of 2MB");
     }
+
+    // Bake in EXIF orientation so the OG image (rendered by next/og, which
+    // ignores the tag) matches the upright way browsers show the avatar.
+    const buffer = await normalizeImageOrientation(rawBuffer, format!);
 
     const ownership = workspaceOwnership(ctx.workspace);
 
