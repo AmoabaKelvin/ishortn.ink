@@ -2,11 +2,15 @@ import { and, count, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm
 
 import { db } from "@/server/db";
 import {
+  bioPage,
+  bioPageView,
+  bioPageViewDailySummary,
   link,
   linkVisit,
   linkVisitDailySummary,
   subscription,
   team,
+  uniqueBioPageView,
   uniqueLinkVisit,
 } from "@/server/db/schema";
 
@@ -20,6 +24,8 @@ interface AnalyticsCleanupResult {
   dailySummariesCreated: number;
   freeLinksProcessed: number;
   proLinksProcessed: number;
+  bioPageViewsDeleted: number;
+  uniqueBioPageViewsDeleted: number;
 }
 
 // Batch size for paginated queries and deletes
@@ -51,6 +57,8 @@ export async function cleanupAnalyticsData(): Promise<AnalyticsCleanupResult> {
     dailySummariesCreated: 0,
     freeLinksProcessed: 0,
     proLinksProcessed: 0,
+    bioPageViewsDeleted: 0,
+    uniqueBioPageViewsDeleted: 0,
   };
 
   // Calculate cutoff dates
@@ -148,9 +156,198 @@ export async function cleanupAnalyticsData(): Promise<AnalyticsCleanupResult> {
         .limit(QUERY_BATCH_SIZE),
   );
 
+  // --- Bio page views: same tier-based retention as link visits ---
+  await cleanupBioPageViews(result, freeCutoffDate, proCutoffDate);
+
   // Note: Ultra users (personal and team) have unlimited retention — no cleanup
 
   return result;
+}
+
+/**
+ * Roll up + prune raw bio-page view records by owner plan, mirroring the link
+ * visit cleanup. Free pages keep 30 days, Pro 365, Ultra unlimited.
+ */
+async function cleanupBioPageViews(
+  result: AnalyticsCleanupResult,
+  freeCutoffDate: Date,
+  proCutoffDate: Date,
+): Promise<void> {
+  // Free: personal pages
+  await processBioPageBatch(result, freeCutoffDate, (lastId) =>
+    db
+      .select({ bioPageId: bioPage.id })
+      .from(bioPage)
+      .leftJoin(subscription, eq(bioPage.userId, subscription.userId))
+      .where(and(sql`${bioPage.id} > ${lastId}`, isNull(bioPage.teamId), IS_FREE_TIER))
+      .orderBy(bioPage.id)
+      .limit(QUERY_BATCH_SIZE),
+  );
+  // Free: team pages (owner has no active paid subscription)
+  await processBioPageBatch(result, freeCutoffDate, (lastId) =>
+    db
+      .select({ bioPageId: bioPage.id })
+      .from(bioPage)
+      .innerJoin(team, eq(bioPage.teamId, team.id))
+      .leftJoin(subscription, eq(team.ownerId, subscription.userId))
+      .where(and(sql`${bioPage.id} > ${lastId}`, isNotNull(bioPage.teamId), IS_FREE_TIER))
+      .orderBy(bioPage.id)
+      .limit(QUERY_BATCH_SIZE),
+  );
+  // Pro: personal pages
+  await processBioPageBatch(result, proCutoffDate, (lastId) =>
+    db
+      .select({ bioPageId: bioPage.id })
+      .from(bioPage)
+      .innerJoin(subscription, eq(bioPage.userId, subscription.userId))
+      .where(
+        and(
+          sql`${bioPage.id} > ${lastId}`,
+          isNull(bioPage.teamId),
+          eq(subscription.status, "active"),
+          eq(subscription.plan, "pro"),
+        ),
+      )
+      .orderBy(bioPage.id)
+      .limit(QUERY_BATCH_SIZE),
+  );
+  // Pro: team pages
+  await processBioPageBatch(result, proCutoffDate, (lastId) =>
+    db
+      .select({ bioPageId: bioPage.id })
+      .from(bioPage)
+      .innerJoin(team, eq(bioPage.teamId, team.id))
+      .innerJoin(subscription, eq(team.ownerId, subscription.userId))
+      .where(
+        and(
+          sql`${bioPage.id} > ${lastId}`,
+          isNotNull(bioPage.teamId),
+          eq(subscription.status, "active"),
+          eq(subscription.plan, "pro"),
+        ),
+      )
+      .orderBy(bioPage.id)
+      .limit(QUERY_BATCH_SIZE),
+  );
+}
+
+async function processBioPageBatch(
+  result: AnalyticsCleanupResult,
+  cutoffDate: Date,
+  queryFn: (lastId: number) => Promise<{ bioPageId: number }[]>,
+): Promise<void> {
+  let lastId = 0;
+
+  while (true) {
+    const pages = await queryFn(lastId);
+    if (pages.length === 0) break;
+
+    const ids = pages.map((p) => p.bioPageId);
+    lastId = ids[ids.length - 1] ?? lastId;
+
+    for (let i = 0; i < ids.length; i += DELETE_BATCH_SIZE) {
+      const batch = ids.slice(i, i + DELETE_BATCH_SIZE);
+
+      result.dailySummariesCreated += await aggregateBioDailySummaries(batch, cutoffDate);
+
+      const [viewRes, uniqueRes] = await Promise.all([
+        db
+          .delete(bioPageView)
+          .where(
+            and(inArray(bioPageView.bioPageId, batch), lt(bioPageView.createdAt, cutoffDate)),
+          ),
+        db
+          .delete(uniqueBioPageView)
+          .where(
+            and(
+              inArray(uniqueBioPageView.bioPageId, batch),
+              lt(uniqueBioPageView.createdAt, cutoffDate),
+            ),
+          ),
+      ]);
+      result.bioPageViewsDeleted += viewRes[0].affectedRows;
+      result.uniqueBioPageViewsDeleted += uniqueRes[0].affectedRows;
+    }
+
+    if (pages.length < QUERY_BATCH_SIZE) break;
+  }
+}
+
+async function aggregateBioDailySummaries(
+  bioPageIds: number[],
+  cutoffDate: Date,
+): Promise<number> {
+  const [viewAgg, uniqueAgg] = await Promise.all([
+    db
+      .select({
+        bioPageId: bioPageView.bioPageId,
+        date: sql<string>`DATE(${bioPageView.createdAt})`.as("view_date"),
+        views: count().as("views"),
+      })
+      .from(bioPageView)
+      .where(and(inArray(bioPageView.bioPageId, bioPageIds), lt(bioPageView.createdAt, cutoffDate)))
+      .groupBy(bioPageView.bioPageId, sql`view_date`),
+    db
+      .select({
+        bioPageId: uniqueBioPageView.bioPageId,
+        date: sql<string>`DATE(${uniqueBioPageView.createdAt})`.as("view_date"),
+        uniqueViews: count().as("unique_views"),
+      })
+      .from(uniqueBioPageView)
+      .where(
+        and(
+          inArray(uniqueBioPageView.bioPageId, bioPageIds),
+          lt(uniqueBioPageView.createdAt, cutoffDate),
+        ),
+      )
+      .groupBy(uniqueBioPageView.bioPageId, sql`view_date`),
+  ]);
+
+  if (viewAgg.length === 0 && uniqueAgg.length === 0) return 0;
+
+  const summaryMap = new Map<
+    string,
+    { bioPageId: number; date: string; views: number; uniqueViews: number }
+  >();
+
+  for (const row of viewAgg) {
+    summaryMap.set(`${row.bioPageId}:${row.date}`, {
+      bioPageId: row.bioPageId,
+      date: row.date,
+      views: row.views,
+      uniqueViews: 0,
+    });
+  }
+  for (const row of uniqueAgg) {
+    const key = `${row.bioPageId}:${row.date}`;
+    const existing = summaryMap.get(key);
+    if (existing) existing.uniqueViews = row.uniqueViews;
+    else
+      summaryMap.set(key, {
+        bioPageId: row.bioPageId,
+        date: row.date,
+        views: 0,
+        uniqueViews: row.uniqueViews,
+      });
+  }
+
+  const rows = Array.from(summaryMap.values());
+  if (rows.length === 0) return 0;
+
+  const UPSERT_BATCH = 500;
+  let upserted = 0;
+  for (let i = 0; i < rows.length; i += UPSERT_BATCH) {
+    const batch = rows.slice(i, i + UPSERT_BATCH);
+    await db
+      .insert(bioPageViewDailySummary)
+      .values(batch)
+      .onDuplicateKeyUpdate({
+        set: { views: sql`VALUES(views)`, uniqueViews: sql`VALUES(uniqueViews)` },
+      });
+    upserted += batch.length;
+  }
+
+  return upserted;
 }
 
 /**

@@ -126,10 +126,11 @@ export const getLinks = async (
     }
   }
 
-  // Base query condition - use workspace filtering, exclude QR-backing links
+  // Base query condition - use workspace filtering, exclude QR- and bio-backing links
   let baseCondition = and(
     workspaceFilter(ctx.workspace, link.userId, link.teamId),
     eq(link.isQrCode, false),
+    eq(link.isBioLink, false),
   );
 
   // Add tag filtering if needed
@@ -229,6 +230,7 @@ export const getLinks = async (
         and(
           workspaceFilter(ctx.workspace, link.userId, link.teamId),
           eq(link.isQrCode, false),
+          eq(link.isBioLink, false),
         ),
       ),
     linksQuery,
@@ -1246,6 +1248,7 @@ export const getAllUserAnalytics = async (
       const conditions = [
         workspaceFilter(ctx.workspace, table.userId, table.teamId),
         eq(table.isQrCode, false),
+        eq(table.isBioLink, false),
       ];
 
       // Apply filter based on type
@@ -1671,6 +1674,7 @@ export const exportAllUserLinks = async (ctx: WorkspaceTRPCContext) => {
       and(
         workspaceFilter(ctx.workspace, table.userId, table.teamId),
         eq(table.isQrCode, false),
+        eq(table.isBioLink, false),
       ),
   });
 };
@@ -1725,6 +1729,7 @@ export const getStats = async (ctx: WorkspaceTRPCContext) => {
   const baseFilter = and(
     workspaceFilter(ctx.workspace, link.userId, link.teamId),
     eq(link.isQrCode, false),
+    eq(link.isBioLink, false),
   );
 
   const [result] = await ctx.db
