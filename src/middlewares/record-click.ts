@@ -1,10 +1,8 @@
 import { sql } from "drizzle-orm";
-import { UAParser } from "ua-parser-js";
 
+import { parseDeviceDetails, parseReferrer, resolveGeo } from "@/lib/core/analytics/visitor";
 import { type Link, buildCacheKey, normalizeDomain, getFromCache, setInCache } from "@/lib/core/cache";
-import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { resolveDeviceType } from "@/lib/utils/device-type";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { isBot } from "@/lib/utils/is-bot";
 import { db } from "@/server/db";
@@ -12,8 +10,6 @@ import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 import { registerEventUsage } from "@/server/lib/event-usage";
 import { checkAndFireMilestones } from "@/server/lib/milestone-check";
 import { sendEventUsageEmail } from "@/server/lib/notifications/event-usage";
-
-const isLocalhost = process.env.NODE_ENV === "development";
 
 /**
  * Cache-first link lookup. No side effects except populating the cache on miss.
@@ -48,30 +44,6 @@ async function recordUniqueClick(ipHash: string, linkId: number) {
     .onDuplicateKeyUpdate({ set: { linkId: sql`linkId` } });
 }
 
-function resolveGeo(country: string, city: string) {
-  if (isLocalhost) {
-    return {
-      countryName: "United States",
-      continentName: "North America",
-      cityName: "San Francisco",
-    };
-  }
-
-  if (!country || country === "undefined" || country === "Unknown") {
-    return { countryName: "Unknown", continentName: "Unknown", cityName: "Unknown" };
-  }
-
-  try {
-    return {
-      countryName: getCountryFullName(country) ?? "Unknown",
-      continentName: getContinentName(country) ?? "Unknown",
-      cityName: city && city !== "undefined" && city !== "Unknown" ? city : "Unknown",
-    };
-  } catch {
-    return { countryName: "Unknown", continentName: "Unknown", cityName: "Unknown" };
-  }
-}
-
 type RecordClickOptions = {
   headers: Headers;
   link: Link;
@@ -93,15 +65,7 @@ export async function recordClick(opts: RecordClickOptions): Promise<void> {
   const userAgent = headers.get("user-agent") ?? "";
   if (userAgent && isBot(userAgent)) return;
 
-  const parsedUserAgent = await UAParser(userAgent, headers).withClientHints();
-
-  const osName = parsedUserAgent.os.name ?? "Unknown";
-  const deviceDetails = {
-    browser: parsedUserAgent.browser.name ?? "Unknown",
-    os: osName,
-    device: resolveDeviceType(osName, parsedUserAgent.device.type),
-    model: parsedUserAgent.device.model ?? "Unknown",
-  };
+  const deviceDetails = await parseDeviceDetails(headers);
 
   const ipForHash = ip && ip !== "undefined" ? ip : "localhost-dev";
   const ipHash = hashIp(ipForHash);
@@ -140,34 +104,4 @@ export async function recordClick(opts: RecordClickOptions): Promise<void> {
   ]);
 
   void runBackgroundTask(checkAndFireMilestones(link.id, link.userId));
-}
-
-export function parseReferrer(referrer: string | null): string {
-  if (!referrer) return "direct";
-
-  try {
-    const url = new URL(referrer);
-    const hostname = url.hostname.replace(/^www\./, "");
-
-    const referrerMap: Record<string, string> = {
-      "t.co": "twitter",
-      "l.facebook.com": "facebook",
-      "lm.facebook.com": "facebook",
-      "m.facebook.com": "facebook",
-      "linkedin.com": "linkedin",
-      "lnkd.in": "linkedin",
-      "out.reddit.com": "reddit",
-      "away.vk.com": "vkontakte",
-      "com.google.android.gm": "gmail",
-    };
-
-    if (hostname in referrerMap) {
-      return referrerMap[hostname] ?? hostname;
-    }
-
-    const parts = hostname.split(".");
-    return parts.slice(-2).join(".");
-  } catch {
-    return "unknown";
-  }
 }

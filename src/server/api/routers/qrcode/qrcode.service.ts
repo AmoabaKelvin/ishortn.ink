@@ -2,21 +2,19 @@ import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
-import { generateShortLink } from "@/lib/core/links";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { assertUrlSafe } from "@/server/lib/phishing";
-import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit, user } from "@/server/db/schema";
+import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
+import {
+  insertHiddenTrackingLink,
+  prepareHiddenTrackingLink,
+} from "@/server/lib/tracking-link";
 import {
   workspaceFilter,
   workspaceOwnership,
 } from "@/server/lib/workspace";
-import {
-  assertDomainAllowed,
-  checkWorkspaceLinkLimit,
-  getWorkspaceDefaultDomain,
-} from "../link/utils";
 
 import { updateLink } from "../link/link.service";
 
@@ -77,11 +75,22 @@ export const createQrCode = userFacing(
 
     const ownership = workspaceOwnership(ctx.workspace);
 
-    let linkLimitResult: Awaited<ReturnType<typeof checkWorkspaceLinkLimit>>;
+    // Prepare the hidden tracking link (quota check + URL safety + domain +
+    // alias). Re-message the link-limit error for the QR context.
+    let prepared: Awaited<ReturnType<typeof prepareHiddenTrackingLink>>;
     try {
-      linkLimitResult = await checkWorkspaceLinkLimit(ctx);
+      prepared = await prepareHiddenTrackingLink(ctx, {
+        url: input.content,
+        name: input.title || "QR Code",
+        domain: input.domain?.trim() || undefined,
+        kind: "qr",
+      });
     } catch (error) {
-      if (error instanceof TRPCError && error.code === "FORBIDDEN") {
+      if (
+        error instanceof TRPCError &&
+        error.code === "FORBIDDEN" &&
+        /link/i.test(error.message)
+      ) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message:
@@ -90,39 +99,9 @@ export const createQrCode = userFacing(
       }
       throw error;
     }
-    const { currentCount, limit } = linkLimitResult;
-
-    await assertUrlSafe(input.content);
-
-    const requestedDomain = input.domain?.trim();
-    if (requestedDomain) {
-      await assertDomainAllowed(ctx, requestedDomain);
-    }
-    const [alias, domain] = await Promise.all([
-      generateShortLink(),
-      requestedDomain ? Promise.resolve(requestedDomain) : getWorkspaceDefaultDomain(ctx),
-    ]);
-    const trackingUrl = `https://${domain}/${alias}`;
-
-    // Personal workspaces with a plan-defined quota have their monthly
-    // link count bumped inside the same transaction, so a count-update
-    // failure rolls the QR and hidden link back together — no orphan rows.
-    const shouldIncrementCount =
-      ctx.workspace.type !== "team" && limit !== undefined;
 
     const { insertedQrCodeId } = await ctx.db.transaction(async (tx) => {
-      const hiddenLinkResult = await tx.insert(link).values({
-        url: input.content,
-        alias,
-        domain,
-        name: input.title || "QR Code",
-        isQrCode: true,
-        userId: ownership.userId ?? ctx.auth.userId,
-        teamId: ownership.teamId,
-        createdByUserId: ctx.auth.userId,
-      });
-
-      const hiddenLinkId = hiddenLinkResult[0].insertId;
+      const hiddenLinkId = await insertHiddenTrackingLink(tx, ctx, prepared);
 
       const insertionResult = await tx.insert(qrcode).values({
         userId: ownership.userId,
@@ -136,17 +115,10 @@ export const createQrCode = userFacing(
         contentType: "link",
       });
 
-      if (shouldIncrementCount) {
-        await tx
-          .update(user)
-          .set({ monthlyLinkCount: currentCount + 1 })
-          .where(eq(user.id, ctx.auth.userId));
-      }
-
       return { insertedQrCodeId: insertionResult[0].insertId };
     });
 
-    return { trackingUrl, id: insertedQrCodeId };
+    return { trackingUrl: prepared.trackingUrl, id: insertedQrCodeId };
   },
 );
 

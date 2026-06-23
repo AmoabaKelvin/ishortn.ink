@@ -26,6 +26,9 @@ export type WorkspacePermission =
   | "utm.create"
   | "utm.edit"
   | "utm.delete"
+  | "bio.create"
+  | "bio.edit"
+  | "bio.delete"
   | "team.settings"
   | "team.invite"
   | "team.remove_member"
@@ -55,6 +58,9 @@ export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
     "utm.create",
     "utm.edit",
     "utm.delete",
+    "bio.create",
+    "bio.edit",
+    "bio.delete",
     "team.settings",
     "team.invite",
     "team.remove_member",
@@ -75,6 +81,9 @@ export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
     "utm.create",
     "utm.edit",
     "utm.delete",
+    "bio.create",
+    "bio.edit",
+    "bio.delete",
     "team.settings",
     "team.invite",
     "team.remove_member",
@@ -94,6 +103,9 @@ export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
     "utm.create",
     "utm.edit",
     "utm.delete",
+    "bio.create",
+    "bio.edit",
+    "bio.delete",
   ],
 };
 
