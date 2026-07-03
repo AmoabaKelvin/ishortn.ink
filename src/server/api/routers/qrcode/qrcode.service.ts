@@ -1,11 +1,18 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql, sum } from "drizzle-orm";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { assertUrlSafe } from "@/server/lib/phishing";
-import { link, linkVisit, qrcode, qrPreset, uniqueLinkVisit } from "@/server/db/schema";
+import {
+  link,
+  linkVisit,
+  linkVisitDailySummary,
+  qrcode,
+  qrPreset,
+  uniqueLinkVisit,
+} from "@/server/db/schema";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   insertHiddenTrackingLink,
@@ -209,18 +216,32 @@ export const retrieveUserQrCodes = userFacing(
       },
     });
 
-    // Get visit counts in a single aggregation query instead of loading all visit rows
+    // Get visit counts in a single aggregation query instead of loading all visit rows.
+    // Combine raw visits with archived clicks rolled up by the analytics cleanup job.
     const linkIds = qrCodes.map((qr) => qr.linkId).filter((id): id is number => id != null && id > 0);
-    const visitCounts =
+    const [visitCounts, archivedCounts] =
       linkIds.length > 0
-        ? await ctx.db
-            .select({ linkId: linkVisit.linkId, count: count() })
-            .from(linkVisit)
-            .where(inArray(linkVisit.linkId, linkIds))
-            .groupBy(linkVisit.linkId)
-        : [];
+        ? await Promise.all([
+            ctx.db
+              .select({ linkId: linkVisit.linkId, count: count() })
+              .from(linkVisit)
+              .where(inArray(linkVisit.linkId, linkIds))
+              .groupBy(linkVisit.linkId),
+            ctx.db
+              .select({
+                linkId: linkVisitDailySummary.linkId,
+                total: sum(linkVisitDailySummary.clicks),
+              })
+              .from(linkVisitDailySummary)
+              .where(inArray(linkVisitDailySummary.linkId, linkIds))
+              .groupBy(linkVisitDailySummary.linkId),
+          ])
+        : [[], []];
 
     const countMap = new Map(visitCounts.map((v) => [v.linkId, v.count]));
+    for (const row of archivedCounts) {
+      countMap.set(row.linkId, (countMap.get(row.linkId) ?? 0) + (Number(row.total) || 0));
+    }
 
     return qrCodes.map((qr) => ({
       ...qr,

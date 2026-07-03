@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, eq, inArray, ne } from "drizzle-orm";
+import { and, count, eq, inArray, ne, sum } from "drizzle-orm";
 
 import { isSubscriptionEntitled, PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
-import { customDomain, link, linkVisit } from "@/server/db/schema";
+import { customDomain, link, linkVisit, linkVisitDailySummary } from "@/server/db/schema";
 import {
   requirePermission,
   workspaceFilter,
@@ -248,15 +248,23 @@ export async function getDomainStatistics(ctx: WorkspaceTRPCContext, domain: str
   // Calculate link count
   const linkCount = domainLinks.length;
 
-  // Calculate total clicks
+  // Calculate total clicks (raw visits + archived clicks rolled up by the
+  // analytics cleanup job)
   let totalClicks = 0;
   if (linkIds.length > 0) {
-    const clicksResult = await ctx.db
-      .select({ count: count() })
-      .from(linkVisit)
-      .where(inArray(linkVisit.linkId, linkIds));
+    const [clicksResult, archivedResult] = await Promise.all([
+      ctx.db
+        .select({ count: count() })
+        .from(linkVisit)
+        .where(inArray(linkVisit.linkId, linkIds)),
+      ctx.db
+        .select({ total: sum(linkVisitDailySummary.clicks) })
+        .from(linkVisitDailySummary)
+        .where(inArray(linkVisitDailySummary.linkId, linkIds)),
+    ]);
 
-    totalClicks = clicksResult[0]?.count ?? 0;
+    totalClicks =
+      (clicksResult[0]?.count ?? 0) + (Number(archivedResult[0]?.total) || 0);
   }
 
   // Find last used date (most recent link creation)
