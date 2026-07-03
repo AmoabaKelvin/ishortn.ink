@@ -1,4 +1,4 @@
-import { asc, count, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import {
@@ -17,7 +17,8 @@ import {
 } from "@/lib/utils/verified-click-token";
 import { recordClick, resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
-import { geoRule, link as linkTable, linkVisit } from "@/server/db/schema";
+import { geoRule, link as linkTable } from "@/server/db/schema";
+import { getTotalClicks } from "@/server/lib/total-clicks";
 import { isOwnerOnPaidPlan } from "@/server/lib/user-plan";
 
 const log = logger.child({ component: "link-resolver" });
@@ -54,14 +55,9 @@ async function checkLinkExpiration(
     return true;
   }
 
-  // Click-based expiration
+  // Click-based expiration (true total: raw visits + archived daily summaries)
   if (link.disableLinkAfterClicks) {
-    const result = await db
-      .select({ clickCount: count(linkVisit.id) })
-      .from(linkVisit)
-      .where(eq(linkVisit.linkId, link.id));
-
-    const clickCount = result[0]?.clickCount ?? 0;
+    const clickCount = await getTotalClicks(link.id);
 
     if (clickCount >= link.disableLinkAfterClicks) {
       void runBackgroundTask(autoDisableLink(link.id, cacheKey));

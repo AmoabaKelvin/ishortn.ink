@@ -1,33 +1,12 @@
-import { and, count, eq, isNull, sum } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
-import { link, linkMilestone, linkVisit, linkVisitDailySummary, user } from "@/server/db/schema";
+import { link, linkMilestone, user } from "@/server/db/schema";
 import { sendLinkMilestoneEmail } from "@/server/lib/notifications/link-milestone";
+import { getTotalClicks } from "@/server/lib/total-clicks";
 
 const log = logger.child({ component: "milestone-check" });
-
-/**
- * Get the true total click count for a link by combining:
- * - Archived clicks from the daily summary table (survives cleanup)
- * - Recent raw clicks not yet rolled up
- */
-async function getTotalClicks(linkId: number): Promise<number> {
-  const [summaryResult, rawResult] = await Promise.all([
-    db
-      .select({ total: sum(linkVisitDailySummary.clicks) })
-      .from(linkVisitDailySummary)
-      .where(eq(linkVisitDailySummary.linkId, linkId)),
-    db
-      .select({ total: count() })
-      .from(linkVisit)
-      .where(eq(linkVisit.linkId, linkId)),
-  ]);
-
-  const archivedClicks = Number(summaryResult[0]?.total) || 0;
-  const recentClicks = rawResult[0]?.total ?? 0;
-  return archivedClicks + recentClicks;
-}
 
 /**
  * Check if any pending milestones have been reached for a link and fire

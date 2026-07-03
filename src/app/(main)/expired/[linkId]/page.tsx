@@ -1,11 +1,12 @@
 import { IconClockOff } from "@tabler/icons-react";
-import { count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Funnel_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { db } from "@/server/db";
-import { link, linkVisit } from "@/server/db/schema";
+import { link } from "@/server/db/schema";
+import { getTotalClicks } from "@/server/lib/total-clicks";
 
 const funnelSans = Funnel_Sans({
   subsets: ["latin"],
@@ -40,12 +41,8 @@ export default async function ExpiredPage({ params }: ExpiredPageProps) {
 
   let clicksExpired = false;
   if (linkRecord.disableLinkAfterClicks != null) {
-    const result = await db
-      .select({ clickCount: count(linkVisit.id) })
-      .from(linkVisit)
-      .where(eq(linkVisit.linkId, linkRecord.id));
-    clicksExpired =
-      (result[0]?.clickCount ?? 0) >= linkRecord.disableLinkAfterClicks;
+    const clickCount = await getTotalClicks(linkRecord.id);
+    clicksExpired = clickCount >= linkRecord.disableLinkAfterClicks;
   }
 
   if (!linkRecord.disabled && !dateExpired && !clicksExpired) {

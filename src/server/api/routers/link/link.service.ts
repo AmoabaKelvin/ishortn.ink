@@ -15,6 +15,7 @@ import {
   lt,
   or,
   sql,
+  sum,
 } from "drizzle-orm";
 import {
   canUseGeoRules,
@@ -48,6 +49,7 @@ import {
   linkMilestone,
   linkTag,
   linkVisit,
+  linkVisitDailySummary,
   qrcode,
   tag,
   uniqueLinkVisit,
@@ -198,14 +200,29 @@ export const getLinks = async (
     }
   }
 
+  // Archived clicks rolled up by the analytics cleanup job — raw LinkVisit
+  // rows older than the retention window are deleted, so true totals must
+  // combine both sources (see LinkVisitDailySummary).
+  const archivedClicksPerLink = ctx.db
+    .select({
+      linkId: linkVisitDailySummary.linkId,
+      clicks: sum(linkVisitDailySummary.clicks).as("archived_clicks"),
+    })
+    .from(linkVisitDailySummary)
+    .groupBy(linkVisitDailySummary.linkId)
+    .as("archivedClicksPerLink");
+
   // Prepare the query parts
   const linksQuery = ctx.db
     .select({
       ...getTableColumns(link),
-      totalClicks: count(linkVisit.id).as("total_clicks"),
+      totalClicks: sql<number>`${count(linkVisit.id)} + COALESCE(MAX(${archivedClicksPerLink.clicks}), 0)`
+        .mapWith(Number)
+        .as("total_clicks"),
     })
     .from(link)
     .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
+    .leftJoin(archivedClicksPerLink, eq(link.id, archivedClicksPerLink.linkId))
     .where(baseCondition)
     .groupBy(link.id)
     .limit(pageSize)
@@ -213,28 +230,34 @@ export const getLinks = async (
 
   // Apply ordering based on the orderBy parameter
   if (orderBy === "totalClicks") {
-    linksQuery.orderBy(orderFunc(count(linkVisit.id)));
+    linksQuery.orderBy(orderFunc(sql`total_clicks`));
   } else if (orderBy === "lastClicked") {
     linksQuery.orderBy(orderFunc(sql`MAX(${linkVisit.createdAt})`));
   } else {
     linksQuery.orderBy(orderFunc(link.createdAt));
   }
 
-  const [totalLinksResult, totalClicksResult, links] = await Promise.all([
-    ctx.db.select({ count: count() }).from(link).where(baseCondition),
-    ctx.db
-      .select({ totalClicks: count(linkVisit.id) })
-      .from(linkVisit)
-      .innerJoin(link, eq(link.id, linkVisit.linkId))
-      .where(
-        and(
-          workspaceFilter(ctx.workspace, link.userId, link.teamId),
-          eq(link.isQrCode, false),
-          eq(link.isBioLink, false),
-        ),
-      ),
-    linksQuery,
-  ]);
+  const workspaceLinkCondition = and(
+    workspaceFilter(ctx.workspace, link.userId, link.teamId),
+    eq(link.isQrCode, false),
+    eq(link.isBioLink, false),
+  );
+
+  const [totalLinksResult, totalClicksResult, archivedClicksResult, links] =
+    await Promise.all([
+      ctx.db.select({ count: count() }).from(link).where(baseCondition),
+      ctx.db
+        .select({ totalClicks: count(linkVisit.id) })
+        .from(linkVisit)
+        .innerJoin(link, eq(link.id, linkVisit.linkId))
+        .where(workspaceLinkCondition),
+      ctx.db
+        .select({ archivedClicks: sum(linkVisitDailySummary.clicks) })
+        .from(linkVisitDailySummary)
+        .innerJoin(link, eq(link.id, linkVisitDailySummary.linkId))
+        .where(workspaceLinkCondition),
+      linksQuery,
+    ]);
 
   // Batch fetch creator info for team workspaces (avoid N+1)
   let creatorMap: Map<
@@ -290,7 +313,9 @@ export const getLinks = async (
   );
 
   const totalLinks = totalLinksResult?.[0]?.count ?? 0;
-  const totalClicks = totalClicksResult?.[0]?.totalClicks ?? 0;
+  const totalClicks =
+    (totalClicksResult?.[0]?.totalClicks ?? 0) +
+    (Number(archivedClicksResult?.[0]?.archivedClicks) || 0);
 
   return {
     links: linksWithTags,

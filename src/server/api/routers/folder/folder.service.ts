@@ -1,8 +1,15 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, getTableColumns, inArray, sql, sum } from "drizzle-orm";
 
 import { getPlanCaps } from "@/lib/billing/plans";
-import { folder, folderPermission, link, linkVisit, teamMember } from "@/server/db/schema";
+import {
+  folder,
+  folderPermission,
+  link,
+  linkVisit,
+  linkVisitDailySummary,
+  teamMember,
+} from "@/server/db/schema";
 import {
   getAccessibleFolderIds,
   getFolderPermissionMap,
@@ -169,14 +176,27 @@ export const getFolder = async (
   // Check access permission for team members
   await requireFolderAccess(ctx.db, ctx.workspace, input.id);
 
-  // Get all links in this folder with totalClicks
+  // Get all links in this folder with totalClicks. True totals combine raw
+  // visits with archived clicks rolled up by the analytics cleanup job.
+  const archivedClicksPerLink = ctx.db
+    .select({
+      linkId: linkVisitDailySummary.linkId,
+      clicks: sum(linkVisitDailySummary.clicks).as("archived_clicks"),
+    })
+    .from(linkVisitDailySummary)
+    .groupBy(linkVisitDailySummary.linkId)
+    .as("archivedClicksPerLink");
+
   const folderLinks = await ctx.db
     .select({
       ...getTableColumns(link),
-      totalClicks: count(linkVisit.id).as("total_clicks"),
+      totalClicks: sql<number>`${count(linkVisit.id)} + COALESCE(MAX(${archivedClicksPerLink.clicks}), 0)`
+        .mapWith(Number)
+        .as("total_clicks"),
     })
     .from(link)
     .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
+    .leftJoin(archivedClicksPerLink, eq(link.id, archivedClicksPerLink.linkId))
     .where(
       and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId))
     )
