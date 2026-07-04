@@ -9,6 +9,7 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import {
   accountTransfer,
   bioPage,
+  campaign,
   customDomain,
   folder,
   link,
@@ -79,6 +80,7 @@ export interface TransferResult {
   utmTemplatesTransferred: number;
   qrPresetsTransferred: number;
   bioPagesTransferred: number;
+  campaignsTransferred: number;
 }
 
 // ============================================================================
@@ -342,6 +344,46 @@ export async function validateAccountTransfer(
         currentCount: newTotal,
         limit: targetCaps.folderLimit,
       });
+    }
+  }
+
+  // Campaigns: block the transfer if the source's ACTIVE campaigns would
+  // exceed the target's active-campaign cap (archived don't count).
+  if (targetCaps.campaignLimit !== undefined) {
+    const [srcCampaignRows, tgtCampaignRows] = await Promise.all([
+      ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(campaign)
+        .where(
+          and(
+            eq(campaign.userId, ctx.auth.userId),
+            isNull(campaign.teamId),
+            eq(campaign.status, "active")
+          )
+        ),
+      ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(campaign)
+        .where(
+          and(
+            eq(campaign.userId, targetUser.id),
+            isNull(campaign.teamId),
+            eq(campaign.status, "active")
+          )
+        ),
+    ]);
+    const srcCampaigns = Number(srcCampaignRows[0]?.count ?? 0);
+    if (srcCampaigns > 0) {
+      const newTotal = Number(tgtCampaignRows[0]?.count ?? 0) + srcCampaigns;
+      if (newTotal > targetCaps.campaignLimit) {
+        errors.push({
+          type: "LIMIT_EXCEEDED",
+          message: `Transfer would exceed target account's active campaign limit`,
+          resourceType: "campaigns",
+          currentCount: newTotal,
+          limit: targetCaps.campaignLimit,
+        });
+      }
     }
   }
 
@@ -668,6 +710,7 @@ async function executeResourceTransfer(
     utmTemplatesTransferred: 0,
     qrPresetsTransferred: 0,
     bioPagesTransferred: 0,
+    campaignsTransferred: 0,
   };
 
   await ctx.db.transaction(async (tx) => {
@@ -894,6 +937,63 @@ async function executeResourceTransfer(
       .where(and(eq(bioPage.userId, fromUserId), isNull(bioPage.teamId)));
 
     result.bioPagesTransferred = bioPagesUpdate[0].affectedRows;
+
+    // =========================================
+    // Phase 7c: Transfer Campaigns
+    // =========================================
+    // Member links already moved in Phase 3, so link.campaignId stays valid —
+    // the campaign container just follows them to the new owner. Names and
+    // slugs are unique per workspace (campaign_slug_workspace_unique), so any
+    // source campaign colliding with the target's gets a numeric suffix
+    // before the ownership flip.
+    const [sourceCampaigns, targetCampaigns] = await Promise.all([
+      tx.query.campaign.findMany({
+        where: and(eq(campaign.userId, fromUserId), isNull(campaign.teamId)),
+        columns: { id: true, slug: true, name: true },
+      }),
+      tx.query.campaign.findMany({
+        where: and(eq(campaign.userId, toUserId), isNull(campaign.teamId)),
+        columns: { slug: true, name: true },
+      }),
+    ]);
+
+    const targetSlugs = new Set(targetCampaigns.map((c) => c.slug));
+    const targetNames = new Set(targetCampaigns.map((c) => c.name.toLowerCase()));
+    const allSlugs = new Set([...targetSlugs, ...sourceCampaigns.map((c) => c.slug)]);
+    const allNames = new Set([
+      ...targetNames,
+      ...sourceCampaigns.map((c) => c.name.toLowerCase()),
+    ]);
+
+    for (const sourceCampaign of sourceCampaigns) {
+      const collides =
+        targetSlugs.has(sourceCampaign.slug) ||
+        targetNames.has(sourceCampaign.name.toLowerCase());
+      if (!collides) continue;
+
+      let suffix = 2;
+      let newSlug: string;
+      let newName: string;
+      do {
+        newSlug = `${sourceCampaign.slug.slice(0, 100 - `-${suffix}`.length)}-${suffix}`;
+        newName = `${sourceCampaign.name.slice(0, 100 - ` (${suffix})`.length)} (${suffix})`;
+        suffix += 1;
+      } while (allSlugs.has(newSlug) || allNames.has(newName.toLowerCase()));
+
+      await tx
+        .update(campaign)
+        .set({ slug: newSlug, name: newName })
+        .where(eq(campaign.id, sourceCampaign.id));
+      allSlugs.add(newSlug);
+      allNames.add(newName.toLowerCase());
+    }
+
+    const campaignsUpdate = await tx
+      .update(campaign)
+      .set({ userId: toUserId, teamId: null })
+      .where(and(eq(campaign.userId, fromUserId), isNull(campaign.teamId)));
+
+    result.campaignsTransferred = campaignsUpdate[0].affectedRows;
 
     // =========================================
     // Phase 8: Clean up source folders and tags

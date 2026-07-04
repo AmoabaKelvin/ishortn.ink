@@ -15,6 +15,7 @@ import {
   IconPencil,
   IconQrcode,
   IconRefresh,
+  IconSpeakerphone,
   IconTrash,
 } from "@tabler/icons-react";
 import { useTransitionRouter } from "next-view-transitions";
@@ -48,6 +49,7 @@ import { api } from "@/trpc/react";
 import { MoveToFolderModal } from "@/app/(main)/dashboard/folders/_components/move-to-folder-modal";
 import { TransferToWorkspaceModal } from "../transfer-to-workspace-modal";
 
+import { AddToCampaignModal } from "./add-to-campaign-modal";
 import { ChangeLinkPasswordModal } from "./password-change-modal";
 import { EditLinkDrawer } from "./edit-link-drawer";
 import { QRCodeModal } from "./qrcode-modal";
@@ -63,6 +65,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   const [qrModal, setQrModal] = useState(false);
   const [openChangePasswordModal, setOpenChangePasswordModal] = useState(false);
   const [moveToFolderModal, setMoveToFolderModal] = useState(false);
+  const [addToCampaignModal, setAddToCampaignModal] = useState(false);
   const [transferToWorkspaceModal, setTransferToWorkspaceModal] =
     useState(false);
   const [resetStatsDialog, setResetStatsDialog] = useState(false);
@@ -200,6 +203,17 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
               className="mr-2 text-neutral-400"
             />
             Move to folder
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setAddToCampaignModal(true)}
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
+          >
+            <IconSpeakerphone
+              size={15}
+              stroke={1.5}
+              className="mr-2 text-neutral-400"
+            />
+            {link.campaignId ? "Move to campaign" : "Add to campaign"}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setTransferToWorkspaceModal(true)}
@@ -344,6 +358,12 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
         open={moveToFolderModal}
         onOpenChange={setMoveToFolderModal}
         currentFolderId={link.folderId}
+      />
+      <AddToCampaignModal
+        linkId={link.id}
+        currentCampaignId={link.campaignId ?? null}
+        open={addToCampaignModal}
+        onOpenChange={setAddToCampaignModal}
       />
       <TransferToWorkspaceModal
         linkIds={[link.id]}

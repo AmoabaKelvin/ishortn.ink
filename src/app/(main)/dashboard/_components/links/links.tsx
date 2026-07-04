@@ -11,6 +11,7 @@ import {
   IconSearch,
   IconSortAscending,
   IconSortDescending,
+  IconSpeakerphone,
   IconTag,
   IconX,
 } from "@tabler/icons-react";
@@ -25,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { api } from "@/trpc/react";
 
 import Link from "./link-card/card";
 import { BulkActionBar } from "./bulk-action-bar";
@@ -66,8 +68,15 @@ const LinksContent = ({
   const [archivedFilter, setArchivedFilter] = useState(
     urlSearchParams.get("archivedFilter") ?? "active",
   );
+  const [campaignFilter, setCampaignFilter] = useState(
+    urlSearchParams.get("campaign") ?? "all",
+  );
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
+
+  const { data: campaigns } = api.campaign.listNames.useQuery(undefined, {
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     const tagFromUrl = urlSearchParams.get("tag");
@@ -78,6 +87,7 @@ const LinksContent = ({
     if (archivedFromUrl) {
       setArchivedFilter(archivedFromUrl);
     }
+    setCampaignFilter(urlSearchParams.get("campaign") ?? "all");
   }, [urlSearchParams]);
 
   useEffect(() => {
@@ -126,6 +136,19 @@ const LinksContent = ({
       params.delete("archivedFilter");
     } else {
       params.set("archivedFilter", value);
+    }
+    params.set("page", "1");
+    router.push(`/dashboard?${params.toString()}`);
+  };
+
+  const handleCampaignFilterChange = (value: string) => {
+    setCampaignFilter(value);
+
+    const params = new URLSearchParams(urlSearchParams.toString());
+    if (value === "all") {
+      params.delete("campaign");
+    } else {
+      params.set("campaign", value);
     }
     params.set("page", "1");
     router.push(`/dashboard?${params.toString()}`);
@@ -260,6 +283,37 @@ const LinksContent = ({
             ))}
           </SelectContent>
         </Select>
+
+        {((campaigns?.length ?? 0) > 0 || campaignFilter !== "all") && (
+          <Select
+            onValueChange={handleCampaignFilterChange}
+            value={campaignFilter}
+          >
+            <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[160px]">
+              <SelectValue placeholder="Campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                <IconSpeakerphone
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                All campaigns
+              </SelectItem>
+              {campaigns?.map((campaign) => (
+                <SelectItem key={campaign.id} value={campaign.id.toString()}>
+                  <IconSpeakerphone
+                    size={14}
+                    stroke={1.5}
+                    className="mr-1.5 inline-block text-neutral-400"
+                  />
+                  {campaign.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select
           onValueChange={handleOrderChange}

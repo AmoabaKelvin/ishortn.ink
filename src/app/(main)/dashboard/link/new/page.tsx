@@ -76,6 +76,9 @@ export default function CreateLinkPage() {
   const router = useTransitionRouter();
   const searchParams = useSearchParams();
   const initialUrl = searchParams.get("url") ?? undefined;
+  const campaignIdParam = Number(searchParams.get("campaignId"));
+  const initialCampaignId =
+    Number.isInteger(campaignIdParam) && campaignIdParam > 0 ? campaignIdParam : undefined;
   const [destinationURL, setDestinationURL] = useState<string | undefined>(initialUrl);
   const [userDomains, setUserDomains] = useState<CustomDomain[]>([]);
   const [isCustomMetadataOpen, setIsCustomMetadataOpen] = useState(false);
@@ -107,12 +110,14 @@ export default function CreateLinkPage() {
     },
   });
   const { data: userTags } = api.tag.list.useQuery();
+  const { data: campaigns } = api.campaign.listNames.useQuery();
 
   const form = useForm<z.infer<typeof createLinkSchema>>({
     resolver: zodResolver(createLinkSchema),
     defaultValues: {
       domain: DEFAULT_PLATFORM_DOMAIN,
       ...(initialUrl ? { url: initialUrl } : {}),
+      ...(initialCampaignId ? { campaignId: initialCampaignId } : {}),
     },
   });
 
@@ -430,6 +435,9 @@ export default function CreateLinkPage() {
   const isProUser = (userSubscription?.data?.plan ?? "free") !== "free";
   const isUltraUser = userSubscription?.data?.plan === "ultra";
 
+  const selectedCampaignId = form.watch("campaignId");
+  const selectedCampaign = campaigns?.find((campaign) => campaign.id === selectedCampaignId);
+
   return (
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       <div className="md:col-span-5">
@@ -674,6 +682,53 @@ export default function CreateLinkPage() {
                       Add tags to categorize your links. Press Enter to add a tag or select from
                       existing tags.
                     </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Campaign */}
+              <FormField
+                control={form.control}
+                name="campaignId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Campaign</FormLabel>
+                    <Select
+                      value={field.value != null ? field.value.toString() : "none"}
+                      onValueChange={(value) => {
+                        field.onChange(value === "none" ? null : Number(value));
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] text-neutral-900 dark:text-foreground">
+                          <SelectValue placeholder="No campaign" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No campaign</SelectItem>
+                        {campaigns?.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id.toString()}>
+                            {campaign.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isProUser && selectedCampaign ? (
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                        Will stamp{" "}
+                        <code className="rounded bg-neutral-100 dark:bg-muted px-1 py-0.5 text-[11px]">
+                          utm_campaign={selectedCampaign.slug}
+                          {selectedCampaign.utmSource && `, utm_source=${selectedCampaign.utmSource}`}
+                          {selectedCampaign.utmMedium && `, utm_medium=${selectedCampaign.utmMedium}`}
+                        </code>{" "}
+                        onto this link. Values you enter yourself are kept.
+                      </FormDescription>
+                    ) : (
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                        Group this link into a campaign (optional)
+                      </FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

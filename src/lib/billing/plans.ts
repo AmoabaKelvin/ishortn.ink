@@ -12,6 +12,7 @@ type PlanCaps = {
   geoRulesLimit?: number; // Max geo rules per link (undefined => unlimited)
   milestonesPerLinkLimit?: number; // Max milestones per link (undefined => unlimited)
   bioPageLimit?: number; // Max bio pages (undefined => unlimited)
+  campaignLimit?: number; // Max ACTIVE campaigns (archived don't count; undefined => unlimited)
 };
 
 // Lemon Squeezy variant IDs per plan + billing interval.
@@ -58,6 +59,7 @@ export const PLAN_CAPS: Record<Plan, PlanCaps> = {
     geoRulesLimit: 0, // Geotargeting not available for free plan
     milestonesPerLinkLimit: 0,
     bioPageLimit: 1,
+    campaignLimit: 1,
   },
   pro: {
     eventsLimit: 10000,
@@ -67,6 +69,7 @@ export const PLAN_CAPS: Record<Plan, PlanCaps> = {
     geoRulesLimit: 3, // Pro plan allows 3 geo rules per link
     milestonesPerLinkLimit: 5,
     bioPageLimit: 3,
+    campaignLimit: 2,
   },
   ultra: {
     // unlimited
@@ -191,4 +194,17 @@ export function canUseBioUtmPerBlock(plan: Plan): boolean {
 /** Ultra-only: schedule bio blocks to reveal/hide at set times. */
 export function canScheduleBioBlocks(plan: Plan): boolean {
   return plan === "ultra";
+}
+
+// ----------------------------------------------------------------------------
+// Campaigns
+// ----------------------------------------------------------------------------
+
+export function getCampaignLimit(plan: Plan): number | undefined {
+  return PLAN_CAPS[plan].campaignLimit;
+}
+
+/** Pro+ campaigns carry UTM defaults stamped onto member links at save time. */
+export function canUseCampaignUtmDefaults(plan: Plan): boolean {
+  return plan !== "free";
 }

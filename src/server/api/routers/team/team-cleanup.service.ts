@@ -2,6 +2,7 @@ import { and, eq, isNotNull, lt, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import {
+  campaign,
   customDomain,
   folder,
   link,
@@ -29,6 +30,7 @@ interface CleanupResult {
   linkTagsDeleted: number;
   customDomainsDeleted: number;
   utmTemplatesDeleted: number;
+  campaignsDeleted: number;
   siteSettingsDeleted: number;
 }
 
@@ -50,6 +52,7 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
     linkTagsDeleted: 0,
     customDomainsDeleted: 0,
     utmTemplatesDeleted: 0,
+    campaignsDeleted: 0,
     siteSettingsDeleted: 0,
   };
 
@@ -138,13 +141,19 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
         .where(eq(utmTemplate.teamId, teamId));
       result.utmTemplatesDeleted += utmResult[0].affectedRows;
 
-      // 8. Delete site settings
+      // 8. Delete all campaigns (member links were already deleted above)
+      const campaignsResult = await tx
+        .delete(campaign)
+        .where(eq(campaign.teamId, teamId));
+      result.campaignsDeleted += campaignsResult[0].affectedRows;
+
+      // 9. Delete site settings
       const settingsResult = await tx
         .delete(siteSettings)
         .where(eq(siteSettings.teamId, teamId));
       result.siteSettingsDeleted += settingsResult[0].affectedRows;
 
-      // 9. Finally, delete the team itself
+      // 10. Finally, delete the team itself
       await tx.delete(team).where(eq(team.id, teamId));
       result.teamsDeleted += 1;
     });

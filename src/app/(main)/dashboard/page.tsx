@@ -35,6 +35,8 @@ export default async function DashboardPage(props: Props) {
     | "all"
     | undefined;
   const search = searchParams.search as string | undefined;
+  const campaignIdParam = Number.parseInt(searchParams.campaign as string);
+  const campaignId = Number.isNaN(campaignIdParam) ? undefined : campaignIdParam;
 
   const { links, totalLinks, totalPages, currentPage } =
     await api.link.list.query({
@@ -43,6 +45,7 @@ export default async function DashboardPage(props: Props) {
       orderBy,
       orderDirection,
       tag,
+      campaignId,
       archivedFilter,
       search,
     });

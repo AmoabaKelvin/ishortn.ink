@@ -5,6 +5,7 @@ import { PAID_PLANS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/constants/plan
 import {
   bioPage,
   blockedDomain,
+  campaign,
   feedback,
   flaggedLink,
   link,
@@ -960,6 +961,7 @@ export async function getSystemHealth(ctx: ProtectedTRPCContext) {
     openFeedbackResult,
     blockedDomainsResult,
     bioPageStatsResult,
+    campaignStatsResult,
   ] = await Promise.all([
     ctx.db
       .select({
@@ -988,6 +990,13 @@ export async function getSystemHealth(ctx: ProtectedTRPCContext) {
         today: sql<number>`SUM(${bioPage.createdAt} >= ${today})`,
       })
       .from(bioPage),
+    ctx.db
+      .select({
+        total: count(),
+        active: sql<number>`SUM(${campaign.status} = 'active')`,
+        today: sql<number>`SUM(${campaign.createdAt} >= ${today})`,
+      })
+      .from(campaign),
   ]);
 
   const totalLinks = linkStatsResult[0]?.total ?? 0;
@@ -1009,6 +1018,9 @@ export async function getSystemHealth(ctx: ProtectedTRPCContext) {
     blockedDomains: blockedDomainsResult[0]?.count ?? 0,
     totalBioPages: bioPageStatsResult[0]?.total ?? 0,
     bioPagesToday: Number(bioPageStatsResult[0]?.today ?? 0),
+    totalCampaigns: campaignStatsResult[0]?.total ?? 0,
+    activeCampaigns: Number(campaignStatsResult[0]?.active ?? 0),
+    campaignsToday: Number(campaignStatsResult[0]?.today ?? 0),
   };
 }
 

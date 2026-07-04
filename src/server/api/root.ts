@@ -4,6 +4,7 @@ import { adminRouter } from "./routers/admin/admin.procedure";
 import { aiRouter } from "./routers/ai/ai.procedure";
 import { audienceFeedbackRouter } from "./routers/audience-feedback/audience-feedback.procedure";
 import { bioPageRouter } from "./routers/bio-page/bio-page.procedure";
+import { campaignRouter } from "./routers/campaign/campaign.procedure";
 import { changelogRouter } from "./routers/changelog/changelog.procedure";
 import { customDomainRouter } from "./routers/domains/domains.procedure";
 import { feedbackRouter } from "./routers/feedback/feedback.procedure";
@@ -45,6 +46,7 @@ export const appRouter = createTRPCRouter({
   geoRules: geoRulesRouter,
   linkMilestone: linkMilestoneRouter,
   bioPage: bioPageRouter,
+  campaign: campaignRouter,
 });
 
 export type AppRouter = typeof appRouter;
