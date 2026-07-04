@@ -42,6 +42,11 @@ const linkSchema = z.object({
     .nullable()
     .transform((val) => (val ? Number(val) : null))
     .default(null),
+  campaignId: z
+    .string()
+    .nullable()
+    .transform((val) => (val ? Number(val) : null))
+    .default(null),
   utmParams: z
     .string()
     .nullable()
@@ -96,6 +101,7 @@ function convertToLink(data: Record<string, string>): Link {
     tags: parsed.tags || [],
     archived: parsed.archived || false,
     folderId: parsed.folderId ?? null,
+    campaignId: parsed.campaignId ?? null,
     teamId: parsed.teamId ?? null,
     utmParams: parsed.utmParams ?? null,
     createdByUserId: parsed.createdByUserId ?? null,

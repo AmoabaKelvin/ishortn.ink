@@ -1,0 +1,16 @@
+/**
+ * Normalize a campaign slug (the default utm_campaign value): lowercase,
+ * trimmed, whitespace/underscores collapsed to single hyphens, everything
+ * outside [a-z0-9-] stripped. Shared by the server (persistence) and the
+ * client (live previews) so what the user sees is exactly what is saved.
+ */
+export function normalizeCampaignSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+}

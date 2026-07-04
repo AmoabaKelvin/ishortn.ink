@@ -29,6 +29,9 @@ export type WorkspacePermission =
   | "bio.create"
   | "bio.edit"
   | "bio.delete"
+  | "campaigns.create"
+  | "campaigns.edit"
+  | "campaigns.delete"
   | "team.settings"
   | "team.invite"
   | "team.remove_member"
@@ -61,6 +64,9 @@ export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
     "bio.create",
     "bio.edit",
     "bio.delete",
+    "campaigns.create",
+    "campaigns.edit",
+    "campaigns.delete",
     "team.settings",
     "team.invite",
     "team.remove_member",
@@ -84,6 +90,9 @@ export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
     "bio.create",
     "bio.edit",
     "bio.delete",
+    "campaigns.create",
+    "campaigns.edit",
+    "campaigns.delete",
     "team.settings",
     "team.invite",
     "team.remove_member",
@@ -106,6 +115,9 @@ export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
     "bio.create",
     "bio.edit",
     "bio.delete",
+    "campaigns.create",
+    "campaigns.edit",
+    "campaigns.delete",
   ],
 };
 

@@ -235,6 +235,7 @@ export const link = mysqlTable(
     tags: json("tags").$type<string[]>().default([]),
     archived: boolean("archived").default(false),
     folderId: int("folderId"),
+    campaignId: int("campaignId"), // marketing campaign this link belongs to (nullable)
     cloaking: boolean("cloaking").default(false),
     verifiedClicksEnabled: boolean("verifiedClicksEnabled").default(false),
     isQrCode: boolean("isQrCode").default(false),
@@ -250,6 +251,7 @@ export const link = mysqlTable(
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
     uniqueAliasDomainIdx: unique("unique_alias_domain").on(table.alias, table.domain), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
     folderIdIdx: index("folderId_idx").on(table.folderId),
+    campaignIdIdx: index("campaignId_idx").on(table.campaignId),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
     blockedAtIdx: index("blocked_blockedAt_idx").on(table.blocked, table.blockedAt),
     domainIdx: index("domain_idx").on(table.domain),
@@ -620,6 +622,10 @@ export const linkRelations = relations(link, ({ one, many }) => ({
     fields: [link.folderId],
     references: [folder.id],
   }),
+  campaign: one(campaign, {
+    fields: [link.campaignId],
+    references: [campaign.id],
+  }),
   geoRules: many(geoRule),
   flaggedLinks: many(flaggedLink),
   milestones: many(linkMilestone),
@@ -900,6 +906,57 @@ export const utmTemplateRelations = relations(utmTemplate, ({ one }) => ({
 
 export type UtmTemplate = typeof utmTemplate.$inferSelect;
 export type NewUtmTemplate = typeof utmTemplate.$inferInsert;
+
+// ============================================================================
+// CAMPAIGNS
+// ============================================================================
+
+// A marketing campaign groups links (and QR codes, via their hidden backing
+// links) under one initiative. Membership lives on link.campaignId (nullable
+// FK, folder pattern). The campaign's slug is the default utm_campaign value;
+// the other UTM columns are campaign-level defaults stamped onto member links
+// at save time (Pro+).
+export const campaign = mysqlTable(
+  "Campaign",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 100 }).notNull(),
+    slug: varchar("slug", { length: 100 }).notNull(), // normalized; default utm_campaign value
+    description: text("description"),
+    status: mysqlEnum("status", ["active", "archived"]).notNull().default("active"),
+    startDate: timestamp("startDate"),
+    endDate: timestamp("endDate"),
+    utmSource: varchar("utmSource", { length: 255 }),
+    utmMedium: varchar("utmMedium", { length: 255 }),
+    utmTerm: varchar("utmTerm", { length: 255 }),
+    utmContent: varchar("utmContent", { length: 255 }),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    createdByUserId: varchar("createdByUserId", { length: 32 }), // immutable original creator
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("userId_idx").on(table.userId),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
+    statusIdx: index("status_idx").on(table.status),
+  }),
+);
+
+export const campaignRelations = relations(campaign, ({ one, many }) => ({
+  user: one(user, {
+    fields: [campaign.userId],
+    references: [user.id],
+  }),
+  team: one(team, {
+    fields: [campaign.teamId],
+    references: [team.id],
+  }),
+  links: many(link),
+}));
+
+export type Campaign = typeof campaign.$inferSelect;
+export type NewCampaign = typeof campaign.$inferInsert;
 
 // ============================================================================
 // ACCOUNT TRANSFER
