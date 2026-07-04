@@ -6,7 +6,7 @@ import { extractPlatformSubdomain, isPlatformDomain } from "@/lib/constants/doma
 import { edgeLogger } from "@/lib/logger/edge";
 import { isBot } from "@/lib/utils/is-bot";
 
-const log = edgeLogger.child({ component: "middleware" });
+const log = edgeLogger.child({ component: "proxy" });
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 

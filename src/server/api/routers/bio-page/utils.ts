@@ -65,7 +65,13 @@ export function pageBelongsToWorkspace(
 
 /** Translate a MySQL unique-constraint violation into a friendly CONFLICT. */
 export function rethrowBioDuplicate(error: unknown): never {
-  const message = String((error as { message?: string })?.message ?? "");
+  // drizzle-orm >= 0.44 wraps driver errors in DrizzleQueryError; the original
+  // mysql2 error (with the constraint name) lives at error.cause.
+  const cause = (error as Error | undefined)?.cause;
+  const message =
+    String((error as { message?: string })?.message ?? "") +
+    " " +
+    String((cause as { message?: string })?.message ?? "");
   if (/bio_slug_unique/.test(message)) {
     throw new TRPCError({
       code: "CONFLICT",

@@ -21,7 +21,7 @@
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "plugins": [
       {
         "name": "next"
@@ -47,7 +47,8 @@
     // include the .d.ts files
     "**/*.d.ts",
     "src/env.mjs",
-    "src/server/db/migrate.mjs"
+    "src/server/db/migrate.mjs",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

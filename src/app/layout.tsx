@@ -70,7 +70,7 @@ export default function RootLayout({
           />
         )}
         <ReleaseNotesScript />
-        <html lang="en" suppressHydrationWarning>
+        <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
           <MicrosoftClarityScript />
           <CSPostHogProvider>
             <body
