@@ -7,6 +7,9 @@ type HealthData = {
   totalUsers: number;
   totalBioPages: number;
   bioPagesToday: number;
+  totalCampaigns: number;
+  activeCampaigns: number;
+  campaignsToday: number;
   blockedLinks: number;
   bannedUsers: number;
   blockedPercent: number;
@@ -109,6 +112,12 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
           label="Bio pages"
           value={data.totalBioPages.toLocaleString()}
           detail={`${data.bioPagesToday.toLocaleString()} today`}
+          status="neutral"
+        />
+        <StatusRow
+          label="Campaigns"
+          value={data.totalCampaigns.toLocaleString()}
+          detail={`${data.activeCampaigns.toLocaleString()} active · ${data.campaignsToday.toLocaleString()} today`}
           status="neutral"
         />
         <StatusRow

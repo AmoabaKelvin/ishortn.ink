@@ -9,6 +9,7 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import {
   accountTransfer,
   bioPage,
+  campaign,
   customDomain,
   folder,
   link,
@@ -79,6 +80,7 @@ export interface TransferResult {
   utmTemplatesTransferred: number;
   qrPresetsTransferred: number;
   bioPagesTransferred: number;
+  campaignsTransferred: number;
 }
 
 // ============================================================================
@@ -342,6 +344,46 @@ export async function validateAccountTransfer(
         currentCount: newTotal,
         limit: targetCaps.folderLimit,
       });
+    }
+  }
+
+  // Campaigns: block the transfer if the source's ACTIVE campaigns would
+  // exceed the target's active-campaign cap (archived don't count).
+  if (targetCaps.campaignLimit !== undefined) {
+    const [srcCampaignRows, tgtCampaignRows] = await Promise.all([
+      ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(campaign)
+        .where(
+          and(
+            eq(campaign.userId, ctx.auth.userId),
+            isNull(campaign.teamId),
+            eq(campaign.status, "active")
+          )
+        ),
+      ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(campaign)
+        .where(
+          and(
+            eq(campaign.userId, targetUser.id),
+            isNull(campaign.teamId),
+            eq(campaign.status, "active")
+          )
+        ),
+    ]);
+    const srcCampaigns = Number(srcCampaignRows[0]?.count ?? 0);
+    if (srcCampaigns > 0) {
+      const newTotal = Number(tgtCampaignRows[0]?.count ?? 0) + srcCampaigns;
+      if (newTotal > targetCaps.campaignLimit) {
+        errors.push({
+          type: "LIMIT_EXCEEDED",
+          message: `Transfer would exceed target account's active campaign limit`,
+          resourceType: "campaigns",
+          currentCount: newTotal,
+          limit: targetCaps.campaignLimit,
+        });
+      }
     }
   }
 
@@ -668,6 +710,7 @@ async function executeResourceTransfer(
     utmTemplatesTransferred: 0,
     qrPresetsTransferred: 0,
     bioPagesTransferred: 0,
+    campaignsTransferred: 0,
   };
 
   await ctx.db.transaction(async (tx) => {
@@ -894,6 +937,18 @@ async function executeResourceTransfer(
       .where(and(eq(bioPage.userId, fromUserId), isNull(bioPage.teamId)));
 
     result.bioPagesTransferred = bioPagesUpdate[0].affectedRows;
+
+    // =========================================
+    // Phase 7c: Transfer Campaigns
+    // =========================================
+    // Member links already moved in Phase 3, so link.campaignId stays valid —
+    // the campaign container just follows them to the new owner.
+    const campaignsUpdate = await tx
+      .update(campaign)
+      .set({ userId: toUserId, teamId: null })
+      .where(and(eq(campaign.userId, fromUserId), isNull(campaign.teamId)));
+
+    result.campaignsTransferred = campaignsUpdate[0].affectedRows;
 
     // =========================================
     // Phase 8: Clean up source folders and tags

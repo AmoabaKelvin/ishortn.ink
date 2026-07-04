@@ -431,6 +431,7 @@ export async function transferLinksToWorkspace(
         userId: targetOwnership.userId,
         teamId: targetOwnership.teamId,
         folderId: null, // Reset folder assignment
+        campaignId: null, // Campaigns are workspace-scoped too
       })
       .where(
         and(
