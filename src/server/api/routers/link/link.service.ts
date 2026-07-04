@@ -17,6 +17,7 @@ import {
   sql,
 } from "drizzle-orm";
 import {
+  canUseCampaignUtmDefaults,
   canUseGeoRules,
   getGeoRulesLimit,
   isUnlimitedGeoRules,
@@ -42,6 +43,7 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { db } from "@/server/db";
 import {
+  campaign,
   folder,
   geoRule,
   link,
@@ -53,6 +55,7 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
+import { mergeCampaignUtm } from "../campaign/utils";
 import { checkAndFireMilestones } from "@/server/lib/milestone-check";
 import { deleteImage, uploadImage } from "@/server/lib/storage";
 import {
@@ -99,6 +102,7 @@ export const getLinks = async (
     orderBy,
     orderDirection,
     tag: tagName,
+    campaignId,
     archivedFilter,
     search,
   } = input;
@@ -145,6 +149,11 @@ export const getLinks = async (
       currentPage: page,
       totalPages: 0,
     };
+  }
+
+  // Add campaign filtering
+  if (campaignId !== undefined) {
+    baseCondition = and(baseCondition, eq(link.campaignId, campaignId));
   }
 
   // Add archived filtering
@@ -402,6 +411,28 @@ export const createLink = async (
 
   if (input.verifiedClicksEnabled) assertCanEnableVerifiedClicks(plan);
 
+  // Campaign membership: the campaign must belong to this workspace. On Pro+
+  // its UTM defaults are stamped server-side (explicit user params win), which
+  // is why this sits after the Ultra gate above — that gate only applies to
+  // hand-entered params.
+  if (input.campaignId) {
+    const campaignRow = await ctx.db.query.campaign.findFirst({
+      where: and(
+        eq(campaign.id, input.campaignId),
+        workspaceFilter(ctx.workspace, campaign.userId, campaign.teamId),
+      ),
+    });
+    if (!campaignRow) {
+      throw new Error("Campaign not found");
+    }
+    if (campaignRow.status === "archived") {
+      throw new Error("This campaign is archived. Restore it before adding links.");
+    }
+    if (canUseCampaignUtmDefaults(plan)) {
+      input.utmParams = mergeCampaignUtm(campaignRow, input.utmParams);
+    }
+  }
+
   input.metadata = {
     title: inputMetaData?.title ?? fetchedMetadata.title,
     description: inputMetaData?.description ?? fetchedMetadata.description,
@@ -572,6 +603,23 @@ export const updateLink = async (
   // Downgrades are caught again at token-issuance time in /api/link, so a
   // stale `verifiedClicksEnabled=true` doesn't produce tokens for free users.
   if (input.verifiedClicksEnabled) assertCanEnableVerifiedClicks(workspacePlan);
+
+  // If assigning to a campaign, it must belong to this workspace and be
+  // active (null clears membership).
+  if (input.campaignId !== undefined && input.campaignId !== null) {
+    const campaignRow = await ctx.db.query.campaign.findFirst({
+      where: and(
+        eq(campaign.id, input.campaignId),
+        workspaceFilter(ctx.workspace, campaign.userId, campaign.teamId),
+      ),
+    });
+    if (!campaignRow) {
+      throw new Error("Campaign not found");
+    }
+    if (campaignRow.status === "archived") {
+      throw new Error("This campaign is archived. Restore it before adding links.");
+    }
+  }
 
   // Extract tags and geoRules from input
   const { tags: tagNames, geoRules: geoRulesInput, ...linkData } = input;
@@ -1234,7 +1282,7 @@ export const getAllUserAnalytics = async (
   ctx: WorkspaceTRPCContext,
   input: {
     range: string;
-    filterType: "all" | "folder" | "domain" | "link";
+    filterType: "all" | "folder" | "domain" | "link" | "campaign";
     filterId?: string | number;
   },
 ) => {
@@ -1262,6 +1310,8 @@ export const getAllUserAnalytics = async (
         conditions.push(eq(table.domain, String(input.filterId)));
       } else if (input.filterType === "link" && input.filterId) {
         conditions.push(eq(table.id, Number(input.filterId)));
+      } else if (input.filterType === "campaign" && input.filterId) {
+        conditions.push(eq(table.campaignId, Number(input.filterId)));
       }
 
       return and(...conditions);

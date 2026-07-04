@@ -64,6 +64,7 @@ export const listLinksSchema = z.object({
   orderBy: z.enum(["createdAt", "totalClicks", "lastClicked"]).default("createdAt"),
   orderDirection: z.enum(["asc", "desc"]).default("desc"),
   tag: z.string().optional(),
+  campaignId: z.number().optional(),
   archivedFilter: z.enum(["active", "archived", "all"]).optional(),
   search: z.string().optional(),
 });
@@ -119,6 +120,7 @@ export const createLinkSchema = z.object({
   cloaking: z.boolean().optional(),
   verifiedClicksEnabled: z.boolean().optional(),
   geoRules: z.array(geoRuleInputSchema).optional(),
+  campaignId: z.number().nullable().optional(),
 });
 
 export const quickLinkShorteningSchema = z.object({
@@ -179,7 +181,7 @@ export type ToggleArchiveInput = z.infer<typeof ToggleArchiveInput>;
 
 export const allAnalyticsSchema = z.object({
   range: rangeEnum.default("7d"),
-  filterType: z.enum(["all", "folder", "domain", "link"]).default("all"),
+  filterType: z.enum(["all", "folder", "domain", "link", "campaign"]).default("all"),
   filterId: z.union([z.number(), z.string()]).optional(),
 });
 
