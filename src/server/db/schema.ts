@@ -935,11 +935,24 @@ export const campaign = mysqlTable(
     createdByUserId: varchar("createdByUserId", { length: 32 }), // immutable original creator
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
+    // Generated column to handle NULL teamId in the unique constraint —
+    // MySQL treats NULLs as distinct (same approach as CustomDomain).
+    teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(sql`COALESCE(\`teamId\`, 0)`, {
+      mode: "stored",
+    }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
     statusIdx: index("status_idx").on(table.status),
+    // DB backstop for the app-layer dup check: the slug is the campaign's
+    // utm_campaign identity AND its dashboard route, so per-workspace
+    // uniqueness must hold even under concurrent creates/renames.
+    slugWorkspaceUnique: unique("campaign_slug_workspace_unique").on(
+      table.slug,
+      table.userId,
+      table.teamIdForUnique,
+    ),
   }),
 );
 

@@ -11,6 +11,6 @@ export function normalizeCampaignSlug(value: string): string {
     .replace(/[\s_]+/g, "-")
     .replace(/[^a-z0-9-]/g, "")
     .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 100);
+    .slice(0, 100)
+    .replace(/^-+|-+$/g, "");
 }

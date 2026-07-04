@@ -31,6 +31,12 @@ describe("normalizeCampaignSlug", () => {
   test("bounds length to 100", () => {
     expect(normalizeCampaignSlug("x".repeat(150)).length).toBe(100);
   });
+
+  test("truncation never leaves a trailing hyphen", () => {
+    const slug = normalizeCampaignSlug(`${"a".repeat(99)}-b`);
+    expect(slug.endsWith("-")).toBe(false);
+    expect(slug).toBe("a".repeat(99));
+  });
 });
 
 describe("normalizeUtmValue", () => {

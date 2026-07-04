@@ -942,7 +942,52 @@ async function executeResourceTransfer(
     // Phase 7c: Transfer Campaigns
     // =========================================
     // Member links already moved in Phase 3, so link.campaignId stays valid —
-    // the campaign container just follows them to the new owner.
+    // the campaign container just follows them to the new owner. Names and
+    // slugs are unique per workspace (campaign_slug_workspace_unique), so any
+    // source campaign colliding with the target's gets a numeric suffix
+    // before the ownership flip.
+    const [sourceCampaigns, targetCampaigns] = await Promise.all([
+      tx.query.campaign.findMany({
+        where: and(eq(campaign.userId, fromUserId), isNull(campaign.teamId)),
+        columns: { id: true, slug: true, name: true },
+      }),
+      tx.query.campaign.findMany({
+        where: and(eq(campaign.userId, toUserId), isNull(campaign.teamId)),
+        columns: { slug: true, name: true },
+      }),
+    ]);
+
+    const targetSlugs = new Set(targetCampaigns.map((c) => c.slug));
+    const targetNames = new Set(targetCampaigns.map((c) => c.name.toLowerCase()));
+    const allSlugs = new Set([...targetSlugs, ...sourceCampaigns.map((c) => c.slug)]);
+    const allNames = new Set([
+      ...targetNames,
+      ...sourceCampaigns.map((c) => c.name.toLowerCase()),
+    ]);
+
+    for (const sourceCampaign of sourceCampaigns) {
+      const collides =
+        targetSlugs.has(sourceCampaign.slug) ||
+        targetNames.has(sourceCampaign.name.toLowerCase());
+      if (!collides) continue;
+
+      let suffix = 2;
+      let newSlug: string;
+      let newName: string;
+      do {
+        newSlug = `${sourceCampaign.slug.slice(0, 100 - `-${suffix}`.length)}-${suffix}`;
+        newName = `${sourceCampaign.name.slice(0, 100 - ` (${suffix})`.length)} (${suffix})`;
+        suffix += 1;
+      } while (allSlugs.has(newSlug) || allNames.has(newName.toLowerCase()));
+
+      await tx
+        .update(campaign)
+        .set({ slug: newSlug, name: newName })
+        .where(eq(campaign.id, sourceCampaign.id));
+      allSlugs.add(newSlug);
+      allNames.add(newName.toLowerCase());
+    }
+
     const campaignsUpdate = await tx
       .update(campaign)
       .set({ userId: toUserId, teamId: null })

@@ -16,9 +16,9 @@ A new **Campaigns** section in your dashboard. Create a campaign for a launch, a
 
 The campaign overview rolls everything up: total engagements with period-over-period change, link clicks and QR scans as separate series, unique visitors across all links, and combined country, device, and referrer breakdowns. Your links are ranked side by side with each one's share of the campaign, so "Instagram drove 61% of this" is a glance, not a spreadsheet.
 
-### UTM defaults, applied automatically
+### UTM defaults, applied automatically (Pro and Ultra)
 
-Set `utm_source` and `utm_medium` once on the campaign, and every link created in or added to it gets tagged automatically — `utm_campaign` always comes from the campaign's slug. Values are normalized (lowercase, no stray spaces), so your Google Analytics reports stay clean without anyone remembering the naming convention.
+On paid plans, set `utm_source` and `utm_medium` once on the campaign, and every link created in or added to it gets tagged automatically — `utm_campaign` always comes from the campaign's slug. Values are normalized (lowercase, no stray spaces), so your Google Analytics reports stay clean without anyone remembering the naming convention.
 
 ### Channels
 
@@ -33,7 +33,7 @@ Links group by their `utm_source` into channels, so newsletter, social, and QR t
 
 ## Plans
 
-- **Free** — 1 active campaign with the full analytics rollup
+- **Free** — 1 active campaign with the analytics rollup over the last 7 days
 - **Pro** — 2 active campaigns, campaign UTM defaults, and CSV export
 - **Ultra** — unlimited campaigns
 

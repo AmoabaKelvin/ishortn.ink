@@ -382,7 +382,12 @@ function ExportCsvButton({
     const channelByLinkId = new Map(
       campaign.links.map((l) => [l.id, l.utmParams?.utm_source ?? ""]),
     );
-    const escape = (value: string) => `"${value.replaceAll('"', '""')}"`;
+    // Prefix formula-trigger characters so Excel/Sheets treat user-controlled
+    // values (link names, URLs, utm_source) as text, not executable formulas.
+    const escape = (value: string) => {
+      const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+      return `"${safe.replaceAll('"', '""')}"`;
+    };
     const rows = analytics.links.map((l) =>
       [
         escape(l.name ?? ""),

@@ -19,6 +19,7 @@ import {
   normalizeCampaignSlug,
   normalizeUtmValue,
   resolveRangeWindow,
+  rethrowCampaignDuplicate,
   utmParamsEqual,
 } from "./utils";
 
@@ -317,18 +318,22 @@ export async function createCampaign(ctx: WorkspaceTRPCContext, input: CreateCam
   await assertNoDuplicate(ctx, { name: input.name, slug });
 
   const ownership = workspaceOwnership(ctx.workspace);
-  const [result] = await ctx.db.insert(campaign).values({
-    name: input.name,
-    slug,
-    description: input.description,
-    startDate: input.startDate ?? null,
-    endDate: input.endDate ?? null,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId,
-  });
+  try {
+    const [result] = await ctx.db.insert(campaign).values({
+      name: input.name,
+      slug,
+      description: input.description,
+      startDate: input.startDate ?? null,
+      endDate: input.endDate ?? null,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId,
+    });
 
-  return { id: Number(result.insertId), slug };
+    return { id: Number(result.insertId), slug };
+  } catch (error) {
+    rethrowCampaignDuplicate(error);
+  }
 }
 
 export async function updateCampaign(ctx: WorkspaceTRPCContext, input: UpdateCampaignInput) {
@@ -372,21 +377,25 @@ export async function updateCampaign(ctx: WorkspaceTRPCContext, input: UpdateCam
     existing.id,
   );
 
-  await ctx.db
-    .update(campaign)
-    .set({
-      name: input.name,
-      slug,
-      description: input.description,
-      status: input.status,
-      startDate: input.startDate,
-      endDate: input.endDate,
-      utmSource: input.utmSource !== undefined ? normalizeUtmValue(input.utmSource) : undefined,
-      utmMedium: input.utmMedium !== undefined ? normalizeUtmValue(input.utmMedium) : undefined,
-      utmTerm: input.utmTerm !== undefined ? normalizeUtmValue(input.utmTerm) : undefined,
-      utmContent: input.utmContent !== undefined ? normalizeUtmValue(input.utmContent) : undefined,
-    })
-    .where(eq(campaign.id, existing.id));
+  try {
+    await ctx.db
+      .update(campaign)
+      .set({
+        name: input.name,
+        slug,
+        description: input.description,
+        status: input.status,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        utmSource: input.utmSource !== undefined ? normalizeUtmValue(input.utmSource) : undefined,
+        utmMedium: input.utmMedium !== undefined ? normalizeUtmValue(input.utmMedium) : undefined,
+        utmTerm: input.utmTerm !== undefined ? normalizeUtmValue(input.utmTerm) : undefined,
+        utmContent: input.utmContent !== undefined ? normalizeUtmValue(input.utmContent) : undefined,
+      })
+      .where(eq(campaign.id, existing.id));
+  } catch (error) {
+    rethrowCampaignDuplicate(error);
+  }
 
   // Return the final slug so the client can redirect the slug-based route
   // after a rename.

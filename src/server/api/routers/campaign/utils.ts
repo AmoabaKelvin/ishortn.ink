@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq } from "drizzle-orm";
-import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
+import { endOfMonth, endOfYear, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 
 import { getCampaignLimit } from "@/lib/billing/plans";
 import { campaign } from "@/server/db/schema";
@@ -58,6 +58,19 @@ export function mergeCampaignUtm(
   if (campaignRow.slug) merged.utm_campaign = campaignRow.slug;
 
   return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+/** Translate the MySQL unique-constraint violation into a friendly CONFLICT. */
+export function rethrowCampaignDuplicate(error: unknown): never {
+  const message = String((error as { message?: string })?.message ?? "");
+  if (/campaign_slug_workspace_unique/.test(message)) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message:
+        "Another campaign already uses this slug. Reusing a utm_campaign value would mix their analytics.",
+    });
+  }
+  throw error;
 }
 
 const UTM_KEYS = [
@@ -120,9 +133,10 @@ export async function checkCampaignLimit(ctx: WorkspaceTRPCContext): Promise<voi
 }
 
 /**
- * Resolve a range enum into a [start, end] window. Mirrors the semantics of
- * getLinkVisits/getAllUserAnalytics (including the last_month/last_year end
- * clamping) without mutating shared Date objects.
+ * Resolve a range enum into a [start, end] window. Matches the semantics of
+ * getLinkVisits/getAllUserAnalytics, except last_month uses true calendar-
+ * month arithmetic (subDays(30) misidentifies the month on 31-day
+ * boundaries) and nothing mutates shared Date objects.
  */
 export function resolveRangeWindow(range: RangeEnum): { start: Date; end: Date } {
   const now = new Date();
@@ -138,10 +152,8 @@ export function resolveRangeWindow(range: RangeEnum): { start: Date; end: Date }
     case "this_month":
       return { start: startOfMonth(now), end: now };
     case "last_month": {
-      const start = startOfMonth(subDays(now, 30));
-      const end = new Date(now);
-      end.setDate(0); // last day of the previous month
-      return { start, end };
+      const lastMonth = subMonths(now, 1);
+      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
     }
     case "this_year":
       return { start: startOfYear(now), end: now };

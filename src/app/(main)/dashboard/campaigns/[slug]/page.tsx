@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { notFound } from "next/navigation";
 
 import { api } from "@/trpc/server";
@@ -15,8 +16,13 @@ export default async function CampaignDetailPage(props: Props) {
   let campaign: RouterOutputs["campaign"]["getBySlug"];
   try {
     campaign = await api.campaign.getBySlug.query({ slug });
-  } catch {
-    notFound();
+  } catch (error) {
+    // Only a real NOT_FOUND becomes a 404 — auth/server errors must surface,
+    // not masquerade as a missing campaign.
+    if (error instanceof TRPCError && error.code === "NOT_FOUND") {
+      notFound();
+    }
+    throw error;
   }
 
   const sub = await api.subscriptions.get.query();
