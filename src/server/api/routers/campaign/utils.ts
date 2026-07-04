@@ -23,7 +23,6 @@ export type UtmParams = {
 // so slug previews match what gets persisted.
 export { normalizeCampaignSlug } from "@/lib/campaigns/slug";
 
-/** Normalize a UTM default value: lowercase, trimmed, whitespace to hyphens. */
 export function normalizeUtmValue(value: string | null | undefined): string | null {
   if (value === null || value === undefined) return null;
   const normalized = value.trim().toLowerCase().replace(/\s+/g, "-").slice(0, 255);
@@ -60,7 +59,6 @@ export function mergeCampaignUtm(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
-/** Translate the MySQL unique-constraint violation into a friendly CONFLICT. */
 export function rethrowCampaignDuplicate(error: unknown): never {
   const message = String((error as { message?: string })?.message ?? "");
   if (/campaign_slug_workspace_unique/.test(message)) {
@@ -81,7 +79,7 @@ const UTM_KEYS = [
   "utm_content",
 ] as const;
 
-/** Shallow equality over the five UTM keys (empty and absent are the same). */
+/** Empty and absent UTM values are treated as equal. */
 export function utmParamsEqual(a?: UtmParams | null, b?: UtmParams | null): boolean {
   return UTM_KEYS.every((key) => (a?.[key] ?? "") === (b?.[key] ?? ""));
 }

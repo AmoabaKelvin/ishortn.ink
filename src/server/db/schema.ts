@@ -235,7 +235,7 @@ export const link = mysqlTable(
     tags: json("tags").$type<string[]>().default([]),
     archived: boolean("archived").default(false),
     folderId: int("folderId"),
-    campaignId: int("campaignId"), // marketing campaign this link belongs to (nullable)
+    campaignId: int("campaignId"),
     cloaking: boolean("cloaking").default(false),
     verifiedClicksEnabled: boolean("verifiedClicksEnabled").default(false),
     isQrCode: boolean("isQrCode").default(false),

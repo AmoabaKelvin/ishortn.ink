@@ -151,7 +151,6 @@ export const getLinks = async (
     };
   }
 
-  // Add campaign filtering
   if (campaignId !== undefined) {
     baseCondition = and(baseCondition, eq(link.campaignId, campaignId));
   }

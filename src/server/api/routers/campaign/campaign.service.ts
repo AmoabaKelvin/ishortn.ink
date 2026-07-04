@@ -35,10 +35,6 @@ import type {
 import type { Campaign } from "@/server/db/schema";
 import type { WorkspaceTRPCContext } from "../../trpc";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 async function fetchWorkspaceCampaign(
   ctx: WorkspaceTRPCContext,
   id: number,
@@ -124,10 +120,6 @@ async function assertNoDuplicate(
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// CRUD
-// ---------------------------------------------------------------------------
 
 export async function listCampaigns(ctx: WorkspaceTRPCContext, input: ListCampaignsInput) {
   let condition: SQL | undefined = workspaceFilter(
@@ -416,10 +408,6 @@ export async function deleteCampaign(ctx: WorkspaceTRPCContext, id: number) {
   return { id: existing.id };
 }
 
-// ---------------------------------------------------------------------------
-// Membership
-// ---------------------------------------------------------------------------
-
 export async function addLinks(ctx: WorkspaceTRPCContext, input: AddLinksInput) {
   requirePermission(ctx.workspace, "campaigns.edit", "edit campaigns");
   const row = await fetchWorkspaceCampaign(ctx, input.id);
@@ -496,10 +484,6 @@ export async function removeLink(ctx: WorkspaceTRPCContext, input: RemoveLinkInp
 
   return { removed: input.linkId };
 }
-
-// ---------------------------------------------------------------------------
-// Analytics
-// ---------------------------------------------------------------------------
 
 const BREAKDOWN_LIMIT = 10;
 
