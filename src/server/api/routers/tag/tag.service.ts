@@ -47,12 +47,19 @@ export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
         teamId: ownership.teamId,
       };
     } catch (error) {
-      // Check if this is a duplicate key error (MySQL error code 1062)
-      const isDuplicateKeyError =
-        error instanceof Error &&
-        (error.message.includes("Duplicate entry") ||
-          error.message.includes("ER_DUP_ENTRY") ||
-          (error as { code?: string }).code === "ER_DUP_ENTRY");
+      // Check if this is a duplicate key error (MySQL error code 1062).
+      // drizzle-orm >= 0.44 wraps driver errors in DrizzleQueryError, so the
+      // original mysql2 error lives at error.cause.
+      const cause =
+        error instanceof Error && error.cause instanceof Error
+          ? error.cause
+          : error;
+      const isDuplicateKey = (candidate: unknown) =>
+        candidate instanceof Error &&
+        (candidate.message.includes("Duplicate entry") ||
+          candidate.message.includes("ER_DUP_ENTRY") ||
+          (candidate as { code?: string }).code === "ER_DUP_ENTRY");
+      const isDuplicateKeyError = isDuplicateKey(error) || isDuplicateKey(cause);
 
       if (isDuplicateKeyError) {
         // Another request created the tag concurrently, fetch and return it

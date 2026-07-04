@@ -105,9 +105,17 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
   } catch (error) {
     log.error({ err: error, alias, domain }, "failed to update link");
 
-    // Check for unique constraint violation (PostgreSQL error code 23505)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((error as any)?.code === "23505" && filteredUpdateData.alias) {
+    // Check for unique constraint violation. drizzle-orm >= 0.44 wraps driver
+    // errors in DrizzleQueryError, so the original mysql2 error lives at error.cause.
+    const cause =
+      error instanceof Error && error.cause instanceof Error ? error.cause : error;
+    const isDuplicateKey = (candidate: unknown) =>
+      candidate instanceof Error &&
+      (candidate.message.includes("Duplicate entry") ||
+        candidate.message.includes("ER_DUP_ENTRY") ||
+        (candidate as { code?: string }).code === "ER_DUP_ENTRY");
+
+    if ((isDuplicateKey(error) || isDuplicateKey(cause)) && filteredUpdateData.alias) {
       return new Response("Alias already exists for this domain", {
         status: 409,
       }); // 409 Conflict
