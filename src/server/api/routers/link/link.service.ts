@@ -624,7 +624,7 @@ export const updateLink = async (
     }
   }
 
-  // Downgrades are caught again at token-issuance time in /api/link, so a
+  // Downgrades are caught again at token-issuance time in resolveShortLink, so a
   // stale `verifiedClicksEnabled=true` doesn't produce tokens for free users.
   if (input.verifiedClicksEnabled) assertCanEnableVerifiedClicks(workspacePlan);
 

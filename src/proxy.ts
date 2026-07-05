@@ -3,10 +3,10 @@ import { geolocation, ipAddress } from "@vercel/functions";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { extractPlatformSubdomain, isPlatformDomain } from "@/lib/constants/domains";
-import { edgeLogger } from "@/lib/logger/edge";
+import { logger } from "@/lib/logger";
 import { isBot } from "@/lib/utils/is-bot";
 
-const log = edgeLogger.child({ component: "proxy" });
+const log = logger.child({ component: "proxy" });
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
@@ -31,7 +31,17 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
     return NextResponse.rewrite(new URL(`/p-host/${encodeURIComponent(bareHost)}`, request.url));
   }
 
-  const staticRoutes = ["/blog", "/changelog", "/privacy", "/terms", "/abuse", "/auth", "/features", "/pricing", "/compare"];
+  const staticRoutes = [
+    "/blog",
+    "/changelog",
+    "/privacy",
+    "/terms",
+    "/abuse",
+    "/auth",
+    "/features",
+    "/pricing",
+    "/compare",
+  ];
 
   const shouldSkip =
     pathname === "/" ||
@@ -62,7 +72,6 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   const geo = geolocation(request);
   const ip = ipAddress(request);
-  const referer = request.headers.get("referer");
 
   // In localhost/development, use simulated geo data or allow override via query param
   const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1");
@@ -70,44 +79,20 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
   const country = simCountry || geo.country || (isLocalhost ? "US" : undefined);
   const city = geo.city || (isLocalhost ? "San Francisco" : undefined);
 
-  const forwardedHeaders: Record<string, string> = {
-    "user-agent": userAgent ?? "",
-    referer: referer ?? "",
-  };
-  // Forward the visitor IP in a header rather than a query param so it does
-  // not end up in URL access logs (and anywhere else that captures URLs).
-  if (ip) forwardedHeaders["x-client-ip"] = ip;
-  // Forward UA Client Hints so UAParser can resolve device/model/OS details
-  // that modern Chrome removes from the UA string.
-  const CLIENT_HINT_HEADERS = [
-    "sec-ch-ua",
-    "sec-ch-ua-mobile",
-    "sec-ch-ua-platform",
-    "sec-ch-ua-platform-version",
-    "sec-ch-ua-model",
-    "sec-ch-ua-arch",
-    "sec-ch-ua-bitness",
-    "sec-ch-ua-full-version-list",
-  ];
-  for (const header of CLIENT_HINT_HEADERS) {
-    const value = request.headers.get(header);
-    if (value) forwardedHeaders[header] = value;
-  }
+  // Lazy so the DB pool and Redis client init only on the short-link path.
+  const { resolveShortLink } = await import("@/middlewares/resolve-link");
 
-  const response = await fetch(
-    encodeURI(
-      `${origin}/api/link?domain=${host}&alias=${pathname}&country=${country}&city=${city}`,
-    ),
-    { headers: forwardedHeaders },
-  );
+  const data = await resolveShortLink({
+    domain: host,
+    alias: pathname.replace("/", ""),
+    country: country ?? "Unknown",
+    city: city ?? "Unknown",
+    ip: ip ?? "",
+    headers: request.headers,
+    baseUrl: origin,
+  });
 
-  if (!response.ok) {
-    return NextResponse.next();
-  }
-
-  const data = await response.json();
-
-  if (!data.url) {
+  if (!data?.url) {
     return NextResponse.next();
   }
 
@@ -135,10 +120,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
       }
       redirectUrl = fallbackUrl.toString();
     } catch {
-      log.warn(
-        { rawUrl: data.url, host, pathname },
-        "Invalid redirect URL",
-      );
+      log.warn({ rawUrl: data.url, host, pathname }, "Invalid redirect URL");
       return NextResponse.next();
     }
   }
@@ -154,9 +136,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   if (data.cloaking) {
     const encodedUrl = encodeURIComponent(redirectUrl);
-    const tokenQuery = verificationToken
-      ? `?t=${encodeURIComponent(verificationToken)}`
-      : "";
+    const tokenQuery = verificationToken ? `?t=${encodeURIComponent(verificationToken)}` : "";
     const rewriteResponse = NextResponse.rewrite(
       new URL(`/cloaked/${encodedUrl}${tokenQuery}`, request.url),
     );
@@ -166,10 +146,7 @@ async function resolveLinkAndLogAnalytics(request: NextRequest) {
 
   if (verificationToken) {
     const alias = pathname.replace(/^\//, "") || "link";
-    const rewriteUrl = new URL(
-      `/verified-redirect/${encodeURIComponent(alias)}`,
-      request.url,
-    );
+    const rewriteUrl = new URL(`/verified-redirect/${encodeURIComponent(alias)}`, request.url);
     rewriteUrl.searchParams.set("to", redirectUrl);
     rewriteUrl.searchParams.set("t", verificationToken);
     const rewriteResponse = NextResponse.rewrite(rewriteUrl);
