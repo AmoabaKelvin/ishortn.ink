@@ -114,9 +114,16 @@ export async function assertUrlSafe(url: string): Promise<void> {
     });
   }
 
-  // Layer 3: LLM-based phishing detection
-  const fetchedMetadata = await fetchMetadataInfo(url);
-  const phishingResult = await detectPhishingLink(url, fetchedMetadata);
+  // Layer 3: LLM-based phishing detection. Fail open — an outage in the
+  // metadata service or the LLM provider must not block link creation.
+  let phishingResult: { url: string; phishing: boolean };
+  try {
+    const fetchedMetadata = await fetchMetadataInfo(url);
+    phishingResult = await detectPhishingLink(url, fetchedMetadata);
+  } catch (error) {
+    log.warn({ err: error, url }, "LLM phishing check failed, allowing link");
+    return;
+  }
 
   if (phishingResult.phishing) {
     throw new TRPCError({
