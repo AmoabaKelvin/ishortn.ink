@@ -12,89 +12,58 @@ import net from "node:net";
  * an internal one.
  */
 
-/** Reserved IPv4 blocks that must never be reachable from a user-supplied URL. */
-function isBlockedIPv4(address: string): boolean {
-  const parts = address.split(".").map(Number);
-  const [a, b] = parts as [number, number, number, number];
+/**
+ * Reserved ranges that must never be reachable from a user-supplied URL.
+ *
+ * `net.BlockList` does the address parsing so we don't. That matters: a
+ * resolver can hand back an IPv4-mapped address in either textual form
+ * (`::ffff:127.0.0.1` or `::ffff:7f00:1`), and BlockList matches both against
+ * the IPv4 rules below. Hand-rolled hextet parsing got this wrong.
+ */
+const BLOCKED = new net.BlockList();
 
-  if (a === 0) return true; // 0.0.0.0/8 "this host"
-  if (a === 10) return true; // private
-  if (a === 127) return true; // loopback
-  if (a === 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10 CGNAT
-  if (a === 169 && b === 254) return true; // link-local, incl. 169.254.169.254 metadata
-  if (a === 172 && b >= 16 && b <= 31) return true; // private
-  if (a === 192 && b === 0) return true; // 192.0.0.0/24 protocol assignments
-  if (a === 192 && b === 168) return true; // private
-  if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking
-  if (a >= 224) return true; // multicast, reserved, broadcast
+// IPv4
+BLOCKED.addSubnet("0.0.0.0", 8, "ipv4"); // "this host on this network"
+BLOCKED.addSubnet("10.0.0.0", 8, "ipv4"); // private
+BLOCKED.addSubnet("100.64.0.0", 10, "ipv4"); // CGNAT
+BLOCKED.addSubnet("127.0.0.0", 8, "ipv4"); // loopback
+BLOCKED.addSubnet("169.254.0.0", 16, "ipv4"); // link-local, incl. cloud metadata
+BLOCKED.addSubnet("172.16.0.0", 12, "ipv4"); // private
+BLOCKED.addSubnet("192.0.0.0", 24, "ipv4"); // IETF protocol assignments
+BLOCKED.addSubnet("192.168.0.0", 16, "ipv4"); // private
+BLOCKED.addSubnet("198.18.0.0", 15, "ipv4"); // benchmarking
+BLOCKED.addSubnet("224.0.0.0", 4, "ipv4"); // multicast, reserved, broadcast
 
-  return false;
-}
+// IPv6
+BLOCKED.addSubnet("::", 96, "ipv6"); // unspecified, loopback, IPv4-compatible
+BLOCKED.addSubnet("64:ff9b::", 96, "ipv6"); // NAT64, wraps IPv4
+BLOCKED.addSubnet("100::", 64, "ipv6"); // discard-only
+BLOCKED.addSubnet("2001::", 32, "ipv6"); // Teredo
+BLOCKED.addSubnet("2002::", 16, "ipv6"); // 6to4, wraps IPv4
+BLOCKED.addSubnet("fc00::", 7, "ipv6"); // unique-local
+BLOCKED.addSubnet("fe80::", 10, "ipv6"); // link-local
+BLOCKED.addSubnet("ff00::", 8, "ipv6"); // multicast
 
-/** Expands any IPv6 text form to its eight 16-bit groups. */
-function toHextets(address: string): number[] | null {
-  const bare = address.toLowerCase().split("%")[0]!;
+/**
+ * True when `address` is an IP literal we refuse to connect to. Anything that
+ * is not a recognisable IP is refused as well, rather than guessed at.
+ */
+export function isBlockedAddress(address: string): boolean {
+  const bare = address.split("%")[0] ?? ""; // drop any zone index
+  const version = net.isIP(bare);
+  if (version === 0) return true;
 
-  // A trailing dotted quad (::ffff:1.2.3.4) becomes two hex groups.
-  const dotted = bare.match(/(\d+\.\d+\.\d+\.\d+)$/);
-  const head = dotted ? bare.slice(0, -dotted[1]!.length) : bare;
-  const tail = dotted
-    ? (() => {
-        const o = dotted[1]!.split(".").map(Number);
-        return [(o[0]! << 8) | o[1]!, (o[2]! << 8) | o[3]!];
-      })()
-    : [];
-
-  const [left, right] = head.replace(/:$/, ":0").split("::") as [string, string?];
-  const parse = (part: string) =>
-    part.split(":").filter(Boolean).map((group) => Number.parseInt(group, 16));
-
-  const leading = parse(left);
-  const trailing = right === undefined ? tail : [...parse(right), ...tail];
-  const groups =
-    right === undefined
-      ? [...leading, ...tail]
-      : [...leading, ...Array(8 - leading.length - trailing.length).fill(0), ...trailing];
-
-  return groups.length === 8 && groups.every(Number.isInteger) ? groups : null;
-}
-
-function isBlockedIPv6(address: string): boolean {
-  const h = toHextets(address);
-  if (!h) return true; // unparseable — refuse rather than guess
-
-  const [first, second] = h as [number, number, ...number[]];
-
-  // ::/128 unspecified and ::1/128 loopback.
-  if (h.slice(0, 7).every((group) => group === 0) && h[7]! <= 1) return true;
-
-  // ::ffff:0:0/96 IPv4-mapped and ::/96 IPv4-compatible inherit the IPv4 rules.
-  if (h.slice(0, 5).every((group) => group === 0) && (h[5] === 0xffff || h[5] === 0)) {
-    const v4 = `${h[6]! >> 8}.${h[6]! & 0xff}.${h[7]! >> 8}.${h[7]! & 0xff}`;
-    return isBlockedIPv4(v4);
-  }
-
-  if (first >= 0xfe80 && first <= 0xfebf) return true; // fe80::/10 link-local
-  if (first >= 0xfc00 && first <= 0xfdff) return true; // fc00::/7 unique-local
-  if (first >= 0xff00) return true; // ff00::/8 multicast
-  if (first === 0x0100) return true; // 100::/64 discard-only
-  if (first === 0x0064 && second === 0xff9b) return true; // 64:ff9b::/96 NAT64 wraps IPv4
-  if (first === 0x2002) return true; // 2002::/16 6to4 wraps IPv4
-  if (first === 0x2001 && second === 0x0000) return true; // 2001::/32 Teredo
-
-  return false;
-}
-
-function isBlockedAddress(address: string): boolean {
-  const version = net.isIP(address);
-  if (version === 4) return isBlockedIPv4(address);
-  if (version === 6) return isBlockedIPv6(address);
-  return true; // not an IP literal — refuse rather than guess
+  return BLOCKED.check(bare, version === 4 ? "ipv4" : "ipv6");
 }
 
 /**
  * True when `url` is a syntactically valid http(s) URL whose hostname resolves
  * exclusively to public unicast addresses.
+ *
+ * Note: this resolves the name, and the connection resolves it again. A host
+ * with an attacker-controlled, very short TTL can therefore still rebind
+ * between the two. Closing that needs the connection pinned to the address
+ * validated here, which Node's global fetch has no hook for.
  */
 export async function isPublicHttpUrl(url: string): Promise<boolean> {
   let parsed: URL;

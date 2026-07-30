@@ -1,6 +1,37 @@
 import { describe, expect, test } from "bun:test";
 
-import { isPublicHttpUrl } from "./ssrf";
+import { isBlockedAddress, isPublicHttpUrl } from "./ssrf";
+
+// A resolver returns an address as text, and an IPv4-mapped address has two
+// valid textual forms. Both must classify the same way — the dotted form is
+// what getaddrinfo emits, and it previously slipped through.
+describe("isBlockedAddress", () => {
+  test("blocks both textual forms of an IPv4-mapped address", () => {
+    for (const address of [
+      "::ffff:127.0.0.1",
+      "::ffff:7f00:1",
+      "::ffff:169.254.169.254",
+      "::ffff:a9fe:a9fe",
+      "::ffff:10.0.0.5",
+      "::ffff:a00:5",
+      "::ffff:192.168.1.1",
+    ]) {
+      expect([address, isBlockedAddress(address)]).toEqual([address, true]);
+    }
+  });
+
+  test("allows an IPv4-mapped public address in both forms", () => {
+    for (const address of ["::ffff:1.1.1.1", "::ffff:101:101"]) {
+      expect([address, isBlockedAddress(address)]).toEqual([address, false]);
+    }
+  });
+
+  test("ignores a zone index and refuses anything that is not an IP", () => {
+    expect(isBlockedAddress("fe80::1%en0")).toBe(true);
+    expect(isBlockedAddress("not-an-ip")).toBe(true);
+    expect(isBlockedAddress("")).toBe(true);
+  });
+});
 
 // IP literals only, so the assertions never touch a resolver.
 describe("isPublicHttpUrl", () => {
