@@ -89,6 +89,14 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
     return new Response(parsed.error.message, { status: 400 });
   }
 
+  // Authorize before doing any work. assertUrlSafe below reaches an external
+  // reputation service and an LLM, so running it first would let any API key
+  // burn those on aliases the caller doesn't own.
+  const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
+  if (!existingLink) {
+    return new Response("Link not found", { status: 404 });
+  }
+
   const filteredUpdateData: {
     url?: string;
     alias?: string;
@@ -97,7 +105,14 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
   } = {};
 
   if (parsed.data.url !== undefined) {
-    await assertUrlSafe(parsed.data.url);
+    // assertUrlSafe throws a TRPCError; surface it as the 400 the create route
+    // already returns for the same rejection rather than a generic 500.
+    try {
+      await assertUrlSafe(parsed.data.url);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "URL is not allowed";
+      return new Response(message, { status: 400 });
+    }
     filteredUpdateData.url = parsed.data.url;
   }
   if (parsed.data.alias !== undefined) filteredUpdateData.alias = parsed.data.alias;
@@ -114,21 +129,14 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
     return new Response("No update fields provided", { status: 400 });
   }
 
-  const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
-  if (!existingLink) {
-    return new Response("Link not found", { status: 404 });
-  }
-
   try {
     await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
 
-    // Fetch the updated link data to return
-    const updatedAlias = filteredUpdateData.alias ?? alias; // Use new alias if provided
-    const updatedLink = await getOwnedLinkByAlias(updatedAlias, domain, token.userId);
+    // Refetch by id: ownership is already settled, and the alias may have just
+    // changed, so looking it up by alias again would race a concurrent rename.
+    const updatedLink = await db.query.link.findFirst({ where: eq(link.id, existingLink.id) });
 
     if (!updatedLink) {
-      // This case should ideally not happen if the update was successful and alias wasn't changed
-      // Or if it was changed, the fetch used the new alias
       return new Response("Failed to retrieve updated link", { status: 500 });
     }
 
