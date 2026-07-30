@@ -6,10 +6,17 @@ import { redis } from "@/lib/core/cache";
 import { normalizeAlias } from "@/lib/utils";
 import { customDomain, link, team, user } from "@/server/db/schema";
 import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user-plan";
-import { workspaceFilter } from "@/server/lib/workspace";
+import { requireFolderAccess, workspaceFilter } from "@/server/lib/workspace";
 
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 
+/**
+ * Loads a link that belongs to the caller's workspace, and — when the link
+ * lives in a folder — that the caller is allowed to see that folder. Workspace
+ * scoping alone is not enough: team folders can be restricted to a subset of
+ * members, and every satellite router (tags, geo rules, milestones) authorizes
+ * through this helper.
+ */
 export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: number) {
   const linkRecord = await ctx.db.query.link.findFirst({
     where: and(
@@ -23,6 +30,10 @@ export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: num
       code: "NOT_FOUND",
       message: "Link not found or you don't have access to it",
     });
+  }
+
+  if (linkRecord.folderId) {
+    await requireFolderAccess(ctx.db, ctx.workspace, linkRecord.folderId);
   }
 
   return linkRecord;

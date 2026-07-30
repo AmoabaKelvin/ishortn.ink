@@ -73,7 +73,7 @@
     "lucide-react": "^0.414.0",
     "mysql2": "^3.9.7",
     "nanoid": "^5.0.7",
-    "next": "16.2.10",
+    "next": "16.2.12",
     "next-themes": "^0.2.1",
     "next-view-transitions": "^0.3.4",
     "pino": "^10.3.1",
@@ -93,7 +93,7 @@
     "resend": "^3.3.0",
     "seedrandom": "^3.0.5",
     "server-only": "^0.0.1",
-    "sharp": "0.34.5",
+    "sharp": "0.35.3",
     "sonner": "^1.4.41",
     "stackblur-canvas": "^2.7.0",
     "superjson": "^2.2.1",
@@ -128,6 +128,7 @@
   },
   "overrides": {
     "@types/react": "19.2.5",
-    "@types/react-dom": "19.2.3"
+    "@types/react-dom": "19.2.3",
+    "sharp": "0.35.3"
   }
 }

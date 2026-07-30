@@ -192,6 +192,10 @@ export const subscription = mysqlTable(
     billingInterval: mysqlEnum("billingInterval", ["monthly", "annual"]).default("monthly"),
     variantId: int("variantId").default(0),
     productId: int("productId").default(0),
+    // Provider's own updated_at for the last event applied. Webhook deliveries
+    // can arrive out of order or be replayed, so events older than this are
+    // dropped instead of overwriting current state.
+    providerUpdatedAt: datetime("providerUpdatedAt"),
 
     // details about the payment to show in the dashboard
     cardBrand: varchar("cardBrand", { length: 255 }).default(""),
