@@ -41,6 +41,8 @@ import {
 } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
+import { checkLinkExpiration } from "@/middlewares/resolve-link";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { db } from "@/server/db";
 import {
@@ -351,21 +353,6 @@ export const getLink = async (
   }
 
   return linkData;
-};
-
-export const getLinkByAlias = async (input: {
-  alias: string;
-  domain: string;
-}) => {
-  return db
-    .select()
-    .from(link)
-    .where(
-      and(
-        eq(link.domain, input.domain),
-        sql`lower(${link.alias}) = lower(${input.alias})`,
-      ),
-    );
 };
 
 export const createLink = async (
@@ -792,7 +779,7 @@ export const deleteLink = async (
   const metadata = linkToDelete.metadata as { image?: string } | null;
   if (metadata?.image) {
     try {
-      await deleteImage(metadata.image);
+      await deleteImage(ctx.workspace, metadata.image);
     } catch (error) {
       log.error(
         { err: error, linkId: input.id },
@@ -867,7 +854,7 @@ export const bulkDeleteLinks = async (
     const metadata = l.metadata as { image?: string } | null;
     if (metadata?.image) {
       try {
-        await deleteImage(metadata.image);
+        await deleteImage(ctx.workspace, metadata.image);
       } catch (error) {
         log.error(
           { err: error, linkId: l.id },
@@ -1604,6 +1591,41 @@ export const verifyLinkPassword = async (
     return null;
   }
 
+  // A correct password is not an access grant. This procedure is callable with
+  // nothing but an id and the password, so it has to re-apply the same policy
+  // the redirect path enforces — otherwise a visitor keeps resolving a link the
+  // owner has since blocked, disabled, expired, or geo-restricted.
+  if (link.blocked) {
+    return { url: `/blocked/${link.id}`, alias: link.alias, verificationToken: null };
+  }
+
+  const cacheKey = buildCacheKey(link.domain, link.alias ?? "");
+  if (await checkLinkExpiration(link, cacheKey)) {
+    return { url: `/expired/${link.id}`, alias: link.alias, verificationToken: null };
+  }
+
+  // Vercel's geo header is the same source the proxy uses, and matchGeoRules
+  // expects a country code (not the display name analytics records).
+  const countryCode = ctx.headers.get("x-vercel-ip-country");
+  const geoResult = matchGeoRules(
+    await ctx.db.query.geoRule.findMany({
+      where: eq(geoRule.linkId, link.id),
+      orderBy: [asc(geoRule.priority)],
+    }),
+    countryCode,
+  );
+
+  if (geoResult.matched && geoResult.action === "block") {
+    const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
+    return {
+      url: `/blocked/${link.id}${geoParam}`,
+      alias: link.alias,
+      verificationToken: null,
+    };
+  }
+
+  const destination = geoResult.matched ? geoResult.destination : link.url;
+
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
   // x-forwarded-for is a comma-separated proxy chain; the left-most token is
   // the original client. Hashing the whole header instead would count the
@@ -1611,13 +1633,14 @@ export const verifyLinkPassword = async (
   const clientIp = (ctx.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
   const ipHash = hashIp(clientIp);
 
-  const tokenIssue = link.url
-    ? await issueVerifiedClickToken(link, link.url)
+  const tokenIssue = destination
+    ? await issueVerifiedClickToken(link, destination)
     : null;
 
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,
     ...deviceDetails,
+    matchedGeoRuleId: geoResult.matched ? geoResult.ruleId : null,
     visitId: tokenIssue?.visitId ?? null,
   });
 
@@ -1630,7 +1653,7 @@ export const verifyLinkPassword = async (
   void runBackgroundTask(checkAndFireMilestones(link.id, link.userId));
 
   return {
-    url: link.url,
+    url: destination,
     alias: link.alias,
     verificationToken: tokenIssue?.verificationToken ?? null,
   };
