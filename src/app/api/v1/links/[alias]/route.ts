@@ -1,8 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
+import { z } from "zod";
 
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
+import { assertUrlSafe } from "@/server/lib/phishing";
 
 import {
   getApiDomainParamsFromSearchParams,
@@ -13,6 +15,20 @@ import {
 import type { NextRequest } from "next/server";
 
 const log = logger.child({ component: "api.v1.links" });
+
+const updateLinkSchema = z
+  .object({
+    url: z.string().url().optional(),
+    alias: z
+      .string()
+      .min(1)
+      .max(20)
+      .regex(/^[a-zA-Z0-9-_]+$/, "Alias can only contain alphanumeric characters, dashes, and underscores")
+      .optional(),
+    expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
+    expiresAfter: z.number().int().positive().nullable().optional(),
+  })
+  .strict();
 
 export async function GET(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
   const params = await props.params;
@@ -28,13 +44,16 @@ export async function GET(request: NextRequest, props: { params: Promise<{ alias
     token.userId,
     getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
   );
+  if (!domain) {
+    return new Response("Domain not available for this API key", { status: 403 });
+  }
 
-  const retrievedLink = await getLinkByAlias(alias, domain);
+  const retrievedLink = await getOwnedLinkByAlias(alias, domain, token.userId);
   if (!retrievedLink) {
     return new Response("Link not found", { status: 404 });
   }
 
-  return Response.json(retrievedLink);
+  return Response.json(toApiLink(retrievedLink));
 }
 
 export async function PATCH(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
@@ -51,49 +70,61 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
     token.userId,
     getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
   );
+  if (!domain) {
+    return new Response("Domain not available for this API key", { status: 403 });
+  }
 
-  let updateData: {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response("Invalid request body", { status: 400 });
+  }
+
+  // The request body is untrusted, so parse it against a strict allowlist. A
+  // plain cast plus `.set(body)` would let any Link column (userId, blocked,
+  // passwordHash, cloaking, ...) be mass-assigned.
+  const parsed = updateLinkSchema.safeParse(body);
+  if (!parsed.success) {
+    return new Response(parsed.error.message, { status: 400 });
+  }
+
+  const filteredUpdateData: {
     url?: string;
     alias?: string;
     disableLinkAfterDate?: Date | null;
     disableLinkAfterClicks?: number | null;
-  };
-  try {
-    updateData = await request.json();
-  } catch (error) {
-    return new Response("Invalid request body", { status: 400 });
-  }
+  } = {};
 
-  const existingLink = await getLinkByAlias(alias, domain);
-  if (!existingLink) {
-    return new Response("Link not found", { status: 404 });
+  if (parsed.data.url !== undefined) {
+    await assertUrlSafe(parsed.data.url);
+    filteredUpdateData.url = parsed.data.url;
   }
-
-  // Filter out undefined values from updateData
-  const filteredUpdateData = Object.entries(updateData).reduce(
-    (acc, [key, value]) => {
-      if (value !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-        (acc as any)[key] = value;
-      }
-      return acc;
-    },
-    {} as typeof updateData,
-  );
+  if (parsed.data.alias !== undefined) filteredUpdateData.alias = parsed.data.alias;
+  if (parsed.data.expiresAt !== undefined) {
+    filteredUpdateData.disableLinkAfterDate = parsed.data.expiresAt
+      ? new Date(parsed.data.expiresAt)
+      : null;
+  }
+  if (parsed.data.expiresAfter !== undefined) {
+    filteredUpdateData.disableLinkAfterClicks = parsed.data.expiresAfter;
+  }
 
   if (Object.keys(filteredUpdateData).length === 0) {
     return new Response("No update fields provided", { status: 400 });
   }
 
+  const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
+  if (!existingLink) {
+    return new Response("Link not found", { status: 404 });
+  }
+
   try {
-    await db
-      .update(link)
-      .set(filteredUpdateData)
-      .where(and(eq(link.alias, alias), eq(link.domain, domain)));
+    await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
 
     // Fetch the updated link data to return
     const updatedAlias = filteredUpdateData.alias ?? alias; // Use new alias if provided
-    const updatedLink = await getLinkByAlias(updatedAlias, domain);
+    const updatedLink = await getOwnedLinkByAlias(updatedAlias, domain, token.userId);
 
     if (!updatedLink) {
       // This case should ideally not happen if the update was successful and alias wasn't changed
@@ -101,7 +132,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
       return new Response("Failed to retrieve updated link", { status: 500 });
     }
 
-    return Response.json(updatedLink);
+    return Response.json(toApiLink(updatedLink));
   } catch (error) {
     log.error({ err: error, alias, domain }, "failed to update link");
 
@@ -128,18 +159,35 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
   }
 }
 
-async function getLinkByAlias(alias: string, domain: string) {
-  const retrievedLink = await db
-    .select()
-    .from(link)
-    .where(and(eq(link.alias, alias), eq(link.domain, domain)));
-  if (!retrievedLink.length) return null;
+/**
+ * Loads a link by (alias, domain) but only when it belongs to the API token
+ * owner's personal workspace. (alias, domain) is public information, so
+ * without the ownership predicate any token could read or rewrite any
+ * account's short link.
+ */
+async function getOwnedLinkByAlias(alias: string, domain: string, userId: string) {
+  return db.query.link.findFirst({
+    where: and(
+      eq(link.alias, alias),
+      eq(link.domain, domain),
+      eq(link.userId, userId),
+      isNull(link.teamId),
+    ),
+  });
+}
 
+function toApiLink(retrievedLink: {
+  domain: string;
+  alias: string | null;
+  url: string | null;
+  disableLinkAfterDate: Date | null;
+  disableLinkAfterClicks: number | null;
+}) {
   return {
-    shortLink: `https://${retrievedLink[0]!.domain}/${retrievedLink[0]!.alias}`,
-    url: retrievedLink[0]!.url,
-    alias: retrievedLink[0]!.alias,
-    expiresAt: retrievedLink[0]!.disableLinkAfterDate,
-    expiresAfter: retrievedLink[0]!.disableLinkAfterClicks,
+    shortLink: `https://${retrievedLink.domain}/${retrievedLink.alias}`,
+    url: retrievedLink.url,
+    alias: retrievedLink.alias,
+    expiresAt: retrievedLink.disableLinkAfterDate,
+    expiresAfter: retrievedLink.disableLinkAfterClicks,
   };
 }

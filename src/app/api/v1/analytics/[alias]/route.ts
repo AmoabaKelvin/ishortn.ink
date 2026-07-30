@@ -22,6 +22,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ alias
     token.userId,
     getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
   );
+  if (!domain) {
+    return new Response("Domain not available for this API key", { status: 403 });
+  }
 
   const link = await db.query.link.findFirst({
     where: (table, { eq, and }) => and(eq(table.alias, alias), eq(table.domain, domain)),
