@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lte, or } from "drizzle-orm";
 import { Resend } from "resend";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
@@ -72,6 +72,20 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     // payment data
     const cardBrand = lemonsqueezySubscription.card_brand;
     const cardLastFour = lemonsqueezySubscription.card_last_four;
+    const providerUpdatedAt = new Date(lemonsqueezySubscription.updated_at);
+
+    // Deliveries can arrive out of order or be replayed. Every non-create event
+    // must therefore name the subscription it is about and be newer than the
+    // event we last applied — otherwise a stale event for a cancelled
+    // subscription can revoke the row a newer subscription now owns.
+    const currentSubscription = and(
+      eq(subscription.userId, userId),
+      eq(subscription.subscriptionId, subscriptionId),
+      or(
+        isNull(subscription.providerUpdatedAt),
+        lte(subscription.providerUpdatedAt, providerUpdatedAt),
+      ),
+    );
 
     if (event_name === "subscription_created") {
       const user = await db.query.user.findFirst({
@@ -103,6 +117,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
           renewsAt: new Date(renewsAt),
           createdAt: new Date(createdAt),
           endsAt: endsAt ? new Date(endsAt) : null,
+          providerUpdatedAt,
         })
         .onDuplicateKeyUpdate({
           // A returning customer already has a row, so refresh the full
@@ -121,6 +136,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
             cardLastFour,
             renewsAt: new Date(renewsAt),
             endsAt: endsAt ? new Date(endsAt) : null,
+            providerUpdatedAt,
           },
         });
 
@@ -154,8 +170,9 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
           endsAt: endsAt ? new Date(endsAt) : null,
           cardBrand,
           cardLastFour,
+          providerUpdatedAt,
         })
-        .where(eq(subscription.userId, userId));
+        .where(currentSubscription);
     } else if (event_name === "subscription_cancelled") {
       // Keep the plan/variant intact — a cancelled subscription stays entitled
       // until endsAt. resolvePlan() drops it to free once that date passes.
@@ -164,8 +181,9 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
         .set({
           status,
           endsAt: endsAt ? new Date(endsAt) : null,
+          providerUpdatedAt,
         })
-        .where(eq(subscription.userId, userId));
+        .where(currentSubscription);
     } else if (event_name === "subscription_expired") {
       await db
         .update(subscription)
@@ -175,8 +193,9 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
           variantId: 0,
           productId: 0,
           endsAt: new Date(), // set endsAt to now to indicate the subscription has ended
+          providerUpdatedAt,
         })
-        .where(eq(subscription.userId, userId));
+        .where(currentSubscription);
     } else if (event_name === "order_created") {
       // handle order created
     }

@@ -463,6 +463,13 @@
       "when": 1783166773521,
       "tag": "0065_dusty_marauders",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "5",
+      "when": 1785420466660,
+      "tag": "0066_gray_abomination",
+      "breakpoints": true
     }
   ]
 }
