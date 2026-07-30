@@ -20,7 +20,7 @@ import {
   linkVisit,
   uniqueBioPageView,
 } from "@/server/db/schema";
-import { deleteImage, uploadImage } from "@/server/lib/storage";
+import { deleteImage, isOwnedR2Url, uploadImage } from "@/server/lib/storage";
 import {
   deleteHiddenTrackingLink,
   insertHiddenTrackingLink,
@@ -116,8 +116,13 @@ function assertSchedulingAllowed(
 
 /**
  * Upload a new bio image (or clear it) and remove the previous R2 object when it
- * changed. deleteImage is a no-op for non-R2 (base64) values, so this is always
- * safe. Returns the value to persist.
+ * changed. Returns the value to persist.
+ *
+ * Bio images are rendered server-side by next/og, which fetches whatever `src`
+ * holds — so an arbitrary URL here is a server-side request from inside our
+ * network. The client only ever sends a base64 data URL (new upload) or the
+ * previously stored value, so anything else that already looks like an absolute
+ * URL is refused.
  */
 async function resolveImageUpdate(
   ctx: WorkspaceTRPCContext,
@@ -126,6 +131,15 @@ async function resolveImageUpdate(
   next: string | null | undefined,
   previous: string | null,
 ): Promise<{ value: string | null; previousToDelete: string | null }> {
+  if (next && /^[a-z][a-z0-9+.-]*:/i.test(next) && !next.startsWith("data:image/")) {
+    if (next !== previous && !isOwnedR2Url(ctx.workspace, next)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Bio images must be uploaded, not linked from another site.",
+      });
+    }
+  }
+
   const value = next
     ? (await uploadImage(ctx, { image: next, resourceId, imageType })) ?? next
     : null;
@@ -327,7 +341,7 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
 
   // Only after the row is updated do we delete replaced images, so a failed
   // update (e.g. duplicate slug) never strands the page on a deleted image.
-  for (const url of imagesToDelete) await deleteImage(url).catch(() => {});
+  for (const url of imagesToDelete) await deleteImage(ctx.workspace, url).catch(() => {});
   revalidateBioPath(page.slug);
   if (updates.slug && updates.slug !== page.slug) revalidateBioPath(updates.slug);
   return { success: true };
@@ -376,7 +390,7 @@ export async function deleteBioPage(ctx: WorkspaceTRPCContext, id: number) {
   await Promise.all(
     [page.avatarUrl, page.socialImageUrl]
       .filter((url): url is string => !!url)
-      .map((url) => deleteImage(url).catch(() => {})),
+      .map((url) => deleteImage(ctx.workspace, url).catch(() => {})),
   );
 
   revalidateBioPath(page.slug);
