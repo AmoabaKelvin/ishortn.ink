@@ -30,11 +30,9 @@
       "id": "ac816bc62707444ab259acdc494f14dc"
     }
   ],
-  // Enable at cutover: while Vercel's crons still run, these would double-execute
-  // the cleanup/reminder jobs against the same database.
-  // "triggers": {
-  //   "crons": ["0 9 * * *", "0 0 * * *", "0 2 * * 0", "0 4 * * *"]
-  // },
+  "triggers": {
+    "crons": ["0 9 * * *", "0 0 * * *", "0 2 * * SUN", "0 4 * * *"]
+  },
   "observability": {
     "enabled": true
   }
