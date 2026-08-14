@@ -1,8 +1,10 @@
+// Client-side helper; server code should call scrapeMetadata from
+// @/server/lib/metadata directly instead of going through HTTP.
 export async function fetchMetadataInfo(url: string) {
-  const response = await fetch(`https://meta.kelvinamoaba.com/metadata?url=${url}`);
+  const response = await fetch(`/api/metadata?url=${encodeURIComponent(url)}`);
 
   if (!response.ok) {
-    throw new Error(`metadata service responded ${response.status}`);
+    throw new Error(`metadata endpoint responded ${response.status}`);
   }
 
   const data = (await response.json()) as {

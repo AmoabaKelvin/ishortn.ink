@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 
 import { logger } from "@/lib/logger";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
-import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
+import { scrapeMetadata } from "@/server/lib/metadata";
 
 import { checkBlocklist } from "./blocklist";
 import { checkGoogleSafeBrowsing } from "./google-safe-browsing";
@@ -118,7 +118,7 @@ export async function assertUrlSafe(url: string): Promise<void> {
   // metadata service or the LLM provider must not block link creation.
   let phishingResult: { url: string; phishing: boolean };
   try {
-    const fetchedMetadata = await fetchMetadataInfo(url);
+    const fetchedMetadata = await scrapeMetadata(url);
     phishingResult = await detectPhishingLink(url, fetchedMetadata);
   } catch (error) {
     log.warn({ err: error, url }, "LLM phishing check failed, allowing link");
