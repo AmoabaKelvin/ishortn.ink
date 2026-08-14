@@ -382,7 +382,8 @@ export const createLink = async (
 
   await assertUrlSafe(input.url);
 
-  const fetchedMetadata = await fetchMetadataInfo(input.url);
+  // Best-effort: a metadata-service outage must not block link creation.
+  const fetchedMetadata = await fetchMetadataInfo(input.url).catch(() => null);
 
   if (input.alias) {
     await validateAlias(ctx, input.alias, domain, isPaidPlan);
@@ -458,12 +459,12 @@ export const createLink = async (
   }
 
   input.metadata = {
-    title: inputMetaData?.title ?? fetchedMetadata.title,
-    description: inputMetaData?.description ?? fetchedMetadata.description,
-    image: inputMetaData?.image ?? fetchedMetadata.image,
+    title: inputMetaData?.title ?? fetchedMetadata?.title,
+    description: inputMetaData?.description ?? fetchedMetadata?.description,
+    image: inputMetaData?.image ?? fetchedMetadata?.image,
   };
 
-  const name = input.name ?? fetchedMetadata.title ?? "Untitled Link";
+  const name = input.name ?? fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
 
   // Create link without tags field
@@ -1070,8 +1071,8 @@ export const shortenLinkWithAutoAlias = async (
 
   await assertUrlSafe(input.url);
 
-  const fetchedMetadata = await fetchMetadataInfo(input.url);
-  const name = fetchedMetadata.title ?? "Untitled Link";
+  const fetchedMetadata = await fetchMetadataInfo(input.url).catch(() => null);
+  const name = fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
 
@@ -1085,9 +1086,9 @@ export const shortenLinkWithAutoAlias = async (
     createdByUserId: ctx.auth.userId, // Track the actual user who created the link
     name,
     metadata: {
-      title: fetchedMetadata.title,
-      description: fetchedMetadata.description,
-      image: fetchedMetadata.image,
+      title: fetchedMetadata?.title,
+      description: fetchedMetadata?.description,
+      image: fetchedMetadata?.image,
     },
   });
 
