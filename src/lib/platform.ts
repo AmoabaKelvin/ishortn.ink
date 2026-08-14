@@ -4,25 +4,25 @@ import { waitUntil } from "@vercel/functions";
 // getCloudflareContext() throws when not running on Cloudflare, so each helper
 // tries it first and falls back to the Vercel equivalent.
 
-export function getRequestGeo(request: Request): { country?: string; city?: string } {
+export function getRequestGeo(headers: Headers): { country?: string; city?: string } {
   try {
     const { cf } = getCloudflareContext();
     if (cf) return { country: cf.country, city: cf.city };
   } catch {
     // not on Cloudflare; fall through to the Vercel headers
   }
-  const city = request.headers.get("x-vercel-ip-city");
+  const city = headers.get("x-vercel-ip-city");
   return {
-    country: request.headers.get("x-vercel-ip-country") ?? undefined,
+    country: headers.get("x-vercel-ip-country") ?? undefined,
     city: city ? decodeURIComponent(city) : undefined,
   };
 }
 
-export function getClientIp(request: Request): string | undefined {
+export function getClientIp(headers: Headers): string | undefined {
   return (
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-real-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    headers.get("cf-connecting-ip") ??
+    headers.get("x-real-ip") ??
+    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     undefined
   );
 }

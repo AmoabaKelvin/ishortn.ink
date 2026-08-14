@@ -1,7 +1,7 @@
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 
 export function GET(request: Request) {
-  const details = getRequestGeo(request);
-  const ip = getClientIp(request);
+  const details = getRequestGeo(request.headers);
+  const ip = getClientIp(request.headers);
   return Response.json({ ...details, ip });
 }
