@@ -34,6 +34,8 @@ export type CustomHostnameChallenge = {
   value: string;
 };
 
+const CLOUDFLARE_API_TIMEOUT_MS = 10_000;
+
 function zoneUrl(path: string) {
   return `${CLOUDFLARE_API_BASE}/zones/${env.CLOUDFLARE_SAAS_ZONE_ID}${path}`;
 }
@@ -45,8 +47,22 @@ function requestHeaders() {
   };
 }
 
+async function cloudflareFetch(url: string, init: RequestInit) {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(CLOUDFLARE_API_TIMEOUT_MS) });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw new Error("The domain service took too long to respond. Please try again.");
+    }
+    throw error;
+  }
+}
+
 export async function addCustomHostname(domain: string) {
-  const response = await fetch(zoneUrl("/custom_hostnames"), {
+  const response = await cloudflareFetch(zoneUrl("/custom_hostnames"), {
     method: "POST",
     headers: requestHeaders(),
     body: JSON.stringify({
@@ -75,7 +91,7 @@ export async function addCustomHostname(domain: string) {
 }
 
 export async function getCustomHostname(domain: string) {
-  const response = await fetch(
+  const response = await cloudflareFetch(
     zoneUrl(`/custom_hostnames?hostname=${encodeURIComponent(domain)}`),
     {
       method: "GET",
@@ -85,8 +101,13 @@ export async function getCustomHostname(domain: string) {
 
   const data = (await response.json()) as CloudflareApiResponse<CloudflareCustomHostname[]>;
 
-  if (!data.success || !data.result) {
-    return null;
+  // A failed lookup must throw rather than read as "hostname absent" — callers
+  // rely on the distinction (fetchError flag, delete refusing to run blind).
+  if (!response.ok || !data.success || !data.result) {
+    const detail = data.errors?.map((error) => `${error.code}: ${error.message}`).join("; ");
+    throw new Error(
+      `Cloudflare custom hostname lookup failed: ${detail || `HTTP ${response.status}`}`,
+    );
   }
 
   return data.result[0] ?? null;
@@ -99,7 +120,7 @@ export async function deleteCustomHostname(domain: string) {
     return;
   }
 
-  const response = await fetch(zoneUrl(`/custom_hostnames/${hostname.id}`), {
+  const response = await cloudflareFetch(zoneUrl(`/custom_hostnames/${hostname.id}`), {
     method: "DELETE",
     headers: requestHeaders(),
   });

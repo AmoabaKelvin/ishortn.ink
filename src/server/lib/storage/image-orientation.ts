@@ -95,6 +95,8 @@ export async function normalizeImageOrientation(buffer: Buffer, format: string):
   try {
     const orientation = await exifr.orientation(buffer);
     if (!orientation || orientation === 1) return buffer; // already upright
+    // Nonstandard tag values would hit applyOrientation's default (8) branch
+    if (!Number.isInteger(orientation) || orientation < 2 || orientation > 8) return buffer;
 
     const sharp = await loadSharp();
     if (sharp) return await sharp(buffer).rotate().toBuffer(); // auto-orient + strip the tag

@@ -75,7 +75,7 @@
     "framer-motion": "^11.2.10",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.414.0",
-    "mysql2": "^3.9.7",
+    "mysql2": "^3.13.0",
     "nanoid": "^5.0.7",
     "next": "16.3.0",
     "next-themes": "^0.2.1",

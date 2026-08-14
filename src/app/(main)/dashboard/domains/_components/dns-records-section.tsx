@@ -77,6 +77,7 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
                       <button
                         type="button"
                         onClick={() => handleCopy(challenge.domain)}
+                        aria-label={`Copy ${challenge.domain}`}
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
                       >
                         {copiedValue === challenge.domain ? (
@@ -95,6 +96,7 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
                       <button
                         type="button"
                         onClick={() => handleCopy(challenge.value)}
+                        aria-label={`Copy ${challenge.value}`}
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
                       >
                         {copiedValue === challenge.value ? (

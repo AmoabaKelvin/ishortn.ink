@@ -59,7 +59,13 @@ export const env = createEnv({
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
     // Optional ISO date shown in the custom-domain migration notice
-    NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE: z.string().optional(),
+    NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE: z
+      .string()
+      .refine(
+        (value) => !Number.isNaN(Date.parse(value)),
+        "NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE must be a parseable date"
+      )
+      .optional(),
   },
 
   /**

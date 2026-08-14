@@ -15,7 +15,10 @@ export default clerkMiddleware(async (auth, req) => {
     return;
   }
 
-  const { pathname, host } = new URL(req.url);
+  const { pathname, host: urlHost } = new URL(req.url);
+  // Same precedence as the [linkAlias] page: a proxy may forward the custom
+  // domain in x-forwarded-host while the URL holds the platform host.
+  const host = req.headers.get("x-forwarded-host") ?? urlHost;
 
   // A verified custom domain serves its owner's bio page at the domain root.
   // Short links on the same domain are deeper paths and resolve via the

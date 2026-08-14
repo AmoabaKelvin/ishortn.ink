@@ -45,10 +45,9 @@ function shutdownPhrase() {
 }
 
 export function DomainMigrationGate() {
-  const [dismissed, setDismissed] = useState(
-    () =>
-      typeof window !== "undefined" && window.sessionStorage.getItem(SESSION_DISMISS_KEY) === "1",
-  );
+  // Starts closed on both server and client; the effect below reads the
+  // session dismissal after hydration, avoiding a mismatch.
+  const [dismissed, setDismissed] = useState(true);
 
   const { data } = api.customDomain.migrationStatus.useQuery(undefined, {
     refetchOnWindowFocus: false,
@@ -56,6 +55,8 @@ export function DomainMigrationGate() {
   });
 
   useEffect(() => {
+    setDismissed(window.sessionStorage.getItem(SESSION_DISMISS_KEY) === "1");
+
     const handleOpen = () => {
       window.sessionStorage.removeItem(SESSION_DISMISS_KEY);
       setDismissed(false);

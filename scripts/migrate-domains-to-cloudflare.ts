@@ -124,30 +124,37 @@ async function migrateDomain(domain: string): Promise<MigrationRow> {
 
 void (async () => {
   const connection = await mysql.createConnection(databaseUrl);
-  const db = drizzle(connection);
+  let failed = 0;
 
-  const rows = await db.select({ domain: customDomain.domain }).from(customDomain);
-  const domains = [...new Set(rows.map((row) => row.domain).filter((d): d is string => !!d))];
+  try {
+    const db = drizzle(connection);
 
-  console.log(`Migrating ${domains.length} unique domains to Cloudflare custom hostnames...`);
+    const rows = await db.select({ domain: customDomain.domain }).from(customDomain);
+    const domains = [...new Set(rows.map((row) => row.domain).filter((d): d is string => !!d))];
 
-  const results: MigrationRow[] = [];
-  for (const domain of domains) {
-    results.push(await migrateDomain(domain));
+    console.log(`Migrating ${domains.length} unique domains to Cloudflare custom hostnames...`);
+
+    const results: MigrationRow[] = [];
+    for (const domain of domains) {
+      results.push(await migrateDomain(domain));
+    }
+
+    console.table(results);
+
+    failed = results.filter((row) => row.result === "failed").length;
+    console.log(
+      `Done: ${results.filter((row) => row.result === "created").length} created, ` +
+        `${results.filter((row) => row.result === "already exists").length} already existed, ` +
+        `${failed} failed`,
+    );
+  } finally {
+    await connection.end();
   }
-
-  console.table(results);
-
-  const failed = results.filter((row) => row.result === "failed").length;
-  console.log(
-    `Done: ${results.filter((row) => row.result === "created").length} created, ` +
-      `${results.filter((row) => row.result === "already exists").length} already existed, ` +
-      `${failed} failed`,
-  );
-
-  await connection.end();
 
   if (failed > 0) {
     process.exit(1);
   }
-})();
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
