@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { logger } from "@/lib/logger";
-import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
+import { scrapeMetadata } from "@/server/lib/metadata";
 import { buildBeaconScript } from "@/lib/utils/verified-click-token";
 
 export const fetchCache = "force-no-store";
@@ -44,7 +44,7 @@ export async function generateMetadata(props: CloakedPageProps): Promise<Metadat
   const url = decodeURIComponent(params.url);
 
   try {
-    const metatags = await fetchMetadataInfo(url);
+    const metatags = await scrapeMetadata(url);
     const apexDomain = getApexDomain(url);
 
     return {

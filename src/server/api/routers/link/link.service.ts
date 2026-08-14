@@ -41,7 +41,7 @@ import {
 } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
+import { scrapeMetadata } from "@/server/lib/metadata";
 import { db } from "@/server/db";
 import {
   campaign,
@@ -383,7 +383,7 @@ export const createLink = async (
   await assertUrlSafe(input.url);
 
   // Best-effort: a metadata-service outage must not block link creation.
-  const fetchedMetadata = await fetchMetadataInfo(input.url).catch(() => null);
+  const fetchedMetadata = await scrapeMetadata(input.url).catch(() => null);
 
   if (input.alias) {
     await validateAlias(ctx, input.alias, domain, isPaidPlan);
@@ -1071,7 +1071,7 @@ export const shortenLinkWithAutoAlias = async (
 
   await assertUrlSafe(input.url);
 
-  const fetchedMetadata = await fetchMetadataInfo(input.url).catch(() => null);
+  const fetchedMetadata = await scrapeMetadata(input.url).catch(() => null);
   const name = fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
