@@ -97,9 +97,15 @@ function groupRecipients(rows: OwnerRow[], migrated: Set<string>): Recipient[] {
     .sort((a, b) => a.email.localeCompare(b.email));
 }
 
+function firstName(name: string | null): string | null {
+  const first = name?.trim().split(/\s+/)[0];
+  if (!first) return null;
+  return first[0]!.toUpperCase() + first.slice(1).toLowerCase();
+}
+
 function buildEmail(recipient: Recipient) {
   return DomainMigrationEmail({
-    recipientName: recipient.name?.split(" ")[0] ?? null,
+    recipientName: firstName(recipient.name ?? null),
     domains: recipient.domains
       .sort()
       .map((domain) => ({ domain, isApex: domain.split(".").length === 2 })),
