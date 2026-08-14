@@ -7,7 +7,12 @@ import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
 import { customDomain } from "@/server/db/schema";
 import { workspaceFilter } from "@/server/lib/workspace";
 
-import { buildVerificationChallenges, getCustomHostname, mapStatus } from "./cloudflare";
+import {
+  buildVerificationChallenges,
+  getCustomHostname,
+  mapStatus,
+  wwwFallbackActive,
+} from "./cloudflare";
 import * as input from "./domains.input";
 import * as services from "./domains.service";
 import { isDomainActiveOnVercel } from "./vercel-legacy";
@@ -44,8 +49,8 @@ export const customDomainRouter = createTRPCRouter({
           .then((res) => res[0]?.count ?? 0);
 
         if (domainCount >= (caps.domainLimit ?? 0)) {
-           throw new Error(
-            `You have reached the limit of ${caps.domainLimit} custom domains for your plan. Please upgrade to add more.`
+          throw new Error(
+            `You have reached the limit of ${caps.domainLimit} custom domains for your plan. Please upgrade to add more.`,
           );
         }
       }
@@ -80,7 +85,9 @@ export const customDomainRouter = createTRPCRouter({
 
           try {
             const hostname = await getCustomHostname(domain);
-            const cloudflareActive = hostname !== null && mapStatus(hostname) === "active";
+            const cloudflareActive =
+              (hostname !== null && mapStatus(hostname) === "active") ||
+              (await wwwFallbackActive(domain));
 
             return {
               domain,
@@ -119,7 +126,7 @@ export const customDomainRouter = createTRPCRouter({
         "Cloudflare custom hostname state",
       );
 
-      if (hostname && mapStatus(hostname) === "active") {
+      if ((hostname && mapStatus(hostname) === "active") || (await wwwFallbackActive(domain))) {
         await ctx.db
           .update(customDomain)
           .set({ status: "active" })
