@@ -7,7 +7,7 @@ import { default as handler } from "./.open-next/worker.js";
 const CRON_ROUTES: Record<string, string> = {
   "0 9 * * *": "/api/cron/domain-reminders",
   "0 0 * * *": "/api/cron/cleanup-teams",
-  "0 2 * * 0": "/api/cron/cleanup-analytics",
+  "0 2 * * SUN": "/api/cron/cleanup-analytics",
   "0 4 * * *": "/api/cron/cleanup-expired",
 };
 
