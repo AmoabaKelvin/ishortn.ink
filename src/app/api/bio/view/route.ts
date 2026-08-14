@@ -1,8 +1,8 @@
-import { geolocation, ipAddress } from "@vercel/functions";
 import { and, eq } from "drizzle-orm";
 import { type NextRequest } from "next/server";
 
-import { redis } from "@/lib/core/cache";
+import { setStringIfAbsent } from "@/lib/core/cache";
+import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { recordBioPageView } from "@/middlewares/record-bio-page-view";
@@ -31,17 +31,17 @@ export async function POST(request: NextRequest) {
   });
   if (!page) return new Response(null, { status: 204 });
 
-  const ip = ipAddress(request);
+  const ip = getClientIp(request);
 
   // Rate-limit: record at most one view per IP per page per minute, so this
   // unauthenticated endpoint can't be spammed to inflate views or drain the
   // page owner's monthly event quota.
   if (ip) {
-    const fresh = await redis.set(`biobeacon:${page.id}:${hashIp(ip)}`, "1", "EX", 60, "NX");
-    if (fresh !== "OK") return new Response(null, { status: 204 });
+    const fresh = await setStringIfAbsent(`biobeacon:${page.id}:${hashIp(ip)}`, "1", 60);
+    if (!fresh) return new Response(null, { status: 204 });
   }
 
-  const geo = geolocation(request);
+  const geo = getRequestGeo(request);
 
   void runBackgroundTask(
     recordBioPageView({

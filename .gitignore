@@ -46,3 +46,7 @@ yarn-error.log*
 .env.sentry-build-plugin
 
 .env.prod
+# cloudflare / opennext
+.open-next/
+.dev.vars
+.wrangler/

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
-import { redis } from "@/lib/core/cache";
+import { deleteFromCache } from "@/lib/core/cache";
 import { siteSettings } from "@/server/db/schema";
 
 import type { ProtectedTRPCContext } from "../../trpc";
@@ -49,7 +49,7 @@ export async function updateSiteSettings(
       throw new Error("You can only set verified custom domains as your default domain");
     }
 
-    await redis.del(`user_settings_domain:${ctx.auth.userId}`);
+    await deleteFromCache(`user_settings_domain:${ctx.auth.userId}`);
   }
 
   if (existingSettings) {

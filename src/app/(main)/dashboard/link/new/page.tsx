@@ -399,7 +399,7 @@ export default function CreateLinkPage() {
           throw new Error(`HTTP ${response.status}`);
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as { iframeable: boolean };
         setIframeableResult(data.iframeable);
 
         if (!data.iframeable) {

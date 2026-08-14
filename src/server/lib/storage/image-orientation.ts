@@ -1,4 +1,80 @@
-import sharp from "sharp";
+import { decode, encode } from "@jsquash/jpeg";
+import exifr from "exifr";
+
+const ENCODE_QUALITY = 85;
+
+// sharp is a native module and only exists on Node; on Cloudflare Workers we
+// fall back to the pure WASM/JS path below. The specifier is hidden inside
+// Function so neither Turbopack nor the OpenNext esbuild pass resolves it:
+// OpenNext excludes sharp from the Worker bundle, so a statically analyzable
+// import("sharp") fails the `opennextjs-cloudflare build` step. In workerd,
+// `new Function` itself throws (no code generation from strings) and lands in
+// the catch, which is the fallback we want.
+async function loadSharp() {
+  try {
+    const dynamicImport = new Function("s", "return import(s)") as (
+      s: string,
+    ) => Promise<{ default?: unknown }>;
+    const mod = await dynamicImport("sharp");
+    return typeof mod.default === "function"
+      ? (mod.default as typeof import("sharp"))
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// dest(x, y) -> src(sx, sy) for each EXIF orientation; 5-8 swap width/height.
+function applyOrientation(image: ImageData, orientation: number): ImageData {
+  const { data, width, height } = image;
+  const swap = orientation >= 5;
+  const outWidth = swap ? height : width;
+  const outHeight = swap ? width : height;
+  const out = new Uint8ClampedArray(data.length);
+  for (let y = 0; y < outHeight; y++) {
+    for (let x = 0; x < outWidth; x++) {
+      let sx: number;
+      let sy: number;
+      switch (orientation) {
+        case 2: // mirror horizontal
+          sx = width - 1 - x;
+          sy = y;
+          break;
+        case 3: // rotate 180
+          sx = width - 1 - x;
+          sy = height - 1 - y;
+          break;
+        case 4: // mirror vertical
+          sx = x;
+          sy = height - 1 - y;
+          break;
+        case 5: // transpose
+          sx = y;
+          sy = x;
+          break;
+        case 6: // rotate 90 CW
+          sx = y;
+          sy = height - 1 - x;
+          break;
+        case 7: // transverse
+          sx = width - 1 - y;
+          sy = height - 1 - x;
+          break;
+        default: // 8: rotate 270 CW
+          sx = width - 1 - y;
+          sy = x;
+          break;
+      }
+      const src = (sy * width + sx) * 4;
+      const dst = (y * outWidth + x) * 4;
+      out[dst] = data[src]!;
+      out[dst + 1] = data[src + 1]!;
+      out[dst + 2] = data[src + 2]!;
+      out[dst + 3] = data[src + 3]!;
+    }
+  }
+  return { data: out, width: outWidth, height: outHeight, colorSpace: "srgb" };
+}
 
 /**
  * Bake EXIF orientation into the pixels and drop the tag.
@@ -10,14 +86,25 @@ import sharp from "sharp";
  *
  * Orientation only meaningfully affects JPEG here, so other formats (and images
  * already upright) pass through untouched to avoid needless re-encoding. Falls
- * back to the original bytes if sharp can't process the input.
+ * back to the original bytes if the input can't be processed. Uses sharp when
+ * available (Node/Vercel), otherwise exifr + @jsquash/jpeg (WASM) so it can run
+ * on Cloudflare Workers too.
  */
 export async function normalizeImageOrientation(buffer: Buffer, format: string): Promise<Buffer> {
   if (format !== "jpeg" && format !== "jpg") return buffer;
   try {
-    const { orientation } = await sharp(buffer).metadata();
+    const orientation = await exifr.orientation(buffer);
     if (!orientation || orientation === 1) return buffer; // already upright
-    return await sharp(buffer).rotate().toBuffer(); // auto-orient + strip the tag
+
+    const sharp = await loadSharp();
+    if (sharp) return await sharp(buffer).rotate().toBuffer(); // auto-orient + strip the tag
+
+    const bytes = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength,
+    ) as ArrayBuffer;
+    const upright = applyOrientation(await decode(bytes), orientation);
+    return Buffer.from(await encode(upright, { quality: ENCODE_QUALITY }));
   } catch (error) {
     console.warn("failed to normalize image orientation; using original bytes", error);
     return buffer;

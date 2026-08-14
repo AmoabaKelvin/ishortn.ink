@@ -1,5 +1,8 @@
 import("./src/env.mjs");
 
+const { initOpenNextCloudflareForDev } = require("@opennextjs/cloudflare");
+initOpenNextCloudflareForDev();
+
 /** @type {import("next").NextConfig} */
 const config = {
   experimental: {

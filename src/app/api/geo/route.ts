@@ -1,7 +1,7 @@
-import { geolocation, ipAddress } from "@vercel/functions";
+import { getClientIp, getRequestGeo } from "@/lib/platform";
 
 export function GET(request: Request) {
-  const details = geolocation(request);
-  const ip = ipAddress(request);
+  const details = getRequestGeo(request);
+  const ip = getClientIp(request);
   return Response.json({ ...details, ip });
 }

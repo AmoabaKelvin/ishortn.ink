@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ishortn",
+  "main": "custom-worker.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "ishortn"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "LINK_CACHE_KV",
+      "id": "7423a0ff959e4392b68ad837c0b3ddfe"
+    },
+    {
+      "binding": "NEXT_INC_CACHE_KV",
+      "id": "d4fec53d915842eeb5ce671632ff7a95"
+    }
+  ],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "ac816bc62707444ab259acdc494f14dc"
+    }
+  ],
+  // Enable at cutover: while Vercel's crons still run, these would double-execute
+  // the cleanup/reminder jobs against the same database.
+  // "triggers": {
+  //   "crons": ["0 9 * * *", "0 0 * * *", "0 2 * * 0", "0 4 * * *"]
+  // },
+  "observability": {
+    "enabled": true
+  }
+}

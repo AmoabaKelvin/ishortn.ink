@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, ne, sum } from "drizzle-orm";
 
 import { isSubscriptionEntitled, PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
+import { logger } from "@/lib/logger";
 import { customDomain, link, linkVisit, linkVisitDailySummary } from "@/server/db/schema";
 import {
   requirePermission,
@@ -9,11 +10,19 @@ import {
   workspaceOwnership,
 } from "@/server/lib/workspace";
 
-import { addDomainToVercelProject, deleteDomainFromVercelProject, getDomainFromVercelProject } from "./utils";
+import {
+  addCustomHostname,
+  buildVerificationChallenges,
+  deleteCustomHostname,
+  getCustomHostname,
+  mapStatus,
+} from "./cloudflare";
+import { deleteDomainFromVercelProject } from "./vercel-legacy";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { CreateCustomDomainInput } from "./domains.input";
-import type { VercelConfigResponse } from "./domains.procedure";
+
+const log = logger.child({ component: "domains.service" });
 
 export async function addDomainToUserAccount(
   ctx: WorkspaceTRPCContext,
@@ -69,101 +78,27 @@ export async function addDomainToUserAccount(
   }
 
   try {
-    const response = await addDomainToVercelProject(domain);
+    const response = await addCustomHostname(domain);
 
-    // If domain already exists in Vercel (added by another workspace), get its current config
-    if (response.alreadyExists) {
-      const existingVercelDomain = await getDomainFromVercelProject(domain);
+    // If the hostname already exists on the zone (added by another workspace), reuse it
+    const hostname = response.alreadyExists ? await getCustomHostname(domain) : response.hostname;
 
-      if (!existingVercelDomain) {
-        throw new Error("Failed to retrieve domain configuration");
-      }
-
-      // Check if it's properly configured
-      const configResponse = await fetch(
-        `https://api.vercel.com/v6/domains/${domain}/config?teamId=${process.env.TEAM_ID_VERCEL}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      const configData = (await configResponse.json()) as VercelConfigResponse;
-      const wellConfigured = existingVercelDomain.verified && !configData.misconfigured;
-
-      // Get verification details from existing domain
-      const verificationDetails = existingVercelDomain.verification?.map((challenge) => {
-        if (challenge.type === "TXT") {
-          return {
-            type: challenge.type,
-            domain: "_vercel",
-            value: challenge.value,
-          };
-        }
-        return challenge;
-      }) ?? [];
-
-      await ctx.db.insert(customDomain).values({
-        userId: ownership.userId,
-        teamId: ownership.teamId,
-        domain: domain,
-        status: wellConfigured ? "active" : "pending",
-        verificationDetails: verificationDetails,
-      });
-
-      return { success: true };
-    }
-
-    const verificationChallenges = response.verificationChallenges;
-
-    // for a verification challenge that has a type of "TXT", change the domain to be just
-    // _vercel
-    const verificationDetails = verificationChallenges.map((challenge) => {
-      if (challenge.type === "TXT") {
-        return {
-          type: challenge.type,
-          domain: "_vercel",
-          value: challenge.value,
-        };
-      }
-
-      return challenge;
-    });
-
-    let wellConfigured = false;
-
-    if (response.verified) {
-      // the domain is verified so let's check if it's misconfigured
-      const configResponse = await fetch(
-        `https://api.vercel.com/v6/domains/${domain}/config?teamId=${process.env.TEAM_ID_VERCEL}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      const data = (await configResponse.json()) as VercelConfigResponse;
-      wellConfigured = !data.misconfigured;
+    if (!hostname) {
+      throw new Error("Failed to retrieve domain configuration");
     }
 
     await ctx.db.insert(customDomain).values({
       userId: ownership.userId,
       teamId: ownership.teamId,
       domain: domain,
-      status: wellConfigured ? "active" : "pending",
-      verificationDetails: verificationDetails,
+      status: mapStatus(hostname),
+      verificationDetails: buildVerificationChallenges(domain, hostname),
     });
   } catch (error) {
     if (error instanceof Error) {
       throw error;
     }
-    throw new Error("Failed to add domain to Vercel project");
+    throw new Error("Failed to add domain");
   }
 
   return { success: true };
@@ -221,9 +156,16 @@ export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, 
       ),
     });
 
-    // If no other workspaces use this domain, delete from Vercel first
+    // If no other workspaces use this domain, delete from Cloudflare first
     if (!otherWorkspacesUsingDomain) {
-      await deleteDomainFromVercelProject(domain.domain!);
+      await deleteCustomHostname(domain.domain!);
+
+      // Best-effort legacy cleanup — a Vercel failure must not abort the transaction
+      try {
+        await deleteDomainFromVercelProject(domain.domain!);
+      } catch (error) {
+        log.warn({ err: error, domain: domain.domain }, "legacy Vercel domain cleanup failed");
+      }
     }
 
     // Delete the domain record from our database
