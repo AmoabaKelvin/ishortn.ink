@@ -1,0 +1,36 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Write build env
+        run: printf '%s\n' "$BUILD_ENV" > .env.production.local
+        env:
+          BUILD_ENV: ${{ secrets.BUILD_ENV }}
+
+      - name: Build and deploy
+        run: bun run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: e1c30154a387214494e77fad7672e39e
+          # Never dialed during deploy; wrangler only insists the value exists.
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder
