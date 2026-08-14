@@ -5,114 +5,49 @@ import { db } from "@/server/db";
 import { customDomain, team, user } from "@/server/db/schema";
 import { sendDomainReminderEmail } from "@/server/lib/notifications/domain-reminder";
 
+import { buildVerificationChallenges, getCustomHostname, mapStatus } from "./cloudflare";
+import { isDomainActiveOnVercel } from "./vercel-legacy";
+
+import type { CloudflareCustomHostname } from "./cloudflare";
+
 const log = logger.child({ component: "domain-reminder" });
 
 // Reminder throttle: don't send more than once per 7 days
 const REMINDER_INTERVAL_DAYS = 7;
 
-type VercelConfigResponse = {
-  misconfigured: boolean;
-};
-
-type VercelDomainResponse = {
-  verified: boolean;
-};
-
 /**
- * Verify domain status with Vercel APIs.
- * Returns true if domain is actually valid (verified and not misconfigured).
+ * A domain is healthy when its Cloudflare custom hostname is fully active, or —
+ * during the dual-run window — when it is still verified and configured on Vercel.
  */
-async function verifyDomainWithVercel(domain: string): Promise<boolean> {
-  try {
-    const [configResponse, domainResponse] = await Promise.all([
-      fetch(
-        `https://api.vercel.com/v6/domains/${domain}/config?teamId=${process.env.TEAM_ID_VERCEL}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-        },
-      ),
-      fetch(
-        `https://api.vercel.com/v9/projects/${process.env.PROJECT_ID_VERCEL}/domains/${domain}?teamId=${process.env.TEAM_ID_VERCEL}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-        },
-      ),
-    ]);
+async function checkDomainHealth(
+  domain: string,
+): Promise<{ healthy: boolean; hostname: CloudflareCustomHostname | null }> {
+  const hostname = await getCustomHostname(domain);
 
-    if (!configResponse.ok || !domainResponse.ok) {
-      // If API calls fail, assume domain is still invalid to be safe
-      log.error(
-        {
-          domain,
-          configStatus: configResponse.status,
-          domainStatus: domainResponse.status,
-        },
-        "Vercel API check failed",
-      );
-      return false;
-    }
-
-    const configData = (await configResponse.json()) as VercelConfigResponse;
-    const domainData = (await domainResponse.json()) as VercelDomainResponse;
-
-    // Domain is valid if it's verified and not misconfigured
-    const isValid = domainData.verified && !configData.misconfigured;
-
-    log.debug(
-      {
-        domain,
-        verified: domainData.verified,
-        misconfigured: configData.misconfigured,
-        isValid,
-      },
-      "Vercel domain check result",
-    );
-
-    return isValid;
-  } catch (error) {
-    log.error({ err: error, domain }, "error checking Vercel API");
-    // On error, assume domain is still invalid to be safe
-    return false;
+  if (hostname && mapStatus(hostname) === "active") {
+    return { healthy: true, hostname };
   }
-}
 
-type Challenge = {
-  type: "TXT" | "A" | "CNAME";
-  domain: string;
-  value: string;
-};
+  const activeOnVercel = await isDomainActiveOnVercel(domain);
+
+  log.debug(
+    {
+      domain,
+      cloudflareStatus: hostname?.status ?? "not_found",
+      sslStatus: hostname?.ssl?.status ?? "not_found",
+      activeOnVercel,
+    },
+    "domain health check result",
+  );
+
+  return { healthy: activeOnVercel, hostname };
+}
 
 interface ReminderResult {
   domainsChecked: number;
   remindersSent: number;
   domainsUpdatedToActive: number;
   errors: Array<{ domain: string; error: string }>;
-}
-
-/**
- * Parse verification details from JSON storage.
- * Handles both stringified JSON and already-parsed arrays.
- */
-function parseVerificationDetails(verificationDetails: unknown): Challenge[] {
-  try {
-    if (Array.isArray(verificationDetails)) {
-      return verificationDetails as Challenge[];
-    }
-    if (typeof verificationDetails === "string") {
-      return JSON.parse(verificationDetails) as Challenge[];
-    }
-    return [];
-  } catch {
-    return [];
-  }
 }
 
 /**
@@ -154,7 +89,6 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
       userId: customDomain.userId,
       teamId: customDomain.teamId,
       createdAt: customDomain.createdAt,
-      verificationDetails: customDomain.verificationDetails,
       // User info (for personal workspaces)
       userEmail: user.email,
       userName: user.name,
@@ -183,12 +117,13 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
     const domainName = domainRecord.domain ?? "unknown";
 
     try {
-      // First, verify with Vercel API if the domain is actually invalid
-      // This prevents sending emails to users who have already fixed their domain configuration
-      const isActuallyValid = await verifyDomainWithVercel(domainName);
+      // First, verify the domain is actually unhealthy (not active on Cloudflare
+      // or legacy Vercel). This prevents sending emails to users who have already
+      // fixed their domain configuration
+      const { healthy, hostname } = await checkDomainHealth(domainName);
 
-      if (isActuallyValid) {
-        // Domain is now valid according to Vercel, update our database and skip sending email
+      if (healthy) {
+        // Domain is now valid, update our database and skip sending email
         await db
           .update(customDomain)
           .set({ status: "active" })
@@ -239,20 +174,9 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
         continue;
       }
 
-      // Parse verification challenges
-      const challenges = parseVerificationDetails(domainRecord.verificationDetails);
-
-      if (challenges.length === 0) {
-        log.warn(
-          { domain: domainName },
-          "no verification challenges found",
-        );
-        result.errors.push({
-          domain: domainName,
-          error: "No verification challenges found",
-        });
-        continue;
-      }
+      // Build the current Cloudflare DNS instructions rather than reusing stored
+      // (possibly Vercel-era) challenges
+      const challenges = buildVerificationChallenges(domainName, hostname);
 
       // Calculate days misconfigured
       const daysMisconfigured = domainRecord.createdAt

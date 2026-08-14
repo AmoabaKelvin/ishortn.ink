@@ -1,3 +1,9 @@
+// Legacy Vercel project-domains API. Custom domains are registered with
+// Cloudflare for SaaS (see ./cloudflare.ts); this module only backs the
+// dual-run fallback for domains still configured against Vercel.
+
+import { env } from "@/env.mjs";
+
 export interface VercelDomainResponse {
   name: string;
   apexName: string;
@@ -23,13 +29,17 @@ export interface VercelErrorResponse {
   };
 }
 
+export function hasLegacyVercelCredentials() {
+  return Boolean(env.PROJECT_ID_VERCEL && env.TEAM_ID_VERCEL && env.AUTH_BEARER_TOKEN);
+}
+
 export async function addDomainToVercelProject(domain: string) {
   const response = await fetch(
-    `https://api.vercel.com/v9/projects/${process.env.PROJECT_ID_VERCEL}/domains?teamId=${process.env.TEAM_ID_VERCEL}`,
+    `https://api.vercel.com/v9/projects/${env.PROJECT_ID_VERCEL}/domains?teamId=${env.TEAM_ID_VERCEL}`,
     {
       body: `{\n  "name": "${domain}"\n}`,
       headers: {
-        Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
+        Authorization: `Bearer ${env.AUTH_BEARER_TOKEN}`,
         "Content-Type": "application/json",
       },
       method: "POST",
@@ -67,10 +77,10 @@ export async function addDomainToVercelProject(domain: string) {
 
 export async function getDomainFromVercelProject(domain: string) {
   const response = await fetch(
-    `https://api.vercel.com/v9/projects/${process.env.PROJECT_ID_VERCEL}/domains/${domain}?teamId=${process.env.TEAM_ID_VERCEL}`,
+    `https://api.vercel.com/v9/projects/${env.PROJECT_ID_VERCEL}/domains/${domain}?teamId=${env.TEAM_ID_VERCEL}`,
     {
       headers: {
-        Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
+        Authorization: `Bearer ${env.AUTH_BEARER_TOKEN}`,
         "Content-Type": "application/json",
       },
       method: "GET",
@@ -87,13 +97,46 @@ export async function getDomainFromVercelProject(domain: string) {
 }
 
 export async function deleteDomainFromVercelProject(domain: string) {
+  if (!hasLegacyVercelCredentials()) {
+    return;
+  }
+
   await fetch(
-    `https://api.vercel.com/v9/projects/${process.env.PROJECT_ID_VERCEL}/domains/${domain}?teamId=${process.env.TEAM_ID_VERCEL}`,
+    `https://api.vercel.com/v9/projects/${env.PROJECT_ID_VERCEL}/domains/${domain}?teamId=${env.TEAM_ID_VERCEL}`,
     {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${process.env.AUTH_BEARER_TOKEN}`,
+        Authorization: `Bearer ${env.AUTH_BEARER_TOKEN}`,
       },
     },
   );
+}
+
+export async function isDomainActiveOnVercel(domain: string): Promise<boolean> {
+  if (!hasLegacyVercelCredentials()) {
+    return false;
+  }
+
+  try {
+    const [domainData, configResponse] = await Promise.all([
+      getDomainFromVercelProject(domain),
+      fetch(`https://api.vercel.com/v6/domains/${domain}/config?teamId=${env.TEAM_ID_VERCEL}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${env.AUTH_BEARER_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }),
+    ]);
+
+    if (!domainData || !configResponse.ok) {
+      return false;
+    }
+
+    const configData = (await configResponse.json()) as { misconfigured: boolean };
+
+    return domainData.verified && !configData.misconfigured;
+  } catch {
+    return false;
+  }
 }

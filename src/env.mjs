@@ -20,7 +20,6 @@ export const env = createEnv({
       .default("development"),
     RESEND_API_KEY: z.string().optional(),
     WEBHOOK_SECRET: z.string().optional(),
-    REDIS_URL: z.string().url(),
     UMAMI_TRACKING_ID: z.string().optional(),
     UMAMI_URL: z.string().url().optional(),
     DISCORD_WEBHOOK_URL: z.string().url().optional(),
@@ -32,6 +31,15 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET_NAME: z.string().optional(),
     R2_PUBLIC_URL: z.string().url().optional(),
+    // Cloudflare for SaaS custom hostnames
+    CLOUDFLARE_API_TOKEN: z.string(),
+    CLOUDFLARE_SAAS_ZONE_ID: z.string(),
+    CUSTOM_DOMAIN_CNAME_TARGET: z.string().default("cname.ishortn.ink"),
+    // Legacy Vercel domains API — dual-run fallback only, safe to drop after the
+    // Cloudflare migration completes
+    PROJECT_ID_VERCEL: z.string().optional(),
+    TEAM_ID_VERCEL: z.string().optional(),
+    AUTH_BEARER_TOKEN: z.string().optional(),
     // Secret key used to HMAC visitor IPs before storage.
     // Optional for backwards compatibility — when unset, we fall back to plain
     // SHA-256, which preserves old behavior but is trivially reversible.
@@ -50,6 +58,14 @@ export const env = createEnv({
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
+    // Optional ISO date shown in the custom-domain migration notice
+    NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE: z
+      .string()
+      .refine(
+        (value) => !Number.isNaN(Date.parse(value)),
+        "NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE must be a parseable date"
+      )
+      .optional(),
   },
 
   /**
@@ -63,7 +79,6 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
-    REDIS_URL: process.env.REDIS_URL,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,
     UMAMI_URL: process.env.UMAMI_URL,
     DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,
@@ -75,10 +90,19 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
     R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
     R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
+    // Cloudflare for SaaS custom hostnames
+    CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
+    CLOUDFLARE_SAAS_ZONE_ID: process.env.CLOUDFLARE_SAAS_ZONE_ID,
+    CUSTOM_DOMAIN_CNAME_TARGET: process.env.CUSTOM_DOMAIN_CNAME_TARGET,
+    // Legacy Vercel domains API
+    PROJECT_ID_VERCEL: process.env.PROJECT_ID_VERCEL,
+    TEAM_ID_VERCEL: process.env.TEAM_ID_VERCEL,
+    AUTH_BEARER_TOKEN: process.env.AUTH_BEARER_TOKEN,
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE: process.env.NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

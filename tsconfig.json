@@ -11,7 +11,9 @@
     /* Strictness */
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "checkJs": true,
+    // checkJs would also error-check the generated `.open-next/worker.js`
+    // that custom-worker.ts imports (exclude can't stop import-following).
+    "checkJs": false,
     /* Bundled projects */
     "lib": [
       "dom",
@@ -52,6 +54,7 @@
   ],
   "exclude": [
     "node_modules",
+    ".open-next",
     "**/*.test.ts",
     "**/*.test.tsx"
   ]

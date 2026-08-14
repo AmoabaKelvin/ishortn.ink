@@ -3,7 +3,7 @@ import { addDays } from "date-fns";
 import { and, eq, isNull } from "drizzle-orm";
 import crypto from "node:crypto";
 
-import { redis } from "@/lib/core/cache";
+import { deleteFromCache } from "@/lib/core/cache";
 import { getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { customDomain, RESERVED_TEAM_SLUGS, team, teamInvite, teamMember, user } from "@/server/db/schema";
@@ -128,7 +128,7 @@ export async function updateTeam(ctx: TeamTRPCContext, input: UpdateTeamInput) {
     .where(eq(team.id, ctx.workspace.teamId));
 
   // Invalidate the team default domain cache
-  await redis.del(`team_default_domain:${ctx.workspace.teamId}`);
+  await deleteFromCache(`team_default_domain:${ctx.workspace.teamId}`);
 
   // Fetch and return updated team
   const updatedTeam = await ctx.db.query.team.findFirst({

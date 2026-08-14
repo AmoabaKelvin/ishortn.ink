@@ -9,6 +9,7 @@ import { user } from "@/server/db/schema";
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { ChangelogToast } from "@/components/changelog/changelog-toast";
 
+import { DomainMigrationGate } from "./_components/domain-migration-gate";
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
 import { SignOutButton } from "./_components/sign-out-button";
@@ -89,6 +90,8 @@ export default async function DashboardLayout({ children }: Props) {
 
       {/* Changelog toast notification */}
       <ChangelogToast />
+
+      <DomainMigrationGate />
     </div>
   );
 }

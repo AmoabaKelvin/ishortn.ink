@@ -3,6 +3,7 @@ import { api } from "@/trpc/server";
 import { AddCustomDomainModal } from "./_components/add-domain-modal";
 import CloudflareIssuesCard from "./_components/cloudflare-issue-card";
 import { DomainCardNew } from "./_components/domain-card-new";
+import { DomainMigrationBanner } from "./_components/domain-migration-banner";
 import EmptyState from "./_components/empty-state";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,8 @@ async function CustomDomainsPage() {
         <EmptyState />
       ) : (
         <div className="space-y-6">
+          <DomainMigrationBanner />
+
           <CloudflareIssuesCard />
 
           <div className="divide-y divide-neutral-300/60">

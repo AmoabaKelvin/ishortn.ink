@@ -1,129 +1,59 @@
-import { Redis } from "ioredis";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { z } from "zod";
 
-import { env } from "@/env.mjs";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 
 import type { Link } from "@/server/db/schema";
 
-const linkSchema = z.object({
-  id: z.string().transform((str) => Number(str)),
-  url: z.string().url(),
-  name: z.string().min(1),
-  alias: z.string().min(1),
-  userId: z.string().min(1),
-  teamId: z
-    .string()
-    .nullable()
-    .transform((val) => (val ? Number(val) : null))
-    .default(null),
-  createdAt: z.string().transform((str) => new Date(str)),
-  disableLinkAfterClicks: z
-    .string()
-    .nullable()
-    .transform((val) => (val ? Number(val) : null)),
-  disableLinkAfterDate: z
-    .string()
-    .nullable()
-    .transform((val) => (val ? new Date(val) : null)),
-  disabled: z.string().transform((val) => val === "true"),
-  publicStats: z.string().transform((val) => val === "true"),
-  passwordHash: z.string(),
-  domain: z.string().min(1),
-  note: z.string(),
-  metadata: z.string().transform((str) => JSON.parse(str)),
-  tags: z
-    .string()
-    .transform((str) => JSON.parse(str) as string[])
-    .default([]),
-  archived: z.boolean().default(false),
-  folderId: z
-    .string()
-    .nullable()
-    .transform((val) => (val ? Number(val) : null))
-    .default(null),
-  campaignId: z
-    .string()
-    .nullable()
-    .transform((val) => (val ? Number(val) : null))
-    .default(null),
-  utmParams: z
-    .string()
-    .nullable()
-    .transform((str) => (str ? JSON.parse(str) : null))
-    .default(null),
-  createdByUserId: z.string().nullable().default(null),
-  cloaking: z
-    .string()
-    .transform((val) => val === "true")
-    .default(false),
-  verifiedClicksEnabled: z
-    .string()
-    .transform((val) => val === "true")
-    .default(false),
-  isQrCode: z
-    .string()
-    .transform((val) => val === "true")
-    .default(false),
-  isBioLink: z
-    .string()
-    .transform((val) => val === "true")
-    .default(false),
-  blocked: z
-    .string()
-    .transform((val) => val === "true")
-    .default(false),
-  blockedAt: z
-    .string()
-    .nullable()
-    .transform((val) => (val ? new Date(val) : null))
-    .default(null),
-  blockedReason: z.string().nullable().default(null),
-});
-
-export const redis = new Redis(env.REDIS_URL, {
-  retryStrategy: (times: number) => Math.min(times * 50, 2000),
-  enableOfflineQueue: true,
-  maxRetriesPerRequest: 3,
-});
-
 const DEFAULT_CACHE_TTL = 60 * 60 * 24;
+// KV rejects expirationTtl below 60 seconds.
+const MIN_KV_TTL = 60;
 
-function convertToLink(data: Record<string, string>): Link {
-  const parsed = linkSchema.parse(data);
-  return {
-    ...parsed,
-    createdAt: new Date(parsed.createdAt),
-    disableLinkAfterDate: parsed.disableLinkAfterDate
-      ? new Date(parsed.disableLinkAfterDate)
-      : null,
-    metadata: parsed.metadata as Record<string, unknown>,
-    tags: parsed.tags || [],
-    archived: parsed.archived || false,
-    folderId: parsed.folderId ?? null,
-    campaignId: parsed.campaignId ?? null,
-    teamId: parsed.teamId ?? null,
-    utmParams: parsed.utmParams ?? null,
-    createdByUserId: parsed.createdByUserId ?? null,
-    cloaking: parsed.cloaking ?? false,
-    verifiedClicksEnabled: parsed.verifiedClicksEnabled ?? false,
-    isQrCode: parsed.isQrCode ?? false,
-    isBioLink: parsed.isBioLink ?? false,
-    blocked: parsed.blocked ?? false,
-    blockedAt: parsed.blockedAt ?? null,
-    blockedReason: parsed.blockedReason ?? null,
-  };
+async function getKV(): Promise<KVNamespace | null> {
+  // Sync context works in route handlers/actions but throws during server
+  // component rendering — the async form works in both.
+  try {
+    return getCloudflareContext().env.LINK_CACHE_KV ?? null;
+  } catch {
+    try {
+      return (await getCloudflareContext({ async: true })).env.LINK_CACHE_KV ?? null;
+    } catch {
+      return null;
+    }
+  }
 }
+
+function clampTtl(ttlSeconds: number): number {
+  return Math.max(ttlSeconds, MIN_KV_TTL);
+}
+
+type CachedLink = Omit<Link, "createdAt" | "disableLinkAfterDate" | "blockedAt"> & {
+  createdAt: string | null;
+  disableLinkAfterDate: string | null;
+  blockedAt: string | null;
+};
 
 async function getFromCache(key: string): Promise<Link | null> {
   try {
-    const retrievedLink = await redis.hgetall(key);
+    const kv = await getKV();
+    if (!kv) return null;
 
-    if (!Object.keys(retrievedLink).length) {
+    const cached = await kv.get(key);
+    if (!cached) return null;
+
+    const parsed = JSON.parse(cached) as CachedLink | null;
+    if (!parsed || typeof parsed.id !== "number" || typeof parsed.userId !== "string") {
       return null;
     }
 
-    return convertToLink(retrievedLink);
+    return {
+      ...parsed,
+      createdAt: parsed.createdAt ? new Date(parsed.createdAt) : null,
+      disableLinkAfterDate: parsed.disableLinkAfterDate
+        ? new Date(parsed.disableLinkAfterDate)
+        : null,
+      blockedAt: parsed.blockedAt ? new Date(parsed.blockedAt) : null,
+    };
   } catch (_error) {
     return null;
   }
@@ -135,20 +65,10 @@ async function setInCache(
   ttlSeconds: number = DEFAULT_CACHE_TTL,
 ): Promise<boolean> {
   try {
-    const linkToStore = {
-      ...link,
-      createdAt: link.createdAt!.toISOString(),
-      disableLinkAfterDate: link.disableLinkAfterDate?.toISOString() ?? null,
-      blockedAt: link.blockedAt?.toISOString() ?? null,
-      metadata: JSON.stringify(link.metadata),
-      utmParams: link.utmParams ? JSON.stringify(link.utmParams) : null,
-    };
+    const kv = await getKV();
+    if (!kv) return false;
 
-    const pipeline = redis.pipeline();
-    pipeline.hset(key, linkToStore);
-    pipeline.expire(key, ttlSeconds);
-
-    await pipeline.exec();
+    await kv.put(key, JSON.stringify(link), { expirationTtl: clampTtl(ttlSeconds) });
     return true;
   } catch (_error) {
     return false;
@@ -157,8 +77,57 @@ async function setInCache(
 
 async function deleteFromCache(key: string): Promise<boolean> {
   try {
-    const result = await redis.del(key);
-    return result > 0;
+    const kv = await getKV();
+    if (!kv) return false;
+
+    await kv.delete(key);
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+async function getStringFromCache(key: string): Promise<string | null> {
+  try {
+    const kv = await getKV();
+    if (!kv) return null;
+
+    return await kv.get(key);
+  } catch (_error) {
+    return null;
+  }
+}
+
+async function setStringInCache(
+  key: string,
+  value: string,
+  ttlSeconds: number,
+): Promise<boolean> {
+  try {
+    const kv = await getKV();
+    if (!kv) return false;
+
+    await kv.put(key, value, { expirationTtl: clampTtl(ttlSeconds) });
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+// KV has no atomic set-if-absent, so this read-then-write can race under
+// concurrency — acceptable for best-effort rate limiting.
+async function setStringIfAbsent(
+  key: string,
+  value: string,
+  ttlSeconds: number,
+): Promise<boolean> {
+  try {
+    const kv = await getKV();
+    if (!kv) return false;
+
+    if ((await kv.get(key)) !== null) return false;
+    await kv.put(key, value, { expirationTtl: clampTtl(ttlSeconds) });
+    return true;
   } catch (_error) {
     return false;
   }
@@ -170,16 +139,19 @@ const GEO_RULES_CACHE_PREFIX = "geoRules:";
 
 // Zod schema for geo rules
 const geoRuleSchema = z.object({
-  id: z.string().transform((str) => Number(str)),
-  linkId: z.string().transform((str) => Number(str)),
+  id: z.number(),
+  linkId: z.number(),
   type: z.enum(["country", "continent"]),
   condition: z.enum(["in", "not_in"]),
-  values: z.string().transform((str) => JSON.parse(str) as string[]),
+  values: z.array(z.string()),
   action: z.enum(["redirect", "block"]),
   destination: z.string().nullable(),
   blockMessage: z.string().nullable(),
-  priority: z.string().transform((str) => Number(str)),
-  createdAt: z.string().transform((str) => new Date(str) as Date | null),
+  priority: z.number(),
+  createdAt: z
+    .string()
+    .nullable()
+    .transform((val) => (val ? new Date(val) : null)),
 });
 
 type CachedGeoRule = z.infer<typeof geoRuleSchema>;
@@ -188,14 +160,13 @@ async function getGeoRulesFromCache(
   linkId: number,
 ): Promise<CachedGeoRule[] | null> {
   try {
-    const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
-    const cached = await redis.get(key);
+    const kv = await getKV();
+    if (!kv) return null;
 
-    if (!cached) {
-      return null;
-    }
+    const cached = await kv.get(`${GEO_RULES_CACHE_PREFIX}${linkId}`);
+    if (!cached) return null;
 
-    const parsed = JSON.parse(cached) as Record<string, string>[];
+    const parsed = JSON.parse(cached) as unknown[];
     return parsed.map((rule) => geoRuleSchema.parse(rule));
   } catch (_error) {
     return null;
@@ -219,21 +190,11 @@ async function setGeoRulesInCache(
   ttlSeconds: number = GEO_RULES_CACHE_TTL,
 ): Promise<boolean> {
   try {
-    const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
-    const rulesToStore = rules.map((rule) => ({
-      id: String(rule.id),
-      linkId: String(rule.linkId),
-      type: rule.type,
-      condition: rule.condition,
-      values: JSON.stringify(rule.values),
-      action: rule.action,
-      destination: rule.destination,
-      blockMessage: rule.blockMessage,
-      priority: String(rule.priority),
-      createdAt: rule.createdAt?.toISOString() ?? new Date().toISOString(),
-    }));
+    const kv = await getKV();
+    if (!kv) return false;
 
-    await redis.set(key, JSON.stringify(rulesToStore), "EX", ttlSeconds);
+    const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
+    await kv.put(key, JSON.stringify(rules), { expirationTtl: clampTtl(ttlSeconds) });
     return true;
   } catch (_error) {
     return false;
@@ -242,9 +203,11 @@ async function setGeoRulesInCache(
 
 async function deleteGeoRulesFromCache(linkId: number): Promise<boolean> {
   try {
-    const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
-    const result = await redis.del(key);
-    return result > 0;
+    const kv = await getKV();
+    if (!kv) return false;
+
+    await kv.delete(`${GEO_RULES_CACHE_PREFIX}${linkId}`);
+    return true;
   } catch (_error) {
     return false;
   }
@@ -256,7 +219,7 @@ function normalizeDomain(domain: string): string {
   return domain.includes("localhost") ? DEFAULT_PLATFORM_DOMAIN : cleaned;
 }
 
-/** Build a Redis cache key from a raw (possibly protocol-prefixed) domain and alias. */
+/** Build a cache key from a raw (possibly protocol-prefixed) domain and alias. */
 function buildCacheKey(domain: string, alias: string): string {
   return `${normalizeDomain(domain)}:${alias.toLowerCase()}`;
 }
@@ -268,8 +231,11 @@ export {
   deleteGeoRulesFromCache,
   getFromCache,
   getGeoRulesFromCache,
+  getStringFromCache,
   setGeoRulesInCache,
   setInCache,
+  setStringIfAbsent,
+  setStringInCache,
   type CachedGeoRule,
   type Link,
 };

@@ -26,11 +26,17 @@ const DEFAULT_DOMAIN = DEFAULT_PLATFORM_DOMAIN;
 
 const cleanUrl = (url: string) => url.replace(/^(https?:\/\/)?(www\.)?/, "");
 
+// Trust the incoming host on any deployed platform (Vercel or Cloudflare);
+// local dev, the staging host, and platform preview hosts (*.vercel.app,
+// *.workers.dev) resolve against the default domain. The old check gated on
+// VERCEL_URL, which made every Worker request resolve as the default domain.
 const getDomain = (incomingDomain: string | null): string => {
-  if (process.env.VERCEL_URL && incomingDomain !== process.env.STAGING_DOMAIN) {
-    return incomingDomain ?? DEFAULT_DOMAIN;
-  }
-  return DEFAULT_DOMAIN;
+  if (!incomingDomain) return DEFAULT_DOMAIN;
+  const host = incomingDomain.split(":")[0] ?? incomingDomain;
+  if (host.includes("localhost")) return DEFAULT_DOMAIN;
+  if (host === process.env.STAGING_DOMAIN) return DEFAULT_DOMAIN;
+  if (host.endsWith(".vercel.app") || host.endsWith(".workers.dev")) return DEFAULT_DOMAIN;
+  return host;
 };
 
 export async function generateMetadata(props: LinkRedirectionPageProps): Promise<Metadata> {

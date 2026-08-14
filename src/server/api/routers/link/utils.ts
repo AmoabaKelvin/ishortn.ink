@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
-import { redis } from "@/lib/core/cache";
+import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
 import { normalizeAlias } from "@/lib/utils";
 import { customDomain, link, team, user } from "@/server/db/schema";
 import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user-plan";
@@ -119,7 +119,7 @@ export async function incrementWorkspaceLinkCount(
 
 export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<string> {
   const cacheKey = `user_settings_domain:${ctx.auth.userId}`;
-  const cachedDomain = await redis.get(cacheKey);
+  const cachedDomain = await getStringFromCache(cacheKey);
 
   if (cachedDomain) {
     return cachedDomain ?? DEFAULT_PLATFORM_DOMAIN;
@@ -133,7 +133,7 @@ export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<s
   });
 
   const defaultDomain = userInfo?.siteSettings?.defaultDomain ?? DEFAULT_PLATFORM_DOMAIN;
-  await redis.set(cacheKey, defaultDomain, "EX", 300); // 5 minutes
+  await setStringInCache(cacheKey, defaultDomain, 300); // 5 minutes
 
   return defaultDomain;
 }
@@ -146,7 +146,7 @@ export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<s
 export async function getWorkspaceDefaultDomain(ctx: WorkspaceTRPCContext): Promise<string> {
   if (ctx.workspace.type === "team") {
     const cacheKey = `team_default_domain:${ctx.workspace.teamId}`;
-    const cachedDomain = await redis.get(cacheKey);
+    const cachedDomain = await getStringFromCache(cacheKey);
 
     if (cachedDomain) {
       return cachedDomain;
@@ -158,7 +158,7 @@ export async function getWorkspaceDefaultDomain(ctx: WorkspaceTRPCContext): Prom
     });
 
     const defaultDomain = teamRecord?.defaultDomain ?? DEFAULT_PLATFORM_DOMAIN;
-    await redis.set(cacheKey, defaultDomain, "EX", 300); // 5 minutes
+    await setStringInCache(cacheKey, defaultDomain, 300); // 5 minutes
 
     return defaultDomain;
   }

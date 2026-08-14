@@ -269,7 +269,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
           throw new Error(`HTTP ${response.status}`);
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as { iframeable: boolean };
         setIframeableResult(data.iframeable);
 
         if (!data.iframeable) {
