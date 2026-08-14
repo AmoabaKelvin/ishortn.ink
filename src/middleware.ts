@@ -33,7 +33,10 @@ export default clerkMiddleware(async (auth, req) => {
     !isPlatformDomain(bareHost) &&
     extractPlatformSubdomain(bareHost) === null
   ) {
-    return NextResponse.rewrite(new URL(`/p-host/${encodeURIComponent(bareHost)}`, req.url));
+    // www serves the bare domain's bio page, matching link resolution's
+    // www-stripping (apex customers on www-CNAME setups depend on this).
+    const bioHost = bareHost.replace(/^www\./, "");
+    return NextResponse.rewrite(new URL(`/p-host/${encodeURIComponent(bioHost)}`, req.url));
   }
 });
 

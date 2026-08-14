@@ -51,10 +51,7 @@ async function cloudflareFetch(url: string, init: RequestInit) {
   try {
     return await fetch(url, { ...init, signal: AbortSignal.timeout(CLOUDFLARE_API_TIMEOUT_MS) });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.name === "TimeoutError" || error.name === "AbortError")
-    ) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
       throw new Error("The domain service took too long to respond. Please try again.");
     }
     throw error;
@@ -132,6 +129,19 @@ export async function deleteCustomHostname(domain: string) {
 
 export function mapStatus(hostname: CloudflareCustomHostname): "active" | "pending" {
   return hostname.status === "active" && hostname.ssl?.status === "active" ? "active" : "pending";
+}
+
+// An apex customer whose DNS host cannot ALIAS at the root serves through a
+// www custom hostname plus an apex redirect instead; an active www hostname
+// counts as the apex being migrated.
+export async function wwwFallbackActive(domain: string): Promise<boolean> {
+  if (domain.split(".").length !== 2) return false;
+  try {
+    const hostname = await getCustomHostname(`www.${domain}`);
+    return hostname !== null && mapStatus(hostname) === "active";
+  } catch {
+    return false;
+  }
 }
 
 export function buildVerificationChallenges(
