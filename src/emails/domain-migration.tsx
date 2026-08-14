@@ -30,6 +30,7 @@ export const DomainMigrationEmail = ({
   dashboardUrl,
 }: DomainMigrationEmailProps) => {
   const hasApex = domains.some((d) => d.isApex);
+  const subdomainExample = domains.find((d) => !d.isApex)?.domain;
   const plural = domains.length > 1;
 
   return (
@@ -51,9 +52,9 @@ export const DomainMigrationEmail = ({
               <table style={table}>
                 <thead>
                   <tr>
-                    <th style={tableHeader}>Your domain</th>
-                    <th style={tableHeader}>Record</th>
-                    <th style={tableHeader}>Point it to</th>
+                    <th style={tableHeader}>Host / Subdomain</th>
+                    <th style={tableHeader}>Type</th>
+                    <th style={tableHeader}>Value / Points to</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -74,9 +75,17 @@ export const DomainMigrationEmail = ({
 
             <Text style={smallText}>
               Your domain already has a record pointing at our old network — edit that record and
-              change its value to <code style={codeStyle}>{cnameTarget}</code>. Your DNS provider
-              may show the record name as just the subdomain part.
+              change its value to <code style={codeStyle}>{cnameTarget}</code>.
             </Text>
+
+            {subdomainExample && (
+              <Text style={smallText}>
+                Note: depending on your DNS provider, you may only need to enter the subdomain
+                prefix in the Host/Name field — for example, enter{" "}
+                <code style={codeStyle}>{subdomainExample.split(".")[0]}</code> instead of{" "}
+                <code style={codeStyle}>{subdomainExample}</code>.
+              </Text>
+            )}
 
             {hasApex && (
               <Text style={smallText}>
