@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 
 import { setStringIfAbsent } from "@/lib/core/cache";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   });
   if (!page) return new Response(null, { status: 204 });
 
-  const ip = getClientIp(request);
+  const ip = getClientIp(request.headers);
 
   // Rate-limit: record at most one view per IP per page per minute, so this
   // unauthenticated endpoint can't be spammed to inflate views or drain the
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!fresh) return new Response(null, { status: 204 });
   }
 
-  const geo = getRequestGeo(request);
+  const geo = getRequestGeo(request.headers);
 
   void runBackgroundTask(
     recordBioPageView({
