@@ -9,8 +9,13 @@ import * as schema from "./schema";
 type Database = MySql2Database<typeof schema>;
 
 function createDb(uri: string, connectionLimit: number): Database {
+  // Hyperdrive's connection string carries ssl-mode, which mysql2 rejects and
+  // warns about via console.error on every connection; Hyperdrive terminates
+  // TLS itself, so the param does nothing here.
+  const url = new URL(uri);
+  url.searchParams.delete("ssl-mode");
   // disableEval: workerd forbids eval(), which mysql2's parser codegen uses.
-  return drizzle(mysql.createPool({ uri, connectionLimit, disableEval: true }), {
+  return drizzle(mysql.createPool({ uri: url.toString(), connectionLimit, disableEval: true }), {
     schema,
     mode: "default",
   });
