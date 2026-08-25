@@ -26,22 +26,22 @@ export const DOMAIN_MIGRATION_OPEN_EVENT = "ishortn:domain-migration:open";
 
 type MigrationDomain = RouterOutputs["customDomain"]["migrationStatus"][number];
 
-function shutdownPhrase() {
+function migrationDeadline(): { label: string; passed: boolean } | null {
   const deadline = env.NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE;
+  if (!deadline) return null;
 
-  if (deadline) {
-    const parsed = new Date(deadline);
-    if (!Number.isNaN(parsed.getTime())) {
-      return `on ${parsed.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      })}`;
-    }
-  }
+  const parsed = new Date(deadline);
+  if (Number.isNaN(parsed.getTime())) return null;
 
-  return "in the coming weeks";
+  return {
+    label: parsed.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }),
+    passed: parsed.getTime() < Date.now(),
+  };
 }
 
 export function DomainMigrationGate() {
@@ -77,6 +77,10 @@ export function DomainMigrationGate() {
     setDismissed(true);
   };
 
+  const deadline = migrationDeadline();
+  const deadlineLabel = deadline ? `on ${deadline.label}` : "in the coming weeks";
+  const deadlinePassed = deadline?.passed ?? false;
+
   return (
     <Dialog open={!dismissed}>
       <DialogContent
@@ -86,26 +90,18 @@ export function DomainMigrationGate() {
         onEscapeKeyDown={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>DNS update required</DialogTitle>
+          <DialogTitle>
+            {deadlinePassed ? "Your custom domains need a DNS update" : "DNS update required"}
+          </DialogTitle>
           <DialogDescription className="text-[13px]">
-            We are upgrading ishortn to a faster, more reliable network. To bring your custom
-            domains along, update their DNS records at your provider — a single record change per
-            domain.
+            {deadlinePassed
+              ? "ishortn now runs on a faster, more reliable network. We shared the move by email and in the app ahead of time, and the old network was switched off " +
+                `${deadlineLabel}. If this is the first you are seeing it, no worries: links on the domains below will work again once their DNS records point to the new network. It is a single record change per domain, and you can verify it right here.`
+              : `ishortn is moving to a faster, more reliable network ${deadlineLabel}. To bring your custom domains along, update their DNS records at your provider. It is a single record change per domain.`}
           </DialogDescription>
         </DialogHeader>
 
         <DialogBody className="space-y-4 overflow-y-auto">
-          <div className="rounded-lg border border-amber-100 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 p-3">
-            <p className="text-[12px] font-medium text-amber-700 dark:text-amber-400">
-              What happens if you do not update
-            </p>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-amber-600 dark:text-amber-400">
-              Your links keep working as normal until we complete the move {shutdownPhrase()}.
-              After that, short links, QR codes, and bio pages on the domains below will stop
-              working until the records are updated.
-            </p>
-          </div>
-
           {pendingDomains.map((entry) => (
             <DomainMigrationSection key={entry.domain} entry={entry} />
           ))}

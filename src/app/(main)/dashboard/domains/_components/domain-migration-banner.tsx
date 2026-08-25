@@ -31,9 +31,9 @@ export function DomainMigrationBanner() {
             : `${pendingCount} domains need a DNS update`}
         </p>
         <p className="mt-0.5 text-[12px] text-amber-600 dark:text-amber-400">
-          ishortn is moving to new infrastructure. Links on{" "}
-          {pendingCount === 1 ? "this domain" : "these domains"} will stop working when the old
-          infrastructure shuts down.
+          ishortn has moved to new infrastructure and the old network is switched off. Links on{" "}
+          {pendingCount === 1 ? "this domain" : "these domains"} stay down until you update the DNS
+          records.
         </p>
       </div>
       <button
