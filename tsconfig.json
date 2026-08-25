@@ -56,6 +56,7 @@
     "node_modules",
     ".open-next",
     "**/*.test.ts",
+    "test",
     "**/*.test.tsx"
   ]
 }

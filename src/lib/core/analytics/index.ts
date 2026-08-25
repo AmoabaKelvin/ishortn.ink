@@ -2,6 +2,7 @@ import { UAParser } from "ua-parser-js";
 
 import { env } from "@/env.mjs";
 import { LOCAL_DEVELOPMENT_GEOLOCATION_DATA } from "@/lib/constants/app";
+import { getClientIp } from "@/lib/platform";
 import { resolveDeviceType } from "@/lib/utils/device-type";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -52,21 +53,12 @@ const identifyRequestingDevice = async (headers: Headers) => {
   };
 };
 
-const getUserIP = (headers: Headers) => {
-  const xForwardedFor = headers.get("x-forwarded-for");
-  const realIp = headers.get("x-real-ip");
-
-  if (xForwardedFor) {
-    return xForwardedFor.split(",")[0]?.trim();
-  }
-
-  return realIp?.trim() ?? "127.0.0.1";
-};
+const getUserIP = (headers: Headers) => getClientIp(headers) ?? "127.0.0.1";
 
 export const retrieveDeviceAndGeolocationData = async (headers: Headers) => {
   const [deviceDetails, geolocationDetails] = await Promise.all([
     identifyRequestingDevice(headers),
-    getGeolocationDetails(getUserIP(headers)!),
+    getGeolocationDetails(getUserIP(headers)),
   ]);
 
   return {

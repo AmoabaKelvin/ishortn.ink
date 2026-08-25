@@ -13,6 +13,16 @@ import type { ImageType } from "./types";
 const log = logger.child({ component: "image-upload" });
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024;
+const MAX_BASE64_LENGTH = Math.ceil(MAX_SIZE_BYTES / 3) * 4;
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 const EXTENSION_MAP: Record<string, string> = {
   png: "png",
@@ -52,7 +62,7 @@ type ParsedImage = { format: string; buffer: Buffer };
  * so a rejected image never lands in a row.
  */
 export function assertValidImageInput(image: string): ParsedImage | null {
-  if (image.startsWith("http")) return null;
+  if (isHttpUrl(image)) return null;
 
   const match = image.match(/^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/);
   if (!match) {
@@ -61,8 +71,12 @@ export function assertValidImageInput(image: string): ParsedImage | null {
 
   const [, rawFormat, base64Data] = match;
   const format = rawFormat === "jpg" ? "jpeg" : rawFormat!;
-  const buffer = Buffer.from(base64Data!, "base64");
 
+  // Check the encoded length first so an oversized payload is never decoded.
+  if (base64Data!.length > MAX_BASE64_LENGTH) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Image exceeds maximum size of 2MB." });
+  }
+  const buffer = Buffer.from(base64Data!, "base64");
   if (buffer.length > MAX_SIZE_BYTES) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Image exceeds maximum size of 2MB." });
   }
@@ -84,7 +98,7 @@ export async function uploadImage(
   if (!image) return undefined;
 
   const parsed = assertValidImageInput(image);
-  if (!parsed) return image;
+  if (!parsed) return image; // http(s) URL, stored as-is
   const { format, buffer: rawBuffer } = parsed;
 
   if (!isR2Configured()) return image;
