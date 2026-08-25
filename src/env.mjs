@@ -35,11 +35,6 @@ export const env = createEnv({
     CLOUDFLARE_API_TOKEN: z.string(),
     CLOUDFLARE_SAAS_ZONE_ID: z.string(),
     CUSTOM_DOMAIN_CNAME_TARGET: z.string().default("cname.ishortn.ink"),
-    // Legacy Vercel domains API — dual-run fallback only, safe to drop after the
-    // Cloudflare migration completes
-    PROJECT_ID_VERCEL: z.string().optional(),
-    TEAM_ID_VERCEL: z.string().optional(),
-    AUTH_BEARER_TOKEN: z.string().optional(),
     // Secret key used to HMAC visitor IPs before storage.
     // Optional for backwards compatibility — when unset, we fall back to plain
     // SHA-256, which preserves old behavior but is trivially reversible.
@@ -94,10 +89,6 @@ export const env = createEnv({
     CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
     CLOUDFLARE_SAAS_ZONE_ID: process.env.CLOUDFLARE_SAAS_ZONE_ID,
     CUSTOM_DOMAIN_CNAME_TARGET: process.env.CUSTOM_DOMAIN_CNAME_TARGET,
-    // Legacy Vercel domains API
-    PROJECT_ID_VERCEL: process.env.PROJECT_ID_VERCEL,
-    TEAM_ID_VERCEL: process.env.TEAM_ID_VERCEL,
-    AUTH_BEARER_TOKEN: process.env.AUTH_BEARER_TOKEN,
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
     // Client-side env vars

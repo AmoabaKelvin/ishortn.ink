@@ -1,7 +1,7 @@
 import("./src/env.mjs");
 
 // Dev-only: boots wrangler's binding emulator for `next dev`. Guarded so
-// production builds (Vercel, OpenNext) don't require local Hyperdrive config.
+// production builds (OpenNext) don't require local Hyperdrive config.
 if (process.env.NODE_ENV === "development") {
   const { initOpenNextCloudflareForDev } = require("@opennextjs/cloudflare");
   initOpenNextCloudflareForDev();

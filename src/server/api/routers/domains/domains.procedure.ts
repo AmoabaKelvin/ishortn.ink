@@ -15,7 +15,6 @@ import {
 } from "./cloudflare";
 import * as input from "./domains.input";
 import * as services from "./domains.service";
-import { isDomainActiveOnVercel } from "./vercel-legacy";
 
 import type { CloudflareCustomHostname } from "./cloudflare";
 
@@ -142,30 +141,10 @@ export const customDomainRouter = createTRPCRouter({
         };
       }
 
-      // Dual-run fallback: domains still configured against Vercel stay active
-      if (await isDomainActiveOnVercel(domain)) {
-        log.debug({ domain }, "domain active via legacy Vercel configuration");
-
-        await ctx.db
-          .update(customDomain)
-          .set({ status: "active" })
-          .where(
-            and(
-              eq(customDomain.domain, domain),
-              workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
-            ),
-          );
-
-        return {
-          status: "active",
-          legacyVercel: true,
-        };
-      }
-
       const verificationChallenges = buildVerificationChallenges(domain, hostname);
 
       // Refresh stored challenges so the dashboard and reminder emails show the
-      // current Cloudflare records instead of stale Vercel-era ones
+      // current Cloudflare records instead of stale ones
       await ctx.db
         .update(customDomain)
         .set({ verificationDetails: JSON.stringify(verificationChallenges) })

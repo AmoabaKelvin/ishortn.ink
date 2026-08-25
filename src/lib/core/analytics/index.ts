@@ -21,7 +21,7 @@ const getGeolocationDetailsFromAPI = async (ip: string) => {
 };
 
 const getGeolocationDetails = async (ip: string) => {
-  const geolocationDetails = process.env.VERCEL
+  const geolocationDetails = process.env.NODE_ENV === "production"
     ? await getGeolocationDetailsFromAPI(ip)
     : LOCAL_DEVELOPMENT_GEOLOCATION_DATA;
 

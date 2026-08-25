@@ -28,8 +28,7 @@ export default clerkMiddleware(async (auth, req) => {
     pathname === "/" &&
     bareHost &&
     !bareHost.includes("localhost") &&
-    !bareHost.endsWith(".vercel.app") && // preview/deploy URLs keep the marketing root
-    !bareHost.endsWith(".workers.dev") &&
+    !bareHost.endsWith(".workers.dev") && // preview URLs keep the marketing root
     !isPlatformDomain(bareHost) &&
     extractPlatformSubdomain(bareHost) === null
   ) {

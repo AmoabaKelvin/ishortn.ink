@@ -1611,7 +1611,7 @@ export const verifyLinkPassword = async (
 
   // Same geo source the redirect path uses; matchGeoRules expects a country
   // code (not the display name analytics records).
-  const countryCode = getRequestGeo(ctx.headers).country ?? null;
+  const countryCode = getRequestGeo().country ?? null;
   const geoResult = matchGeoRules(
     await ctx.db.query.geoRule.findMany({
       where: eq(geoRule.linkId, link.id),
@@ -1781,13 +1781,6 @@ export const exportAllUserLinks = async (ctx: WorkspaceTRPCContext) => {
   });
 };
 
-export const checkPresenceOfVercelHeaders = async (ctx: PublicTRPCContext) => {
-  return {
-    headers: ctx.headers,
-    countryHeader: ctx.headers.get("x-vercel-ip-country"),
-    cityHeader: ctx.headers.get("x-vercel-ip-city"),
-  };
-};
 
 export const toggleArchive = async (
   ctx: WorkspaceTRPCContext,

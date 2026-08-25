@@ -248,7 +248,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
       }
 
       // Send feedback notification (fire and forget — waitUntil keeps the
-      // function alive until the Discord webhook completes on Vercel).
+      // Worker alive until the Discord webhook completes).
       void runBackgroundTask(
         sendDowngradeFeedbackNotification({
           userEmail: userRecord?.email ?? "unknown",

@@ -17,7 +17,6 @@ import {
   getCustomHostname,
   mapStatus,
 } from "./cloudflare";
-import { deleteDomainFromVercelProject } from "./vercel-legacy";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { CreateCustomDomainInput } from "./domains.input";
@@ -205,13 +204,6 @@ export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, 
     // If no other workspaces use this domain, delete from Cloudflare first
     if (!otherWorkspacesUsingDomain) {
       await deleteCustomHostname(domain.domain!);
-
-      // Best-effort legacy cleanup — a Vercel failure must not abort the transaction
-      try {
-        await deleteDomainFromVercelProject(domain.domain!);
-      } catch (error) {
-        log.warn({ err: error, domain: domain.domain }, "legacy Vercel domain cleanup failed");
-      }
     }
 
     // Delete the domain record from our database

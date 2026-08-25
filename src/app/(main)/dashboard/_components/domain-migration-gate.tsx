@@ -129,13 +129,11 @@ export function DomainMigrationGate() {
   );
 }
 
-type VerifyFeedback = "pending" | "legacy" | "error";
+type VerifyFeedback = "pending" | "error";
 
 const feedbackMessages: Record<VerifyFeedback, string> = {
   pending:
     "Records not detected yet. DNS changes can take up to 48 hours to propagate — check again later.",
-  legacy:
-    "This domain has not been updated yet. Make the change above at your DNS provider — it can take up to 48 hours to take effect.",
   error: "We could not verify the domain right now. Please try again in a moment.",
 };
 
@@ -161,15 +159,13 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
       return;
     }
 
-    // checkStatus also reports "active" for domains still resolving via legacy
-    // Vercel; only a Cloudflare-active domain counts as migrated
-    if (result.status === "active" && !("legacyVercel" in result && result.legacyVercel)) {
+    if (result.status === "active") {
       toast.success(`${entry.domain} is all set — no further action needed`);
       await utils.customDomain.migrationStatus.invalidate();
       return;
     }
 
-    setFeedback(result.status === "active" ? "legacy" : "pending");
+    setFeedback("pending");
   };
 
   const isVerifying = checkStatus.isFetching;

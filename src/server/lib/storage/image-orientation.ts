@@ -87,7 +87,7 @@ function applyOrientation(image: ImageData, orientation: number): ImageData {
  * Orientation only meaningfully affects JPEG here, so other formats (and images
  * already upright) pass through untouched to avoid needless re-encoding. Falls
  * back to the original bytes if the input can't be processed. Uses sharp when
- * available (Node/Vercel), otherwise exifr + @jsquash/jpeg (WASM) so it can run
+ * available (Node), otherwise exifr + @jsquash/jpeg (WASM) so it can run
  * on Cloudflare Workers too.
  */
 export async function normalizeImageOrientation(buffer: Buffer, format: string): Promise<Buffer> {
