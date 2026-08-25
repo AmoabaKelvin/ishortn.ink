@@ -105,9 +105,9 @@ export async function addDomainToUserAccount(
     throw new Error("This domain is already added to this workspace");
   }
 
-  // Vercel verifies a domain once per project, so a domain another tenant has
-  // already verified would sail through the `alreadyExists` branch below and
-  // land as "active" here with no DNS challenge of our own. Domain sharing is
+  // Cloudflare holds one custom hostname per zone, so a domain another tenant
+  // has already verified would sail through the `alreadyExists` branch below
+  // and land as "active" here with no DNS challenge of our own. Domain sharing is
   // only meant to span workspaces the same person controls, so require an
   // existing claim in one of the caller's workspaces before inheriting state.
   const foreignClaims = await ctx.db.query.customDomain.findMany({

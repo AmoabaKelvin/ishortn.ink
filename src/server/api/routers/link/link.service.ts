@@ -41,6 +41,7 @@ import {
   setInCache,
 } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { getRequestGeo } from "@/lib/platform";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
 import { checkLinkExpiration } from "@/middlewares/resolve-link";
@@ -1608,9 +1609,9 @@ export const verifyLinkPassword = async (
     return { url: `/expired/${link.id}`, alias: link.alias, verificationToken: null };
   }
 
-  // Vercel's geo header is the same source the proxy uses, and matchGeoRules
-  // expects a country code (not the display name analytics records).
-  const countryCode = ctx.headers.get("x-vercel-ip-country");
+  // Same geo source the redirect path uses; matchGeoRules expects a country
+  // code (not the display name analytics records).
+  const countryCode = getRequestGeo(ctx.headers).country ?? null;
   const geoResult = matchGeoRules(
     await ctx.db.query.geoRule.findMany({
       where: eq(geoRule.linkId, link.id),
