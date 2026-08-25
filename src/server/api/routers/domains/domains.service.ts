@@ -3,7 +3,7 @@ import { and, count, eq, inArray, ne, sum } from "drizzle-orm";
 
 import { isSubscriptionEntitled, PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
-import { customDomain, link, linkVisit, linkVisitDailySummary } from "@/server/db/schema";
+import { customDomain, link, linkVisit, linkVisitDailySummary, teamMember } from "@/server/db/schema";
 import {
   requirePermission,
   workspaceFilter,
@@ -23,6 +23,34 @@ import type { WorkspaceTRPCContext } from "../../trpc";
 import type { CreateCustomDomainInput } from "./domains.input";
 
 const log = logger.child({ component: "domains.service" });
+
+/**
+ * True when at least one of the existing claims on a domain sits in a workspace
+ * the caller belongs to — their own personal workspace, or a team they are a
+ * member of. Used to allow the documented "same domain across my workspaces"
+ * flow while refusing a claim on a stranger's verified domain.
+ */
+async function callerControlsAClaim(
+  ctx: WorkspaceTRPCContext,
+  claims: { userId: string; teamId: number | null }[],
+): Promise<boolean> {
+  if (claims.some((claim) => claim.teamId === null && claim.userId === ctx.auth.userId)) {
+    return true;
+  }
+
+  const teamIds = claims
+    .map((claim) => claim.teamId)
+    .filter((teamId): teamId is number => teamId !== null);
+
+  if (teamIds.length === 0) return false;
+
+  const membership = await ctx.db.query.teamMember.findFirst({
+    where: and(eq(teamMember.userId, ctx.auth.userId), inArray(teamMember.teamId, teamIds)),
+    columns: { id: true },
+  });
+
+  return !!membership;
+}
 
 export async function addDomainToUserAccount(
   ctx: WorkspaceTRPCContext,
@@ -75,6 +103,24 @@ export async function addDomainToUserAccount(
 
   if (existingDomainInWorkspace) {
     throw new Error("This domain is already added to this workspace");
+  }
+
+  // Vercel verifies a domain once per project, so a domain another tenant has
+  // already verified would sail through the `alreadyExists` branch below and
+  // land as "active" here with no DNS challenge of our own. Domain sharing is
+  // only meant to span workspaces the same person controls, so require an
+  // existing claim in one of the caller's workspaces before inheriting state.
+  const foreignClaims = await ctx.db.query.customDomain.findMany({
+    where: eq(customDomain.domain, domain),
+    columns: { userId: true, teamId: true },
+  });
+
+  if (foreignClaims.length > 0 && !(await callerControlsAClaim(ctx, foreignClaims))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "This domain is already connected to another account. Remove it there first, or contact support if you own it.",
+    });
   }
 
   try {

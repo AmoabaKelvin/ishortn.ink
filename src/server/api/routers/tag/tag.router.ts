@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
 
+import { verifyLinkOwnership } from "../link/utils";
+
 import {
   associateTagsWithLink,
   createTag,
@@ -27,6 +29,9 @@ export const tagRouter = createTRPCRouter({
   getForLink: workspaceProcedure
     .input(z.object({ linkId: z.number() }))
     .query(async ({ ctx, input }) => {
+      // Workspace scoping happens in the service; this also enforces folder
+      // restrictions, which team members must not read around.
+      await verifyLinkOwnership(ctx, input.linkId);
       return getTagsForLink(ctx, input.linkId);
     }),
 
@@ -39,6 +44,7 @@ export const tagRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await verifyLinkOwnership(ctx, input.linkId);
       await associateTagsWithLink(ctx, input.linkId, input.tagNames);
       return { success: true };
     }),

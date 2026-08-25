@@ -28,7 +28,12 @@ async function autoDisableLink(linkId: number, cacheKey: string): Promise<void> 
   }
 }
 
-async function checkLinkExpiration(link: Link, cacheKey: string): Promise<boolean> {
+/**
+ * True when the link must no longer resolve: manually disabled, past its expiry
+ * date, or over its click cap. Shared with the password verifier so unlocking a
+ * link can't outlive the owner's revocation.
+ */
+export async function checkLinkExpiration(link: Link, cacheKey: string): Promise<boolean> {
   if (link.disabled) {
     return true;
   }

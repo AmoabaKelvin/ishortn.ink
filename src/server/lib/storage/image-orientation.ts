@@ -17,7 +17,7 @@ async function loadSharp() {
     ) => Promise<{ default?: unknown }>;
     const mod = await dynamicImport("sharp");
     return typeof mod.default === "function"
-      ? (mod.default as typeof import("sharp"))
+      ? (mod.default as typeof import("sharp").default)
       : undefined;
   } catch {
     return undefined;

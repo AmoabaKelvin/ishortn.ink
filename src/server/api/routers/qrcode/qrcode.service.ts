@@ -272,7 +272,7 @@ export const deleteQrCode = userFacing(
     // Delete QR code image from R2 if present
     if (qrCode.qrCode) {
       try {
-        await deleteImage(qrCode.qrCode);
+        await deleteImage(ctx.workspace, qrCode.qrCode);
       } catch (error) {
         log.error({ err: error, qrCodeId: id }, "failed to delete QR code image from R2");
       }
@@ -499,7 +499,7 @@ export const deleteQrPreset = userFacing(
     // Delete logo image from R2 if present
     if (preset.logoImage) {
       try {
-        await deleteImage(preset.logoImage);
+        await deleteImage(ctx.workspace, preset.logoImage);
       } catch (error) {
         log.error(
           { err: error, presetId: id, action: "delete-preset" },
@@ -546,7 +546,7 @@ export const updateQrPreset = userFacing(
       logoImageUrl = null;
       if (preset.logoImage) {
         try {
-          await deleteImage(preset.logoImage);
+          await deleteImage(ctx.workspace, preset.logoImage);
         } catch (error) {
           log.error(
             { err: error, presetId: input.id, action: "remove-logo" },
@@ -568,7 +568,7 @@ export const updateQrPreset = userFacing(
         // Delete old logo from R2 if it's being replaced
         if (preset.logoImage && preset.logoImage !== logoImageUrl) {
           try {
-            await deleteImage(preset.logoImage);
+            await deleteImage(ctx.workspace, preset.logoImage);
           } catch (error) {
             log.error(
               { err: error, presetId: input.id, action: "replace-logo" },

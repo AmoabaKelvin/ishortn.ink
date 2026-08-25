@@ -713,20 +713,29 @@ export async function acceptInvite(
     });
   }
 
-  // Accept invite in transaction
+  // Accept invite in transaction. The pre-checks above are advisory only: two
+  // concurrent requests can both read acceptedAt = NULL, so the invite has to
+  // be claimed with the NULL predicate in the UPDATE itself. Exactly one caller
+  // sees a matched row; everyone else is rejected.
   await ctx.db.transaction(async (tx) => {
+    const claim = await tx
+      .update(teamInvite)
+      .set({ acceptedAt: new Date() })
+      .where(and(eq(teamInvite.id, invite.id), isNull(teamInvite.acceptedAt)));
+
+    if (claim[0].affectedRows === 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "This invite has already been used",
+      });
+    }
+
     // Add user as member
     await tx.insert(teamMember).values({
       teamId: invite.teamId,
       userId: ctx.auth.userId,
       role: invite.role,
     });
-
-    // Mark invite as accepted
-    await tx
-      .update(teamInvite)
-      .set({ acceptedAt: new Date() })
-      .where(eq(teamInvite.id, invite.id));
   });
 
   return {
