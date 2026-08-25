@@ -1,3 +1,5 @@
+import { TRPCError } from "@trpc/server";
+
 import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
 import type { WorkspaceTRPCContext } from "@/server/api/trpc";
@@ -48,24 +50,32 @@ export async function uploadImage(
   if (!image) return undefined;
   if (image.startsWith("http")) return image;
 
+  // Anything that is neither a URL nor a supported data URL is refused rather
+  // than handed back: callers store the return value, so returning the input
+  // here would persist bytes nothing has checked.
   const match = image.match(/^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/);
-  if (!match) return image;
+  if (!match) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported image format." });
+  }
+
+  const [, rawFormat, base64Data] = match;
+  const format = rawFormat === "jpg" ? "jpeg" : rawFormat!;
+  const rawBuffer = Buffer.from(base64Data!, "base64");
+
+  if (rawBuffer.length > MAX_SIZE_BYTES) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Image exceeds maximum size of 2MB." });
+  }
+
+  if (!hasDeclaredImageFormat(format, rawBuffer)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Image bytes do not match the declared ${format} type.`,
+    });
+  }
 
   if (!isR2Configured()) return image;
 
   try {
-    const [, rawFormat, base64Data] = match;
-    const format = rawFormat === "jpg" ? "jpeg" : rawFormat!;
-    const rawBuffer = Buffer.from(base64Data!, "base64");
-
-    if (rawBuffer.length > MAX_SIZE_BYTES) {
-      throw new Error("Image exceeds maximum size of 2MB");
-    }
-
-    if (!hasDeclaredImageFormat(format, rawBuffer)) {
-      throw new Error(`Image bytes do not match the declared ${format} type`);
-    }
-
     // Bake in EXIF orientation so the OG image (rendered by next/og, which
     // ignores the tag) matches the upright way browsers show the avatar.
     const buffer = await normalizeImageOrientation(rawBuffer, format);

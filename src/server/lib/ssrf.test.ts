@@ -1,6 +1,17 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { isBlockedAddress, isPublicHttpUrl } from "./ssrf";
+// Resolver is stubbed for the whole file so no test touches the network.
+// Default: every name fails to resolve; tests that need records override it.
+const lookup = mock(async (_hostname: string, _options?: unknown): Promise<unknown> => {
+  throw new Error("ENOTFOUND");
+});
+mock.module("node:dns/promises", () => ({ lookup }));
+
+const { isBlockedAddress, isPublicHttpUrl, safeFetch } = await import("./ssrf");
+
+function records(...addresses: string[]) {
+  return addresses.map((address) => ({ address, family: address.includes(":") ? 6 : 4 }));
+}
 
 // A resolver returns an address as text, and an IPv4-mapped address has two
 // valid textual forms. Both must classify the same way — the dotted form is
@@ -51,7 +62,12 @@ describe("isPublicHttpUrl", () => {
       "http://192.168.1.1/",
       "http://100.64.0.1/", // CGNAT
       "http://198.18.0.1/", // benchmarking
+      "http://192.0.2.1/", // TEST-NET-1
+      "http://198.51.100.1/", // TEST-NET-2
+      "http://203.0.113.1/", // TEST-NET-3
       "http://224.0.0.1/", // multicast
+      "http://240.0.0.1/", // reserved
+      "http://255.255.255.255/", // broadcast
     ]) {
       expect([url, await isPublicHttpUrl(url)]).toEqual([url, false]);
     }
@@ -70,6 +86,9 @@ describe("isPublicHttpUrl", () => {
       "http://[64:ff9b::7f00:1]/", // NAT64 wrapping loopback
       "http://[2002:c0a8:101::1]/", // 6to4
       "http://[2001:0:c0a8::1]/", // Teredo
+      "http://[2001:2::1]/", // benchmarking
+      "http://[2001:db8::1]/", // documentation
+      "http://[3fff::1]/", // documentation
     ]) {
       expect([url, await isPublicHttpUrl(url)]).toEqual([url, false]);
     }
@@ -79,5 +98,96 @@ describe("isPublicHttpUrl", () => {
     for (const url of ["http://1.1.1.1/", "https://[2606:4700:4700::1111]/"]) {
       expect([url, await isPublicHttpUrl(url)]).toEqual([url, true]);
     }
+  });
+});
+
+describe("isPublicHttpUrl with a resolver", () => {
+  afterEach(() => lookup.mockReset());
+
+  test("allows a name that resolves only to public addresses", async () => {
+    lookup.mockResolvedValue(records("1.1.1.1", "2606:4700:4700::1111"));
+    expect(await isPublicHttpUrl("https://example.com/")).toBe(true);
+  });
+
+  test("refuses a name with any private record among public ones", async () => {
+    lookup.mockResolvedValue(records("1.1.1.1", "10.0.0.5"));
+    expect(await isPublicHttpUrl("https://example.com/")).toBe(false);
+  });
+
+  test("refuses a name resolving to an IPv4-mapped private address", async () => {
+    lookup.mockResolvedValue(records("::ffff:169.254.169.254"));
+    expect(await isPublicHttpUrl("https://example.com/")).toBe(false);
+  });
+
+  test("refuses a name that fails to resolve or has no records", async () => {
+    lookup.mockRejectedValue(new Error("ENOTFOUND"));
+    expect(await isPublicHttpUrl("https://example.com/")).toBe(false);
+    lookup.mockResolvedValue([]);
+    expect(await isPublicHttpUrl("https://example.com/")).toBe(false);
+  });
+});
+
+describe("safeFetch", () => {
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+  let responses: Record<string, Response>;
+
+  beforeEach(() => {
+    calls.length = 0;
+    responses = {};
+    lookup.mockResolvedValue(records("1.1.1.1"));
+    globalThis.fetch = mock(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      return responses[url] ?? new Response("ok", { status: 200 });
+    }) as unknown as typeof fetch;
+  });
+  afterEach(() => lookup.mockReset());
+  afterAll(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const redirect = (status: number, location: string) =>
+    new Response(null, { status, headers: { location } });
+
+  test("refuses a private destination without fetching", async () => {
+    expect(await safeFetch("http://127.0.0.1/")).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  test("follows a public redirect and returns the final response", async () => {
+    responses["https://a.example/"] = redirect(302, "https://b.example/");
+    responses["https://b.example/"] = new Response("final", { status: 200 });
+    const res = await safeFetch("https://a.example/");
+    expect(await res?.text()).toBe("final");
+    expect(calls).toEqual(["https://a.example/", "https://b.example/"]);
+  });
+
+  test("refuses a redirect to a private address", async () => {
+    responses["https://a.example/"] = redirect(301, "http://169.254.169.254/latest/meta-data/");
+    expect(await safeFetch("https://a.example/")).toBeNull();
+    expect(calls).toEqual(["https://a.example/"]);
+  });
+
+  test("refuses a redirect to a non-http scheme", async () => {
+    responses["https://a.example/"] = redirect(307, "file:///etc/passwd");
+    expect(await safeFetch("https://a.example/")).toBeNull();
+    expect(calls).toEqual(["https://a.example/"]);
+  });
+
+  test("gives up after the redirect limit", async () => {
+    responses["https://a.example/"] = redirect(302, "https://a.example/");
+    expect(await safeFetch("https://a.example/", { maxRedirects: 2 })).toBeNull();
+    expect(calls).toHaveLength(3);
+  });
+
+  test("returns non-redirect 3xx responses as-is", async () => {
+    responses["https://a.example/"] = new Response(null, {
+      status: 304,
+      headers: { location: "http://127.0.0.1/" },
+    });
+    const res = await safeFetch("https://a.example/");
+    expect(res?.status).toBe(304);
+    expect(calls).toEqual(["https://a.example/"]);
   });
 });

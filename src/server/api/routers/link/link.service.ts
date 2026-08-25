@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
@@ -538,6 +539,7 @@ export const createLink = async (
           .where(eq(link.id, linkId));
       }
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       log.error(
         { err: error, linkId, action: "create" },
         "failed to upload OG image",
@@ -653,6 +655,7 @@ export const updateLink = async (
         };
       }
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       log.error(
         { err: error, linkId: input.id, action: "update" },
         "failed to upload OG image",

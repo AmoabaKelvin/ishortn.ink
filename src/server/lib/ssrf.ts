@@ -30,15 +30,22 @@ BLOCKED.addSubnet("127.0.0.0", 8, "ipv4"); // loopback
 BLOCKED.addSubnet("169.254.0.0", 16, "ipv4"); // link-local, incl. cloud metadata
 BLOCKED.addSubnet("172.16.0.0", 12, "ipv4"); // private
 BLOCKED.addSubnet("192.0.0.0", 24, "ipv4"); // IETF protocol assignments
+BLOCKED.addSubnet("192.0.2.0", 24, "ipv4"); // documentation (TEST-NET-1)
 BLOCKED.addSubnet("192.168.0.0", 16, "ipv4"); // private
 BLOCKED.addSubnet("198.18.0.0", 15, "ipv4"); // benchmarking
-BLOCKED.addSubnet("224.0.0.0", 4, "ipv4"); // multicast, reserved, broadcast
+BLOCKED.addSubnet("198.51.100.0", 24, "ipv4"); // documentation (TEST-NET-2)
+BLOCKED.addSubnet("203.0.113.0", 24, "ipv4"); // documentation (TEST-NET-3)
+BLOCKED.addSubnet("224.0.0.0", 4, "ipv4"); // multicast
+BLOCKED.addSubnet("240.0.0.0", 4, "ipv4"); // reserved, broadcast
 
 // IPv6
 BLOCKED.addSubnet("::", 96, "ipv6"); // unspecified, loopback, IPv4-compatible
 BLOCKED.addSubnet("64:ff9b::", 96, "ipv6"); // NAT64, wraps IPv4
 BLOCKED.addSubnet("100::", 64, "ipv6"); // discard-only
 BLOCKED.addSubnet("2001::", 32, "ipv6"); // Teredo
+BLOCKED.addSubnet("2001:2::", 48, "ipv6"); // benchmarking
+BLOCKED.addSubnet("2001:db8::", 32, "ipv6"); // documentation
+BLOCKED.addSubnet("3fff::", 20, "ipv6"); // documentation
 BLOCKED.addSubnet("2002::", 16, "ipv6"); // 6to4, wraps IPv4
 BLOCKED.addSubnet("fc00::", 7, "ipv6"); // unique-local
 BLOCKED.addSubnet("fe80::", 10, "ipv6"); // link-local
@@ -92,6 +99,8 @@ export async function isPublicHttpUrl(url: string): Promise<boolean> {
   }
 }
 
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
 type SafeFetchOptions = {
   /** Max redirect hops to follow; each hop is re-validated. */
   maxRedirects?: number;
@@ -114,7 +123,7 @@ export async function safeFetch(
     // address check as the original URL.
     const response = await fetch(current, { ...init, redirect: "manual" });
 
-    if (response.status < 300 || response.status > 399) return response;
+    if (!REDIRECT_STATUSES.has(response.status)) return response;
 
     const location = response.headers.get("location");
     if (!location) return response;

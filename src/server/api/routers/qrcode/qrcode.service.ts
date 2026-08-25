@@ -173,6 +173,7 @@ export const saveQrCodeImage = userFacing(
         return imageUrl;
       }
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       log.error({ err: error, qrCodeId: input.id }, "failed to upload QR code image to R2");
     }
 
@@ -453,6 +454,7 @@ export const createQrPreset = userFacing(
             .where(eq(qrPreset.id, insertedId));
         }
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         log.error(
           { err: error, presetId: insertedId, action: "create" },
           "failed to upload logo image to R2",
@@ -577,6 +579,7 @@ export const updateQrPreset = userFacing(
           }
         }
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         log.error(
           { err: error, presetId: input.id, action: "update-preset" },
           "failed to upload logo image to R2",
