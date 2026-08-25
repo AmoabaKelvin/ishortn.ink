@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq, isNull, lte, or } from "drizzle-orm";
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { Resend } from "resend";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
@@ -95,14 +95,14 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     });
 
     const isStale =
-      !!existing?.providerUpdatedAt && existing.providerUpdatedAt > providerUpdatedAt;
+      !!existing?.providerUpdatedAt && existing.providerUpdatedAt >= providerUpdatedAt;
 
     const currentSubscription = and(
       eq(subscription.userId, userId),
       eq(subscription.subscriptionId, subscriptionId),
       or(
         isNull(subscription.providerUpdatedAt),
-        lte(subscription.providerUpdatedAt, providerUpdatedAt),
+        lt(subscription.providerUpdatedAt, providerUpdatedAt),
       ),
     );
 

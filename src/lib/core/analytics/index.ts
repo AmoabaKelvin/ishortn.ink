@@ -10,14 +10,19 @@ import type { GeolocationAPIResponseType } from "./types";
 
 const getGeolocationDetailsFromAPI = async (ip: string) => {
   const geolocationApiUrl = `https://api.findip.net/ipHere/?token=${env.GEOLOCATION_API_KEY}`;
-  const response = await fetch(geolocationApiUrl.replace("ipHere", ip));
-  const data = (await response.json()) as GeolocationAPIResponseType;
+  // A lookup failure must not fail the click it decorates.
+  try {
+    const response = await fetch(geolocationApiUrl.replace("ipHere", ip));
+    const data = (await response.json()) as Partial<GeolocationAPIResponseType>;
 
-  return {
-    city: data.city.names.en,
-    country: data.country.names.en,
-    continent: data.continent.names.en,
-  };
+    return {
+      city: data.city?.names?.en,
+      country: data.country?.names?.en,
+      continent: data.continent?.names?.en,
+    };
+  } catch {
+    return {};
+  }
 };
 
 const getGeolocationDetails = async (ip: string) => {
@@ -28,7 +33,7 @@ const getGeolocationDetails = async (ip: string) => {
   return {
     city: geolocationDetails?.city ?? "Unknown",
     country: geolocationDetails?.country ?? "Unknown",
-    continent: geolocationDetails.continent ?? "Unknown",
+    continent: geolocationDetails?.continent ?? "Unknown",
   };
 };
 

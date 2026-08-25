@@ -5,7 +5,12 @@ import { db } from "@/server/db";
 import { customDomain, team, user } from "@/server/db/schema";
 import { sendDomainReminderEmail } from "@/server/lib/notifications/domain-reminder";
 
-import { buildVerificationChallenges, getCustomHostname, mapStatus } from "./cloudflare";
+import {
+  buildVerificationChallenges,
+  getCustomHostname,
+  mapStatus,
+  wwwFallbackActive,
+} from "./cloudflare";
 
 import type { CloudflareCustomHostname } from "./cloudflare";
 
@@ -18,7 +23,8 @@ async function checkDomainHealth(
   domain: string,
 ): Promise<{ healthy: boolean; hostname: CloudflareCustomHostname | null }> {
   const hostname = await getCustomHostname(domain);
-  const healthy = !!hostname && mapStatus(hostname) === "active";
+  const healthy =
+    (!!hostname && mapStatus(hostname) === "active") || (await wwwFallbackActive(domain));
 
   log.debug(
     {

@@ -2,15 +2,25 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "b
 
 // Resolver is stubbed for the whole file so no test touches the network.
 // Default: every name fails to resolve; tests that need records override it.
-const lookup = mock(async (_hostname: string, _options?: unknown): Promise<unknown> => {
+const resolve4 = mock(async (_hostname: string): Promise<string[]> => {
   throw new Error("ENOTFOUND");
 });
-mock.module("node:dns/promises", () => ({ lookup }));
+const resolve6 = mock(async (_hostname: string): Promise<string[]> => {
+  throw new Error("ENODATA");
+});
+mock.module("node:dns/promises", () => ({ resolve4, resolve6 }));
 
 const { isBlockedAddress, isPublicHttpUrl, safeFetch } = await import("./ssrf");
 
-function records(...addresses: string[]) {
-  return addresses.map((address) => ({ address, family: address.includes(":") ? 6 : 4 }));
+function resolveTo(...addresses: string[]) {
+  resolve4.mockResolvedValue(addresses.filter((a) => !a.includes(":")));
+  resolve6.mockResolvedValue(addresses.filter((a) => a.includes(":")));
+}
+function resetResolver() {
+  resolve4.mockReset();
+  resolve6.mockReset();
+  resolve4.mockRejectedValue(new Error("ENOTFOUND"));
+  resolve6.mockRejectedValue(new Error("ENODATA"));
 }
 
 // A resolver returns an address as text, and an IPv4-mapped address has two
@@ -102,27 +112,31 @@ describe("isPublicHttpUrl", () => {
 });
 
 describe("isPublicHttpUrl with a resolver", () => {
-  afterEach(() => lookup.mockReset());
+  afterEach(resetResolver);
 
   test("allows a name that resolves only to public addresses", async () => {
-    lookup.mockResolvedValue(records("1.1.1.1", "2606:4700:4700::1111"));
+    resolveTo("1.1.1.1", "2606:4700:4700::1111");
+    expect(await isPublicHttpUrl("https://example.com/")).toBe(true);
+  });
+
+  test("allows a name with only an A record", async () => {
+    resolve4.mockResolvedValue(["1.1.1.1"]);
     expect(await isPublicHttpUrl("https://example.com/")).toBe(true);
   });
 
   test("refuses a name with any private record among public ones", async () => {
-    lookup.mockResolvedValue(records("1.1.1.1", "10.0.0.5"));
+    resolveTo("1.1.1.1", "10.0.0.5");
     expect(await isPublicHttpUrl("https://example.com/")).toBe(false);
   });
 
-  test("refuses a name resolving to an IPv4-mapped private address", async () => {
-    lookup.mockResolvedValue(records("::ffff:169.254.169.254"));
+  test("refuses a name whose AAAA record is private even when A is public", async () => {
+    resolveTo("1.1.1.1", "::ffff:169.254.169.254");
     expect(await isPublicHttpUrl("https://example.com/")).toBe(false);
   });
 
   test("refuses a name that fails to resolve or has no records", async () => {
-    lookup.mockRejectedValue(new Error("ENOTFOUND"));
     expect(await isPublicHttpUrl("https://example.com/")).toBe(false);
-    lookup.mockResolvedValue([]);
+    resolveTo();
     expect(await isPublicHttpUrl("https://example.com/")).toBe(false);
   });
 });
@@ -135,14 +149,14 @@ describe("safeFetch", () => {
   beforeEach(() => {
     calls.length = 0;
     responses = {};
-    lookup.mockResolvedValue(records("1.1.1.1"));
+    resolveTo("1.1.1.1");
     globalThis.fetch = mock(async (input: string | URL | Request) => {
       const url = String(input);
       calls.push(url);
       return responses[url] ?? new Response("ok", { status: 200 });
     }) as unknown as typeof fetch;
   });
-  afterEach(() => lookup.mockReset());
+  afterEach(resetResolver);
   afterAll(() => {
     globalThis.fetch = originalFetch;
   });

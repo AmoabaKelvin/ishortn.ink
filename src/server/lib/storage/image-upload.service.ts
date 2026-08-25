@@ -43,16 +43,17 @@ interface UploadImageOptions {
   imageType: ImageType;
 }
 
-export async function uploadImage(
-  ctx: WorkspaceTRPCContext,
-  { image, resourceId, imageType }: UploadImageOptions
-): Promise<string | undefined> {
-  if (!image) return undefined;
-  if (image.startsWith("http")) return image;
+type ParsedImage = { format: string; buffer: Buffer };
 
-  // Anything that is neither a URL nor a supported data URL is refused rather
-  // than handed back: callers store the return value, so returning the input
-  // here would persist bytes nothing has checked.
+/**
+ * Parses and validates a data URL. Throws BAD_REQUEST for anything that is not
+ * a supported, correctly labelled image under the size cap; returns null for
+ * an http(s) URL, which is stored as-is. Call this before the first DB write
+ * so a rejected image never lands in a row.
+ */
+export function assertValidImageInput(image: string): ParsedImage | null {
+  if (image.startsWith("http")) return null;
+
   const match = image.match(/^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/);
   if (!match) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported image format." });
@@ -60,18 +61,31 @@ export async function uploadImage(
 
   const [, rawFormat, base64Data] = match;
   const format = rawFormat === "jpg" ? "jpeg" : rawFormat!;
-  const rawBuffer = Buffer.from(base64Data!, "base64");
+  const buffer = Buffer.from(base64Data!, "base64");
 
-  if (rawBuffer.length > MAX_SIZE_BYTES) {
+  if (buffer.length > MAX_SIZE_BYTES) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Image exceeds maximum size of 2MB." });
   }
 
-  if (!hasDeclaredImageFormat(format, rawBuffer)) {
+  if (!hasDeclaredImageFormat(format, buffer)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: `Image bytes do not match the declared ${format} type.`,
     });
   }
+
+  return { format, buffer };
+}
+
+export async function uploadImage(
+  ctx: WorkspaceTRPCContext,
+  { image, resourceId, imageType }: UploadImageOptions
+): Promise<string | undefined> {
+  if (!image) return undefined;
+
+  const parsed = assertValidImageInput(image);
+  if (!parsed) return image;
+  const { format, buffer: rawBuffer } = parsed;
 
   if (!isR2Configured()) return image;
 

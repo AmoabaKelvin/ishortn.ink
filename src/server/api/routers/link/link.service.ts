@@ -63,7 +63,7 @@ import {
 } from "@/server/db/schema";
 import { mergeCampaignUtm } from "../campaign/utils";
 import { checkAndFireMilestones } from "@/server/lib/milestone-check";
-import { deleteImage, uploadImage } from "@/server/lib/storage";
+import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   getAccessibleFolderIds,
   isWorkspaceAdmin,
@@ -455,6 +455,9 @@ export const createLink = async (
 
   const name = input.name ?? fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
+
+  // Reject a bad image before the row exists; the upload below happens after.
+  if (input.metadata?.image) assertValidImageInput(input.metadata.image);
 
   // Create link without tags field
   const { tags, ...linkData } = input;

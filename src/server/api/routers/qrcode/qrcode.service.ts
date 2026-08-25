@@ -13,7 +13,7 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
-import { deleteImage, uploadImage } from "@/server/lib/storage";
+import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   insertHiddenTrackingLink,
   prepareHiddenTrackingLink,
@@ -149,6 +149,8 @@ export const saveQrCodeImage = userFacing(
         message: "QR code not found.",
       });
     }
+
+    assertValidImageInput(input.qrCodeBase64);
 
     // Persist base64 immediately so we have a fallback
     await ctx.db
@@ -414,6 +416,8 @@ export const createQrPreset = userFacing(
   "Something went wrong while creating your preset. Please try again.",
   async (ctx: WorkspaceTRPCContext, input: QRPresetCreateInput) => {
     const ownership = workspaceOwnership(ctx.workspace);
+
+    if (input.logoImage) assertValidImageInput(input.logoImage);
 
     const insertResult = await ctx.db.insert(qrPreset).values({
       name: input.name,

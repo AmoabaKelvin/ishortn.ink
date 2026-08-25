@@ -1,4 +1,4 @@
-import { lookup } from "node:dns/promises";
+import { resolve4, resolve6 } from "node:dns/promises";
 import net from "node:net";
 
 /**
@@ -88,15 +88,13 @@ export async function isPublicHttpUrl(url: string): Promise<boolean> {
 
   if (net.isIP(hostname)) return !isBlockedAddress(hostname);
 
-  // Reject names that only resolve inside the deployment's network. `all: true`
-  // so a name with one public and one private record is still refused.
-  try {
-    const records = await lookup(hostname, { all: true, verbatim: true });
-    if (!records.length) return false;
-    return records.every((record) => !isBlockedAddress(record.address));
-  } catch {
-    return false;
-  }
+  // Reject names that resolve anywhere inside the deployment's network: every
+  // A and AAAA record must be public. resolve4/resolve6 rather than lookup —
+  // Workers implements the resolver calls (over DoH) but not getaddrinfo.
+  const [v4, v6] = await Promise.allSettled([resolve4(hostname), resolve6(hostname)]);
+  const addresses = [v4, v6].flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  if (!addresses.length) return false;
+  return addresses.every((address) => !isBlockedAddress(address));
 }
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);

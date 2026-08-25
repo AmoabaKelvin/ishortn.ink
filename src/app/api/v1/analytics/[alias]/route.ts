@@ -27,7 +27,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ alias
   }
 
   const link = await db.query.link.findFirst({
-    where: (table, { eq, and }) => and(eq(table.alias, alias), eq(table.domain, domain)),
+    // Same ownership rule as the links endpoint: API tokens only reach links in
+    // the owner's personal workspace.
+    where: (table, { eq, and, isNull }) =>
+      and(
+        eq(table.alias, alias),
+        eq(table.domain, domain),
+        eq(table.userId, token.userId),
+        isNull(table.teamId),
+      ),
     with: {
       linkVisits: true,
       uniqueLinkVisits: true,
