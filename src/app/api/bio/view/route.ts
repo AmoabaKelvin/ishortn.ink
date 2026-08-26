@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!fresh) return new Response(null, { status: 204 });
   }
 
-  const geo = getRequestGeo(request.headers);
+  const geo = getRequestGeo();
 
   void runBackgroundTask(
     recordBioPageView({

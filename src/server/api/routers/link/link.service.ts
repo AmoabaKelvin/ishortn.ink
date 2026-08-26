@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
@@ -40,7 +41,10 @@ import {
   setInCache,
 } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
+import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
+import { checkLinkExpiration } from "@/middlewares/resolve-link";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { db } from "@/server/db";
 import {
@@ -59,7 +63,7 @@ import {
 } from "@/server/db/schema";
 import { mergeCampaignUtm } from "../campaign/utils";
 import { checkAndFireMilestones } from "@/server/lib/milestone-check";
-import { deleteImage, uploadImage } from "@/server/lib/storage";
+import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   getAccessibleFolderIds,
   isWorkspaceAdmin,
@@ -353,21 +357,6 @@ export const getLink = async (
   return linkData;
 };
 
-export const getLinkByAlias = async (input: {
-  alias: string;
-  domain: string;
-}) => {
-  return db
-    .select()
-    .from(link)
-    .where(
-      and(
-        eq(link.domain, input.domain),
-        sql`lower(${link.alias}) = lower(${input.alias})`,
-      ),
-    );
-};
-
 export const createLink = async (
   ctx: WorkspaceTRPCContext,
   input: CreateLinkInput,
@@ -467,6 +456,8 @@ export const createLink = async (
   const name = input.name ?? fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
 
+  if (input.metadata?.image) assertValidImageInput(input.metadata.image);
+
   // Create link without tags field
   const { tags, ...linkData } = input;
   const ownership = workspaceOwnership(ctx.workspace);
@@ -551,6 +542,7 @@ export const createLink = async (
           .where(eq(link.id, linkId));
       }
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       log.error(
         { err: error, linkId, action: "create" },
         "failed to upload OG image",
@@ -666,6 +658,7 @@ export const updateLink = async (
         };
       }
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       log.error(
         { err: error, linkId: input.id, action: "update" },
         "failed to upload OG image",
@@ -793,7 +786,7 @@ export const deleteLink = async (
   const metadata = linkToDelete.metadata as { image?: string } | null;
   if (metadata?.image) {
     try {
-      await deleteImage(metadata.image);
+      await deleteImage(ctx.workspace, metadata.image);
     } catch (error) {
       log.error(
         { err: error, linkId: input.id },
@@ -868,7 +861,7 @@ export const bulkDeleteLinks = async (
     const metadata = l.metadata as { image?: string } | null;
     if (metadata?.image) {
       try {
-        await deleteImage(metadata.image);
+        await deleteImage(ctx.workspace, metadata.image);
       } catch (error) {
         log.error(
           { err: error, linkId: l.id },
@@ -1605,20 +1598,49 @@ export const verifyLinkPassword = async (
     return null;
   }
 
-  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
-  // x-forwarded-for is a comma-separated proxy chain; the left-most token is
-  // the original client. Hashing the whole header instead would count the
-  // same visitor as distinct whenever the proxy chain changes.
-  const clientIp = (ctx.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
-  const ipHash = hashIp(clientIp);
+  // A correct password is not an access grant. This procedure is callable with
+  // nothing but an id and the password, so it has to re-apply the same policy
+  // the redirect path enforces — otherwise a visitor keeps resolving a link the
+  // owner has since blocked, disabled, expired, or geo-restricted.
+  if (link.blocked) {
+    return { url: `/blocked/${link.id}`, alias: link.alias, verificationToken: null };
+  }
 
-  const tokenIssue = link.url
-    ? await issueVerifiedClickToken(link, link.url)
+  const cacheKey = buildCacheKey(link.domain, link.alias ?? "");
+  if (await checkLinkExpiration(link, cacheKey)) {
+    return { url: `/expired/${link.id}`, alias: link.alias, verificationToken: null };
+  }
+
+  const linkGeoRules = await ctx.db.query.geoRule.findMany({
+    where: eq(geoRule.linkId, link.id),
+    orderBy: [asc(geoRule.priority)],
+  });
+  // Same geo source the redirect path uses; matchGeoRules expects a country
+  // code (not the display name analytics records).
+  const geoResult = matchGeoRules(linkGeoRules, getRequestGeo().country ?? null);
+
+  if (geoResult.matched && geoResult.action === "block") {
+    const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
+    return {
+      url: `/blocked/${link.id}${geoParam}`,
+      alias: link.alias,
+      verificationToken: null,
+    };
+  }
+
+  const destination = geoResult.matched ? geoResult.destination : link.url;
+
+  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+  const ipHash = hashIp(getClientIp(ctx.headers) ?? "");
+
+  const tokenIssue = destination
+    ? await issueVerifiedClickToken(link, destination)
     : null;
 
   await ctx.db.insert(linkVisit).values({
     linkId: link.id,
     ...deviceDetails,
+    matchedGeoRuleId: geoResult.matched ? geoResult.ruleId : null,
     visitId: tokenIssue?.visitId ?? null,
   });
 
@@ -1631,7 +1653,7 @@ export const verifyLinkPassword = async (
   void runBackgroundTask(checkAndFireMilestones(link.id, link.userId));
 
   return {
-    url: link.url,
+    url: destination,
     alias: link.alias,
     verificationToken: tokenIssue?.verificationToken ?? null,
   };
@@ -1752,14 +1774,6 @@ export const exportAllUserLinks = async (ctx: WorkspaceTRPCContext) => {
         eq(table.isBioLink, false),
       ),
   });
-};
-
-export const checkPresenceOfVercelHeaders = async (ctx: PublicTRPCContext) => {
-  return {
-    headers: ctx.headers,
-    countryHeader: ctx.headers.get("x-vercel-ip-country"),
-    cityHeader: ctx.headers.get("x-vercel-ip-city"),
-  };
 };
 
 export const toggleArchive = async (

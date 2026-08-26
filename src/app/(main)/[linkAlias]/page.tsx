@@ -30,16 +30,14 @@ const DEFAULT_DOMAIN = DEFAULT_PLATFORM_DOMAIN;
 
 const cleanUrl = (url: string) => url.replace(/^(https?:\/\/)?(www\.)?/, "");
 
-// Trust the incoming host on any deployed platform (Vercel or Cloudflare);
-// local dev, the staging host, and platform preview hosts (*.vercel.app,
-// *.workers.dev) resolve against the default domain. The old check gated on
-// VERCEL_URL, which made every Worker request resolve as the default domain.
+// Trust the incoming host; local dev, the staging host, and *.workers.dev
+// preview hosts resolve against the default domain.
 const getDomain = (incomingDomain: string | null): string => {
   if (!incomingDomain) return DEFAULT_DOMAIN;
   const host = incomingDomain.split(":")[0] ?? incomingDomain;
   if (host.includes("localhost")) return DEFAULT_DOMAIN;
   if (host === process.env.STAGING_DOMAIN) return DEFAULT_DOMAIN;
-  if (host.endsWith(".vercel.app") || host.endsWith(".workers.dev")) return DEFAULT_DOMAIN;
+  if (host.endsWith(".workers.dev")) return DEFAULT_DOMAIN;
   return host;
 };
 
@@ -128,7 +126,7 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
 
   // Full resolution: geo rules, expiration, click recording, verified-click
   // tokens — the pipeline the pre-OpenNext middleware used to run.
-  const geo = getRequestGeo(headersList);
+  const geo = getRequestGeo();
   const resolution = await resolveShortLink({
     domain,
     alias,

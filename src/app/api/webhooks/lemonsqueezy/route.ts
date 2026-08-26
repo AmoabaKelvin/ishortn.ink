@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { Resend } from "resend";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
@@ -10,10 +10,13 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
 
+import { eventIsBehindProvider } from "./reconcile";
+
 import type {
   LemonsqueezySubscriptionAttributes,
   LemonsqueezyWebhookPayload,
 } from "@/lib/types/lemonsqueezy";
+import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const log = logger.child({ webhook: "lemonsqueezy" });
@@ -72,6 +75,93 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     // payment data
     const cardBrand = lemonsqueezySubscription.card_brand;
     const cardLastFour = lemonsqueezySubscription.card_last_four;
+    const providerUpdatedAt = new Date(lemonsqueezySubscription.updated_at);
+
+    // A malformed timestamp would poison the ordering marker on a billing row
+    // and make every later comparison meaningless, so refuse the delivery.
+    if (Number.isNaN(providerUpdatedAt.getTime())) {
+      log.error(
+        { event: event_name, subscriptionId, userId },
+        "missing or invalid updated_at on subscription payload",
+      );
+      return;
+    }
+
+    // Deliveries can arrive out of order or be replayed. Every event must
+    // therefore name the subscription it is about and be newer than the event
+    // we last applied — otherwise a stale event for a cancelled subscription
+    // can revoke the row a newer subscription now owns.
+    const existing = await db.query.subscription.findFirst({
+      where: eq(subscription.userId, userId),
+      columns: { subscriptionId: true, providerUpdatedAt: true },
+    });
+
+    let isStale = false;
+
+    if (existing?.providerUpdatedAt) {
+      isStale = existing.providerUpdatedAt >= providerUpdatedAt;
+    } else if (existing) {
+      // A row without a marker accepts the first event it sees, which may be a
+      // retry of an old one. Check that event against the provider's current
+      // state before letting it become the baseline.
+      try {
+        isStale = await eventIsBehindProvider(subscriptionId, providerUpdatedAt);
+      } catch (error) {
+        log.error(
+          { event: event_name, subscriptionId, userId, error },
+          "could not reconcile legacy subscription row with provider; dropping event",
+        );
+        return;
+      }
+    }
+
+    // MySQL's ON DUPLICATE KEY UPDATE takes no WHERE clause, and the guarded
+    // updates below let a markerless row through, so decide here for every
+    // event rather than relying on the predicate.
+    if (isStale) {
+      log.warn(
+        {
+          event: event_name,
+          subscriptionId,
+          userId,
+          storedSubscriptionId: existing?.subscriptionId ?? null,
+        },
+        "ignoring event older than stored or provider state",
+      );
+      return;
+    }
+
+    const currentSubscription = and(
+      eq(subscription.userId, userId),
+      eq(subscription.subscriptionId, subscriptionId),
+      or(
+        isNull(subscription.providerUpdatedAt),
+        lt(subscription.providerUpdatedAt, providerUpdatedAt),
+      ),
+    );
+
+    /**
+     * Guarded updates match nothing when the event is stale or names a
+     * subscription we no longer hold. Both are expected, but so is a row whose
+     * subscriptionId was never populated — log rather than fail silently.
+     */
+    const warnIfNoRowMatched = (result: MySqlRawQueryResult) => {
+      if (result[0]!.affectedRows > 0) return;
+      log.warn(
+        {
+          event: event_name,
+          subscriptionId,
+          userId,
+          storedSubscriptionId: existing?.subscriptionId ?? null,
+          reason: !existing
+            ? "no subscription row for user"
+            : existing.subscriptionId !== subscriptionId
+              ? "event names a different subscription"
+              : "event older than stored state",
+        },
+        "subscription webhook matched no rows",
+      );
+    };
 
     if (event_name === "subscription_created") {
       const user = await db.query.user.findFirst({
@@ -103,6 +193,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
           renewsAt: new Date(renewsAt),
           createdAt: new Date(createdAt),
           endsAt: endsAt ? new Date(endsAt) : null,
+          providerUpdatedAt,
         })
         .onDuplicateKeyUpdate({
           // A returning customer already has a row, so refresh the full
@@ -121,6 +212,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
             cardLastFour,
             renewsAt: new Date(renewsAt),
             endsAt: endsAt ? new Date(endsAt) : null,
+            providerUpdatedAt,
           },
         });
 
@@ -142,41 +234,50 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     } else if (event_name === "subscription_updated") {
       // handle subscription updated. Sent when a subscription is updated
 
-      await db
-        .update(subscription)
-        .set({
-          status,
-          plan,
-          billingInterval,
-          variantId,
-          productId,
-          renewsAt: renewsAt ? new Date(renewsAt) : null,
-          endsAt: endsAt ? new Date(endsAt) : null,
-          cardBrand,
-          cardLastFour,
-        })
-        .where(eq(subscription.userId, userId));
+      warnIfNoRowMatched(
+        await db
+          .update(subscription)
+          .set({
+            status,
+            plan,
+            billingInterval,
+            variantId,
+            productId,
+            renewsAt: renewsAt ? new Date(renewsAt) : null,
+            endsAt: endsAt ? new Date(endsAt) : null,
+            cardBrand,
+            cardLastFour,
+            providerUpdatedAt,
+          })
+          .where(currentSubscription),
+      );
     } else if (event_name === "subscription_cancelled") {
       // Keep the plan/variant intact — a cancelled subscription stays entitled
       // until endsAt. resolvePlan() drops it to free once that date passes.
-      await db
-        .update(subscription)
-        .set({
-          status,
-          endsAt: endsAt ? new Date(endsAt) : null,
-        })
-        .where(eq(subscription.userId, userId));
+      warnIfNoRowMatched(
+        await db
+          .update(subscription)
+          .set({
+            status,
+            endsAt: endsAt ? new Date(endsAt) : null,
+            providerUpdatedAt,
+          })
+          .where(currentSubscription),
+      );
     } else if (event_name === "subscription_expired") {
-      await db
-        .update(subscription)
-        .set({
-          status,
-          plan: "free",
-          variantId: 0,
-          productId: 0,
-          endsAt: new Date(), // set endsAt to now to indicate the subscription has ended
-        })
-        .where(eq(subscription.userId, userId));
+      warnIfNoRowMatched(
+        await db
+          .update(subscription)
+          .set({
+            status,
+            plan: "free",
+            variantId: 0,
+            productId: 0,
+            endsAt: new Date(), // set endsAt to now to indicate the subscription has ended
+            providerUpdatedAt,
+          })
+          .where(currentSubscription),
+      );
     } else if (event_name === "order_created") {
       // handle order created
     }

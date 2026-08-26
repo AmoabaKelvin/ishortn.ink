@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { safeFetch } from "@/server/lib/ssrf";
 
 const log = logger.child({ component: "is-iframeable" });
 
@@ -20,26 +21,23 @@ export async function isIframeable({
   requestDomain?: string;
 }): Promise<boolean> {
   try {
-    // Validate URL format
-    const parsedUrl = new URL(url);
-    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      return false;
-    }
-
     // Fetch with a timeout to avoid hanging
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    const res = await fetch(url, {
+    // safeFetch re-checks every redirect hop, so a public URL can't bounce the
+    // request onto loopback, a private range, or the metadata endpoint.
+    const res = await safeFetch(url, {
       method: "GET",
       signal: controller.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; iShortn/1.0; +https://ishortn.ink)",
       },
-      redirect: "follow",
     });
 
     clearTimeout(timeoutId);
+
+    if (!res) return false;
 
     // Check Content-Security-Policy header for frame-ancestors
     const cspHeader = res.headers.get("content-security-policy");

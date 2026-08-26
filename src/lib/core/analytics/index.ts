@@ -2,6 +2,7 @@ import { UAParser } from "ua-parser-js";
 
 import { env } from "@/env.mjs";
 import { LOCAL_DEVELOPMENT_GEOLOCATION_DATA } from "@/lib/constants/app";
+import { getClientIp } from "@/lib/platform";
 import { resolveDeviceType } from "@/lib/utils/device-type";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -10,25 +11,30 @@ import type { GeolocationAPIResponseType } from "./types";
 
 const getGeolocationDetailsFromAPI = async (ip: string) => {
   const geolocationApiUrl = `https://api.findip.net/ipHere/?token=${env.GEOLOCATION_API_KEY}`;
-  const response = await fetch(geolocationApiUrl.replace("ipHere", ip));
-  const data = (await response.json()) as GeolocationAPIResponseType;
+  // A lookup failure must not fail the click it decorates.
+  try {
+    const response = await fetch(geolocationApiUrl.replace("ipHere", ip));
+    const data = (await response.json()) as Partial<GeolocationAPIResponseType>;
 
-  return {
-    city: data.city.names.en,
-    country: data.country.names.en,
-    continent: data.continent.names.en,
-  };
+    return {
+      city: data.city?.names?.en,
+      country: data.country?.names?.en,
+      continent: data.continent?.names?.en,
+    };
+  } catch {
+    return {};
+  }
 };
 
 const getGeolocationDetails = async (ip: string) => {
-  const geolocationDetails = process.env.VERCEL
+  const geolocationDetails = process.env.NODE_ENV === "production"
     ? await getGeolocationDetailsFromAPI(ip)
     : LOCAL_DEVELOPMENT_GEOLOCATION_DATA;
 
   return {
     city: geolocationDetails?.city ?? "Unknown",
     country: geolocationDetails?.country ?? "Unknown",
-    continent: geolocationDetails.continent ?? "Unknown",
+    continent: geolocationDetails?.continent ?? "Unknown",
   };
 };
 
@@ -47,21 +53,10 @@ const identifyRequestingDevice = async (headers: Headers) => {
   };
 };
 
-const getUserIP = (headers: Headers) => {
-  const xForwardedFor = headers.get("x-forwarded-for");
-  const realIp = headers.get("x-real-ip");
-
-  if (xForwardedFor) {
-    return xForwardedFor.split(",")[0]?.trim();
-  }
-
-  return realIp?.trim() ?? "127.0.0.1";
-};
-
 export const retrieveDeviceAndGeolocationData = async (headers: Headers) => {
   const [deviceDetails, geolocationDetails] = await Promise.all([
     identifyRequestingDevice(headers),
-    getGeolocationDetails(getUserIP(headers)!),
+    getGeolocationDetails(getClientIp(headers) ?? "127.0.0.1"),
   ]);
 
   return {

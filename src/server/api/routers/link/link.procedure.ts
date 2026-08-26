@@ -41,17 +41,6 @@ export const linkRouter = createTRPCRouter({
       return services.getLink(ctx, input);
     }),
 
-  getLinkByAlias: publicProcedure
-    .input(
-      z.object({
-        alias: z.string(),
-        domain: z.string(),
-      })
-    )
-    .query(({ input }) => {
-      return services.getLinkByAlias(input);
-    }),
-
   create: workspaceProcedure
     .input(inputs.createLinkSchema)
     .mutation(({ ctx, input }) => {
@@ -156,10 +145,6 @@ export const linkRouter = createTRPCRouter({
 
   exportUserLinks: workspaceProcedure.mutation(async ({ ctx }) => {
     return services.exportAllUserLinks(ctx);
-  }),
-
-  checkVercelHeaders: publicProcedure.query(async ({ ctx }) => {
-    return services.checkPresenceOfVercelHeaders(ctx);
   }),
 
   stats: workspaceProcedure.query(async ({ ctx }) => {

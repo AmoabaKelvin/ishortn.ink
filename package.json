@@ -59,7 +59,6 @@
     "@trpc/server": "^10.45.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/react-simple-maps": "^3.0.6",
-    "@vercel/functions": "^1.5.2",
     "ai": "^6.0.116",
     "bcryptjs": "^2.4.3",
     "caniuse-lite": "^1.0.30001756",
@@ -77,7 +76,7 @@
     "lucide-react": "^0.414.0",
     "mysql2": "^3.13.0",
     "nanoid": "^5.0.7",
-    "next": "16.3.0",
+    "next": "16.3.3",
     "next-themes": "^0.2.1",
     "next-view-transitions": "^0.3.4",
     "pino": "^10.3.1",
@@ -135,6 +134,6 @@
     "@types/react-dom": "19.2.3"
   },
   "optionalDependencies": {
-    "sharp": "0.34.5"
+    "sharp": "0.35.3"
   }
 }

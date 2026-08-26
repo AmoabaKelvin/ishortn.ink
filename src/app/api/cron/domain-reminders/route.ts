@@ -9,9 +9,9 @@ const log = logger.child({ job: "domain-reminders" });
  * Cron job endpoint to send reminder emails for misconfigured domains.
  *
  * This endpoint requires API key authentication via the CRON_SECRET environment variable.
- * Vercel Cron automatically sends GET requests with the Authorization header.
+ * The Worker's scheduled handler sends GET requests with the Authorization header.
  *
- * Schedule: 0 9 * * * (daily at 9 AM UTC) - configured in vercel.json
+ * Schedule: 0 9 * * * (daily at 9 AM UTC) - configured in wrangler.jsonc
  *
  * Environment variable required:
  * - CRON_SECRET: A secure random string used to authenticate cron requests
@@ -52,7 +52,7 @@ function validateApiKey(request: Request): boolean {
 }
 
 /**
- * GET - Run the reminder job (Vercel Cron sends GET requests)
+ * GET - Run the reminder job (the scheduled handler sends GET requests)
  */
 export async function GET(request: Request) {
   if (!validateApiKey(request)) {

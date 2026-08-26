@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import { env } from "@/env.mjs";
+
 import { resolveBioTheme } from "./theme";
 
 import type { BioPageTheme } from "@/server/db/schema";
@@ -16,19 +18,36 @@ type OgPage = {
 } | null;
 
 /**
+ * Only render an image source we host. next/og resolves `src` server-side, so a
+ * stored value pointing anywhere else would turn this public route into a
+ * request the deployment makes from inside its own network. Rows written before
+ * that was enforced at input time are dropped here.
+ */
+function renderableSource(value: string | null): string | null {
+  if (!value) return null;
+  if (value.startsWith("data:image/")) return value;
+
+  const publicUrl = env.R2_PUBLIC_URL;
+  return publicUrl && value.startsWith(`${publicUrl}/`) ? value : null;
+}
+
+/**
  * Renders the social-share (OG) image for a bio page. If the owner set a Pro
  * custom social image, that's used full-bleed; otherwise an image is generated
  * from the page's avatar, name, handle, and theme. Shared by the /p/[slug] and
  * custom-domain opengraph-image routes so they can't drift.
  */
 export function bioOgImageResponse(page: OgPage, slug: string): ImageResponse {
-  if (page?.socialImageUrl) {
+  const socialImage = renderableSource(page?.socialImageUrl ?? null);
+  const avatar = renderableSource(page?.avatarUrl ?? null);
+
+  if (socialImage) {
     return new ImageResponse(
       (
         <div style={{ display: "flex", width: "100%", height: "100%" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={page.socialImageUrl}
+            src={socialImage}
             alt=""
             width={BIO_OG_SIZE.width}
             height={BIO_OG_SIZE.height}
@@ -64,10 +83,10 @@ export function bioOgImageResponse(page: OgPage, slug: string): ImageResponse {
             : { backgroundColor: t.backgroundCss }),
         }}
       >
-        {page?.avatarUrl ? (
+        {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={page.avatarUrl}
+            src={avatar}
             alt=""
             width={180}
             height={180}

@@ -26,6 +26,9 @@ export async function POST(request: Request) {
 
   const parsedData = input.data as ShortenLinkInput;
   const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
+  if (!requestedDomain) {
+    return new Response("Domain not available for this API key", { status: 403 });
+  }
   if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, requestedDomain))) {
     return new Response("Alias already exists", { status: 400 });
   }

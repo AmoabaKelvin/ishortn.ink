@@ -5,8 +5,12 @@ import { db } from "@/server/db";
 import { customDomain, team, user } from "@/server/db/schema";
 import { sendDomainReminderEmail } from "@/server/lib/notifications/domain-reminder";
 
-import { buildVerificationChallenges, getCustomHostname, mapStatus } from "./cloudflare";
-import { isDomainActiveOnVercel } from "./vercel-legacy";
+import {
+  buildVerificationChallenges,
+  getCustomHostname,
+  mapStatus,
+  wwwFallbackActive,
+} from "./cloudflare";
 
 import type { CloudflareCustomHostname } from "./cloudflare";
 
@@ -15,32 +19,23 @@ const log = logger.child({ component: "domain-reminder" });
 // Reminder throttle: don't send more than once per 7 days
 const REMINDER_INTERVAL_DAYS = 7;
 
-/**
- * A domain is healthy when its Cloudflare custom hostname is fully active, or —
- * during the dual-run window — when it is still verified and configured on Vercel.
- */
 async function checkDomainHealth(
   domain: string,
 ): Promise<{ healthy: boolean; hostname: CloudflareCustomHostname | null }> {
   const hostname = await getCustomHostname(domain);
-
-  if (hostname && mapStatus(hostname) === "active") {
-    return { healthy: true, hostname };
-  }
-
-  const activeOnVercel = await isDomainActiveOnVercel(domain);
+  const healthy =
+    (!!hostname && mapStatus(hostname) === "active") || (await wwwFallbackActive(domain));
 
   log.debug(
     {
       domain,
       cloudflareStatus: hostname?.status ?? "not_found",
       sslStatus: hostname?.ssl?.status ?? "not_found",
-      activeOnVercel,
     },
     "domain health check result",
   );
 
-  return { healthy: activeOnVercel, hostname };
+  return { healthy, hostname };
 }
 
 interface ReminderResult {
@@ -117,9 +112,8 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
     const domainName = domainRecord.domain ?? "unknown";
 
     try {
-      // First, verify the domain is actually unhealthy (not active on Cloudflare
-      // or legacy Vercel). This prevents sending emails to users who have already
-      // fixed their domain configuration
+      // First, verify the domain is actually unhealthy. This prevents sending
+      // emails to users who have already fixed their domain configuration
       const { healthy, hostname } = await checkDomainHealth(domainName);
 
       if (healthy) {
@@ -175,7 +169,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
       }
 
       // Build the current Cloudflare DNS instructions rather than reusing stored
-      // (possibly Vercel-era) challenges
+      // challenges
       const challenges = buildVerificationChallenges(domainName, hostname);
 
       // Calculate days misconfigured

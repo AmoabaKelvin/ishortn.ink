@@ -13,7 +13,7 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
-import { deleteImage, uploadImage } from "@/server/lib/storage";
+import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   insertHiddenTrackingLink,
   prepareHiddenTrackingLink,
@@ -150,6 +150,8 @@ export const saveQrCodeImage = userFacing(
       });
     }
 
+    assertValidImageInput(input.qrCodeBase64);
+
     // Persist base64 immediately so we have a fallback
     await ctx.db
       .update(qrcode)
@@ -173,6 +175,7 @@ export const saveQrCodeImage = userFacing(
         return imageUrl;
       }
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       log.error({ err: error, qrCodeId: input.id }, "failed to upload QR code image to R2");
     }
 
@@ -272,7 +275,7 @@ export const deleteQrCode = userFacing(
     // Delete QR code image from R2 if present
     if (qrCode.qrCode) {
       try {
-        await deleteImage(qrCode.qrCode);
+        await deleteImage(ctx.workspace, qrCode.qrCode);
       } catch (error) {
         log.error({ err: error, qrCodeId: id }, "failed to delete QR code image from R2");
       }
@@ -414,6 +417,8 @@ export const createQrPreset = userFacing(
   async (ctx: WorkspaceTRPCContext, input: QRPresetCreateInput) => {
     const ownership = workspaceOwnership(ctx.workspace);
 
+    if (input.logoImage) assertValidImageInput(input.logoImage);
+
     const insertResult = await ctx.db.insert(qrPreset).values({
       name: input.name,
       userId: ownership.userId ?? "",
@@ -453,6 +458,7 @@ export const createQrPreset = userFacing(
             .where(eq(qrPreset.id, insertedId));
         }
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         log.error(
           { err: error, presetId: insertedId, action: "create" },
           "failed to upload logo image to R2",
@@ -499,7 +505,7 @@ export const deleteQrPreset = userFacing(
     // Delete logo image from R2 if present
     if (preset.logoImage) {
       try {
-        await deleteImage(preset.logoImage);
+        await deleteImage(ctx.workspace, preset.logoImage);
       } catch (error) {
         log.error(
           { err: error, presetId: id, action: "delete-preset" },
@@ -546,7 +552,7 @@ export const updateQrPreset = userFacing(
       logoImageUrl = null;
       if (preset.logoImage) {
         try {
-          await deleteImage(preset.logoImage);
+          await deleteImage(ctx.workspace, preset.logoImage);
         } catch (error) {
           log.error(
             { err: error, presetId: input.id, action: "remove-logo" },
@@ -568,7 +574,7 @@ export const updateQrPreset = userFacing(
         // Delete old logo from R2 if it's being replaced
         if (preset.logoImage && preset.logoImage !== logoImageUrl) {
           try {
-            await deleteImage(preset.logoImage);
+            await deleteImage(ctx.workspace, preset.logoImage);
           } catch (error) {
             log.error(
               { err: error, presetId: input.id, action: "replace-logo" },
@@ -577,6 +583,7 @@ export const updateQrPreset = userFacing(
           }
         }
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         log.error(
           { err: error, presetId: input.id, action: "update-preset" },
           "failed to upload logo image to R2",
