@@ -1,4 +1,4 @@
-import { aggregateVisits } from "@/lib/core/analytics";
+import { aggregateVisits, mergeArchivedClicks, summarizeArchived } from "@/lib/core/analytics";
 import { db } from "@/server/db";
 
 import {
@@ -50,7 +50,16 @@ export async function GET(request: NextRequest, props: { params: Promise<{ alias
     return new Response("Unauthorized", { status: 401 });
   }
 
+  const summaries = await db.query.linkVisitDailySummary.findMany({
+    where: (table, { eq }) => eq(table.linkId, link.id),
+  });
+  const archived = summarizeArchived(summaries);
+
   const aggregatedVisits = aggregateVisits(link.linkVisits, link.uniqueLinkVisits);
 
-  return Response.json(aggregatedVisits);
+  return Response.json({
+    ...aggregatedVisits,
+    ...mergeArchivedClicks(aggregatedVisits, archived),
+    totalClicks: aggregatedVisits.totalClicks + archived.clicks,
+  });
 }

@@ -26,7 +26,7 @@ import {
 } from "@/lib/billing/plans";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
+import { retrieveDeviceAndGeolocationData, summarizeArchived } from "@/lib/core/analytics";
 import { logger } from "@/lib/logger";
 import { hashIp } from "@/lib/utils/ip-hash";
 import {
@@ -1126,6 +1126,7 @@ export const getLinkVisits = async (
       isProPlan: userHasPaidPlan,
       geoRules: [],
       previous: null,
+      archived: summarizeArchived([]),
     };
   }
 
@@ -1180,7 +1181,10 @@ export const getLinkVisits = async (
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
 
-  const [totalVisits, uniqueVisits, linkGeoRules, prevCounts] = await Promise.all([
+  const toDateKey = (d: Date) => d.toISOString().split("T")[0]!;
+
+  const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
+    await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { eq, and, gte, lte }) =>
         and(
@@ -1231,12 +1235,40 @@ export const getLinkVisits = async (
             ),
         ])
       : Promise.resolve(null),
+    ctx.db.query.linkVisitDailySummary.findMany({
+      where: (s, { eq, and, gte, lte }) =>
+        and(
+          eq(s.linkId, foundLink.id),
+          gte(s.date, toDateKey(startDate)),
+          lte(s.date, toDateKey(now)),
+        ),
+    }),
+    hasPreviousPeriod
+      ? ctx.db
+          .select({
+            clicks: sum(linkVisitDailySummary.clicks),
+            uniqueClicks: sum(linkVisitDailySummary.uniqueClicks),
+          })
+          .from(linkVisitDailySummary)
+          .where(
+            and(
+              eq(linkVisitDailySummary.linkId, foundLink.id),
+              gte(linkVisitDailySummary.date, toDateKey(prevStart)),
+              lt(linkVisitDailySummary.date, toDateKey(prevEnd)),
+            ),
+          )
+      : Promise.resolve(null),
   ]);
+
+  const archived = summarizeArchived(summaries);
 
   const previous = prevCounts
     ? {
-        total: prevCounts[0][0]?.total ?? 0,
-        unique: prevCounts[1][0]?.value ?? 0,
+        total:
+          (prevCounts[0][0]?.total ?? 0) + (Number(prevSummaries?.[0]?.clicks) || 0),
+        unique:
+          (prevCounts[1][0]?.value ?? 0) +
+          (Number(prevSummaries?.[0]?.uniqueClicks) || 0),
         verified: Number(prevCounts[0][0]?.verified ?? 0),
       }
     : null;
@@ -1251,6 +1283,7 @@ export const getLinkVisits = async (
       isProPlan: userHasPaidPlan,
       geoRules: linkGeoRules,
       previous,
+      archived,
     };
   }
 
@@ -1293,6 +1326,7 @@ export const getLinkVisits = async (
     isProPlan: userHasPaidPlan,
     geoRules: linkGeoRules,
     previous,
+    archived,
   };
 };
 
