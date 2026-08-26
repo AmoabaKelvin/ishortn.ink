@@ -179,3 +179,17 @@ export const mergeArchivedClicks = (
     Object.fromEntries(Object.entries(m).sort(([a], [b]) => a.localeCompare(b)));
   return { clicksPerDate: sortByDate(clicksPerDate), uniqueClicksPerDate: sortByDate(uniqueClicksPerDate) };
 };
+
+export const summarizeArchived = (
+  rows: { date: string; clicks: number; uniqueClicks: number }[],
+): ArchivedClicks =>
+  rows.reduce(
+    (acc, s) => {
+      acc.clicks += s.clicks;
+      acc.uniqueClicks += s.uniqueClicks;
+      acc.clicksPerDate[s.date] = (acc.clicksPerDate[s.date] ?? 0) + s.clicks;
+      acc.uniqueClicksPerDate[s.date] = (acc.uniqueClicksPerDate[s.date] ?? 0) + s.uniqueClicks;
+      return acc;
+    },
+    { clicks: 0, uniqueClicks: 0, clicksPerDate: {}, uniqueClicksPerDate: {} } as ArchivedClicks,
+  );

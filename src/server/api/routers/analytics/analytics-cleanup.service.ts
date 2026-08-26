@@ -35,7 +35,7 @@ const DELETE_BATCH_SIZE = 1000;
 // SQL predicate: user has no active subscription (free tier). An active row
 // whose plan is still the migration default 'free' has not been reconciled
 // with the billing provider yet, so it is not treated as free here.
-const IS_FREE_TIER = sql`(${subscription.id} IS NULL OR ${subscription.status} != 'active')`;
+const IS_FREE_TIER = sql`(${subscription.id} IS NULL OR ${subscription.status} IS NULL OR ${subscription.status} != 'active')`;
 
 /**
  * Clean up old analytics data based on user subscription plan.

@@ -26,7 +26,7 @@ import {
 } from "@/lib/billing/plans";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { retrieveDeviceAndGeolocationData } from "@/lib/core/analytics";
+import { retrieveDeviceAndGeolocationData, summarizeArchived } from "@/lib/core/analytics";
 import { logger } from "@/lib/logger";
 import { hashIp } from "@/lib/utils/ip-hash";
 import {
@@ -1100,13 +1100,6 @@ export const shortenLinkWithAutoAlias = async (
   };
 };
 
-const EMPTY_ARCHIVED = {
-  clicks: 0,
-  uniqueClicks: 0,
-  clicksPerDate: {} as Record<string, number>,
-  uniqueClicksPerDate: {} as Record<string, number>,
-};
-
 export const getLinkVisits = async (
   ctx: WorkspaceTRPCContext,
   input: { id: string; domain: string; range: string },
@@ -1134,7 +1127,7 @@ export const getLinkVisits = async (
       isProPlan: userHasPaidPlan,
       geoRules: [],
       previous: null,
-      archived: EMPTY_ARCHIVED,
+      archived: summarizeArchived([]),
     };
   }
 
@@ -1268,22 +1261,7 @@ export const getLinkVisits = async (
       : Promise.resolve(null),
   ]);
 
-  const archived = summaries.reduce(
-    (acc, s) => {
-      acc.clicks += s.clicks;
-      acc.uniqueClicks += s.uniqueClicks;
-      acc.clicksPerDate[s.date] = (acc.clicksPerDate[s.date] ?? 0) + s.clicks;
-      acc.uniqueClicksPerDate[s.date] =
-        (acc.uniqueClicksPerDate[s.date] ?? 0) + s.uniqueClicks;
-      return acc;
-    },
-    {
-      clicks: 0,
-      uniqueClicks: 0,
-      clicksPerDate: {} as Record<string, number>,
-      uniqueClicksPerDate: {} as Record<string, number>,
-    },
-  );
+  const archived = summarizeArchived(summaries);
 
   const previous = prevCounts
     ? {
