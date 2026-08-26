@@ -456,7 +456,6 @@ export const createLink = async (
   const name = input.name ?? fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
 
-  // Reject a bad image before the row exists; the upload below happens after.
   if (input.metadata?.image) assertValidImageInput(input.metadata.image);
 
   // Create link without tags field

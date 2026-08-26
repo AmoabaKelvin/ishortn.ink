@@ -65,7 +65,6 @@ export function assertValidImageInput(image: string): ParsedImage | null {
   const [, rawFormat, base64Data] = match;
   const format = rawFormat === "jpg" ? "jpeg" : rawFormat!;
 
-  // Check the encoded length first so an oversized payload is never decoded.
   if (base64Data!.length > MAX_BASE64_LENGTH) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Image exceeds maximum size of 2MB." });
   }
