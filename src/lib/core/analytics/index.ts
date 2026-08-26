@@ -152,3 +152,30 @@ export const aggregateVisits = (
     clicksPerModel,
   };
 };
+
+export type ArchivedClicks = {
+  clicks: number;
+  uniqueClicks: number;
+  clicksPerDate: Record<string, number>;
+  uniqueClicksPerDate: Record<string, number>;
+};
+
+// Raw visits older than the retention window are rolled up into daily
+// summaries by the cleanup job. Only counts survive, so per-date series and
+// totals can include them but country/device/referrer breakdowns cannot.
+export const mergeArchivedClicks = (
+  aggregated: { clicksPerDate: Record<string, number>; uniqueClicksPerDate?: Record<string, number> },
+  archived: ArchivedClicks,
+) => {
+  const clicksPerDate = { ...aggregated.clicksPerDate };
+  const uniqueClicksPerDate = { ...(aggregated.uniqueClicksPerDate ?? {}) };
+  for (const [date, n] of Object.entries(archived.clicksPerDate)) {
+    clicksPerDate[date] = (clicksPerDate[date] ?? 0) + n;
+  }
+  for (const [date, n] of Object.entries(archived.uniqueClicksPerDate)) {
+    uniqueClicksPerDate[date] = (uniqueClicksPerDate[date] ?? 0) + n;
+  }
+  const sortByDate = (m: Record<string, number>) =>
+    Object.fromEntries(Object.entries(m).sort(([a], [b]) => a.localeCompare(b)));
+  return { clicksPerDate: sortByDate(clicksPerDate), uniqueClicksPerDate: sortByDate(uniqueClicksPerDate) };
+};

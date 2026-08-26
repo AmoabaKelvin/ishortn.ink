@@ -1,7 +1,7 @@
 import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-react";
 
-import { aggregateVisits } from "@/lib/core/analytics";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { aggregateVisits, mergeArchivedClicks } from "@/lib/core/analytics";
 import { api } from "@/trpc/server";
 
 import UpgradeText from "../_components/upgrade-text";
@@ -47,6 +47,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
     topReferrer,
     isProPlan,
     geoRules,
+    archived,
   } = await api.link.linkVisits.query({
     id: alias,
     domain,
@@ -54,6 +55,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
   });
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
+  const series = mergeArchivedClicks(aggregatedVisits, archived);
   const countryData = aggregatedVisits.clicksPerCountry;
 
   return (
@@ -100,12 +102,12 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
       <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-4">
         <QuickInfoCard
           title="Total Scans"
-          value={totalVisits.length}
+          value={totalVisits.length + archived.clicks}
           icon={<IconClick size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
           title="Unique Scans"
-          value={uniqueVisits.length}
+          value={uniqueVisits.length + archived.uniqueClicks}
           icon={<IconUsers size={16} stroke={1.5} className="text-blue-600" />}
         />
         <QuickInfoCard
@@ -122,8 +124,8 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
 
       <div className="mt-8 md:mt-10">
         <BarChart
-          clicksPerDate={aggregatedVisits.clicksPerDate}
-          uniqueClicksPerDate={aggregatedVisits.uniqueClicksPerDate ?? {}}
+          clicksPerDate={series.clicksPerDate}
+          uniqueClicksPerDate={series.uniqueClicksPerDate}
           className="h-96"
           isProPlan={isProPlan}
           geoRules={geoRules}

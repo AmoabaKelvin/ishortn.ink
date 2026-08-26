@@ -1,7 +1,7 @@
 import { IconClick, IconShieldCheck, IconShieldHalf, IconUsers } from "@tabler/icons-react";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { aggregateVisits } from "@/lib/core/analytics";
+import { aggregateVisits, mergeArchivedClicks } from "@/lib/core/analytics";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/server";
 
@@ -40,7 +40,7 @@ export default async function LinkAnalyticsPage(
   const range = (searchParams?.range ?? "7d") as RangeEnum;
   const domain = (searchParams?.domain as string) ?? DEFAULT_PLATFORM_DOMAIN;
 
-  const { totalVisits, uniqueVisits, referers, isProPlan, geoRules, previous } =
+  const { totalVisits, uniqueVisits, referers, isProPlan, geoRules, previous, archived } =
     await api.link.linkVisits.query({
       id: params.alias,
       domain,
@@ -48,11 +48,14 @@ export default async function LinkAnalyticsPage(
     });
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
+  const series = mergeArchivedClicks(aggregatedVisits, archived);
+  const totalClicks = totalVisits.length + archived.clicks;
+  const uniqueClicks = uniqueVisits.length + archived.uniqueClicks;
   const countryData = aggregatedVisits.clicksPerCountry;
   const verifiedVisits = aggregatedVisits.verifiedClicks;
 
-  const totalGrowth = percentGrowth(totalVisits.length, previous?.total);
-  const uniqueGrowth = percentGrowth(uniqueVisits.length, previous?.unique);
+  const totalGrowth = percentGrowth(totalClicks, previous?.total);
+  const uniqueGrowth = percentGrowth(uniqueClicks, previous?.unique);
   const verifiedGrowth = percentGrowth(verifiedVisits, previous?.verified);
   const verifiedRate = totalVisits.length > 0 ? (verifiedVisits / totalVisits.length) * 100 : 0;
 
@@ -89,13 +92,13 @@ export default async function LinkAnalyticsPage(
       >
         <QuickInfoCard
           title="Total Visits"
-          value={totalVisits.length.toLocaleString()}
+          value={totalClicks.toLocaleString()}
           icon={<IconClick size={14} stroke={1.5} />}
           growth={totalGrowth}
         />
         <QuickInfoCard
           title="Unique Visits"
-          value={uniqueVisits.length.toLocaleString()}
+          value={uniqueClicks.toLocaleString()}
           icon={<IconUsers size={14} stroke={1.5} />}
           growth={uniqueGrowth}
         />
@@ -119,8 +122,8 @@ export default async function LinkAnalyticsPage(
 
       <div className="mt-8 md:mt-10">
         <BarChart
-          clicksPerDate={aggregatedVisits.clicksPerDate}
-          uniqueClicksPerDate={aggregatedVisits.uniqueClicksPerDate ?? {}}
+          clicksPerDate={series.clicksPerDate}
+          uniqueClicksPerDate={series.uniqueClicksPerDate}
           className="h-96"
           isProPlan={isProPlan}
           geoRules={geoRules}

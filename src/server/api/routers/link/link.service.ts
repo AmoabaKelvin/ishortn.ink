@@ -1100,6 +1100,13 @@ export const shortenLinkWithAutoAlias = async (
   };
 };
 
+const EMPTY_ARCHIVED = {
+  clicks: 0,
+  uniqueClicks: 0,
+  clicksPerDate: {} as Record<string, number>,
+  uniqueClicksPerDate: {} as Record<string, number>,
+};
+
 export const getLinkVisits = async (
   ctx: WorkspaceTRPCContext,
   input: { id: string; domain: string; range: string },
@@ -1127,6 +1134,7 @@ export const getLinkVisits = async (
       isProPlan: userHasPaidPlan,
       geoRules: [],
       previous: null,
+      archived: EMPTY_ARCHIVED,
     };
   }
 
@@ -1181,7 +1189,10 @@ export const getLinkVisits = async (
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
 
-  const [totalVisits, uniqueVisits, linkGeoRules, prevCounts] = await Promise.all([
+  const toDateKey = (d: Date) => d.toISOString().split("T")[0]!;
+
+  const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
+    await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { eq, and, gte, lte }) =>
         and(
@@ -1232,12 +1243,55 @@ export const getLinkVisits = async (
             ),
         ])
       : Promise.resolve(null),
+    ctx.db.query.linkVisitDailySummary.findMany({
+      where: (s, { eq, and, gte, lte }) =>
+        and(
+          eq(s.linkId, foundLink.id),
+          gte(s.date, toDateKey(startDate)),
+          lte(s.date, toDateKey(now)),
+        ),
+    }),
+    hasPreviousPeriod
+      ? ctx.db
+          .select({
+            clicks: sum(linkVisitDailySummary.clicks),
+            uniqueClicks: sum(linkVisitDailySummary.uniqueClicks),
+          })
+          .from(linkVisitDailySummary)
+          .where(
+            and(
+              eq(linkVisitDailySummary.linkId, foundLink.id),
+              gte(linkVisitDailySummary.date, toDateKey(prevStart)),
+              lt(linkVisitDailySummary.date, toDateKey(prevEnd)),
+            ),
+          )
+      : Promise.resolve(null),
   ]);
+
+  const archived = summaries.reduce(
+    (acc, s) => {
+      acc.clicks += s.clicks;
+      acc.uniqueClicks += s.uniqueClicks;
+      acc.clicksPerDate[s.date] = (acc.clicksPerDate[s.date] ?? 0) + s.clicks;
+      acc.uniqueClicksPerDate[s.date] =
+        (acc.uniqueClicksPerDate[s.date] ?? 0) + s.uniqueClicks;
+      return acc;
+    },
+    {
+      clicks: 0,
+      uniqueClicks: 0,
+      clicksPerDate: {} as Record<string, number>,
+      uniqueClicksPerDate: {} as Record<string, number>,
+    },
+  );
 
   const previous = prevCounts
     ? {
-        total: prevCounts[0][0]?.total ?? 0,
-        unique: prevCounts[1][0]?.value ?? 0,
+        total:
+          (prevCounts[0][0]?.total ?? 0) + (Number(prevSummaries?.[0]?.clicks) || 0),
+        unique:
+          (prevCounts[1][0]?.value ?? 0) +
+          (Number(prevSummaries?.[0]?.uniqueClicks) || 0),
         verified: Number(prevCounts[0][0]?.verified ?? 0),
       }
     : null;
@@ -1252,6 +1306,7 @@ export const getLinkVisits = async (
       isProPlan: userHasPaidPlan,
       geoRules: linkGeoRules,
       previous,
+      archived,
     };
   }
 
@@ -1294,6 +1349,7 @@ export const getLinkVisits = async (
     isProPlan: userHasPaidPlan,
     geoRules: linkGeoRules,
     previous,
+    archived,
   };
 };
 
