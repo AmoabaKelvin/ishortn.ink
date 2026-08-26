@@ -10,6 +10,8 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
 
+import { eventIsBehindProvider } from "./reconcile";
+
 import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 import type {
   LemonsqueezySubscriptionAttributes,
@@ -94,8 +96,34 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
       columns: { subscriptionId: true, providerUpdatedAt: true },
     });
 
-    const isStale =
+    let isStale =
       !!existing?.providerUpdatedAt && existing.providerUpdatedAt >= providerUpdatedAt;
+
+    // A row without a marker accepts the first event it sees, which may be a
+    // retry of an old one. Check that event against the provider's current
+    // state before letting it become the baseline.
+    if (existing && !existing.providerUpdatedAt) {
+      try {
+        isStale = await eventIsBehindProvider(subscriptionId, providerUpdatedAt);
+      } catch (error) {
+        log.error(
+          { event: event_name, subscriptionId, userId, error },
+          "could not reconcile legacy subscription row with provider; dropping event",
+        );
+        return;
+      }
+    }
+
+    // MySQL's ON DUPLICATE KEY UPDATE takes no WHERE clause, and the guarded
+    // updates below let a markerless row through, so decide here for every
+    // event rather than relying on the predicate.
+    if (isStale) {
+      log.warn(
+        { event: event_name, subscriptionId, userId, storedSubscriptionId: existing?.subscriptionId },
+        "ignoring event older than stored or provider state",
+      );
+      return;
+    }
 
     const currentSubscription = and(
       eq(subscription.userId, userId),
@@ -138,17 +166,6 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
         log.error(
           { event: event_name, subscriptionId, userId },
           "user not found for subscription_created",
-        );
-        return;
-      }
-
-      // MySQL's ON DUPLICATE KEY UPDATE takes no WHERE clause, so a replayed
-      // older create would otherwise overwrite the row a newer subscription
-      // now owns. Decide before writing.
-      if (isStale) {
-        log.warn(
-          { event: event_name, subscriptionId, userId, storedSubscriptionId: existing?.subscriptionId },
-          "ignoring subscription_created older than stored state",
         );
         return;
       }
