@@ -12,11 +12,11 @@ import { subscription } from "@/server/db/schema";
 
 import { eventIsBehindProvider } from "./reconcile";
 
-import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 import type {
   LemonsqueezySubscriptionAttributes,
   LemonsqueezyWebhookPayload,
 } from "@/lib/types/lemonsqueezy";
+import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const log = logger.child({ webhook: "lemonsqueezy" });
@@ -96,13 +96,14 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
       columns: { subscriptionId: true, providerUpdatedAt: true },
     });
 
-    let isStale =
-      !!existing?.providerUpdatedAt && existing.providerUpdatedAt >= providerUpdatedAt;
+    let isStale = false;
 
-    // A row without a marker accepts the first event it sees, which may be a
-    // retry of an old one. Check that event against the provider's current
-    // state before letting it become the baseline.
-    if (existing && !existing.providerUpdatedAt) {
+    if (existing?.providerUpdatedAt) {
+      isStale = existing.providerUpdatedAt >= providerUpdatedAt;
+    } else if (existing) {
+      // A row without a marker accepts the first event it sees, which may be a
+      // retry of an old one. Check that event against the provider's current
+      // state before letting it become the baseline.
       try {
         isStale = await eventIsBehindProvider(subscriptionId, providerUpdatedAt);
       } catch (error) {
@@ -119,7 +120,12 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
     // event rather than relying on the predicate.
     if (isStale) {
       log.warn(
-        { event: event_name, subscriptionId, userId, storedSubscriptionId: existing?.subscriptionId },
+        {
+          event: event_name,
+          subscriptionId,
+          userId,
+          storedSubscriptionId: existing?.subscriptionId ?? null,
+        },
         "ignoring event older than stored or provider state",
       );
       return;

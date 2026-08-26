@@ -80,7 +80,7 @@ export function DomainMigrationGate() {
   // No configured deadline means the move already happened.
   const deadline = migrationDeadline();
   const deadlinePassed = deadline?.passed ?? true;
-  const deadlineLabel = deadline ? `on ${deadline.label}` : "";
+  const onDeadline = deadline ? ` on ${deadline.label}` : "";
 
   return (
     <Dialog open={!dismissed}>
@@ -96,8 +96,8 @@ export function DomainMigrationGate() {
           </DialogTitle>
           <DialogDescription className="text-[13px]">
             {deadlinePassed
-              ? `ishortn now runs on a faster, more reliable network. We shared the move by email and in the app ahead of time, and the old network was switched off${deadlineLabel ? ` ${deadlineLabel}` : ""}. If this is the first you are seeing it, no worries: links on the domains below will work again once their DNS records point to the new network. It is a single record change per domain, and you can verify it right here.`
-              : `ishortn is moving to a faster, more reliable network ${deadlineLabel}. To bring your custom domains along, update their DNS records at your provider. It is a single record change per domain.`}
+              ? `ishortn now runs on a faster, more reliable network. We shared the move by email and in the app ahead of time, and the old network was switched off${onDeadline}. If this is the first you are seeing it, no worries: links on the domains below will work again once their DNS records point to the new network. It is a single record change per domain, and you can verify it right here.`
+              : `ishortn is moving to a faster, more reliable network${onDeadline}. To bring your custom domains along, update their DNS records at your provider. It is a single record change per domain.`}
           </DialogDescription>
         </DialogHeader>
 

@@ -24,13 +24,6 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-const EXTENSION_MAP: Record<string, string> = {
-  png: "png",
-  jpeg: "jpg",
-  gif: "gif",
-  webp: "webp",
-};
-
 /**
  * True when `imageUrl` points at an object this workspace owns in our R2 bucket.
  * Stored image values are user-supplied strings, so anything that is not one of
@@ -117,7 +110,7 @@ export async function uploadImage(
       workspaceId: ownership.teamId?.toString() ?? ownership.userId,
       resourceId: resourceId.toString(),
       workspaceType: ownership.teamId ? "team" : "personal",
-      extension: EXTENSION_MAP[format] || "png",
+      extension: format === "jpeg" ? "jpg" : format,
     });
   } catch (error) {
     log.error({ err: error, imageType, resourceId }, "failed to upload image to R2");

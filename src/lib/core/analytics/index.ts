@@ -53,12 +53,10 @@ const identifyRequestingDevice = async (headers: Headers) => {
   };
 };
 
-const getUserIP = (headers: Headers) => getClientIp(headers) ?? "127.0.0.1";
-
 export const retrieveDeviceAndGeolocationData = async (headers: Headers) => {
   const [deviceDetails, geolocationDetails] = await Promise.all([
     identifyRequestingDevice(headers),
-    getGeolocationDetails(getUserIP(headers)),
+    getGeolocationDetails(getClientIp(headers) ?? "127.0.0.1"),
   ]);
 
   return {

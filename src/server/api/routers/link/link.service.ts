@@ -1612,16 +1612,13 @@ export const verifyLinkPassword = async (
     return { url: `/expired/${link.id}`, alias: link.alias, verificationToken: null };
   }
 
+  const linkGeoRules = await ctx.db.query.geoRule.findMany({
+    where: eq(geoRule.linkId, link.id),
+    orderBy: [asc(geoRule.priority)],
+  });
   // Same geo source the redirect path uses; matchGeoRules expects a country
   // code (not the display name analytics records).
-  const countryCode = getRequestGeo().country ?? null;
-  const geoResult = matchGeoRules(
-    await ctx.db.query.geoRule.findMany({
-      where: eq(geoRule.linkId, link.id),
-      orderBy: [asc(geoRule.priority)],
-    }),
-    countryCode,
-  );
+  const geoResult = matchGeoRules(linkGeoRules, getRequestGeo().country ?? null);
 
   if (geoResult.matched && geoResult.action === "block") {
     const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
@@ -1779,7 +1776,6 @@ export const exportAllUserLinks = async (ctx: WorkspaceTRPCContext) => {
       ),
   });
 };
-
 
 export const toggleArchive = async (
   ctx: WorkspaceTRPCContext,

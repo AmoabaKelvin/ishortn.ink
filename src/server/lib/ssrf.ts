@@ -6,10 +6,6 @@ import net from "node:net";
  * input. Without this, an attacker points the deployment at loopback, RFC1918
  * ranges, or the cloud metadata endpoint and reads the result — or the timing —
  * back out of the response.
- *
- * Only http/https are allowed, and every resolved address must be a public
- * unicast address. Redirects are checked too, so a public URL cannot bounce to
- * an internal one.
  */
 
 /**

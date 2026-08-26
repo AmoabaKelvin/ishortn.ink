@@ -2,7 +2,6 @@ import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, ne, sum } from "drizzle-orm";
 
 import { isSubscriptionEntitled, PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
-import { logger } from "@/lib/logger";
 import { customDomain, link, linkVisit, linkVisitDailySummary, teamMember } from "@/server/db/schema";
 import {
   requirePermission,
@@ -20,8 +19,6 @@ import {
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { CreateCustomDomainInput } from "./domains.input";
-
-const log = logger.child({ component: "domains.service" });
 
 /**
  * True when at least one of the existing claims on a domain sits in a workspace
@@ -109,12 +106,12 @@ export async function addDomainToUserAccount(
   // and land as "active" here with no DNS challenge of our own. Domain sharing is
   // only meant to span workspaces the same person controls, so require an
   // existing claim in one of the caller's workspaces before inheriting state.
-  const foreignClaims = await ctx.db.query.customDomain.findMany({
+  const existingClaims = await ctx.db.query.customDomain.findMany({
     where: eq(customDomain.domain, domain),
     columns: { userId: true, teamId: true },
   });
 
-  if (foreignClaims.length > 0 && !(await callerControlsAClaim(ctx, foreignClaims))) {
+  if (existingClaims.length > 0 && !(await callerControlsAClaim(ctx, existingClaims))) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
