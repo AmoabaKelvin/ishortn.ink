@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 
 import { assertValidImageInput } from "./image-upload.service";
 
@@ -32,8 +32,14 @@ describe("assertValidImageInput", () => {
     ).toThrow("do not match");
   });
 
-  test("rejects an oversized payload from its encoded length", () => {
+  test("rejects an oversized payload before decoding it", () => {
+    const decode = spyOn(Buffer, "from");
     const oversized = `data:image/png;base64,${"A".repeat(3 * 1024 * 1024)}`;
-    expect(() => assertValidImageInput(oversized)).toThrow("maximum size");
+    try {
+      expect(() => assertValidImageInput(oversized)).toThrow("maximum size");
+      expect(decode).not.toHaveBeenCalled();
+    } finally {
+      decode.mockRestore();
+    }
   });
 });

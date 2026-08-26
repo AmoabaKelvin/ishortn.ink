@@ -41,7 +41,7 @@ import {
   setInCache,
 } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
-import { getRequestGeo } from "@/lib/platform";
+import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
 import { checkLinkExpiration } from "@/middlewares/resolve-link";
@@ -1635,11 +1635,7 @@ export const verifyLinkPassword = async (
   const destination = geoResult.matched ? geoResult.destination : link.url;
 
   const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
-  // x-forwarded-for is a comma-separated proxy chain; the left-most token is
-  // the original client. Hashing the whole header instead would count the
-  // same visitor as distinct whenever the proxy chain changes.
-  const clientIp = (ctx.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
-  const ipHash = hashIp(clientIp);
+  const ipHash = hashIp(getClientIp(ctx.headers) ?? "");
 
   const tokenIssue = destination
     ? await issueVerifiedClickToken(link, destination)
