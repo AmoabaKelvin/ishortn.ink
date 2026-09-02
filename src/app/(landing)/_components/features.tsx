@@ -54,9 +54,9 @@ const items: FeatureItem[] = [
     visual: "dynamic-qr",
   },
   {
-    title: "Geotargeting per link",
+    title: "Targeting rules per link",
     body:
-      "Send US visitors to one URL, EU to another, everyone else to a fallback. Country, continent, or block-by-region rules.",
+      "Send US visitors to one URL, EU to another, iOS to the App Store, Android to Play. Country, continent, device, or OS rules.",
     bg: "var(--warm-paper)",
     visual: "geo",
   },

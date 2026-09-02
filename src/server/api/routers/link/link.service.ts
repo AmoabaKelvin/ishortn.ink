@@ -43,8 +43,8 @@ import {
 import { generateShortLink } from "@/lib/core/links";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
-import { checkLinkExpiration } from "@/middlewares/resolve-link";
+import { matchTargetingRules } from "@/lib/core/geo-rules/matcher";
+import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { db } from "@/server/db";
 import {
@@ -388,6 +388,10 @@ export const createLink = async (
     input.password = await bcrypt.hash(input.password, 10);
   }
 
+  if (input.activateAt && !isPaidPlan) {
+    throw new Error("Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.");
+  }
+
   const inputMetaData = input.metadata;
   const metadataValues = Object.values(inputMetaData ?? {});
   const hasUserFilledMetadata = metadataValues.some(
@@ -490,7 +494,7 @@ export const createLink = async (
     // Check plan limits
     if (!canUseGeoRules(plan)) {
       throw new Error(
-        "Geotargeting is only available on Pro and Ultra plans. Please upgrade to use this feature.",
+        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
       );
     }
 
@@ -501,7 +505,7 @@ export const createLink = async (
       geoRulesInput.length > geoLimit
     ) {
       throw new Error(
-        `Your plan allows a maximum of ${geoLimit} geo rules per link. Please upgrade to Ultra for unlimited rules.`,
+        `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
       );
     }
 
@@ -591,6 +595,10 @@ export const updateLink = async (
   if (input.alias && input.alias !== existingLink.alias) {
     const domain = input.domain ?? existingLink.domain;
     await validateAlias(ctx, input.alias, domain, isPaidUser);
+  }
+
+  if (input.activateAt && !isPaidUser) {
+    throw new Error("Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.");
   }
 
   // Check for UTM params - Ultra plan only
@@ -689,7 +697,7 @@ export const updateLink = async (
     if (geoRulesInput.length > 0) {
       if (!canUseGeoRules(workspacePlan)) {
         throw new Error(
-          "Geotargeting is only available on Pro and Ultra plans. Please upgrade to use this feature.",
+          "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
         );
       }
 
@@ -700,7 +708,7 @@ export const updateLink = async (
         geoRulesInput.length > geoLimit
       ) {
         throw new Error(
-          `Your plan allows a maximum of ${geoLimit} geo rules per link. Please upgrade to Ultra for unlimited rules.`,
+          `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
         );
       }
     }
@@ -1644,14 +1652,22 @@ export const verifyLinkPassword = async (
   if (await checkLinkExpiration(link, cacheKey)) {
     return { url: `/expired/${link.id}`, alias: link.alias, verificationToken: null };
   }
+  if (isLinkScheduled(link)) {
+    return { url: `/scheduled/${link.id}`, alias: link.alias, verificationToken: null };
+  }
 
   const linkGeoRules = await ctx.db.query.geoRule.findMany({
     where: eq(geoRule.linkId, link.id),
     orderBy: [asc(geoRule.priority)],
   });
-  // Same geo source the redirect path uses; matchGeoRules expects a country
+  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+  // Same geo source the redirect path uses; the matcher expects a country
   // code (not the display name analytics records).
-  const geoResult = matchGeoRules(linkGeoRules, getRequestGeo().country ?? null);
+  const geoResult = matchTargetingRules(linkGeoRules, {
+    country: getRequestGeo().country ?? null,
+    device: deviceDetails.device,
+    os: deviceDetails.os,
+  });
 
   if (geoResult.matched && geoResult.action === "block") {
     const geoParam = geoResult.ruleId ? `?geo=${geoResult.ruleId}` : "";
@@ -1664,7 +1680,6 @@ export const verifyLinkPassword = async (
 
   const destination = geoResult.matched ? geoResult.destination : link.url;
 
-  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
   const ipHash = hashIp(getClientIp(ctx.headers) ?? "");
 
   const tokenIssue = destination

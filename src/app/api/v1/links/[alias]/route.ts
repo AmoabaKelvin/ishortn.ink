@@ -1,6 +1,8 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
+import { resolvePlan } from "@/lib/billing/plans";
+import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
@@ -26,6 +28,7 @@ const updateLinkSchema = z
       .regex(/^[a-zA-Z0-9-_]+$/, "Alias can only contain alphanumeric characters, dashes, and underscores")
       .optional(),
     expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
+    activatesAt: z.string().datetime({ offset: true }).nullable().optional(),
     expiresAfter: z.number().int().positive().nullable().optional(),
   })
   .strict();
@@ -101,6 +104,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
     url?: string;
     alias?: string;
     disableLinkAfterDate?: Date | null;
+    activateAt?: Date | null;
     disableLinkAfterClicks?: number | null;
   } = {};
 
@@ -121,6 +125,14 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
       ? new Date(parsed.data.expiresAt)
       : null;
   }
+  if (parsed.data.activatesAt !== undefined) {
+    if (parsed.data.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
+      return new Response("Scheduled links are only available on Pro and Ultra plans", { status: 403 });
+    }
+    filteredUpdateData.activateAt = parsed.data.activatesAt
+      ? new Date(parsed.data.activatesAt)
+      : null;
+  }
   if (parsed.data.expiresAfter !== undefined) {
     filteredUpdateData.disableLinkAfterClicks = parsed.data.expiresAfter;
   }
@@ -138,6 +150,13 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
 
     if (!updatedLink) {
       return new Response("Failed to retrieve updated link", { status: 500 });
+    }
+
+    // The redirect path serves from KV for 24h; drop the stale entry (and the
+    // old alias key if it was renamed) so the change takes effect now.
+    await deleteFromCache(buildCacheKey(existingLink.domain, existingLink.alias ?? ""));
+    if (updatedLink.alias !== existingLink.alias) {
+      await deleteFromCache(buildCacheKey(updatedLink.domain, updatedLink.alias ?? ""));
     }
 
     return Response.json(toApiLink(updatedLink));
@@ -189,6 +208,7 @@ function toApiLink(retrievedLink: {
   alias: string | null;
   url: string | null;
   disableLinkAfterDate: Date | null;
+  activateAt: Date | null;
   disableLinkAfterClicks: number | null;
 }) {
   return {
@@ -196,6 +216,7 @@ function toApiLink(retrievedLink: {
     url: retrievedLink.url,
     alias: retrievedLink.alias,
     expiresAt: retrievedLink.disableLinkAfterDate,
+    activatesAt: retrievedLink.activateAt,
     expiresAfter: retrievedLink.disableLinkAfterClicks,
   };
 }

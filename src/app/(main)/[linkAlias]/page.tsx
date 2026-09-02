@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { socialMediaAgents } from "@/lib/constants/app";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
-import { resolveShortLink } from "@/middlewares/resolve-link";
+import { isLinkScheduled, resolveShortLink } from "@/middlewares/resolve-link";
 import { api } from "@/trpc/server";
 
 import CloakedPage from "../cloaked/[url]/page";
@@ -114,6 +114,9 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
     }
     if (link.disableLinkAfterDate && new Date() >= link.disableLinkAfterDate) {
       redirect(`/expired/${link.id}`);
+    }
+    if (isLinkScheduled(link)) {
+      redirect(`/scheduled/${link.id}`);
     }
     if (link.passwordHash) {
       return <LinkPasswordVerification id={link.id} />;

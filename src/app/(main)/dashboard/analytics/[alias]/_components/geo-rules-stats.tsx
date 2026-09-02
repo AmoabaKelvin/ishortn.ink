@@ -59,8 +59,8 @@ export function GeoRulesStats({
 
   return (
     <BarList.BarListTitle
-      title="Geotargeting"
-      description="Traffic routing based on visitor location"
+      title="Targeting"
+      description="Traffic routing based on visitor location or device"
     >
       <BarList records={records} totalClicks={totalClicks} color="purple" />
     </BarList.BarListTitle>

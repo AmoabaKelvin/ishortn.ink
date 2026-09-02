@@ -21,6 +21,7 @@ const GeoRulesForm = dynamic(
     ),
   { ssr: false }
 );
+import { DateTimePicker } from "@/app/(main)/dashboard/_components/date-time-picker";
 import { PlanBadge, SectionToggle } from "@/app/(main)/dashboard/_components/section-toggle";
 import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
 import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
@@ -85,6 +86,7 @@ function getFormDefaults(
       })) ?? [],
     disableLinkAfterClicks: qrData.link?.disableLinkAfterClicks ?? undefined,
     disableLinkAfterDate: qrData.link?.disableLinkAfterDate ?? undefined,
+    activateAt: qrData.link?.activateAt ?? null,
   };
 }
 
@@ -411,6 +413,34 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                     isOpen={isOptionalSettingsOpen}
                     onToggle={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
                   >
+                    <FormField
+                      control={form.control}
+                      name="activateAt"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Go live at</FormLabel>
+                          {!userSubscription.isLoading && !isProOrUltraUser && (
+                            <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              You need to be on a <b>pro plan</b> to schedule QR codes
+                            </FormDescription>
+                          )}
+                          <FormControl>
+                            <DateTimePicker
+                              value={field.value ?? null}
+                              onChange={field.onChange}
+                              placeholder="Immediately"
+                              disabled={!isProOrUltraUser}
+                              className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
+                            />
+                          </FormControl>
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                            Scans show a &quot;not live yet&quot; page until this time. Print early, launch on schedule.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={form.control}
                       name="disableLinkAfterClicks"

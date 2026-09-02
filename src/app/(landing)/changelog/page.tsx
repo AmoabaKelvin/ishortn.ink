@@ -1,5 +1,3 @@
-import { Suspense } from "react";
-
 import type { Metadata } from "next";
 
 import { JsonLd } from "@/components/seo/json-ld";
@@ -8,17 +6,14 @@ import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
-import { ChangelogHero } from "./_components/changelog-hero";
-import { ChangelogTimeline } from "./_components/changelog-timeline";
+import { ChangelogList } from "./_components/changelog-list";
 
 export const metadata: Metadata = {
   title: "Changelog — iShortn",
-  description:
-    "A public log of every iShortn release. New features, improvements, and fixes, written like letters — not press notes.",
+  description: "Every iShortn release in order: new features, improvements, and fixes.",
   openGraph: {
     title: "Changelog — iShortn",
-    description:
-      "A public log of every iShortn release. New features, improvements, and fixes.",
+    description: "Every iShortn release in order: new features, improvements, and fixes.",
     type: "website",
   },
 };
@@ -35,34 +30,21 @@ export default async function ChangelogPage() {
         ])}
       />
       <Header />
-      <span id="top" />
-      <ChangelogHero />
 
-      <Suspense
-        fallback={
-          <div
-            style={{
-              display: "grid",
-              placeItems: "center",
-              padding: "80px 0",
-            }}
-          >
-            <div
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: "50%",
-                border: "2px solid var(--warm-line)",
-                borderTopColor: "var(--warm-accent)",
-                animation: "warm-spin .75s linear infinite",
-              }}
-            />
-            <style>{`@keyframes warm-spin { to { transform: rotate(360deg); } }`}</style>
-          </div>
-        }
-      >
-        <ChangelogTimeline entries={entries} />
-      </Suspense>
+      <section className="cl-header">
+        <div className="warm-container">
+          <h1 className="cl-title">Changelog</h1>
+          <p className="cl-subtitle">
+            Every release in order. New features, improvements, and fixes.
+          </p>
+        </div>
+      </section>
+
+      <section className="cl-section">
+        <div className="warm-container">
+          <ChangelogList entries={entries} />
+        </div>
+      </section>
 
       <Footer />
     </main>

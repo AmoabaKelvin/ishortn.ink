@@ -42,7 +42,7 @@ function getDb(): Database {
   } catch {
     // Not running on Cloudflare — fall through to the Node pool.
   }
-  nodeDb ??= drizzle(connection, { schema, mode: "default" });
+  nodeDb ??= createDb(env.DATABASE_URL, 20);
   return nodeDb;
 }
 
@@ -52,11 +52,4 @@ export const db = new Proxy({} as Database, {
     const value = Reflect.get(instance, prop, instance);
     return typeof value === "function" ? value.bind(instance) : value;
   },
-});
-
-// Backs the Node pool above; the migrate script ends it explicitly. Pools open
-// no sockets until first query, so this stays inert on Workers.
-export const connection = mysql.createPool({
-  uri: env.DATABASE_URL,
-  connectionLimit: 20,
 });

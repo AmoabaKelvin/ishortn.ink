@@ -22,6 +22,7 @@ const GeoRulesForm = dynamic(
     ),
   { ssr: false }
 );
+import { DateTimePicker } from "@/app/(main)/dashboard/_components/date-time-picker";
 import { MilestoneEditor } from "@/app/(main)/dashboard/_components/milestone-form";
 import type { MilestoneEntry } from "@/app/(main)/dashboard/_components/milestone-form";
 import { PlanBadge, SectionToggle } from "@/app/(main)/dashboard/_components/section-toggle";
@@ -118,6 +119,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
       note: linkData.note ?? undefined,
       disableLinkAfterClicks: linkData.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: linkData.disableLinkAfterDate ?? undefined,
+      activateAt: linkData.activateAt ?? null,
       tags: (linkData.tags as string[]) || [],
       metadata: {
         title: metadata?.title ?? undefined,
@@ -755,6 +757,34 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                     isOpen={isOptionalSettingsOpen}
                     onToggle={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
                   >
+                    <FormField
+                      control={form.control}
+                      name="activateAt"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Go live at</FormLabel>
+                          {!userSubscription.isLoading && !isProOrUltraUser && (
+                            <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              You need to be on a <b>pro plan</b> to schedule links
+                            </FormDescription>
+                          )}
+                          <FormControl>
+                            <DateTimePicker
+                              value={field.value ?? null}
+                              onChange={field.onChange}
+                              placeholder="Immediately"
+                              disabled={!isProOrUltraUser}
+                              className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
+                            />
+                          </FormControl>
+                          <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                            Visitors see a &quot;not live yet&quot; page until this time. Clear to go live now.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={form.control}
                       name="disableLinkAfterClicks"

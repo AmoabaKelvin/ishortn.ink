@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { DateTimePicker } from "@/app/(main)/dashboard/_components/date-time-picker";
 import { SOCIAL_PLATFORMS, socialIcon } from "@/components/bio/social-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,8 +28,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/trpc/react";
 import type { RouterOutputs } from "@/trpc/shared";
 import type { BioBlockType } from "@/server/db/schema";
-
-import { DateTimePicker } from "./date-time-picker";
 
 type EditorBlock = RouterOutputs["bioPage"]["get"]["blocks"][number];
 type Social = { platform: string; url: string; key: string };

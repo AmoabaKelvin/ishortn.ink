@@ -1,26 +1,30 @@
 import { z } from "zod";
 
-// Base geo rule schema (without id and linkId)
+import { isValidTargetingValue } from "@/lib/constants/targeting";
+
+// Base rule schema (without id and linkId)
 export const geoRuleBaseSchema = z.object({
-  type: z.enum(["country", "continent"]),
+  type: z.enum(["country", "continent", "device", "os"]),
   condition: z.enum(["in", "not_in"]).default("in"),
-  values: z
-    .array(z.string().length(2).toUpperCase())
-    .min(1, "At least one value is required"),
+  values: z.array(z.string().max(20)).min(1, "At least one value is required"),
   action: z.enum(["redirect", "block"]),
   destination: z.string().url().max(2048).optional().nullable(),
   blockMessage: z.string().max(500).optional().nullable(),
   priority: z.number().int().min(0).default(0),
 });
 
-// Validate that destination is required for redirect actions
-export const geoRuleInputSchema = geoRuleBaseSchema.refine(
-  (data) => data.action !== "redirect" || (data.destination && data.destination.trim() !== ""),
-  {
-    message: "Destination URL is required for redirect actions",
-    path: ["destination"],
-  }
-);
+export const geoRuleInputSchema = geoRuleBaseSchema
+  .refine(
+    (data) => data.values.every((value) => isValidTargetingValue(data.type, value)),
+    { message: "Invalid value for this rule type", path: ["values"] },
+  )
+  .refine(
+    (data) => data.action !== "redirect" || (data.destination && data.destination.trim() !== ""),
+    {
+      message: "Destination URL is required for redirect actions",
+      path: ["destination"],
+    }
+  );
 
 // Schema for creating a geo rule
 export const createGeoRuleSchema = z.object({

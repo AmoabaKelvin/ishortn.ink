@@ -20,6 +20,7 @@ type DomainMigrationEmailProps = {
   cnameTarget: string;
   deadlineText: string;
   dashboardUrl: string;
+  isReminder?: boolean;
 };
 
 export const DomainMigrationEmail = ({
@@ -28,6 +29,7 @@ export const DomainMigrationEmail = ({
   cnameTarget,
   deadlineText,
   dashboardUrl,
+  isReminder,
 }: DomainMigrationEmailProps) => {
   const hasApex = domains.some((d) => d.isApex);
   const subdomainExample = domains.find((d) => !d.isApex)?.domain;
@@ -41,6 +43,14 @@ export const DomainMigrationEmail = ({
         <Container style={container}>
           <Section style={section}>
             <Text style={text}>Hi {recipientName || "there"},</Text>
+
+            {isReminder && (
+              <Text style={text}>
+                We wrote earlier about moving iShortn to a new network. The{" "}
+                {plural ? "records below have" : "record below has"} not changed yet, and the move
+                happens {deadlineText} — here are the details again.
+              </Text>
+            )}
 
             <Text style={text}>
               We are moving iShortn to a faster, more reliable network. To bring your custom{" "}

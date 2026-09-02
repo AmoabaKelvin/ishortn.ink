@@ -9,7 +9,7 @@ type PlanCaps = {
   folderLimit?: number;
   analyticsRangeLimitDays?: number;
   domainLimit?: number;
-  geoRulesLimit?: number; // Max geo rules per link (undefined => unlimited)
+  geoRulesLimit?: number; // Max targeting rules (geo/device/OS) per link (undefined => unlimited)
   milestonesPerLinkLimit?: number; // Max milestones per link (undefined => unlimited)
   bioPageLimit?: number; // Max bio pages (undefined => unlimited)
   campaignLimit?: number; // Max ACTIVE campaigns (archived don't count; undefined => unlimited)
@@ -56,7 +56,7 @@ export const PLAN_CAPS: Record<Plan, PlanCaps> = {
     linksLimit: 30,
     folderLimit: 0,
     analyticsRangeLimitDays: 7,
-    geoRulesLimit: 0, // Geotargeting not available for free plan
+    geoRulesLimit: 0, // Targeting rules not available for free plan
     milestonesPerLinkLimit: 0,
     bioPageLimit: 1,
     campaignLimit: 1,
@@ -66,7 +66,7 @@ export const PLAN_CAPS: Record<Plan, PlanCaps> = {
     linksLimit: 1000,
     folderLimit: 5,
     domainLimit: 3,
-    geoRulesLimit: 3, // Pro plan allows 3 geo rules per link
+    geoRulesLimit: 3, // Pro plan allows 3 targeting rules per link
     milestonesPerLinkLimit: 5,
     bioPageLimit: 3,
     campaignLimit: 2,

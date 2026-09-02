@@ -2,9 +2,12 @@
  * Emails every owner of a custom domain that has not yet moved to Cloudflare.
  *
  * Usage (from repo root, against production env):
- *   bunx dotenv -e .env.production.local -- bun scripts/send-migration-emails.ts             # dry run
- *   bunx dotenv -e .env.production.local -- bun scripts/send-migration-emails.ts --preview <to> [--account <email>]
- *   bunx dotenv -e .env.production.local -- bun scripts/send-migration-emails.ts --send
+ *   set -a; source .env.production.local; set +a
+ *   bun scripts/send-migration-emails.ts             # dry run
+ *   bun scripts/send-migration-emails.ts --preview <to> [--account <email>]
+ *   bun scripts/send-migration-emails.ts --send
+ *
+ * Add --reminder to any of the above to send the follow-up wording instead.
  */
 import mysql from "mysql2/promise";
 import { Resend } from "resend";
@@ -14,7 +17,6 @@ import DomainMigrationEmail from "../src/emails/domain-migration";
 const CNAME_TARGET = process.env.CUSTOM_DOMAIN_CNAME_TARGET ?? "cname.ishortn.ink";
 const DASHBOARD_URL = "https://ishortn.ink/dashboard/domains";
 const FROM = "Kelvin from iShortn <kelvin@ishortn.ink>";
-const SUBJECT = "Action needed: update your custom domain DNS by August 22";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -112,6 +114,7 @@ function buildEmail(recipient: Recipient) {
     cnameTarget: CNAME_TARGET,
     deadlineText: deadlineText(),
     dashboardUrl: DASHBOARD_URL,
+    isReminder: reminder,
   });
 }
 
@@ -119,6 +122,8 @@ const args = process.argv.slice(2);
 const previewIndex = args.indexOf("--preview");
 const accountIndex = args.indexOf("--account");
 const send = args.includes("--send");
+const reminder = args.includes("--reminder");
+const subject = `${reminder ? "Reminder" : "Action needed"}: update your custom domain DNS ${deadlineText()}`;
 
 const rows = await fetchOwners();
 const migrated = await fetchMigratedHostnames();
@@ -140,7 +145,7 @@ if (previewIndex !== -1) {
   const result = await resend.emails.send({
     from: FROM,
     to,
-    subject: `[PREVIEW] ${SUBJECT}`,
+    subject: `[PREVIEW] ${subject}`,
     react: buildEmail(recipient),
   });
   if (result.error) throw new Error(`Resend error: ${result.error.message}`);
@@ -154,7 +159,7 @@ if (previewIndex !== -1) {
     const result = await resend.emails.send({
       from: FROM,
       to: recipient.email,
-      subject: SUBJECT,
+      subject,
       react: buildEmail(recipient),
     });
     if (result.error) {

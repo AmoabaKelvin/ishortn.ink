@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import {
   IconClick,
+  IconClock,
   IconExternalLink,
 } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
@@ -21,6 +22,9 @@ type QRCodeCardProps = {
 export function QRCodeCard({ qr, index }: QRCodeCardProps) {
   const daysSinceCreation = daysSinceDate(new Date(qr.createdAt!));
   const scans = qr.visitCount ?? 0;
+  const activateAt = qr.link?.activateAt;
+  const scheduledFor =
+    activateAt && new Date(activateAt) > new Date() ? new Date(activateAt) : null;
 
   return (
     <motion.div
@@ -84,6 +88,16 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
 
           {/* Right actions */}
           <div className="flex shrink-0 items-center gap-2">
+            {scheduledFor && (
+              <span
+                className="inline-flex items-center gap-1 rounded-md border border-blue-200 dark:border-blue-500/30 px-2 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400"
+                title={`Goes live ${scheduledFor.toLocaleString()}`}
+              >
+                <IconClock size={12} stroke={1.5} />
+                Scheduled
+              </span>
+            )}
+
             <Link
               href={`/dashboard/qrcodes/${qr.id}`}
               className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900"
