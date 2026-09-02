@@ -34,6 +34,7 @@ export const qrcodeUpdateInput = z.object({
   geoRules: z.array(geoRuleInputSchema).optional(),
   disableLinkAfterClicks: z.number().optional(),
   disableLinkAfterDate: z.date().optional(),
+  activateAt: z.date().nullable().optional(),
 });
 
 export type QRCodeUpdateInput = z.infer<typeof qrcodeUpdateInput>;

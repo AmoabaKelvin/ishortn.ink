@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidTargetingValue } from "@/lib/constants/targeting";
+
 // OG image validator: accepts either a URL or a base64 data URI (PNG/JPEG/GIF) under 2MB
 const MAX_OG_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 
@@ -71,13 +73,17 @@ export const listLinksSchema = z.object({
 
 export const geoRuleInputSchema = z
   .object({
-    type: z.enum(["country", "continent"]),
+    type: z.enum(["country", "continent", "device", "os"]),
     condition: z.enum(["in", "not_in"]),
-    values: z.array(z.string().max(5)).min(1, "At least one value is required"),
+    values: z.array(z.string().max(20)).min(1, "At least one value is required"),
     action: z.enum(["redirect", "block"]),
     destination: z.string().url().optional().or(z.literal("")),
     blockMessage: z.string().max(500).optional(),
   })
+  .refine(
+    (data) => data.values.every((value) => isValidTargetingValue(data.type, value)),
+    { message: "Invalid value for this rule type", path: ["values"] },
+  )
   .refine(
     (data) => {
       if (data.action === "redirect") {
@@ -97,6 +103,7 @@ export const createLinkSchema = z.object({
   alias: z.string().optional(),
   disableLinkAfterClicks: z.number().optional(),
   disableLinkAfterDate: z.date().optional(),
+  activateAt: z.date().nullable().optional(),
   password: z.string().optional(),
   domain: z.string().optional(),
   note: z.string().optional(),

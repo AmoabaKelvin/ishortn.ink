@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 
-import type { Link } from "@/server/db/schema";
+import type { GeoRule, Link } from "@/server/db/schema";
 
 const DEFAULT_CACHE_TTL = 60 * 60 * 24;
 // KV rejects expirationTtl below 60 seconds.
@@ -27,9 +27,10 @@ function clampTtl(ttlSeconds: number): number {
   return Math.max(ttlSeconds, MIN_KV_TTL);
 }
 
-type CachedLink = Omit<Link, "createdAt" | "disableLinkAfterDate" | "blockedAt"> & {
+type CachedLink = Omit<Link, "createdAt" | "disableLinkAfterDate" | "activateAt" | "blockedAt"> & {
   createdAt: string | null;
   disableLinkAfterDate: string | null;
+  activateAt: string | null;
   blockedAt: string | null;
 };
 
@@ -52,6 +53,7 @@ async function getFromCache(key: string): Promise<Link | null> {
       disableLinkAfterDate: parsed.disableLinkAfterDate
         ? new Date(parsed.disableLinkAfterDate)
         : null,
+      activateAt: parsed.activateAt ? new Date(parsed.activateAt) : null,
       blockedAt: parsed.blockedAt ? new Date(parsed.blockedAt) : null,
     };
   } catch (_error) {
@@ -141,7 +143,7 @@ const GEO_RULES_CACHE_PREFIX = "geoRules:";
 const geoRuleSchema = z.object({
   id: z.number(),
   linkId: z.number(),
-  type: z.enum(["country", "continent"]),
+  type: z.enum(["country", "continent", "device", "os"]),
   condition: z.enum(["in", "not_in"]),
   values: z.array(z.string()),
   action: z.enum(["redirect", "block"]),
@@ -175,18 +177,7 @@ async function getGeoRulesFromCache(
 
 async function setGeoRulesInCache(
   linkId: number,
-  rules: {
-    id: number;
-    linkId: number;
-    type: "country" | "continent";
-    condition: "in" | "not_in";
-    values: string[];
-    action: "redirect" | "block";
-    destination: string | null;
-    blockMessage: string | null;
-    priority: number;
-    createdAt: Date | null;
-  }[],
+  rules: GeoRule[],
   ttlSeconds: number = GEO_RULES_CACHE_TTL,
 ): Promise<boolean> {
   try {

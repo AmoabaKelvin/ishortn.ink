@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   IconCheck,
   IconChevronDown,
+  IconDeviceDesktop,
+  IconDeviceMobile,
   IconDiamond,
   IconMapPin,
   IconPlus,
@@ -44,6 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DEVICE_TYPES, OS_TYPES, type TargetingRuleType } from "@/lib/constants/targeting";
 import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +61,7 @@ const CONTINENTS = {
 
 type GeoRuleFormData = {
   _tempId?: string;
-  type: "country" | "continent";
+  type: TargetingRuleType;
   condition: "in" | "not_in";
   values: string[];
   action: "redirect" | "block";
@@ -74,15 +77,22 @@ type GeoRulesFormProps = {
   isUnlimited?: boolean;
 };
 
-const countryOptions = Object.entries(COUNTRIES).map(([code, name]) => ({
-  value: code,
-  label: name,
-}));
+const toOptions = (record: Record<string, string>) =>
+  Object.entries(record).map(([value, label]) => ({ value, label }));
 
-const continentOptions = Object.entries(CONTINENTS).map(([code, name]) => ({
-  value: code,
-  label: name,
-}));
+const RULE_OPTIONS: Record<TargetingRuleType, { value: string; label: string }[]> = {
+  country: toOptions(COUNTRIES),
+  continent: toOptions(CONTINENTS),
+  device: toOptions(DEVICE_TYPES),
+  os: toOptions(OS_TYPES),
+};
+
+const RULE_VALUE_LABELS: Record<TargetingRuleType, string> = {
+  country: "Countries",
+  continent: "Continents",
+  device: "Devices",
+  os: "Operating systems",
+};
 
 function MultiSelect({
   options,
@@ -225,7 +235,7 @@ function GeoRuleItem({
   onRemove: () => void;
   disabled?: boolean;
 }) {
-  const options = rule.type === "country" ? countryOptions : continentOptions;
+  const options = RULE_OPTIONS[rule.type];
 
   return (
     <motion.div
@@ -256,7 +266,7 @@ function GeoRuleItem({
           <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Type</label>
           <Select
             value={rule.type}
-            onValueChange={(value: "country" | "continent") =>
+            onValueChange={(value: TargetingRuleType) =>
               onChange({ ...rule, type: value, values: [] })
             }
             disabled={disabled}
@@ -275,6 +285,18 @@ function GeoRuleItem({
                 <div className="flex items-center gap-2">
                   <IconWorld size={14} stroke={1.5} className="text-neutral-400" />
                   Continent
+                </div>
+              </SelectItem>
+              <SelectItem value="device">
+                <div className="flex items-center gap-2">
+                  <IconDeviceMobile size={14} stroke={1.5} className="text-neutral-400" />
+                  Device
+                </div>
+              </SelectItem>
+              <SelectItem value="os">
+                <div className="flex items-center gap-2">
+                  <IconDeviceDesktop size={14} stroke={1.5} className="text-neutral-400" />
+                  Operating system
                 </div>
               </SelectItem>
             </SelectContent>
@@ -303,13 +325,13 @@ function GeoRuleItem({
 
       <div className="space-y-1.5">
         <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-          {rule.type === "country" ? "Countries" : "Continents"}
+          {RULE_VALUE_LABELS[rule.type]}
         </label>
         <MultiSelect
           options={options}
           selected={rule.values}
           onChange={(values) => onChange({ ...rule, values })}
-          placeholder={`Select ${rule.type === "country" ? "countries" : "continents"}...`}
+          placeholder={`Select ${RULE_VALUE_LABELS[rule.type].toLowerCase()}...`}
           disabled={disabled}
         />
       </div>
@@ -435,7 +457,7 @@ export function GeoRulesForm({
       >
         <div className="flex flex-col gap-0.5">
           <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
-            Geotargeting Rules
+            Targeting Rules
             {disabled && (
               <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500 dark:text-neutral-400">
                 <IconDiamond size={12} stroke={1.5} className="text-neutral-400" />
@@ -453,7 +475,7 @@ export function GeoRulesForm({
             )}
           </p>
           <span className="text-[12px] text-neutral-400">
-            Redirect or block visitors based on their location
+            Redirect or block visitors by location, device, or OS
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -487,11 +509,11 @@ export function GeoRulesForm({
                 <div className="rounded-lg border border-dashed border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 p-6 text-center">
                   <IconWorld size={28} stroke={1.5} className="mx-auto text-neutral-300" />
                   <p className="mt-2 text-[13px] text-neutral-600 dark:text-neutral-400">
-                    Upgrade to Pro to use geotargeting rules
+                    Upgrade to Pro to use targeting rules
                   </p>
                   <p className="mt-1 text-[12px] text-neutral-400">
                     Redirect visitors to different URLs or block access based on
-                    their country or continent.
+                    their country, continent, device, or operating system.
                   </p>
                 </div>
               ) : (
@@ -518,11 +540,11 @@ export function GeoRulesForm({
                     >
                       <IconWorld size={28} stroke={1.5} className="mx-auto text-neutral-300" />
                       <p className="mt-2 text-[13px] text-neutral-600 dark:text-neutral-400">
-                        No geotargeting rules yet
+                        No targeting rules yet
                       </p>
                       <p className="mt-1 text-[12px] text-neutral-400">
-                        Add rules to redirect or block visitors based on their
-                        location.
+                        Add rules to redirect or block visitors by location,
+                        device, or operating system.
                       </p>
                     </motion.div>
                   )}

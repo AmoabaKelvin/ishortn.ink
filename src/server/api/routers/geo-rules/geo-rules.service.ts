@@ -34,7 +34,7 @@ async function checkGeoRulesLimit(
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
-        "Geotargeting is only available on Pro and Ultra plans. Please upgrade to use this feature.",
+        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
     });
   }
 
@@ -53,7 +53,7 @@ async function checkGeoRulesLimit(
   if (!isUnlimitedGeoRules(plan) && limit !== undefined && currentCount >= limit) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: `Your plan allows a maximum of ${limit} geo rules per link. Please upgrade to Ultra for unlimited rules.`,
+      message: `Your plan allows a maximum of ${limit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
     });
   }
 

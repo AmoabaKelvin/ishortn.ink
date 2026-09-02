@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { resolvePlan } from "@/lib/billing/plans";
 import { generateShortLink } from "@/lib/core/links";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
@@ -32,6 +33,9 @@ export async function POST(request: Request) {
   if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, requestedDomain))) {
     return new Response("Alias already exists", { status: 400 });
   }
+  if (parsedData.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
+    return new Response("Scheduled links are only available on Pro and Ultra plans", { status: 403 });
+  }
 
   try {
     const newLink = await createNewLink(
@@ -56,6 +60,7 @@ export async function POST(request: Request) {
 const shortenLinkSchema = z.object({
   url: z.string().url(),
   expiresAt: z.string().optional(),
+  activatesAt: z.string().datetime({ offset: true }).optional(),
   expiresAfter: z.number().optional(),
   alias: z.string().optional(),
   password: z.string().optional(),
@@ -74,6 +79,7 @@ const shortenLinkSchema = z.object({
 type ShortenLinkInput = {
   url: string;
   expiresAt?: string;
+  activatesAt?: string;
   expiresAfter?: number;
   alias?: string;
   password?: string;
@@ -136,6 +142,7 @@ async function createNewLink(
     alias: data.alias ?? (await generateShortLink()),
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
+    activateAt: data.activatesAt ? new Date(data.activatesAt) : null,
     passwordHash: data.password,
     domain,
     userId,
@@ -151,6 +158,7 @@ async function createNewLink(
     url: retrievedLink[0]!.url,
     alias: retrievedLink[0]!.alias,
     expiresAt: retrievedLink[0]!.disableLinkAfterDate,
+    activatesAt: retrievedLink[0]!.activateAt,
     expiresAfter: retrievedLink[0]!.disableLinkAfterClicks,
     isProtected: !!retrievedLink[0]!.passwordHash,
   };

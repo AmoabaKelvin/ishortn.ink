@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 
+import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import {
   type Link,
   buildCacheKey,
@@ -7,7 +8,7 @@ import {
   getGeoRulesFromCache,
   setGeoRulesInCache,
 } from "@/lib/core/cache";
-import { matchGeoRules } from "@/lib/core/geo-rules/matcher";
+import { matchTargetingRules, rulesNeedDevice } from "@/lib/core/geo-rules/matcher";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { generateVisitId, signVerifiedClickToken } from "@/lib/utils/verified-click-token";
@@ -53,6 +54,11 @@ export async function checkLinkExpiration(link: Link, cacheKey: string): Promise
   }
 
   return false;
+}
+
+/** True until the owner's scheduled activation instant has passed. */
+export function isLinkScheduled(link: Pick<Link, "activateAt">): boolean {
+  return !!link.activateAt && new Date() < link.activateAt;
 }
 
 type UtmParams = {
@@ -126,6 +132,10 @@ export async function resolveShortLink(
       return { url: `${baseUrl}/expired/${link.id}` };
     }
 
+    if (isLinkScheduled(link)) {
+      return { url: `${baseUrl}/scheduled/${link.id}` };
+    }
+
     // Password-protected links are tracked in verifyLinkPassword after unlock,
     // not here — the visitor hasn't actually reached the destination yet.
     if (link.passwordHash) {
@@ -153,7 +163,12 @@ export async function resolveShortLink(
       }
     }
 
-    const geoResult = matchGeoRules(geoRules, country !== "Unknown" ? country : null);
+    const device = rulesNeedDevice(geoRules) ? await parseDeviceDetails(headers) : null;
+    const geoResult = matchTargetingRules(geoRules, {
+      country: country !== "Unknown" ? country : null,
+      device: device?.device ?? null,
+      os: device?.os ?? null,
+    });
 
     const issueToken = (
       destination: string,

@@ -198,12 +198,12 @@ export function BarChart({
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
-              {chartView === "clicks" ? "Click Analytics" : "Geotargeting Overview"}
+              {chartView === "clicks" ? "Click Analytics" : "Targeting Overview"}
             </h2>
             <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
               {chartView === "clicks"
                 ? "Track your link performance over time"
-                : "See how geo rules affect your traffic"}
+                : "See how targeting rules affect your traffic"}
             </p>
           </div>
 
@@ -256,7 +256,7 @@ export function BarChart({
                         : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
                     )}
                   >
-                    {view === "clicks" ? "Clicks" : "Geo"}
+                    {view === "clicks" ? "Clicks" : "Rules"}
                   </button>
                 ))}
               </div>
@@ -410,7 +410,7 @@ export function BarChart({
                 {/* Summary */}
                 <div className="mt-2 border-t border-neutral-100 dark:border-border/50 pt-3">
                   <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                    <span className="font-medium text-neutral-600 dark:text-neutral-400">{geoStats.redirectCount + geoStats.blockCount}</span> of {total} clicks matched geo rules
+                    <span className="font-medium text-neutral-600 dark:text-neutral-400">{geoStats.redirectCount + geoStats.blockCount}</span> of {total} clicks matched targeting rules
                   </p>
                 </div>
               </div>

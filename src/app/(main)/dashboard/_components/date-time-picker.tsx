@@ -14,9 +14,17 @@ type Props = {
   value: Date | null;
   onChange: (date: Date | null) => void;
   placeholder?: string;
+  className?: string;
+  disabled?: boolean;
 };
 
-export function DateTimePicker({ value, onChange, placeholder = "Pick a date" }: Props) {
+export function DateTimePicker({
+  value,
+  onChange,
+  placeholder = "Pick a date",
+  className,
+  disabled = false,
+}: Props) {
   const [open, setOpen] = useState(false);
   const timeValue = value ? format(value, "HH:mm") : "09:00";
 
@@ -41,9 +49,11 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick a date" }:
         <Button
           type="button"
           variant="outline"
+          disabled={disabled}
           className={cn(
             "w-full justify-start gap-2 font-normal",
             !value && "text-muted-foreground",
+            className,
           )}
         >
           <IconCalendar size={15} stroke={1.5} className="shrink-0" />

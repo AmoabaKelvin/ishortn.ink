@@ -219,6 +219,7 @@ export const link = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow(),
     disableLinkAfterClicks: int("disableLinkAfterClicks"),
     disableLinkAfterDate: datetime("disableLinkAfterDate"),
+    activateAt: datetime("activateAt"), // link is not reachable before this instant
     disabled: boolean("disabled").default(false),
     publicStats: boolean("publicStats").default(false),
     userId: varchar("userId", {
@@ -263,15 +264,15 @@ export const link = mysqlTable(
   }),
 );
 
-// Geo targeting rules for links
+// Targeting rules for links: route or block by visitor location or device
 export const geoRule = mysqlTable(
   "GeoRule",
   {
     id: serial("id").primaryKey(),
     linkId: int("linkId").notNull(),
-    type: mysqlEnum("type", ["country", "continent"]).notNull(),
+    type: mysqlEnum("type", ["country", "continent", "device", "os"]).notNull(),
     condition: mysqlEnum("condition", ["in", "not_in"]).notNull().default("in"),
-    values: json("values").$type<string[]>().notNull(), // Array of ISO country codes or continent codes
+    values: json("values").$type<string[]>().notNull(), // ISO country codes, continent codes, device types, or OS keys
     action: mysqlEnum("action", ["redirect", "block"]).notNull(),
     destination: varchar("destination", { length: 2048 }), // URL for redirect action
     blockMessage: varchar("blockMessage", { length: 500 }), // Custom message for block action

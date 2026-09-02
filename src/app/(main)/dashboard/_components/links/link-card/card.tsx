@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   IconCheck,
+  IconClock,
   IconCopy,
   IconEye,
   IconFolder,
@@ -29,6 +30,8 @@ const Link = ({ link, onTagClick }: LinkProps) => {
   const selected = isSelected(link.id);
 
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
+  const scheduledFor =
+    link.activateAt && new Date(link.activateAt) > new Date() ? new Date(link.activateAt) : null;
   const tags = (link.tags as string[]) || [];
   const folderInfo = link.folder as { id: number; name: string } | null;
   const createdBy = link.createdBy as {
@@ -219,6 +222,16 @@ const Link = ({ link, onTagClick }: LinkProps) => {
             >
               <IconEye size={12} stroke={1.5} />
               Cloaked
+            </span>
+          )}
+
+          {scheduledFor && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md border border-blue-200 dark:border-blue-500/30 px-2 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400"
+              title={`Goes live ${scheduledFor.toLocaleString()}`}
+            >
+              <IconClock size={12} stroke={1.5} />
+              Scheduled
             </span>
           )}
 

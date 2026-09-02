@@ -52,6 +52,7 @@ const GeoRulesForm = dynamic(
   () => import("../../_components/geo-rules-form").then((mod) => mod.GeoRulesForm),
   { ssr: false }
 );
+import { DateTimePicker } from "../../_components/date-time-picker";
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
 import { UtmParamsForm } from "../../_components/utm-params-form";
 import { PlanBadge, SectionToggle } from "../../_components/section-toggle";
@@ -960,6 +961,34 @@ export default function CreateLinkPage() {
               isOpen={isOptionalSettingsOpen}
               onToggle={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
             >
+              <FormField
+                control={form.control}
+                name="activateAt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Go live at</FormLabel>
+                    {!userSubscription.isLoading && !isProUser && (
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                        You need to be on a <b>pro plan</b> to schedule links
+                      </FormDescription>
+                    )}
+                    <FormControl>
+                      <DateTimePicker
+                        value={field.value ?? null}
+                        onChange={field.onChange}
+                        placeholder="Immediately"
+                        disabled={!isProUser}
+                        className="h-9 border-neutral-200 dark:border-border text-[13px]"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      Visitors see a &quot;not live yet&quot; page until this time
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="disableLinkAfterClicks"
