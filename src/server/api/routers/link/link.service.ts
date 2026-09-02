@@ -26,9 +26,9 @@ import {
 } from "@/lib/billing/plans";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { retrieveDeviceAndGeolocationData, summarizeArchived } from "@/lib/core/analytics";
+import { summarizeArchived } from "@/lib/core/analytics";
+import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import { logger } from "@/lib/logger";
-import { hashIp } from "@/lib/utils/ip-hash";
 import {
   assertCanEnableVerifiedClicks,
   issueVerifiedClickToken,
@@ -44,6 +44,7 @@ import { generateShortLink } from "@/lib/core/links";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { matchTargetingRules } from "@/lib/core/geo-rules/matcher";
+import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { db } from "@/server/db";
@@ -62,7 +63,6 @@ import {
   user,
 } from "@/server/db/schema";
 import { mergeCampaignUtm } from "../campaign/utils";
-import { checkAndFireMilestones } from "@/server/lib/milestone-check";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   getAccessibleFolderIds,
@@ -1660,11 +1660,12 @@ export const verifyLinkPassword = async (
     where: eq(geoRule.linkId, link.id),
     orderBy: [asc(geoRule.priority)],
   });
-  const deviceDetails = await retrieveDeviceAndGeolocationData(ctx.headers);
+  const deviceDetails = await parseDeviceDetails(ctx.headers);
   // Same geo source the redirect path uses; the matcher expects a country
   // code (not the display name analytics records).
+  const geo = getRequestGeo();
   const geoResult = matchTargetingRules(linkGeoRules, {
-    country: getRequestGeo().country ?? null,
+    country: geo.country ?? null,
     device: deviceDetails.device,
     os: deviceDetails.os,
   });
@@ -1680,26 +1681,19 @@ export const verifyLinkPassword = async (
 
   const destination = geoResult.matched ? geoResult.destination : link.url;
 
-  const ipHash = hashIp(getClientIp(ctx.headers) ?? "");
-
   const tokenIssue = destination
     ? await issueVerifiedClickToken(link, destination)
     : null;
 
-  await ctx.db.insert(linkVisit).values({
-    linkId: link.id,
-    ...deviceDetails,
-    matchedGeoRuleId: geoResult.matched ? geoResult.ruleId : null,
+  await recordClick({
+    headers: ctx.headers,
+    link,
+    ip: getClientIp(ctx.headers) ?? "",
+    country: geo.country ?? "",
+    city: geo.city ?? "",
+    matchedGeoRuleId: geoResult.matched ? geoResult.ruleId : undefined,
     visitId: tokenIssue?.visitId ?? null,
   });
-
-  await ctx.db
-    .insert(uniqueLinkVisit)
-    .values({ linkId: link.id, ipHash })
-    .onDuplicateKeyUpdate({ set: { linkId: sql`linkId` } });
-
-  // Fire milestone check for password-protected links (recordClick skips these)
-  void runBackgroundTask(checkAndFireMilestones(link.id, link.userId));
 
   return {
     url: destination,

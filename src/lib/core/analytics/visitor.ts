@@ -2,6 +2,10 @@ import { UAParser } from "ua-parser-js";
 
 import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { resolveDeviceType } from "@/lib/utils/device-type";
+import { hashIp } from "@/lib/utils/ip-hash";
+import { isBot } from "@/lib/utils/is-bot";
+
+import type { Visitor } from "./click-event";
 
 // Shared visitor-fingerprinting helpers used by every analytics recorder
 // (link clicks, bio-page views). Keeping these in one place stops the click
@@ -83,4 +87,29 @@ export function parseReferrer(referrer: string | null): string {
   } catch {
     return "unknown";
   }
+}
+
+/** Visitor fields for a click or view event; null for bots. */
+export async function describeVisitor(opts: {
+  headers: Headers;
+  ip: string;
+  country: string;
+  city: string;
+}): Promise<Visitor | null> {
+  const { headers, ip, country, city } = opts;
+  const userAgent = headers.get("user-agent") ?? "";
+  if (userAgent && isBot(userAgent)) return null;
+
+  const deviceDetails = await parseDeviceDetails(headers);
+  const { countryName, continentName, cityName } = resolveGeo(country, city);
+
+  return {
+    ipHash: hashIp(ip && ip !== "undefined" ? ip : "localhost-dev"),
+    ...deviceDetails,
+    referer: parseReferrer(headers.get("referer")),
+    country: countryName,
+    city: cityName,
+    continent: continentName,
+    occurredAt: new Date().toISOString(),
+  };
 }

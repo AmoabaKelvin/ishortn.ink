@@ -17,3 +17,12 @@ export function getClientIp(headers: Headers): string | undefined {
 export function runAfterResponse(promise: Promise<unknown>): void {
   getCloudflareContext().ctx.waitUntil(promise);
 }
+
+/** Bindings from the Cloudflare context; null when running off-platform. */
+export async function getCloudflareEnv(): Promise<CloudflareEnv | null> {
+  try {
+    return (await getCloudflareContext({ async: true })).env;
+  } catch {
+    return null;
+  }
+}

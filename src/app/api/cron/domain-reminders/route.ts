@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
 import { sendDomainConfigurationReminders } from "@/server/api/routers/domains/domain-reminder.service";
+import { isInternalRequest } from "@/server/lib/internal-request";
 
 const log = logger.child({ job: "domain-reminders" });
 
@@ -21,41 +22,11 @@ const log = logger.child({ job: "domain-reminders" });
  * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
  */
 
-function validateApiKey(request: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret) {
-    log.error("CRON_SECRET environment variable is not set");
-    return false;
-  }
-
-  const authHeader = request.headers.get("Authorization");
-
-  if (!authHeader) {
-    return false;
-  }
-
-  // Support both "Bearer <token>" and just "<token>"
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
-
-  // Use timing-safe comparison to prevent timing attacks
-  if (token.length !== cronSecret.length) {
-    return false;
-  }
-
-  let result = 0;
-  for (let i = 0; i < token.length; i++) {
-    result |= token.charCodeAt(i) ^ cronSecret.charCodeAt(i);
-  }
-
-  return result === 0;
-}
-
 /**
  * GET - Run the reminder job (the scheduled handler sends GET requests)
  */
 export async function GET(request: Request) {
-  if (!validateApiKey(request)) {
+  if (!isInternalRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

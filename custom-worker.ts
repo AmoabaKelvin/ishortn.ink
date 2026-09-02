@@ -1,6 +1,8 @@
 // @ts-ignore `.open-next/worker.js` is generated at build time
 import { default as handler } from "./.open-next/worker.js";
 
+type Env = CloudflareEnv & { CRON_SECRET: string };
+
 // Maps each cron expression (see triggers.crons in wrangler.jsonc) to the
 // Next.js route that Vercel Cron used to call. The routes authenticate with
 // the same CRON_SECRET bearer token as before.
@@ -11,22 +13,47 @@ const CRON_ROUTES: Record<string, string> = {
   "0 4 * * *": "/api/cron/cleanup-expired",
 };
 
+// The queue consumer lives in a Next.js route so it shares the app's DB setup.
+const CLICK_QUEUE_ROUTE = "/api/queue/clicks";
+const BATCH_RETRY_SECONDS = 30;
+
+function callApp(env: Env, path: string, body?: unknown): Promise<Response> {
+  const self = env.WORKER_SELF_REFERENCE;
+  if (!self) throw new Error("WORKER_SELF_REFERENCE binding missing");
+  return self.fetch(`https://ishortn.ink${path}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: {
+      Authorization: `Bearer ${env.CRON_SECRET}`,
+      ...(body === undefined ? {} : { "content-type": "application/json" }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
 export default {
   fetch: handler.fetch,
 
-  async scheduled(controller, env, ctx) {
+  async scheduled(controller, env) {
     const path = CRON_ROUTES[controller.cron];
-    const self = env.WORKER_SELF_REFERENCE;
-    if (!path || !self) {
+    if (!path) {
       console.error(`No cron route mapped for schedule "${controller.cron}"`);
       return;
     }
-    const response = await self.fetch(
-      `https://ishortn.ink${path}`,
-      { headers: { Authorization: `Bearer ${env.CRON_SECRET}` } },
-    );
+    const response = await callApp(env, path);
     if (!response.ok) {
       console.error(`Cron ${path} failed: ${response.status} ${await response.text()}`);
     }
   },
-} satisfies ExportedHandler<CloudflareEnv & { CRON_SECRET: string }>;
+
+  async queue(batch, env) {
+    const response = await callApp(
+      env,
+      CLICK_QUEUE_ROUTE,
+      batch.messages.map((m) => m.body),
+    );
+    if (!response.ok) {
+      console.error(`Click batch failed: ${response.status} ${await response.text()}`);
+      batch.retryAll({ delaySeconds: BATCH_RETRY_SECONDS });
+    }
+  },
+} satisfies ExportedHandler<Env>;
