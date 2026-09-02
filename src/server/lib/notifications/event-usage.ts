@@ -7,7 +7,7 @@ import { resend } from "./resend-client";
 
 const log = logger.child({ notification: "event-usage" });
 
-type SendEventUsageEmailInput = {
+export type SendEventUsageEmailInput = {
   email: string;
   name?: string | null;
   threshold: number;
@@ -40,9 +40,6 @@ export async function sendEventUsageEmail({
       }),
     });
   } catch (error) {
-    log.error(
-      { err: error, email, threshold, plan },
-      "failed to send event usage email",
-    );
+    log.error({ err: error, email, threshold, plan }, "failed to send event usage email");
   }
 }

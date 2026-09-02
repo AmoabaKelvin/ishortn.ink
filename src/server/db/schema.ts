@@ -299,7 +299,7 @@ export const linkVisit = mysqlTable(
     city: varchar("city", { length: 255 }),
     continent: varchar("continent", { length: 255 }).default("N/A"),
     matchedGeoRuleId: int("matchedGeoRuleId"), // Reference to the geo rule that matched (for analytics)
-    visitId: char("visitId", { length: 36 }), // uuid used by verified-click beacon to identify this row; null when verified clicks is disabled for the link
+    visitId: char("visitId", { length: 36 }), // queue message id; dedupes redelivered clicks and keys the verified-click beacon
     verifiedAt: timestamp("verifiedAt"), // set when the destination-page beacon POSTs back with a valid token
     createdAt: timestamp("createdAt").defaultNow(),
   },
@@ -1247,7 +1247,7 @@ export const bioBlock = mysqlTable(
 );
 
 // Raw bio-page view events (mirror LinkVisit). Recording consumes the owner's
-// monthly event quota via registerEventUsage; over quota the view is skipped.
+// monthly event quota via reserveEventUsage; over quota the view is skipped.
 export const bioPageView = mysqlTable(
   "BioPageView",
   {
@@ -1261,12 +1261,14 @@ export const bioPageView = mysqlTable(
     country: varchar("country", { length: 255 }),
     city: varchar("city", { length: 255 }),
     continent: varchar("continent", { length: 255 }).default("N/A"),
+    viewId: char("viewId", { length: 36 }), // queue message id; dedupes redelivered views
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
     bioPageIdIdx: index("bioPageId_idx").on(table.bioPageId),
     bioPageCreatedAtIdx: index("bioPageId_createdAt_idx").on(table.bioPageId, table.createdAt),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
+    viewIdIdx: unique("viewId_idx").on(table.viewId),
   }),
 );
 

@@ -7,7 +7,8 @@ import { subscription, user } from "@/server/db/schema";
 import type { PLAN_CAPS } from "@/lib/billing/plans";
 import type { Subscription, User } from "@/server/db/schema";
 
-type DbClient = typeof db;
+type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type DbClient = typeof db | TransactionClient;
 
 /**
  * Hot-path paid-plan check used by the redirect pipeline. Avoids the full

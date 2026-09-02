@@ -1,7 +1,7 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { z } from "zod";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { getCloudflareEnv } from "@/lib/platform";
 
 import type { GeoRule, Link } from "@/server/db/schema";
 
@@ -10,17 +10,7 @@ const DEFAULT_CACHE_TTL = 60 * 60 * 24;
 const MIN_KV_TTL = 60;
 
 async function getKV(): Promise<KVNamespace | null> {
-  // Sync context works in route handlers/actions but throws during server
-  // component rendering — the async form works in both.
-  try {
-    return getCloudflareContext().env.LINK_CACHE_KV ?? null;
-  } catch {
-    try {
-      return (await getCloudflareContext({ async: true })).env.LINK_CACHE_KV ?? null;
-    } catch {
-      return null;
-    }
-  }
+  return (await getCloudflareEnv())?.LINK_CACHE_KV ?? null;
 }
 
 function clampTtl(ttlSeconds: number): number {
@@ -100,11 +90,7 @@ async function getStringFromCache(key: string): Promise<string | null> {
   }
 }
 
-async function setStringInCache(
-  key: string,
-  value: string,
-  ttlSeconds: number,
-): Promise<boolean> {
+async function setStringInCache(key: string, value: string, ttlSeconds: number): Promise<boolean> {
   try {
     const kv = await getKV();
     if (!kv) return false;
@@ -118,11 +104,7 @@ async function setStringInCache(
 
 // KV has no atomic set-if-absent, so this read-then-write can race under
 // concurrency — acceptable for best-effort rate limiting.
-async function setStringIfAbsent(
-  key: string,
-  value: string,
-  ttlSeconds: number,
-): Promise<boolean> {
+async function setStringIfAbsent(key: string, value: string, ttlSeconds: number): Promise<boolean> {
   try {
     const kv = await getKV();
     if (!kv) return false;
@@ -158,9 +140,7 @@ const geoRuleSchema = z.object({
 
 type CachedGeoRule = z.infer<typeof geoRuleSchema>;
 
-async function getGeoRulesFromCache(
-  linkId: number,
-): Promise<CachedGeoRule[] | null> {
+async function getGeoRulesFromCache(linkId: number): Promise<CachedGeoRule[] | null> {
   try {
     const kv = await getKV();
     if (!kv) return null;

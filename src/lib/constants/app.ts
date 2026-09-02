@@ -9,10 +9,4 @@ export enum Paths {
   Dashboard = "/dashboard",
 }
 
-export const LOCAL_DEVELOPMENT_GEOLOCATION_DATA = {
-  country: "United States",
-  city: "New York",
-  continent: "North America",
-};
-
 export const socialMediaAgents = ["Twitter", "Facebook", "LinkedIn", "WhatsApp"];

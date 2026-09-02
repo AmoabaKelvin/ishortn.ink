@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
 import { cleanupExpiredData } from "@/server/api/routers/cleanup/expired-data-cleanup.service";
+import { isInternalRequest } from "@/server/lib/internal-request";
 
 const log = logger.child({ job: "cleanup-expired" });
 
@@ -23,43 +24,11 @@ const log = logger.child({ job: "cleanup-expired" });
  * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
  */
 
-function validateApiKey(request: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret) {
-    log.error("CRON_SECRET environment variable is not set");
-    return false;
-  }
-
-  const authHeader = request.headers.get("Authorization");
-
-  if (!authHeader) {
-    return false;
-  }
-
-  // Support both "Bearer <token>" and just "<token>"
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader;
-
-  // Use timing-safe comparison to prevent timing attacks
-  if (token.length !== cronSecret.length) {
-    return false;
-  }
-
-  let result = 0;
-  for (let i = 0; i < token.length; i++) {
-    result |= token.charCodeAt(i) ^ cronSecret.charCodeAt(i);
-  }
-
-  return result === 0;
-}
-
 /**
  * GET - Run the cleanup job (the scheduled handler sends GET requests)
  */
 export async function GET(request: Request) {
-  if (!validateApiKey(request)) {
+  if (!isInternalRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -91,7 +60,7 @@ export async function GET(request: Request) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
