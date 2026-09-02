@@ -23,9 +23,9 @@ export function isValidTargetingValue(type: TargetingRuleType, value: string): b
     case "continent":
       return COUNTRY_CODE.test(value);
     case "device":
-      return value.toLowerCase() in DEVICE_TYPES;
+      return Object.hasOwn(DEVICE_TYPES, value.toLowerCase());
     case "os":
-      return value.toLowerCase() in OS_TYPES;
+      return Object.hasOwn(OS_TYPES, value.toLowerCase());
   }
 }
 

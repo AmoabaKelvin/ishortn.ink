@@ -17,8 +17,6 @@ import DomainMigrationEmail from "../src/emails/domain-migration";
 const CNAME_TARGET = process.env.CUSTOM_DOMAIN_CNAME_TARGET ?? "cname.ishortn.ink";
 const DASHBOARD_URL = "https://ishortn.ink/dashboard/domains";
 const FROM = "Kelvin from iShortn <kelvin@ishortn.ink>";
-const SUBJECT = "Action needed: update your custom domain DNS by August 22";
-const REMINDER_SUBJECT = "Reminder: update your custom domain DNS by Friday, August 22";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -125,7 +123,7 @@ const previewIndex = args.indexOf("--preview");
 const accountIndex = args.indexOf("--account");
 const send = args.includes("--send");
 const reminder = args.includes("--reminder");
-const subject = reminder ? REMINDER_SUBJECT : SUBJECT;
+const subject = `${reminder ? "Reminder" : "Action needed"}: update your custom domain DNS ${deadlineText()}`;
 
 const rows = await fetchOwners();
 const migrated = await fetchMigratedHostnames();

@@ -46,9 +46,9 @@ export const DomainMigrationEmail = ({
 
             {isReminder && (
               <Text style={text}>
-                We wrote last week about moving iShortn to a new network. The{" "}
-                {plural ? "records below have" : "record below has"} not changed yet, and the
-                deadline is this Friday — here are the details again.
+                We wrote earlier about moving iShortn to a new network. The{" "}
+                {plural ? "records below have" : "record below has"} not changed yet, and the move
+                happens {deadlineText} — here are the details again.
               </Text>
             )}
 
