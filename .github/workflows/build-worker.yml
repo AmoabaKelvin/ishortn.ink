@@ -1,0 +1,35 @@
+name: Build Worker
+
+on:
+  pull_request:
+
+concurrency:
+  group: build-worker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun test
+
+      - name: Write build env
+        run: printf '%s\n' "$BUILD_ENV" > .env.production.local
+        env:
+          BUILD_ENV: ${{ secrets.BUILD_ENV }}
+
+      - name: Build
+        run: bunx opennextjs-cloudflare build
+        env:
+          # Never dialed during build; wrangler only insists the value exists.
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder
