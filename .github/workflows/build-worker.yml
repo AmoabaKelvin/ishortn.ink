@@ -3,6 +3,9 @@ name: Build Worker
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: build-worker-${{ github.ref }}
   cancel-in-progress: true
@@ -12,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -23,13 +28,12 @@ jobs:
 
       - run: bun test
 
-      - name: Write build env
-        run: printf '%s\n' "$BUILD_ENV" > .env.production.local
-        env:
-          BUILD_ENV: ${{ secrets.BUILD_ENV }}
-
+      # PR code runs here, so no secrets: the build only needs values that
+      # ship to the browser anyway, and none are dialed.
       - name: Build
         run: bunx opennextjs-cloudflare build
         env:
-          # Never dialed during build; wrangler only insists the value exists.
+          SKIP_ENV_VALIDATION: "1"
+          NEXT_PUBLIC_APP_URL: https://ishortn.ink
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
           CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder
