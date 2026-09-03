@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
-import { Resend } from "resend";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
 import { getIntervalFromVariantId, getPlanFromIds } from "@/lib/billing/plans";
@@ -9,6 +8,7 @@ import { webhookHasMeta } from "@/lib/typeguards";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
+import { resend } from "@/server/lib/notifications/resend-client";
 
 import { eventIsBehindProvider } from "./reconcile";
 
@@ -18,7 +18,6 @@ import type {
 } from "@/lib/types/lemonsqueezy";
 import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const log = logger.child({ webhook: "lemonsqueezy" });
 
 export async function POST(request: Request) {
@@ -225,7 +224,7 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
         return;
       }
 
-      await resend.emails.send({
+      await resend?.emails.send({
         from: "Kelvin from iShortn <kelvin@ishortn.ink>",
         to: email,
         subject: `Welcome to iShortn ${emailPlan === "ultra" ? "Ultra" : "Pro"}`,

@@ -1,6 +1,5 @@
 import type { WebhookEvent } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
-import { Resend } from "resend";
 import { Webhook } from "svix";
 
 import { env } from "@/env.mjs";
@@ -8,8 +7,8 @@ import WelcomeEmail from "@/lib/email/templates/welcome-email";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
+import { resend } from "@/server/lib/notifications/resend-client";
 
-const resend = new Resend(env.RESEND_API_KEY);
 const log = logger.child({ webhook: "clerk" });
 
 export async function POST(req: Request) {
@@ -73,17 +72,19 @@ export async function POST(req: Request) {
     imageUrl: userInfo.avatarUrl,
   });
 
-  const { error } = await resend.emails.send({
-    from: "Kelvin <developer@ishortn.ink>",
-    to: userInfo.email!,
-    subject: "Welcome to iShortn",
-    react: WelcomeEmail({
-      userFirstname: userInfo.name.split(" ")[0] ?? "there",
-    }),
-  });
+  if (resend) {
+    const { error } = await resend.emails.send({
+      from: "Kelvin <developer@ishortn.ink>",
+      to: userInfo.email!,
+      subject: "Welcome to iShortn",
+      react: WelcomeEmail({
+        userFirstname: userInfo.name.split(" ")[0] ?? "there",
+      }),
+    });
 
-  if (error) {
-    log.error({ err: error, eventId: id, eventType }, "failed to send welcome email");
+    if (error) {
+      log.error({ err: error, eventId: id, eventType }, "failed to send welcome email");
+    }
   }
 
   return new Response("", { status: 201 });
