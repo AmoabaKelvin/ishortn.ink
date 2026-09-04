@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import { JsonLd } from "@/components/seo/json-ld";
 import { getChangelogEntries } from "@/lib/changelog";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
@@ -7,6 +5,8 @@ import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { ChangelogList } from "./_components/changelog-list";
+
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Changelog — iShortn",

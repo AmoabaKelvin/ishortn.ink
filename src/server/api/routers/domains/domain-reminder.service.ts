@@ -124,10 +124,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
           .where(eq(customDomain.id, domainRecord.id));
 
         result.domainsUpdatedToActive++;
-        log.info(
-          { domain: domainName },
-          "domain now valid, updated status to 'active'",
-        );
+        log.info({ domain: domainName }, "domain now valid, updated status to 'active'");
         continue;
       }
 
@@ -193,15 +190,9 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
         .where(eq(customDomain.id, domainRecord.id));
 
       result.remindersSent++;
-      log.info(
-        { domain: domainName, recipientEmail },
-        "reminder sent",
-      );
+      log.info({ domain: domainName, recipientEmail }, "reminder sent");
     } catch (error) {
-      log.error(
-        { err: error, domain: domainName },
-        "reminder processing failed",
-      );
+      log.error({ err: error, domain: domainName }, "reminder processing failed");
       result.errors.push({
         domain: domainName,
         error: error instanceof Error ? error.message : "Unknown error",

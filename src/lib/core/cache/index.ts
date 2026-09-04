@@ -17,12 +17,50 @@ function clampTtl(ttlSeconds: number): number {
   return Math.max(ttlSeconds, MIN_KV_TTL);
 }
 
-type CachedLink = Omit<Link, "createdAt" | "disableLinkAfterDate" | "activateAt" | "blockedAt"> & {
-  createdAt: string | null;
-  disableLinkAfterDate: string | null;
-  activateAt: string | null;
-  blockedAt: string | null;
-};
+const nullableIsoDate = z
+  .string()
+  .nullable()
+  .transform((value) => (value ? new Date(value) : null));
+
+const cachedLinkSchema = z.object({
+  id: z.number(),
+  name: z.string().nullable(),
+  url: z.string().nullable(),
+  alias: z.string().nullable(),
+  domain: z.string(),
+  createdAt: nullableIsoDate,
+  disableLinkAfterClicks: z.number().nullable(),
+  disableLinkAfterDate: nullableIsoDate,
+  activateAt: nullableIsoDate,
+  disabled: z.boolean().nullable(),
+  publicStats: z.boolean().nullable(),
+  userId: z.string(),
+  teamId: z.number().nullable(),
+  createdByUserId: z.string().nullable(),
+  passwordHash: z.string().nullable(),
+  note: z.string().nullable(),
+  metadata: z.unknown(),
+  utmParams: z
+    .object({
+      utm_source: z.string().optional(),
+      utm_medium: z.string().optional(),
+      utm_campaign: z.string().optional(),
+      utm_term: z.string().optional(),
+      utm_content: z.string().optional(),
+    })
+    .nullable(),
+  tags: z.array(z.string()).nullable(),
+  archived: z.boolean().nullable(),
+  folderId: z.number().nullable(),
+  campaignId: z.number().nullable(),
+  cloaking: z.boolean().nullable(),
+  verifiedClicksEnabled: z.boolean().nullable(),
+  isQrCode: z.boolean().nullable(),
+  isBioLink: z.boolean().nullable(),
+  blocked: z.boolean().nullable(),
+  blockedAt: nullableIsoDate,
+  blockedReason: z.string().nullable(),
+});
 
 async function getFromCache(key: string): Promise<Link | null> {
   try {
@@ -32,21 +70,9 @@ async function getFromCache(key: string): Promise<Link | null> {
     const cached = await kv.get(key);
     if (!cached) return null;
 
-    const parsed = JSON.parse(cached) as CachedLink | null;
-    if (!parsed || typeof parsed.id !== "number" || typeof parsed.userId !== "string") {
-      return null;
-    }
-
-    return {
-      ...parsed,
-      createdAt: parsed.createdAt ? new Date(parsed.createdAt) : null,
-      disableLinkAfterDate: parsed.disableLinkAfterDate
-        ? new Date(parsed.disableLinkAfterDate)
-        : null,
-      activateAt: parsed.activateAt ? new Date(parsed.activateAt) : null,
-      blockedAt: parsed.blockedAt ? new Date(parsed.blockedAt) : null,
-    };
-  } catch (_error) {
+    const parsed = cachedLinkSchema.safeParse(JSON.parse(cached));
+    return parsed.success ? parsed.data : null;
+  } catch {
     return null;
   }
 }
@@ -62,7 +88,7 @@ async function setInCache(
 
     await kv.put(key, JSON.stringify(link), { expirationTtl: clampTtl(ttlSeconds) });
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }
@@ -74,7 +100,7 @@ async function deleteFromCache(key: string): Promise<boolean> {
 
     await kv.delete(key);
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }
@@ -85,7 +111,7 @@ async function getStringFromCache(key: string): Promise<string | null> {
     if (!kv) return null;
 
     return await kv.get(key);
-  } catch (_error) {
+  } catch {
     return null;
   }
 }
@@ -97,7 +123,7 @@ async function setStringInCache(key: string, value: string, ttlSeconds: number):
 
     await kv.put(key, value, { expirationTtl: clampTtl(ttlSeconds) });
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }
@@ -112,7 +138,7 @@ async function setStringIfAbsent(key: string, value: string, ttlSeconds: number)
     if ((await kv.get(key)) !== null) return false;
     await kv.put(key, value, { expirationTtl: clampTtl(ttlSeconds) });
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }
@@ -148,9 +174,8 @@ async function getGeoRulesFromCache(linkId: number): Promise<CachedGeoRule[] | n
     const cached = await kv.get(`${GEO_RULES_CACHE_PREFIX}${linkId}`);
     if (!cached) return null;
 
-    const parsed = JSON.parse(cached) as unknown[];
-    return parsed.map((rule) => geoRuleSchema.parse(rule));
-  } catch (_error) {
+    return z.array(geoRuleSchema).parse(JSON.parse(cached));
+  } catch {
     return null;
   }
 }
@@ -167,7 +192,7 @@ async function setGeoRulesInCache(
     const key = `${GEO_RULES_CACHE_PREFIX}${linkId}`;
     await kv.put(key, JSON.stringify(rules), { expirationTtl: clampTtl(ttlSeconds) });
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }
@@ -179,7 +204,7 @@ async function deleteGeoRulesFromCache(linkId: number): Promise<boolean> {
 
     await kv.delete(`${GEO_RULES_CACHE_PREFIX}${linkId}`);
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }

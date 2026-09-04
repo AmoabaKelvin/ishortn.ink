@@ -1,66 +1,45 @@
-export interface LemonsqueezySubscriptionAttributes {
-  user_id: unknown; // Custom data
-  store_id: number;
-  customer_id: number;
-  order_id: number;
-  order_item_id: number;
-  product_id: number;
-  variant_id: number;
-  product_name: string;
-  variant_name: string;
-  user_name: string;
-  user_email: string;
-  status: string;
-  status_formatted: string;
-  card_brand: string;
-  card_last_four: string;
-  pause: string | null;
-  cancelled: boolean;
-  trial_ends_at: string | null;
-  billing_anchor: number;
-  urls: {
-    update_payment_method: string;
-  };
-  renews_at: string;
-  ends_at: string | null;
-  created_at: string;
-  updated_at: string;
-  test_mode: boolean;
+import { z } from "zod";
 
-  first_subscription_item: {
-    id: number;
-    subscription_id: number;
-    price_id: number;
-    is_usage_based: boolean;
-    created_at: string;
-  };
-}
+const customDataSchema = z.object({ user_id: z.string() });
 
-export interface LemonsqueezyOrderAttributes {
-  first_subscription_item: {
-    id: number;
-    subscription_id: number;
-    price_id: number;
-  };
-}
+/** Every Lemon Squeezy webhook, whatever the event, identifies the user it concerns. */
+export const lemonsqueezyWebhookEnvelopeSchema = z.object({
+  meta: z.object({
+    event_name: z.string(),
+    custom_data: customDataSchema,
+  }),
+});
 
-export interface LemonsqueezyWebhookPayload {
-  meta: {
-    test_mode: boolean;
-    event_name:
-      | "subscription_created"
-      | "subscription_updated"
-      | "subscription_cancelled"
-      | "subscription_expired"
-      | "order_created";
-    custom_data: {
-      user_id: string;
-    };
-  };
-  data: {
-    id: string;
-    type: string;
-    attributes: LemonsqueezySubscriptionAttributes | LemonsqueezyOrderAttributes;
-    relationships: unknown;
-  };
-}
+export const lemonsqueezySubscriptionEventNameSchema = z.enum([
+  "subscription_created",
+  "subscription_updated",
+  "subscription_cancelled",
+  "subscription_expired",
+]);
+
+export const lemonsqueezySubscriptionAttributesSchema = z.object({
+  customer_id: z.number(),
+  order_id: z.number(),
+  product_id: z.number(),
+  variant_id: z.number(),
+  status: z.string(),
+  card_brand: z.string().nullable(),
+  card_last_four: z.string().nullable(),
+  renews_at: z.string(),
+  ends_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const lemonsqueezySubscriptionEventSchema = z.object({
+  meta: z.object({
+    event_name: lemonsqueezySubscriptionEventNameSchema,
+    custom_data: customDataSchema,
+  }),
+  data: z.object({
+    id: z.string(),
+    attributes: lemonsqueezySubscriptionAttributesSchema,
+  }),
+});
+
+export type LemonsqueezySubscriptionEvent = z.infer<typeof lemonsqueezySubscriptionEventSchema>;

@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
 
 import { env } from "@/env.mjs";
+import { lookup } from "@/lib/utils/lookup";
 
 // Payload is plaintext; the only secret is the HMAC signature. Replay is
 // bounded by the 5-minute TTL plus the verify endpoint's `verifiedAt IS NULL`
@@ -13,11 +14,7 @@ const TOKEN_TTL_MS = 5 * 60 * 1000;
 const CLOCK_SKEW_TOLERANCE_MS = 5_000;
 
 function base64urlEncode(buf: Buffer): string {
-  return buf
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function base64urlDecode(str: string): Buffer {
@@ -43,10 +40,7 @@ function canonicalizeDestination(raw: string): string {
 /** Short, URL-safe fingerprint that binds a token to its intended destination. */
 export function hashDestination(destination: string): string {
   return base64urlEncode(
-    createHash("sha256")
-      .update(canonicalizeDestination(destination))
-      .digest()
-      .subarray(0, 16),
+    createHash("sha256").update(canonicalizeDestination(destination)).digest().subarray(0, 16),
   );
 }
 
@@ -55,23 +49,18 @@ export function generateVisitId(): string {
 }
 
 /** Returns null when the secret is unset; caller treats that as feature-disabled. */
-export function signVerifiedClickToken(
-  visitId: string,
-  destination: string,
-): string | null {
+export function signVerifiedClickToken(visitId: string, destination: string): string | null {
   const secret = getSecret();
   if (!secret) return null;
 
   const issuedAt = Date.now();
   const destHash = hashDestination(destination);
   const payload = `${TOKEN_VERSION}.${visitId}.${destHash}.${issuedAt}`;
-  const sig = base64urlEncode(
-    createHmac("sha256", secret).update(payload).digest(),
-  );
+  const sig = base64urlEncode(createHmac("sha256", secret).update(payload).digest());
   return `${payload}.${sig}`;
 }
 
-const INLINE_SCRIPT_ESCAPES: Record<string, string> = {
+const INLINE_SCRIPT_ESCAPES = {
   "<": "\\u003C",
   ">": "\\u003E",
   "&": "\\u0026",
@@ -83,7 +72,7 @@ const INLINE_SCRIPT_ESCAPES: Record<string, string> = {
 function encodeForInlineScript(value: string): string {
   return JSON.stringify(value).replace(
     /[<>&\u2028\u2029]/g,
-    (char) => INLINE_SCRIPT_ESCAPES[char] ?? char,
+    (char) => lookup(INLINE_SCRIPT_ESCAPES, char) ?? char,
   );
 }
 
@@ -103,13 +92,7 @@ export function verifyVerifiedClickToken(
   if (parts.length !== 5) return null;
 
   const [version, visitId, destHash, issuedAtStr, providedSig] = parts;
-  if (
-    version !== TOKEN_VERSION ||
-    !visitId ||
-    !destHash ||
-    !issuedAtStr ||
-    !providedSig
-  ) {
+  if (version !== TOKEN_VERSION || !visitId || !destHash || !issuedAtStr || !providedSig) {
     return null;
   }
 

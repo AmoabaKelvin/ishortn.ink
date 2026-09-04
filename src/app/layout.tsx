@@ -1,5 +1,4 @@
 import "@/styles/globals.css";
-
 import { ClerkProvider } from "@clerk/nextjs";
 import { ViewTransitions } from "next-view-transitions";
 import Script from "next/script";
@@ -54,11 +53,7 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <ViewTransitions>
@@ -81,7 +76,7 @@ export default function RootLayout({
                 fontHeading.variable,
                 fontLogo.variable,
                 fontWarmDisplay.variable,
-                fontWarmUi.variable
+                fontWarmUi.variable,
               )}
             >
               <ThemeProvider

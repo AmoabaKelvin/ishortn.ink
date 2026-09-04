@@ -7,18 +7,14 @@ import {
   IconSpeakerphone,
   IconWorld,
 } from "@tabler/icons-react";
-import type { UseFormReturn } from "react-hook-form";
 
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form";
+import { FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 
+import type { UseFormReturn } from "react-hook-form";
+
 type UtmParamsFormProps = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line typescript/no-explicit-any -- UseFormReturn is invariant; this sub-form is embedded in four differently-typed parent forms
   form: UseFormReturn<any>;
   disabled?: boolean;
 };
@@ -74,7 +70,7 @@ export function UtmParamsForm({ form, disabled = false }: UtmParamsFormProps) {
                     "flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors",
                     disabled
                       ? "opacity-50"
-                      : "hover:border-neutral-300 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300"
+                      : "hover:border-neutral-300 focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300",
                   )}
                 >
                   <FormLabel className="flex h-full w-28 shrink-0 cursor-pointer items-center gap-2 border-r border-neutral-200 dark:border-border px-3 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">

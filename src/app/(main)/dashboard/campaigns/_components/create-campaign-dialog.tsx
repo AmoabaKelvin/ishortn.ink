@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -70,8 +70,8 @@ export function CreateCampaignDialog({ trigger }: { trigger: React.ReactNode }) 
         <DialogHeader>
           <DialogTitle>New campaign</DialogTitle>
           <DialogDescription>
-            Name the initiative you're tracking — a launch, event, or push. You can add links
-            right after.
+            Name the initiative you're tracking — a launch, event, or push. You can add links right
+            after.
           </DialogDescription>
         </DialogHeader>
 
@@ -84,7 +84,6 @@ export function CreateCampaignDialog({ trigger }: { trigger: React.ReactNode }) 
               onChange={(e) => setName(e.target.value)}
               placeholder="Summer Launch"
               maxLength={100}
-              autoFocus
             />
           </div>
 

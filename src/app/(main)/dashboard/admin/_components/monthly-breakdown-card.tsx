@@ -34,27 +34,17 @@ type MonthlyBreakdownCardProps = {
   isLoading: boolean;
 };
 
-export function MonthlyBreakdownCard({
-  data,
-  isLoading,
-}: MonthlyBreakdownCardProps) {
+export function MonthlyBreakdownCard({ data, isLoading }: MonthlyBreakdownCardProps) {
   const [sortKey, setSortKey] = useState<SortKey>("month");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const sorted = useMemo(() => {
     if (!data) return [];
-    return [...data].sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
-      if (typeof av === "string" && typeof bv === "string") {
-        return sortDir === "asc"
-          ? av.localeCompare(bv)
-          : bv.localeCompare(av);
-      }
-      return sortDir === "asc"
-        ? (av as number) - (bv as number)
-        : (bv as number) - (av as number);
-    });
+    const compare =
+      sortKey === "month"
+        ? (a: MonthlyRow, b: MonthlyRow) => a.month.localeCompare(b.month)
+        : (a: MonthlyRow, b: MonthlyRow) => a[sortKey] - b[sortKey];
+    return [...data].sort((a, b) => (sortDir === "asc" ? compare(a, b) : compare(b, a)));
   }, [data, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
@@ -88,7 +78,9 @@ export function MonthlyBreakdownCard({
         </div>
       ) : sorted.length === 0 ? (
         <div className="flex items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No data for this period</p>
+          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+            No data for this period
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -113,10 +105,7 @@ export function MonthlyBreakdownCard({
                       className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
                     >
                       {col.label}
-                      <SortIcon
-                        active={sortKey === col.key}
-                        dir={sortDir}
-                      />
+                      <SortIcon active={sortKey === col.key} dir={sortDir} />
                     </button>
                   </th>
                 ))}

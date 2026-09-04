@@ -3,22 +3,21 @@ type LinkExportData = RouterOutputs["link"]["exportUserLinks"][number];
 
 export const convertDataToCSV = (data: LinkExportData[]) => {
   let csvContent = "data:text/csv;charset=utf-8,";
-  const headers = ["createdAt", "url", "alias", "domain", "note"];
+  const headers = ["createdAt", "url", "alias", "domain", "note"] as const;
 
   csvContent += `${headers.join(",")}\n`;
 
-  // biome-ignore lint/complexity/noForEach: <explanation>
   data.forEach((row: LinkExportData) => {
     const values = headers.map((header) => {
-      const value = row[header as keyof LinkExportData];
+      const value = row[header];
       if (value instanceof Date) {
         return value.toISOString();
       }
-      if (typeof value === "string") {
-        // Escape quotes and wrap in quotes if the value contains a comma
-        return value.includes(",") ? `"${value.replace(/"/g, '""')}"` : value;
+      if (value === null) {
+        return "";
       }
-      return value ?? "";
+      // Escape quotes and wrap in quotes if the value contains a comma
+      return value.includes(",") ? `"${value.replace(/"/g, '""')}"` : value;
     });
     csvContent += `${values.join(",")}\n`;
   });

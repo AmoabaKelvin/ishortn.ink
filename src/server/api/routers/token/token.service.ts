@@ -1,11 +1,11 @@
+import crypto from "node:crypto";
+
 import { and, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
-import crypto from "node:crypto";
 
 import { token } from "@/server/db/schema";
 
 import type { ProtectedTRPCContext } from "../../trpc";
-
 import type { CreateTokenInput, DeleteTokenInput } from "./token.input";
 
 function generateToken() {

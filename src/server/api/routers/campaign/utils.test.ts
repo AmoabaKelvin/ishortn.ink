@@ -71,9 +71,7 @@ describe("mergeCampaignUtm", () => {
   });
 
   test("explicit link values win over campaign defaults", () => {
-    expect(
-      mergeCampaignUtm(campaignRow, { utm_source: "instagram", utm_term: "bio" }),
-    ).toEqual({
+    expect(mergeCampaignUtm(campaignRow, { utm_source: "instagram", utm_term: "bio" })).toEqual({
       utm_campaign: "summer-launch",
       utm_source: "instagram",
       utm_medium: "email",
@@ -136,9 +134,9 @@ describe("getCampaignDisplayState", () => {
   });
 
   test("running or dateless campaigns are active", () => {
-    expect(
-      getCampaignDisplayState({ status: "active", startDate: null, endDate: null }, now),
-    ).toBe("active");
+    expect(getCampaignDisplayState({ status: "active", startDate: null, endDate: null }, now)).toBe(
+      "active",
+    );
     expect(
       getCampaignDisplayState(
         { status: "active", startDate: new Date("2026-06-01"), endDate: new Date("2026-08-01") },

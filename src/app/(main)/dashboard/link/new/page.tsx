@@ -1,9 +1,6 @@
 "use client";
 
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   IconChevronDown,
   IconChevronUp,
@@ -11,9 +8,10 @@ import {
   IconSparkles,
   IconX,
 } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useTransitionRouter } from "next-view-transitions";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useTransitionRouter } from "next-view-transitions";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -39,6 +37,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { clientLogger } from "@/lib/logger/client";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
@@ -50,28 +50,20 @@ const log = clientLogger.child({ component: "create-link-page" });
 // Lazy load GeoRulesForm to reduce initial bundle size (includes framer-motion)
 const GeoRulesForm = dynamic(
   () => import("../../_components/geo-rules-form").then((mod) => mod.GeoRulesForm),
-  { ssr: false }
+  { ssr: false },
 );
 import { DateTimePicker } from "../../_components/date-time-picker";
+import { checkIframeable } from "../../_components/links/check-iframeable";
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
-import { UtmParamsForm } from "../../_components/utm-params-form";
 import { PlanBadge, SectionToggle } from "../../_components/section-toggle";
+import { UtmParamsForm } from "../../_components/utm-params-form";
 import { UtmTemplateSelector } from "../../_components/utm-template-selector";
 import { revalidateHomepage } from "../../revalidate-homepage";
-
 import { LinkPreviewComponent } from "./_components/link-preview";
 import { OgImageUploader } from "./_components/og-image-uploader";
 import UpgradeToProAIButtonTooltip from "./_components/upgrade-to-pro-ai-tooltip";
 
-import type { CustomDomain } from "@/server/db/schema";
 import type { z } from "zod";
-
-type MetaData = {
-  title: string;
-  description: string;
-  image: string;
-  favicon: string;
-};
 
 export default function CreateLinkPage() {
   const router = useTransitionRouter();
@@ -81,7 +73,6 @@ export default function CreateLinkPage() {
   const initialCampaignId =
     Number.isInteger(campaignIdParam) && campaignIdParam > 0 ? campaignIdParam : undefined;
   const [destinationURL, setDestinationURL] = useState<string | undefined>(initialUrl);
-  const [userDomains, setUserDomains] = useState<CustomDomain[]>([]);
   const [isCustomMetadataOpen, setIsCustomMetadataOpen] = useState(false);
   const [isUtmParamsOpen, setIsUtmParamsOpen] = useState(false);
   const [isOptionalSettingsOpen, setIsOptionalSettingsOpen] = useState(false);
@@ -113,23 +104,28 @@ export default function CreateLinkPage() {
   const { data: userTags } = api.tag.list.useQuery();
   const { data: campaigns } = api.campaign.listNames.useQuery();
 
+  const defaultValues: Partial<z.infer<typeof createLinkSchema>> = {
+    domain: DEFAULT_PLATFORM_DOMAIN,
+  };
+  if (initialUrl) {
+    defaultValues.url = initialUrl;
+  }
+  if (initialCampaignId) {
+    defaultValues.campaignId = initialCampaignId;
+  }
+
   const form = useForm<z.infer<typeof createLinkSchema>>({
     resolver: zodResolver(createLinkSchema),
-    defaultValues: {
-      domain: DEFAULT_PLATFORM_DOMAIN,
-      ...(initialUrl ? { url: initialUrl } : {}),
-      ...(initialCampaignId ? { campaignId: initialCampaignId } : {}),
-    },
+    defaultValues,
   });
+
+  const userDomains = customDomainsQuery.data ?? [];
 
   const [debouncedUrl] = useDebounce(destinationURL, 500);
   const [debouncedAlias] = useDebounce(form.watch("alias"), 500);
   const selectedDomain = form.watch("domain") ?? DEFAULT_PLATFORM_DOMAIN;
 
-  async function generateAliases(metadata: {
-    title: string;
-    description: string;
-  }) {
+  async function generateAliases(metadata: { title: string; description: string }) {
     generateAliasMutation.mutate({
       url: form.getValues("url"),
       title: metadata.title,
@@ -288,12 +284,6 @@ export default function CreateLinkPage() {
     }
   }
 
-  useEffect(() => {
-    if (customDomainsQuery.data) {
-      setUserDomains(customDomainsQuery.data);
-    }
-  }, [customDomainsQuery.data]);
-
   // Fetch platform-default metadata on initial load
   useEffect(() => {
     if (isInitialLoad) {
@@ -343,12 +333,12 @@ export default function CreateLinkPage() {
         const fetchedMetadata = await fetchMetadataInfo(debouncedUrl);
 
         // Only use fetched values for fields where user hasn't set custom values
-        setMetaData((prev) => ({
+        setMetaData({
           title: customTitle || fetchedMetadata.title,
           description: customDescription || fetchedMetadata.description,
           image: customImage || fetchedMetadata.image,
           favicon: fetchedMetadata.favicon,
-        }));
+        });
 
         if ((userSubscription?.data?.plan ?? "free") !== "free") {
           generateAliasMutation.mutate({
@@ -361,7 +351,10 @@ export default function CreateLinkPage() {
         // User-typing races and arbitrary destination URLs routinely fail
         // this fetch — not actionable, so warn-level avoids polluting error
         // dashboards with expected noise.
-        log.warn({ err: error, action: "fetch-metadata" }, "failed to fetch metadata");
+        log.warn(
+          { err: error instanceof Error ? error : String(error), action: "fetch-metadata" },
+          "failed to fetch metadata",
+        );
         // Don't overwrite user-entered metadata on failure
         // Don't generate aliases since we don't have valid metadata
       }
@@ -375,7 +368,7 @@ export default function CreateLinkPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    const checkIframeable = async () => {
+    const runCheck = async () => {
       if (!cloakingEnabled || !debouncedUrl) {
         setIframeableResult(null);
         return;
@@ -391,19 +384,10 @@ export default function CreateLinkPage() {
 
       setIsCheckingIframeable(true);
       try {
-        const response = await fetch(
-          `/api/links/iframeable?url=${encodeURIComponent(debouncedUrl)}`,
-          { signal: controller.signal },
-        );
+        const iframeable = await checkIframeable(debouncedUrl, controller.signal);
+        setIframeableResult(iframeable);
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = (await response.json()) as { iframeable: boolean };
-        setIframeableResult(data.iframeable);
-
-        if (!data.iframeable) {
+        if (!iframeable) {
           toast.error("This website doesn't allow cloaking.");
           form.setValue("cloaking", false);
         }
@@ -413,7 +397,7 @@ export default function CreateLinkPage() {
           return;
         }
         log.error(
-          { err: error, action: "check-cloaking" },
+          { err: error instanceof Error ? error : String(error), action: "check-cloaking" },
           "failed to check cloaking compatibility",
         );
         setIframeableResult(false);
@@ -426,7 +410,7 @@ export default function CreateLinkPage() {
       }
     };
 
-    void checkIframeable();
+    void runCheck();
 
     return () => {
       controller.abort();
@@ -442,8 +426,12 @@ export default function CreateLinkPage() {
   return (
     <section className="grid grid-cols-1 gap-5 md:grid-cols-11">
       <div className="md:col-span-5">
-        <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">Create a new link</h2>
-        <p className="mt-1 text-[13px] text-neutral-400">Create a new link to share with your audience.</p>
+        <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+          Create a new link
+        </h2>
+        <p className="mt-1 text-[13px] text-neutral-400">
+          Create a new link to share with your audience.
+        </p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="mt-5 space-y-5">
             <div className="space-y-4 rounded-lg border border-neutral-200 dark:border-border p-4">
@@ -475,7 +463,9 @@ export default function CreateLinkPage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Link Name</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Link Name
+                    </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="My Awesome Link"
@@ -495,7 +485,9 @@ export default function CreateLinkPage() {
                 name="alias"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Link Alias</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Link Alias
+                    </FormLabel>
                     <FormControl>
                       <div className="flex h-9 w-full items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors hover:border-neutral-300 dark:hover:border-border focus-within:border-neutral-300 focus-within:ring-1 focus-within:ring-neutral-300">
                         <Select
@@ -531,7 +523,11 @@ export default function CreateLinkPage() {
                         />
                         <div className="flex h-full items-center border-l border-neutral-200 dark:border-border px-2">
                           {generateAliasMutation.isLoading ? (
-                            <IconLoader2 size={16} stroke={1.5} className="animate-spin text-neutral-400" />
+                            <IconLoader2
+                              size={16}
+                              stroke={1.5}
+                              className="animate-spin text-neutral-400"
+                            />
                           ) : generatedAliases.length > 0 ? (
                             <div className="flex items-center gap-0.5">
                               <button
@@ -601,14 +597,18 @@ export default function CreateLinkPage() {
                 name="note"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Note</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Note
+                    </FormLabel>
                     <FormControl>
                       <Input
                         className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">Add a note to your link</FormDescription>
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      Add a note to your link
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -620,7 +620,9 @@ export default function CreateLinkPage() {
                 name="tags"
                 render={() => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Tags</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Tags
+                    </FormLabel>
                     <FormControl>
                       <div className="relative">
                         <div className="mb-2 flex flex-wrap gap-2">
@@ -663,16 +665,17 @@ export default function CreateLinkPage() {
                           {showTagDropdown && filteredTags.length > 0 && (
                             <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card shadow-md">
                               {filteredTags.map((tag) => (
-                                <div
+                                <button
+                                  type="button"
                                   key={tag}
-                                  className="cursor-pointer px-4 py-2 text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
+                                  className="block w-full cursor-pointer px-4 py-2 text-left text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
                                   onMouseDown={(e) => {
                                     e.preventDefault(); // Prevent input blur
                                     addTag(tag);
                                   }}
                                 >
                                   {tag}
-                                </div>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -694,7 +697,9 @@ export default function CreateLinkPage() {
                 name="campaignId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Campaign</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Campaign
+                    </FormLabel>
                     <Select
                       value={field.value != null ? field.value.toString() : "none"}
                       onValueChange={(value) => {
@@ -720,8 +725,10 @@ export default function CreateLinkPage() {
                         Will stamp{" "}
                         <code className="rounded bg-neutral-100 dark:bg-muted px-1 py-0.5 text-[11px]">
                           utm_campaign={selectedCampaign.slug}
-                          {selectedCampaign.utmSource && `, utm_source=${selectedCampaign.utmSource}`}
-                          {selectedCampaign.utmMedium && `, utm_medium=${selectedCampaign.utmMedium}`}
+                          {selectedCampaign.utmSource &&
+                            `, utm_source=${selectedCampaign.utmSource}`}
+                          {selectedCampaign.utmMedium &&
+                            `, utm_medium=${selectedCampaign.utmMedium}`}
                         </code>{" "}
                         onto this link. Values you enter yourself are kept.
                       </FormDescription>
@@ -749,7 +756,9 @@ export default function CreateLinkPage() {
                 name="metadata.title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Title</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Custom Title
+                    </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -772,7 +781,9 @@ export default function CreateLinkPage() {
                 name="metadata.description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Description</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Custom Description
+                    </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -795,7 +806,9 @@ export default function CreateLinkPage() {
                 name="metadata.image"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Custom Image</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Custom Image
+                    </FormLabel>
                     <FormControl>
                       <OgImageUploader
                         value={field.value}
@@ -834,10 +847,7 @@ export default function CreateLinkPage() {
                   />
                 </div>
               )}
-              <UtmParamsForm
-                form={form}
-                disabled={!isUltraUser}
-              />
+              <UtmParamsForm form={form} disabled={!isUltraUser} />
             </SectionToggle>
 
             {/* Link Cloaking Section */}
@@ -865,16 +875,16 @@ export default function CreateLinkPage() {
                     <FormControl>
                       <div className="flex items-center gap-2">
                         {isCheckingIframeable && (
-                          <IconLoader2 size={14} stroke={1.5} className="animate-spin text-neutral-400" />
+                          <IconLoader2
+                            size={14}
+                            stroke={1.5}
+                            className="animate-spin text-neutral-400"
+                          />
                         )}
                         <Switch
                           checked={field.value ?? false}
                           onCheckedChange={field.onChange}
-                          disabled={
-                            !isUltraUser ||
-                            !destinationURL ||
-                            isCheckingIframeable
-                          }
+                          disabled={!isUltraUser || !destinationURL || isCheckingIframeable}
                         />
                       </div>
                     </FormControl>
@@ -926,7 +936,8 @@ export default function CreateLinkPage() {
                         Enable Verified Clicks
                       </FormLabel>
                       <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                        With this on, your analytics shows which clicks came from real visitors, not automated traffic — so you can tell real engagement apart from noise.
+                        With this on, your analytics shows which clicks came from real visitors, not
+                        automated traffic — so you can tell real engagement apart from noise.
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -966,7 +977,9 @@ export default function CreateLinkPage() {
                 name="activateAt"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Go live at</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Go live at
+                    </FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
                       <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                         You need to be on a <b>pro plan</b> to schedule links
@@ -994,7 +1007,9 @@ export default function CreateLinkPage() {
                 name="disableLinkAfterClicks"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Disable after clicks</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Disable after clicks
+                    </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -1003,8 +1018,8 @@ export default function CreateLinkPage() {
                       />
                     </FormControl>
                     <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                      Deactivate the link after a certain number of clicks. Leave empty to
-                      never disable
+                      Deactivate the link after a certain number of clicks. Leave empty to never
+                      disable
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1016,7 +1031,9 @@ export default function CreateLinkPage() {
                 name="disableLinkAfterDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Disable after date</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Disable after date
+                    </FormLabel>
                     <FormControl>
                       <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
                     </FormControl>
@@ -1034,11 +1051,12 @@ export default function CreateLinkPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">Password</FormLabel>
+                    <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                      Password
+                    </FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
                       <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                        You need to be on a <b>pro plan</b> to create password protected
-                        links
+                        You need to be on a <b>pro plan</b> to create password protected links
                       </FormDescription>
                     )}
                     <FormControl>
@@ -1073,7 +1091,9 @@ export default function CreateLinkPage() {
       </div>
       <div className="mt-4 flex flex-col gap-4 md:col-span-5 md:mt-0">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">How users see your link</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+            How users see your link
+          </h1>
           <p className="text-[13px] text-neutral-400">
             This is how your link will be displayed to users on social platforms
           </p>

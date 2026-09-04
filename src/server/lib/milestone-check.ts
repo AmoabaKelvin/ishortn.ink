@@ -13,10 +13,7 @@ const log = logger.child({ component: "milestone-check" });
  * notifications for those that have. Uses atomic UPDATE with notifiedAt IS NULL
  * guard to prevent duplicate notifications under concurrent requests.
  */
-export async function checkAndFireMilestones(
-  linkId: number,
-  userId: string,
-): Promise<void> {
+export async function checkAndFireMilestones(linkId: number, userId: string): Promise<void> {
   try {
     // Fast path: check if any pending milestones exist for this link
     const pendingMilestones = await db
@@ -25,21 +22,14 @@ export async function checkAndFireMilestones(
         threshold: linkMilestone.threshold,
       })
       .from(linkMilestone)
-      .where(
-        and(
-          eq(linkMilestone.linkId, linkId),
-          isNull(linkMilestone.notifiedAt),
-        ),
-      );
+      .where(and(eq(linkMilestone.linkId, linkId), isNull(linkMilestone.notifiedAt)));
 
     if (pendingMilestones.length === 0) return;
 
     const totalClicks = await getTotalClicks(linkId);
 
     // Find milestones that have been reached
-    const reachedMilestones = pendingMilestones.filter(
-      (m) => totalClicks >= m.threshold,
-    );
+    const reachedMilestones = pendingMilestones.filter((m) => totalClicks >= m.threshold);
 
     if (reachedMilestones.length === 0) return;
 
@@ -64,12 +54,7 @@ export async function checkAndFireMilestones(
       const updateResult = await db
         .update(linkMilestone)
         .set({ notifiedAt: new Date() })
-        .where(
-          and(
-            eq(linkMilestone.id, milestone.id),
-            isNull(linkMilestone.notifiedAt),
-          ),
-        );
+        .where(and(eq(linkMilestone.id, milestone.id), isNull(linkMilestone.notifiedAt)));
 
       if (updateResult[0].affectedRows === 1) {
         emailPromises.push(

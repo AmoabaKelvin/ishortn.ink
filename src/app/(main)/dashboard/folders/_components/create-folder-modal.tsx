@@ -74,9 +74,7 @@ export function CreateFolderModal({
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>Create Folder</DialogTitle>
-          <DialogDescription>
-            Organize your links into a new folder
-          </DialogDescription>
+          <DialogDescription>Organize your links into a new folder</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -93,8 +91,7 @@ export function CreateFolderModal({
                 placeholder="Folder name"
                 className={cn(
                   "h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400",
-                  errors.name &&
-                    "border-red-300 focus-visible:ring-red-300"
+                  errors.name && "border-red-300 focus-visible:ring-red-300",
                 )}
                 {...register("name", {
                   required: "Folder name is required",
@@ -104,9 +101,7 @@ export function CreateFolderModal({
                   },
                 })}
               />
-              {errors.name && (
-                <p className="text-[12px] text-red-500">{errors.name.message}</p>
-              )}
+              {errors.name && <p className="text-[12px] text-red-500">{errors.name.message}</p>}
             </div>
 
             <div className="space-y-1.5">

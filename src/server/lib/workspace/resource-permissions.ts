@@ -4,8 +4,8 @@ import { eq, inArray } from "drizzle-orm";
 import { folder, folderPermission } from "@/server/db/schema";
 
 import { isWorkspaceAdmin } from "./permissions";
-import type { WorkspaceContext } from "./types";
 
+import type { WorkspaceContext } from "./types";
 import type { db as Database } from "@/server/db";
 
 type DatabaseType = typeof Database;
@@ -28,9 +28,7 @@ type DatabaseType = typeof Database;
  * @param workspace - The current workspace context
  * @returns True if user should bypass permission checks
  */
-export function shouldBypassFolderPermissions(
-  workspace: WorkspaceContext
-): boolean {
+export function shouldBypassFolderPermissions(workspace: WorkspaceContext): boolean {
   // Personal workspace: no folder permissions (user owns everything)
   if (workspace.type === "personal") {
     return true;
@@ -58,7 +56,7 @@ export function shouldBypassFolderPermissions(
 export async function canAccessFolder(
   db: DatabaseType,
   workspace: WorkspaceContext,
-  folderId: number
+  folderId: number,
 ): Promise<boolean> {
   // Bypass for personal workspace or admin/owner
   if (shouldBypassFolderPermissions(workspace)) {
@@ -106,7 +104,7 @@ export async function canAccessFolder(
 export async function requireFolderAccess(
   db: DatabaseType,
   workspace: WorkspaceContext,
-  folderId: number
+  folderId: number,
 ): Promise<void> {
   const hasAccess = await canAccessFolder(db, workspace, folderId);
   if (!hasAccess) {
@@ -129,7 +127,7 @@ export async function requireFolderAccess(
 export async function getAccessibleFolderIds(
   db: DatabaseType,
   workspace: WorkspaceContext,
-  teamFolderIds: number[]
+  teamFolderIds: number[],
 ): Promise<number[]> {
   // Empty list: return empty
   if (teamFolderIds.length === 0) {
@@ -204,7 +202,7 @@ export async function getAccessibleFolderIds(
  */
 export async function getFolderPermissionMap(
   db: DatabaseType,
-  folderIds: number[]
+  folderIds: number[],
 ): Promise<Map<number, string[]>> {
   if (folderIds.length === 0) {
     return new Map();
@@ -239,9 +237,7 @@ export async function getFolderPermissionMap(
  * @param workspace - Workspace context
  * @throws TRPCError if user cannot manage permissions
  */
-export function requireFolderPermissionManagement(
-  workspace: WorkspaceContext
-): void {
+export function requireFolderPermissionManagement(workspace: WorkspaceContext): void {
   // Personal workspace: no team permissions to manage
   if (workspace.type === "personal") {
     throw new TRPCError({

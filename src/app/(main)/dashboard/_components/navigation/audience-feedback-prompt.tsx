@@ -3,20 +3,18 @@
 import { IconSparkles } from "@tabler/icons-react";
 import { useState } from "react";
 
-import type { Plan } from "@/lib/billing/plans";
 import { api } from "@/trpc/react";
 
 import { AudienceFeedbackModal } from "./audience-feedback-modal";
+
+import type { Plan } from "@/lib/billing/plans";
 
 type AudienceFeedbackPromptProps = {
   plan: Plan;
   onTriggerClick?: () => void;
 };
 
-export function AudienceFeedbackPrompt({
-  plan,
-  onTriggerClick,
-}: AudienceFeedbackPromptProps) {
+export function AudienceFeedbackPrompt({ plan, onTriggerClick }: AudienceFeedbackPromptProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const { data: status } = api.audienceFeedback.getStatus.useQuery(undefined, {
@@ -39,11 +37,7 @@ export function AudienceFeedbackPrompt({
         <IconSparkles size={18} stroke={1.5} className="shrink-0" />
         Help shape iShortn
       </button>
-      <AudienceFeedbackModal
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        plan={plan}
-      />
+      <AudienceFeedbackModal open={isOpen} onOpenChange={setIsOpen} plan={plan} />
     </>
   );
 }

@@ -1,15 +1,9 @@
 "use client";
 
-import {
-  IconDots,
-  IconFileSpreadsheet,
-  IconJson,
-  IconUpload,
-} from "@tabler/icons-react";
+import { IconDots, IconFileSpreadsheet, IconJson, IconUpload } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { convertDataToCSV } from "@/lib/utils/convert-links-to-csv";
 import { convertDataToJSON } from "@/lib/utils/convert-links-to-json";
 import { api } from "@/trpc/react";
@@ -30,13 +25,12 @@ export function BulkLinkActions() {
 
   const { data: subStatus } = api.subscriptions.get.useQuery();
 
-  const { mutate: exportLinks, isLoading } =
-    api.link.exportUserLinks.useMutation({
-      onSuccess: (_data) => {},
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    });
+  const { mutate: exportLinks, isLoading } = api.link.exportUserLinks.useMutation({
+    onSuccess: (_data) => {},
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const triggerDownload = (content: string, fileName: string): void => {
     const encodedUri = encodeURI(content);
@@ -52,10 +46,7 @@ export function BulkLinkActions() {
     const exportPromise = new Promise((resolve, reject) => {
       exportLinks(undefined, {
         onSuccess: (data) => {
-          const content =
-            format === "csv"
-              ? convertDataToCSV(data)
-              : convertDataToJSON(data);
+          const content = format === "csv" ? convertDataToCSV(data) : convertDataToJSON(data);
           const fileName = `ishortn_links.${format}`;
           triggerDownload(content, fileName);
           trackEvent(POSTHOG_EVENTS.LINKS_EXPORTED, {
@@ -99,11 +90,7 @@ export function BulkLinkActions() {
             onClick={() => setIsUploadModalOpen(true)}
             className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
-            <IconUpload
-              size={15}
-              stroke={1.5}
-              className="mr-2 text-neutral-400"
-            />
+            <IconUpload size={15} stroke={1.5} className="mr-2 text-neutral-400" />
             Upload CSV
           </DropdownMenuItem>
 
@@ -117,11 +104,7 @@ export function BulkLinkActions() {
             disabled={isLoading}
             className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
-            <IconFileSpreadsheet
-              size={15}
-              stroke={1.5}
-              className="mr-2 text-neutral-400"
-            />
+            <IconFileSpreadsheet size={15} stroke={1.5} className="mr-2 text-neutral-400" />
             Export as CSV
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -129,11 +112,7 @@ export function BulkLinkActions() {
             disabled={isLoading}
             className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
           >
-            <IconJson
-              size={15}
-              stroke={1.5}
-              className="mr-2 text-neutral-400"
-            />
+            <IconJson size={15} stroke={1.5} className="mr-2 text-neutral-400" />
             Export as JSON
           </DropdownMenuItem>
         </DropdownMenuContent>

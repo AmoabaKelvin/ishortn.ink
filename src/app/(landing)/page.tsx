@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import { JsonLd } from "@/components/seo/json-ld";
 import { landingPageCopy } from "@/lib/copy/landing-page";
 import {
@@ -20,10 +18,11 @@ import { Pricing } from "./_components/pricing";
 import { QRSection } from "./_components/qr-section";
 import { Testimonials } from "./_components/testimonials";
 
+import type { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: {
-    absolute:
-      "iShortn — Links, made lovely. Free URL shortener with analytics",
+    absolute: "iShortn — Links, made lovely. Free URL shortener with analytics",
   },
   description:
     "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
@@ -40,16 +39,14 @@ export const metadata: Metadata = {
     "url shortener free",
   ],
   openGraph: {
-    title:
-      "iShortn — Links, made lovely. Free URL shortener with analytics",
+    title: "iShortn — Links, made lovely. Free URL shortener with analytics",
     description:
       "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title:
-      "iShortn — Links, made lovely. Free URL shortener with analytics",
+    title: "iShortn — Links, made lovely. Free URL shortener with analytics",
     description:
       "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
   },

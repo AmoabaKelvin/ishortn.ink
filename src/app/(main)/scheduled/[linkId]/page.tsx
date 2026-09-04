@@ -46,9 +46,7 @@ export default async function ScheduledPage({ params }: ScheduledPageProps) {
         <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
           <IconClock size={24} stroke={1.5} className="text-blue-600" />
         </div>
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
-          Not Live Yet
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Not Live Yet</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-neutral-500">
           The link you are trying to visit is scheduled to go live later.
         </p>

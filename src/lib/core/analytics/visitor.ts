@@ -4,6 +4,7 @@ import { getContinentName, getCountryFullName } from "@/lib/countries";
 import { resolveDeviceType } from "@/lib/utils/device-type";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { isBot } from "@/lib/utils/is-bot";
+import { lookup } from "@/lib/utils/lookup";
 
 import type { Visitor } from "./click-event";
 
@@ -58,6 +59,18 @@ export function resolveGeo(country: string, city: string) {
   }
 }
 
+const REFERRER_SOURCES = {
+  "t.co": "twitter",
+  "l.facebook.com": "facebook",
+  "lm.facebook.com": "facebook",
+  "m.facebook.com": "facebook",
+  "linkedin.com": "linkedin",
+  "lnkd.in": "linkedin",
+  "out.reddit.com": "reddit",
+  "away.vk.com": "vkontakte",
+  "com.google.android.gm": "gmail",
+};
+
 /** Normalize a referer header into a coarse source label. */
 export function parseReferrer(referrer: string | null): string {
   if (!referrer) return "direct";
@@ -66,21 +79,8 @@ export function parseReferrer(referrer: string | null): string {
     const url = new URL(referrer);
     const hostname = url.hostname.replace(/^www\./, "");
 
-    const referrerMap: Record<string, string> = {
-      "t.co": "twitter",
-      "l.facebook.com": "facebook",
-      "lm.facebook.com": "facebook",
-      "m.facebook.com": "facebook",
-      "linkedin.com": "linkedin",
-      "lnkd.in": "linkedin",
-      "out.reddit.com": "reddit",
-      "away.vk.com": "vkontakte",
-      "com.google.android.gm": "gmail",
-    };
-
-    if (hostname in referrerMap) {
-      return referrerMap[hostname] ?? hostname;
-    }
+    const source = lookup(REFERRER_SOURCES, hostname);
+    if (source) return source;
 
     const parts = hostname.split(".");
     return parts.slice(-2).join(".");

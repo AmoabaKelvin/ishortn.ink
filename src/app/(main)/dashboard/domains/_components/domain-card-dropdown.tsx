@@ -78,24 +78,17 @@ export function DomainCardDropdown({ domainId }: DomainCardDropdownProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="max-w-md rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[14px]">
-              Delete domain
-            </AlertDialogTitle>
+            <AlertDialogTitle className="text-[14px]">Delete domain</AlertDialogTitle>
             <AlertDialogDescription className="text-[12px]">
-              This will permanently delete the domain and all associated links.
-              This action cannot be undone.
+              This will permanently delete the domain and all associated links. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-9 text-[13px]">
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel className="h-9 text-[13px]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="h-9 bg-red-600 text-[13px] hover:bg-red-700"

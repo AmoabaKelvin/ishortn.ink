@@ -1,21 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { IconCalendar, IconChevronDown, IconDiamond, IconX } from "@tabler/icons-react";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  IconCalendar,
-  IconChevronDown,
-  IconDiamond,
-  IconX,
-} from "@tabler/icons-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
 import { UtmTemplateSelector } from "@/app/(main)/dashboard/_components/utm-template-selector";
+import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -37,11 +32,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -55,17 +46,17 @@ import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
-import type { RouterOutputs } from "@/trpc/shared";
+import type { LinkCardLink } from "./types";
 import type { z } from "zod";
 
 type LinkEditModalProps = {
-  link: RouterOutputs["link"]["list"]["links"][number];
+  link: LinkCardLink;
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
-  const [tags, setTags] = useState<string[]>((link.tags as string[]) || []);
+  const [tags, setTags] = useState<string[]>(link.tags);
   const [tagInput, setTagInput] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [isBasicInfoOpen, setIsBasicInfoOpen] = useState(true);
@@ -97,15 +88,8 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
       note: link.note ?? undefined,
       disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
-      tags: (link.tags as string[]) || [],
-      utmParams:
-        (link.utmParams as {
-          utm_source?: string;
-          utm_medium?: string;
-          utm_campaign?: string;
-          utm_term?: string;
-          utm_content?: string;
-        }) ?? undefined,
+      tags: link.tags,
+      utmParams: link.utmParams ?? undefined,
     },
   });
   form.setValue("id", link.id);
@@ -139,16 +123,13 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
     ? userTags
         .filter(
           (tag) =>
-            (tagInput === "" ||
-              tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
-            !tags.includes(tag.name)
+            (tagInput === "" || tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
+            !tags.includes(tag.name),
         )
         .map((tag) => tag.name)
     : [];
 
-  async function onSubmit(
-    values: z.infer<Omit<typeof updateLinkSchema, "id">>
-  ) {
+  async function onSubmit(values: z.infer<Omit<typeof updateLinkSchema, "id">>) {
     values.tags = tags;
     toast.promise(formUpdateMutation.mutateAsync(values), {
       loading: "Updating link...",
@@ -161,8 +142,12 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">Edit Link</DialogTitle>
-          <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">Update your link settings</DialogDescription>
+          <DialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+            Edit Link
+          </DialogTitle>
+          <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            Update your link settings
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -176,7 +161,9 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                   onClick={() => setIsBasicInfoOpen(!isBasicInfoOpen)}
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">Basic Information</span>
+                    <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+                      Basic Information
+                    </span>
                     <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                       Main details of your link
                     </span>
@@ -186,7 +173,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                     stroke={1.5}
                     className={cn(
                       "shrink-0 text-neutral-400 transition-transform duration-200",
-                      isBasicInfoOpen && "rotate-180"
+                      isBasicInfoOpen && "rotate-180",
                     )}
                   />
                 </button>
@@ -312,7 +299,9 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                   onClick={() => setIsTagsOpen(!isTagsOpen)}
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">Tags</span>
+                    <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+                      Tags
+                    </span>
                     <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                       Organize with tags
                     </span>
@@ -322,7 +311,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                     stroke={1.5}
                     className={cn(
                       "shrink-0 text-neutral-400 transition-transform duration-200",
-                      isTagsOpen && "rotate-180"
+                      isTagsOpen && "rotate-180",
                     )}
                   />
                 </button>
@@ -372,31 +361,28 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                       }}
                                       onKeyDown={handleTagKeyDown}
                                       onBlur={() => {
-                                        setTimeout(
-                                          () => setShowTagDropdown(false),
-                                          200
-                                        );
+                                        setTimeout(() => setShowTagDropdown(false), 200);
                                       }}
                                       onFocus={() => setShowTagDropdown(true)}
                                       className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                                     />
-                                    {showTagDropdown &&
-                                      filteredTags.length > 0 && (
-                                        <div className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card shadow-md">
-                                          {filteredTags.map((tag) => (
-                                            <div
-                                              key={tag}
-                                              className="cursor-pointer px-3 py-2 text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                addTag(tag);
-                                              }}
-                                            >
-                                              {tag}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
+                                    {showTagDropdown && filteredTags.length > 0 && (
+                                      <div className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card shadow-md">
+                                        {filteredTags.map((tag) => (
+                                          <button
+                                            type="button"
+                                            key={tag}
+                                            className="block w-full cursor-pointer px-3 py-2 text-left text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              addTag(tag);
+                                            }}
+                                          >
+                                            {tag}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </FormControl>
@@ -422,9 +408,10 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                 >
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">UTM Parameters</span>
-                      {userSubscription?.data?.subscriptions?.plan !==
-                        "ultra" && (
+                      <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+                        UTM Parameters
+                      </span>
+                      {userSubscription?.data?.subscriptions?.plan !== "ultra" && (
                         <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-px text-[11px] font-medium uppercase text-neutral-500 dark:text-neutral-400">
                           <IconDiamond size={12} stroke={1.5} className="text-neutral-400" />
                           Ultra
@@ -440,7 +427,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                     stroke={1.5}
                     className={cn(
                       "shrink-0 text-neutral-400 transition-transform duration-200",
-                      isUtmParamsOpen && "rotate-180"
+                      isUtmParamsOpen && "rotate-180",
                     )}
                   />
                 </button>
@@ -454,30 +441,26 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                       className="overflow-hidden"
                     >
                       <div className="space-y-3 border-t border-neutral-200 dark:border-border p-4">
-                        {userSubscription?.data?.subscriptions?.plan ===
-                          "ultra" && (
+                        {userSubscription?.data?.subscriptions?.plan === "ultra" && (
                           <div className="flex justify-end">
                             <UtmTemplateSelector
                               onSelect={(params) => {
                                 form.setValue(
                                   "utmParams.utm_source",
-                                  params.utm_source ?? undefined
+                                  params.utm_source ?? undefined,
                                 );
                                 form.setValue(
                                   "utmParams.utm_medium",
-                                  params.utm_medium ?? undefined
+                                  params.utm_medium ?? undefined,
                                 );
                                 form.setValue(
                                   "utmParams.utm_campaign",
-                                  params.utm_campaign ?? undefined
+                                  params.utm_campaign ?? undefined,
                                 );
-                                form.setValue(
-                                  "utmParams.utm_term",
-                                  params.utm_term ?? undefined
-                                );
+                                form.setValue("utmParams.utm_term", params.utm_term ?? undefined);
                                 form.setValue(
                                   "utmParams.utm_content",
-                                  params.utm_content ?? undefined
+                                  params.utm_content ?? undefined,
                                 );
                               }}
                             />
@@ -485,10 +468,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                         )}
                         <UtmParamsForm
                           form={form}
-                          disabled={
-                            userSubscription?.data?.subscriptions?.plan !==
-                            "ultra"
-                          }
+                          disabled={userSubscription?.data?.subscriptions?.plan !== "ultra"}
                         />
                       </div>
                     </motion.div>
@@ -501,12 +481,12 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                 <button
                   type="button"
                   className="flex w-full items-center justify-between p-4 text-left"
-                  onClick={() =>
-                    setIsOptionalSettingsOpen(!isOptionalSettingsOpen)
-                  }
+                  onClick={() => setIsOptionalSettingsOpen(!isOptionalSettingsOpen)}
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">Advanced Settings</span>
+                    <span className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+                      Advanced Settings
+                    </span>
                     <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
                       Expiration options
                     </span>
@@ -516,7 +496,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                     stroke={1.5}
                     className={cn(
                       "shrink-0 text-neutral-400 transition-transform duration-200",
-                      isOptionalSettingsOpen && "rotate-180"
+                      isOptionalSettingsOpen && "rotate-180",
                     )}
                   />
                 </button>
@@ -539,7 +519,11 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                 Disable After Clicks
                               </FormLabel>
                               <FormControl>
-                                <Input {...field} type="number" className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]" />
+                                <Input
+                                  {...field}
+                                  type="number"
+                                  className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
+                                />
                               </FormControl>
                               <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
                                 Leave empty to never disable
@@ -557,9 +541,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                 Disable After Date
                               </FormLabel>
                               <FormControl>
-                                <LinkExpirationDatePicker
-                                  setSeletectedDate={field.onChange}
-                                />
+                                <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -600,9 +582,7 @@ type LinkExpirationDatePickerProps = {
   setSeletectedDate: (date: Date) => void;
 };
 
-export function LinkExpirationDatePicker({
-  setSeletectedDate,
-}: LinkExpirationDatePickerProps) {
+export function LinkExpirationDatePicker({ setSeletectedDate }: LinkExpirationDatePickerProps) {
   const [date, setDate] = useState<Date>();
 
   const handleSelect = (date: Date) => {
@@ -617,7 +597,7 @@ export function LinkExpirationDatePicker({
           variant="outline"
           className={cn(
             "h-9 w-full justify-start border-neutral-200 dark:border-border text-left text-[13px] font-normal",
-            !date && "text-neutral-400"
+            !date && "text-neutral-400",
           )}
         >
           <IconCalendar size={14} stroke={1.5} className="mr-2 text-neutral-400" />

@@ -18,7 +18,7 @@ export function LinkPreviewComponent({
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card p-5">
       <div className="flex items-center text-[14px] font-semibold text-neutral-900 dark:text-foreground">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* eslint-disable-next-line next/no-img-element -- favicon scraped from an arbitrary destination host */}
         <img
           src={favicon || DEFAULT_FAVICON}
           className="mr-2 h-6 w-6 rounded-md"
@@ -34,7 +34,7 @@ export function LinkPreviewComponent({
         {destinationURL?.replace(/(^\w+:|^)\/\//, "").split("/")[0] || DEFAULT_PLATFORM_DOMAIN}
       </span>
       {metaImage && (
-        /* eslint-disable-next-line @next/next/no-img-element */
+        /* eslint-disable-next-line next/no-img-element -- OG image scraped from an arbitrary destination host */
         <img
           src={metaImage}
           className="w-full rounded-lg"

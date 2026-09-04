@@ -1,5 +1,4 @@
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
-
 import * as inputs from "./user.input";
 import * as services from "./user.service";
 

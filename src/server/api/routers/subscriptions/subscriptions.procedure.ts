@@ -76,7 +76,7 @@ export const subscriptionsRouter = createTRPCRouter({
     // Guard against null subscriptions when spreading
     const effectiveSubscriptions = isTeamWorkspace
       ? {
-          ...(userRecord.subscriptions ?? {}),
+          ...userRecord.subscriptions,
           status: "active",
           plan: "ultra" as const,
         }

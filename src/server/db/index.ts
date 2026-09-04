@@ -46,10 +46,14 @@ function getDb(): Database {
   return nodeDb;
 }
 
-export const db = new Proxy({} as Database, {
-  get(_target, prop, _receiver) {
+// SAFETY: the empty target is never read; the `get` trap forwards every
+// property to the per-request Database resolved by getDb().
+const proxyTarget = {} as Database;
+
+export const db = new Proxy(proxyTarget, {
+  get(_target, prop: keyof Database) {
     const instance = getDb();
-    const value = Reflect.get(instance, prop, instance);
-    return typeof value === "function" ? value.bind(instance) : value;
+    const value = instance[prop];
+    return value instanceof Function ? value.bind(instance) : value;
   },
 });

@@ -1,13 +1,4 @@
-import {
-  Body,
-  Container,
-  Head,
-  Hr,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import { Body, Container, Head, Hr, Html, Preview, Section, Text } from "@react-email/components";
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
 
@@ -43,8 +34,8 @@ export const TransferCompletedEmail = ({
             <Text style={text}>Hi {senderName || "there"},</Text>
 
             <Text style={text}>
-              Your resource transfer to <strong>{recipientName}</strong> (
-              {recipientEmail}) has been completed successfully.
+              Your resource transfer to <strong>{recipientName}</strong> ({recipientEmail}) has been
+              completed successfully.
             </Text>
 
             <Hr style={hr} />
@@ -93,24 +84,20 @@ export const TransferCompletedEmail = ({
                   {resourceCounts.qrPresets !== 1 ? "s" : ""}
                 </Text>
               )}
-              {totalResources === 0 && (
-                <Text style={resourceItem}>No resources transferred</Text>
-              )}
+              {totalResources === 0 && <Text style={resourceItem}>No resources transferred</Text>}
             </Section>
 
             <Hr style={hr} />
 
             <Text style={text}>
-              These resources are now owned by {recipientName} and have been
-              removed from your account.
+              These resources are now owned by {recipientName} and have been removed from your
+              account.
             </Text>
 
             <Hr style={hr} />
 
             <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>
-              Kelvin & the iShortn team
-            </Text>
+            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
           </Section>
         </Container>
       </Body>

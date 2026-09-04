@@ -282,7 +282,7 @@ export const geoRule = mysqlTable(
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
     priorityIdx: index("priority_idx").on(table.linkId, table.priority),
-  })
+  }),
 );
 
 export const linkVisit = mysqlTable(
@@ -345,15 +345,12 @@ export const linkVisitDailySummary = mysqlTable(
   }),
 );
 
-export const linkVisitDailySummaryRelations = relations(
-  linkVisitDailySummary,
-  ({ one }) => ({
-    link: one(link, {
-      fields: [linkVisitDailySummary.linkId],
-      references: [link.id],
-    }),
+export const linkVisitDailySummaryRelations = relations(linkVisitDailySummary, ({ one }) => ({
+  link: one(link, {
+    fields: [linkVisitDailySummary.linkId],
+    references: [link.id],
   }),
-);
+}));
 
 export const linkMilestone = mysqlTable(
   "LinkMilestone",
@@ -453,8 +450,8 @@ export const qrPreset = mysqlTable(
 
     // Style settings
     pixelStyle: varchar("pixelStyle", { length: 50 }).notNull().default("rounded"),
-    markerShape: varchar("markerShape", { length: 50 }).notNull().default("square"),
-    markerInnerShape: varchar("markerInnerShape", { length: 50 }).notNull().default("auto"),
+    markerFrame: varchar("markerShape", { length: 50 }).notNull().default("square"),
+    markerCenter: varchar("markerInnerShape", { length: 50 }).notNull().default("auto"),
     darkColor: varchar("darkColor", { length: 9 }).notNull().default("#000000"),
     lightColor: varchar("lightColor", { length: 9 }).notNull().default("#ffffff"),
 
@@ -577,17 +574,13 @@ export const linkTag = mysqlTable(
 // ADMIN / MODERATION TABLES
 // ============================================================================
 
-export const blockedDomain = mysqlTable(
-  "BlockedDomain",
-  {
-    id: serial("id").primaryKey(),
-    domain: varchar("domain", { length: 255 }).notNull().unique(),
-    reason: varchar("reason", { length: 255 }),
-    createdAt: timestamp("createdAt").defaultNow(),
-    createdByUserId: varchar("createdByUserId", { length: 32 }),
-  },
-  (table) => ({}),
-);
+export const blockedDomain = mysqlTable("BlockedDomain", {
+  id: serial("id").primaryKey(),
+  domain: varchar("domain", { length: 255 }).notNull().unique(),
+  reason: varchar("reason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow(),
+  createdByUserId: varchar("createdByUserId", { length: 32 }),
+});
 
 export const flaggedLink = mysqlTable(
   "FlaggedLink",
@@ -1326,15 +1319,12 @@ export const bioBlockRelations = relations(bioBlock, ({ one }) => ({
   }),
 }));
 
-export const bioPageViewDailySummaryRelations = relations(
-  bioPageViewDailySummary,
-  ({ one }) => ({
-    bioPage: one(bioPage, {
-      fields: [bioPageViewDailySummary.bioPageId],
-      references: [bioPage.id],
-    }),
+export const bioPageViewDailySummaryRelations = relations(bioPageViewDailySummary, ({ one }) => ({
+  bioPage: one(bioPage, {
+    fields: [bioPageViewDailySummary.bioPageId],
+    references: [bioPage.id],
   }),
-);
+}));
 
 export type BioPage = typeof bioPage.$inferSelect;
 export type NewBioPage = typeof bioPage.$inferInsert;

@@ -1,11 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
 
 import { logger } from "@/lib/logger";
 import { appRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 
+import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
 import type { NextRequest } from "next/server";
 
 const trpcLogger = logger.child({ component: "trpc" });

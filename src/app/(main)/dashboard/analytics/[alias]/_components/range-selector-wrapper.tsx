@@ -25,9 +25,7 @@ export function RangeSelectorWrapper({
     if (basePath) {
       router.push(`${basePath}?range=${newRange}`);
     } else {
-      router.push(
-        `/dashboard/analytics/${alias}?domain=${domain}&range=${newRange}`
-      );
+      router.push(`/dashboard/analytics/${alias}?domain=${domain}&range=${newRange}`);
     }
   };
 

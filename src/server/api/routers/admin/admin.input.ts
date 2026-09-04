@@ -111,13 +111,9 @@ export const getUserBaseSummarySchema = dateRangeSchema;
 export type GetUserBaseSummaryInput = z.infer<typeof getUserBaseSummarySchema>;
 
 export const getSubscriptionTimelineSchema = dateRangeSchema;
-export type GetSubscriptionTimelineInput = z.infer<
-  typeof getSubscriptionTimelineSchema
->;
+export type GetSubscriptionTimelineInput = z.infer<typeof getSubscriptionTimelineSchema>;
 
 export const getRecentSubscriptionsSchema = z.object({
   limit: z.number().int().positive().max(50).default(10),
 });
-export type GetRecentSubscriptionsInput = z.infer<
-  typeof getRecentSubscriptionsSchema
->;
+export type GetRecentSubscriptionsInput = z.infer<typeof getRecentSubscriptionsSchema>;

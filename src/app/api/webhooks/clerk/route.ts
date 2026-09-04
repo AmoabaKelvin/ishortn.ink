@@ -1,6 +1,6 @@
-import type { WebhookEvent } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
+import { z } from "zod";
 
 import { env } from "@/env.mjs";
 import WelcomeEmail from "@/lib/email/templates/welcome-email";
@@ -33,22 +33,19 @@ export async function POST(req: Request) {
   }
 
   // Get the body
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const payload = await req.json();
   const body = JSON.stringify(payload);
 
   // Create a new SVIX instance with your secret.
   const wh = new Webhook(WEBHOOK_SECRET);
 
-  let evt: WebhookEvent;
-
   // Verify the payload with the headers
   try {
-    evt = wh.verify(body, {
+    wh.verify(body, {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
-    }) as WebhookEvent;
+    });
   } catch (err) {
     log.error({ err }, "signature verification failed");
     return new Response("Error occured", {
@@ -56,21 +53,31 @@ export async function POST(req: Request) {
     });
   }
 
+  const event = clerkUserEventSchema.safeParse(payload);
+  if (!event.success) {
+    log.error({ issues: event.error.issues }, "unexpected webhook payload");
+    return new Response("Unexpected payload", { status: 400 });
+  }
+
   // Get the ID and type
-  const { id } = evt.data;
-  const eventType = evt.type;
+  const { id } = event.data.data;
+  const eventType = event.data.type;
 
   log.debug({ eventId: id, eventType }, "webhook received");
 
   // Get the user info
-  const userInfo = getUserInfo(payload as Payload);
+  const userInfo = getUserInfo(event.data);
 
-  await db.insert(user).values({
-    id: id!,
+  // Upsert: ensure-user may have created the row on the user's first request.
+  const values = {
     name: userInfo.name,
     email: userInfo.email,
     imageUrl: userInfo.avatarUrl,
-  });
+  };
+  await db
+    .insert(user)
+    .values({ id, ...values })
+    .onDuplicateKeyUpdate({ set: values });
 
   if (resend) {
     const { error } = await resend.emails.send({
@@ -90,84 +97,20 @@ export async function POST(req: Request) {
   return new Response("", { status: 201 });
 }
 
-interface EmailAddress {
-  email_address: string;
-  id: string;
-  linked_to: Array<{ id: string; type: string }>;
-  object: string;
-  reserved: boolean;
-  verification: {
-    attempts: null | number;
-    expire_at: null | number;
-    status: string;
-    strategy: string;
-  };
-}
+const clerkUserEventSchema = z.object({
+  type: z.string(),
+  data: z.object({
+    id: z.string(),
+    first_name: z.string().nullable(),
+    last_name: z.string().nullable(),
+    image_url: z.string(),
+    email_addresses: z.array(z.object({ email_address: z.string() })),
+  }),
+});
 
-interface ExternalAccount {
-  approved_scopes: string;
-  avatar_url: string;
-  email_address: string;
-  first_name: string;
-  id: string;
-  identification_id: string;
-  image_url: string;
-  label: null | string;
-  last_name: string;
-  object: string;
-  provider: string;
-  provider_user_id: string;
-  public_metadata: object;
-  username: string;
-  verification: {
-    attempts: null | number;
-    expire_at: null | number;
-    status: string;
-    strategy: string;
-  };
-}
+type ClerkUserEvent = z.infer<typeof clerkUserEventSchema>;
 
-interface Payload {
-  data: {
-    backup_code_enabled: boolean;
-    banned: boolean;
-    birthday: string;
-    create_organization_enabled: boolean;
-    created_at: number;
-    delete_self_enabled: boolean;
-    email_addresses: EmailAddress[];
-    external_accounts: ExternalAccount[];
-    external_id: null | string;
-    first_name: string;
-    gender: string;
-    has_image: boolean;
-    id: string;
-    image_url: string;
-    last_name: string;
-    last_sign_in_at: null | number;
-    locked: boolean;
-    object: string;
-    password_enabled: boolean;
-    phone_numbers: [];
-    primary_email_address_id: string;
-    primary_phone_number_id: null | string;
-    primary_web3_wallet_id: null | string;
-    private_metadata: object;
-    profile_image_url: string;
-    public_metadata: object;
-    saml_accounts: [];
-    totp_enabled: boolean;
-    two_factor_enabled: boolean;
-    unsafe_metadata: object;
-    updated_at: number;
-    username: string;
-    web3_wallets: [];
-  };
-  object: string;
-  type: string;
-}
-
-function getUserInfo(payload: Payload) {
+function getUserInfo(payload: ClerkUserEvent) {
   const data = payload.data;
   const emailData = data.email_addresses[0];
 

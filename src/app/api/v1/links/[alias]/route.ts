@@ -25,13 +25,24 @@ const updateLinkSchema = z
       .string()
       .min(1)
       .max(20)
-      .regex(/^[a-zA-Z0-9-_]+$/, "Alias can only contain alphanumeric characters, dashes, and underscores")
+      .regex(
+        /^[a-zA-Z0-9-_]+$/,
+        "Alias can only contain alphanumeric characters, dashes, and underscores",
+      )
       .optional(),
     expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
     activatesAt: z.string().datetime({ offset: true }).nullable().optional(),
     expiresAfter: z.number().int().positive().nullable().optional(),
   })
   .strict();
+
+type LinkUpdate = {
+  url?: string;
+  alias?: string;
+  disableLinkAfterDate?: Date | null;
+  activateAt?: Date | null;
+  disableLinkAfterClicks?: number | null;
+};
 
 export async function GET(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
   const params = await props.params;
@@ -100,13 +111,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
     return new Response("Link not found", { status: 404 });
   }
 
-  const filteredUpdateData: {
-    url?: string;
-    alias?: string;
-    disableLinkAfterDate?: Date | null;
-    activateAt?: Date | null;
-    disableLinkAfterClicks?: number | null;
-  } = {};
+  const filteredUpdateData: LinkUpdate = {};
 
   if (parsed.data.url !== undefined) {
     // assertUrlSafe throws a TRPCError; surface it as the 400 the create route
@@ -127,7 +132,9 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
   }
   if (parsed.data.activatesAt !== undefined) {
     if (parsed.data.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
-      return new Response("Scheduled links are only available on Pro and Ultra plans", { status: 403 });
+      return new Response("Scheduled links are only available on Pro and Ultra plans", {
+        status: 403,
+      });
     }
     filteredUpdateData.activateAt = parsed.data.activatesAt
       ? new Date(parsed.data.activatesAt)
@@ -165,15 +172,16 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ ali
 
     // Check for unique constraint violation. drizzle-orm >= 0.44 wraps driver
     // errors in DrizzleQueryError, so the original mysql2 error lives at error.cause.
-    const cause =
-      error instanceof Error && error.cause instanceof Error ? error.cause : error;
-    const isDuplicateKey = (candidate: unknown) =>
-      candidate instanceof Error &&
-      (candidate.message.includes("Duplicate entry") ||
-        candidate.message.includes("ER_DUP_ENTRY") ||
-        (candidate as { code?: string }).code === "ER_DUP_ENTRY");
+    const failures = [error, error instanceof Error ? error.cause : undefined];
+    const isDuplicateKey = failures.some(
+      (failure) =>
+        failure instanceof Error &&
+        (failure.message.includes("Duplicate entry") ||
+          failure.message.includes("ER_DUP_ENTRY") ||
+          ("code" in failure && failure.code === "ER_DUP_ENTRY")),
+    );
 
-    if ((isDuplicateKey(error) || isDuplicateKey(cause)) && filteredUpdateData.alias) {
+    if (isDuplicateKey && filteredUpdateData.alias) {
       return new Response("Alias already exists for this domain", {
         status: 409,
       }); // 409 Conflict

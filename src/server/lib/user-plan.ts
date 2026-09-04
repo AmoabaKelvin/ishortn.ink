@@ -43,7 +43,7 @@ const getMonthStart = () => {
 
 export async function getUserPlanContext(
   userId: string,
-  dbClient: DbClient = db
+  dbClient: DbClient = db,
 ): Promise<UserPlanContext | null> {
   const userRecord = await dbClient.query.user.findFirst({
     where: (table, { eq }) => eq(table.id, userId),
@@ -67,13 +67,10 @@ export async function getUserPlanContext(
 
 export async function normalizeMonthlyEventCount(
   ctx: UserPlanContext,
-  dbClient: DbClient = db
+  dbClient: DbClient = db,
 ): Promise<number> {
   const monthStart = getMonthStart();
-  const lastReset =
-    ctx.userRecord.lastEventCountReset ??
-    ctx.userRecord.createdAt ??
-    new Date();
+  const lastReset = ctx.userRecord.lastEventCountReset ?? ctx.userRecord.createdAt ?? new Date();
 
   if (lastReset < monthStart) {
     await dbClient
@@ -93,11 +90,10 @@ export async function normalizeMonthlyEventCount(
 
 export async function normalizeMonthlyLinkCount(
   ctx: UserPlanContext,
-  dbClient: DbClient = db
+  dbClient: DbClient = db,
 ): Promise<number> {
   const monthStart = getMonthStart();
-  const lastReset =
-    ctx.userRecord.lastLinkCountReset ?? ctx.userRecord.createdAt ?? new Date();
+  const lastReset = ctx.userRecord.lastLinkCountReset ?? ctx.userRecord.createdAt ?? new Date();
 
   if (lastReset < monthStart) {
     await dbClient

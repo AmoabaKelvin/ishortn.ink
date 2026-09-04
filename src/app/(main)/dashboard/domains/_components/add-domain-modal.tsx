@@ -39,14 +39,13 @@ export function AddCustomDomainModal() {
       await revalidateRoute("/dashboard/domains");
     },
   });
-  const createCheckoutMutation =
-    api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
-      onSuccess: async (data) => {
-        if (data.status === "redirect" && data.url) {
-          window.location.href = data.url;
-        }
-      },
-    });
+  const createCheckoutMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
+    onSuccess: async (data) => {
+      if (data.status === "redirect" && data.url) {
+        window.location.href = data.url;
+      }
+    },
+  });
 
   const handleDomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDomain(e.target.value);
@@ -76,8 +75,7 @@ export function AddCustomDomainModal() {
 
   const canAddDomains =
     workspace?.type === "personal" ||
-    (workspace?.type === "team" &&
-      (workspace.role === "owner" || workspace.role === "admin"));
+    (workspace?.type === "team" && (workspace.role === "owner" || workspace.role === "admin"));
 
   if (workspace?.type === "team" && !canAddDomains) {
     return null;
@@ -97,9 +95,7 @@ export function AddCustomDomainModal() {
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>Add Domain</DialogTitle>
-          <DialogDescription>
-            Add a custom domain for your short links
-          </DialogDescription>
+          <DialogDescription>Add a custom domain for your short links</DialogDescription>
         </DialogHeader>
 
         {isProUser ? (
@@ -167,9 +163,7 @@ export function AddCustomDomainModal() {
               disabled={!domain || createCustomDomainMutation.isLoading}
               className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
             >
-              {createCustomDomainMutation.isLoading
-                ? "Adding..."
-                : "Add Domain"}
+              {createCustomDomainMutation.isLoading ? "Adding..." : "Add Domain"}
             </Button>
           ) : (
             <Button

@@ -32,4 +32,3 @@ function formatReferrer(referrer: string): string {
     return referrer;
   }
 }
-

@@ -21,33 +21,33 @@ const BRAND_NAMES = [
 ] as const;
 
 // Common character substitutions used in homoglyph attacks
-const HOMOGLYPH_MAP: Record<string, string> = {
-  "0": "o",
-  "1": "l",
-  "!": "i",
-  "@": "a",
-  "$": "s",
-  "3": "e",
-  "4": "a",
-  "5": "s",
-  "7": "t",
-  "8": "b",
-  "|": "l",
-  "¡": "i",
+const HOMOGLYPH_MAP = new Map([
+  ["0", "o"],
+  ["1", "l"],
+  ["!", "i"],
+  ["@", "a"],
+  ["$", "s"],
+  ["3", "e"],
+  ["4", "a"],
+  ["5", "s"],
+  ["7", "t"],
+  ["8", "b"],
+  ["|", "l"],
+  ["¡", "i"],
   // Cyrillic lookalikes
-  "\u0430": "a", // а
-  "\u0435": "e", // е
-  "\u043E": "o", // о
-  "\u0440": "p", // р
-  "\u0441": "c", // с
-  "\u0443": "y", // у
-  "\u0445": "x", // х
-};
+  ["\u0430", "a"], // а
+  ["\u0435", "e"], // е
+  ["\u043E", "o"], // о
+  ["\u0440", "p"], // р
+  ["\u0441", "c"], // с
+  ["\u0443", "y"], // у
+  ["\u0445", "x"], // х
+]);
 
 function normalizeHomoglyphs(str: string): string {
   let result = "";
   for (const char of str) {
-    result += HOMOGLYPH_MAP[char] ?? char;
+    result += HOMOGLYPH_MAP.get(char) ?? char;
   }
   return result.toLowerCase();
 }

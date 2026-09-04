@@ -36,28 +36,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
+import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
+
+import { checkIfUserCanCreateMoreQRCodes } from "../utils";
+import QRAdvancedCustomization from "./_components/qr-advanced-customization";
+
 import type { QRCodeGeneratorState } from "@/lib/qr-generator";
 import type {
   QREffect,
-  QRMarkerInnerShape,
-  QRMarkerShape,
+  QRMarkerCenter,
+  QRMarkerFrame,
   QRPixelStyle,
 } from "@/lib/qr-generator/types";
-
-import { checkIfUserCanCreateMoreQRCodes } from "../utils";
-
-import QRAdvancedCustomization from "./_components/qr-advanced-customization";
 
 function QRCodeCreationPage() {
   const router = useTransitionRouter();
   const userSubDetails = api.subscriptions.get.useQuery().data;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const canCreateMoreQRCodes =
-    checkIfUserCanCreateMoreQRCodes(userSubDetails);
+  const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(userSubDetails);
 
   const qrCodeCreateMutation = api.qrCode.create.useMutation();
   const qrCodeSaveImageMutation = api.qrCode.saveImage.useMutation();
@@ -65,9 +64,7 @@ function QRCodeCreationPage() {
 
   const [qrCodeTitle, setQRCodeTitle] = useState<string>("");
   const [destinationUrl, setDestinationUrl] = useState<string>("");
-  const [selectedDomain, setSelectedDomain] = useState<string>(
-    DEFAULT_PLATFORM_DOMAIN,
-  );
+  const [selectedDomain, setSelectedDomain] = useState<string>(DEFAULT_PLATFORM_DOMAIN);
 
   const customDomainsQuery = api.customDomain.list.useQuery();
   const userDomains = customDomainsQuery.data ?? [];
@@ -93,14 +90,11 @@ function QRCodeCreationPage() {
   // Preset state
   const [presetName, setPresetName] = useState("");
   const [savePresetDialogOpen, setSavePresetDialogOpen] = useState(false);
-  const [selectedPresetId, setSelectedPresetId] = useState<number | null>(
-    null,
-  );
+  const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
 
   // Preset queries and mutations
   const utils = api.useUtils();
-  const { data: presets, isLoading: isLoadingPresets } =
-    api.qrCode.listPresets.useQuery();
+  const { data: presets, isLoading: isLoadingPresets } = api.qrCode.listPresets.useQuery();
 
   const createPresetMutation = api.qrCode.createPreset.useMutation({
     onSuccess: () => {
@@ -136,12 +130,9 @@ function QRCodeCreationPage() {
   });
 
   // Update QR state helper
-  const updateQrState = useCallback(
-    (updates: Partial<QRCodeGeneratorState>) => {
-      setQrState((prev) => ({ ...prev, ...updates }));
-    },
-    [],
-  );
+  const updateQrState = useCallback((updates: Partial<QRCodeGeneratorState>) => {
+    setQrState((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   // Load preset into current state
   const loadPreset = useCallback(
@@ -150,11 +141,13 @@ function QRCodeCreationPage() {
       if (!preset) return;
 
       setSelectedPresetId(presetId);
+      // SAFETY: preset style columns are only written through qrPresetCreateInput /
+      // qrPresetUpdateInput, which restrict them to the generator enums asserted here.
       setQrState((prev) => ({
         ...prev,
         pixelStyle: preset.pixelStyle as QRPixelStyle,
-        markerShape: preset.markerShape as QRMarkerShape,
-        markerInnerShape: preset.markerInnerShape as QRMarkerInnerShape,
+        markerFrame: preset.markerFrame as QRMarkerFrame,
+        markerCenter: preset.markerCenter as QRMarkerCenter,
         darkColor: preset.darkColor,
         lightColor: preset.lightColor,
         effect: preset.effect as QREffect,
@@ -179,8 +172,8 @@ function QRCodeCreationPage() {
 
     return (
       qrState.pixelStyle !== preset.pixelStyle ||
-      qrState.markerShape !== preset.markerShape ||
-      qrState.markerInnerShape !== preset.markerInnerShape ||
+      qrState.markerFrame !== preset.markerFrame ||
+      qrState.markerCenter !== preset.markerCenter ||
       qrState.darkColor !== preset.darkColor ||
       qrState.lightColor !== preset.lightColor ||
       qrState.effect !== preset.effect ||
@@ -204,11 +197,8 @@ function QRCodeCreationPage() {
     createPresetMutation.mutate({
       name: presetName.trim(),
       pixelStyle: qrState.pixelStyle,
-      markerShape: qrState.markerShape,
-      markerInnerShape:
-        qrState.markerInnerShape === "auto"
-          ? "auto"
-          : qrState.markerInnerShape,
+      markerFrame: qrState.markerFrame,
+      markerCenter: qrState.markerCenter === "auto" ? "auto" : qrState.markerCenter,
       darkColor: qrState.darkColor,
       lightColor: qrState.lightColor,
       effect: qrState.effect,
@@ -229,11 +219,8 @@ function QRCodeCreationPage() {
     updatePresetMutation.mutate({
       id: selectedPresetId,
       pixelStyle: qrState.pixelStyle,
-      markerShape: qrState.markerShape,
-      markerInnerShape:
-        qrState.markerInnerShape === "auto"
-          ? "auto"
-          : qrState.markerInnerShape,
+      markerFrame: qrState.markerFrame,
+      markerCenter: qrState.markerCenter === "auto" ? "auto" : qrState.markerCenter,
       darkColor: qrState.darkColor,
       lightColor: qrState.lightColor,
       effect: qrState.effect,
@@ -279,8 +266,8 @@ function QRCodeCreationPage() {
       const { trackingUrl, id } = await qrCodeCreateMutation.mutateAsync({
         title: finalTitle,
         content: destinationUrl,
-        patternStyle: qrState.pixelStyle as string,
-        cornerStyle: qrState.markerShape as string,
+        patternStyle: qrState.pixelStyle,
+        cornerStyle: qrState.markerFrame,
         selectedColor: qrState.darkColor,
         domain: selectedDomain,
       });
@@ -327,10 +314,8 @@ function QRCodeCreationPage() {
     toast.promise(promise, {
       loading: "Creating QR Code...",
       success: "QR Code created successfully",
-      error: (err: unknown) =>
-        err instanceof Error && err.message
-          ? err.message
-          : "Failed to create QR Code",
+      error: (err) =>
+        err instanceof Error && err.message ? err.message : "Failed to create QR Code",
     });
   };
 
@@ -431,19 +416,12 @@ function QRCodeCreationPage() {
                   <IconRefresh
                     size={14}
                     stroke={1.5}
-                    className={cn(
-                      updatePresetMutation.isLoading && "animate-spin",
-                    )}
+                    className={cn(updatePresetMutation.isLoading && "animate-spin")}
                   />
-                  {updatePresetMutation.isLoading
-                    ? "Updating..."
-                    : "Update Preset"}
+                  {updatePresetMutation.isLoading ? "Updating..." : "Update Preset"}
                 </button>
               ) : (
-                <Dialog
-                  open={savePresetDialogOpen}
-                  onOpenChange={setSavePresetDialogOpen}
-                >
+                <Dialog open={savePresetDialogOpen} onOpenChange={setSavePresetDialogOpen}>
                   <DialogTrigger asChild>
                     <button
                       type="button"
@@ -478,10 +456,7 @@ function QRCodeCreationPage() {
                       </div>
                     </DialogBody>
                     <DialogFooter>
-                      <Button
-                        variant="ghost"
-                        onClick={() => setSavePresetDialogOpen(false)}
-                      >
+                      <Button variant="ghost" onClick={() => setSavePresetDialogOpen(false)}>
                         Cancel
                       </Button>
                       <Button
@@ -489,9 +464,7 @@ function QRCodeCreationPage() {
                         disabled={createPresetMutation.isLoading}
                         className="bg-blue-600 text-[13px] hover:bg-blue-700"
                       >
-                        {createPresetMutation.isLoading
-                          ? "Saving..."
-                          : "Save Preset"}
+                        {createPresetMutation.isLoading ? "Saving..." : "Save Preset"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -537,9 +510,7 @@ function QRCodeCreationPage() {
                         type="button"
                         aria-label="Delete selected preset"
                         className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-neutral-200 dark:border-border text-neutral-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-red-500/10"
-                        onClick={() =>
-                          deletePresetMutation.mutate({ id: selectedPresetId })
-                        }
+                        onClick={() => deletePresetMutation.mutate({ id: selectedPresetId })}
                         disabled={deletePresetMutation.isLoading}
                       >
                         <IconTrash size={14} stroke={1.5} />
@@ -557,29 +528,15 @@ function QRCodeCreationPage() {
 
               <QRAdvancedCustomization
                 pixelStyle={qrState.pixelStyle}
-                setPixelStyle={(style) =>
-                  updateQrState({ pixelStyle: style })
-                }
-                markerShape={qrState.markerShape}
-                setMarkerShape={(shape) =>
-                  updateQrState({ markerShape: shape })
-                }
-                markerInnerShape={
-                  qrState.markerInnerShape === "auto"
-                    ? "auto"
-                    : qrState.markerInnerShape
-                }
-                setMarkerInnerShape={(shape) =>
-                  updateQrState({ markerInnerShape: shape })
-                }
+                setPixelStyle={(style) => updateQrState({ pixelStyle: style })}
+                markerFrame={qrState.markerFrame}
+                setMarkerFrame={(frame) => updateQrState({ markerFrame: frame })}
+                markerCenter={qrState.markerCenter === "auto" ? "auto" : qrState.markerCenter}
+                setMarkerCenter={(center) => updateQrState({ markerCenter: center })}
                 darkColor={qrState.darkColor}
-                setDarkColor={(color) =>
-                  updateQrState({ darkColor: color })
-                }
+                setDarkColor={(color) => updateQrState({ darkColor: color })}
                 lightColor={qrState.lightColor}
-                setLightColor={(color) =>
-                  updateQrState({ lightColor: color })
-                }
+                setLightColor={(color) => updateQrState({ lightColor: color })}
                 effect={qrState.effect}
                 setEffect={(effect) => updateQrState({ effect })}
                 effectRadius={qrState.effectCrystalizeRadius}
@@ -590,27 +547,17 @@ function QRCodeCreationPage() {
                   })
                 }
                 marginNoise={qrState.marginNoise}
-                setMarginNoise={(enabled) =>
-                  updateQrState({ marginNoise: enabled })
-                }
+                setMarginNoise={(enabled) => updateQrState({ marginNoise: enabled })}
                 marginNoiseRate={qrState.marginNoiseRate}
-                setMarginNoiseRate={(rate) =>
-                  updateQrState({ marginNoiseRate: rate })
-                }
+                setMarginNoiseRate={(rate) => updateQrState({ marginNoiseRate: rate })}
                 logoImage={qrState.logoImage}
-                setLogoImage={(image) =>
-                  updateQrState({ logoImage: image })
-                }
+                setLogoImage={(image) => updateQrState({ logoImage: image })}
                 logoSize={qrState.logoSize}
                 setLogoSize={(size) => updateQrState({ logoSize: size })}
                 logoMargin={qrState.logoMargin}
-                setLogoMargin={(margin) =>
-                  updateQrState({ logoMargin: margin })
-                }
+                setLogoMargin={(margin) => updateQrState({ logoMargin: margin })}
                 logoBorderRadius={qrState.logoBorderRadius}
-                setLogoBorderRadius={(radius) =>
-                  updateQrState({ logoBorderRadius: radius })
-                }
+                setLogoBorderRadius={(radius) => updateQrState({ logoBorderRadius: radius })}
               />
             </div>
           </div>

@@ -1,21 +1,14 @@
 import { IconShield, IconShieldCheck } from "@tabler/icons-react";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-import type { RouterOutputs } from "@/trpc/shared";
+import type { LinkCardLink } from "./types";
 
 type LinkSecurityStatusTooltipProps = {
-  link: RouterOutputs["link"]["list"]["links"][number];
+  link: LinkCardLink;
 };
 
-export const LinkPasswordStatusTooltip = ({
-  link,
-}: LinkSecurityStatusTooltipProps) => {
+export const LinkPasswordStatusTooltip = ({ link }: LinkSecurityStatusTooltipProps) => {
   return (
     <TooltipProvider>
       <Tooltip>

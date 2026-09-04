@@ -1,12 +1,8 @@
 "use client";
 
-import {
-  IconDeviceDesktop,
-  IconMoon,
-  IconSun,
-} from "@tabler/icons-react";
+import { IconDeviceDesktop, IconMoon, IconSun } from "@tabler/icons-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -16,13 +12,15 @@ const options = [
   { value: "system", icon: IconDeviceDesktop, label: "System" },
 ] as const;
 
+// Renders a neutral placeholder until hydration so the server markup never
+// depends on the persisted theme.
+const subscribeNever = () => () => {};
+const isHydrated = () => true;
+const isServer = () => false;
+
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(subscribeNever, isHydrated, isServer);
 
   if (!mounted) {
     return (
@@ -41,7 +39,10 @@ export function ThemeToggle() {
   }
 
   return (
-    <div role="group" aria-label="Theme" className="flex gap-0.5 rounded-xl bg-neutral-50 p-1 dark:bg-white/5">
+    <fieldset
+      aria-label="Theme"
+      className="flex gap-0.5 rounded-xl bg-neutral-50 p-1 dark:bg-white/5"
+    >
       {options.map((option) => {
         const isActive = theme === option.value;
         return (
@@ -62,6 +63,6 @@ export function ThemeToggle() {
           </button>
         );
       })}
-    </div>
+    </fieldset>
   );
 }

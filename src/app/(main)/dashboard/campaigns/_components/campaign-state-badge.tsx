@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 
 type DisplayState = "active" | "archived" | "scheduled" | "ended";
 
-const STYLES: Record<DisplayState, { label: string; className?: string }> = {
+const STYLES = {
   active: {
     label: "Active",
     className:
@@ -18,8 +18,8 @@ const STYLES: Record<DisplayState, { label: string; className?: string }> = {
     className:
       "bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/10",
   },
-  archived: { label: "Archived" },
-};
+  archived: { label: "Archived", className: undefined },
+} satisfies Record<DisplayState, { label: string; className?: string }>;
 
 export function CampaignStateBadge({ state }: { state: DisplayState }) {
   const style = STYLES[state];

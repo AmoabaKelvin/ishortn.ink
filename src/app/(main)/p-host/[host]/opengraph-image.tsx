@@ -13,7 +13,9 @@ type Props = { params: Promise<{ host: string }> };
 
 export default async function Image({ params }: Props) {
   const { host } = await params;
-  const domain = decodeURIComponent(host).toLowerCase().replace(/^www\./, "");
+  const domain = decodeURIComponent(host)
+    .toLowerCase()
+    .replace(/^www\./, "");
   const page = await db.query.bioPage
     .findFirst({
       where: and(eq(bioPage.customDomain, domain), eq(bioPage.isPublished, true)),

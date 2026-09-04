@@ -11,15 +11,15 @@ type GeographicStatsCardProps = {
   totalClicks: number;
 };
 
+type GeoView = "countries" | "cities" | "continents";
+
 export function GeographicStatsCard({
   clicksPerCountry,
   clicksPerCity,
   clicksPerContinent,
   totalClicks,
 }: GeographicStatsCardProps) {
-  const [currentView, setCurrentView] = useState<
-    "countries" | "cities" | "continents"
-  >("countries");
+  const [currentView, setCurrentView] = useState<GeoView>("countries");
 
   const recordsMap = {
     countries: Object.entries(clicksPerCountry).map(([name, clicks]) => ({
@@ -36,7 +36,7 @@ export function GeographicStatsCard({
     })),
   };
 
-  const views = ["countries", "cities", "continents"];
+  const views: GeoView[] = ["countries", "cities", "continents"];
 
   return (
     <ColoredDistributionCard
@@ -46,13 +46,7 @@ export function GeographicStatsCard({
       totalClicks={totalClicks}
       color="blue"
     >
-      <TabSwitcher
-        currentView={currentView}
-        views={views}
-        onChangeView={(view) =>
-          setCurrentView(view as "countries" | "cities" | "continents")
-        }
-      />
+      <TabSwitcher currentView={currentView} views={views} onChangeView={setCurrentView} />
     </ColoredDistributionCard>
   );
 }

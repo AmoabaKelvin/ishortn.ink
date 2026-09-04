@@ -5,7 +5,7 @@ import { Link } from "next-view-transitions";
 import { useRef } from "react";
 import { toast } from "sonner";
 
-import { BIO_PRESET_OPTIONS, BIO_PRESETS, resolveBioTheme } from "@/components/bio/theme";
+import { BIO_PRESET_OPTIONS, BIO_PRESETS } from "@/components/bio/theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,9 +18,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { Plan } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
+
+import type { Plan } from "@/lib/billing/plans";
 import type { BioPageTheme } from "@/server/db/schema";
 
 export type BioSettingsDraft = {
@@ -88,6 +89,8 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
       return;
     }
     const reader = new FileReader();
+    // SAFETY: readAsDataURL populates `result` with a data-URL string on success, and a
+    // failed read leaves it null, which these nullable image fields accept as-is.
     reader.onloadend = () => onChange({ [key]: reader.result as string });
     reader.readAsDataURL(file);
   }
@@ -120,7 +123,7 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
           <div className="flex items-center gap-3">
             {value.avatarUrl ? (
               <span className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* eslint-disable-next-line next/no-img-element -- user-supplied avatar URL with unknown host and dimensions */}
                 <img
                   src={value.avatarUrl}
                   alt="Avatar"
@@ -195,10 +198,7 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
                 )}
                 style={{ background: preset.background, color: preset.text }}
               >
-                <span
-                  className="h-4 w-10 rounded-full"
-                  style={{ background: preset.accent }}
-                />
+                <span className="h-4 w-10 rounded-full" style={{ background: preset.accent }} />
                 {presetId}
               </button>
             );
@@ -218,7 +218,10 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
         <PaidRow label="Button style" isPaid={isPaid}>
           <Select
             value={value.theme.buttonStyle ?? ""}
-            onValueChange={(v) => patchTheme({ buttonStyle: v as BioPageTheme["buttonStyle"] })}
+            onValueChange={(v) => {
+              const style = BUTTON_STYLES.find((s) => s.value === v);
+              if (style) patchTheme({ buttonStyle: style.value });
+            }}
             disabled={!isPaid}
           >
             <SelectTrigger className="w-36">
@@ -256,7 +259,9 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
 
       {/* Branding */}
       <section className="space-y-3">
-        <h3 className="text-[13px] font-semibold text-neutral-900 dark:text-foreground">Branding</h3>
+        <h3 className="text-[13px] font-semibold text-neutral-900 dark:text-foreground">
+          Branding
+        </h3>
         <PaidRow label='Remove "Made with iShortn"' isPaid={isPaid}>
           <Switch
             checked={value.removeBranding}
@@ -268,7 +273,9 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
 
       {/* Advanced */}
       <section className="space-y-4">
-        <h3 className="text-[13px] font-semibold text-neutral-900 dark:text-foreground">Advanced</h3>
+        <h3 className="text-[13px] font-semibold text-neutral-900 dark:text-foreground">
+          Advanced
+        </h3>
 
         <div className="space-y-1.5">
           <Label className="flex items-center gap-1.5">
@@ -319,7 +326,7 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
           <div className="flex items-center gap-3">
             {value.socialImageUrl ? (
               <span className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* eslint-disable-next-line next/no-img-element -- user-supplied image URL with unknown host and dimensions */}
                 <img
                   src={value.socialImageUrl}
                   alt="Social preview"

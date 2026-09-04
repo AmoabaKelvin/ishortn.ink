@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "test_mode": true,
+    "event_name": "subscription_cancelled",
+    "webhook_id": "dev-subscription_cancelled",
+    "custom_data": {
+      "user_id": "__USER_ID__"
+    }
+  },
+  "data": {
+    "type": "subscriptions",
+    "id": "900001",
+    "attributes": {
+      "store_id": 100001,
+      "customer_id": 700001,
+      "order_id": 800001,
+      "order_item_id": 810001,
+      "product_id": 306137,
+      "variant_id": 1811616,
+      "product_name": "iShortn Pro",
+      "variant_name": "Monthly",
+      "user_name": "Local Dev",
+      "user_email": "dev+clerk_test@example.com",
+      "status": "cancelled",
+      "status_formatted": "Cancelled",
+      "card_brand": "visa",
+      "card_last_four": "4242",
+      "pause": null,
+      "cancelled": true,
+      "trial_ends_at": null,
+      "billing_anchor": 1,
+      "first_subscription_item": {
+        "id": 910001,
+        "subscription_id": 900001,
+        "price_id": 920001,
+        "is_usage_based": false,
+        "created_at": "2026-01-01T00:00:00.000000Z",
+        "updated_at": "2026-01-01T00:00:00.000000Z"
+      },
+      "urls": {
+        "update_payment_method": "https://example.lemonsqueezy.com/subscription/900001/payment-details",
+        "customer_portal": "https://example.lemonsqueezy.com/billing"
+      },
+      "renews_at": "2027-01-01T00:00:00.000000Z",
+      "ends_at": "2027-01-01T00:00:00.000000Z",
+      "created_at": "2026-01-01T00:00:00.000000Z",
+      "updated_at": "__NOW_ISO__",
+      "test_mode": true
+    },
+    "relationships": {
+      "store": {
+        "links": {
+          "related": "https://api.lemonsqueezy.com/v1/subscriptions/900001/store",
+          "self": "https://api.lemonsqueezy.com/v1/subscriptions/900001/relationships/store"
+        }
+      },
+      "customer": {
+        "links": {
+          "related": "https://api.lemonsqueezy.com/v1/subscriptions/900001/customer",
+          "self": "https://api.lemonsqueezy.com/v1/subscriptions/900001/relationships/customer"
+        }
+      },
+      "order": {
+        "links": {
+          "related": "https://api.lemonsqueezy.com/v1/subscriptions/900001/order",
+          "self": "https://api.lemonsqueezy.com/v1/subscriptions/900001/relationships/order"
+        }
+      },
+      "product": {
+        "links": {
+          "related": "https://api.lemonsqueezy.com/v1/subscriptions/900001/product",
+          "self": "https://api.lemonsqueezy.com/v1/subscriptions/900001/relationships/product"
+        }
+      },
+      "variant": {
+        "links": {
+          "related": "https://api.lemonsqueezy.com/v1/subscriptions/900001/variant",
+          "self": "https://api.lemonsqueezy.com/v1/subscriptions/900001/relationships/variant"
+        }
+      }
+    },
+    "links": {
+      "self": "https://api.lemonsqueezy.com/v1/subscriptions/900001"
+    }
+  }
+}

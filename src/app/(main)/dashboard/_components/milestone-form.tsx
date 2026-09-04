@@ -28,8 +28,9 @@ export function MilestoneEditor({ milestones, onChange, disabled }: MilestoneEdi
 
   const addThreshold = (value: number) => {
     if (disabled || thresholdSet.has(value)) return;
-    const updated = [...milestones, { threshold: value, notifiedAt: null }]
-      .sort((a, b) => a.threshold - b.threshold);
+    const updated = [...milestones, { threshold: value, notifiedAt: null }].sort(
+      (a, b) => a.threshold - b.threshold,
+    );
     onChange(updated);
   };
 

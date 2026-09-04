@@ -1,17 +1,15 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { Link } from "next-view-transitions";
+import { notFound } from "next/navigation";
 
 import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog";
-import {
-  createArticleSchema,
-  createBreadcrumbSchema,
-} from "@/lib/seo/structured-data";
 import { Paths } from "@/lib/constants/app";
+import { createArticleSchema, createBreadcrumbSchema } from "@/lib/seo/structured-data";
 
 import { Footer } from "../../_components/footer";
 import { Header } from "../../_components/header";
 import { Icon } from "../../_components/warm-primitives";
+
+import type { Metadata } from "next";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -22,9 +20,7 @@ export async function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }));
 }
 
-export async function generateMetadata({
-  params,
-}: BlogPostPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
 
@@ -97,12 +93,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
       <script
         type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
       <script
         type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
@@ -212,7 +206,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <article
           className="warm-container warm-legal-prose"
           style={{ maxWidth: 760, fontFamily: "var(--font-warm-ui)" }}
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: Markdown content is parsed server-side via remark
           dangerouslySetInnerHTML={{ __html: post.htmlContent }}
         />
       </section>
@@ -226,21 +219,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         >
           <div className="warm-container">
             <div className="warm-eyebrow" style={{ marginBottom: 20 }}>
-              <Icon.Sparkle
-                style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-              />
+              <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
               Related posts
             </div>
-            <h2
-              className="warm-display"
-              style={{ margin: 0, fontSize: "clamp(36px, 5vw, 48px)" }}
-            >
+            <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(36px, 5vw, 48px)" }}>
               Keep reading.
             </h2>
-            <div
-              className="warm-blog-grid"
-              style={{ display: "grid", gap: 20, marginTop: 40 }}
-            >
+            <div className="warm-blog-grid" style={{ display: "grid", gap: 20, marginTop: 40 }}>
               {relatedPosts.map((relatedPost) => {
                 const relatedTag = relatedPost.tags[0];
                 return (
@@ -298,10 +283,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                         color: "var(--warm-mute)",
                       }}
                     >
-                      <time dateTime={relatedPost.date}>
-                        {formatDate(relatedPost.date)}
-                      </time>{" "}
-                      · {relatedPost.readingTime} min read
+                      <time dateTime={relatedPost.date}>{formatDate(relatedPost.date)}</time> ·{" "}
+                      {relatedPost.readingTime} min read
                     </div>
                   </Link>
                 );
@@ -327,11 +310,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               textAlign: "center",
             }}
           >
-            <h2
-              className="warm-display"
-              style={{ margin: 0, fontSize: "clamp(36px, 5vw, 48px)" }}
-            >
-              Start <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>shortening</em>.
+            <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(36px, 5vw, 48px)" }}>
+              Start <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>shortening</em>
+              .
             </h2>
             <p
               style={{

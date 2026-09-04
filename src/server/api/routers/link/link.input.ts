@@ -60,14 +60,18 @@ export const getLinkSchema = z.object({
   id: z.number(),
 });
 
+export const linkOrderByEnum = z.enum(["createdAt", "totalClicks", "lastClicked"]);
+export const linkOrderDirectionEnum = z.enum(["asc", "desc"]);
+export const linkArchivedFilterEnum = z.enum(["active", "archived", "all"]);
+
 export const listLinksSchema = z.object({
   page: z.number().min(1).default(1),
   pageSize: z.number().min(1).max(100).default(10),
-  orderBy: z.enum(["createdAt", "totalClicks", "lastClicked"]).default("createdAt"),
-  orderDirection: z.enum(["asc", "desc"]).default("desc"),
+  orderBy: linkOrderByEnum.default("createdAt"),
+  orderDirection: linkOrderDirectionEnum.default("desc"),
   tag: z.string().optional(),
   campaignId: z.number().optional(),
-  archivedFilter: z.enum(["active", "archived", "all"]).optional(),
+  archivedFilter: linkArchivedFilterEnum.optional(),
   search: z.string().optional(),
 });
 
@@ -80,10 +84,10 @@ export const geoRuleInputSchema = z
     destination: z.string().url().optional().or(z.literal("")),
     blockMessage: z.string().max(500).optional(),
   })
-  .refine(
-    (data) => data.values.every((value) => isValidTargetingValue(data.type, value)),
-    { message: "Invalid value for this rule type", path: ["values"] },
-  )
+  .refine((data) => data.values.every((value) => isValidTargetingValue(data.type, value)), {
+    message: "Invalid value for this rule type",
+    path: ["values"],
+  })
   .refine(
     (data) => {
       if (data.action === "redirect") {
@@ -94,7 +98,7 @@ export const geoRuleInputSchema = z
     {
       message: "Destination URL is required for redirect action",
       path: ["destination"],
-    }
+    },
   );
 
 export const createLinkSchema = z.object({
@@ -173,22 +177,14 @@ export type QuickLinkShorteningInput = z.infer<typeof quickLinkShorteningSchema>
 
 export type ListLinksInput = z.infer<typeof listLinksSchema>;
 
-export const listLinksOutputSchema = z.object({
-  links: z.array(z.any()),
-  totalLinks: z.number(),
-  totalClicks: z.number(),
-  currentPage: z.number(),
-  totalPages: z.number(),
-});
-
-export type ListLinksOutput = z.infer<typeof listLinksOutputSchema>;
-
 export const ToggleArchiveInput = z.object({ id: z.number() });
 export type ToggleArchiveInput = z.infer<typeof ToggleArchiveInput>;
 
+export const analyticsFilterTypeEnum = z.enum(["all", "folder", "domain", "link", "campaign"]);
+
 export const allAnalyticsSchema = z.object({
   range: rangeEnum.default("7d"),
-  filterType: z.enum(["all", "folder", "domain", "link", "campaign"]).default("all"),
+  filterType: analyticsFilterTypeEnum.default("all"),
   filterId: z.union([z.number(), z.string()]).optional(),
 });
 

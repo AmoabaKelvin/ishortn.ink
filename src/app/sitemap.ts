@@ -1,8 +1,8 @@
-import type { MetadataRoute } from "next";
-
 import { getAllPosts } from "@/lib/blog";
 import { competitors } from "@/lib/seo/competitors";
 import { absoluteUrl } from "@/lib/utils";
+
+import type { MetadataRoute } from "next";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const posts = await getAllPosts();

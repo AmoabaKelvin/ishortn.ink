@@ -23,9 +23,7 @@ function safeDecodeHost(host: string): string | null {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { host } = await params;
   const domain = safeDecodeHost(host);
-  const page = domain
-    ? await api.bioPage.getByDomain.query({ domain }).catch(() => null)
-    : null;
+  const page = domain ? await api.bioPage.getByDomain.query({ domain }).catch(() => null) : null;
   if (!page) return {};
 
   const title = page.seoTitle || page.title || page.slug;

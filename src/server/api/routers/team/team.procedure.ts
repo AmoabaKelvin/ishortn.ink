@@ -137,7 +137,5 @@ export const teamRouter = createTRPCRouter({
   /**
    * Get current workspace info
    */
-  currentWorkspace: workspaceProcedure.query(({ ctx }) =>
-    services.getCurrentWorkspace(ctx)
-  ),
+  currentWorkspace: workspaceProcedure.query(({ ctx }) => services.getCurrentWorkspace(ctx)),
 });

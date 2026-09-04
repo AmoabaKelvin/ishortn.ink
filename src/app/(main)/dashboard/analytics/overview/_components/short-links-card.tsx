@@ -5,10 +5,7 @@ type ShortLinksCardProps = {
   totalClicks: number;
 };
 
-export function ShortLinksCard({
-  clicksByLink,
-  totalClicks,
-}: ShortLinksCardProps) {
+export function ShortLinksCard({ clicksByLink, totalClicks }: ShortLinksCardProps) {
   const items = Object.entries(clicksByLink).map(([name, clicks]) => ({
     name,
     clicks,
@@ -24,4 +21,3 @@ export function ShortLinksCard({
     />
   );
 }
-

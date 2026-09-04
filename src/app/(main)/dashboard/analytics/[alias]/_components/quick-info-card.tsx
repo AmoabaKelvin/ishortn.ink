@@ -13,10 +13,7 @@ type QuickInfoCardProps = {
 
 type GrowthDirection = "up" | "down" | "flat";
 
-const GROWTH_VARIANTS: Record<
-  GrowthDirection,
-  { icon: React.ReactNode; className: string }
-> = {
+const GROWTH_VARIANTS = {
   up: {
     icon: <IconArrowUpRight size={12} stroke={2} />,
     className: "text-emerald-600 dark:text-emerald-400",
@@ -29,7 +26,7 @@ const GROWTH_VARIANTS: Record<
     icon: <IconMinus size={12} stroke={2} />,
     className: "text-neutral-400 dark:text-neutral-500",
   },
-};
+} satisfies Record<GrowthDirection, { icon: React.ReactNode; className: string }>;
 
 export function QuickInfoCard({ title, value, icon, growth, hint }: QuickInfoCardProps) {
   const hasGrowth = growth !== undefined && growth !== null && Number.isFinite(growth);

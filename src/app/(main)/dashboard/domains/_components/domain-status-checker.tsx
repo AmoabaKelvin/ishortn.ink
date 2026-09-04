@@ -2,13 +2,17 @@
 
 import { IconRefresh } from "@tabler/icons-react";
 import { useState } from "react";
+import { z } from "zod";
 
 import { api } from "@/trpc/react";
 
+const domainStatusSchema = z.enum(["pending", "active", "invalid"]);
+export type DomainStatus = z.infer<typeof domainStatusSchema>;
+
 interface DomainStatusCheckerProps {
   domain: string;
-  initialStatus: "pending" | "active" | "invalid";
-  onStatusChange: (newStatus: "pending" | "active" | "invalid") => void;
+  initialStatus: DomainStatus;
+  onStatusChange: (newStatus: DomainStatus) => void;
 }
 
 export default function DomainStatusChecker({ domain, onStatusChange }: DomainStatusCheckerProps) {
@@ -22,7 +26,7 @@ export default function DomainStatusChecker({ domain, onStatusChange }: DomainSt
         setIsChecking(false);
       },
       onSuccess: (data) => {
-        onStatusChange(data.status as "pending" | "active" | "invalid");
+        onStatusChange(domainStatusSchema.parse(data.status));
       },
     },
   );

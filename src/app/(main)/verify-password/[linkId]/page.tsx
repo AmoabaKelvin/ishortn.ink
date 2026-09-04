@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { useTransitionRouter } from "next-view-transitions";
+import React from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ export default function VerifyPasswordPage({ params }: VerifyPasswordPageProps) 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const password = formData.get("password") as string;
+    const password = String(formData.get("password") ?? "");
 
     const result = await verifyPasswordMutation.mutateAsync({
       id: parseInt(linkId),
@@ -61,9 +61,7 @@ export default function VerifyPasswordPage({ params }: VerifyPasswordPageProps) 
   };
 
   return (
-    <div
-      className={`flex h-screen flex-col items-center justify-center ${satoshi.className}`}
-    >
+    <div className={`flex h-screen flex-col items-center justify-center ${satoshi.className}`}>
       <h1 className="mb-10 text-4xl font-bold">iShortn</h1>
 
       <h1 className="text-2xl font-bold">This link is password protected</h1>

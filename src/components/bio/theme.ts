@@ -1,3 +1,5 @@
+import { lookup } from "@/lib/utils/lookup";
+
 import type { BioPageTheme } from "@/server/db/schema";
 
 export type ResolvedBioTheme = {
@@ -19,7 +21,7 @@ type Preset = {
   buttonStyle: "rounded" | "pill" | "sharp" | "outline";
 };
 
-export const BIO_PRESETS: Record<string, Preset> = {
+export const BIO_PRESETS = {
   minimal: {
     background: "#ffffff",
     text: "#0a0a0a",
@@ -62,30 +64,38 @@ export const BIO_PRESETS: Record<string, Preset> = {
     accent: "#7c3aed",
     buttonStyle: "pill",
   },
-};
+} satisfies Record<string, Preset>;
 
-export const BIO_PRESET_OPTIONS = Object.keys(BIO_PRESETS);
+export type BioPresetId = keyof typeof BIO_PRESETS;
 
-export const BIO_FONTS: Record<string, string> = {
+export const BIO_PRESET_OPTIONS =
+  // SAFETY: BIO_PRESETS is a closed object literal, so its runtime keys are exactly BioPresetId.
+  Object.keys(BIO_PRESETS) as BioPresetId[];
+
+export const BIO_FONTS = {
   sans: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
   serif: "ui-serif, Georgia, Cambria, 'Times New Roman', serif",
   mono: "ui-monospace, SFMono-Regular, Menlo, monospace",
   rounded: "'SF Pro Rounded', ui-rounded, 'Hiragino Maru Gothic ProN', sans-serif",
 };
 
-const BUTTON_RADIUS: Record<string, string> = {
+const BUTTON_RADIUS = {
   rounded: "0.75rem",
   pill: "9999px",
   sharp: "0px",
   outline: "0.75rem",
-};
+} satisfies Record<Preset["buttonStyle"], string>;
 
 /** Pick black or white text for legibility on a given hex background. */
 export function readableTextOn(hex: string): string {
   const match = /^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.exec(hex.trim());
   if (!match) return "#ffffff";
   let h = match[1]!;
-  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  if (h.length === 3)
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
@@ -95,7 +105,7 @@ export function readableTextOn(hex: string): string {
 }
 
 export function resolveBioTheme(theme?: BioPageTheme | null): ResolvedBioTheme {
-  const preset = BIO_PRESETS[theme?.preset ?? "minimal"] ?? BIO_PRESETS.minimal!;
+  const preset = lookup(BIO_PRESETS, theme?.preset ?? "minimal") ?? BIO_PRESETS.minimal;
   const buttonStyle = theme?.buttonStyle ?? preset.buttonStyle;
 
   let backgroundCss = preset.background;
@@ -136,8 +146,8 @@ export function resolveBioTheme(theme?: BioPageTheme | null): ResolvedBioTheme {
     mutedColor,
     accentColor,
     accentTextColor: readableTextOn(accentColor),
-    buttonRadius: BUTTON_RADIUS[buttonStyle] ?? "0.75rem",
+    buttonRadius: lookup(BUTTON_RADIUS, buttonStyle) ?? "0.75rem",
     buttonVariant: buttonStyle === "outline" ? "outline" : "solid",
-    fontFamily: BIO_FONTS[theme?.font ?? "sans"] ?? BIO_FONTS.sans!,
+    fontFamily: lookup(BIO_FONTS, theme?.font ?? "sans") ?? BIO_FONTS.sans,
   };
 }

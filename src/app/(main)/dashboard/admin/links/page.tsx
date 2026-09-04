@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  IconBan,
-  IconCheck,
-  IconExternalLink,
-  IconSearch,
-} from "@tabler/icons-react";
+import { IconBan, IconCheck, IconExternalLink, IconSearch } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -105,7 +100,11 @@ export default function AdminLinksPage() {
       {/* Empty state before search */}
       {!searchQuery && (
         <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
-          <IconSearch size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+          <IconSearch
+            size={32}
+            stroke={1.5}
+            className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600"
+          />
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Search for links to manage
           </p>
@@ -144,21 +143,36 @@ export default function AdminLinksPage() {
             <table className="w-full text-left text-[13px]">
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Link</th>
-                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 md:table-cell">User</th>
-                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 lg:table-cell">Created</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Status</th>
-                  <th className="px-4 py-3 text-right font-medium text-neutral-500 dark:text-neutral-400">Action</th>
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">
+                    Link
+                  </th>
+                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 md:table-cell">
+                    User
+                  </th>
+                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 lg:table-cell">
+                    Created
+                  </th>
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-neutral-500 dark:text-neutral-400">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-border/50">
                 {data.links.map((link) => (
-                  <tr key={link.id} className="group hover:bg-neutral-50/50 dark:hover:bg-accent/50">
+                  <tr
+                    key={link.id}
+                    className="group hover:bg-neutral-50/50 dark:hover:bg-accent/50"
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="min-w-0">
                           <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
-                            <span className="text-neutral-400 dark:text-neutral-500">{link.domain}/</span>
+                            <span className="text-neutral-400 dark:text-neutral-500">
+                              {link.domain}/
+                            </span>
                             {link.alias}
                           </p>
                           <p className="max-w-[320px] truncate text-[11px] text-neutral-400 dark:text-neutral-500">
@@ -171,19 +185,23 @@ export default function AdminLinksPage() {
                           rel="noopener noreferrer"
                           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
                           title="Open destination URL"
+                          aria-label="Open destination URL"
                         >
-                          <IconExternalLink size={14} className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300" />
+                          <IconExternalLink
+                            size={14}
+                            className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+                          />
                         </a>
                       </div>
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">
-                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">{link.userEmail ?? "Unknown"}</p>
+                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
+                        {link.userEmail ?? "Unknown"}
+                      </p>
                     </td>
                     <td className="hidden px-4 py-3 lg:table-cell">
                       <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
-                        {link.createdAt
-                          ? new Date(link.createdAt).toLocaleDateString()
-                          : "N/A"}
+                        {link.createdAt ? new Date(link.createdAt).toLocaleDateString() : "N/A"}
                       </p>
                     </td>
                     <td className="px-4 py-3">
@@ -217,12 +235,14 @@ export default function AdminLinksPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => setLinkToBlock({
-                            id: link.id,
-                            url: link.url,
-                            alias: link.alias,
-                            domain: link.domain,
-                          })}
+                          onClick={() =>
+                            setLinkToBlock({
+                              id: link.id,
+                              url: link.url,
+                              alias: link.alias,
+                              domain: link.domain,
+                            })
+                          }
                           className="h-7 text-[12px]"
                         >
                           Block
@@ -266,7 +286,15 @@ export default function AdminLinksPage() {
       )}
 
       {/* Block dialog */}
-      <Dialog open={!!linkToBlock} onOpenChange={(open) => { if (!open) { setLinkToBlock(null); setBlockReason(""); } }}>
+      <Dialog
+        open={!!linkToBlock}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLinkToBlock(null);
+            setBlockReason("");
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Block Link</DialogTitle>
@@ -277,7 +305,9 @@ export default function AdminLinksPage() {
           <DialogBody className="space-y-4">
             <div className="rounded-lg bg-neutral-50 dark:bg-accent/50 p-3">
               <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                <span className="text-neutral-400 dark:text-neutral-500">{linkToBlock?.domain}/</span>
+                <span className="text-neutral-400 dark:text-neutral-500">
+                  {linkToBlock?.domain}/
+                </span>
                 {linkToBlock?.alias}
               </p>
               <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
@@ -285,10 +315,14 @@ export default function AdminLinksPage() {
               </p>
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+              <label
+                htmlFor="block-link-reason"
+                className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
+              >
                 Reason for blocking
               </label>
               <Textarea
+                id="block-link-reason"
                 value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
                 placeholder="e.g. Reported as phishing by hosting provider..."
@@ -300,7 +334,10 @@ export default function AdminLinksPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => { setLinkToBlock(null); setBlockReason(""); }}
+              onClick={() => {
+                setLinkToBlock(null);
+                setBlockReason("");
+              }}
             >
               Cancel
             </Button>

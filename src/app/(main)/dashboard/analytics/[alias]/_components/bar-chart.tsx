@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { IconChartAreaLine, IconChartBar } from "@tabler/icons-react";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -49,7 +49,6 @@ type GeoRuleData = {
 type BarChartProps = {
   clicksPerDate: Record<string, number>;
   uniqueClicksPerDate: Record<string, number>;
-  className: string;
   isProPlan?: boolean;
   geoRules?: GeoRuleData[];
   totalVisits?: { matchedGeoRuleId: number | null }[];
@@ -87,7 +86,6 @@ function GeoChartTooltip({
 export function BarChart({
   clicksPerDate,
   uniqueClicksPerDate,
-  className,
   isProPlan,
   geoRules = [],
   totalVisits = [],
@@ -103,7 +101,7 @@ export function BarChart({
         clicks,
         uniqueClicks: uniqueClicksPerDate[date] ?? 0,
       })),
-    [clicksPerDate, uniqueClicksPerDate]
+    [clicksPerDate, uniqueClicksPerDate],
   );
 
   // Memoize padded chart data
@@ -147,7 +145,7 @@ export function BarChart({
         }
         return acc;
       },
-      { defaultCount: 0, redirectCount: 0, blockCount: 0 }
+      { defaultCount: 0, redirectCount: 0, blockCount: 0 },
     );
   }, [geoRules, totalVisits]);
 
@@ -162,34 +160,25 @@ export function BarChart({
           name: "Default",
           value: geoStats.defaultCount,
           color: "#a3a3a3",
-          percentage:
-            total > 0
-              ? ((geoStats.defaultCount / total) * 100).toFixed(1)
-              : "0",
+          percentage: total > 0 ? ((geoStats.defaultCount / total) * 100).toFixed(1) : "0",
         },
         {
           name: "Redirected",
           value: geoStats.redirectCount,
           color: "#2563eb",
-          percentage:
-            total > 0
-              ? ((geoStats.redirectCount / total) * 100).toFixed(1)
-              : "0",
+          percentage: total > 0 ? ((geoStats.redirectCount / total) * 100).toFixed(1) : "0",
         },
         {
           name: "Blocked",
           value: geoStats.blockCount,
           color: "#ef4444",
-          percentage:
-            total > 0
-              ? ((geoStats.blockCount / total) * 100).toFixed(1)
-              : "0",
+          percentage: total > 0 ? ((geoStats.blockCount / total) * 100).toFixed(1) : "0",
         },
       ].filter((d) => d.value > 0),
-    [geoStats, total]
+    [geoStats, total],
   );
 
-  const views = hasGeoRules ? ["clicks", "geotargeting"] : ["clicks"];
+  const views: ChartView[] = hasGeoRules ? ["clicks", "geotargeting"] : ["clicks"];
 
   return (
     <Card className="overflow-hidden rounded-xl border-neutral-200 dark:border-border shadow-none">
@@ -217,7 +206,7 @@ export function BarChart({
                     "rounded-md p-1.5 transition-all duration-150",
                     chartType === "area"
                       ? "bg-white dark:bg-card text-neutral-900 dark:text-foreground shadow-sm"
-                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
+                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300",
                   )}
                   title="Area Chart"
                   aria-label="Area chart"
@@ -231,7 +220,7 @@ export function BarChart({
                     "rounded-md p-1.5 transition-all duration-150",
                     chartType === "bar"
                       ? "bg-white dark:bg-card text-neutral-900 dark:text-foreground shadow-sm"
-                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
+                      : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300",
                   )}
                   title="Bar Chart"
                   aria-label="Bar chart"
@@ -248,12 +237,12 @@ export function BarChart({
                 {views.map((view) => (
                   <button
                     key={view}
-                    onClick={() => setChartView(view as ChartView)}
+                    onClick={() => setChartView(view)}
                     className={cn(
                       "rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
                       chartView === view
                         ? "bg-white dark:bg-card text-neutral-900 dark:text-foreground shadow-sm"
-                        : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
+                        : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300",
                     )}
                   >
                     {view === "clicks" ? "Clicks" : "Rules"}
@@ -268,36 +257,17 @@ export function BarChart({
       {/* Charts */}
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
         {chartView === "clicks" ? (
-          <ChartContainer
-            config={chartConfig}
-            className="aspect-auto h-72 w-full"
-          >
+          <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
             {chartType === "area" ? (
               <AreaChart data={paddedChartData}>
                 <defs>
                   <linearGradient id="fillClicks" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor="var(--color-clicks)"
-                      stopOpacity={0.8}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="var(--color-clicks)"
-                      stopOpacity={0.1}
-                    />
+                    <stop offset="5%" stopColor="var(--color-clicks)" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="var(--color-clicks)" stopOpacity={0.1} />
                   </linearGradient>
                   <linearGradient id="fillUniqueClicks" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor="var(--color-uniqueClicks)"
-                      stopOpacity={0.8}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="var(--color-uniqueClicks)"
-                      stopOpacity={0.1}
-                    />
+                    <stop offset="5%" stopColor="var(--color-uniqueClicks)" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="var(--color-uniqueClicks)" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} />
@@ -410,7 +380,10 @@ export function BarChart({
                 {/* Summary */}
                 <div className="mt-2 border-t border-neutral-100 dark:border-border/50 pt-3">
                   <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                    <span className="font-medium text-neutral-600 dark:text-neutral-400">{geoStats.redirectCount + geoStats.blockCount}</span> of {total} clicks matched targeting rules
+                    <span className="font-medium text-neutral-600 dark:text-neutral-400">
+                      {geoStats.redirectCount + geoStats.blockCount}
+                    </span>{" "}
+                    of {total} clicks matched targeting rules
                   </p>
                 </div>
               </div>
@@ -421,8 +394,8 @@ export function BarChart({
 
       {isProPlan === false && (
         <div className="px-5 pb-4 text-center text-[12px] text-neutral-400 dark:text-neutral-500">
-          Showing data for the last 7 days.{" "}
-          <UpgradeText text="Upgrade to Pro" /> for full analytics.
+          Showing data for the last 7 days. <UpgradeText text="Upgrade to Pro" /> for full
+          analytics.
         </div>
       )}
     </Card>

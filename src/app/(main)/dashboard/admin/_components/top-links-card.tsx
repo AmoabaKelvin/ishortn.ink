@@ -34,15 +34,14 @@ export function TopLinksCard({ from, to }: TopLinksCardProps) {
         </div>
       ) : !data || data.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No click data for this period</p>
+          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+            No click data for this period
+          </p>
         </div>
       ) : (
         <div className="divide-y divide-neutral-100 dark:divide-border/50">
           {data.map((l, i) => (
-            <div
-              key={l.id}
-              className="flex items-center gap-3 px-5 py-2.5"
-            >
+            <div key={l.id} className="flex items-center gap-3 px-5 py-2.5">
               <span className="w-5 shrink-0 text-center text-[11px] font-semibold tabular-nums text-neutral-300 dark:text-neutral-600">
                 {i + 1}
               </span>

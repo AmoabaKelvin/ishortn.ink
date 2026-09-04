@@ -37,8 +37,7 @@ export async function generateAliasFromMetadata(metadata: {
   `,
   });
 
-  const output = result.output as z.infer<typeof aliasSchema> | undefined;
-  return output?.recommendations ?? [];
+  return result.output.recommendations;
 }
 
 interface URLFeatures {
@@ -93,7 +92,7 @@ function extractUrlFeatures(url: string): URLFeatures {
 
     // Suspicious patterns
     features.has_ip_pattern = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(url);
-    features.has_suspicious_chars = /[<>{}|\[\]~]/.test(url);
+    features.has_suspicious_chars = /[<>{}|[\]~]/.test(url);
   } catch (error) {
     log.warn({ err: error, url }, "failed to parse URL for feature extraction");
   }
@@ -164,8 +163,5 @@ export async function detectPhishingLink(
     `,
   });
 
-  const output = result.output as
-    | z.infer<typeof phishingDetectionSchema>
-    | undefined;
-  return output?.response ?? { url, phishing: false };
+  return result.output.response;
 }

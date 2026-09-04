@@ -5,10 +5,9 @@ const fmt = (n: number) => n.toLocaleString();
 const free = PLAN_CAPS.free;
 const pro = PLAN_CAPS.pro;
 
-export const PLAN_FEATURES: Record<
-  Plan,
-  { tagline: string; features: string[]; comingSoon?: string[] }
-> = {
+type PlanFeatures = { tagline: string; features: string[]; comingSoon?: string[] };
+
+export const PLAN_FEATURES = {
   free: {
     tagline: "For tinkering and side projects.",
     features: [
@@ -52,9 +51,6 @@ export const PLAN_FEATURES: Record<
       "Team workspaces & resource transfer",
       "Priority support",
     ],
-    comingSoon: [
-      "Conversion tracking",
-      "Customization of password-protected pages",
-    ],
+    comingSoon: ["Conversion tracking", "Customization of password-protected pages"],
   },
-};
+} satisfies Record<Plan, PlanFeatures>;

@@ -1,12 +1,13 @@
 import { timingSafeEqual } from "node:crypto";
 
+import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
 
 const log = logger.child({ component: "internal-request" });
 
 /** True when the request carries the CRON_SECRET bearer token the Worker uses to call the app. */
 export function isInternalRequest(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
+  const secret = env.CRON_SECRET;
   if (!secret) {
     log.error("CRON_SECRET environment variable is not set");
     return false;

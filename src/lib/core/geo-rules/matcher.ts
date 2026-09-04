@@ -2,8 +2,8 @@ import { normalizeOsName } from "@/lib/constants/targeting";
 import { getCountryContinentCode } from "@/lib/countries";
 import { logger } from "@/lib/logger";
 
-import type { GeoRule as DbGeoRule } from "@/server/db/schema";
 import type { GeoRuleMatchResult } from "@/lib/types/geo-rules";
+import type { GeoRule as DbGeoRule } from "@/server/db/schema";
 
 const log = logger.child({ component: "geo-rules" });
 
@@ -21,7 +21,11 @@ export function rulesNeedDevice(rules: DbGeoRule[] | null | undefined): boolean 
   return !!rules?.some((rule) => rule.type === "device" || rule.type === "os");
 }
 
-function ruleMatches(rule: DbGeoRule, visitor: TargetingVisitor, continentCode: string | null): boolean {
+function ruleMatches(
+  rule: DbGeoRule,
+  visitor: TargetingVisitor,
+  continentCode: string | null,
+): boolean {
   let matches = false;
 
   switch (rule.type) {

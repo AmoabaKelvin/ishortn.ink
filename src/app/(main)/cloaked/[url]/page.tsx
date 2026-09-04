@@ -1,12 +1,16 @@
-import type { Metadata } from "next";
+import { z } from "zod";
 
 import { logger } from "@/lib/logger";
-import { scrapeMetadata } from "@/server/lib/metadata";
 import { buildBeaconScript } from "@/lib/utils/verified-click-token";
+import { scrapeMetadata } from "@/server/lib/metadata";
+
+import type { Metadata } from "next";
 
 export const fetchCache = "force-no-store";
 
 const log = logger.child({ component: "cloaked-page" });
+
+const beaconTokenSchema = z.string().min(1);
 
 type CloakedPageProps = {
   params: Promise<{ url: string }>;
@@ -85,43 +89,34 @@ export async function generateMetadata(props: CloakedPageProps): Promise<Metadat
   }
 }
 
+const invalidUrlMessage = (reason: string) => (
+  <div className="flex h-screen w-full items-center justify-center">
+    <p className="text-gray-500">{reason}</p>
+  </div>
+);
+
 export default async function CloakedPage(props: CloakedPageProps) {
   const params = await props.params;
   const searchParams = await props.searchParams;
   const url = decodeURIComponent(params.url);
-  const token =
-    typeof searchParams.t === "string" && searchParams.t.length > 0
-      ? searchParams.t
-      : null;
+  const token = beaconTokenSchema.safeParse(searchParams.t).data ?? null;
 
   // Validate and normalize the URL before rendering
-  let validatedUrl: string;
+  let parsedUrl: URL;
   try {
-    const parsedUrl = new URL(url);
-    // Only allow http and https protocols
-    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      return (
-        <div className="flex h-screen w-full items-center justify-center">
-          <p className="text-gray-500">Invalid URL protocol</p>
-        </div>
-      );
-    }
-    validatedUrl = parsedUrl.toString();
+    parsedUrl = new URL(url);
   } catch {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <p className="text-gray-500">Invalid URL</p>
-      </div>
-    );
+    return invalidUrlMessage("Invalid URL");
   }
+  // Only allow http and https protocols
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    return invalidUrlMessage("Invalid URL protocol");
+  }
+  const validatedUrl = parsedUrl.toString();
 
   return (
     <>
-      {token && (
-        <script
-          dangerouslySetInnerHTML={{ __html: buildBeaconScript(token) }}
-        />
-      )}
+      {token && <script dangerouslySetInnerHTML={{ __html: buildBeaconScript(token) }} />}
       <iframe
         src={validatedUrl}
         title="Cloaked content"

@@ -1,11 +1,7 @@
 "use client";
 
+import { IconClick, IconClock, IconExternalLink } from "@tabler/icons-react";
 import { motion } from "framer-motion";
-import {
-  IconClick,
-  IconClock,
-  IconExternalLink,
-} from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
 import { daysSinceDate } from "@/lib/utils";
@@ -37,7 +33,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
         <div className="flex items-center gap-4">
           {/* QR Code Thumbnail */}
           <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-neutral-100 dark:border-border/50 bg-white dark:bg-card p-1.5 transition-all duration-200 group-hover:border-neutral-200 group-hover:shadow-sm">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* eslint-disable-next-line next/no-img-element -- generated QR data: URL */}
             <img
               src={qr.qrCode!}
               alt="QR Code"
@@ -57,9 +53,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
             {/* Metadata row */}
             <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
               <span className="text-neutral-400 dark:text-neutral-500">
-                {daysSinceCreation === 0
-                  ? "Today"
-                  : `${daysSinceCreation}d`}
+                {daysSinceCreation === 0 ? "Today" : `${daysSinceCreation}d`}
               </span>
 
               <span className="text-neutral-300">&middot;</span>
@@ -69,9 +63,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
                   href={`/dashboard/qrcodes/${qr.id}`}
                   className="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-400 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline"
                 >
-                  <span className="max-w-[200px] truncate sm:max-w-[300px]">
-                    {qr.link.url}
-                  </span>
+                  <span className="max-w-[200px] truncate sm:max-w-[300px]">{qr.link.url}</span>
                   <IconExternalLink
                     size={12}
                     stroke={1.5}

@@ -26,10 +26,7 @@ export default function DashboardLoading() {
       {/* Link list */}
       <div className="mt-4 divide-y divide-neutral-300/60 dark:divide-border">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="px-1 py-4"
-          >
+          <div key={i} className="px-1 py-4">
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">

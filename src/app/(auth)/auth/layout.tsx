@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { Link } from "next-view-transitions";
 
 import { Wordmark } from "../../(landing)/_components/warm-primitives";
+
+import type { ReactNode } from "react";
 
 const AuthLayout = ({ children }: { children: ReactNode }) => {
   return (
@@ -16,9 +18,9 @@ const AuthLayout = ({ children }: { children: ReactNode }) => {
       }}
     >
       <header style={{ padding: "32px 48px" }}>
-        <a href="/" aria-label="iShortn home">
+        <Link href="/" aria-label="iShortn home">
           <Wordmark />
-        </a>
+        </Link>
       </header>
 
       <main

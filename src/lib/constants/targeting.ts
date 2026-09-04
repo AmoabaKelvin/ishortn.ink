@@ -1,3 +1,5 @@
+import { lookup } from "@/lib/utils/lookup";
+
 export const DEVICE_TYPES = {
   mobile: "Mobile",
   tablet: "Tablet",
@@ -31,7 +33,7 @@ export function isValidTargetingValue(type: TargetingRuleType, value: string): b
 
 // ua-parser-js OS names collapsed onto OS_TYPES keys. Linux distributions
 // fold into "linux"; anything unlisted matches no rule.
-const OS_ALIASES: Record<string, keyof typeof OS_TYPES> = {
+const OS_ALIASES = {
   ios: "ios",
   android: "android",
   windows: "windows",
@@ -52,9 +54,9 @@ const OS_ALIASES: Record<string, keyof typeof OS_TYPES> = {
   chromeos: "chromeos",
   "chrome os": "chromeos",
   "chromium os": "chromeos",
-};
+} satisfies Record<string, keyof typeof OS_TYPES>;
 
 export function normalizeOsName(osName: string | null | undefined): string | null {
   if (!osName) return null;
-  return OS_ALIASES[osName.toLowerCase()] ?? null;
+  return lookup(OS_ALIASES, osName.toLowerCase()) ?? null;
 }

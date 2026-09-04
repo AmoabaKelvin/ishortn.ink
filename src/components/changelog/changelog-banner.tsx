@@ -1,18 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
 import { Link } from "next-view-transitions";
+import { useState } from "react";
+
 import { api } from "@/trpc/react";
 
 export function ChangelogBanner() {
-  const [isDismissed, setIsDismissed] = useState(true);
-  const [latestEntry, setLatestEntry] = useState<{
-    shortDesc: string;
-    slug: string;
-    title: string;
-  } | null>(null);
+  const [dismissedSlug, setDismissedSlug] = useState<string | null>(null);
 
   const { data: newEntries } = api.changelog.getNewEntries.useQuery(undefined, {
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -20,25 +16,13 @@ export function ChangelogBanner() {
 
   const markAsViewed = api.changelog.markAsViewed.useMutation();
 
-  useEffect(() => {
-    if (newEntries && newEntries.length > 0) {
-      const latest = newEntries[0];
-      if (latest) {
-        setLatestEntry({
-          shortDesc: latest.shortDesc,
-          slug: latest.slug,
-          title: latest.title,
-        });
-        setIsDismissed(false);
-      }
-    }
-  }, [newEntries]);
+  const latestEntry = newEntries?.[0];
+  const isDismissed = latestEntry === undefined || latestEntry.slug === dismissedSlug;
 
   const handleDismiss = () => {
-    setIsDismissed(true);
-    if (latestEntry?.slug) {
-      markAsViewed.mutate({ slug: latestEntry.slug });
-    }
+    if (!latestEntry) return;
+    setDismissedSlug(latestEntry.slug);
+    markAsViewed.mutate({ slug: latestEntry.slug });
   };
 
   return (

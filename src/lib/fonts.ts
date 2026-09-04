@@ -1,5 +1,4 @@
 import "@/styles/globals.css";
-
 import {
   Bricolage_Grotesque,
   DM_Sans,

@@ -1,5 +1,6 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
 import crypto from "node:crypto";
+
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { db } from "@/server/db";

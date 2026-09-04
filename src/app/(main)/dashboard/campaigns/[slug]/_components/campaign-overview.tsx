@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  IconClick,
-  IconDownload,
-  IconScan,
-  IconTrendingUp,
-  IconUsers,
-} from "@tabler/icons-react";
+import { IconClick, IconDownload, IconScan, IconTrendingUp, IconUsers } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
@@ -18,12 +12,13 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Plan } from "@/lib/billing/plans";
 import { cn, formatChartDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { QuickInfoCard } from "../../../analytics/[alias]/_components/quick-info-card";
+
+import type { Plan } from "@/lib/billing/plans";
+import type { RouterOutputs } from "@/trpc/shared";
 
 type CampaignData = RouterOutputs["campaign"]["get"];
 type Analytics = RouterOutputs["campaign"]["analytics"];
@@ -42,13 +37,7 @@ const chartConfig = {
   scans: { label: "QR scans", color: "#93c5fd" },
 } satisfies ChartConfig;
 
-export function CampaignOverview({
-  campaign,
-  plan,
-}: {
-  campaign: CampaignData;
-  plan: Plan;
-}) {
+export function CampaignOverview({ campaign, plan }: { campaign: CampaignData; plan: Plan }) {
   const isFree = plan === "free";
   const [range, setRange] = useState<Range>(isFree ? "7d" : "30d");
 
@@ -309,7 +298,7 @@ function ChannelsCard({ channels }: { channels: Record<string, number> }) {
       <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
         Links grouped by their utm_source
       </p>
-      {entries.length === 0 || entries.every(([, count]) => count === 0) ? (
+      {entries.every(([, count]) => count === 0) ? (
         <p className="mt-3 text-[13px] text-neutral-400 dark:text-neutral-500">
           No channel activity yet. Set UTM defaults or per-link sources to compare channels.
         </p>

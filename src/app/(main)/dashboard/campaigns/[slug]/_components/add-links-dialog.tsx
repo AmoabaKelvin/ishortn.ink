@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
+
 import type { RouterOutputs } from "@/trpc/shared";
 
 type CampaignData = RouterOutputs["campaign"]["get"];
@@ -38,10 +39,7 @@ export function AddLinksDialog({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [applyUtmDefaults, setApplyUtmDefaults] = useState(campaign.canUseUtmDefaults);
 
-  const memberIds = useMemo(
-    () => new Set(campaign.links.map((l) => l.id)),
-    [campaign.links],
-  );
+  const memberIds = useMemo(() => new Set(campaign.links.map((l) => l.id)), [campaign.links]);
 
   const candidatesQuery = api.campaign.linkCandidates.useQuery(undefined, {
     enabled: open,
@@ -130,7 +128,9 @@ export function AddLinksDialog({
               </div>
             ) : candidates.length === 0 ? (
               <p className="p-4 text-center text-[13px] text-neutral-400 dark:text-neutral-500">
-                {search ? "Nothing matches your search." : "Everything is already in this campaign."}
+                {search
+                  ? "Nothing matches your search."
+                  : "Everything is already in this campaign."}
               </p>
             ) : (
               candidates.map((candidate) => {
@@ -171,8 +171,12 @@ export function AddLinksDialog({
           </div>
 
           {campaign.canUseUtmDefaults && (
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-neutral-200 p-3 dark:border-border">
+            <label
+              htmlFor="apply-utm-defaults"
+              className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-neutral-200 p-3 dark:border-border"
+            >
               <Checkbox
+                id="apply-utm-defaults"
                 checked={applyUtmDefaults}
                 onCheckedChange={(value) => setApplyUtmDefaults(value === true)}
                 className="mt-0.5"

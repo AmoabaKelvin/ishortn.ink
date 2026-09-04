@@ -1,11 +1,6 @@
 import "server-only";
-
 import { auth } from "@clerk/nextjs/server";
-import {
-  createTRPCProxyClient,
-  loggerLink,
-  TRPCClientError
-} from "@trpc/client";
+import { createTRPCProxyClient, loggerLink, TRPCClientError } from "@trpc/client";
 import { callProcedure } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
 import { headers } from "next/headers";

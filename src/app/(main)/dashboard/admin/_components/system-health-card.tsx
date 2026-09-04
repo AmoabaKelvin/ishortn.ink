@@ -21,12 +21,12 @@ type HealthData = {
 
 type Status = "green" | "amber" | "red" | "neutral";
 
-const dotColor: Record<Status, string> = {
+const dotColor = {
   green: "bg-emerald-500",
   amber: "bg-amber-500",
   red: "bg-red-500",
   neutral: "bg-neutral-300",
-};
+} satisfies Record<Status, string>;
 
 function StatusRow({
   label,
@@ -93,8 +93,7 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
     );
   }
 
-  const pctStatus = (v: number): Status =>
-    v > 5 ? "red" : v > 2 ? "amber" : "green";
+  const pctStatus = (v: number): Status => (v > 5 ? "red" : v > 2 ? "amber" : "green");
 
   return (
     <Card className="rounded-xl border-neutral-200 dark:border-border shadow-none">
@@ -103,8 +102,7 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
           System Health
         </p>
         <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
-          {data.totalLinks.toLocaleString()} links &middot;{" "}
-          {data.totalUsers.toLocaleString()} users
+          {data.totalLinks.toLocaleString()} links &middot; {data.totalUsers.toLocaleString()} users
         </p>
       </div>
       <div className="divide-y divide-neutral-100 dark:divide-border/50">
@@ -135,13 +133,7 @@ export function SystemHealthCard({ data, isLoading }: SystemHealthCardProps) {
         <StatusRow
           label="Pending flagged"
           value={data.pendingFlagged.toLocaleString()}
-          status={
-            data.pendingFlagged > 10
-              ? "red"
-              : data.pendingFlagged > 0
-                ? "amber"
-                : "green"
-          }
+          status={data.pendingFlagged > 10 ? "red" : data.pendingFlagged > 0 ? "amber" : "green"}
         />
         <StatusRow
           label="Open feedback"
