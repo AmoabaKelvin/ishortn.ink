@@ -12,12 +12,11 @@ export const env = createEnv({
       .url()
       .refine(
         (str) => !str.includes("YOUR_DATABASE_URL_HERE"),
-        "You forgot to change the default URL"
+        "You forgot to change the default URL",
       ),
-    GEOLOCATION_API_KEY: z.string().optional(),
-    NODE_ENV: z
-      .enum(["development", "test", "production"])
-      .default("development"),
+    // Bearer the Worker sends to /api/cron/* and /api/queue/*
+    CRON_SECRET: z.string().optional(),
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     RESEND_API_KEY: z.string().optional(),
     WEBHOOK_SECRET: z.string().optional(),
     UMAMI_TRACKING_ID: z.string().optional(),
@@ -31,10 +30,18 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET_NAME: z.string().optional(),
     R2_PUBLIC_URL: z.string().url().optional(),
+    // Local S3 stand-in (MinIO) instead of R2
+    R2_ENDPOINT: z.string().url().optional(),
     // Cloudflare for SaaS custom hostnames
-    CLOUDFLARE_API_TOKEN: z.string(),
-    CLOUDFLARE_SAAS_ZONE_ID: z.string(),
+    CLOUDFLARE_API_TOKEN: z.string().optional(),
+    CLOUDFLARE_SAAS_ZONE_ID: z.string().optional(),
     CUSTOM_DOMAIN_CNAME_TARGET: z.string().default("cname.ishortn.ink"),
+    // Lemon Squeezy billing
+    LEMONSQUEEZY_API_KEY: z.string().optional(),
+    LEMONSQUEEZY_STORE_ID: z.string().optional(),
+    LEMONSQUEEZY_WEBHOOK_SECRET: z.string().optional(),
+    // Read by @ai-sdk/openai directly
+    OPENAI_API_KEY: z.string().optional(),
     // Secret key used to HMAC visitor IPs before storage.
     // Optional for backwards compatibility — when unset, we fall back to plain
     // SHA-256, which preserves old behavior but is trivially reversible.
@@ -53,12 +60,14 @@ export const env = createEnv({
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
     // Optional ISO date shown in the custom-domain migration notice
     NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE: z
       .string()
       .refine(
         (value) => !Number.isNaN(Date.parse(value)),
-        "NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE must be a parseable date"
+        "NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE must be a parseable date",
       )
       .optional(),
   },
@@ -70,7 +79,7 @@ export const env = createEnv({
   runtimeEnv: {
     // Server-side env vars
     DATABASE_URL: process.env.DATABASE_URL,
-    GEOLOCATION_API_KEY: process.env.GEOLOCATION_API_KEY,
+    CRON_SECRET: process.env.CRON_SECRET,
     NODE_ENV: process.env.NODE_ENV,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
@@ -85,14 +94,21 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
     R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
     R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
+    R2_ENDPOINT: process.env.R2_ENDPOINT,
     // Cloudflare for SaaS custom hostnames
     CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
     CLOUDFLARE_SAAS_ZONE_ID: process.env.CLOUDFLARE_SAAS_ZONE_ID,
     CUSTOM_DOMAIN_CNAME_TARGET: process.env.CUSTOM_DOMAIN_CNAME_TARGET,
+    LEMONSQUEEZY_API_KEY: process.env.LEMONSQUEEZY_API_KEY,
+    LEMONSQUEEZY_STORE_ID: process.env.LEMONSQUEEZY_STORE_ID,
+    LEMONSQUEEZY_WEBHOOK_SECRET: process.env.LEMONSQUEEZY_WEBHOOK_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE: process.env.NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE,
   },
   /**
