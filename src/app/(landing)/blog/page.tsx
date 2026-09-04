@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { Link } from "next-view-transitions";
 
 import { JsonLd } from "@/components/seo/json-ld";
@@ -8,6 +7,8 @@ import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { Icon } from "../_components/warm-primitives";
+
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Blog — iShortn",
@@ -56,20 +57,13 @@ export default async function BlogPage() {
       <section className="warm-subhero">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <Icon.Sparkle
-              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-            />
+            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
             Blog
           </div>
-          <h1
-            className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}
-          >
+          <h1 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}>
             Writing from
             <br />
-            <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>
-              the iShortn team.
-            </em>
+            <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>the iShortn team.</em>
           </h1>
           <p
             style={{
@@ -80,8 +74,8 @@ export default async function BlogPage() {
               maxWidth: 620,
             }}
           >
-            Product updates, guides, and deep dives on link management,
-            analytics, and digital marketing.
+            Product updates, guides, and deep dives on link management, analytics, and digital
+            marketing.
           </p>
         </div>
       </section>
@@ -103,10 +97,7 @@ export default async function BlogPage() {
               No posts yet. Check back soon.
             </div>
           ) : (
-            <div
-              className="warm-blog-grid"
-              style={{ display: "grid", gap: 20 }}
-            >
+            <div className="warm-blog-grid" style={{ display: "grid", gap: 20 }}>
               {posts.map((post) => {
                 const primaryTag = post.tags[0];
                 return (

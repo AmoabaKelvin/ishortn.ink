@@ -1,7 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import { IconLink } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import Link from "@/app/(main)/dashboard/_components/links/link-card/card";
 import { SelectionProvider } from "@/app/(main)/dashboard/_components/links/selection-context";
@@ -10,10 +10,9 @@ import type { RouterOutputs } from "@/trpc/shared";
 
 type FolderLinksProps = {
   links: RouterOutputs["folder"]["get"]["links"];
-  folderId: number;
 };
 
-export function FolderLinks({ links, folderId }: FolderLinksProps) {
+export function FolderLinks({ links }: FolderLinksProps) {
   if (links.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20">

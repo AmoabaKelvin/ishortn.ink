@@ -86,21 +86,10 @@ export default class Perspective {
 
     // compute the dimension of each side
     const dims = [
-      Math.sqrt(
-        Math.pow(topLeftX - topRightX, 2) + Math.pow(topLeftY - topRightY, 2)
-      ), // top side
-      Math.sqrt(
-        Math.pow(topRightX - bottomRightX, 2) +
-          Math.pow(topRightY - bottomRightY, 2)
-      ), // right side
-      Math.sqrt(
-        Math.pow(bottomRightX - bottomLeftX, 2) +
-          Math.pow(bottomRightY - bottomLeftY, 2)
-      ), // bottom side
-      Math.sqrt(
-        Math.pow(bottomLeftX - topLeftX, 2) +
-          Math.pow(bottomLeftY - topLeftY, 2)
-      ), // left side
+      Math.sqrt(Math.pow(topLeftX - topRightX, 2) + Math.pow(topLeftY - topRightY, 2)), // top side
+      Math.sqrt(Math.pow(topRightX - bottomRightX, 2) + Math.pow(topRightY - bottomRightY, 2)), // right side
+      Math.sqrt(Math.pow(bottomRightX - bottomLeftX, 2) + Math.pow(bottomRightY - bottomLeftY, 2)), // bottom side
+      Math.sqrt(Math.pow(bottomLeftX - topLeftX, 2) + Math.pow(bottomLeftY - topLeftY, 2)), // left side
     ];
     //
     const ow = this.cvso.width;

@@ -113,17 +113,9 @@ export const Header = () => {
             strokeWidth="1.5"
           >
             {mobileOpen ? (
-              <path
-                d="M6 6l12 12M18 6L6 18"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" strokeLinejoin="round" />
             ) : (
-              <path
-                d="M4 7h16M4 12h16M4 17h16"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" strokeLinejoin="round" />
             )}
           </svg>
         </button>

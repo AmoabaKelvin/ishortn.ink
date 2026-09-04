@@ -2,9 +2,9 @@ import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-r
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { aggregateVisits, mergeArchivedClicks } from "@/lib/core/analytics";
+import { rangeEnum } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
 
-import UpgradeText from "../_components/upgrade-text";
 import { BarChart } from "../../analytics/[alias]/_components/bar-chart";
 import { CountriesAndCitiesStats } from "../../analytics/[alias]/_components/countries-and-cities-stats";
 import { GeoRulesStats } from "../../analytics/[alias]/_components/geo-rules-stats";
@@ -13,8 +13,7 @@ import { RangeSelectorWrapper } from "../../analytics/[alias]/_components/range-
 import { ReferrerStats } from "../../analytics/[alias]/_components/referrers";
 import { UserAgentStats } from "../../analytics/[alias]/_components/user-agent-stats";
 import WorldMapHeatmap from "../../analytics/[alias]/_components/world-map-heatmap";
-
-import type { RangeEnum } from "@/server/api/routers/link/link.input";
+import UpgradeText from "../_components/upgrade-text";
 
 type QRCodeAnalyticsPageProps = {
   params: Promise<{ id: string }>;
@@ -24,7 +23,7 @@ type QRCodeAnalyticsPageProps = {
 export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProps) {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const range = (searchParams?.range ?? "7d") as RangeEnum;
+  const range = rangeEnum.catch("7d").parse(searchParams.range);
 
   const qrCode = await api.qrCode.get.query({ id: Number(params.id) });
 
@@ -65,25 +64,19 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
         <div className="flex items-center gap-4">
           {qrCode.qrCode && (
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-neutral-100 bg-white p-1.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrCode.qrCode}
-                alt="QR Code"
-                className="h-full w-full object-contain"
-              />
+              {/* eslint-disable-next-line next/no-img-element -- generated QR data: URL */}
+              <img src={qrCode.qrCode} alt="QR Code" className="h-full w-full object-contain" />
             </div>
           )}
           <div className="flex flex-col gap-1">
             <h1 className="text-xl font-semibold leading-tight tracking-tight text-neutral-900 md:text-2xl">
               {qrCode.title || "Untitled QR Code"}
             </h1>
-            <p className="text-[13px] text-neutral-400">
-              {qrCode.link.url}
-            </p>
+            <p className="text-[13px] text-neutral-400">{qrCode.link.url}</p>
             {!isProPlan && (
               <p className="text-[13px] text-neutral-400">
-                Viewing limited analytics (last 7 days).{" "}
-                <UpgradeText text="Upgrade to Pro" /> for full data.
+                Viewing limited analytics (last 7 days). <UpgradeText text="Upgrade to Pro" /> for
+                full data.
               </p>
             )}
           </div>
@@ -126,7 +119,6 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
         <BarChart
           clicksPerDate={series.clicksPerDate}
           uniqueClicksPerDate={series.uniqueClicksPerDate}
-          className="h-96"
           isProPlan={isProPlan}
           geoRules={geoRules}
           totalVisits={totalVisits.map((v) => ({

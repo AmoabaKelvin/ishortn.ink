@@ -1,10 +1,10 @@
+import crypto from "node:crypto";
+
 import { TRPCError } from "@trpc/server";
 import { addDays } from "date-fns";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import crypto from "node:crypto";
 
 import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
-import type { Plan } from "@/lib/billing/plans";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
   accountTransfer,
@@ -32,6 +32,7 @@ import type {
   AcceptTransferInput,
   CancelTransferInput,
 } from "./account-transfer.input";
+import type { Plan } from "@/lib/billing/plans";
 
 // ============================================================================
 // TYPES
@@ -92,39 +93,38 @@ export interface TransferResult {
  */
 async function countUserResources(
   userId: string,
-  db: ProtectedTRPCContext["db"]
+  db: ProtectedTRPCContext["db"],
 ): Promise<ResourceCounts> {
-  const [links, domains, qrCodes, folders, tags, utmTemplates, qrPresets] =
-    await Promise.all([
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(link)
-        .where(and(eq(link.userId, userId), isNull(link.teamId))),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(customDomain)
-        .where(and(eq(customDomain.userId, userId), isNull(customDomain.teamId))),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(qrcode)
-        .where(and(eq(qrcode.userId, userId), isNull(qrcode.teamId))),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(folder)
-        .where(and(eq(folder.userId, userId), isNull(folder.teamId))),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(tag)
-        .where(and(eq(tag.userId, userId), isNull(tag.teamId))),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(utmTemplate)
-        .where(and(eq(utmTemplate.userId, userId), isNull(utmTemplate.teamId))),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(qrPreset)
-        .where(and(eq(qrPreset.userId, userId), isNull(qrPreset.teamId))),
-    ]);
+  const [links, domains, qrCodes, folders, tags, utmTemplates, qrPresets] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(link)
+      .where(and(eq(link.userId, userId), isNull(link.teamId))),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(customDomain)
+      .where(and(eq(customDomain.userId, userId), isNull(customDomain.teamId))),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(qrcode)
+      .where(and(eq(qrcode.userId, userId), isNull(qrcode.teamId))),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(folder)
+      .where(and(eq(folder.userId, userId), isNull(folder.teamId))),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(tag)
+      .where(and(eq(tag.userId, userId), isNull(tag.teamId))),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(utmTemplate)
+      .where(and(eq(utmTemplate.userId, userId), isNull(utmTemplate.teamId))),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(qrPreset)
+      .where(and(eq(qrPreset.userId, userId), isNull(qrPreset.teamId))),
+  ]);
 
   return {
     links: Number(links[0]?.count ?? 0),
@@ -152,7 +152,7 @@ async function countUserResources(
 export async function validateAccountTransfer(
   ctx: ProtectedTRPCContext,
   targetEmail: string,
-  excludeTransferId?: number
+  excludeTransferId?: number,
 ): Promise<TransferValidationResult> {
   const errors: TransferValidationResult["errors"] = [];
 
@@ -198,8 +198,7 @@ export async function validateAccountTransfer(
   if (!targetUser) {
     errors.push({
       type: "TARGET_NOT_FOUND",
-      message:
-        "Target account does not exist. The recipient must sign up first.",
+      message: "Target account does not exist. The recipient must sign up first.",
     });
     return {
       isValid: false,
@@ -220,8 +219,7 @@ export async function validateAccountTransfer(
   if (targetUser.deletedAt !== null) {
     errors.push({
       type: "TARGET_DELETED",
-      message:
-        "Target account is marked for deletion and cannot receive transfers",
+      message: "Target account is marked for deletion and cannot receive transfers",
     });
     return {
       isValid: false,
@@ -246,9 +244,7 @@ export async function validateAccountTransfer(
 
   // If we're revalidating during accept, exclude the current transfer from the check
   if (excludeTransferId !== undefined) {
-    pendingTransferConditions.push(
-      sql`${accountTransfer.id} != ${excludeTransferId}`
-    );
+    pendingTransferConditions.push(sql`${accountTransfer.id} != ${excludeTransferId}`);
   }
 
   const existingTransfer = await ctx.db.query.accountTransfer.findFirst({
@@ -258,8 +254,7 @@ export async function validateAccountTransfer(
   if (existingTransfer) {
     errors.push({
       type: "PENDING_TRANSFER_EXISTS",
-      message:
-        "You already have a pending transfer. Cancel it before initiating a new one.",
+      message: "You already have a pending transfer. Cancel it before initiating a new one.",
     });
     return {
       isValid: false,
@@ -301,8 +296,7 @@ export async function validateAccountTransfer(
   }
 
   if (targetCaps.domainLimit !== undefined && resourceCounts.customDomains > 0) {
-    const newTotal =
-      targetCurrentCounts.customDomains + resourceCounts.customDomains;
+    const newTotal = targetCurrentCounts.customDomains + resourceCounts.customDomains;
     if (newTotal > targetCaps.domainLimit) {
       errors.push({
         type: "LIMIT_EXCEEDED",
@@ -328,11 +322,9 @@ export async function validateAccountTransfer(
       }),
     ]);
 
-    const targetFolderNames = new Set(
-      targetFolders.map((f) => f.name.toLowerCase())
-    );
+    const targetFolderNames = new Set(targetFolders.map((f) => f.name.toLowerCase()));
     const newFoldersCount = sourceFolders.filter(
-      (f) => !targetFolderNames.has(f.name.toLowerCase())
+      (f) => !targetFolderNames.has(f.name.toLowerCase()),
     ).length;
 
     const newTotal = targetCurrentCounts.folders + newFoldersCount;
@@ -358,8 +350,8 @@ export async function validateAccountTransfer(
           and(
             eq(campaign.userId, ctx.auth.userId),
             isNull(campaign.teamId),
-            eq(campaign.status, "active")
-          )
+            eq(campaign.status, "active"),
+          ),
         ),
       ctx.db
         .select({ count: sql<number>`count(*)` })
@@ -368,8 +360,8 @@ export async function validateAccountTransfer(
           and(
             eq(campaign.userId, targetUser.id),
             isNull(campaign.teamId),
-            eq(campaign.status, "active")
-          )
+            eq(campaign.status, "active"),
+          ),
         ),
     ]);
     const srcCampaigns = Number(srcCampaignRows[0]?.count ?? 0);
@@ -429,7 +421,7 @@ export async function validateAccountTransfer(
 
 export async function initiateAccountTransfer(
   ctx: ProtectedTRPCContext,
-  input: InitiateTransferInput
+  input: InitiateTransferInput,
 ) {
   // Validate the transfer
   const validation = await validateAccountTransfer(ctx, input.targetEmail);
@@ -498,10 +490,7 @@ export async function initiateAccountTransfer(
 // GET TRANSFER INFO
 // ============================================================================
 
-export async function getTransferByToken(
-  ctx: ProtectedTRPCContext,
-  token: string
-) {
+export async function getTransferByToken(ctx: ProtectedTRPCContext, token: string) {
   const transfer = await ctx.db.query.accountTransfer.findFirst({
     where: eq(accountTransfer.token, token),
     with: {
@@ -548,7 +537,7 @@ export async function getPendingTransfer(ctx: ProtectedTRPCContext) {
   const transfer = await ctx.db.query.accountTransfer.findFirst({
     where: and(
       eq(accountTransfer.fromUserId, ctx.auth.userId),
-      eq(accountTransfer.status, "pending")
+      eq(accountTransfer.status, "pending"),
     ),
   });
 
@@ -581,7 +570,7 @@ export async function getPendingTransfer(ctx: ProtectedTRPCContext) {
 
 export async function acceptAccountTransfer(
   ctx: ProtectedTRPCContext,
-  input: AcceptTransferInput
+  input: AcceptTransferInput,
 ): Promise<TransferResult> {
   const transfer = await ctx.db.query.accountTransfer.findFirst({
     where: eq(accountTransfer.token, input.token),
@@ -628,16 +617,16 @@ export async function acceptAccountTransfer(
 
   // Re-validate (plan caps may have changed)
   // Create a temporary context with the source user to validate
-  const sourceUserContext = {
+  const sourceUserContext: ProtectedTRPCContext = {
     ...ctx,
     auth: { ...ctx.auth, userId: transfer.fromUserId },
-  } as ProtectedTRPCContext;
+  };
 
   // Pass the current transfer ID to exclude it from the pending transfer check
   const revalidation = await validateAccountTransfer(
     sourceUserContext,
     transfer.toEmail,
-    transfer.id
+    transfer.id,
   );
 
   if (!revalidation.isValid) {
@@ -655,7 +644,7 @@ export async function acceptAccountTransfer(
     ctx,
     transfer.fromUserId,
     ctx.auth.userId,
-    transfer.id
+    transfer.id,
   );
 
   // Notify the source user that transfer was completed
@@ -694,7 +683,7 @@ async function executeResourceTransfer(
   ctx: ProtectedTRPCContext,
   fromUserId: string,
   toUserId: string,
-  transferId: number
+  transferId: number,
 ): Promise<TransferResult> {
   const result: TransferResult = {
     success: true,
@@ -726,12 +715,7 @@ async function executeResourceTransfer(
         acceptedAt: new Date(),
         toUserId: toUserId,
       })
-      .where(
-        and(
-          eq(accountTransfer.id, transferId),
-          eq(accountTransfer.status, "pending")
-        )
-      );
+      .where(and(eq(accountTransfer.id, transferId), eq(accountTransfer.status, "pending")));
 
     if (claimResult[0].affectedRows === 0) {
       throw new TRPCError({
@@ -751,9 +735,7 @@ async function executeResourceTransfer(
       where: and(eq(folder.userId, toUserId), isNull(folder.teamId)),
     });
 
-    const targetFoldersByName = new Map(
-      targetFolders.map((f) => [f.name.toLowerCase(), f])
-    );
+    const targetFoldersByName = new Map(targetFolders.map((f) => [f.name.toLowerCase(), f]));
 
     const folderIdMapping = new Map<number, number>(); // source ID -> target ID
 
@@ -794,9 +776,7 @@ async function executeResourceTransfer(
       where: and(eq(tag.userId, toUserId), isNull(tag.teamId)),
     });
 
-    const targetTagsByName = new Map(
-      targetTags.map((t) => [t.name.toLowerCase(), t])
-    );
+    const targetTagsByName = new Map(targetTags.map((t) => [t.name.toLowerCase(), t]));
 
     const tagIdMapping = new Map<number, number>(); // source ID -> target ID
 
@@ -842,7 +822,7 @@ async function executeResourceTransfer(
       // Update links ownership and folder IDs
       for (const sourceLink of sourceLinks) {
         const newFolderId = sourceLink.folderId
-          ? folderIdMapping.get(sourceLink.folderId) ?? null
+          ? (folderIdMapping.get(sourceLink.folderId) ?? null)
           : null;
 
         await tx
@@ -960,15 +940,11 @@ async function executeResourceTransfer(
     const targetSlugs = new Set(targetCampaigns.map((c) => c.slug));
     const targetNames = new Set(targetCampaigns.map((c) => c.name.toLowerCase()));
     const allSlugs = new Set([...targetSlugs, ...sourceCampaigns.map((c) => c.slug)]);
-    const allNames = new Set([
-      ...targetNames,
-      ...sourceCampaigns.map((c) => c.name.toLowerCase()),
-    ]);
+    const allNames = new Set([...targetNames, ...sourceCampaigns.map((c) => c.name.toLowerCase())]);
 
     for (const sourceCampaign of sourceCampaigns) {
       const collides =
-        targetSlugs.has(sourceCampaign.slug) ||
-        targetNames.has(sourceCampaign.name.toLowerCase());
+        targetSlugs.has(sourceCampaign.slug) || targetNames.has(sourceCampaign.name.toLowerCase());
       if (!collides) continue;
 
       let suffix = 2;
@@ -1000,16 +976,12 @@ async function executeResourceTransfer(
     // =========================================
     // Delete source folders (they've been recreated or merged)
     if (sourceFolders.length > 0) {
-      await tx.delete(folder).where(
-        and(eq(folder.userId, fromUserId), isNull(folder.teamId))
-      );
+      await tx.delete(folder).where(and(eq(folder.userId, fromUserId), isNull(folder.teamId)));
     }
 
     // Delete source tags (they've been recreated or merged)
     if (sourceTags.length > 0) {
-      await tx.delete(tag).where(
-        and(eq(tag.userId, fromUserId), isNull(tag.teamId))
-      );
+      await tx.delete(tag).where(and(eq(tag.userId, fromUserId), isNull(tag.teamId)));
     }
 
     // Note: API tokens and subscriptions are NOT transferred
@@ -1023,10 +995,7 @@ async function executeResourceTransfer(
 // CANCEL TRANSFER
 // ============================================================================
 
-export async function cancelAccountTransfer(
-  ctx: ProtectedTRPCContext,
-  input: CancelTransferInput
-) {
+export async function cancelAccountTransfer(ctx: ProtectedTRPCContext, input: CancelTransferInput) {
   const transfer = await ctx.db.query.accountTransfer.findFirst({
     where: eq(accountTransfer.id, input.transferId),
   });
@@ -1064,10 +1033,7 @@ export async function cancelAccountTransfer(
 // DECLINE TRANSFER (Recipient declines)
 // ============================================================================
 
-export async function declineAccountTransfer(
-  ctx: ProtectedTRPCContext,
-  input: { token: string }
-) {
+export async function declineAccountTransfer(ctx: ProtectedTRPCContext, input: { token: string }) {
   const transfer = await ctx.db.query.accountTransfer.findFirst({
     where: eq(accountTransfer.token, input.token),
   });

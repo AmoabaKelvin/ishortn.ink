@@ -25,13 +25,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
-import type { Plan } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { CampaignStateBadge } from "./campaign-state-badge";
 import { CreateCampaignDialog } from "./create-campaign-dialog";
+
+import type { Plan } from "@/lib/billing/plans";
+import type { RouterOutputs } from "@/trpc/shared";
 
 type Campaigns = RouterOutputs["campaign"]["list"];
 

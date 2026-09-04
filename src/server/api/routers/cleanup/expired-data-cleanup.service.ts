@@ -29,18 +29,13 @@ export async function cleanupExpiredData(): Promise<ExpiredDataCleanupResult> {
   // Calculate cutoff date for invalid domains
   const invalidDomainCutoffDate = new Date();
   invalidDomainCutoffDate.setDate(
-    invalidDomainCutoffDate.getDate() - INVALID_DOMAIN_RETENTION_DAYS
+    invalidDomainCutoffDate.getDate() - INVALID_DOMAIN_RETENTION_DAYS,
   );
 
   // Delete expired team invites (expiresAt has passed and not accepted)
   const expiredInvitesResult = await db
     .delete(teamInvite)
-    .where(
-      and(
-        lt(teamInvite.expiresAt, now),
-        sql`${teamInvite.acceptedAt} IS NULL`
-      )
-    );
+    .where(and(lt(teamInvite.expiresAt, now), sql`${teamInvite.acceptedAt} IS NULL`));
   result.expiredInvitesDeleted = expiredInvitesResult[0].affectedRows;
 
   // Delete invalid custom domains older than 30 days
@@ -48,10 +43,7 @@ export async function cleanupExpiredData(): Promise<ExpiredDataCleanupResult> {
   const invalidDomainsResult = await db
     .delete(customDomain)
     .where(
-      and(
-        eq(customDomain.status, "invalid"),
-        lt(customDomain.createdAt, invalidDomainCutoffDate)
-      )
+      and(eq(customDomain.status, "invalid"), lt(customDomain.createdAt, invalidDomainCutoffDate)),
     );
   result.invalidDomainsDeleted = invalidDomainsResult[0].affectedRows;
 
@@ -66,41 +58,28 @@ export async function getExpiredDataCleanupStats() {
 
   const invalidDomainCutoffDate = new Date();
   invalidDomainCutoffDate.setDate(
-    invalidDomainCutoffDate.getDate() - INVALID_DOMAIN_RETENTION_DAYS
+    invalidDomainCutoffDate.getDate() - INVALID_DOMAIN_RETENTION_DAYS,
   );
 
   // Count expired invites
   const expiredInvites = await db
     .select({ count: sql<number>`count(*)` })
     .from(teamInvite)
-    .where(
-      and(
-        lt(teamInvite.expiresAt, now),
-        sql`${teamInvite.acceptedAt} IS NULL`
-      )
-    );
+    .where(and(lt(teamInvite.expiresAt, now), sql`${teamInvite.acceptedAt} IS NULL`));
 
   // Count invalid domains older than retention period
   const invalidDomains = await db
     .select({ count: sql<number>`count(*)` })
     .from(customDomain)
     .where(
-      and(
-        eq(customDomain.status, "invalid"),
-        lt(customDomain.createdAt, invalidDomainCutoffDate)
-      )
+      and(eq(customDomain.status, "invalid"), lt(customDomain.createdAt, invalidDomainCutoffDate)),
     );
 
   // Count all pending invites (not yet expired)
   const pendingInvites = await db
     .select({ count: sql<number>`count(*)` })
     .from(teamInvite)
-    .where(
-      and(
-        sql`${teamInvite.expiresAt} >= ${now}`,
-        sql`${teamInvite.acceptedAt} IS NULL`
-      )
-    );
+    .where(and(sql`${teamInvite.expiresAt} >= ${now}`, sql`${teamInvite.acceptedAt} IS NULL`));
 
   return {
     expiredInvitesCount: Number(expiredInvites[0]?.count ?? 0),

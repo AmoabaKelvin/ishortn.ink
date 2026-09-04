@@ -1,7 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
+import { normalizeSocialUrl } from "@/components/bio/social-links";
 import {
   canRemoveBioBranding,
   canScheduleBioBlocks,
@@ -9,7 +11,6 @@ import {
   canUseBioCustomThemes,
   getPlanCaps,
 } from "@/lib/billing/plans";
-import { normalizeSocialUrl } from "@/components/bio/social-links";
 import { isPlatformDomain } from "@/lib/constants/domains";
 import {
   bioBlock,
@@ -38,6 +39,7 @@ import {
   rethrowBioDuplicate,
 } from "./utils";
 
+import type { PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type {
   AddBioBlockInput,
   CreateBioPageInput,
@@ -45,7 +47,6 @@ import type {
   UpdateBioBlockInput,
   UpdateBioPageInput,
 } from "./bio-page.input";
-import type { PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type { BioBlock, BioPageTheme, BioSocialLink } from "@/server/db/schema";
 import type { ImageType } from "@/server/lib/storage/types";
 
@@ -71,11 +72,13 @@ function revalidateBioPath(slug: string): void {
   }
 }
 
+const storedSocialsSchema = z.array(z.object({ platform: z.string(), url: z.string() }));
+
 function parseSocials(content: string | null): BioSocialLink[] {
   if (!content) return [];
   try {
-    const parsed = JSON.parse(content);
-    return Array.isArray(parsed) ? (parsed as BioSocialLink[]) : [];
+    const parsed = storedSocialsSchema.safeParse(JSON.parse(content));
+    return parsed.success ? parsed.data : [];
   } catch {
     return [];
   }
@@ -141,7 +144,7 @@ async function resolveImageUpdate(
   }
 
   const value = next
-    ? (await uploadImage(ctx, { image: next, resourceId, imageType })) ?? next
+    ? ((await uploadImage(ctx, { image: next, resourceId, imageType })) ?? next)
     : null;
   // Return the old object instead of deleting it here, so the caller can clean
   // up only after the new value is committed to the DB.
@@ -150,10 +153,7 @@ async function resolveImageUpdate(
 
 async function fetchBioPageForWorkspace(ctx: WorkspaceTRPCContext, id: number) {
   const page = await ctx.db.query.bioPage.findFirst({
-    where: and(
-      eq(bioPage.id, id),
-      workspaceFilter(ctx.workspace, bioPage.userId, bioPage.teamId),
-    ),
+    where: and(eq(bioPage.id, id), workspaceFilter(ctx.workspace, bioPage.userId, bioPage.teamId)),
   });
   if (!page) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Bio page not found." });
@@ -195,8 +195,12 @@ export async function listBioPages(ctx: WorkspaceTRPCContext) {
   return pages.map((p) => ({ ...p, blockCount: countMap.get(p.id) ?? 0 }));
 }
 
-function toEditorBlock(b: BioBlock, linkMap: Map<number, { domain: string; alias: string | null; blocked: boolean | null }>) {
-  const base = {
+function toEditorBlock(
+  b: BioBlock,
+  linkMap: Map<number, { domain: string; alias: string | null; blocked: boolean | null }>,
+) {
+  const trackingLink = b.type === "link" && b.linkId ? linkMap.get(b.linkId) : undefined;
+  return {
     id: b.id,
     type: b.type,
     title: b.title,
@@ -207,15 +211,9 @@ function toEditorBlock(b: BioBlock, linkMap: Map<number, { domain: string; alias
     scheduledAt: b.scheduledAt,
     scheduledUntil: b.scheduledUntil,
     socials: b.type === "social" ? parseSocials(b.content) : undefined,
-    shortUrl: null as string | null,
-    blocked: false,
+    shortUrl: trackingLink?.alias ? `https://${trackingLink.domain}/${trackingLink.alias}` : null,
+    blocked: trackingLink?.blocked ?? false,
   };
-  if (b.type === "link" && b.linkId) {
-    const l = linkMap.get(b.linkId);
-    base.shortUrl = l?.alias ? `https://${l.domain}/${l.alias}` : null;
-    base.blocked = l?.blocked ?? false;
-  }
-  return base;
 }
 
 export async function getBioPage(ctx: WorkspaceTRPCContext, id: number) {
@@ -253,7 +251,8 @@ export async function createBioPage(ctx: WorkspaceTRPCContext, input: CreateBioP
     });
     return { id: Number(res.insertId), slug: input.slug };
   } catch (error) {
-    rethrowBioDuplicate(error);
+    if (error instanceof Error) rethrowBioDuplicate(error);
+    throw error;
   }
 }
 
@@ -293,7 +292,10 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
       }
       // Canonicalize the same way getByDomain looks it up (lowercase, no www),
       // so a domain saved as "www.brand.com" still resolves at "brand.com".
-      const normalized = input.customDomain.trim().toLowerCase().replace(/^www\./, "");
+      const normalized = input.customDomain
+        .trim()
+        .toLowerCase()
+        .replace(/^www\./, "");
       if (isPlatformDomain(normalized)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -335,7 +337,8 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
     try {
       await ctx.db.update(bioPage).set(updates).where(eq(bioPage.id, page.id));
     } catch (error) {
-      rethrowBioDuplicate(error);
+      if (error instanceof Error) rethrowBioDuplicate(error);
+      throw error;
     }
   }
 
@@ -415,12 +418,15 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
   const content =
     input.type === "social"
       ? JSON.stringify(normalizeSocials(input.socials ?? []))
-      : input.content ?? null;
+      : (input.content ?? null);
 
   if (input.type === "link") {
     const destination = input.url?.trim();
     if (!destination) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "A link block needs a destination URL." });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "A link block needs a destination URL.",
+      });
     }
     const prepared = await prepareHiddenTrackingLink(ctx, {
       url: destination,
@@ -471,7 +477,8 @@ export async function updateBlock(ctx: WorkspaceTRPCContext, input: UpdateBioBlo
   if (input.scheduledUntil !== undefined) updates.scheduledUntil = input.scheduledUntil;
 
   if (block.type === "social") {
-    if (input.socials !== undefined) updates.content = JSON.stringify(normalizeSocials(input.socials));
+    if (input.socials !== undefined)
+      updates.content = JSON.stringify(normalizeSocials(input.socials));
   } else if (input.content !== undefined) {
     updates.content = input.content;
   }
@@ -648,7 +655,10 @@ export async function getPublicBioPageByDomain(
   ctx: PublicTRPCContext,
   domain: string,
 ): Promise<PublicBioPage | null> {
-  const normalized = domain.trim().toLowerCase().replace(/^www\./, "");
+  const normalized = domain
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "");
   const page = await ctx.db.query.bioPage.findFirst({
     where: and(eq(bioPage.customDomain, normalized), eq(bioPage.isPublished, true)),
   });
@@ -660,12 +670,12 @@ export async function getPublicBioPageByDomain(
 // Analytics
 // ---------------------------------------------------------------------------
 
-const RANGE_DAYS: Record<"7d" | "30d" | "90d" | "all", number> = {
+const RANGE_DAYS = {
   "7d": 7,
   "30d": 30,
   "90d": 90,
   all: 3650,
-};
+} satisfies Record<"7d" | "30d" | "90d" | "all", number>;
 
 function resolveRangeDays(range: keyof typeof RANGE_DAYS, capDays?: number): number {
   const base = RANGE_DAYS[range];
@@ -688,7 +698,9 @@ export async function getBioPageAnalytics(
     ctx.db
       .select({ count: count() })
       .from(uniqueBioPageView)
-      .where(and(eq(uniqueBioPageView.bioPageId, page.id), gte(uniqueBioPageView.createdAt, start))),
+      .where(
+        and(eq(uniqueBioPageView.bioPageId, page.id), gte(uniqueBioPageView.createdAt, start)),
+      ),
     ctx.db
       .select({
         date: sql<string>`DATE(${bioPageView.createdAt})`,

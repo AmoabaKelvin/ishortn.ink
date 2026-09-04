@@ -15,7 +15,7 @@ export const LinkPasswordVerification = ({ id }: { id: number }) => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const password = formData.get("password") as string;
+    const password = String(formData.get("password") ?? "");
 
     const result = await verifyPasswordMutation.mutateAsync({
       id,
@@ -41,9 +41,7 @@ export const LinkPasswordVerification = ({ id }: { id: number }) => {
   };
 
   return (
-    <div
-      className={`flex h-screen flex-col items-center justify-center ${satoshi.className}`}
-    >
+    <div className={`flex h-screen flex-col items-center justify-center ${satoshi.className}`}>
       <h1 className="mb-10 text-4xl font-bold">iShortn</h1>
 
       <h1 className="text-2xl font-bold">This link is password protected</h1>

@@ -1,26 +1,17 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
-import { getPlanCaps } from "@/lib/billing/plans";
 import { isPlatformDomain } from "@/lib/constants/domains";
-import {
-  customDomain,
-  link,
-  linkTag,
-  qrcode,
-} from "@/server/db/schema";
+import { customDomain, link, linkTag, qrcode } from "@/server/db/schema";
+import { getUserPlanContext } from "@/server/lib/user-plan";
+import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 import {
   getTeamWorkspaceContextById,
   getUserTeams,
 } from "@/server/lib/workspace/workspace.service";
-import {
-  workspaceFilter,
-  workspaceOwnership,
-} from "@/server/lib/workspace";
-import { getUserPlanContext } from "@/server/lib/user-plan";
 
-import type { WorkspaceContext } from "@/server/lib/workspace/types";
 import type { WorkspaceTRPCContext } from "../../trpc";
+import type { WorkspaceContext } from "@/server/lib/workspace/types";
 
 // ============================================================================
 // INPUT TYPES
@@ -45,12 +36,22 @@ export interface AvailableWorkspace {
   isCurrent: boolean;
 }
 
+export type TransferBlockerDetails =
+  | { currentCount: number; limit: number; transferring: number }
+  | { domain: string; aliases: (string | null)[] }
+  | { domains: string[] };
+
 export interface TransferValidationResult {
   isValid: boolean;
   errors: Array<{
-    type: "ALIAS_COLLISION" | "DOMAIN_MISSING" | "LIMIT_EXCEEDED" | "PERMISSION_DENIED" | "SAME_WORKSPACE";
+    type:
+      | "ALIAS_COLLISION"
+      | "DOMAIN_MISSING"
+      | "LIMIT_EXCEEDED"
+      | "PERMISSION_DENIED"
+      | "SAME_WORKSPACE";
     message: string;
-    details?: Record<string, unknown>;
+    details?: TransferBlockerDetails;
   }>;
   warnings: Array<{
     type: "TAGS_DROPPED" | "FOLDERS_RESET" | "QR_TRANSFERRED";
@@ -73,7 +74,7 @@ export interface TransferResult {
 // ============================================================================
 
 export async function getAvailableWorkspaces(
-  ctx: WorkspaceTRPCContext
+  ctx: WorkspaceTRPCContext,
 ): Promise<AvailableWorkspace[]> {
   const workspaces: AvailableWorkspace[] = [];
 
@@ -111,8 +112,7 @@ export async function getAvailableWorkspaces(
       .from(link)
       .where(eq(link.teamId, team.id));
 
-    const isCurrent =
-      ctx.workspace.type === "team" && ctx.workspace.teamId === team.id;
+    const isCurrent = ctx.workspace.type === "team" && ctx.workspace.teamId === team.id;
 
     workspaces.push({
       id: `team-${team.id}`,
@@ -120,7 +120,7 @@ export async function getAvailableWorkspaces(
       teamId: team.id,
       name: team.name,
       slug: team.slug,
-      role: role as "owner" | "admin" | "member",
+      role,
       plan: "ultra", // Teams always have Ultra
       linkCount: Number(teamLinkCount[0]?.count ?? 0),
       linkLimit: undefined, // Teams have unlimited links
@@ -137,7 +137,7 @@ export async function getAvailableWorkspaces(
 
 export async function validateTransfer(
   ctx: WorkspaceTRPCContext,
-  input: TransferLinksInput
+  input: TransferLinksInput,
 ): Promise<TransferValidationResult> {
   const { linkIds, targetWorkspaceType, targetTeamId } = input;
   const errors: TransferValidationResult["errors"] = [];
@@ -181,11 +181,7 @@ export async function validateTransfer(
     }
 
     try {
-      targetWorkspace = await getTeamWorkspaceContextById(
-        ctx.auth.userId,
-        targetTeamId,
-        ctx.db
-      );
+      targetWorkspace = await getTeamWorkspaceContextById(ctx.auth.userId, targetTeamId, ctx.db);
     } catch {
       errors.push({
         type: "PERMISSION_DENIED",
@@ -234,10 +230,7 @@ export async function validateTransfer(
 
   // Verify all links exist and belong to source workspace
   const sourceLinks = await ctx.db.query.link.findMany({
-    where: and(
-      inArray(link.id, linkIds),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId)
-    ),
+    where: and(inArray(link.id, linkIds), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (sourceLinks.length !== linkIds.length) {
@@ -282,14 +275,13 @@ export async function validateTransfer(
   }
 
   // Check for alias collisions in target workspace
-  const aliases = sourceLinks.map((l) => l.alias).filter(Boolean) as string[];
   const domains = [...new Set(sourceLinks.map((l) => l.domain))];
 
   for (const domain of domains) {
     const aliasesForDomain = sourceLinks
       .filter((l) => l.domain === domain)
       .map((l) => l.alias)
-      .filter(Boolean) as string[];
+      .filter((alias): alias is string => !!alias);
 
     if (aliasesForDomain.length === 0) continue;
 
@@ -302,8 +294,8 @@ export async function validateTransfer(
           eq(link.domain, domain),
           targetWorkspace.type === "team"
             ? eq(link.teamId, targetWorkspace.teamId)
-            : and(eq(link.userId, ctx.auth.userId), isNull(link.teamId))
-        )
+            : and(eq(link.userId, ctx.auth.userId), isNull(link.teamId)),
+        ),
       );
 
     if (existingAliases.length > 0) {
@@ -329,7 +321,7 @@ export async function validateTransfer(
         inArray(customDomain.domain, customDomains),
         targetWorkspace.type === "team"
           ? eq(customDomain.teamId, targetWorkspace.teamId)
-          : and(eq(customDomain.userId, ctx.auth.userId), isNull(customDomain.teamId))
+          : and(eq(customDomain.userId, ctx.auth.userId), isNull(customDomain.teamId)),
       ),
     });
 
@@ -399,9 +391,9 @@ export async function validateTransfer(
 
 export async function transferLinksToWorkspace(
   ctx: WorkspaceTRPCContext,
-  input: TransferLinksInput
+  input: TransferLinksInput,
 ): Promise<TransferResult> {
-  const { linkIds, targetWorkspaceType, targetTeamId } = input;
+  const { linkIds } = input;
 
   // Validate the transfer first
   const validation = await validateTransfer(ctx, input);
@@ -434,16 +426,11 @@ export async function transferLinksToWorkspace(
         campaignId: null, // Campaigns are workspace-scoped too
       })
       .where(
-        and(
-          inArray(link.id, linkIds),
-          workspaceFilter(ctx.workspace, link.userId, link.teamId)
-        )
+        and(inArray(link.id, linkIds), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
       );
 
     // 2. Delete tag associations (tags are workspace-scoped)
-    await tx
-      .delete(linkTag)
-      .where(inArray(linkTag.linkId, linkIds));
+    await tx.delete(linkTag).where(inArray(linkTag.linkId, linkIds));
 
     // 3. Transfer QR codes
     await tx

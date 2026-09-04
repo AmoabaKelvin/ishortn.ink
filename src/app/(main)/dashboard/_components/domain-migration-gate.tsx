@@ -1,7 +1,7 @@
 "use client";
 
 import { IconCheck, IconCopy, IconRefresh } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,29 @@ import { api } from "@/trpc/react";
 import type { RouterOutputs } from "@/trpc/shared";
 
 const SESSION_DISMISS_KEY = "ishortn:domain-migration-dismissed";
+const DOMAIN_MIGRATION_DISMISS_EVENT = "ishortn:domain-migration:dismiss";
 
 export const DOMAIN_MIGRATION_OPEN_EVENT = "ishortn:domain-migration:open";
+
+// Session dismissal lives in sessionStorage; the open/dismiss events are how
+// other components and this dialog tell subscribers the stored value changed.
+function subscribeDismissed(onChange: () => void) {
+  const handleOpen = () => {
+    window.sessionStorage.removeItem(SESSION_DISMISS_KEY);
+    onChange();
+  };
+  window.addEventListener(DOMAIN_MIGRATION_OPEN_EVENT, handleOpen);
+  window.addEventListener(DOMAIN_MIGRATION_DISMISS_EVENT, onChange);
+  return () => {
+    window.removeEventListener(DOMAIN_MIGRATION_OPEN_EVENT, handleOpen);
+    window.removeEventListener(DOMAIN_MIGRATION_DISMISS_EVENT, onChange);
+  };
+}
+
+const readDismissed = () => window.sessionStorage.getItem(SESSION_DISMISS_KEY) === "1";
+
+// Closed on the server so hydration matches; the client snapshot takes over afterwards.
+const readDismissedOnServer = () => true;
 
 type MigrationDomain = RouterOutputs["customDomain"]["migrationStatus"][number];
 
@@ -45,26 +66,12 @@ function migrationDeadline(): { label: string; passed: boolean } | null {
 }
 
 export function DomainMigrationGate() {
-  // Starts closed on both server and client; the effect below reads the
-  // session dismissal after hydration, avoiding a mismatch.
-  const [dismissed, setDismissed] = useState(true);
+  const dismissed = useSyncExternalStore(subscribeDismissed, readDismissed, readDismissedOnServer);
 
   const { data } = api.customDomain.migrationStatus.useQuery(undefined, {
     refetchOnWindowFocus: false,
     staleTime: 60_000,
   });
-
-  useEffect(() => {
-    setDismissed(window.sessionStorage.getItem(SESSION_DISMISS_KEY) === "1");
-
-    const handleOpen = () => {
-      window.sessionStorage.removeItem(SESSION_DISMISS_KEY);
-      setDismissed(false);
-    };
-
-    window.addEventListener(DOMAIN_MIGRATION_OPEN_EVENT, handleOpen);
-    return () => window.removeEventListener(DOMAIN_MIGRATION_OPEN_EVENT, handleOpen);
-  }, []);
 
   const pendingDomains = data?.filter((entry) => !entry.cloudflareActive) ?? [];
 
@@ -74,7 +81,7 @@ export function DomainMigrationGate() {
 
   const dismissForSession = () => {
     window.sessionStorage.setItem(SESSION_DISMISS_KEY, "1");
-    setDismissed(true);
+    window.dispatchEvent(new Event(DOMAIN_MIGRATION_DISMISS_EVENT));
   };
 
   // No configured deadline means the move already happened.
@@ -127,11 +134,11 @@ export function DomainMigrationGate() {
 
 type VerifyFeedback = "pending" | "error";
 
-const feedbackMessages: Record<VerifyFeedback, string> = {
+const feedbackMessages = {
   pending:
     "Records not detected yet. DNS changes can take up to 48 hours to propagate — check again later.",
   error: "We could not verify the domain right now. Please try again in a moment.",
-};
+} satisfies Record<VerifyFeedback, string>;
 
 function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
   const [feedback, setFeedback] = useState<VerifyFeedback | null>(null);

@@ -31,31 +31,30 @@ export default function AdminPage() {
 
   const { from, to } = dateRange;
 
-  const { data: analytics, isLoading: analyticsLoading } =
-    api.admin.getAnalytics.useQuery({ from, to });
+  const { data: analytics, isLoading: analyticsLoading } = api.admin.getAnalytics.useQuery({
+    from,
+    to,
+  });
 
-  const { data: chartData, isLoading: chartLoading } =
-    api.admin.getActivityChart.useQuery(
-      { from, to, granularity },
-      { keepPreviousData: true },
-    );
+  const { data: chartData, isLoading: chartLoading } = api.admin.getActivityChart.useQuery(
+    { from, to, granularity },
+    { keepPreviousData: true },
+  );
 
-  const { data: peakData, isLoading: peakLoading } =
-    api.admin.getPeakPeriods.useQuery({ from, to }, { keepPreviousData: true });
+  const { data: peakData, isLoading: peakLoading } = api.admin.getPeakPeriods.useQuery(
+    { from, to },
+    { keepPreviousData: true },
+  );
 
-  const { data: monthlyData, isLoading: monthlyLoading } =
-    api.admin.getMonthlyBreakdown.useQuery(
-      { from, to },
-      { keepPreviousData: true },
-    );
+  const { data: monthlyData, isLoading: monthlyLoading } = api.admin.getMonthlyBreakdown.useQuery(
+    { from, to },
+    { keepPreviousData: true },
+  );
 
-  const { data: healthData, isLoading: healthLoading } =
-    api.admin.getSystemHealth.useQuery();
+  const { data: healthData, isLoading: healthLoading } = api.admin.getSystemHealth.useQuery();
 
-  const { data: activity, isLoading: activityLoading } =
-    api.admin.getRecentActivity.useQuery();
-  const { data: recentUsers, isLoading: recentUsersLoading } =
-    api.admin.getRecentUsers.useQuery();
+  const { data: activity, isLoading: activityLoading } = api.admin.getRecentActivity.useQuery();
+  const { data: recentUsers, isLoading: recentUsersLoading } = api.admin.getRecentUsers.useQuery();
 
   return (
     <div>
@@ -148,12 +147,10 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-border/50">
               {recentUsers.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center justify-between px-5 py-3"
-                >
+                <div key={u.id} className="flex items-center justify-between px-5 py-3">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     {u.imageUrl ? (
+                      // eslint-disable-next-line next/no-img-element -- Clerk avatar URL from an unconfigured remote host
                       <img
                         src={u.imageUrl}
                         alt=""
@@ -213,10 +210,7 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-border/50">
               {activity.recentLinks.map((l) => (
-                <div
-                  key={l.id}
-                  className="flex items-center justify-between px-5 py-3"
-                >
+                <div key={l.id} className="flex items-center justify-between px-5 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                       <span className="text-neutral-400 dark:text-neutral-500">{l.domain}/</span>
@@ -266,10 +260,7 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-border/50">
               {activity.recentBlocked.map((l) => (
-                <div
-                  key={l.id}
-                  className="flex items-center justify-between px-5 py-3"
-                >
+                <div key={l.id} className="flex items-center justify-between px-5 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                       <span className="text-neutral-400 dark:text-neutral-500">{l.domain}/</span>

@@ -25,8 +25,7 @@ async function QRCodePage() {
           </h2>
           {userCodes.length > 0 && (
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              {userCodes.length}{" "}
-              {userCodes.length === 1 ? "code" : "codes"} total
+              {userCodes.length} {userCodes.length === 1 ? "code" : "codes"} total
             </p>
           )}
         </div>
@@ -53,9 +52,7 @@ async function QRCodePage() {
       {!canCreateMoreQRCodes && userCodes.length > 0 && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border border-amber-200/80 bg-amber-50/50 px-4 py-3">
           <div>
-            <p className="text-[13px] font-medium text-amber-900">
-              QR code limit reached
-            </p>
+            <p className="text-[13px] font-medium text-amber-900">QR code limit reached</p>
             <p className="mt-0.5 text-[12px] text-amber-700/80">
               Upgrade to create unlimited QR codes
             </p>
@@ -65,11 +62,7 @@ async function QRCodePage() {
       )}
 
       {/* Content */}
-      {userCodes.length === 0 ? (
-        <QRCodeEmptyState />
-      ) : (
-        <QRCodeList codes={userCodes} />
-      )}
+      {userCodes.length === 0 ? <QRCodeEmptyState /> : <QRCodeList codes={userCodes} />}
     </div>
   );
 }

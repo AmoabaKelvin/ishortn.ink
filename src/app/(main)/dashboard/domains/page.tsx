@@ -20,8 +20,7 @@ async function CustomDomainsPage() {
           </h1>
           {userDomains.length > 0 && (
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              {userDomains.length}{" "}
-              {userDomains.length === 1 ? "domain" : "domains"} total
+              {userDomains.length} {userDomains.length === 1 ? "domain" : "domains"} total
             </p>
           )}
         </div>

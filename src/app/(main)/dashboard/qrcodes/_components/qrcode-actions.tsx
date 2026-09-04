@@ -12,7 +12,6 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../../revalidate-homepage";
@@ -189,11 +189,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
       </DropdownMenu>
 
       {hasOpenedDrawer && (
-        <EditQRCodeDrawer
-          qr={qr}
-          open={openEditDrawer}
-          onClose={() => setOpenEditDrawer(false)}
-        />
+        <EditQRCodeDrawer qr={qr} open={openEditDrawer} onClose={() => setOpenEditDrawer(false)} />
       )}
 
       {/* Reset Statistics Dialog */}
@@ -218,14 +214,11 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                toast.promise(
-                  resetStatsMutation.mutateAsync({ id: qr.id }),
-                  {
-                    loading: "Resetting...",
-                    success: "Statistics reset",
-                    error: "Failed to reset",
-                  },
-                );
+                toast.promise(resetStatsMutation.mutateAsync({ id: qr.id }), {
+                  loading: "Resetting...",
+                  success: "Statistics reset",
+                  error: "Failed to reset",
+                });
               }}
               disabled={resetStatsMutation.isLoading}
               className="h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-50"
@@ -258,14 +251,11 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                toast.promise(
-                  deleteMutation.mutateAsync({ id: qr.id }),
-                  {
-                    loading: "Deleting...",
-                    success: "QR code deleted",
-                    error: "Failed to delete",
-                  },
-                );
+                toast.promise(deleteMutation.mutateAsync({ id: qr.id }), {
+                  loading: "Deleting...",
+                  success: "QR code deleted",
+                  error: "Failed to delete",
+                });
               }}
               disabled={deleteMutation.isLoading}
               className="h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-50"

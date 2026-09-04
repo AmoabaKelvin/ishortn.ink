@@ -62,7 +62,7 @@ export function TransferToWorkspaceModal({
       toast.success(
         `${result.transferredCount} ${
           result.transferredCount === 1 ? "link" : "links"
-        } transferred`
+        } transferred`,
       );
       await utils.link.list.invalidate();
       await utils.folder.list.invalidate();
@@ -85,14 +85,13 @@ export function TransferToWorkspaceModal({
   const handleContinue = () => {
     if (!selectedWorkspaceId) return;
 
-    const selectedWorkspace = workspaces?.find(
-      (w) => w.id === selectedWorkspaceId
-    );
+    const selectedWorkspace = workspaces?.find((w) => w.id === selectedWorkspaceId);
     if (!selectedWorkspace) return;
 
-    const payload = selectedWorkspace.type === "team"
-      ? { linkIds, targetWorkspaceType: "team" as const, targetTeamId: selectedWorkspace.teamId! }
-      : { linkIds, targetWorkspaceType: "personal" as const };
+    const payload =
+      selectedWorkspace.type === "team"
+        ? { linkIds, targetWorkspaceType: "team" as const, targetTeamId: selectedWorkspace.teamId! }
+        : { linkIds, targetWorkspaceType: "personal" as const };
 
     validateMutation.mutate(payload, {
       onSuccess: (result) => {
@@ -109,14 +108,13 @@ export function TransferToWorkspaceModal({
   };
 
   const handleTransfer = () => {
-    const selectedWorkspace = workspaces?.find(
-      (w) => w.id === selectedWorkspaceId
-    );
+    const selectedWorkspace = workspaces?.find((w) => w.id === selectedWorkspaceId);
     if (!selectedWorkspace) return;
 
-    const payload = selectedWorkspace.type === "team"
-      ? { linkIds, targetWorkspaceType: "team" as const, targetTeamId: selectedWorkspace.teamId! }
-      : { linkIds, targetWorkspaceType: "personal" as const };
+    const payload =
+      selectedWorkspace.type === "team"
+        ? { linkIds, targetWorkspaceType: "team" as const, targetTeamId: selectedWorkspace.teamId! }
+        : { linkIds, targetWorkspaceType: "personal" as const };
 
     transferMutation.mutate(payload);
   };
@@ -126,9 +124,7 @@ export function TransferToWorkspaceModal({
     validateMutation.reset();
   };
 
-  const selectedWorkspace = workspaces?.find(
-    (w) => w.id === selectedWorkspaceId
-  );
+  const selectedWorkspace = workspaces?.find((w) => w.id === selectedWorkspaceId);
   const availableWorkspaces = workspaces?.filter((w) => !w.isCurrent) ?? [];
   const validation = validateMutation.data;
 
@@ -148,19 +144,14 @@ export function TransferToWorkspaceModal({
                 <DialogTitle>
                   Transfer {linkIds.length === 1 ? "link" : `${linkIds.length} links`}
                 </DialogTitle>
-                <DialogDescription>
-                  Select destination workspace
-                </DialogDescription>
+                <DialogDescription>Select destination workspace</DialogDescription>
               </DialogHeader>
 
               <DialogBody>
                 {loadingWorkspaces ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="h-14 rounded-lg bg-muted animate-pulse"
-                      />
+                      <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />
                     ))}
                   </div>
                 ) : workspacesError ? (
@@ -177,7 +168,9 @@ export function TransferToWorkspaceModal({
                       <Building2 className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <p className="text-sm font-medium">No workspaces available</p>
-                    <p className="text-xs text-muted-foreground mt-1">Create a team or join another workspace</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Create a team or join another workspace
+                    </p>
                   </div>
                 ) : (
                   <ScrollArea className="max-h-[320px] -mx-1 px-1">
@@ -194,16 +187,18 @@ export function TransferToWorkspaceModal({
                             "border",
                             selectedWorkspaceId === workspace.id
                               ? "border-foreground bg-foreground/[0.03] ring-1 ring-foreground/10"
-                              : "border-transparent hover:bg-muted/50"
+                              : "border-transparent hover:bg-muted/50",
                           )}
                           onClick={() => setSelectedWorkspaceId(workspace.id)}
                         >
-                          <div className={cn(
-                            "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                            selectedWorkspaceId === workspace.id
-                              ? "bg-foreground/10"
-                              : "bg-muted"
-                          )}>
+                          <div
+                            className={cn(
+                              "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+                              selectedWorkspaceId === workspace.id
+                                ? "bg-foreground/10"
+                                : "bg-muted",
+                            )}
+                          >
                             {workspace.type === "personal" ? (
                               <User className="h-5 w-5 text-muted-foreground" />
                             ) : (
@@ -212,11 +207,12 @@ export function TransferToWorkspaceModal({
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium truncate text-sm">
-                                {workspace.name}
-                              </span>
+                              <span className="font-medium truncate text-sm">{workspace.name}</span>
                               {workspace.type === "team" && (
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 capitalize font-medium">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] px-1.5 py-0 h-4 capitalize font-medium"
+                                >
                                   {workspace.role}
                                 </Badge>
                               )}
@@ -225,12 +221,14 @@ export function TransferToWorkspaceModal({
                               {workspace.linkCount} links · {workspace.plan}
                             </p>
                           </div>
-                          <div className={cn(
-                            "flex h-4 w-4 items-center justify-center rounded-full border-2 transition-all",
-                            selectedWorkspaceId === workspace.id
-                              ? "border-foreground bg-foreground"
-                              : "border-muted-foreground/30"
-                          )}>
+                          <div
+                            className={cn(
+                              "flex h-4 w-4 items-center justify-center rounded-full border-2 transition-all",
+                              selectedWorkspaceId === workspace.id
+                                ? "border-foreground bg-foreground"
+                                : "border-muted-foreground/30",
+                            )}
+                          >
                             {selectedWorkspaceId === workspace.id && (
                               <Check className="h-2.5 w-2.5 text-background" />
                             )}
@@ -243,11 +241,7 @@ export function TransferToWorkspaceModal({
               </DialogBody>
 
               <DialogFooter>
-                <Button
-                  variant="ghost"
-                  onClick={handleClose}
-                  className="h-9"
-                >
+                <Button variant="ghost" onClick={handleClose} className="h-9">
                   Cancel
                 </Button>
                 <Button
@@ -300,7 +294,9 @@ export function TransferToWorkspaceModal({
                     <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted mb-2">
                       <span className="text-xl font-bold">{linkIds.length}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{linkIds.length === 1 ? "link" : "links"}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {linkIds.length === 1 ? "link" : "links"}
+                    </span>
                   </div>
 
                   {/* Arrow */}
@@ -335,7 +331,9 @@ export function TransferToWorkspaceModal({
                     <div className="flex gap-3">
                       <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Note</p>
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                          Note
+                        </p>
                         <ul className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
                           {validation.warnings.map((warning, i) => (
                             <li key={i}>{warning.message}</li>

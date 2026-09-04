@@ -1,25 +1,30 @@
 import "dotenv/config";
-
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
+import { z } from "zod";
 
 import { customDomain } from "../src/server/db/schema";
 
 const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
 const DUPLICATE_HOSTNAME_ERROR_CODE = 1406;
 
-type CloudflareCustomHostname = {
-  id: string;
-  hostname: string;
-  status: string;
-  ssl?: { status: string } | null;
-};
+const customHostnameSchema = z.object({
+  id: z.string(),
+  hostname: z.string(),
+  status: z.string(),
+  ssl: z.object({ status: z.string() }).nullish(),
+});
 
-type CloudflareApiResponse<T> = {
-  success: boolean;
-  errors?: { code: number; message: string }[];
-  result: T | null;
-};
+function apiResponseSchema<Result extends z.ZodType>(result: Result) {
+  return z.object({
+    success: z.boolean(),
+    errors: z.array(z.object({ code: z.number(), message: z.string() })).optional(),
+    result: result.nullable(),
+  });
+}
+
+const customHostnameResponseSchema = apiResponseSchema(customHostnameSchema);
+const customHostnameListResponseSchema = apiResponseSchema(z.array(customHostnameSchema));
 
 type MigrationRow = {
   domain: string;
@@ -59,7 +64,7 @@ async function createCustomHostname(domain: string) {
     }),
   });
 
-  return (await response.json()) as CloudflareApiResponse<CloudflareCustomHostname>;
+  return customHostnameResponseSchema.parse(await response.json());
 }
 
 async function getCustomHostname(domain: string) {
@@ -68,7 +73,7 @@ async function getCustomHostname(domain: string) {
     { method: "GET", headers },
   );
 
-  const data = (await response.json()) as CloudflareApiResponse<CloudflareCustomHostname[]>;
+  const data = customHostnameListResponseSchema.parse(await response.json());
 
   if (!data.success || !data.result) {
     return null;

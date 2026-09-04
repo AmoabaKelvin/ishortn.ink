@@ -1,21 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
 import { Link } from "next-view-transitions";
+import { useState, useEffect } from "react";
+
 import { api } from "@/trpc/react";
 
 const STORAGE_KEY = "changelog-toast-dismissed";
 
 export function ChangelogToast() {
   const [isVisible, setIsVisible] = useState(false);
-  const [latestEntry, setLatestEntry] = useState<{
-    shortDesc: string;
-    slug: string;
-    title: string;
-    version: string;
-  } | null>(null);
 
   const { data: newEntries } = api.changelog.getNewEntries.useQuery(undefined, {
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -23,26 +18,16 @@ export function ChangelogToast() {
 
   const markAsViewed = api.changelog.markAsViewed.useMutation();
 
+  const latestEntry = newEntries?.[0];
+
   useEffect(() => {
-    if (newEntries && newEntries.length > 0) {
-      const latest = newEntries[0];
-      if (!latest) return;
+    if (!latestEntry) return;
+    if (localStorage.getItem(STORAGE_KEY) === latestEntry.version) return;
 
-      const dismissedVersion = localStorage.getItem(STORAGE_KEY);
-
-      if (dismissedVersion !== latest.version) {
-        setLatestEntry({
-          shortDesc: latest.shortDesc,
-          slug: latest.slug,
-          title: latest.title,
-          version: latest.version,
-        });
-        // Delay showing the toast for better UX
-        const timer = setTimeout(() => setIsVisible(true), 2000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [newEntries]);
+    // Delay showing the toast for better UX
+    const timer = setTimeout(() => setIsVisible(true), 2000);
+    return () => clearTimeout(timer);
+  }, [latestEntry]);
 
   const handleDismiss = () => {
     setIsVisible(false);
@@ -73,9 +58,7 @@ export function ChangelogToast() {
             {/* Header */}
             <div className="mb-3 flex items-start justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-neutral-500">
-                  v{latestEntry.version}
-                </span>
+                <span className="text-xs font-medium text-neutral-500">v{latestEntry.version}</span>
                 <span className="h-1 w-1 rounded-full bg-neutral-300" />
                 <span className="text-xs text-neutral-400">New update</span>
               </div>
@@ -90,12 +73,8 @@ export function ChangelogToast() {
             </div>
 
             {/* Content */}
-            <h3 className="mb-1 text-sm font-medium text-neutral-900">
-              {latestEntry.title}
-            </h3>
-            <p className="mb-4 text-sm text-neutral-500">
-              {latestEntry.shortDesc}
-            </p>
+            <h3 className="mb-1 text-sm font-medium text-neutral-900">{latestEntry.title}</h3>
+            <p className="mb-4 text-sm text-neutral-500">{latestEntry.shortDesc}</p>
 
             {/* Action */}
             <Link

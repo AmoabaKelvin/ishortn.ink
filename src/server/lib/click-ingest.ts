@@ -9,13 +9,13 @@ import { reserveEventUsage } from "./event-usage";
 import { checkAndFireMilestones } from "./milestone-check";
 import { type SendEventUsageEmailInput, sendEventUsageEmail } from "./notifications/event-usage";
 
+import type { DbClient } from "./user-plan";
 import type {
   BioViewEvent,
   ClickEvent,
   LinkClickEvent,
   VerifyEvent,
 } from "@/lib/core/analytics/click-event";
-import type { DbClient } from "./user-plan";
 
 const log = logger.child({ component: "click-ingest" });
 

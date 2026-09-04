@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatAudienceFeedbackLabel } from "@/lib/audience-feedback/labels";
-import type { Plan } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 import {
   audienceFeedbackAcquisitionChannelValues,
@@ -22,6 +21,8 @@ import {
 } from "@/server/api/routers/audience-feedback/audience-feedback.input";
 import { api } from "@/trpc/react";
 
+import type { Plan } from "@/lib/billing/plans";
+
 type PlanFilter = Plan | "all";
 type ChannelFilter = (typeof audienceFeedbackAcquisitionChannelValues)[number] | "all";
 type PriorToolFilter = (typeof audienceFeedbackPriorToolValues)[number] | "all";
@@ -29,11 +30,11 @@ type RoleFilter = (typeof audienceFeedbackRoleValues)[number] | "all";
 
 const planFilterOptions: PlanFilter[] = ["all", "free", "pro", "ultra"];
 
-const PLAN_BADGE_CLASSES: Record<Plan, string> = {
+const PLAN_BADGE_CLASSES = {
   ultra: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400",
   pro: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
   free: "bg-neutral-100 text-neutral-700 dark:bg-muted dark:text-neutral-300",
-};
+} satisfies Record<Plan, string>;
 
 function withAllOption<T extends string>(
   values: readonly T[],
@@ -52,8 +53,7 @@ export default function AdminAudienceFeedbackPage() {
   const [role, setRole] = useState<RoleFilter>("all");
   const [cursor, setCursor] = useState<number | undefined>(undefined);
 
-  const { data: stats, isLoading: statsLoading } =
-    api.audienceFeedback.stats.useQuery();
+  const { data: stats, isLoading: statsLoading } = api.audienceFeedback.stats.useQuery();
 
   const { data, isLoading } = api.audienceFeedback.list.useQuery({
     plan: plan === "all" ? undefined : plan,
@@ -122,10 +122,7 @@ export default function AdminAudienceFeedbackPage() {
       {isLoading && (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-40 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted"
-            />
+            <div key={i} className="h-40 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted" />
           ))}
         </div>
       )}
@@ -191,21 +188,12 @@ type StatsData = {
   byMagicFeature: Array<{ value: string | null; count: number }>;
 };
 
-function StatsGrid({
-  stats,
-  isLoading,
-}: {
-  stats: StatsData | undefined;
-  isLoading: boolean;
-}) {
+function StatsGrid({ stats, isLoading }: { stats: StatsData | undefined; isLoading: boolean }) {
   if (isLoading || !stats) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="h-40 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted"
-          />
+          <div key={i} className="h-40 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted" />
         ))}
       </div>
     );
@@ -222,9 +210,7 @@ function StatsGrid({
           />
         </div>
         <div>
-          <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
-            Total submissions
-          </p>
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400">Total submissions</p>
           <p className="text-lg font-semibold text-neutral-900 dark:text-foreground">
             {stats.total}
           </p>
@@ -233,27 +219,11 @@ function StatsGrid({
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <BreakdownCard title="Plan" rows={stats.byPlan} total={stats.total} />
-        <BreakdownCard
-          title="Acquisition channel"
-          rows={stats.byChannel}
-          total={stats.total}
-        />
-        <BreakdownCard
-          title="Prior tool"
-          rows={stats.byPriorTool}
-          total={stats.total}
-        />
+        <BreakdownCard title="Acquisition channel" rows={stats.byChannel} total={stats.total} />
+        <BreakdownCard title="Prior tool" rows={stats.byPriorTool} total={stats.total} />
         <BreakdownCard title="Role" rows={stats.byRole} total={stats.total} />
-        <BreakdownCard
-          title="Use case"
-          rows={stats.byUseCase}
-          total={stats.total}
-        />
-        <BreakdownCard
-          title="Most-loved feature"
-          rows={stats.byMagicFeature}
-          total={stats.total}
-        />
+        <BreakdownCard title="Use case" rows={stats.byUseCase} total={stats.total} />
+        <BreakdownCard title="Most-loved feature" rows={stats.byMagicFeature} total={stats.total} />
       </div>
     </div>
   );
@@ -275,9 +245,7 @@ function BreakdownCard({
       </p>
       <div className="mt-3 space-y-2">
         {rows.length === 0 && (
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-            —
-          </p>
+          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">—</p>
         )}
         {rows.map((row) => {
           const pct = total > 0 ? Math.round((row.count / total) * 100) : 0;
@@ -333,19 +301,13 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
-                item.planSnapshot
-                  ? PLAN_BADGE_CLASSES[item.planSnapshot]
-                  : PLAN_BADGE_CLASSES.free,
+                item.planSnapshot ? PLAN_BADGE_CLASSES[item.planSnapshot] : PLAN_BADGE_CLASSES.free,
               )}
             >
               {formatAudienceFeedbackLabel(item.planSnapshot)}
             </span>
-            <span className="text-[12px] text-neutral-500 dark:text-neutral-400">
-              {userLabel}
-            </span>
-            <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-              ·
-            </span>
+            <span className="text-[12px] text-neutral-500 dark:text-neutral-400">{userLabel}</span>
+            <span className="text-[11px] text-neutral-400 dark:text-neutral-500">·</span>
             <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
               {item.submittedAt
                 ? new Date(item.submittedAt).toLocaleDateString("en-US", {
@@ -364,9 +326,7 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
             <Field label="Channel" value={item.acquisitionChannel} />
             <Field label="Prior tool" value={item.priorTool} />
             <Field label="Loved feature" value={item.magicFeature} />
-            {item.upgradeReason && (
-              <Field label="Upgrade reason" value={item.upgradeReason} />
-            )}
+            {item.upgradeReason && <Field label="Upgrade reason" value={item.upgradeReason} />}
           </div>
 
           {(item.acquisitionDetail ||
@@ -377,15 +337,8 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
               {item.acquisitionDetail && (
                 <Quote label="Where exactly?" text={item.acquisitionDetail} />
               )}
-              {item.switchReason && (
-                <Quote label="Why switched" text={item.switchReason} />
-              )}
-              {item.upgradeBlocker && (
-                <Quote
-                  label="Upgrade blocker"
-                  text={item.upgradeBlocker}
-                />
-              )}
+              {item.switchReason && <Quote label="Why switched" text={item.switchReason} />}
+              {item.upgradeBlocker && <Quote label="Upgrade blocker" text={item.upgradeBlocker} />}
               {item.improvementWish && (
                 <Quote label="Improvement wish" text={item.improvementWish} />
               )}
@@ -394,12 +347,7 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
         </div>
 
         {item.user?.email && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 shrink-0 text-[12px]"
-            asChild
-          >
+          <Button variant="outline" size="sm" className="h-8 shrink-0 text-[12px]" asChild>
             <a
               href={`mailto:${item.user.email}?subject=${encodeURIComponent(
                 "Quick follow-up from iShortn",
@@ -420,9 +368,7 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
 function Field({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex items-baseline gap-2 text-[12px]">
-      <span className="shrink-0 text-neutral-400 dark:text-neutral-500">
-        {label}
-      </span>
+      <span className="shrink-0 text-neutral-400 dark:text-neutral-500">{label}</span>
       <span className="text-neutral-700 dark:text-neutral-300">
         {formatAudienceFeedbackLabel(value)}
       </span>
@@ -450,14 +396,13 @@ type FilterSelectProps<T extends string> = {
   options: Array<{ value: T; label: string }>;
 };
 
-function FilterSelect<T extends string>({
-  label,
-  value,
-  onChange,
-  options,
-}: FilterSelectProps<T>) {
+function FilterSelect<T extends string>({ label, value, onChange, options }: FilterSelectProps<T>) {
+  const select = (next: string) => {
+    const option = options.find((opt) => opt.value === next);
+    if (option) onChange(option.value);
+  };
   return (
-    <Select value={value} onValueChange={(v) => onChange(v as T)}>
+    <Select value={value} onValueChange={select}>
       <SelectTrigger className="h-9 w-auto min-w-[160px] text-[13px]">
         <span className="text-neutral-400 dark:text-neutral-500">{label}:</span>
         <SelectValue />

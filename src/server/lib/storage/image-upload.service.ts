@@ -2,13 +2,14 @@ import { TRPCError } from "@trpc/server";
 
 import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
-import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 import { type WorkspaceContext, workspaceOwnership } from "@/server/lib/workspace";
 
 import { hasDeclaredImageFormat } from "./image-format";
 import { normalizeImageOrientation } from "./image-orientation";
 import { isR2Configured, r2DeleteImage, r2UploadImage } from "./r2";
+
 import type { ImageType } from "./types";
+import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 
 const log = logger.child({ component: "image-upload" });
 
@@ -85,7 +86,7 @@ export function assertValidImageInput(image: string): ParsedImage | null {
 
 export async function uploadImage(
   ctx: WorkspaceTRPCContext,
-  { image, resourceId, imageType }: UploadImageOptions
+  { image, resourceId, imageType }: UploadImageOptions,
 ): Promise<string | undefined> {
   if (!image) return undefined;
 
@@ -123,10 +124,7 @@ export async function uploadImage(
  * without the scope check a user could point a link's metadata at another
  * tenant's public object URL and have this delete it.
  */
-export async function deleteImage(
-  workspace: WorkspaceContext,
-  imageUrl: string
-): Promise<void> {
+export async function deleteImage(workspace: WorkspaceContext, imageUrl: string): Promise<void> {
   if (!isOwnedR2Url(workspace, imageUrl)) return;
 
   const key = imageUrl.slice(env.R2_PUBLIC_URL!.length + 1);

@@ -1,10 +1,11 @@
 "use client";
 
-import type React from "react";
-import { useRef, useState } from "react";
 import { IconPhotoPlus, IconX } from "@tabler/icons-react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+
+import type React from "react";
 
 interface OgImageUploaderProps {
   value?: string;
@@ -32,6 +33,7 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
 
     const reader = new FileReader();
     reader.onloadend = () => {
+      // SAFETY: readAsDataURL fills `result` with a data: URL string before loadend fires.
       onChange(reader.result as string);
       setError(null);
     };
@@ -41,9 +43,7 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
     reader.readAsDataURL(file);
   };
 
-  const handleFileInputChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       handleFileUpload(file);
@@ -71,11 +71,8 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
     return (
       <div className="space-y-2">
         <div className="group relative overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
-          <img
-            src={value}
-            alt="OG Preview"
-            className="aspect-video w-full object-cover"
-          />
+          {/* eslint-disable-next-line next/no-img-element -- data: URL preview of a just-uploaded file; no static dimensions and nothing to optimise */}
+          <img src={value} alt="OG Preview" className="aspect-video w-full object-cover" />
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
             <Button
               type="button"
@@ -129,12 +126,13 @@ export function OgImageUploader({ value, onChange }: OgImageUploaderProps) {
       {/* URL preview */}
       {value && !isBase64 && (
         <div className="group relative overflow-hidden rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
+          {/* eslint-disable-next-line next/no-img-element -- user-supplied external URL with unknown host and dimensions */}
           <img
             src={value}
             alt="OG Preview"
             className="aspect-video w-full object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
+              e.currentTarget.style.display = "none";
             }}
           />
         </div>

@@ -9,10 +9,7 @@ type OverviewRangeSelectorProps = {
   isProPlan: boolean;
 };
 
-export function OverviewRangeSelector({
-  initialRange,
-  isProPlan,
-}: OverviewRangeSelectorProps) {
+export function OverviewRangeSelector({ initialRange, isProPlan }: OverviewRangeSelectorProps) {
   const router = useTransitionRouter();
 
   const handleRangeChange = (newRange: string) => {
@@ -27,4 +24,3 @@ export function OverviewRangeSelector({
     />
   );
 }
-

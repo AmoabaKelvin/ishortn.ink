@@ -35,11 +35,7 @@ export function StatCard({ title, value, growth, hint }: StatCardProps) {
             {Math.abs(growth)}% vs prev period
           </span>
         )}
-        {hint && (
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-            {hint}
-          </span>
-        )}
+        {hint && <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{hint}</span>}
       </div>
     </Card>
   );

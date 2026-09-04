@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   IconCheck,
   IconChevronDown,
@@ -14,8 +13,8 @@ import {
   IconWorld,
   IconX,
 } from "@tabler/icons-react";
-import { useCallback, useRef, useState } from "react";
-import type { UseFormReturn } from "react-hook-form";
+import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,19 +25,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -49,6 +37,8 @@ import {
 import { DEVICE_TYPES, OS_TYPES, type TargetingRuleType } from "@/lib/constants/targeting";
 import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
+
+import type { UseFormReturn } from "react-hook-form";
 
 const CONTINENTS = {
   AF: "Africa",
@@ -70,7 +60,7 @@ type GeoRuleFormData = {
 };
 
 type GeoRulesFormProps = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line typescript/no-explicit-any -- UseFormReturn is invariant; this sub-form is embedded in four differently-typed parent forms
   form: UseFormReturn<any>;
   disabled?: boolean;
   maxRules?: number;
@@ -80,27 +70,29 @@ type GeoRulesFormProps = {
 const toOptions = (record: Record<string, string>) =>
   Object.entries(record).map(([value, label]) => ({ value, label }));
 
-const RULE_OPTIONS: Record<TargetingRuleType, { value: string; label: string }[]> = {
+const RULE_OPTIONS = {
   country: toOptions(COUNTRIES),
   continent: toOptions(CONTINENTS),
   device: toOptions(DEVICE_TYPES),
   os: toOptions(OS_TYPES),
-};
+} satisfies Record<TargetingRuleType, { value: string; label: string }[]>;
 
-const RULE_VALUE_LABELS: Record<TargetingRuleType, string> = {
+const RULE_VALUE_LABELS = {
   country: "Countries",
   continent: "Continents",
   device: "Devices",
   os: "Operating systems",
-};
+} satisfies Record<TargetingRuleType, string>;
 
 function MultiSelect({
+  id,
   options,
   selected,
   onChange,
   placeholder,
   disabled,
 }: {
+  id?: string;
   options: { value: string; label: string }[];
   selected: string[];
   onChange: (values: string[]) => void;
@@ -108,6 +100,7 @@ function MultiSelect({
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const listId = useId();
 
   const handleSelect = useCallback(
     (value: string) => {
@@ -117,7 +110,7 @@ function MultiSelect({
         onChange([...selected, value]);
       }
     },
-    [selected, onChange]
+    [selected, onChange],
   );
 
   const handleRemove = useCallback(
@@ -125,7 +118,7 @@ function MultiSelect({
       e.stopPropagation();
       onChange(selected.filter((v) => v !== value));
     },
-    [selected, onChange]
+    [selected, onChange],
   );
 
   const selectedLabels = selected
@@ -136,12 +129,14 @@ function MultiSelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
-          role="combobox"
+          aria-haspopup="listbox"
           aria-expanded={open}
+          aria-controls={listId}
           className={cn(
             "h-auto min-h-9 w-full justify-between border-neutral-200 dark:border-border bg-white dark:bg-card px-3 py-2 text-[13px]",
-            disabled && "cursor-not-allowed opacity-50"
+            disabled && "cursor-not-allowed opacity-50",
           )}
           disabled={disabled}
         >
@@ -177,7 +172,7 @@ function MultiSelect({
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search..." />
-          <CommandList>
+          <CommandList id={listId}>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
@@ -192,7 +187,7 @@ function MultiSelect({
                       "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border transition-colors",
                       selected.includes(option.value)
                         ? "border-blue-600 bg-blue-600 text-white"
-                        : "border-neutral-300"
+                        : "border-neutral-300",
                     )}
                   >
                     <AnimatePresence>
@@ -209,9 +204,7 @@ function MultiSelect({
                     </AnimatePresence>
                   </div>
                   <span className="text-[13px]">{option.label}</span>
-                  <span className="ml-auto text-[11px] text-neutral-400">
-                    {option.value}
-                  </span>
+                  <span className="ml-auto text-[11px] text-neutral-400">{option.value}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -236,6 +229,13 @@ function GeoRuleItem({
   disabled?: boolean;
 }) {
   const options = RULE_OPTIONS[rule.type];
+  const fieldId = useId();
+  const typeId = `${fieldId}-type`;
+  const conditionId = `${fieldId}-condition`;
+  const valuesId = `${fieldId}-values`;
+  const actionId = `${fieldId}-action`;
+  const destinationId = `${fieldId}-destination`;
+  const blockMessageId = `${fieldId}-block-message`;
 
   return (
     <motion.div
@@ -263,7 +263,12 @@ function GeoRuleItem({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Type</label>
+          <label
+            htmlFor={typeId}
+            className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
+          >
+            Type
+          </label>
           <Select
             value={rule.type}
             onValueChange={(value: TargetingRuleType) =>
@@ -271,7 +276,10 @@ function GeoRuleItem({
             }
             disabled={disabled}
           >
-            <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
+            <SelectTrigger
+              id={typeId}
+              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -304,15 +312,21 @@ function GeoRuleItem({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Condition</label>
+          <label
+            htmlFor={conditionId}
+            className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
+          >
+            Condition
+          </label>
           <Select
             value={rule.condition}
-            onValueChange={(value: "in" | "not_in") =>
-              onChange({ ...rule, condition: value })
-            }
+            onValueChange={(value: "in" | "not_in") => onChange({ ...rule, condition: value })}
             disabled={disabled}
           >
-            <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
+            <SelectTrigger
+              id={conditionId}
+              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -324,10 +338,14 @@ function GeoRuleItem({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+        <label
+          htmlFor={valuesId}
+          className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
+        >
           {RULE_VALUE_LABELS[rule.type]}
         </label>
         <MultiSelect
+          id={valuesId}
           options={options}
           selected={rule.values}
           onChange={(values) => onChange({ ...rule, values })}
@@ -337,15 +355,21 @@ function GeoRuleItem({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Action</label>
+        <label
+          htmlFor={actionId}
+          className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
+        >
+          Action
+        </label>
         <Select
           value={rule.action}
-          onValueChange={(value: "redirect" | "block") =>
-            onChange({ ...rule, action: value })
-          }
+          onValueChange={(value: "redirect" | "block") => onChange({ ...rule, action: value })}
           disabled={disabled}
         >
-          <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
+          <SelectTrigger
+            id={actionId}
+            className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -365,14 +389,16 @@ function GeoRuleItem({
             transition={{ duration: 0.2 }}
             className="space-y-1.5"
           >
-            <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+            <label
+              htmlFor={destinationId}
+              className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
+            >
               Redirect URL
             </label>
             <Input
+              id={destinationId}
               value={rule.destination || ""}
-              onChange={(e) =>
-                onChange({ ...rule, destination: e.target.value })
-              }
+              onChange={(e) => onChange({ ...rule, destination: e.target.value })}
               placeholder="https://example.com/alternative"
               disabled={disabled}
               className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
@@ -387,14 +413,16 @@ function GeoRuleItem({
             transition={{ duration: 0.2 }}
             className="space-y-1.5"
           >
-            <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+            <label
+              htmlFor={blockMessageId}
+              className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
+            >
               Block message (optional)
             </label>
             <Input
+              id={blockMessageId}
               value={rule.blockMessage || ""}
-              onChange={(e) =>
-                onChange({ ...rule, blockMessage: e.target.value })
-              }
+              onChange={(e) => onChange({ ...rule, blockMessage: e.target.value })}
               placeholder="This content is not available in your region."
               disabled={disabled}
               className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
@@ -441,7 +469,7 @@ export function GeoRulesForm({
   const removeRule = (index: number) => {
     form.setValue(
       "geoRules",
-      geoRules.filter((_, i) => i !== index)
+      geoRules.filter((_, i) => i !== index),
     );
   };
 
@@ -489,7 +517,7 @@ export function GeoRulesForm({
             stroke={1.5}
             className={cn(
               "shrink-0 text-neutral-400 transition-transform duration-200",
-              isOpen && "rotate-180"
+              isOpen && "rotate-180",
             )}
           />
         </div>
@@ -512,8 +540,8 @@ export function GeoRulesForm({
                     Upgrade to Pro to use targeting rules
                   </p>
                   <p className="mt-1 text-[12px] text-neutral-400">
-                    Redirect visitors to different URLs or block access based on
-                    their country, continent, device, or operating system.
+                    Redirect visitors to different URLs or block access based on their country,
+                    continent, device, or operating system.
                   </p>
                 </div>
               ) : (
@@ -543,8 +571,8 @@ export function GeoRulesForm({
                         No targeting rules yet
                       </p>
                       <p className="mt-1 text-[12px] text-neutral-400">
-                        Add rules to redirect or block visitors by location,
-                        device, or operating system.
+                        Add rules to redirect or block visitors by location, device, or operating
+                        system.
                       </p>
                     </motion.div>
                   )}
@@ -559,15 +587,13 @@ export function GeoRulesForm({
                       "w-full gap-2 border-neutral-200 dark:border-border text-[13px] transition-all",
                       canAddMore
                         ? "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
-                        : "opacity-50"
+                        : "opacity-50",
                     )}
                   >
                     <IconPlus size={14} stroke={1.5} />
                     Add Rule
                     {!canAddMore && (
-                      <span className="text-[11px] text-neutral-400">
-                        (limit reached)
-                      </span>
+                      <span className="text-[11px] text-neutral-400">(limit reached)</span>
                     )}
                   </Button>
                 </>

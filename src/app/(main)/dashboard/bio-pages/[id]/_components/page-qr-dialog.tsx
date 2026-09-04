@@ -2,7 +2,7 @@
 
 import { IconDownload, IconQrcode } from "@tabler/icons-react";
 import { QRCodeCanvas } from "qrcode.react";
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,13 +14,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+const subscribeNever = () => () => {};
+const readOrigin = () => window.location.origin;
+const readOriginOnServer = () => "https://ishortn.ink";
+
 export function PageQrDialog({ slug }: { slug: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const url =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/p/${slug}`
-      : `https://ishortn.ink/p/${slug}`;
+  const origin = useSyncExternalStore(subscribeNever, readOrigin, readOriginOnServer);
+  const url = `${origin}/p/${slug}`;
 
   function download() {
     const canvas = ref.current?.querySelector("canvas");

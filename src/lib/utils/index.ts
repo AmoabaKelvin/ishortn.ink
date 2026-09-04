@@ -1,4 +1,3 @@
-import type { ClassValue } from "clsx";
 import { clsx } from "clsx";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -6,29 +5,11 @@ import { twMerge } from "tailwind-merge";
 
 import { env } from "@/env.mjs";
 
+import type { ClassValue } from "clsx";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-export const getExceptionType = (error: unknown) => {
-  const UnknownException = {
-    type: "UnknownException",
-    status: 500,
-    message: "An unknown error occurred",
-  };
-
-  if (!error) return UnknownException;
-
-  if ((error as Record<string, unknown>).name === "DatabaseError") {
-    return {
-      type: "DatabaseException",
-      status: 400,
-      message: "Duplicate key entry",
-    };
-  }
-
-  return UnknownException;
-};
 
 export function formatDate(
   date: Date | string | number,

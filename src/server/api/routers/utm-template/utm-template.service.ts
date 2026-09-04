@@ -2,23 +2,18 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 
 import { utmTemplate } from "@/server/db/schema";
-import {
-  workspaceFilter,
-  workspaceOwnership,
-} from "@/server/lib/workspace";
+import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
-import type {
-  CreateUtmTemplateInput,
-  UpdateUtmTemplateInput,
-} from "./utm-template.input";
+import type { CreateUtmTemplateInput, UpdateUtmTemplateInput } from "./utm-template.input";
 
 const ensureUltraPlan = (ctx: WorkspaceTRPCContext) => {
   // Use workspace plan - team workspaces inherit Ultra features
   if (ctx.workspace.plan !== "ultra") {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "UTM templates are only available on the Ultra plan. Please upgrade to use this feature.",
+      message:
+        "UTM templates are only available on the Ultra plan. Please upgrade to use this feature.",
     });
   }
 };
@@ -30,18 +25,18 @@ export const getUserUtmTemplates = async (ctx: WorkspaceTRPCContext) => {
   });
 };
 
-export const getUtmTemplateById = async (
-  ctx: WorkspaceTRPCContext,
-  id: number
-) => {
+export const getUtmTemplateById = async (ctx: WorkspaceTRPCContext, id: number) => {
   return ctx.db.query.utmTemplate.findFirst({
-    where: and(eq(utmTemplate.id, id), workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId)),
+    where: and(
+      eq(utmTemplate.id, id),
+      workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId),
+    ),
   });
 };
 
 export const createUtmTemplate = async (
   ctx: WorkspaceTRPCContext,
-  input: CreateUtmTemplateInput
+  input: CreateUtmTemplateInput,
 ) => {
   ensureUltraPlan(ctx);
 
@@ -68,7 +63,7 @@ export const createUtmTemplate = async (
 
 export const updateUtmTemplate = async (
   ctx: WorkspaceTRPCContext,
-  input: UpdateUtmTemplateInput
+  input: UpdateUtmTemplateInput,
 ) => {
   ensureUltraPlan(ctx);
 
@@ -78,7 +73,12 @@ export const updateUtmTemplate = async (
   const result = await ctx.db
     .update(utmTemplate)
     .set(data)
-    .where(and(eq(utmTemplate.id, id), workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId)));
+    .where(
+      and(
+        eq(utmTemplate.id, id),
+        workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId),
+      ),
+    );
 
   if (result[0].affectedRows === 0) {
     throw new TRPCError({
@@ -88,7 +88,10 @@ export const updateUtmTemplate = async (
   }
 
   const updated = await ctx.db.query.utmTemplate.findFirst({
-    where: and(eq(utmTemplate.id, id), workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId)),
+    where: and(
+      eq(utmTemplate.id, id),
+      workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId),
+    ),
   });
 
   if (!updated) {
@@ -101,16 +104,18 @@ export const updateUtmTemplate = async (
   return updated;
 };
 
-export const deleteUtmTemplate = async (
-  ctx: WorkspaceTRPCContext,
-  id: number
-) => {
+export const deleteUtmTemplate = async (ctx: WorkspaceTRPCContext, id: number) => {
   ensureUltraPlan(ctx);
 
   // Only delete if the template belongs to the workspace
   const result = await ctx.db
     .delete(utmTemplate)
-    .where(and(eq(utmTemplate.id, id), workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId)));
+    .where(
+      and(
+        eq(utmTemplate.id, id),
+        workspaceFilter(ctx.workspace, utmTemplate.userId, utmTemplate.teamId),
+      ),
+    );
 
   if (result[0].affectedRows === 0) {
     throw new TRPCError({

@@ -10,11 +10,7 @@ type AnalyticsTrackerProps = {
   isOverview?: boolean;
 };
 
-export function AnalyticsTracker({
-  alias,
-  domain,
-  isOverview = false,
-}: AnalyticsTrackerProps) {
+export function AnalyticsTracker({ alias, domain, isOverview = false }: AnalyticsTrackerProps) {
   useEffect(() => {
     if (isOverview) {
       trackEvent(POSTHOG_EVENTS.ANALYTICS_OVERVIEW_VIEWED);

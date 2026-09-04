@@ -32,9 +32,7 @@ const USER_MSG_SUSPICIOUS =
  * Runs all deterministic checks (heuristics + blocklist).
  * These are fast and don't call external APIs.
  */
-export async function runDeterministicChecks(
-  url: string,
-): Promise<CheckResult> {
+export async function runDeterministicChecks(url: string): Promise<CheckResult> {
   // Layer 1a: Heuristic pattern checks (synchronous, instant)
   const heuristicResult = runHeuristicChecks(url);
   if (heuristicResult.blocked) {

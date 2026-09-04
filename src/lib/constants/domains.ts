@@ -13,7 +13,7 @@ export const DEFAULT_PLATFORM_DOMAIN: PlatformDomain = PLATFORM_DOMAINS[0];
 export const APP_BASE_DOMAIN = "ishortn.ink";
 
 export function isPlatformDomain(domain: string | null | undefined): domain is PlatformDomain {
-  return !!domain && (PLATFORM_DOMAINS as readonly string[]).includes(domain);
+  return !!domain && PLATFORM_DOMAINS.some((platformDomain) => platformDomain === domain);
 }
 
 // Base host for authenticated app URLs (team invites, workspace switching,

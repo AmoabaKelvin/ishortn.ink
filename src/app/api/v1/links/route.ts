@@ -17,15 +17,13 @@ export async function POST(request: Request) {
     return new Response("Invalid or missing API key", { status: 401 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const body = await request.json();
-  const input = shortenLinkSchema.safeParse(body);
+  const input = shortenLinkSchema.safeParse(await request.json());
 
   if (!input.success) {
     return new Response(input.error.message, { status: 400 });
   }
 
-  const parsedData = input.data as ShortenLinkInput;
+  const parsedData = input.data;
   const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
   if (!requestedDomain) {
     return new Response("Domain not available for this API key", { status: 403 });
@@ -34,7 +32,9 @@ export async function POST(request: Request) {
     return new Response("Alias already exists", { status: 400 });
   }
   if (parsedData.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
-    return new Response("Scheduled links are only available on Pro and Ultra plans", { status: 403 });
+    return new Response("Scheduled links are only available on Pro and Ultra plans", {
+      status: 403,
+    });
   }
 
   try {
@@ -76,22 +76,7 @@ const shortenLinkSchema = z.object({
     .optional(),
 });
 
-type ShortenLinkInput = {
-  url: string;
-  expiresAt?: string;
-  activatesAt?: string;
-  expiresAfter?: number;
-  alias?: string;
-  password?: string;
-  domain?: string;
-  utmParams?: {
-    utm_source?: string;
-    utm_medium?: string;
-    utm_campaign?: string;
-    utm_term?: string;
-    utm_content?: string;
-  };
-};
+type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 
 async function checkLinkAliasCollision(alias: string, domain: string) {
   const existingLink = await db

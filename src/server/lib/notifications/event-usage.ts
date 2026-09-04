@@ -1,9 +1,9 @@
 import EventUsageAlertEmail from "@/emails/event-usage-alert";
 import { logger } from "@/lib/logger";
 
-import type { Plan } from "@/lib/billing/plans";
-
 import { resend } from "./resend-client";
+
+import type { Plan } from "@/lib/billing/plans";
 
 const log = logger.child({ notification: "event-usage" });
 

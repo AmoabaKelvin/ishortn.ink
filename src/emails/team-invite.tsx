@@ -12,7 +12,6 @@ import {
 type TeamInviteEmailProps = {
   recipientName?: string | null;
   teamName: string;
-  teamSlug: string;
   inviterName: string;
   role: "admin" | "member";
   inviteUrl: string;
@@ -21,7 +20,6 @@ type TeamInviteEmailProps = {
 export const TeamInviteEmail = ({
   recipientName,
   teamName,
-  teamSlug,
   inviterName,
   role,
   inviteUrl,
@@ -40,13 +38,13 @@ export const TeamInviteEmail = ({
             <Text style={text}>Hi {recipientName || "there"},</Text>
 
             <Text style={text}>
-              {inviterName} has invited you to join <strong>{teamName}</strong> as{" "}
-              {roleLabel} on iShortn.
+              {inviterName} has invited you to join <strong>{teamName}</strong> as {roleLabel} on
+              iShortn.
             </Text>
 
             <Text style={text}>
-              As a team member, you&apos;ll be able to create and manage links, view
-              analytics, and collaborate with your team.
+              As a team member, you&apos;ll be able to create and manage links, view analytics, and
+              collaborate with your team.
             </Text>
 
             <Section style={buttonContainer}>
@@ -61,14 +59,12 @@ export const TeamInviteEmail = ({
             </Text>
 
             <Text style={smallText}>
-              This invitation will expire in 7 days. If you don&apos;t want to join
-              this team, you can safely ignore this email.
+              This invitation will expire in 7 days. If you don&apos;t want to join this team, you
+              can safely ignore this email.
             </Text>
 
             <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>
-              Kelvin & the iShortn team
-            </Text>
+            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
           </Section>
         </Container>
       </Body>

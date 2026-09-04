@@ -1,21 +1,11 @@
 "use client";
 
-import {
-  IconBuilding,
-  IconCheck,
-  IconPlus,
-  IconSelector,
-  IconUser,
-} from "@tabler/icons-react";
+import { IconBuilding, IconCheck, IconPlus, IconSelector, IconUser } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getAppBaseDomain } from "@/lib/constants/domains";
 import { cn } from "@/lib/utils";
 
@@ -51,10 +41,7 @@ export function WorkspaceSwitcher({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleWorkspaceSwitch = (
-    type: "personal" | "team",
-    teamSlug?: string,
-  ) => {
+  const handleWorkspaceSwitch = (type: "personal" | "team", teamSlug?: string) => {
     setIsOpen(false);
     const baseDomain = getAppBaseDomain();
 
@@ -122,12 +109,7 @@ export function WorkspaceSwitcher({
           />
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-60 p-1.5"
-        align="start"
-        side="bottom"
-        sideOffset={4}
-      >
+      <PopoverContent className="w-60 p-1.5" align="start" side="bottom" sideOffset={4}>
         <div className="space-y-0.5">
           {/* Personal Workspace */}
           <button
@@ -144,11 +126,7 @@ export function WorkspaceSwitcher({
             </div>
             <span className="flex-1 text-left font-medium">Personal</span>
             {isPersonal && (
-              <IconCheck
-                size={14}
-                stroke={2}
-                className="text-neutral-900 dark:text-foreground"
-              />
+              <IconCheck size={14} stroke={2} className="text-neutral-900 dark:text-foreground" />
             )}
           </button>
 
@@ -161,8 +139,7 @@ export function WorkspaceSwitcher({
               </p>
               {teams.map((team) => {
                 const isSelected =
-                  currentWorkspace.type === "team" &&
-                  currentWorkspace.teamId === team.id;
+                  currentWorkspace.type === "team" && currentWorkspace.teamId === team.id;
 
                 return (
                   <button
@@ -176,17 +153,12 @@ export function WorkspaceSwitcher({
                     )}
                   >
                     <Avatar className="h-6 w-6 rounded-md">
-                      <AvatarImage
-                        src={team.avatarUrl ?? undefined}
-                        alt={team.name}
-                      />
+                      <AvatarImage src={team.avatarUrl ?? undefined} alt={team.name} />
                       <AvatarFallback className="rounded-md bg-neutral-200/60 dark:bg-muted text-[10px] font-medium text-neutral-600 dark:text-neutral-400">
                         {team.name[0]?.toUpperCase() ?? "T"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="flex-1 truncate text-left font-medium">
-                      {team.name}
-                    </span>
+                    <span className="flex-1 truncate text-left font-medium">{team.name}</span>
                     {isSelected && (
                       <IconCheck
                         size={14}
@@ -215,9 +187,7 @@ export function WorkspaceSwitcher({
                     className="text-neutral-500 dark:text-neutral-400"
                   />
                 </div>
-                <span className="flex-1 text-left font-medium">
-                  Create Team
-                </span>
+                <span className="flex-1 text-left font-medium">Create Team</span>
               </button>
             </>
           )}

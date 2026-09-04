@@ -11,6 +11,7 @@
  */
 import mysql from "mysql2/promise";
 import { Resend } from "resend";
+import { z } from "zod";
 
 import DomainMigrationEmail from "../src/emails/domain-migration";
 
@@ -40,6 +41,19 @@ function deadlineText(): string {
   return "in the coming weeks";
 }
 
+const customHostnameListSchema = z.object({
+  success: z.boolean(),
+  result: z
+    .array(
+      z.object({
+        hostname: z.string(),
+        status: z.string(),
+        ssl: z.object({ status: z.string() }).nullish(),
+      }),
+    )
+    .nullable(),
+});
+
 async function fetchMigratedHostnames(): Promise<Set<string>> {
   const zoneId = required("CLOUDFLARE_SAAS_ZONE_ID");
   const token = required("CLOUDFLARE_API_TOKEN");
@@ -50,11 +64,10 @@ async function fetchMigratedHostnames(): Promise<Set<string>> {
       `https://api.cloudflare.com/client/v4/zones/${zoneId}/custom_hostnames?per_page=100&page=${page}`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
-    const data = (await response.json()) as {
-      success: boolean;
-      result: { hostname: string; status: string; ssl?: { status: string } | null }[];
-    };
-    if (!data.success) throw new Error("Cloudflare custom hostname list failed");
+    const data = customHostnameListSchema.parse(await response.json());
+    if (!data.success || !data.result) {
+      throw new Error("Cloudflare custom hostname list failed");
+    }
     for (const h of data.result) {
       if (h.status === "active" && h.ssl?.status === "active") {
         migrated.add(h.hostname.toLowerCase());
@@ -65,7 +78,13 @@ async function fetchMigratedHostnames(): Promise<Set<string>> {
   return migrated;
 }
 
-type OwnerRow = { domain: string; email: string | null; name: string | null };
+const ownerRowSchema = z.object({
+  domain: z.string(),
+  email: z.string().nullable(),
+  name: z.string().nullable(),
+});
+
+type OwnerRow = z.infer<typeof ownerRowSchema>;
 
 async function fetchOwners(): Promise<OwnerRow[]> {
   const conn = await mysql.createConnection(required("DATABASE_URL"));
@@ -76,7 +95,7 @@ async function fetchOwners(): Promise<OwnerRow[]> {
     WHERE cd.domain IS NOT NULL
   `);
   await conn.end();
-  return rows as OwnerRow[];
+  return z.array(ownerRowSchema).parse(rows);
 }
 
 type Recipient = { email: string; name: string | null; domains: string[] };

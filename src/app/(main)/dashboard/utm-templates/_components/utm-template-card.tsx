@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -25,11 +25,7 @@ type UtmTemplateCardProps = {
   onEdit: (template: UtmTemplate) => void;
 };
 
-export function UtmTemplateCard({
-  template,
-  index,
-  onEdit,
-}: UtmTemplateCardProps) {
+export function UtmTemplateCard({ template, index, onEdit }: UtmTemplateCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const utils = api.useUtils();
 
@@ -70,13 +66,8 @@ export function UtmTemplateCard({
               <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
                 {utmParams.length > 0 ? (
                   utmParams.map((param, i) => (
-                    <span
-                      key={param.label}
-                      className="inline-flex items-center gap-x-1.5"
-                    >
-                      {i > 0 && (
-                        <span className="text-neutral-300">&middot;</span>
-                      )}
+                    <span key={param.label} className="inline-flex items-center gap-x-1.5">
+                      {i > 0 && <span className="text-neutral-300">&middot;</span>}
                       <span className="text-neutral-400 dark:text-neutral-500">{param.label}:</span>
                       <span className="text-neutral-500 dark:text-neutral-400">{param.value}</span>
                     </span>
@@ -110,18 +101,14 @@ export function UtmTemplateCard({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="max-w-md rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[14px]">
-              Delete template
-            </AlertDialogTitle>
+            <AlertDialogTitle className="text-[14px]">Delete template</AlertDialogTitle>
             <AlertDialogDescription className="text-[12px]">
-              Are you sure you want to delete &quot;{template.name}&quot;? This
-              action cannot be undone.
+              Are you sure you want to delete &quot;{template.name}&quot;? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-9 text-[13px]">
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel className="h-9 text-[13px]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteMutation.mutate({ id: template.id })}
               className="h-9 bg-red-600 text-[13px] hover:bg-red-700"

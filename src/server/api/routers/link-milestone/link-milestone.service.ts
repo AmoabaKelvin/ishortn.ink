@@ -13,10 +13,7 @@ import type {
   UpsertMilestonesInput,
 } from "./link-milestone.input";
 
-export async function upsertMilestones(
-  ctx: WorkspaceTRPCContext,
-  input: UpsertMilestonesInput,
-) {
+export async function upsertMilestones(ctx: WorkspaceTRPCContext, input: UpsertMilestonesInput) {
   await verifyLinkOwnership(ctx, input.linkId);
 
   const { plan } = await checkWorkspaceLinkLimit(ctx);
@@ -50,14 +47,10 @@ export async function upsertMilestones(
     .from(linkMilestone)
     .where(eq(linkMilestone.linkId, input.linkId));
 
-  const existingMap = new Map(
-    existing.map((m) => [m.threshold, m.notifiedAt]),
-  );
+  const existingMap = new Map(existing.map((m) => [m.threshold, m.notifiedAt]));
 
   await ctx.db.transaction(async (tx) => {
-    await tx
-      .delete(linkMilestone)
-      .where(eq(linkMilestone.linkId, input.linkId));
+    await tx.delete(linkMilestone).where(eq(linkMilestone.linkId, input.linkId));
 
     if (input.thresholds.length > 0) {
       await tx.insert(linkMilestone).values(
@@ -74,10 +67,7 @@ export async function upsertMilestones(
   return { success: true };
 }
 
-export async function getLinkMilestones(
-  ctx: WorkspaceTRPCContext,
-  input: GetLinkMilestonesInput,
-) {
+export async function getLinkMilestones(ctx: WorkspaceTRPCContext, input: GetLinkMilestonesInput) {
   await verifyLinkOwnership(ctx, input.linkId);
 
   return ctx.db

@@ -100,10 +100,7 @@ export default function AdminFeedbackPage() {
       {isLoading && (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-20 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted"
-            />
+            <div key={i} className="h-20 animate-pulse rounded-lg bg-neutral-100 dark:bg-muted" />
           ))}
         </div>
       )}
@@ -116,9 +113,7 @@ export default function AdminFeedbackPage() {
             className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600"
           />
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
-            {statusFilter === "open"
-              ? "No open feedback"
-              : "No feedback found"}
+            {statusFilter === "open" ? "No open feedback" : "No feedback found"}
           </p>
           {statusFilter === "open" && (
             <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
@@ -177,6 +172,7 @@ export default function AdminFeedbackPage() {
                               rel="noopener noreferrer"
                               className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-neutral-200 dark:border-border transition-colors hover:border-neutral-300 dark:hover:border-border"
                             >
+                              {/* eslint-disable-next-line next/no-img-element -- user-uploaded attachment from arbitrary storage host */}
                               <img
                                 src={url}
                                 alt={`Attachment ${i + 1}`}
@@ -197,19 +193,16 @@ export default function AdminFeedbackPage() {
                         <span>
                           {item.user?.name && item.user?.email
                             ? `${item.user.name} (${item.user.email})`
-                            : item.user?.email ?? item.user?.name ?? "Unknown user"}
+                            : (item.user?.email ?? item.user?.name ?? "Unknown user")}
                         </span>
                         <span>·</span>
                         <span>
                           {item.createdAt
-                            ? new Date(item.createdAt).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )
+                            ? new Date(item.createdAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
                             : "N/A"}
                         </span>
                       </div>
@@ -217,12 +210,7 @@ export default function AdminFeedbackPage() {
 
                     <div className="flex shrink-0 gap-2">
                       {item.user?.email && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-[12px]"
-                          asChild
-                        >
+                        <Button variant="outline" size="sm" className="h-8 text-[12px]" asChild>
                           <a
                             href={`mailto:${item.user.email}?subject=${encodeURIComponent(`Re: Your ${config.label.toLowerCase()} on iShortn`)}&body=${encodeURIComponent(`Hi ${item.user.name ?? "there"},\n\nRegarding your feedback:\n"${item.message.slice(0, 200)}${item.message.length > 200 ? "..." : ""}"\n\n`)}`}
                           >

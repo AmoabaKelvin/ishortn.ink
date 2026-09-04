@@ -2,6 +2,8 @@ import { env } from "@/env.mjs";
 import { formatAudienceFeedbackLabel } from "@/lib/audience-feedback/labels";
 import { logger } from "@/lib/logger";
 
+import type { Feedback } from "@/server/db/schema";
+
 const log = logger.child({ notification: "discord" });
 
 export type DiscordEmbedField = {
@@ -68,30 +70,30 @@ export async function sendDiscordNotification(
   }
 }
 
-const FEEDBACK_TYPE_LABELS: Record<string, string> = {
+const FEEDBACK_TYPE_LABELS = {
   bug: "Bug Report",
   feature: "Feature Request",
   question: "General Question",
-};
+} satisfies Record<Feedback["type"], string>;
 
-const FEEDBACK_TYPE_COLORS: Record<string, number> = {
+const FEEDBACK_TYPE_COLORS = {
   bug: DISCORD_COLORS.error,
   feature: DISCORD_COLORS.info,
   question: DISCORD_COLORS.warning,
-};
+} satisfies Record<Feedback["type"], number>;
 
 export async function sendFeedbackNotification(params: {
   userEmail: string;
   userName?: string | null;
-  feedbackType: string;
+  feedbackType: Feedback["type"];
   message: string;
   imageUrls?: string[];
 }): Promise<boolean> {
   const { userEmail, userName, feedbackType, message, imageUrls } = params;
 
   const embed: DiscordEmbed = {
-    title: FEEDBACK_TYPE_LABELS[feedbackType] ?? "Feedback",
-    color: FEEDBACK_TYPE_COLORS[feedbackType] ?? DISCORD_COLORS.info,
+    title: FEEDBACK_TYPE_LABELS[feedbackType],
+    color: FEEDBACK_TYPE_COLORS[feedbackType],
     fields: [
       {
         name: "From",
@@ -100,7 +102,7 @@ export async function sendFeedbackNotification(params: {
       },
       {
         name: "Type",
-        value: FEEDBACK_TYPE_LABELS[feedbackType] ?? feedbackType,
+        value: FEEDBACK_TYPE_LABELS[feedbackType],
         inline: true,
       },
       {

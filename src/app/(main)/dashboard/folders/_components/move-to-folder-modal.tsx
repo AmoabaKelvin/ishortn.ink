@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   IconCheck,
   IconChevronLeft,
@@ -10,6 +9,7 @@ import {
   IconSearch,
   IconX,
 } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -48,7 +48,7 @@ export function MoveToFolderModal({
 }: MoveToFolderModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>(
-    currentFolderId?.toString() ?? "none"
+    currentFolderId?.toString() ?? "none",
   );
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -127,8 +127,7 @@ export function MoveToFolderModal({
         description: newFolderDescription,
       });
     } else {
-      const folderId =
-        selectedFolderId === "none" ? null : Number.parseInt(selectedFolderId);
+      const folderId = selectedFolderId === "none" ? null : Number.parseInt(selectedFolderId);
 
       if (linkIds && linkIds.length > 0) {
         moveBulkLinksMutation.mutate({ linkIds, folderId });
@@ -151,13 +150,11 @@ export function MoveToFolderModal({
   };
 
   const filteredFolders = folders?.filter((folder) =>
-    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
+    folder.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const isMoving =
-    moveLinkMutation.isLoading ||
-    moveBulkLinksMutation.isLoading ||
-    createFolderMutation.isLoading;
+    moveLinkMutation.isLoading || moveBulkLinksMutation.isLoading || createFolderMutation.isLoading;
   const isBulkMove = linkIds && linkIds.length > 0;
 
   return (
@@ -248,11 +245,7 @@ export function MoveToFolderModal({
                 >
                   {isMoving ? (
                     <>
-                      <IconLoader2
-                        size={14}
-                        stroke={1.5}
-                        className="mr-1.5 animate-spin"
-                      />
+                      <IconLoader2 size={14} stroke={1.5} className="mr-1.5 animate-spin" />
                       Creating...
                     </>
                   ) : (
@@ -320,7 +313,7 @@ export function MoveToFolderModal({
                           "flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-all",
                           selectedFolderId === "none"
                             ? "border-neutral-900 bg-neutral-50 dark:bg-accent/50 ring-1 ring-neutral-900/10"
-                            : "border-transparent hover:bg-neutral-50 dark:hover:bg-accent/50"
+                            : "border-transparent hover:bg-neutral-50 dark:hover:bg-accent/50",
                         )}
                         onClick={() => setSelectedFolderId("none")}
                       >
@@ -329,10 +322,14 @@ export function MoveToFolderModal({
                             "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
                             selectedFolderId === "none"
                               ? "bg-neutral-200 dark:bg-accent"
-                              : "bg-neutral-100 dark:bg-muted"
+                              : "bg-neutral-100 dark:bg-muted",
                           )}
                         >
-                          <IconX size={14} stroke={1.5} className="text-neutral-500 dark:text-neutral-400" />
+                          <IconX
+                            size={14}
+                            stroke={1.5}
+                            className="text-neutral-500 dark:text-neutral-400"
+                          />
                         </div>
                         <span className="flex-1 text-[13px] font-medium text-neutral-900 dark:text-foreground">
                           No folder
@@ -342,7 +339,7 @@ export function MoveToFolderModal({
                             "flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] transition-colors",
                             selectedFolderId === "none"
                               ? "border-blue-600 bg-blue-600"
-                              : "border-neutral-300 dark:border-border"
+                              : "border-neutral-300 dark:border-border",
                           )}
                         >
                           {selectedFolderId === "none" && (
@@ -361,7 +358,7 @@ export function MoveToFolderModal({
                               "flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-all",
                               selectedFolderId === folder.id.toString()
                                 ? "border-neutral-900 bg-neutral-50 dark:bg-accent/50 ring-1 ring-neutral-900/10"
-                                : "border-transparent hover:bg-neutral-50 dark:hover:bg-accent/50"
+                                : "border-transparent hover:bg-neutral-50 dark:hover:bg-accent/50",
                             )}
                             onClick={() => setSelectedFolderId(folder.id.toString())}
                           >
@@ -370,18 +367,21 @@ export function MoveToFolderModal({
                                 "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
                                 selectedFolderId === folder.id.toString()
                                   ? "bg-neutral-200 dark:bg-accent"
-                                  : "bg-neutral-100 dark:bg-muted"
+                                  : "bg-neutral-100 dark:bg-muted",
                               )}
                             >
-                              <IconFolder size={14} stroke={1.5} className="text-neutral-500 dark:text-neutral-400" />
+                              <IconFolder
+                                size={14}
+                                stroke={1.5}
+                                className="text-neutral-500 dark:text-neutral-400"
+                              />
                             </div>
                             <div className="min-w-0 flex-1">
                               <span className="block truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                                 {folder.name}
                               </span>
                               <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                                {folder.linkCount}{" "}
-                                {folder.linkCount === 1 ? "link" : "links"}
+                                {folder.linkCount} {folder.linkCount === 1 ? "link" : "links"}
                               </span>
                             </div>
                             <div
@@ -389,7 +389,7 @@ export function MoveToFolderModal({
                                 "flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] transition-colors",
                                 selectedFolderId === folder.id.toString()
                                   ? "border-blue-600 bg-blue-600"
-                                  : "border-neutral-300 dark:border-border"
+                                  : "border-neutral-300 dark:border-border",
                               )}
                             >
                               {selectedFolderId === folder.id.toString() && (
@@ -437,11 +437,7 @@ export function MoveToFolderModal({
                 >
                   {isMoving ? (
                     <>
-                      <IconLoader2
-                        size={14}
-                        stroke={1.5}
-                        className="mr-1.5 animate-spin"
-                      />
+                      <IconLoader2 size={14} stroke={1.5} className="mr-1.5 animate-spin" />
                       Moving...
                     </>
                   ) : (

@@ -19,10 +19,7 @@ import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
  */
 export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: number) {
   const linkRecord = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, linkId),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, linkId), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!linkRecord) {
@@ -97,7 +94,7 @@ export async function checkWorkspaceLinkLimit(ctx: WorkspaceTRPCContext) {
 export async function incrementLinkCount(
   ctx: ProtectedTRPCContext,
   currentCount: number,
-  limit?: number
+  limit?: number,
 ) {
   if (limit === undefined) {
     return;
@@ -118,7 +115,7 @@ export async function incrementLinkCount(
 export async function incrementWorkspaceLinkCount(
   ctx: WorkspaceTRPCContext,
   currentCount: number,
-  limit?: number
+  limit?: number,
 ) {
   // Don't track usage for team workspaces
   if (ctx.workspace.type === "team") {
@@ -213,7 +210,7 @@ export const validateAlias = (
   ctx: ProtectedTRPCContext,
   alias: string,
   domain: string,
-  isPaidUser: boolean = false,
+  isPaidUser = false,
 ): Promise<void> => {
   const aliasRegex = /^[a-zA-Z0-9-_]+$/;
 
@@ -228,7 +225,7 @@ export const validateAlias = (
   // Free users must have aliases with at least 6 characters
   if (!isPaidUser && alias.length < MINIMUM_ALIAS_LENGTH_FREE) {
     throw new Error(
-      `Custom aliases must be at least ${MINIMUM_ALIAS_LENGTH_FREE} characters on the free plan. Upgrade to Pro for shorter aliases.`
+      `Custom aliases must be at least ${MINIMUM_ALIAS_LENGTH_FREE} characters on the free plan. Upgrade to Pro for shorter aliases.`,
     );
   }
 

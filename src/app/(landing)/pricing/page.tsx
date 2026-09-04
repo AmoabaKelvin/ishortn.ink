@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import { JsonLd } from "@/components/seo/json-ld";
 import {
   createBreadcrumbSchema,
@@ -13,6 +11,8 @@ import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { Pricing } from "../_components/pricing";
 import { Icon } from "../_components/warm-primitives";
+
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Pricing — iShortn",
@@ -65,28 +65,19 @@ export default function PricingPage() {
         ])}
       />
       <JsonLd data={softwareApplicationSchema} />
-      <JsonLd
-        data={createFaqSchema(pricingFaqs.map((f) => ({ question: f.q, answer: f.a })))}
-      />
+      <JsonLd data={createFaqSchema(pricingFaqs.map((f) => ({ question: f.q, answer: f.a })))} />
       <Header />
 
       <section className="warm-subhero">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <Icon.Heart
-              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-            />
+            <Icon.Heart style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
             Pricing
           </div>
-          <h1
-            className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}
-          >
+          <h1 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}>
             Fair prices,
             <br />
-            <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>
-              no surprises.
-            </em>
+            <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>no surprises.</em>
           </h1>
           <p
             style={{
@@ -97,8 +88,8 @@ export default function PricingPage() {
               maxWidth: 620,
             }}
           >
-            Start free forever. Upgrade when you need more. Cancel in one click
-            — no lock-in, no nagging emails.
+            Start free forever. Upgrade when you need more. Cancel in one click — no lock-in, no
+            nagging emails.
           </p>
         </div>
       </section>

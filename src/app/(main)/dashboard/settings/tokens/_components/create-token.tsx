@@ -1,6 +1,13 @@
 "use client";
 
-import { IconAlertTriangle, IconCheck, IconCopy, IconKey, IconLoader2, IconPlus } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconCopy,
+  IconKey,
+  IconLoader2,
+  IconPlus,
+} from "@tabler/icons-react";
 import { useState } from "react";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
@@ -122,13 +129,16 @@ const GenerateTokenTrigger = () => {
 
             {/* Warning */}
             <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 p-3">
-              <IconAlertTriangle size={15} stroke={1.5} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+              <IconAlertTriangle
+                size={15}
+                stroke={1.5}
+                className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400"
+              />
               <div>
-                <p className="text-[12px] font-medium text-amber-800">
-                  Store this key securely
-                </p>
+                <p className="text-[12px] font-medium text-amber-800">Store this key securely</p>
                 <p className="mt-0.5 text-[11px] text-amber-700/80">
-                  This key grants access to your account. Never share it or commit it to version control.
+                  This key grants access to your account. Never share it or commit it to version
+                  control.
                 </p>
               </div>
             </div>

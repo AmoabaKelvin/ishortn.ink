@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   IconArchive,
   IconArchiveOff,
@@ -15,6 +14,7 @@ import {
   IconTag,
   IconX,
 } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -28,57 +28,40 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/trpc/react";
 
-import Link from "./link-card/card";
 import { BulkActionBar } from "./bulk-action-bar";
+import Link from "./link-card/card";
 import { SelectionProvider, useSelection } from "./selection-context";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
 type LinksProps = {
   links: RouterOutputs["link"]["list"]["links"];
-  totalLinks: number;
   totalPages: number;
   currentPage: number;
 };
 
-const LinksContent = ({
-  links,
-  totalPages,
-  currentPage,
-  totalLinks,
-}: LinksProps) => {
+const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
-  const {
-    isSelectionMode,
-    exitSelectionMode,
-    selectAll,
-    clearSelection,
-    selectedLinkIds,
-  } = useSelection();
-  const [searchQuery, setSearchQuery] = useState(
-    urlSearchParams.get("search") ?? "",
-  );
-  const [orderBy, setOrderBy] = useState(
-    urlSearchParams.get("orderBy") ?? "createdAt",
-  );
+  const { isSelectionMode, exitSelectionMode, selectAll, clearSelection, selectedLinkIds } =
+    useSelection();
+  const [searchQuery, setSearchQuery] = useState(urlSearchParams.get("search") ?? "");
+  const [orderBy, setOrderBy] = useState(urlSearchParams.get("orderBy") ?? "createdAt");
   const [orderDirection, setOrderDirection] = useState(
     urlSearchParams.get("orderDirection") ?? "desc",
   );
   const [archivedFilter, setArchivedFilter] = useState(
     urlSearchParams.get("archivedFilter") ?? "active",
   );
-  const [campaignFilter, setCampaignFilter] = useState(
-    urlSearchParams.get("campaign") ?? "all",
-  );
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [allTags, setAllTags] = useState<string[]>([]);
-
-  const { data: campaigns } = api.campaign.listNames.useQuery(undefined, {
-    staleTime: 60_000,
+  const [campaignFilter, setCampaignFilter] = useState(urlSearchParams.get("campaign") ?? "all");
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
+    const tagFromUrl = urlSearchParams.get("tag");
+    return tagFromUrl ? [tagFromUrl] : [];
   });
+  const [syncedSearchParams, setSyncedSearchParams] = useState(urlSearchParams);
 
-  useEffect(() => {
+  if (syncedSearchParams !== urlSearchParams) {
+    setSyncedSearchParams(urlSearchParams);
     const tagFromUrl = urlSearchParams.get("tag");
     if (tagFromUrl) {
       setSelectedTags([tagFromUrl]);
@@ -88,7 +71,13 @@ const LinksContent = ({
       setArchivedFilter(archivedFromUrl);
     }
     setCampaignFilter(urlSearchParams.get("campaign") ?? "all");
-  }, [urlSearchParams]);
+  }
+
+  const allTags = Array.from(new Set(links.flatMap((link) => link.tags)));
+
+  const { data: campaigns } = api.campaign.listNames.useQuery(undefined, {
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -172,17 +161,7 @@ const LinksContent = ({
     router.push(`/dashboard?${params.toString()}`);
   };
 
-  useEffect(() => {
-    const tags = new Set<string>();
-    links.forEach((link) => {
-      const linkTags = (link.tags as string[]) || [];
-      linkTags.forEach((tag) => tags.add(tag));
-    });
-    setAllTags(Array.from(tags));
-  }, [links]);
-
-  const allSelected =
-    selectedLinkIds.length === links.length && links.length > 0;
+  const allSelected = selectedLinkIds.length === links.length && links.length > 0;
 
   const handleSelectAllToggle = () => {
     if (allSelected) {
@@ -210,10 +189,7 @@ const LinksContent = ({
           />
         </div>
 
-        <Select
-          onValueChange={handleArchivedFilterChange}
-          value={archivedFilter}
-        >
+        <Select onValueChange={handleArchivedFilterChange} value={archivedFilter}>
           <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[130px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -235,11 +211,7 @@ const LinksContent = ({
               Archived
             </SelectItem>
             <SelectItem value="all">
-              <IconFilter
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
+              <IconFilter size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
               All
             </SelectItem>
           </SelectContent>
@@ -264,20 +236,12 @@ const LinksContent = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">
-              <IconTag
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
+              <IconTag size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
               All tags
             </SelectItem>
             {allTags.map((tag) => (
               <SelectItem key={tag} value={tag}>
-                <IconTag
-                  size={14}
-                  stroke={1.5}
-                  className="mr-1.5 inline-block text-neutral-400"
-                />
+                <IconTag size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
                 {tag}
               </SelectItem>
             ))}
@@ -285,10 +249,7 @@ const LinksContent = ({
         </Select>
 
         {((campaigns?.length ?? 0) > 0 || campaignFilter !== "all") && (
-          <Select
-            onValueChange={handleCampaignFilterChange}
-            value={campaignFilter}
-          >
+          <Select onValueChange={handleCampaignFilterChange} value={campaignFilter}>
             <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[160px]">
               <SelectValue placeholder="Campaign" />
             </SelectTrigger>
@@ -315,10 +276,7 @@ const LinksContent = ({
           </Select>
         )}
 
-        <Select
-          onValueChange={handleOrderChange}
-          value={`${orderBy}-${orderDirection}`}
-        >
+        <Select onValueChange={handleOrderChange} value={`${orderBy}-${orderDirection}`}>
           <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[170px]">
             <SelectValue placeholder="Sort" />
           </SelectTrigger>
@@ -428,18 +386,10 @@ const LinksContent = ({
                         : "border-neutral-300 bg-white dark:bg-card"
                     }`}
                   >
-                    {allSelected && (
-                      <IconCheck
-                        size={10}
-                        stroke={3}
-                        className="text-white"
-                      />
-                    )}
+                    {allSelected && <IconCheck size={10} stroke={3} className="text-white" />}
                   </div>
                   <span className="font-medium">
-                    {allSelected
-                      ? "Deselect all"
-                      : `Select all (${links.length})`}
+                    {allSelected ? "Deselect all" : `Select all (${links.length})`}
                   </span>
                 </button>
                 {selectedLinkIds.length > 0 && (
@@ -485,9 +435,7 @@ const LinksContent = ({
           <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
             No links found
           </p>
-          <p className="mt-1 text-[13px] text-neutral-400">
-            Try adjusting your search or filters.
-          </p>
+          <p className="mt-1 text-[13px] text-neutral-400">Try adjusting your search or filters.</p>
         </div>
       )}
 

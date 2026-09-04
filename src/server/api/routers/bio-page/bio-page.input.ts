@@ -1,13 +1,6 @@
 import { z } from "zod";
 
-export const bioBlockTypeSchema = z.enum([
-  "link",
-  "heading",
-  "text",
-  "social",
-  "divider",
-  "email",
-]);
+export const bioBlockTypeSchema = z.enum(["link", "heading", "text", "social", "divider", "email"]);
 
 export const bioThemeSchema = z.object({
   preset: z.string().max(50).optional(),
@@ -38,10 +31,7 @@ export const bioSlugSchema = z
   .string()
   .min(3, "Handle must be at least 3 characters")
   .max(100)
-  .regex(
-    /^[a-z0-9_-]+$/,
-    "Use lowercase letters, numbers, dashes, and underscores only",
-  );
+  .regex(/^[a-z0-9_-]+$/, "Use lowercase letters, numbers, dashes, and underscores only");
 
 export const createBioPageSchema = z.object({
   slug: bioSlugSchema,

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { z } from "zod";
 
 import { socialMediaAgents } from "@/lib/constants/app";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
@@ -20,11 +21,11 @@ type LinkRedirectionPageProps = {
   }>;
 };
 
-export type LinkMetadata = {
-  title: string;
-  description: string;
-  image: string;
-};
+const linkMetadataSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  image: z.string().optional(),
+});
 
 const DEFAULT_DOMAIN = DEFAULT_PLATFORM_DOMAIN;
 
@@ -57,7 +58,7 @@ export async function generateMetadata(props: LinkRedirectionPageProps): Promise
     from: "metadata",
   });
 
-  const linkMetadata = link?.metadata as LinkMetadata;
+  const linkMetadata = linkMetadataSchema.safeParse(link?.metadata).data;
 
   return {
     title: { absolute: linkMetadata?.title ?? "" },

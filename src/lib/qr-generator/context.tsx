@@ -4,9 +4,9 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 
 import { defaultGeneratorState } from "./state";
 
-import type { QrCodeGenerateResult } from "uqr";
 import type { QRCodeContextValue } from "./state";
 import type { GenerateQRCodeResult, QRCodeGeneratorState } from "./types";
+import type { QrCodeGenerateResult } from "uqr";
 
 const QRCodeContext = createContext<QRCodeContextValue | null>(null);
 

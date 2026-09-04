@@ -1,8 +1,10 @@
 import "server-only";
-
 import pino, { type LoggerOptions } from "pino";
+import { z } from "zod";
 
 import { maskEmail } from "@/lib/utils/mask";
+
+import type { LogValue } from "./shared";
 
 const isProd = process.env.NODE_ENV === "production";
 const isTest = process.env.NODE_ENV === "test";
@@ -29,20 +31,14 @@ const redactPaths = [
 // PII. Keep the list to explicit email-typed names — a generic "recipient"
 // key could carry user IDs, phone numbers, or webhook URLs and produce
 // misleading output when run through maskEmail.
-const EMAIL_KEYS = [
-  "email",
-  "toEmail",
-  "fromEmail",
-  "recipientEmail",
-  "userEmail",
-] as const;
+const EMAIL_KEYS = ["email", "toEmail", "fromEmail", "recipientEmail", "userEmail"] as const;
 
-const maskEmailSerializer = (v: unknown) =>
-  typeof v === "string" ? maskEmail(v) : v;
+const maskEmailSerializer = (value: LogValue) => {
+  const email = z.string().safeParse(value);
+  return email.success ? maskEmail(email.data) : value;
+};
 
-const emailSerializers = Object.fromEntries(
-  EMAIL_KEYS.map((k) => [k, maskEmailSerializer]),
-);
+const emailSerializers = Object.fromEntries(EMAIL_KEYS.map((k) => [k, maskEmailSerializer]));
 
 const options: LoggerOptions = {
   level: process.env.LOG_LEVEL ?? (isProd ? "info" : "debug"),
@@ -55,20 +51,19 @@ const options: LoggerOptions = {
     },
   },
   timestamp: pino.stdTimeFunctions.isoTime,
-  ...(isProd || isTest
-    ? {}
-    : {
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "SYS:HH:MM:ss.l",
-            ignore: "pid,hostname,env",
-            singleLine: false,
-          },
-        },
-      }),
 };
+
+if (!isProd && !isTest) {
+  options.transport = {
+    target: "pino-pretty",
+    options: {
+      colorize: true,
+      translateTime: "SYS:HH:MM:ss.l",
+      ignore: "pid,hostname,env",
+      singleLine: false,
+    },
+  };
+}
 
 export const logger = pino(options);
 

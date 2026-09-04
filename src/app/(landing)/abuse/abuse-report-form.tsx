@@ -110,7 +110,10 @@ export function AbuseReportForm() {
           id="category"
           required
           value={category}
-          onChange={(e) => setCategory(e.target.value as (typeof abuseCategoryValues)[number])}
+          onChange={(e) => {
+            const selected = abuseCategoryValues.find((value) => value === e.target.value);
+            if (selected) setCategory(selected);
+          }}
           style={fieldStyle}
         >
           {abuseCategoryValues.map((value) => (

@@ -1,22 +1,46 @@
 import fs from "fs";
 import path from "path";
+
 import matter from "gray-matter";
 import { remark } from "remark";
-import html from "remark-html";
 import gfm from "remark-gfm";
+import html from "remark-html";
+import { z } from "zod";
 
 const blogDirectory = path.join(process.cwd(), "content/blog");
 
-export interface BlogPostFrontmatter {
-  title: string;
-  description: string;
-  date: string;
-  updated?: string;
-  author: string;
-  tags: string[];
-  image?: string;
-  published: boolean;
+// YAML yields a Date for unquoted dates and a string for quoted ones; keep only the date part.
+function dateOnly(value: Date | string): string {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const timeStart = value.indexOf("T");
+  return timeStart === -1 ? value : value.slice(0, timeStart);
 }
+
+const frontmatterDate = z.union([z.date(), z.string()]).transform(dateOnly);
+
+// Drop a missing or malformed `updated` value so it can't propagate to
+// new Date(...).toISOString() (sitemap) or Article.dateModified as an invalid date.
+const optionalFrontmatterDate = z
+  .union([z.date(), z.string(), z.null()])
+  .optional()
+  .transform((value) => {
+    if (value === undefined || value === null || value === "") return undefined;
+    const parsed = dateOnly(value);
+    return Number.isNaN(new Date(parsed).getTime()) ? undefined : parsed;
+  });
+
+const blogPostFrontmatterSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  date: frontmatterDate,
+  updated: optionalFrontmatterDate,
+  author: z.string().default("Kelvin Amoaba"),
+  tags: z.array(z.string()).default([]),
+  image: z.string().optional(),
+  published: z.boolean().default(true),
+});
+
+export type BlogPostFrontmatter = z.infer<typeof blogPostFrontmatterSchema>;
 
 export interface BlogPost extends BlogPostFrontmatter {
   slug: string;
@@ -31,32 +55,13 @@ function estimateReadingTime(content: string): number {
   return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
 }
 
-function parseDateString(dateValue: unknown): string {
-  if (dateValue instanceof Date) {
-    return dateValue.toISOString().split("T")[0] as string;
-  }
-  const strValue = String(dateValue);
-  // Return just the date portion if it includes time
-  return strValue.includes("T") ? (strValue.split("T")[0] as string) : strValue;
-}
-
-// Drop a missing or malformed `updated` value so it can't propagate to
-// new Date(...).toISOString() (sitemap) or Article.dateModified as an invalid date.
-function parseOptionalDate(value: unknown): string | undefined {
-  if (value === undefined || value === null || value === "") return undefined;
-  const parsed = parseDateString(value);
-  return Number.isNaN(new Date(parsed).getTime()) ? undefined : parsed;
-}
-
 export async function getAllPosts(): Promise<BlogPost[]> {
   if (!fs.existsSync(blogDirectory)) {
     return [];
   }
 
   const fileNames = fs.readdirSync(blogDirectory);
-  const markdownFiles = fileNames.filter(
-    (name) => name.endsWith(".md") || name.endsWith(".mdx"),
-  );
+  const markdownFiles = fileNames.filter((name) => name.endsWith(".md") || name.endsWith(".mdx"));
 
   const posts = await Promise.all(
     markdownFiles.map(async (fileName) => {
@@ -94,25 +99,15 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
   const htmlContent = processedContent.toString();
 
   return {
+    ...blogPostFrontmatterSchema.parse(data),
     slug,
     content,
     htmlContent,
-    title: String(data.title),
-    description: String(data.description),
-    date: parseDateString(data.date),
-    updated: parseOptionalDate(data.updated),
-    author: data.author ? String(data.author) : "Kelvin Amoaba",
-    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-    image: data.image ? String(data.image) : undefined,
-    published: data.published !== false,
     readingTime: estimateReadingTime(content),
   };
 }
 
-export async function getRelatedPosts(
-  slug: string,
-  limit = 3,
-): Promise<BlogPost[]> {
+export async function getRelatedPosts(slug: string, limit = 3): Promise<BlogPost[]> {
   const allPosts = await getAllPosts();
   const currentPost = allPosts.find((post) => post.slug === slug);
 

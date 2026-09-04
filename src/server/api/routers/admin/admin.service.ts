@@ -1,7 +1,7 @@
 import { and, between, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
-import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { PAID_PLANS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/constants/plan-pricing";
+import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import {
   bioPage,
   blockedDomain,
@@ -44,34 +44,27 @@ export async function getStats(ctx: ProtectedTRPCContext) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [
-    linkStatsResult,
-    userStatsResult,
-    pendingFlaggedResult,
-    blockedDomainsResult,
-  ] = await Promise.all([
-    // Single scan: total links + blocked links + today's links
-    ctx.db
-      .select({
-        total: count(),
-        blocked: sql<number>`SUM(${link.blocked} = true)`,
-        today: sql<number>`SUM(${link.createdAt} >= ${today})`,
-      })
-      .from(link),
-    // Single scan: total users + banned users + today's users
-    ctx.db
-      .select({
-        total: count(),
-        banned: sql<number>`SUM(${user.banned} = true)`,
-        today: sql<number>`SUM(${user.createdAt} >= ${today})`,
-      })
-      .from(user),
-    ctx.db
-      .select({ count: count() })
-      .from(flaggedLink)
-      .where(eq(flaggedLink.status, "pending")),
-    ctx.db.select({ count: count() }).from(blockedDomain),
-  ]);
+  const [linkStatsResult, userStatsResult, pendingFlaggedResult, blockedDomainsResult] =
+    await Promise.all([
+      // Single scan: total links + blocked links + today's links
+      ctx.db
+        .select({
+          total: count(),
+          blocked: sql<number>`SUM(${link.blocked} = true)`,
+          today: sql<number>`SUM(${link.createdAt} >= ${today})`,
+        })
+        .from(link),
+      // Single scan: total users + banned users + today's users
+      ctx.db
+        .select({
+          total: count(),
+          banned: sql<number>`SUM(${user.banned} = true)`,
+          today: sql<number>`SUM(${user.createdAt} >= ${today})`,
+        })
+        .from(user),
+      ctx.db.select({ count: count() }).from(flaggedLink).where(eq(flaggedLink.status, "pending")),
+      ctx.db.select({ count: count() }).from(blockedDomain),
+    ]);
 
   return {
     totalLinks: linkStatsResult[0]?.total ?? 0,
@@ -112,12 +105,8 @@ export async function getDailyStats(ctx: ProtectedTRPCContext) {
   ]);
 
   // Index by date string for O(1) lookups (normalize in case driver returns Date)
-  const linksByDate = new Map(
-    dailyLinks.map((l) => [String(l.date).split("T")[0], l.count]),
-  );
-  const usersByDate = new Map(
-    dailyUsers.map((u) => [String(u.date).split("T")[0], u.count]),
-  );
+  const linksByDate = new Map(dailyLinks.map((l) => [String(l.date).split("T")[0], l.count]));
+  const usersByDate = new Map(dailyUsers.map((u) => [String(u.date).split("T")[0], u.count]));
 
   // Fill in all 14 days (including days with 0 activity)
   const result: { date: string; links: number; users: number }[] = [];
@@ -154,7 +143,12 @@ export async function getRecentUsers(ctx: ProtectedTRPCContext) {
   const counts = await ctx.db
     .select({ userId: link.userId, linkCount: count() })
     .from(link)
-    .where(inArray(link.userId, recent.map((u) => u.id)))
+    .where(
+      inArray(
+        link.userId,
+        recent.map((u) => u.id),
+      ),
+    )
     .groupBy(link.userId);
 
   const countsByUser = new Map(counts.map((c) => [c.userId, c.linkCount]));
@@ -196,10 +190,7 @@ export async function getRecentActivity(ctx: ProtectedTRPCContext) {
   return { recentLinks, recentBlocked };
 }
 
-export async function searchLinks(
-  ctx: ProtectedTRPCContext,
-  input: SearchLinksInput,
-) {
+export async function searchLinks(ctx: ProtectedTRPCContext, input: SearchLinksInput) {
   const offset = (input.page - 1) * input.pageSize;
   const searchPattern = `%${input.query}%`;
 
@@ -252,10 +243,7 @@ export async function searchLinks(
   };
 }
 
-export async function blockLink(
-  ctx: ProtectedTRPCContext,
-  input: BlockLinkInput,
-) {
+export async function blockLink(ctx: ProtectedTRPCContext, input: BlockLinkInput) {
   const linkRecord = await ctx.db.query.link.findFirst({
     where: eq(link.id, input.linkId),
     columns: { id: true, alias: true, domain: true },
@@ -278,10 +266,7 @@ export async function blockLink(
   await deleteFromCache(buildCacheKey(linkRecord.domain, linkRecord.alias!));
 }
 
-export async function unblockLink(
-  ctx: ProtectedTRPCContext,
-  input: UnblockLinkInput,
-) {
+export async function unblockLink(ctx: ProtectedTRPCContext, input: UnblockLinkInput) {
   const linkRecord = await ctx.db.query.link.findFirst({
     where: eq(link.id, input.linkId),
     columns: { id: true, alias: true, domain: true },
@@ -303,10 +288,7 @@ export async function unblockLink(
   await deleteFromCache(buildCacheKey(linkRecord.domain, linkRecord.alias!));
 }
 
-export async function searchUsers(
-  ctx: ProtectedTRPCContext,
-  input: SearchUsersInput,
-) {
+export async function searchUsers(ctx: ProtectedTRPCContext, input: SearchUsersInput) {
   const offset = (input.page - 1) * input.pageSize;
   const searchPattern = `%${input.query}%`;
 
@@ -323,24 +305,14 @@ export async function searchUsers(
         linkCount: sql<number>`(SELECT COUNT(*) FROM Link WHERE Link.userId = ${user.id})`,
       })
       .from(user)
-      .where(
-        or(
-          like(user.email, searchPattern),
-          like(user.name, searchPattern),
-        ),
-      )
+      .where(or(like(user.email, searchPattern), like(user.name, searchPattern)))
       .orderBy(desc(user.createdAt))
       .limit(input.pageSize)
       .offset(offset),
     ctx.db
       .select({ count: count() })
       .from(user)
-      .where(
-        or(
-          like(user.email, searchPattern),
-          like(user.name, searchPattern),
-        ),
-      ),
+      .where(or(like(user.email, searchPattern), like(user.name, searchPattern))),
   ]);
 
   return {
@@ -351,10 +323,7 @@ export async function searchUsers(
   };
 }
 
-export async function banUser(
-  ctx: ProtectedTRPCContext,
-  input: BanUserInput,
-) {
+export async function banUser(ctx: ProtectedTRPCContext, input: BanUserInput) {
   // Don't allow banning yourself
   if (input.userId === ctx.auth.userId) {
     throw new Error("Cannot ban yourself");
@@ -391,26 +360,16 @@ export async function banUser(
 
   // Invalidate cache after commit
   if (userLinks.length > 0) {
-    await Promise.all(
-      userLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
-    );
+    await Promise.all(userLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))));
   }
 }
 
-export async function unbanUser(
-  ctx: ProtectedTRPCContext,
-  input: UnbanUserInput,
-) {
+export async function unbanUser(ctx: ProtectedTRPCContext, input: UnbanUserInput) {
   // Fetch ban-cascaded links before transaction for cache invalidation
   const bannedLinks = await ctx.db
     .select({ id: link.id, alias: link.alias, domain: link.domain })
     .from(link)
-    .where(
-      and(
-        eq(link.userId, input.userId),
-        eq(link.blockedReason, BAN_CASCADE_REASON),
-      ),
-    );
+    .where(and(eq(link.userId, input.userId), eq(link.blockedReason, BAN_CASCADE_REASON)));
 
   // Unban user + restore ban-cascaded links atomically
   await ctx.db.transaction(async (tx) => {
@@ -431,20 +390,13 @@ export async function unbanUser(
           blockedAt: null,
           blockedReason: null,
         })
-        .where(
-          and(
-            eq(link.userId, input.userId),
-            eq(link.blockedReason, BAN_CASCADE_REASON),
-          ),
-        );
+        .where(and(eq(link.userId, input.userId), eq(link.blockedReason, BAN_CASCADE_REASON)));
     }
   });
 
   // Invalidate cache after commit
   if (bannedLinks.length > 0) {
-    await Promise.all(
-      bannedLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
-    );
+    await Promise.all(bannedLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))));
   }
 }
 
@@ -454,16 +406,11 @@ export async function getBlockedDomains(ctx: ProtectedTRPCContext) {
   });
 }
 
-export async function addBlockedDomain(
-  ctx: ProtectedTRPCContext,
-  input: AddBlockedDomainInput,
-) {
+export async function addBlockedDomain(ctx: ProtectedTRPCContext, input: AddBlockedDomainInput) {
   // Normalize: lowercase, strip protocol/path if a full URL was pasted
   let domain = input.domain.toLowerCase().trim();
   try {
-    const parsed = new URL(
-      domain.startsWith("http") ? domain : `https://${domain}`,
-    );
+    const parsed = new URL(domain.startsWith("http") ? domain : `https://${domain}`);
     domain = parsed.hostname;
   } catch {
     // Use as-is if not a valid URL
@@ -480,20 +427,13 @@ export async function removeBlockedDomain(
   ctx: ProtectedTRPCContext,
   input: RemoveBlockedDomainInput,
 ) {
-  await ctx.db
-    .delete(blockedDomain)
-    .where(eq(blockedDomain.id, input.id));
+  await ctx.db.delete(blockedDomain).where(eq(blockedDomain.id, input.id));
 }
 
-export async function getFlaggedLinks(
-  ctx: ProtectedTRPCContext,
-  input: GetFlaggedLinksInput,
-) {
+export async function getFlaggedLinks(ctx: ProtectedTRPCContext, input: GetFlaggedLinksInput) {
   const offset = (input.page - 1) * input.pageSize;
 
-  const whereConditions = input.status
-    ? eq(flaggedLink.status, input.status)
-    : undefined;
+  const whereConditions = input.status ? eq(flaggedLink.status, input.status) : undefined;
 
   const [results, totalResult] = await Promise.all([
     ctx.db
@@ -517,10 +457,7 @@ export async function getFlaggedLinks(
       .orderBy(desc(flaggedLink.flaggedAt))
       .limit(input.pageSize)
       .offset(offset),
-    ctx.db
-      .select({ count: count() })
-      .from(flaggedLink)
-      .where(whereConditions),
+    ctx.db.select({ count: count() }).from(flaggedLink).where(whereConditions),
   ]);
 
   return {
@@ -581,11 +518,7 @@ function pctChange(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 100);
 }
 
-async function countClicks(
-  ctx: ProtectedTRPCContext,
-  from: Date,
-  to: Date,
-): Promise<number> {
+async function countClicks(ctx: ProtectedTRPCContext, from: Date, to: Date): Promise<number> {
   const result = await ctx.db
     .select({ total: count() })
     .from(linkVisit)
@@ -593,40 +526,31 @@ async function countClicks(
   return result[0]?.total ?? 0;
 }
 
-export async function getAnalytics(
-  ctx: ProtectedTRPCContext,
-  input: GetAnalyticsInput,
-) {
+export async function getAnalytics(ctx: ProtectedTRPCContext, input: GetAnalyticsInput) {
   const { from, to } = input;
   const { prevFrom, prevTo } = getPreviousPeriod(from, to);
 
-  const [
-    linksInRange,
-    usersInRange,
-    clicksInRange,
-    linksPrev,
-    usersPrev,
-    clicksPrev,
-  ] = await Promise.all([
-    ctx.db
-      .select({ total: count() })
-      .from(link)
-      .where(between(link.createdAt, from, to)),
-    ctx.db
-      .select({ total: count() })
-      .from(user)
-      .where(between(user.createdAt, from, to)),
-    countClicks(ctx, from, to),
-    ctx.db
-      .select({ total: count() })
-      .from(link)
-      .where(between(link.createdAt, prevFrom, prevTo)),
-    ctx.db
-      .select({ total: count() })
-      .from(user)
-      .where(between(user.createdAt, prevFrom, prevTo)),
-    countClicks(ctx, prevFrom, prevTo),
-  ]);
+  const [linksInRange, usersInRange, clicksInRange, linksPrev, usersPrev, clicksPrev] =
+    await Promise.all([
+      ctx.db
+        .select({ total: count() })
+        .from(link)
+        .where(between(link.createdAt, from, to)),
+      ctx.db
+        .select({ total: count() })
+        .from(user)
+        .where(between(user.createdAt, from, to)),
+      countClicks(ctx, from, to),
+      ctx.db
+        .select({ total: count() })
+        .from(link)
+        .where(between(link.createdAt, prevFrom, prevTo)),
+      ctx.db
+        .select({ total: count() })
+        .from(user)
+        .where(between(user.createdAt, prevFrom, prevTo)),
+      countClicks(ctx, prevFrom, prevTo),
+    ]);
 
   const currentLinks = linksInRange[0]?.total ?? 0;
   const currentUsers = usersInRange[0]?.total ?? 0;
@@ -640,17 +564,11 @@ export async function getAnalytics(
     linksGrowth: pctChange(currentLinks, previousLinks),
     usersGrowth: pctChange(currentUsers, previousUsers),
     clicksGrowth: pctChange(clicksInRange, clicksPrev),
-    avgLinksPerUser:
-      currentUsers > 0
-        ? Math.round((currentLinks / currentUsers) * 10) / 10
-        : 0,
+    avgLinksPerUser: currentUsers > 0 ? Math.round((currentLinks / currentUsers) * 10) / 10 : 0,
   };
 }
 
-export async function getActivityChart(
-  ctx: ProtectedTRPCContext,
-  input: GetActivityChartInput,
-) {
+export async function getActivityChart(ctx: ProtectedTRPCContext, input: GetActivityChartInput) {
   const { from, to, granularity } = input;
 
   const dateExpr =
@@ -689,15 +607,9 @@ export async function getActivityChart(
       .orderBy(clickDateExpr),
   ]);
 
-  const linksByDate = new Map(
-    dailyLinks.map((l) => [String(l.date).split("T")[0], l.count]),
-  );
-  const usersByDate = new Map(
-    dailyUsers.map((u) => [String(u.date).split("T")[0], u.count]),
-  );
-  const clicksByDate = new Map(
-    dailyClicks.map((c) => [String(c.date).split("T")[0], c.count]),
-  );
+  const linksByDate = new Map(dailyLinks.map((l) => [String(l.date).split("T")[0], l.count]));
+  const usersByDate = new Map(dailyUsers.map((u) => [String(u.date).split("T")[0], u.count]));
+  const clicksByDate = new Map(dailyClicks.map((c) => [String(c.date).split("T")[0], c.count]));
 
   // Fill in all periods
   const result: {
@@ -739,10 +651,7 @@ export async function getActivityChart(
   return result;
 }
 
-export async function getTopUsers(
-  ctx: ProtectedTRPCContext,
-  input: GetTopUsersInput,
-) {
+export async function getTopUsers(ctx: ProtectedTRPCContext, input: GetTopUsersInput) {
   const { from, to, sortBy, limit: lim } = input;
 
   if (sortBy === "clicks") {
@@ -787,10 +696,7 @@ export async function getTopUsers(
     .limit(lim);
 }
 
-export async function getTopLinks(
-  ctx: ProtectedTRPCContext,
-  input: GetTopLinksInput,
-) {
+export async function getTopLinks(ctx: ProtectedTRPCContext, input: GetTopLinksInput) {
   const { from, to, limit: lim } = input;
 
   return ctx.db
@@ -812,65 +718,61 @@ export async function getTopLinks(
     .limit(lim);
 }
 
-export async function getPeakPeriods(
-  ctx: ProtectedTRPCContext,
-  input: GetPeakPeriodsInput,
-) {
+export async function getPeakPeriods(ctx: ProtectedTRPCContext, input: GetPeakPeriodsInput) {
   const { from, to } = input;
 
-  const [peakLinkDay, peakUserDay, peakClickDay, peakLinkMonth, peakUserMonth] =
-    await Promise.all([
-      ctx.db
-        .select({
-          date: sql<string>`DATE(${link.createdAt})`,
-          count: count(),
-        })
-        .from(link)
-        .where(between(link.createdAt, from, to))
-        .groupBy(sql`DATE(${link.createdAt})`)
-        .orderBy(sql`COUNT(*) DESC`)
-        .limit(1),
-      ctx.db
-        .select({
-          date: sql<string>`DATE(${user.createdAt})`,
-          count: count(),
-        })
-        .from(user)
-        .where(between(user.createdAt, from, to))
-        .groupBy(sql`DATE(${user.createdAt})`)
-        .orderBy(sql`COUNT(*) DESC`)
-        .limit(1),
-      ctx.db
-        .select({
-          date: sql<string>`DATE(${linkVisit.createdAt})`,
-          count: count(),
-        })
-        .from(linkVisit)
-        .where(between(linkVisit.createdAt, from, to))
-        .groupBy(sql`DATE(${linkVisit.createdAt})`)
-        .orderBy(sql`COUNT(*) DESC`)
-        .limit(1),
-      ctx.db
-        .select({
-          month: sql<string>`DATE_FORMAT(${link.createdAt}, '%Y-%m')`,
-          count: count(),
-        })
-        .from(link)
-        .where(between(link.createdAt, from, to))
-        .groupBy(sql`DATE_FORMAT(${link.createdAt}, '%Y-%m')`)
-        .orderBy(sql`COUNT(*) DESC`)
-        .limit(1),
-      ctx.db
-        .select({
-          month: sql<string>`DATE_FORMAT(${user.createdAt}, '%Y-%m')`,
-          count: count(),
-        })
-        .from(user)
-        .where(between(user.createdAt, from, to))
-        .groupBy(sql`DATE_FORMAT(${user.createdAt}, '%Y-%m')`)
-        .orderBy(sql`COUNT(*) DESC`)
-        .limit(1),
-    ]);
+  const [peakLinkDay, peakUserDay, peakClickDay, peakLinkMonth, peakUserMonth] = await Promise.all([
+    ctx.db
+      .select({
+        date: sql<string>`DATE(${link.createdAt})`,
+        count: count(),
+      })
+      .from(link)
+      .where(between(link.createdAt, from, to))
+      .groupBy(sql`DATE(${link.createdAt})`)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(1),
+    ctx.db
+      .select({
+        date: sql<string>`DATE(${user.createdAt})`,
+        count: count(),
+      })
+      .from(user)
+      .where(between(user.createdAt, from, to))
+      .groupBy(sql`DATE(${user.createdAt})`)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(1),
+    ctx.db
+      .select({
+        date: sql<string>`DATE(${linkVisit.createdAt})`,
+        count: count(),
+      })
+      .from(linkVisit)
+      .where(between(linkVisit.createdAt, from, to))
+      .groupBy(sql`DATE(${linkVisit.createdAt})`)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(1),
+    ctx.db
+      .select({
+        month: sql<string>`DATE_FORMAT(${link.createdAt}, '%Y-%m')`,
+        count: count(),
+      })
+      .from(link)
+      .where(between(link.createdAt, from, to))
+      .groupBy(sql`DATE_FORMAT(${link.createdAt}, '%Y-%m')`)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(1),
+    ctx.db
+      .select({
+        month: sql<string>`DATE_FORMAT(${user.createdAt}, '%Y-%m')`,
+        count: count(),
+      })
+      .from(user)
+      .where(between(user.createdAt, from, to))
+      .groupBy(sql`DATE_FORMAT(${user.createdAt}, '%Y-%m')`)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(1),
+  ]);
 
   return {
     peakLinkDay: peakLinkDay[0]
@@ -975,14 +877,8 @@ export async function getSystemHealth(ctx: ProtectedTRPCContext) {
         banned: sql<number>`SUM(${user.banned} = true)`,
       })
       .from(user),
-    ctx.db
-      .select({ count: count() })
-      .from(flaggedLink)
-      .where(eq(flaggedLink.status, "pending")),
-    ctx.db
-      .select({ count: count() })
-      .from(feedback)
-      .where(eq(feedback.status, "open")),
+    ctx.db.select({ count: count() }).from(flaggedLink).where(eq(flaggedLink.status, "pending")),
+    ctx.db.select({ count: count() }).from(feedback).where(eq(feedback.status, "open")),
     ctx.db.select({ count: count() }).from(blockedDomain),
     ctx.db
       .select({
@@ -1009,10 +905,8 @@ export async function getSystemHealth(ctx: ProtectedTRPCContext) {
     totalUsers,
     blockedLinks,
     bannedUsers,
-    blockedPercent:
-      totalLinks > 0 ? Math.round((blockedLinks / totalLinks) * 100 * 10) / 10 : 0,
-    banRate:
-      totalUsers > 0 ? Math.round((bannedUsers / totalUsers) * 100 * 10) / 10 : 0,
+    blockedPercent: totalLinks > 0 ? Math.round((blockedLinks / totalLinks) * 100 * 10) / 10 : 0,
+    banRate: totalUsers > 0 ? Math.round((bannedUsers / totalUsers) * 100 * 10) / 10 : 0,
     pendingFlagged: pendingFlaggedResult[0]?.count ?? 0,
     openFeedback: openFeedbackResult[0]?.count ?? 0,
     blockedDomains: blockedDomainsResult[0]?.count ?? 0,
@@ -1074,19 +968,13 @@ export async function getUserBaseSummary(
       .select({ total: count() })
       .from(subscription)
       .where(
-        and(
-          inArray(subscription.plan, PAID_PLANS),
-          sql`${subscription.createdAt} <= ${prevTo}`,
-        ),
+        and(inArray(subscription.plan, PAID_PLANS), sql`${subscription.createdAt} <= ${prevTo}`),
       ),
     ctx.db
       .select({ total: count() })
       .from(subscription)
       .where(
-        and(
-          inArray(subscription.plan, PAID_PLANS),
-          between(subscription.createdAt, from, to),
-        ),
+        and(inArray(subscription.plan, PAID_PLANS), between(subscription.createdAt, from, to)),
       ),
     ctx.db
       .select({ total: count() })
@@ -1103,8 +991,9 @@ export async function getUserBaseSummary(
 
   const tierMap = new Map<PaidPlan, number>();
   for (const row of tierBreakdown) {
-    if (row.plan && (PAID_PLANS as string[]).includes(row.plan)) {
-      tierMap.set(row.plan as PaidPlan, row.total);
+    const paidPlan = PAID_PLANS.find((plan) => plan === row.plan);
+    if (paidPlan) {
+      tierMap.set(paidPlan, row.total);
     }
   }
   const proCount = tierMap.get("pro") ?? 0;
@@ -1112,8 +1001,7 @@ export async function getUserBaseSummary(
   const paidUsers = proCount + ultraCount;
   const freeUsers = totalUsers - paidUsers;
 
-  const mrr =
-    proCount * PLAN_PRICES_USD.pro + ultraCount * PLAN_PRICES_USD.ultra;
+  const mrr = proCount * PLAN_PRICES_USD.pro + ultraCount * PLAN_PRICES_USD.ultra;
 
   return {
     totalUsers,
@@ -1122,15 +1010,9 @@ export async function getUserBaseSummary(
     paidPercent: sharePct(paidUsers, totalUsers),
     mrr,
     newUsers: newUsersInRange[0]?.total ?? 0,
-    newUsersGrowth: pctChange(
-      newUsersInRange[0]?.total ?? 0,
-      newUsersPrev[0]?.total ?? 0,
-    ),
+    newUsersGrowth: pctChange(newUsersInRange[0]?.total ?? 0, newUsersPrev[0]?.total ?? 0),
     newPaid: newPaidInRange[0]?.total ?? 0,
-    newPaidGrowth: pctChange(
-      newPaidInRange[0]?.total ?? 0,
-      newPaidPrev[0]?.total ?? 0,
-    ),
+    newPaidGrowth: pctChange(newPaidInRange[0]?.total ?? 0, newPaidPrev[0]?.total ?? 0),
     paidGrowth: pctChange(paidUsers, paidPrevResult[0]?.total ?? 0),
     tiers: {
       free: {
@@ -1167,12 +1049,7 @@ export async function getSubscriptionTimeline(
       total: count(),
     })
     .from(subscription)
-    .where(
-      and(
-        inArray(subscription.plan, PAID_PLANS),
-        between(subscription.createdAt, from, to),
-      ),
-    )
+    .where(and(inArray(subscription.plan, PAID_PLANS), between(subscription.createdAt, from, to)))
     .groupBy(dateExpr, subscription.plan)
     .orderBy(dateExpr);
 

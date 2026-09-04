@@ -38,7 +38,9 @@ describe("normalizeSocialUrl", () => {
   });
 
   test("adds a scheme to a pasted host or bare domain", () => {
-    expect(normalizeSocialUrl("instagram", "instagram.com/jane")).toBe("https://instagram.com/jane");
+    expect(normalizeSocialUrl("instagram", "instagram.com/jane")).toBe(
+      "https://instagram.com/jane",
+    );
     expect(normalizeSocialUrl("website", "example.com")).toBe("https://example.com");
   });
 

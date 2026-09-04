@@ -30,26 +30,27 @@ import {
   IconTrash,
   IconWorld,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/shared";
-import type { BioBlockType } from "@/server/db/schema";
 
 import { BlockFormDialog } from "./block-form-dialog";
 
+import type { BioBlockType } from "@/server/db/schema";
+import type { RouterOutputs } from "@/trpc/shared";
+
 type EditorBlock = RouterOutputs["bioPage"]["get"]["blocks"][number];
 
-const TYPE_ICON: Record<BioBlockType, typeof IconLink> = {
+const TYPE_ICON = {
   link: IconLink,
   heading: IconHeading,
   text: IconAlignLeft,
   email: IconMail,
   social: IconWorld,
   divider: IconLine,
-};
+} satisfies Record<BioBlockType, typeof IconLink>;
 
 function summarize(block: EditorBlock): string {
   switch (block.type) {
@@ -84,9 +85,14 @@ export function BlockList({
   canSchedule: boolean;
 }) {
   const [items, setItems] = useState(blocks);
+  const [syncedBlocks, setSyncedBlocks] = useState(blocks);
   const [editing, setEditing] = useState<EditorBlock | null>(null);
 
-  useEffect(() => setItems(blocks), [blocks]);
+  // Adopt the server order whenever a new block list arrives.
+  if (syncedBlocks !== blocks) {
+    setSyncedBlocks(blocks);
+    setItems(blocks);
+  }
 
   const utils = api.useUtils();
 
@@ -139,7 +145,6 @@ export function BlockList({
               <SortableRow
                 key={block.id}
                 block={block}
-                pageId={pageId}
                 onEdit={() => setEditing(block)}
                 onChanged={onChanged}
               />
@@ -166,12 +171,10 @@ export function BlockList({
 
 function SortableRow({
   block,
-  pageId,
   onEdit,
   onChanged,
 }: {
   block: EditorBlock;
-  pageId: number;
   onEdit: () => void;
   onChanged: () => void;
 }) {
@@ -227,7 +230,11 @@ function SortableRow({
           className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
           title={block.isVisible ? "Hide" : "Show"}
         >
-          {block.isVisible ? <IconEye size={16} stroke={1.5} /> : <IconEyeOff size={16} stroke={1.5} />}
+          {block.isVisible ? (
+            <IconEye size={16} stroke={1.5} />
+          ) : (
+            <IconEyeOff size={16} stroke={1.5} />
+          )}
         </button>
         {block.type !== "divider" && (
           <button

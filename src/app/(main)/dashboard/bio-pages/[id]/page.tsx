@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 
 import { api } from "@/trpc/server";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { BioPageBuilder } from "./_components/bio-page-builder";
+
+import type { RouterOutputs } from "@/trpc/shared";
 
 export const dynamic = "force-dynamic";
 

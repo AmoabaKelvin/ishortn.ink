@@ -2,9 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { notFound } from "next/navigation";
 
 import { api } from "@/trpc/server";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { CampaignDetail } from "./_components/campaign-detail";
+
+import type { RouterOutputs } from "@/trpc/shared";
 
 export const dynamic = "force-dynamic";
 

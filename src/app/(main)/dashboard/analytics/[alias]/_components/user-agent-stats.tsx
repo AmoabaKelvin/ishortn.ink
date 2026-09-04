@@ -24,13 +24,7 @@ export function UserAgentStats({
   const browserRecordsAsArray = converRecordToArray(clicksPerBrowser);
   const modelRecordsAsArray = converRecordToArray(clicksPerModel);
 
-  const [currentView, setCurrentView] = useState<
-    "device" | "os" | "browser" | "model"
-  >("device");
-
-  const handleViewChange = (view: string) => {
-    setCurrentView(view as "device" | "os" | "browser" | "model");
-  };
+  const [currentView, setCurrentView] = useState<"device" | "os" | "browser" | "model">("device");
 
   const recordsMap = {
     device: deviceRecordsAsArray,
@@ -47,7 +41,7 @@ export function UserAgentStats({
       <BarList.BarListTabViewSwitcher
         currentView={currentView}
         views={["device", "os", "browser", "model"]}
-        onChangeView={handleViewChange}
+        onChangeView={setCurrentView}
       />
       <BarList records={recordsMap[currentView]} totalClicks={totalClicks} color="green" />
     </BarList.BarListTitle>

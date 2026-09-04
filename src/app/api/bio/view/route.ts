@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { NextRequest } from "next/server";
+import { z } from "zod";
 
 import { setStringIfAbsent } from "@/lib/core/cache";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
@@ -9,20 +9,18 @@ import { recordBioPageView } from "@/middlewares/record-bio-page-view";
 import { db } from "@/server/db";
 import { bioPage } from "@/server/db/schema";
 
+import type { NextRequest } from "next/server";
+
 const isLocalhost = process.env.NODE_ENV === "development";
 
-export async function POST(request: NextRequest) {
-  let bioPageId: unknown;
-  try {
-    const body = (await request.json()) as { bioPageId?: unknown };
-    bioPageId = body?.bioPageId;
-  } catch {
-    return new Response(null, { status: 400 });
-  }
+const bioViewSchema = z.object({ bioPageId: z.number() });
 
-  if (typeof bioPageId !== "number" || !Number.isFinite(bioPageId)) {
+export async function POST(request: NextRequest) {
+  const input = bioViewSchema.safeParse(await request.json().catch(() => null));
+  if (!input.success) {
     return new Response(null, { status: 400 });
   }
+  const { bioPageId } = input.data;
 
   // Only record for a page that actually exists and is published.
   const page = await db.query.bioPage.findFirst({

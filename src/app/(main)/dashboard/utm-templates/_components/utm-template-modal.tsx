@@ -128,7 +128,6 @@ export function UtmTemplateModal({
         utmContent: "",
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template]);
 
   const createMutation = api.utmTemplate.create.useMutation({
@@ -173,13 +172,9 @@ export function UtmTemplateModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit UTM Template" : "Create UTM Template"}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? "Edit UTM Template" : "Create UTM Template"}</DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Update your UTM template parameters"
-              : "Create a reusable UTM template"}
+            {isEditing ? "Update your UTM template parameters" : "Create a reusable UTM template"}
           </DialogDescription>
         </DialogHeader>
 
@@ -265,11 +260,7 @@ export function UtmTemplateModal({
                 disabled={isLoading}
                 className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
               >
-                {isLoading
-                  ? "Saving..."
-                  : isEditing
-                    ? "Update"
-                    : "Create"}
+                {isLoading ? "Saving..." : isEditing ? "Update" : "Create"}
               </Button>
             </DialogFooter>
           </form>

@@ -14,10 +14,7 @@ export async function getTotalClicks(linkId: number): Promise<number> {
       .select({ total: sum(linkVisitDailySummary.clicks) })
       .from(linkVisitDailySummary)
       .where(eq(linkVisitDailySummary.linkId, linkId)),
-    db
-      .select({ total: count() })
-      .from(linkVisit)
-      .where(eq(linkVisit.linkId, linkId)),
+    db.select({ total: count() }).from(linkVisit).where(eq(linkVisit.linkId, linkId)),
   ]);
 
   const archivedClicks = Number(summaryResult[0]?.total) || 0;

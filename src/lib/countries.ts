@@ -1,3 +1,5 @@
+import { lookup } from "@/lib/utils/lookup";
+
 export const COUNTRIES = {
   AF: "Afghanistan",
   AX: "Åland Islands",
@@ -502,21 +504,21 @@ const ContinentNames = {
   SA: "South America",
   OC: "Oceania",
   AF: "Africa",
-};
+  AN: "Antarctica",
+} satisfies Record<(typeof ContinentCodes)[keyof typeof ContinentCodes], string>;
 
 export function getContinentName(code: string): string {
-  const continentCode =
-    ContinentCodes[code.toUpperCase() as keyof typeof ContinentCodes];
+  const continentCode = lookup(ContinentCodes, code.toUpperCase());
 
   if (!continentCode) {
     throw new Error(`"${code}" is an invalid ISO country code`);
   }
 
-  return ContinentNames[continentCode as keyof typeof ContinentNames];
+  return ContinentNames[continentCode];
 }
 
-export function getCountryFullName(code: string): string {
-  return COUNTRIES[code.toUpperCase() as keyof typeof COUNTRIES];
+export function getCountryFullName(code: string): string | undefined {
+  return lookup(COUNTRIES, code.toUpperCase());
 }
 
 /**
@@ -524,9 +526,5 @@ export function getCountryFullName(code: string): string {
  * Unlike getContinentName, this returns null for invalid codes instead of throwing.
  */
 export function getCountryContinentCode(countryCode: string): string | null {
-  return (
-    ContinentCodes[
-      countryCode.toUpperCase() as keyof typeof ContinentCodes
-    ] ?? null
-  );
+  return lookup(ContinentCodes, countryCode.toUpperCase()) ?? null;
 }

@@ -51,17 +51,15 @@ export default function AdminUsersPage() {
 
   const { from, to } = dateRange;
 
-  const { data: summary, isLoading: summaryLoading } =
-    api.admin.getUserBaseSummary.useQuery(
-      { from, to },
-      { keepPreviousData: true },
-    );
+  const { data: summary, isLoading: summaryLoading } = api.admin.getUserBaseSummary.useQuery(
+    { from, to },
+    { keepPreviousData: true },
+  );
 
-  const { data: timeline, isLoading: timelineLoading } =
-    api.admin.getSubscriptionTimeline.useQuery(
-      { from, to },
-      { keepPreviousData: true },
-    );
+  const { data: timeline, isLoading: timelineLoading } = api.admin.getSubscriptionTimeline.useQuery(
+    { from, to },
+    { keepPreviousData: true },
+  );
 
   const { data: recentSubs, isLoading: recentSubsLoading } =
     api.admin.getRecentSubscriptions.useQuery({ limit: 10 });
@@ -124,10 +122,7 @@ export default function AdminUsersPage() {
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TierBreakdownCard data={summary?.tiers} isLoading={summaryLoading} />
-        <RecentSubscriptionsCard
-          data={recentSubs}
-          isLoading={recentSubsLoading}
-        />
+        <RecentSubscriptionsCard data={recentSubs} isLoading={recentSubsLoading} />
       </div>
 
       <div className="mt-10 mb-4 border-t border-neutral-200 dark:border-border/50" />
@@ -161,7 +156,11 @@ export default function AdminUsersPage() {
 
       {!searchQuery && (
         <div className="rounded-lg border border-dashed border-neutral-300 dark:border-border bg-neutral-50/50 dark:bg-accent/50 px-4 py-12 text-center">
-          <IconSearch size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+          <IconSearch
+            size={32}
+            stroke={1.5}
+            className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600"
+          />
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Search for users to manage
           </p>
@@ -200,32 +199,42 @@ export default function AdminUsersPage() {
             <table className="w-full text-left text-[13px]">
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50">
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">User</th>
-                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 md:table-cell">Links</th>
-                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 lg:table-cell">Joined</th>
-                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">Status</th>
-                  <th className="px-4 py-3 text-right font-medium text-neutral-500 dark:text-neutral-400">Action</th>
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">
+                    User
+                  </th>
+                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 md:table-cell">
+                    Links
+                  </th>
+                  <th className="hidden px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400 lg:table-cell">
+                    Joined
+                  </th>
+                  <th className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-neutral-500 dark:text-neutral-400">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-border/50">
                 {data.users.map((u) => (
                   <tr key={u.id} className="hover:bg-neutral-50/50 dark:hover:bg-accent/50">
                     <td className="px-4 py-3">
-                      <div>
-                        <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
-                          {u.name ?? "Unnamed"}
-                        </p>
-                        <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{u.email}</p>
-                      </div>
+                      <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
+                        {u.name ?? "Unnamed"}
+                      </p>
+                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                        {u.email}
+                      </p>
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">
-                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">{u.linkCount}</p>
+                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
+                        {u.linkCount}
+                      </p>
                     </td>
                     <td className="hidden px-4 py-3 lg:table-cell">
                       <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
-                        {u.createdAt
-                          ? new Date(u.createdAt).toLocaleDateString()
-                          : "N/A"}
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "N/A"}
                       </p>
                     </td>
                     <td className="px-4 py-3">
@@ -259,12 +268,14 @@ export default function AdminUsersPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => setUserToBan({
-                            id: u.id,
-                            name: u.name,
-                            email: u.email,
-                            linkCount: u.linkCount,
-                          })}
+                          onClick={() =>
+                            setUserToBan({
+                              id: u.id,
+                              name: u.name,
+                              email: u.email,
+                              linkCount: u.linkCount,
+                            })
+                          }
                           className="h-7 text-[12px]"
                         >
                           Ban
@@ -307,7 +318,15 @@ export default function AdminUsersPage() {
         </>
       )}
 
-      <Dialog open={!!userToBan} onOpenChange={(open) => { if (!open) { setUserToBan(null); setBanReason(""); } }}>
+      <Dialog
+        open={!!userToBan}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUserToBan(null);
+            setBanReason("");
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Ban User</DialogTitle>
@@ -325,15 +344,20 @@ export default function AdminUsersPage() {
               </p>
               {userToBan && userToBan.linkCount > 0 && (
                 <p className="mt-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
-                  {userToBan.linkCount} {userToBan.linkCount === 1 ? "link" : "links"} will be blocked
+                  {userToBan.linkCount} {userToBan.linkCount === 1 ? "link" : "links"} will be
+                  blocked
                 </p>
               )}
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+              <label
+                htmlFor="ban-user-reason"
+                className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
+              >
                 Reason for banning
               </label>
               <Textarea
+                id="ban-user-reason"
                 value={banReason}
                 onChange={(e) => setBanReason(e.target.value)}
                 placeholder="e.g. Repeated creation of phishing links..."
@@ -345,7 +369,10 @@ export default function AdminUsersPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => { setUserToBan(null); setBanReason(""); }}
+              onClick={() => {
+                setUserToBan(null);
+                setBanReason("");
+              }}
             >
               Cancel
             </Button>

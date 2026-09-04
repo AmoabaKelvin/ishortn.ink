@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   IconCheck,
   IconClock,
@@ -9,6 +8,7 @@ import {
   IconFolder,
   IconClick,
 } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTransitionRouter } from "next-view-transitions";
 
 import { cn, copyToClipboard, daysSinceDate } from "@/lib/utils";
@@ -17,10 +17,10 @@ import { useSelection } from "../selection-context";
 import { LinkActions } from "./actions";
 import { LinkNoteTooltip } from "./note-tooltip";
 
-import type { RouterOutputs } from "@/trpc/shared";
+import type { LinkCardLink } from "./types";
 
 type LinkProps = {
-  link: RouterOutputs["link"]["list"]["links"][number];
+  link: LinkCardLink;
   onTagClick?: (tag: string) => void;
 };
 
@@ -32,13 +32,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
   const scheduledFor =
     link.activateAt && new Date(link.activateAt) > new Date() ? new Date(link.activateAt) : null;
-  const tags = (link.tags as string[]) || [];
-  const folderInfo = link.folder as { id: number; name: string } | null;
-  const createdBy = link.createdBy as {
-    id: string;
-    name: string | null;
-    imageUrl: string | null;
-  } | null;
+  const { tags, folder: folderInfo, createdBy } = link;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (isSelectionMode) {
@@ -49,6 +43,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
 
   return (
     <div
+      role="presentation"
       className={cn(
         "group relative px-1 py-4 transition-colors",
         isSelectionMode && "cursor-pointer",
@@ -98,21 +93,20 @@ const Link = ({ link, onTagClick }: LinkProps) => {
         <div className="min-w-0 flex-1">
           {/* Title row */}
           <div className="flex items-center gap-2">
-            <span
-              className="cursor-pointer truncate text-[14px] font-medium text-neutral-900 dark:text-foreground transition-colors hover:text-neutral-600 dark:hover:text-neutral-400"
+            <button
+              type="button"
+              className="cursor-pointer truncate text-left text-[14px] font-medium text-neutral-900 dark:text-foreground transition-colors hover:text-neutral-600 dark:hover:text-neutral-400"
               onClick={(e) => {
                 if (!isSelectionMode) {
                   e.stopPropagation();
-                  router.push(
-                    `/dashboard/analytics/${link.alias}?domain=${link.domain}`,
-                  );
+                  router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`);
                 }
               }}
             >
               {link.name !== "Untitled Link" && link.name
                 ? link.name
                 : `${link.domain}/${link.alias}`}
-            </span>
+            </button>
             <button
               type="button"
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
@@ -128,13 +122,12 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           {/* Metadata row */}
           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
             <span className="text-neutral-400">
-              {daysSinceLinkCreation === 0
-                ? "Today"
-                : `${daysSinceLinkCreation}d`}
+              {daysSinceLinkCreation === 0 ? "Today" : `${daysSinceLinkCreation}d`}
             </span>
             <span className="text-neutral-300">&middot;</span>
-            <span
-              className="max-w-[200px] cursor-pointer truncate text-neutral-500 dark:text-neutral-400 underline-offset-2 transition-colors hover:text-neutral-900 dark:hover:text-foreground hover:underline sm:max-w-[300px]"
+            <button
+              type="button"
+              className="max-w-[200px] cursor-pointer truncate text-left text-neutral-500 dark:text-neutral-400 underline-offset-2 transition-colors hover:text-neutral-900 dark:hover:text-foreground hover:underline sm:max-w-[300px]"
               onClick={(e) => {
                 if (!isSelectionMode) {
                   e.stopPropagation();
@@ -142,10 +135,8 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                 }
               }}
             >
-              {link.url && link.url.length > 50
-                ? `${link.url.substring(0, 50)}...`
-                : link.url}
-            </span>
+              {link.url && link.url.length > 50 ? `${link.url.substring(0, 50)}...` : link.url}
+            </button>
 
             {folderInfo && (
               <>
@@ -192,6 +183,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                 <span className="text-neutral-300">&middot;</span>
                 <span className="inline-flex items-center gap-1 text-neutral-400">
                   {createdBy.imageUrl ? (
+                    // eslint-disable-next-line next/no-img-element -- Clerk avatar URL is external and unsized; next/image would need a remote pattern per host
                     <img
                       src={createdBy.imageUrl}
                       alt={createdBy.name ?? "User"}
@@ -240,9 +232,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
             onClick={(e) => {
               if (!isSelectionMode) {
                 e.stopPropagation();
-                router.push(
-                  `/dashboard/analytics/${link.alias}?domain=${link.domain}`,
-                );
+                router.push(`/dashboard/analytics/${link.alias}?domain=${link.domain}`);
               }
             }}
           >
