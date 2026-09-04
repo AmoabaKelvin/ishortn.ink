@@ -15,11 +15,7 @@
     // that custom-worker.ts imports (exclude can't stop import-following).
     "checkJs": false,
     /* Bundled projects */
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "ES2022"
-    ],
+    "lib": ["dom", "dom.iterable", "ES2022"],
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -33,9 +29,7 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -52,11 +46,5 @@
     "src/server/db/migrate.mjs",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".open-next",
-    "**/*.test.ts",
-    "test",
-    "**/*.test.tsx"
-  ]
+  "exclude": ["node_modules", ".open-next", "tools", "**/*.test.ts", "test", "**/*.test.tsx"]
 }

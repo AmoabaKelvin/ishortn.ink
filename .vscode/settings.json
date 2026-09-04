@@ -1,3 +1,4 @@
 {
-  "editor.rulers": [100]
+  "editor.rulers": [100],
+  "editor.defaultFormatter": "oxc.oxc-vscode"
 }

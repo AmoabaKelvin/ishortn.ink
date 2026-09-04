@@ -26,6 +26,12 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      - run: bun run typecheck
+
+      - run: bun run lint
+
+      - run: bun run format:check
+
       - run: bun test
 
       # PR code runs here, so no secrets: the build only needs values that
