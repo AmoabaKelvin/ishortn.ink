@@ -2,6 +2,7 @@
 
 import { IconTrophy } from "@tabler/icons-react";
 import { useState } from "react";
+import { z } from "zod";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -13,13 +14,16 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/trpc/react";
 
+const sortBySchema = z.enum(["links", "clicks"]);
+type SortBy = z.infer<typeof sortBySchema>;
+
 type TopUsersCardProps = {
   from: Date;
   to: Date;
 };
 
 export function TopUsersCard({ from, to }: TopUsersCardProps) {
-  const [sortBy, setSortBy] = useState<"links" | "clicks">("links");
+  const [sortBy, setSortBy] = useState<SortBy>("links");
 
   const { data, isLoading } = api.admin.getTopUsers.useQuery({
     from,
@@ -37,10 +41,7 @@ export function TopUsersCard({ from, to }: TopUsersCardProps) {
             Top Users
           </p>
         </div>
-        <Select
-          value={sortBy}
-          onValueChange={(v) => setSortBy(v as "links" | "clicks")}
-        >
+        <Select value={sortBy} onValueChange={(v) => setSortBy(sortBySchema.parse(v))}>
           <SelectTrigger className="h-7 w-[110px] rounded-lg text-[11px]">
             <SelectValue />
           </SelectTrigger>
@@ -57,19 +58,19 @@ export function TopUsersCard({ from, to }: TopUsersCardProps) {
         </div>
       ) : !data || data.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No data for this period</p>
+          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+            No data for this period
+          </p>
         </div>
       ) : (
         <div className="divide-y divide-neutral-100 dark:divide-border/50">
           {data.map((u, i) => (
-            <div
-              key={u.id}
-              className="flex items-center gap-3 px-5 py-2.5"
-            >
+            <div key={u.id} className="flex items-center gap-3 px-5 py-2.5">
               <span className="w-5 shrink-0 text-center text-[11px] font-semibold tabular-nums text-neutral-300 dark:text-neutral-600">
                 {i + 1}
               </span>
               {u.imageUrl ? (
+                // eslint-disable-next-line next/no-img-element -- Clerk avatar URL from an unconfigured remote host
                 <img
                   src={u.imageUrl}
                   alt=""

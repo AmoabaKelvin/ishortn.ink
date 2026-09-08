@@ -1,116 +1,94 @@
 import type { QrCodeGenerateResult } from "uqr";
 
-export const PixelStyles = [
-  'square',
-  'rounded',
-  'dot',
-  'squircle',
-  'row',
-  'column',
-] as const
+export const PixelStyles = ["square", "rounded", "dot", "squircle", "row", "column"] as const;
 
-export const MarkerShapes = [
-  'square',
-  'circle',
-  'plus',
-  'box',
-  'octagon',
-  'random',
-  'tiny-plus',
-] as const
+export const MarkerFrames = [
+  "square",
+  "circle",
+  "plus",
+  "box",
+  "octagon",
+  "random",
+  "tiny-plus",
+] as const;
 
-export const MarkerSubShapes = [
-  'square',
-  'circle',
-  'box',
-  'random',
-  'plus',
-] as const
+export const MarkerSubFrames = ["square", "circle", "box", "random", "plus"] as const;
 
-export const MarkerInnerShapes = [
-  'square',
-  'circle',
-  'plus',
-  'diamond',
-  'eye',
-] as const
+export const MarkerCenters = ["square", "circle", "plus", "diamond", "eye"] as const;
 
-export type PixelStyle = typeof PixelStyles[number]
-export type MarkerShape = typeof MarkerShapes[number]
-export type MarkerInnerShape = typeof MarkerInnerShapes[number]
+export const QRMarkerCenters = ["auto", ...MarkerCenters] as const;
+
+export const QREffects = ["none", "crystalize", "liquidify"] as const;
+
+export type PixelStyle = (typeof PixelStyles)[number];
+export type MarkerFrame = (typeof MarkerFrames)[number];
+export type MarkerCenter = (typeof MarkerCenters)[number];
 
 export interface GeneratedQRInfo {
-  width: number
-  height: number
-}
-
-export interface MarginObject {
-  top: number
-  right: number
-  bottom: number
-  left: number
+  width: number;
+  height: number;
 }
 
 export interface QrCodeGeneratorMarkerState {
-  markerStyle: PixelStyle | 'auto'
-  markerShape: MarkerShape
-  markerInnerShape: MarkerInnerShape | 'auto'
+  markerStyle: PixelStyle | "auto";
+  markerFrame: MarkerFrame;
+  markerCenter: MarkerCenter | "auto";
 }
 
-export type QRErrorCorrectionLevel = "L" | "M" | "Q" | "H"
+export type QRErrorCorrectionLevel = "L" | "M" | "Q" | "H";
 
-export type QRPixelStyle = "square" | "rounded" | "dot" | "squircle" | "row" | "column"
+export type QRPixelStyle = PixelStyle;
 
-export type QRMarkerShape = "square" | "circle" | "plus" | "box" | "octagon" | "random" | "tiny-plus"
+export type QRMarkerFrame = MarkerFrame;
 
-export type QRMarkerInnerShape = "auto" | "square" | "circle" | "plus" | "diamond" | "eye"
+export type QRMarkerCenter = (typeof QRMarkerCenters)[number];
 
-export type QRMarginNoiseSpace = "none" | "marker" | "full" | "minimal" | "extreme"
+export type QRMarginNoiseSpace = "none" | "marker" | "full" | "minimal" | "extreme";
 
-export type QREffect = "none" | "crystalize" | "liquidify"
+export type QREffect = (typeof QREffects)[number];
 
-export type QREffectTiming = "before" | "after"
+export type QREffectTiming = "before" | "after";
 
 export interface QRCodeGeneratorState extends QrCodeGeneratorMarkerState {
-  text: string
-  ecc: QRErrorCorrectionLevel
-  margin: number | MarginObject
-  scale: number
-  seed: number
-  lightColor: string
-  darkColor: string
-  maskPattern: number
-  boostECC: boolean
-  minVersion: number
-  maxVersion: number
-  pixelStyle: QRPixelStyle
-  markers: QrCodeGeneratorMarkerState[]
-  markerSub: MarkerShape
-  marginNoise: boolean
-  marginNoiseRate: number
-  marginNoiseSpace: QRMarginNoiseSpace
-  marginNoiseOpacity: number | [number, number]
-  renderPointsType: 'all' | 'data' | 'function' | 'guide' | 'marker'
-  invert: boolean
-  rotate: 0 | 90 | 180 | 270
-  effect: QREffect
-  effectTiming: QREffectTiming
-  effectCrystalizeRadius: number
-  effectLiquidifyDistortRadius: number
-  effectLiquidifyRadius: number
-  effectLiquidifyThreshold: number
-  backgroundImage?: string
-  transparent: boolean
+  text: string;
+  ecc: QRErrorCorrectionLevel;
+  margin: number;
+  scale: number;
+  seed: number;
+  lightColor: string;
+  darkColor: string;
+  maskPattern: number;
+  boostECC: boolean;
+  minVersion: number;
+  maxVersion: number;
+  pixelStyle: QRPixelStyle;
+  markers: QrCodeGeneratorMarkerState[];
+  markerSub: MarkerFrame;
+  marginNoise: boolean;
+  marginNoiseRate: number;
+  marginNoiseSpace: QRMarginNoiseSpace;
+  marginNoiseOpacity: number;
+  renderPointsType: "all" | "data" | "function" | "guide" | "marker";
+  invert: boolean;
+  rotate: 0 | 90 | 180 | 270;
+  effect: QREffect;
+  effectTiming: QREffectTiming;
+  effectCrystalizeRadius: number;
+  effectLiquidifyDistortRadius: number;
+  effectLiquidifyRadius: number;
+  effectLiquidifyThreshold: number;
+  backgroundImage?: string;
+  transparent: boolean;
 
-  transformPerspectiveX: number
-  transformPerspectiveY: number
-  transformScale: number
+  transformPerspectiveX: number;
+  transformPerspectiveY: number;
+  transformScale: number;
 
   // Logo embedding options
-  logoImage?: string
-  logoSize: number // Percentage of QR code size (10-30)
-  logoMargin: number // Padding around the logo in pixels
-  logoBorderRadius: number // Border radius percentage (0-50 for circle)
+  logoImage?: string;
+  logoSize: number; // Percentage of QR code size (10-30)
+  logoMargin: number; // Padding around the logo in pixels
+  logoBorderRadius: number; // Border radius percentage (0-50 for circle)
 }
 
 export interface QRCodeGenerateResult {
@@ -121,7 +99,7 @@ export interface QRCodeGenerateResult {
   };
 }
 
-import type { QrCodeGenerateResult as UQRGenerateResult } from 'uqr';
+import type { QrCodeGenerateResult as UQRGenerateResult } from "uqr";
 
 // Result from our generate function
 export interface GenerateQRCodeResult {

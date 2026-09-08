@@ -21,10 +21,15 @@ import type { BillingInterval, Plan } from "@/lib/billing/plans";
 const PLANS: { id: Plan; name: string; monthly: number; annual: number }[] = [
   { id: "free", name: "Free", monthly: PLAN_PRICES_USD.free, annual: 0 },
   { id: "pro", name: "Pro", monthly: PLAN_PRICES_USD.pro, annual: PLAN_PRICES_ANNUAL_USD.pro },
-  { id: "ultra", name: "Ultra", monthly: PLAN_PRICES_USD.ultra, annual: PLAN_PRICES_ANNUAL_USD.ultra },
+  {
+    id: "ultra",
+    name: "Ultra",
+    monthly: PLAN_PRICES_USD.ultra,
+    annual: PLAN_PRICES_ANNUAL_USD.ultra,
+  },
 ];
 
-const planOrder: Record<Plan, number> = { free: 0, pro: 1, ultra: 2 };
+const planOrder = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
 type PlanSwitcherProps = {
   currentPlan: Plan;
@@ -72,21 +77,20 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
 
   const requestUpgrade = (plan: Plan, kind: "switch" | "upgrade") => {
     if (plan === "free") return;
-    const target = plan as Exclude<Plan, "free">;
     // Free → paid goes through the Lemon Squeezy hosted checkout (its own
     // confirmation). In-place changes for an existing paid subscriber charge
     // the card immediately, so confirm those first.
     if (currentPlan === "free") {
-      runUpgrade(target);
+      runUpgrade(plan);
       return;
     }
-    setPendingChange({ plan: target, kind });
+    setPendingChange({ plan, kind });
     setConfirmOpen(true);
   };
 
   const handleDowngrade = (plan: Plan) => {
     if (plan === "ultra") return;
-    setTargetDowngrade(plan as Exclude<Plan, "ultra">);
+    setTargetDowngrade(plan);
     setDowngradeOpen(true);
   };
 

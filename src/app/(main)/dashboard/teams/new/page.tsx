@@ -1,16 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  IconCheck,
-  IconDiamond,
-  IconLoader2,
-  IconUsers,
-  IconX,
-} from "@tabler/icons-react";
+import { IconCheck, IconDiamond, IconLoader2, IconUsers, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
 import { z } from "zod";
@@ -20,6 +14,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -29,18 +24,12 @@ import { api } from "@/trpc/react";
 const slugRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
 const createTeamSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Team name is required")
-    .max(255, "Team name is too long"),
+  name: z.string().min(1, "Team name is required").max(255, "Team name is too long"),
   slug: z
     .string()
     .min(3, "Team URL must be at least 3 characters")
     .max(50, "Team URL is too long")
-    .regex(
-      slugRegex,
-      "Only lowercase letters, numbers, and hyphens allowed"
-    ),
+    .regex(slugRegex, "Only lowercase letters, numbers, and hyphens allowed"),
 });
 
 type CreateTeamInput = z.infer<typeof createTeamSchema>;
@@ -57,8 +46,8 @@ export default function CreateTeamPage() {
     },
   });
 
-  const teamName = form.watch("name");
-  const slug = form.watch("slug");
+  const teamName = useWatch({ control: form.control, name: "name" });
+  const slug = useWatch({ control: form.control, name: "slug" });
   const [debouncedSlug] = useDebounce(slug, 500);
 
   useEffect(() => {
@@ -75,7 +64,7 @@ export default function CreateTeamPage() {
     { slug: debouncedSlug },
     {
       enabled: !!debouncedSlug && debouncedSlug.length >= 3,
-    }
+    },
   );
 
   const subscription = api.subscriptions.get.useQuery();
@@ -108,7 +97,11 @@ export default function CreateTeamPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <IconLoader2 size={20} stroke={1.5} className="animate-spin text-neutral-400 dark:text-neutral-500" />
+        <IconLoader2
+          size={20}
+          stroke={1.5}
+          className="animate-spin text-neutral-400 dark:text-neutral-500"
+        />
       </div>
     );
   }
@@ -152,9 +145,9 @@ export default function CreateTeamPage() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                  <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                     Team name
-                  </label>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Acme Inc"
@@ -172,14 +165,14 @@ export default function CreateTeamPage() {
               name="slug"
               render={({ field }) => (
                 <FormItem>
-                  <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                  <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                     Team URL
-                  </label>
-                  <FormControl>
-                    <div className="flex items-center">
-                      <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
-                        https://
-                      </span>
+                  </FormLabel>
+                  <div className="flex items-center">
+                    <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+                      https://
+                    </span>
+                    <FormControl>
                       <Input
                         placeholder="acme"
                         className="h-9 rounded-none border-x-0 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
@@ -189,11 +182,11 @@ export default function CreateTeamPage() {
                           field.onChange(e.target.value.toLowerCase());
                         }}
                       />
-                      <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
-                        .{APP_BASE_DOMAIN}
-                      </span>
-                    </div>
-                  </FormControl>
+                    </FormControl>
+                    <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+                      .{APP_BASE_DOMAIN}
+                    </span>
+                  </div>
                   {debouncedSlug && debouncedSlug.length >= 3 && (
                     <div className="mt-2 flex items-center gap-1.5">
                       {slugCheck.isLoading ? (
@@ -230,9 +223,7 @@ export default function CreateTeamPage() {
               <button
                 type="submit"
                 disabled={
-                  createTeamMutation.isLoading ||
-                  !slugCheck.data?.available ||
-                  slugCheck.isLoading
+                  createTeamMutation.isLoading || !slugCheck.data?.available || slugCheck.isLoading
                 }
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
               >

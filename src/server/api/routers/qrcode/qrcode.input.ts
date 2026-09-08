@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MarkerFrames, PixelStyles, QREffects, QRMarkerCenters } from "@/lib/qr-generator/types";
+
 import { geoRuleInputSchema } from "../link/link.input";
 
 export const qrcodeInput = z.object({
@@ -48,12 +50,10 @@ export type QRCodeInput = z.infer<typeof qrcodeInput>;
 // QR Preset schemas
 const hexColorSchema = z.string().regex(/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$/, "Invalid hex color");
 
-const marginNoiseRateSchema = z
-  .string()
-  .refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num >= 0 && num <= 1;
-  }, "marginNoiseRate must be a number between 0 and 1");
+const marginNoiseRateSchema = z.string().refine((val) => {
+  const num = parseFloat(val);
+  return !isNaN(num) && num >= 0 && num <= 1;
+}, "marginNoiseRate must be a number between 0 and 1");
 
 // Logo image validator: must be a valid base64 data URI (PNG/JPEG) under 2MB
 const MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
@@ -61,7 +61,7 @@ const logoImageSchema = z
   .string()
   .regex(
     /^data:image\/(png|jpe?g);base64,[A-Za-z0-9+/]+=*$/,
-    "Logo must be a valid base64 PNG or JPEG data URI"
+    "Logo must be a valid base64 PNG or JPEG data URI",
   )
   .refine((dataUri) => {
     // Extract the base64 payload after the comma
@@ -78,12 +78,12 @@ const logoImageSchema = z
 
 export const qrPresetCreateInput = z.object({
   name: z.string().min(1, "Name is required").max(255),
-  pixelStyle: z.string().default("rounded"),
-  markerShape: z.string().default("square"),
-  markerInnerShape: z.string().default("auto"),
+  pixelStyle: z.enum(PixelStyles).default("rounded"),
+  markerFrame: z.enum(MarkerFrames).default("square"),
+  markerCenter: z.enum(QRMarkerCenters).default("auto"),
   darkColor: hexColorSchema.default("#000000"),
   lightColor: hexColorSchema.default("#ffffff"),
-  effect: z.string().default("none"),
+  effect: z.enum(QREffects).default("none"),
   effectRadius: z.number().min(5).max(30).default(12),
   marginNoise: z.boolean().default(false),
   marginNoiseRate: marginNoiseRateSchema.default("0.5"),
@@ -100,12 +100,12 @@ export const qrPresetDeleteInput = z.object({
 
 export const qrPresetUpdateInput = z.object({
   id: z.number(),
-  pixelStyle: z.string(),
-  markerShape: z.string(),
-  markerInnerShape: z.string(),
+  pixelStyle: z.enum(PixelStyles),
+  markerFrame: z.enum(MarkerFrames),
+  markerCenter: z.enum(QRMarkerCenters),
   darkColor: hexColorSchema,
   lightColor: hexColorSchema,
-  effect: z.string(),
+  effect: z.enum(QREffects),
   effectRadius: z.number().min(5).max(30),
   marginNoise: z.boolean(),
   marginNoiseRate: marginNoiseRateSchema,

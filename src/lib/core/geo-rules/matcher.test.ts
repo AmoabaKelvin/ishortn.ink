@@ -31,7 +31,11 @@ describe("matchTargetingRules", () => {
   test("os rule routes iOS to its destination", () => {
     const rules = [rule({ type: "os", values: ["ios"], destination: "https://apps.apple.com/x" })];
     const result = matchTargetingRules(rules, visitor({ os: "iOS", device: "mobile" }));
-    expect(result).toMatchObject({ matched: true, action: "redirect", destination: "https://apps.apple.com/x" });
+    expect(result).toMatchObject({
+      matched: true,
+      action: "redirect",
+      destination: "https://apps.apple.com/x",
+    });
   });
 
   test("os aliases fold onto canonical keys", () => {
@@ -57,7 +61,12 @@ describe("matchTargetingRules", () => {
   test("country rules still work without device data, and vice versa", () => {
     const rules = [
       rule({ type: "country", values: ["DE"], priority: 0 }),
-      rule({ type: "os", values: ["android"], priority: 1, destination: "https://play.google.com/x" }),
+      rule({
+        type: "os",
+        values: ["android"],
+        priority: 1,
+        destination: "https://play.google.com/x",
+      }),
     ];
     expect(matchTargetingRules(rules, visitor({ country: "DE" }))).toMatchObject({
       matched: true,
@@ -80,7 +89,9 @@ describe("matchTargetingRules", () => {
   });
 
   test("block rules surface their message", () => {
-    const rules = [rule({ type: "os", values: ["windows"], action: "block", blockMessage: "Mac only" })];
+    const rules = [
+      rule({ type: "os", values: ["windows"], action: "block", blockMessage: "Mac only" }),
+    ];
     expect(matchTargetingRules(rules, visitor({ os: "Windows" }))).toMatchObject({
       matched: true,
       action: "block",

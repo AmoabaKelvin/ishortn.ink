@@ -1,14 +1,14 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, eq } from "drizzle-orm";
 import { endOfMonth, endOfYear, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
+import { and, count, eq } from "drizzle-orm";
 
 import { getCampaignLimit } from "@/lib/billing/plans";
 import { campaign } from "@/server/db/schema";
 import { workspaceFilter } from "@/server/lib/workspace";
 
+import type { WorkspaceTRPCContext } from "../../trpc";
 import type { RangeEnum } from "../link/link.input";
 import type { Campaign } from "@/server/db/schema";
-import type { WorkspaceTRPCContext } from "../../trpc";
 
 export type UtmParams = {
   utm_source?: string;
@@ -17,6 +17,8 @@ export type UtmParams = {
   utm_term?: string;
   utm_content?: string;
 };
+
+const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
 
 // Silent normalization instead of validation errors — casing/spacing
 // mistakes are the #1 cause of fragmented UTM data. Shared with the client
@@ -49,19 +51,17 @@ export function mergeCampaignUtm(
   if (campaignRow.utmContent) defaults.utm_content = campaignRow.utmContent;
 
   const merged: UtmParams = { ...defaults };
-  for (const [key, value] of Object.entries(existing ?? {})) {
-    if (value !== undefined && value !== null && value !== "") {
-      merged[key as keyof UtmParams] = value;
-    }
+  for (const key of UTM_KEYS) {
+    const value = existing?.[key];
+    if (value) merged[key] = value;
   }
   if (campaignRow.slug) merged.utm_campaign = campaignRow.slug;
 
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
-export function rethrowCampaignDuplicate(error: unknown): never {
-  const message = String((error as { message?: string })?.message ?? "");
-  if (/campaign_slug_workspace_unique/.test(message)) {
+export function rethrowCampaignDuplicate(error: Error): never {
+  if (/campaign_slug_workspace_unique/.test(error.message)) {
     throw new TRPCError({
       code: "CONFLICT",
       message:
@@ -70,14 +70,6 @@ export function rethrowCampaignDuplicate(error: unknown): never {
   }
   throw error;
 }
-
-const UTM_KEYS = [
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_term",
-  "utm_content",
-] as const;
 
 /** Empty and absent UTM values are treated as equal. */
 export function utmParamsEqual(a?: UtmParams | null, b?: UtmParams | null): boolean {
@@ -130,13 +122,15 @@ export async function checkCampaignLimit(ctx: WorkspaceTRPCContext): Promise<voi
   }
 }
 
+export type RangeWindow = { start: Date; end: Date };
+
 /**
  * Resolve a range enum into a [start, end] window. Matches the semantics of
  * getLinkVisits/getAllUserAnalytics, except last_month uses true calendar-
  * month arithmetic (subDays(30) misidentifies the month on 31-day
  * boundaries) and nothing mutates shared Date objects.
  */
-export function resolveRangeWindow(range: RangeEnum): { start: Date; end: Date } {
+export function resolveRangeWindow(range: RangeEnum): RangeWindow {
   const now = new Date();
   switch (range) {
     case "24h":

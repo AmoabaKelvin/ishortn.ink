@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { IconChevronDown } from "@tabler/icons-react";
+import { motion } from "framer-motion";
 import { useState } from "react";
 
 const CloudflareIssuesCard = () => {
@@ -17,11 +17,12 @@ const CloudflareIssuesCard = () => {
         <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
           Having issues with Cloudflare domains?
         </span>
-        <motion.div
-          animate={{ rotate: isExpanded ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <IconChevronDown size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+        <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <IconChevronDown
+            size={14}
+            stroke={1.5}
+            className="text-neutral-400 dark:text-neutral-500"
+          />
         </motion.div>
       </button>
       <motion.div
@@ -45,8 +46,8 @@ const CloudflareIssuesCard = () => {
             <ol className="mt-1.5 list-inside list-decimal space-y-1">
               <li>In your Cloudflare dashboard, add the provided record.</li>
               <li>
-                Set the Proxy status to &quot;DNS only&quot; to redirect DNS queries to
-                iShortn DNS servers.
+                Set the Proxy status to &quot;DNS only&quot; to redirect DNS queries to iShortn DNS
+                servers.
               </li>
             </ol>
           </div>

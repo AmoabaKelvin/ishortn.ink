@@ -71,91 +71,63 @@ export async function cleanupAnalyticsData(): Promise<AnalyticsCleanupResult> {
   proCutoffDate.setDate(proCutoffDate.getDate() - PRO_RETENTION_DAYS);
 
   // --- Free tier: personal workspace links ---
-  await processLinkBatch(
-    result,
-    "free",
-    freeCutoffDate,
-    (lastId) =>
-      db
-        .select({ linkId: link.id })
-        .from(link)
-        .leftJoin(subscription, eq(link.userId, subscription.userId))
-        .where(
-          and(
-            sql`${link.id} > ${lastId}`,
-            isNull(link.teamId),
-            IS_FREE_TIER,
-          ),
-        )
-        .orderBy(link.id)
-        .limit(QUERY_BATCH_SIZE),
+  await processLinkBatch(result, "free", freeCutoffDate, (lastId) =>
+    db
+      .select({ linkId: link.id })
+      .from(link)
+      .leftJoin(subscription, eq(link.userId, subscription.userId))
+      .where(and(sql`${link.id} > ${lastId}`, isNull(link.teamId), IS_FREE_TIER))
+      .orderBy(link.id)
+      .limit(QUERY_BATCH_SIZE),
   );
 
   // --- Free tier: team workspace links (team owner has no active paid subscription) ---
-  await processLinkBatch(
-    result,
-    "free",
-    freeCutoffDate,
-    (lastId) =>
-      db
-        .select({ linkId: link.id })
-        .from(link)
-        .innerJoin(team, eq(link.teamId, team.id))
-        .leftJoin(subscription, eq(team.ownerId, subscription.userId))
-        .where(
-          and(
-            sql`${link.id} > ${lastId}`,
-            isNotNull(link.teamId),
-            IS_FREE_TIER,
-          ),
-        )
-        .orderBy(link.id)
-        .limit(QUERY_BATCH_SIZE),
+  await processLinkBatch(result, "free", freeCutoffDate, (lastId) =>
+    db
+      .select({ linkId: link.id })
+      .from(link)
+      .innerJoin(team, eq(link.teamId, team.id))
+      .leftJoin(subscription, eq(team.ownerId, subscription.userId))
+      .where(and(sql`${link.id} > ${lastId}`, isNotNull(link.teamId), IS_FREE_TIER))
+      .orderBy(link.id)
+      .limit(QUERY_BATCH_SIZE),
   );
 
   // --- Pro tier: personal workspace links ---
-  await processLinkBatch(
-    result,
-    "pro",
-    proCutoffDate,
-    (lastId) =>
-      db
-        .select({ linkId: link.id })
-        .from(link)
-        .innerJoin(subscription, eq(link.userId, subscription.userId))
-        .where(
-          and(
-            sql`${link.id} > ${lastId}`,
-            isNull(link.teamId),
-            eq(subscription.status, "active"),
-            eq(subscription.plan, "pro"),
-          ),
-        )
-        .orderBy(link.id)
-        .limit(QUERY_BATCH_SIZE),
+  await processLinkBatch(result, "pro", proCutoffDate, (lastId) =>
+    db
+      .select({ linkId: link.id })
+      .from(link)
+      .innerJoin(subscription, eq(link.userId, subscription.userId))
+      .where(
+        and(
+          sql`${link.id} > ${lastId}`,
+          isNull(link.teamId),
+          eq(subscription.status, "active"),
+          eq(subscription.plan, "pro"),
+        ),
+      )
+      .orderBy(link.id)
+      .limit(QUERY_BATCH_SIZE),
   );
 
   // --- Pro tier: team workspace links (team owner has active pro subscription) ---
-  await processLinkBatch(
-    result,
-    "pro",
-    proCutoffDate,
-    (lastId) =>
-      db
-        .select({ linkId: link.id })
-        .from(link)
-        .innerJoin(team, eq(link.teamId, team.id))
-        .innerJoin(subscription, eq(team.ownerId, subscription.userId))
-        .where(
-          and(
-            sql`${link.id} > ${lastId}`,
-            isNotNull(link.teamId),
-            eq(subscription.status, "active"),
-            eq(subscription.plan, "pro"),
-          ),
-        )
-        .orderBy(link.id)
-        .limit(QUERY_BATCH_SIZE),
+  await processLinkBatch(result, "pro", proCutoffDate, (lastId) =>
+    db
+      .select({ linkId: link.id })
+      .from(link)
+      .innerJoin(team, eq(link.teamId, team.id))
+      .innerJoin(subscription, eq(team.ownerId, subscription.userId))
+      .where(
+        and(
+          sql`${link.id} > ${lastId}`,
+          isNotNull(link.teamId),
+          eq(subscription.status, "active"),
+          eq(subscription.plan, "pro"),
+        ),
+      )
+      .orderBy(link.id)
+      .limit(QUERY_BATCH_SIZE),
   );
 
   // --- Bio page views: same tier-based retention as link visits ---
@@ -255,9 +227,7 @@ async function processBioPageBatch(
       const [viewRes, uniqueRes] = await Promise.all([
         db
           .delete(bioPageView)
-          .where(
-            and(inArray(bioPageView.bioPageId, batch), lt(bioPageView.createdAt, cutoffDate)),
-          ),
+          .where(and(inArray(bioPageView.bioPageId, batch), lt(bioPageView.createdAt, cutoffDate))),
         db
           .delete(uniqueBioPageView)
           .where(
@@ -275,10 +245,7 @@ async function processBioPageBatch(
   }
 }
 
-async function aggregateBioDailySummaries(
-  bioPageIds: number[],
-  cutoffDate: Date,
-): Promise<number> {
+async function aggregateBioDailySummaries(bioPageIds: number[], cutoffDate: Date): Promise<number> {
   const [viewAgg, uniqueAgg] = await Promise.all([
     db
       .select({
@@ -360,9 +327,7 @@ async function processLinkBatch(
   result: AnalyticsCleanupResult,
   tier: "free" | "pro",
   cutoffDate: Date,
-  queryFn: (
-    lastId: number,
-  ) => Promise<{ linkId: number }[]>,
+  queryFn: (lastId: number) => Promise<{ linkId: number }[]>,
 ): Promise<void> {
   let lastId = 0;
 
@@ -384,28 +349,17 @@ async function processLinkBatch(
       const batch = linkIds.slice(i, i + DELETE_BATCH_SIZE);
 
       // Step 1: Aggregate old visits into daily summaries before deletion
-      result.dailySummariesCreated += await aggregateDailySummaries(
-        batch,
-        cutoffDate,
-      );
+      result.dailySummariesCreated += await aggregateDailySummaries(batch, cutoffDate);
 
       // Step 2: Delete old raw records from both tables (independent, safe to parallelize)
       const [linkVisitResult, uniqueVisitResult] = await Promise.all([
         db
           .delete(linkVisit)
-          .where(
-            and(
-              inArray(linkVisit.linkId, batch),
-              lt(linkVisit.createdAt, cutoffDate),
-            ),
-          ),
+          .where(and(inArray(linkVisit.linkId, batch), lt(linkVisit.createdAt, cutoffDate))),
         db
           .delete(uniqueLinkVisit)
           .where(
-            and(
-              inArray(uniqueLinkVisit.linkId, batch),
-              lt(uniqueLinkVisit.createdAt, cutoffDate),
-            ),
+            and(inArray(uniqueLinkVisit.linkId, batch), lt(uniqueLinkVisit.createdAt, cutoffDate)),
           ),
       ]);
       result.linkVisitsDeleted += linkVisitResult[0].affectedRows;
@@ -423,10 +377,7 @@ async function processLinkBatch(
  *
  * Returns the number of summary rows upserted.
  */
-async function aggregateDailySummaries(
-  linkIds: number[],
-  cutoffDate: Date,
-): Promise<number> {
+async function aggregateDailySummaries(linkIds: number[], cutoffDate: Date): Promise<number> {
   // Aggregate total clicks and unique clicks per link per day (in parallel)
   const [clickAgg, uniqueAgg] = await Promise.all([
     db
@@ -436,9 +387,7 @@ async function aggregateDailySummaries(
         clicks: count().as("clicks"),
       })
       .from(linkVisit)
-      .where(
-        and(inArray(linkVisit.linkId, linkIds), lt(linkVisit.createdAt, cutoffDate)),
-      )
+      .where(and(inArray(linkVisit.linkId, linkIds), lt(linkVisit.createdAt, cutoffDate)))
       .groupBy(linkVisit.linkId, sql`visit_date`),
     db
       .select({
@@ -448,10 +397,7 @@ async function aggregateDailySummaries(
       })
       .from(uniqueLinkVisit)
       .where(
-        and(
-          inArray(uniqueLinkVisit.linkId, linkIds),
-          lt(uniqueLinkVisit.createdAt, cutoffDate),
-        ),
+        and(inArray(uniqueLinkVisit.linkId, linkIds), lt(uniqueLinkVisit.createdAt, cutoffDate)),
       )
       .groupBy(uniqueLinkVisit.linkId, sql`visit_date`),
   ]);
@@ -526,73 +472,58 @@ export async function getAnalyticsCleanupStats() {
   const proCutoffDate = new Date();
   proCutoffDate.setDate(proCutoffDate.getDate() - PRO_RETENTION_DAYS);
 
-  const [oldFreeVisits, oldProVisits, oldFreeTeamVisits, oldProTeamVisits] =
-    await Promise.all([
-      // Free personal workspace visits
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(linkVisit)
-        .innerJoin(link, eq(linkVisit.linkId, link.id))
-        .leftJoin(subscription, eq(link.userId, subscription.userId))
-        .where(
-          and(
-            lt(linkVisit.createdAt, freeCutoffDate),
-            isNull(link.teamId),
-            IS_FREE_TIER,
-          ),
+  const [oldFreeVisits, oldProVisits, oldFreeTeamVisits, oldProTeamVisits] = await Promise.all([
+    // Free personal workspace visits
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(linkVisit)
+      .innerJoin(link, eq(linkVisit.linkId, link.id))
+      .leftJoin(subscription, eq(link.userId, subscription.userId))
+      .where(and(lt(linkVisit.createdAt, freeCutoffDate), isNull(link.teamId), IS_FREE_TIER)),
+    // Pro personal workspace visits
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(linkVisit)
+      .innerJoin(link, eq(linkVisit.linkId, link.id))
+      .innerJoin(subscription, eq(link.userId, subscription.userId))
+      .where(
+        and(
+          lt(linkVisit.createdAt, proCutoffDate),
+          isNull(link.teamId),
+          eq(subscription.status, "active"),
+          eq(subscription.plan, "pro"),
         ),
-      // Pro personal workspace visits
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(linkVisit)
-        .innerJoin(link, eq(linkVisit.linkId, link.id))
-        .innerJoin(subscription, eq(link.userId, subscription.userId))
-        .where(
-          and(
-            lt(linkVisit.createdAt, proCutoffDate),
-            isNull(link.teamId),
-            eq(subscription.status, "active"),
-            eq(subscription.plan, "pro"),
-          ),
+      ),
+    // Free team workspace visits
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(linkVisit)
+      .innerJoin(link, eq(linkVisit.linkId, link.id))
+      .innerJoin(team, eq(link.teamId, team.id))
+      .leftJoin(subscription, eq(team.ownerId, subscription.userId))
+      .where(and(lt(linkVisit.createdAt, freeCutoffDate), isNotNull(link.teamId), IS_FREE_TIER)),
+    // Pro team workspace visits
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(linkVisit)
+      .innerJoin(link, eq(linkVisit.linkId, link.id))
+      .innerJoin(team, eq(link.teamId, team.id))
+      .innerJoin(subscription, eq(team.ownerId, subscription.userId))
+      .where(
+        and(
+          lt(linkVisit.createdAt, proCutoffDate),
+          isNotNull(link.teamId),
+          eq(subscription.status, "active"),
+          eq(subscription.plan, "pro"),
         ),
-      // Free team workspace visits
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(linkVisit)
-        .innerJoin(link, eq(linkVisit.linkId, link.id))
-        .innerJoin(team, eq(link.teamId, team.id))
-        .leftJoin(subscription, eq(team.ownerId, subscription.userId))
-        .where(
-          and(
-            lt(linkVisit.createdAt, freeCutoffDate),
-            isNotNull(link.teamId),
-            IS_FREE_TIER,
-          ),
-        ),
-      // Pro team workspace visits
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(linkVisit)
-        .innerJoin(link, eq(linkVisit.linkId, link.id))
-        .innerJoin(team, eq(link.teamId, team.id))
-        .innerJoin(subscription, eq(team.ownerId, subscription.userId))
-        .where(
-          and(
-            lt(linkVisit.createdAt, proCutoffDate),
-            isNotNull(link.teamId),
-            eq(subscription.status, "active"),
-            eq(subscription.plan, "pro"),
-          ),
-        ),
-    ]);
+      ),
+  ]);
 
   return {
     freeUserVisitsPendingCleanup:
-      Number(oldFreeVisits[0]?.count ?? 0) +
-      Number(oldFreeTeamVisits[0]?.count ?? 0),
+      Number(oldFreeVisits[0]?.count ?? 0) + Number(oldFreeTeamVisits[0]?.count ?? 0),
     proUserVisitsPendingCleanup:
-      Number(oldProVisits[0]?.count ?? 0) +
-      Number(oldProTeamVisits[0]?.count ?? 0),
+      Number(oldProVisits[0]?.count ?? 0) + Number(oldProTeamVisits[0]?.count ?? 0),
     freeRetentionDays: FREE_RETENTION_DAYS,
     proRetentionDays: PRO_RETENTION_DAYS,
   };

@@ -17,9 +17,7 @@ export function StatsCards({ totalLinks, activeLinks }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{totalLinks}</div>
-          <p className="text-xs text-muted-foreground">
-            All time created links
-          </p>
+          <p className="text-xs text-muted-foreground">All time created links</p>
         </CardContent>
       </Card>
       <Card>
@@ -29,9 +27,7 @@ export function StatsCards({ totalLinks, activeLinks }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{activeLinks}</div>
-          <p className="text-xs text-muted-foreground">
-            Currently active links
-          </p>
+          <p className="text-xs text-muted-foreground">Currently active links</p>
         </CardContent>
       </Card>
     </div>

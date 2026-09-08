@@ -43,18 +43,16 @@ export function bioOgImageResponse(page: OgPage, slug: string): ImageResponse {
 
   if (socialImage) {
     return new ImageResponse(
-      (
-        <div style={{ display: "flex", width: "100%", height: "100%" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={socialImage}
-            alt=""
-            width={BIO_OG_SIZE.width}
-            height={BIO_OG_SIZE.height}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        </div>
-      ),
+      <div style={{ display: "flex", width: "100%", height: "100%" }}>
+        {/* eslint-disable-next-line next/no-img-element -- rendered by next/og (satori), which only supports plain <img> */}
+        <img
+          src={socialImage}
+          alt=""
+          width={BIO_OG_SIZE.width}
+          height={BIO_OG_SIZE.height}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>,
       BIO_OG_SIZE,
     );
   }
@@ -66,55 +64,57 @@ export function bioOgImageResponse(page: OgPage, slug: string): ImageResponse {
   const isGradient = t.backgroundCss.startsWith("linear-gradient");
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "100%",
+        height: "100%",
+        padding: 96,
+        textAlign: "center",
+        color: t.textColor,
+        ...(isGradient
+          ? { backgroundImage: t.backgroundCss }
+          : { backgroundColor: t.backgroundCss }),
+      }}
+    >
+      {avatar ? (
+        // eslint-disable-next-line next/no-img-element -- rendered by next/og (satori), which only supports plain <img>
+        <img
+          src={avatar}
+          alt=""
+          width={180}
+          height={180}
+          style={{ borderRadius: 9999, objectFit: "cover" }}
+        />
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            width: 180,
+            height: 180,
+            borderRadius: 9999,
+            backgroundColor: t.accentColor,
+            opacity: 0.25,
+          }}
+        />
+      )}
       <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          padding: 96,
-          textAlign: "center",
-          color: t.textColor,
-          ...(isGradient
-            ? { backgroundImage: t.backgroundCss }
-            : { backgroundColor: t.backgroundCss }),
-        }}
+        style={{ display: "flex", marginTop: 48, fontSize: 72, fontWeight: 700, maxWidth: 1000 }}
       >
-        {avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatar}
-            alt=""
-            width={180}
-            height={180}
-            style={{ borderRadius: 9999, objectFit: "cover" }}
-          />
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              width: 180,
-              height: 180,
-              borderRadius: 9999,
-              backgroundColor: t.accentColor,
-              opacity: 0.25,
-            }}
-          />
-        )}
-        <div style={{ display: "flex", marginTop: 48, fontSize: 72, fontWeight: 700, maxWidth: 1000 }}>
-          {title}
-        </div>
-        <div style={{ display: "flex", marginTop: 20, fontSize: 32, color: t.mutedColor, maxWidth: 900 }}>
-          {subtitle}
-        </div>
-        <div style={{ display: "flex", marginTop: 56, fontSize: 24, color: t.mutedColor }}>
-          Made with iShortn
-        </div>
+        {title}
       </div>
-    ),
+      <div
+        style={{ display: "flex", marginTop: 20, fontSize: 32, color: t.mutedColor, maxWidth: 900 }}
+      >
+        {subtitle}
+      </div>
+      <div style={{ display: "flex", marginTop: 56, fontSize: 24, color: t.mutedColor }}>
+        Made with iShortn
+      </div>
+    </div>,
     BIO_OG_SIZE,
   );
 }

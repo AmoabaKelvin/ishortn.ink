@@ -30,14 +30,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
-import type { Plan } from "@/lib/billing/plans";
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { CampaignStateBadge } from "../../_components/campaign-state-badge";
 import { CampaignLinks } from "./campaign-links";
 import { CampaignOverview } from "./campaign-overview";
 import { CampaignSettings } from "./campaign-settings";
+
+import type { Plan } from "@/lib/billing/plans";
+import type { RouterOutputs } from "@/trpc/shared";
 
 type CampaignData = RouterOutputs["campaign"]["get"];
 

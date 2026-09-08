@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import { JsonLd } from "@/components/seo/json-ld";
 import { createBreadcrumbSchema, softwareApplicationSchema } from "@/lib/seo/structured-data";
 
@@ -10,6 +8,8 @@ import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { QRSection } from "../_components/qr-section";
 import { Icon } from "../_components/warm-primitives";
+
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Features — iShortn",
@@ -45,9 +45,7 @@ export default function FeaturesPage() {
       <section className="warm-subhero">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <Icon.Sparkle
-              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-            />
+            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
             Features
           </div>
           <h1
@@ -69,9 +67,8 @@ export default function FeaturesPage() {
               maxWidth: 620,
             }}
           >
-            Every feature iShortn ships — from real-time analytics to branded
-            QR codes and bulk CSV shortening. Made for creators and small teams
-            who want tools that get out of the way.
+            Every feature iShortn ships — from real-time analytics to branded QR codes and bulk CSV
+            shortening. Made for creators and small teams who want tools that get out of the way.
           </p>
         </div>
       </section>

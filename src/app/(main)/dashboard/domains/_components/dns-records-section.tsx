@@ -37,8 +37,7 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
           DNS configuration required
         </p>
         <p className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">
-          The DNS records at your provider must match the following records
-          to verify your domain.
+          The DNS records at your provider must match the following records to verify your domain.
         </p>
       </div>
 
@@ -132,9 +131,8 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
             DNS propagation may take time
           </p>
           <p className="mt-0.5 text-[11px] text-neutral-400 dark:text-neutral-500">
-            After adding these DNS records, it may take up to 48 hours for
-            changes to propagate. Use &quot;Check Now&quot; to verify your
-            configuration.
+            After adding these DNS records, it may take up to 48 hours for changes to propagate. Use
+            &quot;Check Now&quot; to verify your configuration.
           </p>
         </div>
       </div>

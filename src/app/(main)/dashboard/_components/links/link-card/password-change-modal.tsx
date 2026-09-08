@@ -33,12 +33,8 @@ const getComponentMessages = (hasPassword: boolean) => {
     buttonText: hasPassword ? "Update" : "Set Password",
     inputPlaceholder: hasPassword ? "New password" : "Enter password",
     loading: hasPassword ? "Changing password..." : "Setting password...",
-    loadingSuccess: hasPassword
-      ? "Password changed successfully"
-      : "Password set successfully",
-    loadingError: hasPassword
-      ? "Failed to change password"
-      : "Failed to set password",
+    loadingSuccess: hasPassword ? "Password changed successfully" : "Password set successfully",
+    loadingError: hasPassword ? "Failed to change password" : "Failed to set password",
   };
 };
 
@@ -64,14 +60,11 @@ export function ChangeLinkPasswordModal({
   const handlePasswordChange = async () => {
     if (!newPassword) return;
 
-    toast.promise(
-      changePasswordMutation.mutateAsync({ id, password: newPassword }),
-      {
-        loading: componentMessages.loading,
-        success: componentMessages.loadingSuccess,
-        error: componentMessages.loadingError,
-      }
-    );
+    toast.promise(changePasswordMutation.mutateAsync({ id, password: newPassword }), {
+      loading: componentMessages.loading,
+      success: componentMessages.loadingSuccess,
+      error: componentMessages.loadingError,
+    });
 
     await revalidateHomepage();
   };
@@ -104,12 +97,7 @@ export function ChangeLinkPasswordModal({
         </DialogBody>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            className="h-9"
-          >
+          <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="h-9">
             Cancel
           </Button>
           <Button
@@ -117,9 +105,7 @@ export function ChangeLinkPasswordModal({
             disabled={!newPassword || changePasswordMutation.isLoading}
             className="h-9"
           >
-            {changePasswordMutation.isLoading
-              ? "Saving..."
-              : componentMessages.buttonText}
+            {changePasswordMutation.isLoading ? "Saving..." : componentMessages.buttonText}
           </Button>
         </DialogFooter>
       </DialogContent>

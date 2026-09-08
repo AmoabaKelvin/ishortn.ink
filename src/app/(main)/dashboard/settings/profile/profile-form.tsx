@@ -13,6 +13,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -83,9 +84,9 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
             name="name"
             render={({ field }) => (
               <FormItem>
-                <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   Display Name
-                </label>
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter your name"
@@ -109,11 +110,7 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
             >
               {isSaving ? (
                 <>
-                  <IconLoader2
-                    size={14}
-                    stroke={1.5}
-                    className="mr-1.5 animate-spin"
-                  />
+                  <IconLoader2 size={14} stroke={1.5} className="mr-1.5 animate-spin" />
                   Saving...
                 </>
               ) : justSaved ? (

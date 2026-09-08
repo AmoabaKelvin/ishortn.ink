@@ -28,14 +28,8 @@ export async function getUserProfile(ctx: ProtectedTRPCContext) {
   return userProfile;
 }
 
-export async function updateUserProfile(
-  ctx: ProtectedTRPCContext,
-  input: UpdateUserProfileInput,
-) {
-  await ctx.db
-    .update(user)
-    .set({ name: input.name })
-    .where(eq(user.id, ctx.auth.userId));
+export async function updateUserProfile(ctx: ProtectedTRPCContext, input: UpdateUserProfileInput) {
+  await ctx.db.update(user).set({ name: input.name }).where(eq(user.id, ctx.auth.userId));
 
   return getUserProfile(ctx);
 }

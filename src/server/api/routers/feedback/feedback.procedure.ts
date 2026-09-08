@@ -2,18 +2,11 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { runBackgroundTask } from "@/lib/utils/background";
-import { feedback, user } from "@/server/db/schema";
+import { feedback } from "@/server/db/schema";
 import { sendFeedbackNotification } from "@/server/lib/notifications/discord";
 import { isR2Configured, r2UploadImage } from "@/server/lib/storage/r2";
-import { adminProcedure, createTRPCRouter, protectedProcedure } from "../../trpc";
 
-const EXTENSION_MAP: Record<string, string> = {
-  png: "png",
-  jpeg: "jpg",
-  jpg: "jpg",
-  gif: "gif",
-  webp: "webp",
-};
+import { adminProcedure, createTRPCRouter, protectedProcedure } from "../../trpc";
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_IMAGES = 3;
@@ -41,7 +34,7 @@ async function uploadFeedbackImage(
     workspaceId: userId,
     resourceId: `${feedbackId}-${index}`,
     workspaceType: "personal",
-    extension: EXTENSION_MAP[format!] || "png",
+    extension: format === "jpeg" ? "jpg" : (format ?? "png"),
   });
 }
 
@@ -71,9 +64,7 @@ export const feedbackRouter = createTRPCRouter({
       let imageUrls: string[] = [];
       if (input.images && input.images.length > 0) {
         const uploadResults = await Promise.allSettled(
-          input.images.map((img, i) =>
-            uploadFeedbackImage(img, userId, Number(feedbackId), i),
-          ),
+          input.images.map((img, i) => uploadFeedbackImage(img, userId, Number(feedbackId), i)),
         );
 
         imageUrls = uploadResults
@@ -159,10 +150,7 @@ export const feedbackRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.db
-        .update(feedback)
-        .set({ status: input.status })
-        .where(eq(feedback.id, input.id));
+      await ctx.db.update(feedback).set({ status: input.status }).where(eq(feedback.id, input.id));
 
       return { success: true };
     }),

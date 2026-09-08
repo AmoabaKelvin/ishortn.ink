@@ -5,6 +5,7 @@ import { user } from "@/server/db/schema";
 import { type DbClient, getUserPlanContext, normalizeMonthlyEventCount } from "./user-plan";
 
 import type { SendEventUsageEmailInput } from "./notifications/event-usage";
+import type { MySqlUpdateSetSource } from "drizzle-orm/mysql-core";
 
 export type EventUsageReservation = {
   /** How many of the requested events fit under the owner's monthly cap. */
@@ -25,7 +26,7 @@ export function allocateEventQuota(input: {
   limit: number;
   requested: number;
   previousAlertLevel: number;
-}): { allowed: number; newCount: number; alertLevel: number | null } {
+}) {
   const { currentCount, limit, requested, previousAlertLevel } = input;
   const allowed = Math.max(0, Math.min(requested, limit - currentCount));
   const newCount = currentCount + allowed;
@@ -58,13 +59,11 @@ export async function reserveEventUsage(
   });
 
   if (allowed > 0 || alertLevel !== null) {
-    await dbClient
-      .update(user)
-      .set({
-        monthlyEventCount: sql`${user.monthlyEventCount} + ${allowed}`,
-        ...(alertLevel !== null ? { eventUsageAlertLevel: alertLevel } : {}),
-      })
-      .where(eq(user.id, userId));
+    const usageUpdate: MySqlUpdateSetSource<typeof user> = {
+      monthlyEventCount: sql`${user.monthlyEventCount} + ${allowed}`,
+    };
+    if (alertLevel !== null) usageUpdate.eventUsageAlertLevel = alertLevel;
+    await dbClient.update(user).set(usageUpdate).where(eq(user.id, userId));
   }
 
   const alert =

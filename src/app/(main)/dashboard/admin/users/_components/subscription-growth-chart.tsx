@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Bar,
-  BarChart as RechartsBarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -36,10 +30,7 @@ type SubscriptionGrowthChartProps = {
   isLoading: boolean;
 };
 
-export function SubscriptionGrowthChart({
-  data,
-  isLoading,
-}: SubscriptionGrowthChartProps) {
+export function SubscriptionGrowthChart({ data, isLoading }: SubscriptionGrowthChartProps) {
   return (
     <Card className="overflow-hidden rounded-xl border-neutral-200 dark:border-border shadow-none">
       <div className="flex flex-col gap-3 border-b border-neutral-100 dark:border-border/50 px-5 pb-4 pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -60,15 +51,10 @@ export function SubscriptionGrowthChart({
           </div>
         ) : !data ? (
           <div className="flex h-64 items-center justify-center">
-            <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
-              No data available
-            </p>
+            <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No data available</p>
           </div>
         ) : (
-          <ChartContainer
-            config={chartConfig}
-            className="aspect-auto h-64 w-full"
-          >
+          <ChartContainer config={chartConfig} className="aspect-auto h-64 w-full">
             <RechartsBarChart data={data}>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -95,12 +81,7 @@ export function SubscriptionGrowthChart({
                   />
                 }
               />
-              <Bar
-                dataKey="pro"
-                stackId="plans"
-                fill="var(--color-pro)"
-                radius={[0, 0, 0, 0]}
-              />
+              <Bar dataKey="pro" stackId="plans" fill="var(--color-pro)" radius={[0, 0, 0, 0]} />
               <Bar
                 dataKey="ultra"
                 stackId="plans"

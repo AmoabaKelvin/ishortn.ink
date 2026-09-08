@@ -25,24 +25,15 @@ export function SidebarStats({
   const linkCap = linkLimit ?? undefined;
   const linkLimitValue = linkCap ?? (userHasPaidPlan ? undefined : 30);
   const percentage =
-    linkLimitValue != null
-      ? Math.min((monthlyLinkCount / (linkLimitValue || 1)) * 100, 100)
-      : 0;
-  const isNearLimit =
-    linkLimitValue != null
-      ? monthlyLinkCount >= linkLimitValue * 0.83
-      : false;
-  const isAtLimit =
-    linkLimitValue != null ? monthlyLinkCount >= linkLimitValue : false;
+    linkLimitValue != null ? Math.min((monthlyLinkCount / (linkLimitValue || 1)) * 100, 100) : 0;
+  const isNearLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue * 0.83 : false;
+  const isAtLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue : false;
 
   const eventLimit = eventUsage?.limit ?? undefined;
   const eventCount = eventUsage?.count ?? 0;
   const eventPercentage =
-    eventLimit != null
-      ? Math.min((eventCount / (eventLimit || 1)) * 100, 100)
-      : 0;
-  const eventAtLimit =
-    eventLimit != null ? eventCount >= eventLimit : false;
+    eventLimit != null ? Math.min((eventCount / (eventLimit || 1)) * 100, 100) : 0;
+  const eventAtLimit = eventLimit != null ? eventCount >= eventLimit : false;
 
   if (userHasPaidPlan) {
     return (
@@ -63,8 +54,7 @@ export function SidebarStats({
               <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
                 <span>Events</span>
                 <span className="tabular-nums">
-                  {eventCount.toLocaleString()} /{" "}
-                  {eventLimit.toLocaleString()}
+                  {eventCount.toLocaleString()} / {eventLimit.toLocaleString()}
                 </span>
               </div>
               <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-muted">
@@ -110,7 +100,9 @@ export function SidebarStats({
           <span
             className={cn(
               "text-[11px] font-medium tabular-nums",
-              isAtLimit ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400",
+              isAtLimit
+                ? "text-red-600 dark:text-red-400"
+                : "text-neutral-500 dark:text-neutral-400",
             )}
           >
             {monthlyLinkCount} / {linkLimitValue} links
@@ -120,11 +112,7 @@ export function SidebarStats({
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              isAtLimit
-                ? "bg-red-500"
-                : isNearLimit
-                  ? "bg-amber-500"
-                  : "bg-blue-600",
+              isAtLimit ? "bg-red-500" : isNearLimit ? "bg-amber-500" : "bg-blue-600",
             )}
             style={{ width: `${percentage}%` }}
           />
@@ -135,9 +123,7 @@ export function SidebarStats({
           </p>
         )}
         {isNearLimit && !isAtLimit && (
-          <p className="mt-2 text-[11px] text-amber-600">
-            Almost at limit. Consider upgrading.
-          </p>
+          <p className="mt-2 text-[11px] text-amber-600">Almost at limit. Consider upgrading.</p>
         )}
       </div>
 

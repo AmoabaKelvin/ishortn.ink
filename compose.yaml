@@ -1,0 +1,61 @@
+name: ishortn
+
+services:
+  db:
+    image: mysql:8.4
+    # Production collation; see drizzle/0060_*
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ishortn
+      MYSQL_USER: ishortn
+      MYSQL_PASSWORD: ishortn
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      # TCP: the bootstrap server only listens on the socket and would pass a socket ping
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  # S3 stand-in for R2; set R2_ENDPOINT in .env to use it
+  minio:
+    image: minio/minio:latest
+    profiles: [storage]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ishortn
+      MINIO_ROOT_PASSWORD: ishortn-secret
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  minio-init:
+    image: minio/mc:latest
+    profiles: [storage]
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ishortn ishortn-secret &&
+        mc mb --ignore-existing local/ishortn-images &&
+        mc anonymous set download local/ishortn-images
+      "
+
+volumes:
+  db_data:
+  minio_data:

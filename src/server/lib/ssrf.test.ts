@@ -154,7 +154,7 @@ describe("safeFetch", () => {
       const url = String(input);
       calls.push(url);
       return responses[url] ?? new Response("ok", { status: 200 });
-    }) as unknown as typeof fetch;
+    });
   });
   afterEach(resetResolver);
   afterAll(() => {

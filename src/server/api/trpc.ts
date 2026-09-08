@@ -5,13 +5,12 @@ import { ZodError } from "zod";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { db } from "@/server/db";
-import { user } from "@/server/db/schema";
+import { ensureUser, type UserAccess } from "@/server/lib/ensure-user";
 import {
   resolveWorkspaceContext,
   userHasUltraPlan,
-  WorkspaceContext
+  WorkspaceContext,
 } from "@/server/lib/workspace";
-import { eq } from "drizzle-orm";
 
 import type { inferAsyncReturnType } from "@trpc/server";
 
@@ -28,13 +27,13 @@ export const createTRPCContext = async (opts: {
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
-  errorFormatter({ shape, error }) {
+  // eslint-disable-next-line anti-slop/no-shape-in-symbol-names -- tRPC errorFormatter API name
+  errorFormatter({ shape: formatted, error }) {
     return {
-      ...shape,
+      ...formatted,
       data: {
-        ...shape.data,
-        zodError:
-          error.cause instanceof ZodError ? error.cause.flatten() : null,
+        ...formatted.data,
+        zodError: error.cause instanceof ZodError ? error.cause.flatten() : null,
       },
     };
   },
@@ -58,10 +57,7 @@ export type ProtectedTRPCContext = Omit<TRPCContext, "auth"> & {
 
 // Per-request memo so batched procedures share one ban/admin lookup.
 // Keyed on the ctx object — same request = same ctx = same cached promise.
-const currentUserCache = new WeakMap<
-  object,
-  Promise<{ banned: boolean | null; isAdmin: boolean | null } | undefined>
->();
+const currentUserCache = new WeakMap<object, Promise<UserAccess | undefined>>();
 
 // Protected procedure middleware
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
@@ -71,10 +67,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
 
   let cached = currentUserCache.get(ctx);
   if (!cached) {
-    cached = ctx.db.query.user.findFirst({
-      where: eq(user.id, ctx.auth.userId),
-      columns: { banned: true, isAdmin: true },
-    });
+    cached = ensureUser(ctx.auth.userId);
     currentUserCache.set(ctx, cached);
   }
   const currentUser = await cached;
@@ -86,16 +79,16 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     });
   }
 
-  return next({
-    ctx: {
-      ...ctx,
-      auth: {
-        ...ctx.auth,
-        userId: ctx.auth.userId,
-      },
-      isAdmin: currentUser?.isAdmin ?? false,
-    } as ProtectedTRPCContext,
-  });
+  const protectedCtx: ProtectedTRPCContext = {
+    ...ctx,
+    auth: {
+      ...ctx.auth,
+      userId: ctx.auth.userId,
+    },
+    isAdmin: currentUser?.isAdmin ?? false,
+  };
+
+  return next({ ctx: protectedCtx });
 });
 
 // ============================================================================
@@ -113,24 +106,13 @@ export type WorkspaceTRPCContext = ProtectedTRPCContext & {
  * Workspace-aware procedure that resolves the current workspace from the hostname.
  * This should be used for all operations that need workspace context.
  */
-export const workspaceProcedure = protectedProcedure.use(
-  async ({ ctx, next }) => {
-    const hostname = ctx.headers.get("host") ?? DEFAULT_PLATFORM_DOMAIN;
+export const workspaceProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const hostname = ctx.headers.get("host") ?? DEFAULT_PLATFORM_DOMAIN;
 
-    const workspace = await resolveWorkspaceContext(
-      ctx.auth.userId,
-      hostname,
-      ctx.db
-    );
+  const workspace = await resolveWorkspaceContext(ctx.auth.userId, hostname, ctx.db);
 
-    return next({
-      ctx: {
-        ...ctx,
-        workspace,
-      } as WorkspaceTRPCContext,
-    });
-  }
-);
+  return next({ ctx: { ...ctx, workspace } });
+});
 
 /**
  * Context type for team-only procedures
@@ -151,9 +133,7 @@ export const teamProcedure = workspaceProcedure.use(({ ctx, next }) => {
     });
   }
 
-  return next({
-    ctx: ctx as TeamTRPCContext,
-  });
+  return next({ ctx: { ...ctx, workspace: ctx.workspace } });
 });
 
 /**

@@ -12,12 +12,13 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Plan } from "@/lib/billing/plans";
 import { cn, formatChartDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { QuickInfoCard } from "../../../analytics/[alias]/_components/quick-info-card";
+
+import type { Plan } from "@/lib/billing/plans";
+import type { RouterOutputs } from "@/trpc/shared";
 
 type Analytics = RouterOutputs["bioPage"]["getAnalytics"];
 

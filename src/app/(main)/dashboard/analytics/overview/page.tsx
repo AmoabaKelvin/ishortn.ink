@@ -2,13 +2,17 @@ import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-r
 
 import { QuickInfoCard } from "@/app/(main)/dashboard/analytics/[alias]/_components/quick-info-card";
 import { aggregateVisits } from "@/lib/core/analytics";
+import {
+  allAnalyticsSchema,
+  analyticsFilterTypeEnum,
+  rangeEnum,
+} from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
 
 export const dynamic = "force-dynamic";
 
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
-
 import { AnalyticsFilter } from "./_components/analytics-filter";
 import { DestinationUrlsCard } from "./_components/destination-urls-card";
 import { DeviceStatsCard } from "./_components/device-stats-card";
@@ -18,35 +22,26 @@ import { OverviewRangeSelector } from "./_components/overview-range-selector";
 import { ReferrersCard } from "./_components/referrers-card";
 import { ShortLinksCard } from "./_components/short-links-card";
 
-type RangeEnum =
-  | "24h"
-  | "7d"
-  | "30d"
-  | "90d"
-  | "this_month"
-  | "last_month"
-  | "this_year"
-  | "last_year"
-  | "all";
-
-type FilterType = "all" | "folder" | "domain" | "link";
+// Search params are user-controlled, so a bad value falls back to the default
+// instead of erroring the page. The tRPC input stays strict.
+const overviewSearchParamsSchema = allAnalyticsSchema.extend({
+  range: rangeEnum.catch("7d"),
+  filterType: analyticsFilterTypeEnum.catch("all"),
+});
 
 type AnalyticsOverviewPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function AnalyticsOverviewPage(
-  props: AnalyticsOverviewPageProps
-) {
+export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPageProps) {
   const searchParams = await props.searchParams;
-  const range = (searchParams?.range ?? "7d") as RangeEnum;
-  const filterType = (searchParams?.filterType ?? "all") as FilterType;
-  const filterId = searchParams?.filterId
-    ? Array.isArray(searchParams.filterId)
+  const { range, filterType, filterId } = overviewSearchParamsSchema.parse({
+    range: searchParams?.range,
+    filterType: searchParams?.filterType,
+    filterId: Array.isArray(searchParams?.filterId)
       ? searchParams.filterId[0]
-      : searchParams.filterId
-    : undefined;
-
+      : searchParams?.filterId || undefined,
+  });
   const {
     totalVisits,
     uniqueVisits,
@@ -75,8 +70,8 @@ export default async function AnalyticsOverviewPage(
           </h1>
           {!isProPlan && (
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              Viewing limited analytics (last 7 days).{" "}
-              <UpgradeText text="Upgrade to Pro" /> for full data.
+              Viewing limited analytics (last 7 days). <UpgradeText text="Upgrade to Pro" /> for
+              full data.
             </p>
           )}
         </div>
@@ -107,7 +102,9 @@ export default async function AnalyticsOverviewPage(
         <QuickInfoCard
           title="Top Referrer"
           value={topReferrer}
-          icon={<IconTrendingUp size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
+          icon={
+            <IconTrendingUp size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />
+          }
         />
       </div>
 
@@ -121,10 +118,7 @@ export default async function AnalyticsOverviewPage(
 
       {/* Distribution Cards Grid */}
       <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 lg:auto-rows-fr lg:grid-cols-2">
-        <ShortLinksCard
-          clicksByLink={clicksByLink}
-          totalClicks={totalVisits.length}
-        />
+        <ShortLinksCard clicksByLink={clicksByLink} totalClicks={totalVisits.length} />
         <DestinationUrlsCard
           clicksByDestination={clicksByDestination}
           totalClicks={totalVisits.length}

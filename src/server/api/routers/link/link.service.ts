@@ -18,21 +18,17 @@ import {
   sql,
   sum,
 } from "drizzle-orm";
+import { z } from "zod";
+
 import {
   canUseCampaignUtmDefaults,
   canUseGeoRules,
   getGeoRulesLimit,
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
-import { assertUrlSafe } from "@/server/lib/phishing";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { summarizeArchived } from "@/lib/core/analytics";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
-import { logger } from "@/lib/logger";
-import {
-  assertCanEnableVerifiedClicks,
-  issueVerifiedClickToken,
-} from "@/server/lib/verified-click";
 import {
   buildCacheKey,
   deleteFromCache,
@@ -40,14 +36,13 @@ import {
   getFromCache,
   setInCache,
 } from "@/lib/core/cache";
+import { matchTargetingRules } from "@/lib/core/geo-rules/matcher";
 import { generateShortLink } from "@/lib/core/links";
+import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { matchTargetingRules } from "@/lib/core/geo-rules/matcher";
 import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
-import { scrapeMetadata } from "@/server/lib/metadata";
-import { db } from "@/server/db";
 import {
   campaign,
   folder,
@@ -62,8 +57,13 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
-import { mergeCampaignUtm } from "../campaign/utils";
+import { scrapeMetadata } from "@/server/lib/metadata";
+import { assertUrlSafe } from "@/server/lib/phishing";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
+import {
+  assertCanEnableVerifiedClicks,
+  issueVerifiedClickToken,
+} from "@/server/lib/verified-click";
 import {
   getAccessibleFolderIds,
   isWorkspaceAdmin,
@@ -72,8 +72,8 @@ import {
   workspaceOwnership,
 } from "@/server/lib/workspace";
 
+import { mergeCampaignUtm } from "../campaign/utils";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
-
 import {
   assertDomainAllowed,
   checkWorkspaceLinkLimit,
@@ -82,7 +82,6 @@ import {
   validateAlias,
 } from "./utils";
 
-import type { Link } from "@/server/db/schema";
 import type { PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type {
   BulkArchiveLinksInput,
@@ -95,13 +94,26 @@ import type {
   ToggleArchiveInput,
   UpdateLinkInput,
 } from "./link.input";
+import type { Link } from "@/server/db/schema";
 
 const log = logger.child({ component: "link.service" });
 
-export const getLinks = async (
-  ctx: WorkspaceTRPCContext,
-  input: ListLinksInput,
-) => {
+const storedLinkMetadataSchema = z.object({ image: z.string().optional() }).nullable();
+
+/** OG image URL persisted in a link's JSON metadata, if any. */
+function storedOgImage(metadata: Link["metadata"]): string | undefined {
+  const parsed = storedLinkMetadataSchema.safeParse(metadata);
+  return parsed.success ? parsed.data?.image : undefined;
+}
+
+const csvLinkRowSchema = z.object({
+  url: z.string(),
+  alias: z.string().optional(),
+  domain: z.string().optional(),
+  note: z.string().optional(),
+});
+
+export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput) => {
   const {
     page,
     pageSize,
@@ -175,11 +187,7 @@ export const getLinks = async (
     const searchLower = `%${search.trim().toLowerCase()}%`;
     baseCondition = and(
       baseCondition,
-      or(
-        like(link.name, searchLower),
-        like(link.alias, searchLower),
-        like(link.url, searchLower),
-      ),
+      or(like(link.name, searchLower), like(link.alias, searchLower), like(link.url, searchLower)),
     );
   }
 
@@ -194,11 +202,7 @@ export const getLinks = async (
       .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId));
 
     const folderIds = allFolders.map((f) => f.id);
-    const accessibleFolderIds = await getAccessibleFolderIds(
-      ctx.db,
-      ctx.workspace,
-      folderIds,
-    );
+    const accessibleFolderIds = await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds);
 
     // Filter: links in accessible folders OR links with no folder
     if (accessibleFolderIds.length > 0) {
@@ -228,9 +232,10 @@ export const getLinks = async (
   const linksQuery = ctx.db
     .select({
       ...getTableColumns(link),
-      totalClicks: sql<number>`${count(linkVisit.id)} + COALESCE(MAX(${archivedClicksPerLink.clicks}), 0)`
-        .mapWith(Number)
-        .as("total_clicks"),
+      totalClicks:
+        sql<number>`${count(linkVisit.id)} + COALESCE(MAX(${archivedClicksPerLink.clicks}), 0)`
+          .mapWith(Number)
+          .as("total_clicks"),
     })
     .from(link)
     .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
@@ -255,31 +260,28 @@ export const getLinks = async (
     eq(link.isBioLink, false),
   );
 
-  const [totalLinksResult, totalClicksResult, archivedClicksResult, links] =
-    await Promise.all([
-      ctx.db.select({ count: count() }).from(link).where(baseCondition),
-      ctx.db
-        .select({ totalClicks: count(linkVisit.id) })
-        .from(linkVisit)
-        .innerJoin(link, eq(link.id, linkVisit.linkId))
-        .where(workspaceLinkCondition),
-      ctx.db
-        .select({ archivedClicks: sum(linkVisitDailySummary.clicks) })
-        .from(linkVisitDailySummary)
-        .innerJoin(link, eq(link.id, linkVisitDailySummary.linkId))
-        .where(workspaceLinkCondition),
-      linksQuery,
-    ]);
+  const [totalLinksResult, totalClicksResult, archivedClicksResult, links] = await Promise.all([
+    ctx.db.select({ count: count() }).from(link).where(baseCondition),
+    ctx.db
+      .select({ totalClicks: count(linkVisit.id) })
+      .from(linkVisit)
+      .innerJoin(link, eq(link.id, linkVisit.linkId))
+      .where(workspaceLinkCondition),
+    ctx.db
+      .select({ archivedClicks: sum(linkVisitDailySummary.clicks) })
+      .from(linkVisitDailySummary)
+      .innerJoin(link, eq(link.id, linkVisitDailySummary.linkId))
+      .where(workspaceLinkCondition),
+    linksQuery,
+  ]);
 
   // Batch fetch creator info for team workspaces (avoid N+1)
-  let creatorMap: Map<
-    string,
-    { id: string; name: string | null; imageUrl: string | null }
-  > = new Map();
+  let creatorMap: Map<string, { id: string; name: string | null; imageUrl: string | null }> =
+    new Map();
   if (ctx.workspace.type === "team") {
     const creatorIds = [
-      ...new Set(links.map((l) => l.createdByUserId).filter(Boolean)),
-    ] as string[];
+      ...new Set(links.map((l) => l.createdByUserId).filter((id): id is string => !!id)),
+    ];
     if (creatorIds.length > 0) {
       const creators = await ctx.db.query.user.findMany({
         where: inArray(user.id, creatorIds),
@@ -338,15 +340,9 @@ export const getLinks = async (
   };
 };
 
-export const getLink = async (
-  ctx: WorkspaceTRPCContext,
-  input: GetLinkInput,
-) => {
+export const getLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
   const linkData = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   // Check folder access permission for team members
@@ -357,17 +353,13 @@ export const getLink = async (
   return linkData;
 };
 
-export const createLink = async (
-  ctx: WorkspaceTRPCContext,
-  input: CreateLinkInput,
-) => {
+export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInput) => {
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
 
   const domain = input.domain?.trim() || DEFAULT_PLATFORM_DOMAIN;
   await assertDomainAllowed(ctx, domain);
-  const alias =
-    input.alias && input.alias !== "" ? input.alias : await generateShortLink();
+  const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
 
   await assertUrlSafe(input.url);
 
@@ -380,16 +372,16 @@ export const createLink = async (
 
   if (input.password) {
     if (!isPaidPlan) {
-      throw new Error(
-        "You need to upgrade to a pro plan to use password protection",
-      );
+      throw new Error("You need to upgrade to a pro plan to use password protection");
     }
 
     input.password = await bcrypt.hash(input.password, 10);
   }
 
   if (input.activateAt && !isPaidPlan) {
-    throw new Error("Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.");
+    throw new Error(
+      "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+    );
   }
 
   const inputMetaData = input.metadata;
@@ -399,9 +391,7 @@ export const createLink = async (
   );
   if (hasUserFilledMetadata) {
     if (!isPaidPlan) {
-      throw new Error(
-        "You need to upgrade to a pro plan to use custom social media previews",
-      );
+      throw new Error("You need to upgrade to a pro plan to use custom social media previews");
     }
   }
 
@@ -463,7 +453,7 @@ export const createLink = async (
   if (input.metadata?.image) assertValidImageInput(input.metadata.image);
 
   // Create link without tags field
-  const { tags, ...linkData } = input;
+  const { tags: _tags, ...linkData } = input;
   const ownership = workspaceOwnership(ctx.workspace);
   const [result] = await ctx.db.insert(link).values({
     ...linkData,
@@ -499,11 +489,7 @@ export const createLink = async (
     }
 
     const geoLimit = getGeoRulesLimit(plan);
-    if (
-      !isUnlimitedGeoRules(plan) &&
-      geoLimit !== undefined &&
-      geoRulesInput.length > geoLimit
-    ) {
+    if (!isUnlimitedGeoRules(plan) && geoLimit !== undefined && geoRulesInput.length > geoLimit) {
       throw new Error(
         `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
       );
@@ -547,10 +533,7 @@ export const createLink = async (
       }
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      log.error(
-        { err: error, linkId, action: "create" },
-        "failed to upload OG image",
-      );
+      log.error({ err: error, linkId, action: "create" }, "failed to upload OG image");
       // Don't fail link creation if image upload fails - base64 is already saved
     }
   }
@@ -560,16 +543,10 @@ export const createLink = async (
   return result;
 };
 
-export const updateLink = async (
-  ctx: WorkspaceTRPCContext,
-  input: UpdateLinkInput,
-) => {
+export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInput) => {
   // Get existing link first
   const existingLink = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!existingLink) {
@@ -598,7 +575,9 @@ export const updateLink = async (
   }
 
   if (input.activateAt && !isPaidUser) {
-    throw new Error("Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.");
+    throw new Error(
+      "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+    );
   }
 
   // Check for UTM params - Ultra plan only
@@ -667,10 +646,7 @@ export const updateLink = async (
       }
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      log.error(
-        { err: error, linkId: input.id, action: "update" },
-        "failed to upload OG image",
-      );
+      log.error({ err: error, linkId: input.id, action: "update" }, "failed to upload OG image");
       // Continue with the original image (base64 or URL) if upload fails
     }
   }
@@ -679,12 +655,7 @@ export const updateLink = async (
   await ctx.db
     .update(link)
     .set(linkData)
-    .where(
-      and(
-        eq(link.id, input.id),
-        workspaceFilter(ctx.workspace, link.userId, link.teamId),
-      ),
-    );
+    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
   // Update tags if provided
   if (tagNames) {
@@ -737,10 +708,7 @@ export const updateLink = async (
   }
 
   const updatedLink = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!updatedLink) {
@@ -755,30 +723,16 @@ export const updateLink = async (
   };
 
   // If alias or domain changed, delete the OLD cache key (existingLink has the old values)
-  if (
-    existingLink.alias !== updatedLink.alias ||
-    existingLink.domain !== updatedLink.domain
-  ) {
-    await deleteFromCache(
-      buildCacheKey(existingLink.domain, existingLink.alias!),
-    );
+  if (existingLink.alias !== updatedLink.alias || existingLink.domain !== updatedLink.domain) {
+    await deleteFromCache(buildCacheKey(existingLink.domain, existingLink.alias!));
   }
   // Always set the new cache entry with updated values
-  await setInCache(
-    buildCacheKey(updatedLink.domain, updatedLink.alias!),
-    updatedLinkWithTags,
-  );
+  await setInCache(buildCacheKey(updatedLink.domain, updatedLink.alias!), updatedLinkWithTags);
 };
 
-export const deleteLink = async (
-  ctx: WorkspaceTRPCContext,
-  input: GetLinkInput,
-) => {
+export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
   const linkToDelete = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!linkToDelete) {
@@ -791,49 +745,33 @@ export const deleteLink = async (
   }
 
   // Delete OG image from R2 if present
-  const metadata = linkToDelete.metadata as { image?: string } | null;
-  if (metadata?.image) {
+  const ogImage = storedOgImage(linkToDelete.metadata);
+  if (ogImage) {
     try {
-      await deleteImage(ctx.workspace, metadata.image);
+      await deleteImage(ctx.workspace, ogImage);
     } catch (error) {
-      log.error(
-        { err: error, linkId: input.id },
-        "failed to delete OG image from R2",
-      );
+      log.error({ err: error, linkId: input.id }, "failed to delete OG image from R2");
     }
   }
 
   await ctx.db.delete(linkMilestone).where(eq(linkMilestone.linkId, input.id));
 
   await Promise.all([
-    deleteFromCache(
-      buildCacheKey(linkToDelete.domain, linkToDelete.alias!),
-    ),
+    deleteFromCache(buildCacheKey(linkToDelete.domain, linkToDelete.alias!)),
     ctx.db
       .delete(link)
-      .where(
-        and(
-          eq(link.id, input.id),
-          workspaceFilter(ctx.workspace, link.userId, link.teamId),
-        ),
-      ),
+      .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId))),
   ]);
 };
 
-export const bulkDeleteLinks = async (
-  ctx: WorkspaceTRPCContext,
-  linkIds: number[],
-) => {
+export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number[]) => {
   if (linkIds.length === 0) {
     return { success: true, count: 0 };
   }
 
   // Fetch links to delete (for cache invalidation)
   let linksToDelete = await ctx.db.query.link.findMany({
-    where: and(
-      inArray(link.id, linkIds),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(inArray(link.id, linkIds), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (linksToDelete.length === 0) {
@@ -843,16 +781,10 @@ export const bulkDeleteLinks = async (
   // Filter by folder access for team members
   if (ctx.workspace.type === "team" && !isWorkspaceAdmin(ctx.workspace)) {
     const folderIds = [
-      ...new Set(
-        linksToDelete
-          .map((l) => l.folderId)
-          .filter((id): id is number => id !== null),
-      ),
+      ...new Set(linksToDelete.map((l) => l.folderId).filter((id): id is number => id !== null)),
     ];
     const accessibleFolderIds =
-      folderIds.length > 0
-        ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds)
-        : [];
+      folderIds.length > 0 ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds) : [];
     linksToDelete = linksToDelete.filter(
       (l) => l.folderId === null || accessibleFolderIds.includes(l.folderId),
     );
@@ -866,15 +798,12 @@ export const bulkDeleteLinks = async (
 
   // Delete OG images from R2 before removing links
   for (const l of linksToDelete) {
-    const metadata = l.metadata as { image?: string } | null;
-    if (metadata?.image) {
+    const ogImage = storedOgImage(l.metadata);
+    if (ogImage) {
       try {
-        await deleteImage(ctx.workspace, metadata.image);
+        await deleteImage(ctx.workspace, ogImage);
       } catch (error) {
-        log.error(
-          { err: error, linkId: l.id },
-          "failed to delete OG image for link",
-        );
+        log.error({ err: error, linkId: l.id }, "failed to delete OG image for link");
       }
     }
   }
@@ -885,9 +814,7 @@ export const bulkDeleteLinks = async (
     await tx.delete(linkVisit).where(inArray(linkVisit.linkId, validLinkIds));
 
     // 2. Delete unique link visits
-    await tx
-      .delete(uniqueLinkVisit)
-      .where(inArray(uniqueLinkVisit.linkId, validLinkIds));
+    await tx.delete(uniqueLinkVisit).where(inArray(uniqueLinkVisit.linkId, validLinkIds));
 
     // 3. Delete link-tag associations
     await tx.delete(linkTag).where(inArray(linkTag.linkId, validLinkIds));
@@ -905,23 +832,20 @@ export const bulkDeleteLinks = async (
   // Invalidate cache for all deleted links in the background. waitUntil keeps
   // the serverless function alive until every deleteFromCache settles.
   void runBackgroundTask(
-    Promise.all(
-      linksToDelete.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
-    ).catch((err) => {
-      log.error(
-        { err, count: linksToDelete.length },
-        "failed to invalidate cache for deleted links",
-      );
-    }),
+    Promise.all(linksToDelete.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!)))).catch(
+      (err) => {
+        log.error(
+          { err, count: linksToDelete.length },
+          "failed to invalidate cache for deleted links",
+        );
+      },
+    ),
   );
 
   return { success: true, count: linksToDelete.length };
 };
 
-export const bulkArchiveLinks = async (
-  ctx: WorkspaceTRPCContext,
-  input: BulkArchiveLinksInput,
-) => {
+export const bulkArchiveLinks = async (ctx: WorkspaceTRPCContext, input: BulkArchiveLinksInput) => {
   const { linkIds, archive } = input;
 
   if (linkIds.length === 0) {
@@ -930,10 +854,7 @@ export const bulkArchiveLinks = async (
 
   // Verify links belong to workspace
   let linksToUpdate = await ctx.db.query.link.findMany({
-    where: and(
-      inArray(link.id, linkIds),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(inArray(link.id, linkIds), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (linksToUpdate.length === 0) {
@@ -943,16 +864,10 @@ export const bulkArchiveLinks = async (
   // Filter by folder access for team members
   if (ctx.workspace.type === "team" && !isWorkspaceAdmin(ctx.workspace)) {
     const folderIds = [
-      ...new Set(
-        linksToUpdate
-          .map((l) => l.folderId)
-          .filter((id): id is number => id !== null),
-      ),
+      ...new Set(linksToUpdate.map((l) => l.folderId).filter((id): id is number => id !== null)),
     ];
     const accessibleFolderIds =
-      folderIds.length > 0
-        ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds)
-        : [];
+      folderIds.length > 0 ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds) : [];
     linksToUpdate = linksToUpdate.filter(
       (l) => l.folderId === null || accessibleFolderIds.includes(l.folderId),
     );
@@ -964,10 +879,7 @@ export const bulkArchiveLinks = async (
 
   const validLinkIds = linksToUpdate.map((l) => l.id);
 
-  await ctx.db
-    .update(link)
-    .set({ archived: archive })
-    .where(inArray(link.id, validLinkIds));
+  await ctx.db.update(link).set({ archived: archive }).where(inArray(link.id, validLinkIds));
 
   return { success: true, count: linksToUpdate.length, archived: archive };
 };
@@ -984,10 +896,7 @@ export const bulkToggleLinkStatus = async (
 
   // Verify links belong to workspace
   let linksToUpdate = await ctx.db.query.link.findMany({
-    where: and(
-      inArray(link.id, linkIds),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(inArray(link.id, linkIds), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (linksToUpdate.length === 0) {
@@ -997,16 +906,10 @@ export const bulkToggleLinkStatus = async (
   // Filter by folder access for team members
   if (ctx.workspace.type === "team" && !isWorkspaceAdmin(ctx.workspace)) {
     const folderIds = [
-      ...new Set(
-        linksToUpdate
-          .map((l) => l.folderId)
-          .filter((id): id is number => id !== null),
-      ),
+      ...new Set(linksToUpdate.map((l) => l.folderId).filter((id): id is number => id !== null)),
     ];
     const accessibleFolderIds =
-      folderIds.length > 0
-        ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds)
-        : [];
+      folderIds.length > 0 ? await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds) : [];
     linksToUpdate = linksToUpdate.filter(
       (l) => l.folderId === null || accessibleFolderIds.includes(l.folderId),
     );
@@ -1018,10 +921,7 @@ export const bulkToggleLinkStatus = async (
 
   const validLinkIds = linksToUpdate.map((l) => l.id);
 
-  await ctx.db
-    .update(link)
-    .set({ disabled: disable })
-    .where(inArray(link.id, validLinkIds));
+  await ctx.db.update(link).set({ disabled: disable }).where(inArray(link.id, validLinkIds));
 
   // Invalidate cache for all affected links
   await Promise.all(
@@ -1045,10 +945,7 @@ export const retrieveOriginalUrl = async (
   if (!link?.alias) {
     link = await ctx.db.query.link.findFirst({
       where: (table, { eq, and, sql }) =>
-        and(
-          sql`lower(${table.alias}) = lower(${input.alias})`,
-          eq(table.domain, domain),
-        ),
+        and(sql`lower(${table.alias}) = lower(${input.alias})`, eq(table.domain, domain)),
     });
 
     if (!link) {
@@ -1193,90 +1090,87 @@ export const getLinkVisits = async (
 
   const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
     await Promise.all([
-    ctx.db.query.linkVisit.findMany({
-      where: (visit, { eq, and, gte, lte }) =>
-        and(
-          eq(visit.linkId, foundLink.id),
-          gte(visit.createdAt, startDate),
-          lte(visit.createdAt, now),
-        ),
-    }),
-    ctx.db.query.uniqueLinkVisit.findMany({
-      where: (visit, { eq, and, gte, lte }) =>
-        and(
-          eq(visit.linkId, foundLink.id),
-          gte(visit.createdAt, startDate),
-          lte(visit.createdAt, now),
-        ),
-    }),
-    ctx.db.query.geoRule.findMany({
-      where: (rule, { eq }) => eq(rule.linkId, foundLink.id),
-      columns: {
-        id: true,
-        action: true,
-      },
-    }),
-    hasPreviousPeriod
-      ? Promise.all([
-          ctx.db
+      ctx.db.query.linkVisit.findMany({
+        where: (visit, { eq, and, gte, lte }) =>
+          and(
+            eq(visit.linkId, foundLink.id),
+            gte(visit.createdAt, startDate),
+            lte(visit.createdAt, now),
+          ),
+      }),
+      ctx.db.query.uniqueLinkVisit.findMany({
+        where: (visit, { eq, and, gte, lte }) =>
+          and(
+            eq(visit.linkId, foundLink.id),
+            gte(visit.createdAt, startDate),
+            lte(visit.createdAt, now),
+          ),
+      }),
+      ctx.db.query.geoRule.findMany({
+        where: (rule, { eq }) => eq(rule.linkId, foundLink.id),
+        columns: {
+          id: true,
+          action: true,
+        },
+      }),
+      hasPreviousPeriod
+        ? Promise.all([
+            ctx.db
+              .select({
+                total: count(),
+                verified: sql<number>`SUM(CASE WHEN ${linkVisit.verifiedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
+              })
+              .from(linkVisit)
+              .where(
+                and(
+                  eq(linkVisit.linkId, foundLink.id),
+                  gte(linkVisit.createdAt, prevStart),
+                  lt(linkVisit.createdAt, prevEnd),
+                ),
+              ),
+            ctx.db
+              .select({ value: count() })
+              .from(uniqueLinkVisit)
+              .where(
+                and(
+                  eq(uniqueLinkVisit.linkId, foundLink.id),
+                  gte(uniqueLinkVisit.createdAt, prevStart),
+                  lt(uniqueLinkVisit.createdAt, prevEnd),
+                ),
+              ),
+          ])
+        : Promise.resolve(null),
+      ctx.db.query.linkVisitDailySummary.findMany({
+        where: (s, { eq, and, gte, lte }) =>
+          and(
+            eq(s.linkId, foundLink.id),
+            gte(s.date, toDateKey(startDate)),
+            lte(s.date, toDateKey(now)),
+          ),
+      }),
+      hasPreviousPeriod
+        ? ctx.db
             .select({
-              total: count(),
-              verified: sql<number>`SUM(CASE WHEN ${linkVisit.verifiedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
+              clicks: sum(linkVisitDailySummary.clicks),
+              uniqueClicks: sum(linkVisitDailySummary.uniqueClicks),
             })
-            .from(linkVisit)
+            .from(linkVisitDailySummary)
             .where(
               and(
-                eq(linkVisit.linkId, foundLink.id),
-                gte(linkVisit.createdAt, prevStart),
-                lt(linkVisit.createdAt, prevEnd),
+                eq(linkVisitDailySummary.linkId, foundLink.id),
+                gte(linkVisitDailySummary.date, toDateKey(prevStart)),
+                lt(linkVisitDailySummary.date, toDateKey(prevEnd)),
               ),
-            ),
-          ctx.db
-            .select({ value: count() })
-            .from(uniqueLinkVisit)
-            .where(
-              and(
-                eq(uniqueLinkVisit.linkId, foundLink.id),
-                gte(uniqueLinkVisit.createdAt, prevStart),
-                lt(uniqueLinkVisit.createdAt, prevEnd),
-              ),
-            ),
-        ])
-      : Promise.resolve(null),
-    ctx.db.query.linkVisitDailySummary.findMany({
-      where: (s, { eq, and, gte, lte }) =>
-        and(
-          eq(s.linkId, foundLink.id),
-          gte(s.date, toDateKey(startDate)),
-          lte(s.date, toDateKey(now)),
-        ),
-    }),
-    hasPreviousPeriod
-      ? ctx.db
-          .select({
-            clicks: sum(linkVisitDailySummary.clicks),
-            uniqueClicks: sum(linkVisitDailySummary.uniqueClicks),
-          })
-          .from(linkVisitDailySummary)
-          .where(
-            and(
-              eq(linkVisitDailySummary.linkId, foundLink.id),
-              gte(linkVisitDailySummary.date, toDateKey(prevStart)),
-              lt(linkVisitDailySummary.date, toDateKey(prevEnd)),
-            ),
-          )
-      : Promise.resolve(null),
-  ]);
+            )
+        : Promise.resolve(null),
+    ]);
 
   const archived = summarizeArchived(summaries);
 
   const previous = prevCounts
     ? {
-        total:
-          (prevCounts[0][0]?.total ?? 0) + (Number(prevSummaries?.[0]?.clicks) || 0),
-        unique:
-          (prevCounts[1][0]?.value ?? 0) +
-          (Number(prevSummaries?.[0]?.uniqueClicks) || 0),
+        total: (prevCounts[0][0]?.total ?? 0) + (Number(prevSummaries?.[0]?.clicks) || 0),
+        unique: (prevCounts[1][0]?.value ?? 0) + (Number(prevSummaries?.[0]?.uniqueClicks) || 0),
         verified: Number(prevCounts[0][0]?.verified ?? 0),
       }
     : null;
@@ -1295,31 +1189,25 @@ export const getLinkVisits = async (
     };
   }
 
-  const countryVisits = totalVisits.reduce(
-    (acc, visit) => {
-      // Skip null/undefined country values
-      if (visit.country) {
-        acc[visit.country] = (acc[visit.country] ?? 0) + 1;
-      }
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  const countryVisits = totalVisits.reduce<Record<string, number>>((acc, visit) => {
+    // Skip null/undefined country values
+    if (visit.country) {
+      acc[visit.country] = (acc[visit.country] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
   const topCountry = Object.entries(countryVisits).reduce(
     (a, b) => (a[1] > b[1] ? a : b),
     ["", 0],
   )[0];
 
-  const referrerVisits = totalVisits.reduce(
-    (acc, visit) => {
-      // Skip null/undefined referer values
-      if (visit.referer) {
-        acc[visit.referer] = (acc[visit.referer] ?? 0) + 1;
-      }
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  const referrerVisits = totalVisits.reduce<Record<string, number>>((acc, visit) => {
+    // Skip null/undefined referer values
+    if (visit.referer) {
+      acc[visit.referer] = (acc[visit.referer] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
   const topReferrer = Object.entries(referrerVisits).reduce(
     (a, b) => (a[1] > b[1] ? a : b),
     ["", 0],
@@ -1482,8 +1370,7 @@ export const getAllUserAnalytics = async (
   totalVisits.forEach((visit) => {
     const linkInfo = linkIdToInfo.get(visit.linkId);
     if (linkInfo) {
-      clicksByLink[linkInfo.shortLink] =
-        (clicksByLink[linkInfo.shortLink] ?? 0) + 1;
+      clicksByLink[linkInfo.shortLink] = (clicksByLink[linkInfo.shortLink] ?? 0) + 1;
       if (linkInfo.destination) {
         clicksByDestination[linkInfo.destination] =
           (clicksByDestination[linkInfo.destination] ?? 0) + 1;
@@ -1492,34 +1379,26 @@ export const getAllUserAnalytics = async (
   });
 
   // Calculate top country
-  const countryVisits = totalVisits.reduce(
-    (acc, visit) => {
-      if (visit.country) {
-        acc[visit.country] = (acc[visit.country] ?? 0) + 1;
-      }
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  const countryVisits = totalVisits.reduce<Record<string, number>>((acc, visit) => {
+    if (visit.country) {
+      acc[visit.country] = (acc[visit.country] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
   const topCountry =
     Object.entries(countryVisits).length > 0
       ? Object.entries(countryVisits).reduce((a, b) => (a[1] > b[1] ? a : b))[0]
       : "N/A";
 
   // Calculate referrers
-  const referrerVisits = totalVisits.reduce(
-    (acc, visit) => {
-      const ref = visit.referer ?? "null";
-      acc[ref] = (acc[ref] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  const referrerVisits = totalVisits.reduce<Record<string, number>>((acc, visit) => {
+    const ref = visit.referer ?? "null";
+    acc[ref] = (acc[ref] ?? 0) + 1;
+    return acc;
+  }, {});
   const topReferrer =
     Object.entries(referrerVisits).length > 0
-      ? Object.entries(referrerVisits).reduce((a, b) =>
-          a[1] > b[1] ? a : b,
-        )[0]
+      ? Object.entries(referrerVisits).reduce((a, b) => (a[1] > b[1] ? a : b))[0]
       : "null";
 
   return {
@@ -1534,15 +1413,9 @@ export const getAllUserAnalytics = async (
   };
 };
 
-export const togglePublicStats = async (
-  ctx: WorkspaceTRPCContext,
-  input: GetLinkInput,
-) => {
+export const togglePublicStats = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!fetchedLink) {
@@ -1554,23 +1427,12 @@ export const togglePublicStats = async (
     .set({
       publicStats: !fetchedLink.publicStats,
     })
-    .where(
-      and(
-        eq(link.id, input.id),
-        workspaceFilter(ctx.workspace, link.userId, link.teamId),
-      ),
-    );
+    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 };
 
-export const toggleLinkStatus = async (
-  ctx: WorkspaceTRPCContext,
-  input: GetLinkInput,
-) => {
+export const toggleLinkStatus = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!fetchedLink) {
@@ -1582,32 +1444,19 @@ export const toggleLinkStatus = async (
     .set({
       disabled: !fetchedLink.disabled,
     })
-    .where(
-      and(
-        eq(link.id, input.id),
-        workspaceFilter(ctx.workspace, link.userId, link.teamId),
-      ),
-    );
+    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
   // Invalidate cache so the status change takes effect immediately
   if (fetchedLink.alias) {
-    await deleteFromCache(
-      buildCacheKey(fetchedLink.domain, fetchedLink.alias),
-    );
+    await deleteFromCache(buildCacheKey(fetchedLink.domain, fetchedLink.alias));
   }
 
   return result;
 };
 
-export const resetLinkStatistics = async (
-  ctx: WorkspaceTRPCContext,
-  input: GetLinkInput,
-) => {
+export const resetLinkStatistics = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
   const fetchedLink = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!fetchedLink) {
@@ -1631,10 +1480,7 @@ export const verifyLinkPassword = async (
     return null;
   }
 
-  const isPasswordCorrect = await bcrypt.compare(
-    input.password,
-    link.passwordHash,
-  );
+  const isPasswordCorrect = await bcrypt.compare(input.password, link.passwordHash);
 
   if (!isPasswordCorrect) {
     return null;
@@ -1681,9 +1527,7 @@ export const verifyLinkPassword = async (
 
   const destination = geoResult.matched ? geoResult.destination : link.url;
 
-  const tokenIssue = destination
-    ? await issueVerifiedClickToken(link, destination)
-    : null;
+  const tokenIssue = destination ? await issueVerifiedClickToken(link, destination) : null;
 
   await recordClick({
     headers: ctx.headers,
@@ -1713,23 +1557,13 @@ export const changeLinkPassword = async (
     .set({
       passwordHash,
     })
-    .where(
-      and(
-        eq(link.id, input.id),
-        workspaceFilter(ctx.workspace, link.userId, link.teamId),
-      ),
-    );
+    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
   const updatedLink = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
-  await deleteFromCache(
-    buildCacheKey(updatedLink!.domain, updatedLink!.alias!),
-  );
+  await deleteFromCache(buildCacheKey(updatedLink!.domain, updatedLink!.alias!));
 
   return updatedLink;
 };
@@ -1746,21 +1580,11 @@ export const checkAliasAvailability = async (
   return { isAvailable: !existingLink };
 };
 
-type LinkRecord = {
-  url: string;
-  alias?: string;
-  domain?: string;
-  note?: string;
-};
-
-export const bulkCreateLinks = async (
-  ctx: WorkspaceTRPCContext,
-  csvContent: string,
-) => {
-  const records = parse(csvContent, {
+export const bulkCreateLinks = async (ctx: WorkspaceTRPCContext, csvContent: string) => {
+  const rows: unknown[] = parse(csvContent, {
     columns: true,
     skip_empty_lines: true,
-  }) as LinkRecord[];
+  });
 
   const ownership = workspaceOwnership(ctx.workspace);
 
@@ -1769,7 +1593,8 @@ export const bulkCreateLinks = async (
   // promise.all settled will return an array of objects with status and value, we can then filter out
   // the rejected promises and report those to the user
   const bulkLinksCreationPromiseResults = await Promise.allSettled(
-    records.map(async (record: LinkRecord) => {
+    rows.map(async (row) => {
+      const record = csvLinkRowSchema.parse(row);
       await assertUrlSafe(record.url);
 
       const alias = record.alias ?? (await generateShortLink());
@@ -1819,22 +1644,14 @@ export const exportAllUserLinks = async (ctx: WorkspaceTRPCContext) => {
   });
 };
 
-export const toggleArchive = async (
-  ctx: WorkspaceTRPCContext,
-  input: ToggleArchiveInput,
-) => {
+export const toggleArchive = async (ctx: WorkspaceTRPCContext, input: ToggleArchiveInput) => {
   const currentLink = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.id),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
     columns: { archived: true },
   });
 
   if (!currentLink) {
-    throw new Error(
-      "Link not found or you don't have permission to modify it.",
-    );
+    throw new Error("Link not found or you don't have permission to modify it.");
   }
 
   const newArchivedStatus = !currentLink.archived;
@@ -1842,12 +1659,7 @@ export const toggleArchive = async (
   await ctx.db
     .update(link)
     .set({ archived: newArchivedStatus })
-    .where(
-      and(
-        eq(link.id, input.id),
-        workspaceFilter(ctx.workspace, link.userId, link.teamId),
-      ),
-    );
+    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
   // Invalidate cache if necessary (if the link was cached)
   // Consider if archived links should be cached differently or not at all

@@ -1,12 +1,7 @@
 "use client";
 
+import { IconDiamond, IconLoader2, IconPlus, IconTarget } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  IconDiamond,
-  IconLoader2,
-  IconPlus,
-  IconTarget,
-} from "@tabler/icons-react";
 import { useState } from "react";
 
 import { api } from "@/trpc/react";
@@ -18,9 +13,7 @@ import type { UtmTemplate } from "@/server/db/schema";
 
 export default function UtmTemplatesPage() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<UtmTemplate | null>(
-    null
-  );
+  const [editingTemplate, setEditingTemplate] = useState<UtmTemplate | null>(null);
 
   const { data: templates, isLoading } = api.utmTemplate.list.useQuery();
   const { data: userSubscription, isLoading: isLoadingSubscription } =
@@ -64,11 +57,9 @@ export default function UtmTemplatesPage() {
         <div
           className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage:
-              "radial-gradient(circle, rgb(212 212 212 / 0.5) 1px, transparent 1px)",
+            backgroundImage: "radial-gradient(circle, rgb(212 212 212 / 0.5) 1px, transparent 1px)",
             backgroundSize: "20px 20px",
-            maskImage:
-              "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+            maskImage: "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
             WebkitMaskImage:
               "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
           }}
@@ -81,11 +72,7 @@ export default function UtmTemplatesPage() {
           className="relative"
         >
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-            <IconTarget
-              size={24}
-              stroke={1.5}
-              className="text-neutral-400 dark:text-neutral-500"
-            />
+            <IconTarget size={24} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
           </div>
         </motion.div>
 
@@ -99,8 +86,7 @@ export default function UtmTemplatesPage() {
             UTM Templates
           </p>
           <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
-            Create reusable UTM parameter templates to streamline your campaign
-            tracking.
+            Create reusable UTM parameter templates to streamline your campaign tracking.
           </p>
         </motion.div>
 
@@ -131,8 +117,7 @@ export default function UtmTemplatesPage() {
           </h1>
           {templates && templates.length > 0 && (
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              {templates.length}{" "}
-              {templates.length === 1 ? "template" : "templates"} total
+              {templates.length} {templates.length === 1 ? "template" : "templates"} total
             </p>
           )}
         </div>
@@ -186,8 +171,7 @@ export default function UtmTemplatesPage() {
               backgroundImage:
                 "radial-gradient(circle, rgb(212 212 212 / 0.5) 1px, transparent 1px)",
               backgroundSize: "20px 20px",
-              maskImage:
-                "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+              maskImage: "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
               WebkitMaskImage:
                 "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
             }}

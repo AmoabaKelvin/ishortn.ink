@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
 interface SelectionContextType {
   selectedLinkIds: number[];
@@ -19,9 +13,7 @@ interface SelectionContextType {
   exitSelectionMode: () => void;
 }
 
-const SelectionContext = createContext<SelectionContextType | undefined>(
-  undefined
-);
+const SelectionContext = createContext<SelectionContextType | undefined>(undefined);
 
 export function SelectionProvider({ children }: { children: ReactNode }) {
   const [selectedLinkIds, setSelectedLinkIds] = useState<number[]>([]);
@@ -31,9 +23,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     // Auto-enter selection mode when first item is selected
     setIsSelectionMode(true);
     setSelectedLinkIds((prev) =>
-      prev.includes(linkId)
-        ? prev.filter((id) => id !== linkId)
-        : [...prev, linkId]
+      prev.includes(linkId) ? prev.filter((id) => id !== linkId) : [...prev, linkId],
     );
   }, []);
 
@@ -47,7 +37,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
 
   const isSelected = useCallback(
     (linkId: number) => selectedLinkIds.includes(linkId),
-    [selectedLinkIds]
+    [selectedLinkIds],
   );
 
   const enterSelectionMode = useCallback(() => {

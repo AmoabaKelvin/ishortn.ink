@@ -8,24 +8,18 @@ import {
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import {
-  getIntervalFromVariantId,
-  getVariantId,
-  resolvePlan,
-} from "@/lib/billing/plans";
+import { env } from "@/env.mjs";
+import { getIntervalFromVariantId, getVariantId, resolvePlan } from "@/lib/billing/plans";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 import { subscription } from "@/server/db/schema";
+import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 
 const log = logger.child({ component: "billing.lemonsqueezy" });
 
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
-import {
-  downgradeWithFeedbackInput,
-  downgradeReasonLabels,
-} from "./lemonsqueezy.input";
+import { downgradeWithFeedbackInput, downgradeReasonLabels } from "./lemonsqueezy.input";
 
 export const lemonsqueezyRouter = createTRPCRouter({
   createCheckoutOrUpdate: protectedProcedure
@@ -33,7 +27,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
       z.object({
         plan: z.enum(["pro", "ultra"]),
         interval: z.enum(["monthly", "annual"]).default("monthly"),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       configureLemonSqueezy();
@@ -64,13 +58,10 @@ export const lemonsqueezyRouter = createTRPCRouter({
         }
 
         // Update existing subscription
-        const updatedSub = await updateSubscription(
-          userSubscription.subscriptionId,
-          {
-            variantId: variantId,
-            invoiceImmediately: true,
-          }
-        );
+        const updatedSub = await updateSubscription(userSubscription.subscriptionId, {
+          variantId: variantId,
+          invoiceImmediately: true,
+        });
 
         if (updatedSub.error) {
           throw new Error(updatedSub.error.message);
@@ -104,30 +95,26 @@ export const lemonsqueezyRouter = createTRPCRouter({
       }
 
       // No active subscription, create a new checkout
-      const checkout = await createCheckout(
-        process.env.LEMONSQUEEZY_STORE_ID!,
-        variantId,
-        {
-          checkoutOptions: {
-            embed: true,
-            media: false,
+      const checkout = await createCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
+        checkoutOptions: {
+          embed: true,
+          media: false,
+        },
+        checkoutData: {
+          email: user!.email ?? undefined,
+          custom: {
+            user_id: userId,
           },
-          checkoutData: {
-            email: user!.email ?? undefined,
-            custom: {
-              user_id: userId,
-            },
-          },
-          productOptions: {
-            enabledVariants: [variantId],
-            redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings#billing`,
-            receiptButtonText: "Go to Dashboard",
-            receiptThankYouNote: `Thank you for signing up to iShortn ${
-              input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
-            }!`,
-          },
-        }
-      );
+        },
+        productOptions: {
+          enabledVariants: [variantId],
+          redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings#billing`,
+          receiptButtonText: "Go to Dashboard",
+          receiptThankYouNote: `Thank you for signing up to iShortn ${
+            input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
+          }!`,
+        },
+      });
 
       return { status: "redirect", url: checkout.data?.data.attributes.url };
     }),
@@ -145,9 +132,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
       throw new Error("No active subscription found");
     }
 
-    const cancelledSub = await cancelSubscription(
-      userSubscription.subscriptionId!
-    );
+    const cancelledSub = await cancelSubscription(userSubscription.subscriptionId!);
 
     if (cancelledSub.error) {
       throw new Error(cancelledSub.error.message);
@@ -165,7 +150,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
             : null,
         })
         .where(eq(subscription.userId, userId));
-    } catch (_e) {
+    } catch {
       throw new Error("Failed to update subscription status");
     }
 
@@ -186,10 +171,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
     }
 
     // Try to get subscription details if we have a valid subscriptionId
-    if (
-      userSubscription.subscriptionId &&
-      userSubscription.subscriptionId > 0
-    ) {
+    if (userSubscription.subscriptionId && userSubscription.subscriptionId > 0) {
       const userSub = await getSubscription(userSubscription.subscriptionId);
 
       if (!userSub.error) {
@@ -201,13 +183,10 @@ export const lemonsqueezyRouter = createTRPCRouter({
     if (userSubscription.customerId && userSubscription.customerId > 0) {
       const customer = await getCustomer(userSubscription.customerId);
 
-      if (
-        !customer.error &&
-        customer.data.data.attributes.urls.customer_portal
-      ) {
+      if (!customer.error && customer.data.data.attributes.urls.customer_portal) {
         return {
           customer_portal: customer.data.data.attributes.urls.customer_portal,
-          update_payment_method: null as string | null,
+          update_payment_method: null,
         };
       }
     }
@@ -242,9 +221,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
       // Validate this is actually a downgrade
       const planOrder = { free: 0, pro: 1, ultra: 2 };
       if (planOrder[targetPlan] >= planOrder[currentPlan]) {
-        throw new Error(
-          "Invalid downgrade request - target plan is not lower than current plan"
-        );
+        throw new Error("Invalid downgrade request - target plan is not lower than current plan");
       }
 
       // Send feedback notification (fire and forget — waitUntil keeps the
@@ -262,9 +239,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
 
       // Handle downgrade to free (cancellation)
       if (targetPlan === "free") {
-        const cancelledSub = await cancelSubscription(
-          userSubscription.subscriptionId!
-        );
+        const cancelledSub = await cancelSubscription(userSubscription.subscriptionId!);
 
         if (cancelledSub.error) {
           throw new Error(cancelledSub.error.message);
@@ -293,13 +268,10 @@ export const lemonsqueezyRouter = createTRPCRouter({
       const interval = getIntervalFromVariantId(userSubscription.variantId);
       const variantId = getVariantId(targetPlan, interval);
 
-      const updatedSub = await updateSubscription(
-        userSubscription.subscriptionId!,
-        {
-          variantId: variantId,
-          invoiceImmediately: false,
-        }
-      );
+      const updatedSub = await updateSubscription(userSubscription.subscriptionId!, {
+        variantId: variantId,
+        invoiceImmediately: false,
+      });
 
       if (updatedSub.error) {
         throw new Error(updatedSub.error.message);

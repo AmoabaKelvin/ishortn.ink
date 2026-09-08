@@ -14,16 +14,16 @@ export const geoRuleBaseSchema = z.object({
 });
 
 export const geoRuleInputSchema = geoRuleBaseSchema
-  .refine(
-    (data) => data.values.every((value) => isValidTargetingValue(data.type, value)),
-    { message: "Invalid value for this rule type", path: ["values"] },
-  )
+  .refine((data) => data.values.every((value) => isValidTargetingValue(data.type, value)), {
+    message: "Invalid value for this rule type",
+    path: ["values"],
+  })
   .refine(
     (data) => data.action !== "redirect" || (data.destination && data.destination.trim() !== ""),
     {
       message: "Destination URL is required for redirect actions",
       path: ["destination"],
-    }
+    },
   );
 
 // Schema for creating a geo rule

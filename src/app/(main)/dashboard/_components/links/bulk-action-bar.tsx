@@ -1,9 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   IconArchive,
-  IconArchiveOff,
   IconChevronDown,
   IconFolderShare,
   IconLink,
@@ -11,9 +9,11 @@ import {
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { MoveToFolderModal } from "@/app/(main)/dashboard/folders/_components/move-to-folder-modal";
 import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import {
   AlertDialog,
@@ -35,24 +35,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/trpc/react";
 
-import { MoveToFolderModal } from "@/app/(main)/dashboard/folders/_components/move-to-folder-modal";
-import { TransferToWorkspaceModal } from "./transfer-to-workspace-modal";
 import { useSelection } from "./selection-context";
+import { TransferToWorkspaceModal } from "./transfer-to-workspace-modal";
 
 export function BulkActionBar() {
-  const { selectedLinkIds, clearSelection, exitSelectionMode } =
-    useSelection();
+  const { selectedLinkIds, clearSelection, exitSelectionMode } = useSelection();
   const [moveToFolderOpen, setMoveToFolderOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-  const [archiveAction, setArchiveAction] = useState<"archive" | "restore">(
-    "archive",
-  );
+  const [archiveAction, setArchiveAction] = useState<"archive" | "restore">("archive");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [statusAction, setStatusAction] = useState<
-    "activate" | "deactivate"
-  >("deactivate");
+  const [statusAction, setStatusAction] = useState<"activate" | "deactivate">("deactivate");
 
   const utils = api.useUtils();
 
@@ -77,9 +71,7 @@ export function BulkActionBar() {
       clearSelection();
       exitSelectionMode();
       setArchiveDialogOpen(false);
-      toast.success(
-        `${result.count} links ${result.archived ? "archived" : "restored"}`,
-      );
+      toast.success(`${result.count} links ${result.archived ? "archived" : "restored"}`);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -93,9 +85,7 @@ export function BulkActionBar() {
       clearSelection();
       exitSelectionMode();
       setStatusDialogOpen(false);
-      toast.success(
-        `${result.count} links ${result.disabled ? "deactivated" : "activated"}`,
-      );
+      toast.success(`${result.count} links ${result.disabled ? "deactivated" : "activated"}`);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -167,9 +157,7 @@ export function BulkActionBar() {
                   {selectedLinkIds.length}
                 </motion.span>
               </div>
-              <span className="text-[13px] font-medium text-neutral-500">
-                selected
-              </span>
+              <span className="text-[13px] font-medium text-neutral-500">selected</span>
             </div>
 
             <div className="h-5 w-px bg-neutral-200 dark:bg-border" />
@@ -207,22 +195,14 @@ export function BulkActionBar() {
                     onClick={() => setTransferOpen(true)}
                     className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
                   >
-                    <IconFolderShare
-                      size={15}
-                      stroke={1.5}
-                      className="mr-2 text-neutral-400"
-                    />
+                    <IconFolderShare size={15} stroke={1.5} className="mr-2 text-neutral-400" />
                     Transfer to workspace
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => openArchiveDialog("archive")}
                     className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
                   >
-                    <IconArchive
-                      size={15}
-                      stroke={1.5}
-                      className="mr-2 text-neutral-400"
-                    />
+                    <IconArchive size={15} stroke={1.5} className="mr-2 text-neutral-400" />
                     Archive
                   </DropdownMenuItem>
 
@@ -235,22 +215,14 @@ export function BulkActionBar() {
                     onClick={() => openStatusDialog("deactivate")}
                     className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
                   >
-                    <IconLinkOff
-                      size={15}
-                      stroke={1.5}
-                      className="mr-2 text-neutral-400"
-                    />
+                    <IconLinkOff size={15} stroke={1.5} className="mr-2 text-neutral-400" />
                     Deactivate links
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => openStatusDialog("activate")}
                     className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
                   >
-                    <IconLink
-                      size={15}
-                      stroke={1.5}
-                      className="mr-2 text-neutral-400"
-                    />
+                    <IconLink size={15} stroke={1.5} className="mr-2 text-neutral-400" />
                     Activate links
                   </DropdownMenuItem>
 
@@ -301,13 +273,12 @@ export function BulkActionBar() {
         <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
-              Delete {selectedLinkIds.length}{" "}
-              {selectedLinkIds.length === 1 ? "link" : "links"}?
+              Delete {selectedLinkIds.length} {selectedLinkIds.length === 1 ? "link" : "links"}?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
               This will permanently delete{" "}
-              {selectedLinkIds.length === 1 ? "this link" : "these links"} and
-              all associated analytics data. This cannot be undone.
+              {selectedLinkIds.length === 1 ? "this link" : "these links"} and all associated
+              analytics data. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
@@ -326,15 +297,11 @@ export function BulkActionBar() {
       </AlertDialog>
 
       {/* Archive Dialog */}
-      <AlertDialog
-        open={archiveDialogOpen}
-        onOpenChange={setArchiveDialogOpen}
-      >
+      <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
         <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
-              {archiveAction === "archive" ? "Archive" : "Restore"}{" "}
-              {selectedLinkIds.length}{" "}
+              {archiveAction === "archive" ? "Archive" : "Restore"} {selectedLinkIds.length}{" "}
               {selectedLinkIds.length === 1 ? "link" : "links"}?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">
@@ -365,15 +332,11 @@ export function BulkActionBar() {
       </AlertDialog>
 
       {/* Status Dialog */}
-      <AlertDialog
-        open={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
-      >
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
-              {statusAction === "deactivate" ? "Deactivate" : "Activate"}{" "}
-              {selectedLinkIds.length}{" "}
+              {statusAction === "deactivate" ? "Deactivate" : "Activate"} {selectedLinkIds.length}{" "}
               {selectedLinkIds.length === 1 ? "link" : "links"}?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[13px] text-neutral-500 dark:text-neutral-400">

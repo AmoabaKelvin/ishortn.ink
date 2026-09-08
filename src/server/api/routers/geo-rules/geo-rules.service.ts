@@ -1,13 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
-import {
-  canUseGeoRules,
-  getGeoRulesLimit,
-  isUnlimitedGeoRules,
-} from "@/lib/billing/plans";
+import { canUseGeoRules, getGeoRulesLimit, isUnlimitedGeoRules } from "@/lib/billing/plans";
 import { deleteGeoRulesFromCache } from "@/lib/core/cache";
-import { geoRule, link } from "@/server/db/schema";
+import { geoRule } from "@/server/db/schema";
 
 import { checkWorkspaceLinkLimit, verifyLinkOwnership } from "../link/utils";
 
@@ -26,7 +22,7 @@ import type {
 async function checkGeoRulesLimit(
   ctx: WorkspaceTRPCContext,
   linkId: number,
-  excludeRuleId?: number
+  excludeRuleId?: number,
 ) {
   const { plan } = await checkWorkspaceLinkLimit(ctx);
 
@@ -65,7 +61,7 @@ async function checkGeoRulesLimit(
  */
 export async function getGeoRulesByLinkId(
   ctx: WorkspaceTRPCContext,
-  input: GetGeoRulesByLinkInput
+  input: GetGeoRulesByLinkInput,
 ) {
   await verifyLinkOwnership(ctx, input.linkId);
 
@@ -78,11 +74,8 @@ export async function getGeoRulesByLinkId(
 /**
  * Create a new geo rule for a link
  */
-export async function createGeoRule(
-  ctx: WorkspaceTRPCContext,
-  input: CreateGeoRuleInput
-) {
-  const linkRecord = await verifyLinkOwnership(ctx, input.linkId);
+export async function createGeoRule(ctx: WorkspaceTRPCContext, input: CreateGeoRuleInput) {
+  await verifyLinkOwnership(ctx, input.linkId);
   await checkGeoRulesLimit(ctx, input.linkId);
 
   // Get the max priority to add the new rule at the end
@@ -91,9 +84,8 @@ export async function createGeoRule(
     orderBy: [asc(geoRule.priority)],
   });
 
-  const maxPriority = existingRules.length > 0
-    ? Math.max(...existingRules.map((r) => r.priority))
-    : -1;
+  const maxPriority =
+    existingRules.length > 0 ? Math.max(...existingRules.map((r) => r.priority)) : -1;
 
   const [result] = await ctx.db.insert(geoRule).values({
     linkId: input.linkId,
@@ -120,10 +112,7 @@ export async function createGeoRule(
 /**
  * Update an existing geo rule
  */
-export async function updateGeoRule(
-  ctx: WorkspaceTRPCContext,
-  input: UpdateGeoRuleInput
-) {
+export async function updateGeoRule(ctx: WorkspaceTRPCContext, input: UpdateGeoRuleInput) {
   // First, get the rule to find its linkId
   const existingRule = await ctx.db.query.geoRule.findFirst({
     where: eq(geoRule.id, input.ruleId),
@@ -166,10 +155,7 @@ export async function updateGeoRule(
 /**
  * Delete a geo rule
  */
-export async function deleteGeoRule(
-  ctx: WorkspaceTRPCContext,
-  input: DeleteGeoRuleInput
-) {
+export async function deleteGeoRule(ctx: WorkspaceTRPCContext, input: DeleteGeoRuleInput) {
   // First, get the rule to find its linkId
   const existingRule = await ctx.db.query.geoRule.findFirst({
     where: eq(geoRule.id, input.ruleId),
@@ -197,10 +183,7 @@ export async function deleteGeoRule(
 /**
  * Reorder geo rules by updating their priorities
  */
-export async function reorderGeoRules(
-  ctx: WorkspaceTRPCContext,
-  input: ReorderGeoRulesInput
-) {
+export async function reorderGeoRules(ctx: WorkspaceTRPCContext, input: ReorderGeoRulesInput) {
   await verifyLinkOwnership(ctx, input.linkId);
 
   // Verify all rule IDs belong to this link
@@ -221,11 +204,8 @@ export async function reorderGeoRules(
   // Update priorities based on the order in ruleIds
   await Promise.all(
     input.ruleIds.map((ruleId, index) =>
-      ctx.db
-        .update(geoRule)
-        .set({ priority: index })
-        .where(eq(geoRule.id, ruleId))
-    )
+      ctx.db.update(geoRule).set({ priority: index }).where(eq(geoRule.id, ruleId)),
+    ),
   );
 
   // Invalidate cache

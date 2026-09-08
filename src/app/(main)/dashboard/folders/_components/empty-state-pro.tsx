@@ -19,11 +19,9 @@ export function EmptyStatePro({ onCreateClick }: EmptyStateProProps) {
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          backgroundImage:
-            "radial-gradient(circle, rgb(212 212 212 / 0.5) 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(circle, rgb(212 212 212 / 0.5) 1px, transparent 1px)",
           backgroundSize: "20px 20px",
-          maskImage:
-            "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
+          maskImage: "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
           WebkitMaskImage:
             "radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%)",
         }}
@@ -50,7 +48,8 @@ export function EmptyStatePro({ onCreateClick }: EmptyStateProProps) {
           No folders yet
         </p>
         <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
-          Create your first folder to organize links by project, campaign, or any way that works for you.
+          Create your first folder to organize links by project, campaign, or any way that works for
+          you.
         </p>
       </motion.div>
 

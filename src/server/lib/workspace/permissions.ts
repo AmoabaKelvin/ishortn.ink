@@ -1,10 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
-import {
-  ROLE_PERMISSIONS,
-  type WorkspaceContext,
-  type WorkspacePermission,
-} from "./types";
+import { ROLE_PERMISSIONS, type WorkspaceContext, type WorkspacePermission } from "./types";
 
 /**
  * Checks if the current user has a specific permission in the workspace.
@@ -18,7 +14,7 @@ import {
  */
 export function hasPermission(
   workspace: WorkspaceContext,
-  permission: WorkspacePermission
+  permission: WorkspacePermission,
 ): boolean {
   // Personal workspace: full access to everything
   if (workspace.type === "personal") {
@@ -26,7 +22,7 @@ export function hasPermission(
   }
 
   // Team workspace: check role-based permissions
-  const rolePermissions = ROLE_PERMISSIONS[workspace.role];
+  const rolePermissions: WorkspacePermission[] = ROLE_PERMISSIONS[workspace.role];
   return rolePermissions.includes(permission);
 }
 
@@ -41,7 +37,7 @@ export function hasPermission(
 export function requirePermission(
   workspace: WorkspaceContext,
   permission: WorkspacePermission,
-  action?: string
+  action?: string,
 ): void {
   if (!hasPermission(workspace, permission)) {
     throw new TRPCError({
@@ -64,7 +60,7 @@ export function requirePermission(
  */
 export function hasMinimumRole(
   workspace: WorkspaceContext,
-  requiredRole: "owner" | "admin" | "member"
+  requiredRole: "owner" | "admin" | "member",
 ): boolean {
   // Personal workspace: always owner
   if (workspace.type === "personal") {
@@ -89,7 +85,7 @@ export function hasMinimumRole(
 export function requireMinimumRole(
   workspace: WorkspaceContext,
   requiredRole: "owner" | "admin" | "member",
-  action?: string
+  action?: string,
 ): void {
   if (!hasMinimumRole(workspace, requiredRole)) {
     throw new TRPCError({

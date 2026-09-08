@@ -39,17 +39,15 @@ export const AccountTransferEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>
-        {senderName} wants to transfer their iShortn resources to you
-      </Preview>
+      <Preview>{senderName} wants to transfer their iShortn resources to you</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={section}>
             <Text style={text}>Hi {recipientName || "there"},</Text>
 
             <Text style={text}>
-              <strong>{senderName}</strong> ({senderEmail}) has requested to
-              transfer their iShortn resources to your account.
+              <strong>{senderName}</strong> ({senderEmail}) has requested to transfer their iShortn
+              resources to your account.
             </Text>
 
             <Hr style={hr} />
@@ -97,23 +95,17 @@ export const AccountTransferEmail = ({
                   {resourceCounts.qrPresets !== 1 ? "s" : ""}
                 </Text>
               )}
-              {totalResources === 0 && (
-                <Text style={resourceItem}>No resources to transfer</Text>
-              )}
+              {totalResources === 0 && <Text style={resourceItem}>No resources to transfer</Text>}
             </Section>
 
             <Hr style={hr} />
 
             <Text style={headingText}>Important notes:</Text>
-            <Text style={smallText}>
-              - All analytics data will be preserved
-            </Text>
+            <Text style={smallText}>- All analytics data will be preserved</Text>
             <Text style={smallText}>
               - Folders and tags will be merged by name if they already exist
             </Text>
-            <Text style={smallText}>
-              - API tokens and subscriptions will NOT be transferred
-            </Text>
+            <Text style={smallText}>- API tokens and subscriptions will NOT be transferred</Text>
 
             <Section style={buttonContainer}>
               <Button style={button} href={acceptUrl}>
@@ -127,16 +119,14 @@ export const AccountTransferEmail = ({
             </Text>
 
             <Text style={smallText}>
-              This invitation will expire in 7 days. If you don&apos;t want to accept
-              this transfer, you can safely ignore this email.
+              This invitation will expire in 7 days. If you don&apos;t want to accept this transfer,
+              you can safely ignore this email.
             </Text>
 
             <Hr style={hr} />
 
             <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>
-              Kelvin & the iShortn team
-            </Text>
+            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
           </Section>
         </Container>
       </Body>

@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
-import { clientLogger } from "@/lib/logger/client";
 import { Button } from "@/components/ui/button";
+import { clientLogger } from "@/lib/logger/client";
 
 const log = clientLogger.child({ component: "qr-modal" });
 import {
@@ -24,11 +24,7 @@ type QRCodeModalProps = {
   destinationUrl: string;
 };
 
-export function QRCodeModal({
-  open,
-  setOpen,
-  destinationUrl,
-}: QRCodeModalProps) {
+export function QRCodeModal({ open, setOpen, destinationUrl }: QRCodeModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const renderQRCode = useCallback(async () => {
@@ -42,7 +38,10 @@ export function QRCodeModal({
         margin: 2,
       });
     } catch (error) {
-      log.error({ err: error, action: "render" }, "failed to generate QR code");
+      log.error(
+        { err: error instanceof Error ? error : String(error), action: "render" },
+        "failed to generate QR code",
+      );
     }
   }, [destinationUrl]);
 
@@ -77,7 +76,10 @@ export function QRCodeModal({
       downloadLink.click();
       document.body.removeChild(downloadLink);
     } catch (error) {
-      log.error({ err: error, action: "download" }, "failed to download QR code");
+      log.error(
+        { err: error instanceof Error ? error : String(error), action: "download" },
+        "failed to download QR code",
+      );
       toast.error("Failed to download QR code");
     }
   };
@@ -87,9 +89,7 @@ export function QRCodeModal({
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>QR Code</DialogTitle>
-          <DialogDescription>
-            Scan or download your link&apos;s QR code
-          </DialogDescription>
+          <DialogDescription>Scan or download your link&apos;s QR code</DialogDescription>
         </DialogHeader>
 
         <DialogBody className="flex justify-center">
@@ -109,12 +109,7 @@ export function QRCodeModal({
         </DialogBody>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            className="h-9"
-          >
+          <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="h-9">
             Close
           </Button>
           <Button onClick={handleQRCodeDownload} className="h-9">

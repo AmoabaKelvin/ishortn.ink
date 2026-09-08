@@ -17,10 +17,20 @@ describe("allocateEventQuota", () => {
 
   test("grants nothing at or past the cap", () => {
     expect(
-      allocateEventQuota({ currentCount: 1000, limit: 1000, requested: 1, previousAlertLevel: 100 }),
+      allocateEventQuota({
+        currentCount: 1000,
+        limit: 1000,
+        requested: 1,
+        previousAlertLevel: 100,
+      }),
     ).toEqual({ allowed: 0, newCount: 1000, alertLevel: null });
     expect(
-      allocateEventQuota({ currentCount: 1200, limit: 1000, requested: 1, previousAlertLevel: 100 }),
+      allocateEventQuota({
+        currentCount: 1200,
+        limit: 1000,
+        requested: 1,
+        previousAlertLevel: 100,
+      }),
     ).toEqual({ allowed: 0, newCount: 1200, alertLevel: null });
   });
 

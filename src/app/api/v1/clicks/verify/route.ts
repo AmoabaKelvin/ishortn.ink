@@ -1,14 +1,17 @@
-import type { NextRequest } from "next/server";
+import { z } from "zod";
 
 import { verifyVerifiedClickToken } from "@/lib/utils/verified-click-token";
 import { enqueueClickEvent } from "@/server/lib/click-queue";
 
-export async function POST(request: NextRequest): Promise<Response> {
-  const body = (await request.json().catch(() => null)) as { token?: unknown } | null;
-  const token = typeof body?.token === "string" ? body.token : null;
-  if (!token) return new Response(null, { status: 400 });
+import type { NextRequest } from "next/server";
 
-  const decoded = verifyVerifiedClickToken(token);
+const verifyClickSchema = z.object({ token: z.string().min(1) });
+
+export async function POST(request: NextRequest): Promise<Response> {
+  const input = verifyClickSchema.safeParse(await request.json().catch(() => null));
+  if (!input.success) return new Response(null, { status: 400 });
+
+  const decoded = verifyVerifiedClickToken(input.data.token);
   if (!decoded) return new Response(null, { status: 400 });
 
   await enqueueClickEvent({

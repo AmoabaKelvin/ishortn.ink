@@ -122,18 +122,42 @@
 }
 
 @keyframes loader-spin {
-  8.3% { transform: rotate(30deg); }
-  16.6% { transform: rotate(60deg); }
-  25% { transform: rotate(90deg); }
-  33.3% { transform: rotate(120deg); }
-  41.6% { transform: rotate(150deg); }
-  50% { transform: rotate(180deg); }
-  58.3% { transform: rotate(210deg); }
-  66.6% { transform: rotate(240deg); }
-  75% { transform: rotate(270deg); }
-  83.3% { transform: rotate(300deg); }
-  91.6% { transform: rotate(330deg); }
-  100% { transform: rotate(360deg); }
+  8.3% {
+    transform: rotate(30deg);
+  }
+  16.6% {
+    transform: rotate(60deg);
+  }
+  25% {
+    transform: rotate(90deg);
+  }
+  33.3% {
+    transform: rotate(120deg);
+  }
+  41.6% {
+    transform: rotate(150deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  58.3% {
+    transform: rotate(210deg);
+  }
+  66.6% {
+    transform: rotate(240deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+  83.3% {
+    transform: rotate(300deg);
+  }
+  91.6% {
+    transform: rotate(330deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Selection */
@@ -187,23 +211,23 @@ html {
    never affected. Applied by (landing)/layout.tsx and (auth)/layout.tsx.
 ----------------------------------------------------------------------*/
 [data-theme="warm"] {
-  --warm-bg: #F7F1E8;
-  --warm-paper: #FFFCF5;
-  --warm-paper-2: #FCF5E8;
-  --warm-ink: #2B1F17;
-  --warm-ink-soft: #4A3A2E;
-  --warm-mute: #8A7868;
-  --warm-mute-soft: #B5A696;
-  --warm-line: #E6D9C5;
-  --warm-line-soft: #EFE6D4;
+  --warm-bg: #f7f1e8;
+  --warm-paper: #fffcf5;
+  --warm-paper-2: #fcf5e8;
+  --warm-ink: #2b1f17;
+  --warm-ink-soft: #4a3a2e;
+  --warm-mute: #8a7868;
+  --warm-mute-soft: #b5a696;
+  --warm-line: #e6d9c5;
+  --warm-line-soft: #efe6d4;
 
-  --warm-terracotta: #C85C3B;
-  --warm-terracotta-deep: #A84724;
-  --warm-sage: #8BA881;
-  --warm-sage-deep: #6E8A66;
-  --warm-cream: #FCECD4;
-  --warm-butter: #F5E1B0;
-  --warm-plum: #6B4B5E;
+  --warm-terracotta: #c85c3b;
+  --warm-terracotta-deep: #a84724;
+  --warm-sage: #8ba881;
+  --warm-sage-deep: #6e8a66;
+  --warm-cream: #fcecd4;
+  --warm-butter: #f5e1b0;
+  --warm-plum: #6b4b5e;
 
   --warm-accent: var(--warm-terracotta);
   --warm-accent-deep: var(--warm-terracotta-deep);
@@ -216,7 +240,11 @@ html {
 
   background: var(--warm-bg);
   color: var(--warm-ink);
-  font-family: var(--font-warm-ui), -apple-system, BlinkMacSystemFont, system-ui,
+  font-family:
+    var(--font-warm-ui),
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
     sans-serif;
   line-height: 1.5;
   font-feature-settings: "ss01";
@@ -230,7 +258,7 @@ html {
 }
 [data-theme="warm"][data-accent="plum"] {
   --warm-accent: var(--warm-plum);
-  --warm-accent-deep: #4F3545;
+  --warm-accent-deep: #4f3545;
 }
 
 [data-theme="warm"] .warm-display {
@@ -238,7 +266,9 @@ html {
   font-weight: 400;
   letter-spacing: -0.02em;
   line-height: 0.98;
-  font-variation-settings: "opsz" 144, "SOFT" 50;
+  font-variation-settings:
+    "opsz" 144,
+    "SOFT" 50;
   overflow-wrap: break-word;
 }
 
@@ -427,7 +457,9 @@ html {
   font-weight: 400;
   font-size: clamp(40px, 6vw, 56px);
   letter-spacing: -0.02em;
-  font-variation-settings: "opsz" 144, "SOFT" 50;
+  font-variation-settings:
+    "opsz" 144,
+    "SOFT" 50;
   text-wrap: balance;
 }
 [data-theme="warm"] .cl-subtitle {
@@ -533,7 +565,9 @@ html {
   font-weight: 400;
   font-size: 28px;
   letter-spacing: -0.02em;
-  font-variation-settings: "opsz" 144, "SOFT" 50;
+  font-variation-settings:
+    "opsz" 144,
+    "SOFT" 50;
   text-wrap: balance;
   overflow-wrap: break-word;
 }
@@ -622,8 +656,8 @@ html {
   border-radius: 4px;
   background: var(--warm-paper-2);
   border: 1px solid var(--warm-line-soft);
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.9em;
 }
 [data-theme="warm"] .cl-prose pre {
@@ -763,7 +797,7 @@ html {
   outline: none !important;
 }
 [data-theme="warm"] .cl-formButtonPrimary:hover {
-  background: #4A3A2E !important;
+  background: #4a3a2e !important;
   box-shadow: none !important;
 }
 [data-theme="warm"] .cl-formButtonPrimary:focus-visible {
@@ -771,7 +805,7 @@ html {
 }
 [data-theme="warm"] .cl-formFieldInput:focus,
 [data-theme="warm"] .cl-formFieldInput:focus-within {
-  border-color: #C85C3B !important;
+  border-color: #c85c3b !important;
   box-shadow: 0 0 0 3px rgba(200, 92, 59, 0.15) !important;
   outline: none !important;
 }
@@ -781,11 +815,11 @@ html {
   font-size: 14px !important;
 }
 [data-theme="warm"] .cl-socialButtonsBlockButton:hover {
-  border-color: #4A3A2E !important;
-  color: #2B1F17 !important;
+  border-color: #4a3a2e !important;
+  color: #2b1f17 !important;
 }
 [data-theme="warm"] .cl-footerActionLink:hover {
-  color: #A84724 !important;
+  color: #a84724 !important;
 }
 [data-theme="warm"] .cl-internal-b3fm6y, /* clerk dev mode badge container */
 [data-theme="warm"] .cl-badge {
@@ -802,7 +836,8 @@ html {
   background-color: transparent !important;
   color: #f5f5f5 !important;
   font-size: 0.875rem !important;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
   padding: 0 !important;
   white-space: pre;
 }
@@ -812,7 +847,8 @@ html {
   background-color: #27272a !important; /* zinc-800 */
   color: #e4e4e7 !important; /* zinc-200 */
   font-size: 0.875rem !important;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
 }
 
 .changelog-prose code:not(pre code)::before,

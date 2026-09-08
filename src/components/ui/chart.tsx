@@ -1,16 +1,18 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
 
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
+import { z } from "zod";
 
 import { cn } from "@/lib/utils";
 
-// Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const;
+// Format: [THEME_NAME, CSS_SELECTOR]
+const THEMES = [
+  ["light", ""],
+  ["dark", ".dark"],
+] as const;
+
+type ChartTheme = (typeof THEMES)[number][0];
 
 export type ChartConfig = {
   [k in string]: {
@@ -18,7 +20,7 @@ export type ChartConfig = {
     icon?: React.ComponentType;
   } & (
     | { color?: string; theme?: never }
-    | { color?: never; theme: Record<keyof typeof THEMES, string> }
+    | { color?: never; theme: Record<ChartTheme, string> }
   );
 };
 
@@ -68,7 +70,7 @@ const ChartContainer = React.forwardRef<
 ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const colorConfig = Object.entries(config).filter(([_, config]) => config.theme ?? config.color);
+  const colorConfig = Object.entries(config).filter(([, entry]) => entry.theme ?? entry.color);
 
   if (!colorConfig.length) {
     return null;
@@ -77,24 +79,28 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
+        __html: THEMES.map(
+          ([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ?? itemConfig.color;
+    const color = itemConfig.theme?.[theme] ?? itemConfig.color;
     return color ? `  --color-${key}: ${color};` : null;
   })
   .join("\n")}
 }
 `,
-          )
-          .join("\n"),
+        ).join("\n"),
       }}
     />
   );
 };
+
+// CSS custom properties are not part of React.CSSProperties; the template
+// literal key type expresses them without an assertion.
+function indicatorVars(color: string | undefined): React.CSSProperties & Record<`--${string}`, string | undefined> {
+  return { "--color-bg": color, "--color-border": color };
+}
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
@@ -137,8 +143,11 @@ const ChartTooltipContent = React.forwardRef<
       const [item] = payload;
       const key = `${labelKey ?? item?.dataKey ?? item?.name ?? "value"}`;
       const itemConfig = getPayloadConfigFromPayload(config, item, key);
+      const stringLabel = configKeySchema.safeParse(label);
       const value =
-        !labelKey && typeof label === "string" ? config[label]?.label ?? label : itemConfig?.label;
+        !labelKey && stringLabel.success
+          ? config[stringLabel.data]?.label ?? stringLabel.data
+          : itemConfig?.label;
 
       if (labelFormatter) {
         return (
@@ -201,12 +210,7 @@ const ChartTooltipContent = React.forwardRef<
                               "my-0.5": nestLabel && indicator === "dashed",
                             },
                           )}
-                          style={
-                            {
-                              "--color-bg": indicatorColor,
-                              "--color-border": indicatorColor,
-                            } as React.CSSProperties
-                          }
+                          style={indicatorVars(indicatorColor)}
                         />
                       )
                     )}
@@ -295,28 +299,38 @@ const ChartLegendContent = React.forwardRef<
 });
 ChartLegendContent.displayName = "ChartLegend";
 
-// Helper to extract item config from a payload.
-function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key: string) {
-  if (typeof payload !== "object" || payload === null) {
-    return undefined;
-  }
+// Recharts passes tooltip/legend entries through with loose value types, so the
+// config key is decoded from the two places it can live rather than narrowed
+// inline at each read.
+const chartDatumSchema = z.record(z.string(), z.unknown());
+const nestedDatumSchema = z.object({ payload: z.unknown() });
+const configKeySchema = z.string();
 
-  const payloadPayload =
-    "payload" in payload && typeof payload.payload === "object" && payload.payload !== null
-      ? payload.payload
-      : undefined;
+type ChartDatum = z.infer<typeof chartDatumSchema>;
+type TooltipEntry = NonNullable<
+  React.ComponentProps<typeof RechartsPrimitive.Tooltip>["payload"]
+>[number];
+type LegendEntry = NonNullable<RechartsPrimitive.LegendProps["payload"]>[number];
+type ChartPayloadEntry = TooltipEntry | LegendEntry | ChartDatum;
 
-  let configLabelKey: string = key;
+function configKeyAt(source: ChartPayloadEntry | undefined, key: string): string | undefined {
+  const datum = chartDatumSchema.safeParse(source);
+  if (!datum.success) return undefined;
+  const value = configKeySchema.safeParse(datum.data[key]);
+  return value.success ? value.data : undefined;
+}
 
-  if (key in payload && typeof payload[key as keyof typeof payload] === "string") {
-    configLabelKey = payload[key as keyof typeof payload] as string;
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
-  ) {
-    configLabelKey = payloadPayload[key as keyof typeof payloadPayload] as string;
-  }
+function getPayloadConfigFromPayload(
+  config: ChartConfig,
+  payload: ChartPayloadEntry | undefined,
+  key: string,
+) {
+  const nested = nestedDatumSchema.safeParse(payload);
+  const nestedDatum = nested.success ? chartDatumSchema.safeParse(nested.data.payload) : null;
+  const configLabelKey =
+    configKeyAt(payload, key) ??
+    (nestedDatum?.success ? configKeyAt(nestedDatum.data, key) : undefined) ??
+    key;
 
   return configLabelKey in config ? config[configLabelKey] : config[key];
 }

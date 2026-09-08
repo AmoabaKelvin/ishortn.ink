@@ -6,7 +6,11 @@ const PNG = Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
   Buffer.alloc(16),
 ]);
-const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.alloc(16), Buffer.from([0xff, 0xd9])]);
+const JPEG = Buffer.concat([
+  Buffer.from([0xff, 0xd8]),
+  Buffer.alloc(16),
+  Buffer.from([0xff, 0xd9]),
+]);
 const GIF = Buffer.concat([Buffer.from("GIF89a", "latin1"), Buffer.alloc(16)]);
 const WEBP = Buffer.concat([
   Buffer.from("RIFF", "latin1"),

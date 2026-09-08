@@ -27,79 +27,68 @@ type FeatureItem = {
 const items: FeatureItem[] = [
   {
     title: "Analytics that don't hurt to read",
-    body:
-      "Clicks, unique visitors, countries, cities, devices, referrers, and a timeline. All on a warm, readable dashboard — no cookie banners to install.",
+    body: "Clicks, unique visitors, countries, cities, devices, referrers, and a timeline. All on a warm, readable dashboard — no cookie banners to install.",
     bg: "var(--warm-cream)",
     visual: "analytics",
   },
   {
     title: "Link-in-bio, fully tracked",
-    body:
-      "One page for all your links — buttons, social icons, and headings. Every link block is a real short link, so clicks land in your analytics. Themes and a QR code included.",
+    body: "One page for all your links — buttons, social icons, and headings. Every link block is a real short link, so clicks land in your analytics. Themes and a QR code included.",
     bg: "#F0E6CF",
     visual: "bio",
   },
   {
     title: "Your own custom domain",
-    body:
-      "Use go.yourbrand.com/spring instead of ishortn.ink. Takes ~90 seconds with a CNAME. Pro gets 3, Ultra gets unlimited.",
+    body: "Use go.yourbrand.com/spring instead of ishortn.ink. Takes ~90 seconds with a CNAME. Pro gets 3, Ultra gets unlimited.",
     bg: "var(--warm-paper)",
     visual: "domain",
   },
   {
     title: "Dynamic, brandable QR codes",
-    body:
-      "Pick a dot style, drop in your logo, and edit the destination any time — without reprinting. Every scan is tracked.",
+    body: "Pick a dot style, drop in your logo, and edit the destination any time — without reprinting. Every scan is tracked.",
     bg: "#E4EADD",
     visual: "dynamic-qr",
   },
   {
     title: "Targeting rules per link",
-    body:
-      "Send US visitors to one URL, EU to another, iOS to the App Store, Android to Play. Country, continent, device, or OS rules.",
+    body: "Send US visitors to one URL, EU to another, iOS to the App Store, Android to Play. Country, continent, device, or OS rules.",
     bg: "var(--warm-paper)",
     visual: "geo",
   },
   {
     title: "Password-protect & cloak",
-    body:
-      "Gate sensitive links behind a password, or keep your short URL visible while the destination loads. Password protection comes with every paid plan; cloaking is an Ultra feature.",
+    body: "Gate sensitive links behind a password, or keep your short URL visible while the destination loads. Password protection comes with every paid plan; cloaking is an Ultra feature.",
     bg: "#F0E6CF",
     visual: "lock",
   },
   {
     title: "UTM templates that auto-apply",
-    body:
-      "Save your UTM presets once, then apply them with a click on Ultra. No more hand-typing utm_source on every campaign.",
+    body: "Save your UTM presets once, then apply them with a click on Ultra. No more hand-typing utm_source on every campaign.",
     bg: "var(--warm-paper)",
     visual: "utm",
   },
   {
     title: "Click milestones by email",
-    body:
-      "Set thresholds — 100, 1,000, whatever — and get a note the moment a link crosses it. Never miss a launch going viral.",
+    body: "Set thresholds — 100, 1,000, whatever — and get a note the moment a link crosses it. Never miss a launch going viral.",
     bg: "#E4EADD",
     visual: "milestones",
   },
   {
     title: "Team workspaces",
-    body:
-      "Invite teammates, share a library, transfer resources between accounts. Ultra plan includes unlimited members.",
+    body: "Invite teammates, share a library, transfer resources between accounts. Ultra plan includes unlimited members.",
     bg: "var(--warm-cream)",
     visual: "team",
   },
   {
     title: "Verified clicks, not just clicks",
-    body:
-      "We separate real human visitors from link scanners and preview bots, so \"1,200 clicks\" means 1,200 actual people.",
+    body: 'We separate real human visitors from link scanners and preview bots, so "1,200 clicks" means 1,200 actual people.',
     bg: "var(--warm-paper)",
     visual: "cloaking",
   },
 ];
 
 const DynamicQRVisual = () => {
-  const qr = useMemo(() => encode("https://ishortn.ink", { ecc: "H", border: 0 }), []);
-  const data = qr.data as boolean[][];
+  const { data } = useMemo(() => encode("https://ishortn.ink", { ecc: "H", border: 0 }), []);
   const size = data.length;
   return (
     <div
@@ -115,8 +104,10 @@ const DynamicQRVisual = () => {
           viewBox={`0 0 ${size} ${size}`}
           width="128"
           height="128"
+          // eslint-disable-next-line anti-slop/no-shape-in-symbol-names -- SVG attribute name
           shapeRendering="auto"
           style={{ display: "block" }}
+          // eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- inline SVG needs role="img" to be announced as an image
           role="img"
           aria-label="QR code for https://ishortn.ink"
         >
@@ -203,14 +194,7 @@ const FeatureVisual = ({ kind }: { kind: VisualKind }) => {
               fill="url(#warm-bars-fade)"
             />
           ))}
-          <line
-            x1="16"
-            x2="244"
-            y1="120"
-            y2="120"
-            stroke="var(--warm-line)"
-            strokeWidth="1"
-          />
+          <line x1="16" x2="244" y1="120" y2="120" stroke="var(--warm-line)" strokeWidth="1" />
         </svg>
       </div>
     );
@@ -460,14 +444,7 @@ const FeatureVisual = ({ kind }: { kind: VisualKind }) => {
               >
                 {m.n.toLocaleString()}
               </text>
-              <rect
-                x="56"
-                y="4"
-                width="160"
-                height="10"
-                rx="5"
-                fill="var(--warm-line)"
-              />
+              <rect x="56" y="4" width="160" height="10" rx="5" fill="var(--warm-line)" />
               <rect
                 x="56"
                 y="4"
@@ -524,14 +501,7 @@ const FeatureVisual = ({ kind }: { kind: VisualKind }) => {
           >
             Real: 1,284 · Bots filtered: 412
           </text>
-          <rect
-            x="16"
-            y="78"
-            width={228 * 0.76}
-            height="8"
-            rx="4"
-            fill="var(--warm-accent)"
-          />
+          <rect x="16" y="78" width={228 * 0.76} height="8" rx="4" fill="var(--warm-accent)" />
           <rect
             x={16 + 228 * 0.76}
             y="78"
@@ -593,10 +563,7 @@ const FeatureVisual = ({ kind }: { kind: VisualKind }) => {
 
 export const Features = () => {
   return (
-    <section
-      className="warm-section"
-      style={{ background: "var(--warm-bg)" }}
-    >
+    <section className="warm-section" style={{ background: "var(--warm-bg)" }}>
       <div className="warm-container">
         <div
           className="warm-features-header"
@@ -618,10 +585,7 @@ export const Features = () => {
               />
               Everything inside
             </div>
-            <h2
-              className="warm-display"
-              style={{ margin: 0, fontSize: "clamp(44px, 7vw, 80px)" }}
-            >
+            <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 7vw, 80px)" }}>
               Built for the way
               <br />
               <em style={{ fontStyle: "italic" }}>you actually work.</em>
@@ -637,15 +601,12 @@ export const Features = () => {
               margin: 0,
             }}
           >
-            Every feature below is live in iShortn today — not on a roadmap.
-            If you see it here, you can use it tonight.
+            Every feature below is live in iShortn today — not on a roadmap. If you see it here, you
+            can use it tonight.
           </p>
         </div>
 
-        <div
-          className="warm-features-grid"
-          style={{ display: "grid", gap: 20 }}
-        >
+        <div className="warm-features-grid" style={{ display: "grid", gap: 20 }}>
           {items.map((it) => (
             <div
               key={it.title}

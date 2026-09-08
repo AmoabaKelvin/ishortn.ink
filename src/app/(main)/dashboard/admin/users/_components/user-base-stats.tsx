@@ -1,9 +1,10 @@
 "use client";
 
 import { formatPrice } from "@/lib/utils";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { StatCard } from "../../_components/stat-card";
+
+import type { RouterOutputs } from "@/trpc/shared";
 
 type Summary = RouterOutputs["admin"]["getUserBaseSummary"];
 
@@ -18,10 +19,7 @@ export function UserBaseStats({
 
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <StatCard
-        title="Total Users"
-        value={data ? data.totalUsers.toLocaleString() : placeholder}
-      />
+      <StatCard title="Total Users" value={data ? data.totalUsers.toLocaleString() : placeholder} />
       <StatCard
         title="Paid Users"
         value={data ? data.paidUsers.toLocaleString() : placeholder}
@@ -30,7 +28,11 @@ export function UserBaseStats({
       />
       <StatCard
         title="MRR"
-        value={data ? formatPrice(data.mrr, { notation: "standard", maximumFractionDigits: 0 }) : placeholder}
+        value={
+          data
+            ? formatPrice(data.mrr, { notation: "standard", maximumFractionDigits: 0 })
+            : placeholder
+        }
         hint={data ? "estimated" : undefined}
       />
       <StatCard

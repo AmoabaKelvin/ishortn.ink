@@ -2,19 +2,19 @@
 
 import { ArrowUpRightIcon, CheckIcon, Loader2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { clientLogger } from "@/lib/logger/client";
-import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
 
@@ -32,7 +32,10 @@ export function UpgradeToPro() {
         window.location.reload();
       }
     } catch (error) {
-      clientLogger.error({ err: error }, "upgrade mutation failed");
+      clientLogger.error(
+        { err: error instanceof Error ? error : String(error) },
+        "upgrade mutation failed",
+      );
     }
   };
 
@@ -88,9 +91,7 @@ export function UpgradeToPro() {
                 disabled={upgradeMutation.isLoading}
                 onClick={handleUpgrade}
               >
-                {upgradeMutation.isLoading && (
-                  <Loader2 className="mr-2 size-5 animate-spin" />
-                )}
+                {upgradeMutation.isLoading && <Loader2 className="mr-2 size-5 animate-spin" />}
                 Upgrade Now
               </Button>
             </div>

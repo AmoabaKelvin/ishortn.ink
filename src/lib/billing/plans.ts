@@ -37,10 +37,10 @@ const ULTRA_PRODUCT_IDS = new Set([1108002]);
 
 const ANNUAL_VARIANT_IDS = new Set([PRO_ANNUAL_VARIANT_ID, ULTRA_ANNUAL_VARIANT_ID]);
 
-export const PLAN_VARIANT_IDS: Record<Exclude<Plan, "free">, Record<BillingInterval, number>> = {
+export const PLAN_VARIANT_IDS = {
   pro: { monthly: PRO_MONTHLY_VARIANT_ID, annual: PRO_ANNUAL_VARIANT_ID },
   ultra: { monthly: ULTRA_MONTHLY_VARIANT_ID, annual: ULTRA_ANNUAL_VARIANT_ID },
-};
+} satisfies Record<Exclude<Plan, "free">, Record<BillingInterval, number>>;
 
 export function getVariantId(plan: Exclude<Plan, "free">, interval: BillingInterval): number {
   return PLAN_VARIANT_IDS[plan][interval];
@@ -50,7 +50,9 @@ export function getIntervalFromVariantId(variantId?: number | null): BillingInte
   return variantId && ANNUAL_VARIANT_IDS.has(variantId) ? "annual" : "monthly";
 }
 
-export const PLAN_CAPS: Record<Plan, PlanCaps> = {
+type PlanCapsByPlan = { [P in Plan]: PlanCaps };
+
+export const PLAN_CAPS: PlanCapsByPlan = {
   free: {
     eventsLimit: 1000,
     linksLimit: 30,

@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, mock, test } from "bun:test";
+
 import { decode, encode } from "@jsquash/jpeg";
 import exifr from "exifr";
 
@@ -85,9 +86,7 @@ describe("normalizeImageOrientation", () => {
     const oriented = injectExifOrientation(await encodeJpeg(data, width, height), 6);
 
     const fixed = await normalizeImageOrientation(oriented, "jpeg");
-    const image = await decode(
-      fixed.buffer.slice(fixed.byteOffset, fixed.byteOffset + fixed.byteLength) as ArrayBuffer,
-    );
+    const image = await decode(new Uint8Array(fixed).buffer);
     expect(image.width).toBe(height);
     expect(image.height).toBe(width);
     const pixel = (x: number, y: number) => image.data[(y * image.width + x) * 4]!;
@@ -148,9 +147,7 @@ describe("normalizeImageOrientation without sharp (Workers path)", () => {
     const oriented = injectExifOrientation(await encodeJpeg(data, width, height), 6);
 
     const fixed = await normalizeImageOrientation(oriented, "jpeg");
-    const image = await decode(
-      fixed.buffer.slice(fixed.byteOffset, fixed.byteOffset + fixed.byteLength) as ArrayBuffer,
-    );
+    const image = await decode(new Uint8Array(fixed).buffer);
     expect(image.width).toBe(height);
     expect(image.height).toBe(width);
     const pixel = (x: number, y: number) => image.data[(y * image.width + x) * 4]!;

@@ -1,10 +1,16 @@
 import crypto from "node:crypto";
+
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import WelcomeEmail from "@/emails/welcome-to-pro";
+import { env } from "@/env.mjs";
 import { getIntervalFromVariantId, getPlanFromIds } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
-import { webhookHasMeta } from "@/lib/typeguards";
+import {
+  lemonsqueezySubscriptionEventNameSchema,
+  lemonsqueezySubscriptionEventSchema,
+  lemonsqueezyWebhookEnvelopeSchema,
+} from "@/lib/types/lemonsqueezy";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
@@ -12,16 +18,14 @@ import { resend } from "@/server/lib/notifications/resend-client";
 
 import { eventIsBehindProvider } from "./reconcile";
 
-import type {
-  LemonsqueezySubscriptionAttributes,
-  LemonsqueezyWebhookPayload,
-} from "@/lib/types/lemonsqueezy";
+import type { LemonsqueezySubscriptionEvent } from "@/lib/types/lemonsqueezy";
 import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 
 const log = logger.child({ webhook: "lemonsqueezy" });
 
 export async function POST(request: Request) {
-  if (!process.env.LEMONSQUEEZY_WEBHOOK_SECRET) {
+  const secret = env.LEMONSQUEEZY_WEBHOOK_SECRET;
+  if (!secret) {
     return new Response("Lemon Squeezy Webhook Secret not set in .env", {
       status: 500,
     });
@@ -29,7 +33,6 @@ export async function POST(request: Request) {
 
   // First, make sure the request is from Lemon Squeezy.
   const rawBody = await request.text();
-  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
 
   const hmac = crypto.createHmac("sha256", secret);
   const digest = Buffer.from(hmac.update(rawBody).digest("hex"), "utf8");
@@ -39,27 +42,39 @@ export async function POST(request: Request) {
     throw new Error("Invalid signature.");
   }
 
-  const data = JSON.parse(rawBody) as LemonsqueezyWebhookPayload;
-
-  if (!webhookHasMeta(data)) {
+  const body = JSON.parse(rawBody);
+  const envelope = lemonsqueezyWebhookEnvelopeSchema.safeParse(body);
+  if (!envelope.success) {
     return new Response("Webhook does not have meta", {
       status: 400,
     });
   }
 
-  void runBackgroundTask(processWebhook(data));
+  // order_created and the other event types carry no subscription state to apply.
+  const eventName = envelope.data.meta.event_name;
+  if (!lemonsqueezySubscriptionEventNameSchema.safeParse(eventName).success) {
+    return new Response("OK", { status: 200 });
+  }
+
+  const event = lemonsqueezySubscriptionEventSchema.safeParse(body);
+  if (!event.success) {
+    log.error({ event: eventName, issues: event.error.issues }, "malformed subscription payload");
+    return new Response("Malformed subscription payload", { status: 400 });
+  }
+
+  void runBackgroundTask(processWebhook(event.data));
 
   return new Response("OK", { status: 200 });
 }
 
-async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
+async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
   const { meta, data } = webhookEvent;
   const { event_name, custom_data } = meta;
   const { user_id: userId } = custom_data;
   const subscriptionId = Number.parseInt(data.id);
 
   try {
-    const lemonsqueezySubscription = data.attributes as LemonsqueezySubscriptionAttributes;
+    const lemonsqueezySubscription = data.attributes;
     const customerId = lemonsqueezySubscription.customer_id;
     const orderId = lemonsqueezySubscription.order_id;
     const renewsAt = new Date(lemonsqueezySubscription.renews_at);
@@ -277,8 +292,6 @@ async function processWebhook(webhookEvent: LemonsqueezyWebhookPayload) {
           })
           .where(currentSubscription),
       );
-    } else if (event_name === "order_created") {
-      // handle order created
     }
   } catch (err) {
     // Catch-and-log here (rather than letting runBackgroundTask's generic

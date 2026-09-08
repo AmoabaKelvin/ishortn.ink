@@ -1,6 +1,6 @@
 "use client";
 
-import { IconCheck, IconChevronDown } from "@tabler/icons-react";
+import { IconChevronDown } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,10 +24,7 @@ type UtmTemplateSelectorProps = {
   disabled?: boolean;
 };
 
-export function UtmTemplateSelector({
-  onSelect,
-  disabled = false,
-}: UtmTemplateSelectorProps) {
+export function UtmTemplateSelector({ onSelect, disabled = false }: UtmTemplateSelectorProps) {
   const { data: templates, isLoading, error } = api.utmTemplate.list.useQuery();
 
   const handleSelect = (template: NonNullable<typeof templates>[number]) => {
@@ -42,7 +39,12 @@ export function UtmTemplateSelector({
 
   if (error) {
     return (
-      <Button variant="outline" size="sm" disabled className="h-8 border-neutral-200 dark:border-border text-[13px]">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled
+        className="h-8 border-neutral-200 dark:border-border text-[13px]"
+      >
         Error loading templates
       </Button>
     );
@@ -50,7 +52,12 @@ export function UtmTemplateSelector({
 
   if (isLoading) {
     return (
-      <Button variant="outline" size="sm" disabled className="h-8 border-neutral-200 dark:border-border text-[13px]">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled
+        className="h-8 border-neutral-200 dark:border-border text-[13px]"
+      >
         Loading...
       </Button>
     );

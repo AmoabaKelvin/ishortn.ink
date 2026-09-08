@@ -21,30 +21,22 @@ export const utmTemplateRouter = createTRPCRouter({
   }),
 
   // Get a single UTM template by ID
-  get: workspaceProcedure
-    .input(getUtmTemplateInput)
-    .query(async ({ ctx, input }) => {
-      return getUtmTemplateById(ctx, input.id);
-    }),
+  get: workspaceProcedure.input(getUtmTemplateInput).query(async ({ ctx, input }) => {
+    return getUtmTemplateById(ctx, input.id);
+  }),
 
   // Create a new UTM template
-  create: workspaceProcedure
-    .input(createUtmTemplateInput)
-    .mutation(async ({ ctx, input }) => {
-      return createUtmTemplate(ctx, input);
-    }),
+  create: workspaceProcedure.input(createUtmTemplateInput).mutation(async ({ ctx, input }) => {
+    return createUtmTemplate(ctx, input);
+  }),
 
   // Update an existing UTM template
-  update: workspaceProcedure
-    .input(updateUtmTemplateInput)
-    .mutation(async ({ ctx, input }) => {
-      return updateUtmTemplate(ctx, input);
-    }),
+  update: workspaceProcedure.input(updateUtmTemplateInput).mutation(async ({ ctx, input }) => {
+    return updateUtmTemplate(ctx, input);
+  }),
 
   // Delete a UTM template
-  delete: workspaceProcedure
-    .input(deleteUtmTemplateInput)
-    .mutation(async ({ ctx, input }) => {
-      return deleteUtmTemplate(ctx, input.id);
-    }),
+  delete: workspaceProcedure.input(deleteUtmTemplateInput).mutation(async ({ ctx, input }) => {
+    return deleteUtmTemplate(ctx, input.id);
+  }),
 });

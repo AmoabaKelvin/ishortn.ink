@@ -1,23 +1,24 @@
+import crypto from "node:crypto";
+
 import { TRPCError } from "@trpc/server";
 import { addDays } from "date-fns";
 import { and, eq, isNull } from "drizzle-orm";
-import crypto from "node:crypto";
 
-import { deleteFromCache } from "@/lib/core/cache";
 import { getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
+import { deleteFromCache } from "@/lib/core/cache";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { customDomain, RESERVED_TEAM_SLUGS, team, teamInvite, teamMember, user } from "@/server/db/schema";
-import { sendTeamInviteEmail } from "@/server/lib/notifications/team-invite";
 import {
-  requireMinimumRole,
-  requirePermission
-} from "@/server/lib/workspace/permissions";
+  customDomain,
+  RESERVED_TEAM_SLUGS,
+  team,
+  teamInvite,
+  teamMember,
+  user,
+} from "@/server/db/schema";
+import { sendTeamInviteEmail } from "@/server/lib/notifications/team-invite";
+import { requireMinimumRole, requirePermission } from "@/server/lib/workspace/permissions";
 
-import type {
-  ProtectedTRPCContext,
-  TeamTRPCContext,
-  WorkspaceTRPCContext,
-} from "../../trpc";
+import type { ProtectedTRPCContext, TeamTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type {
   AcceptInviteInput,
   CreateTeamInput,
@@ -37,10 +38,7 @@ import type {
 /**
  * Create a new team (requires Ultra plan - enforced by procedure)
  */
-export async function createTeam(
-  ctx: ProtectedTRPCContext,
-  input: CreateTeamInput
-) {
+export async function createTeam(ctx: ProtectedTRPCContext, input: CreateTeamInput) {
   // Normalize and validate slug
   const normalizedSlug = input.slug.trim().toLowerCase();
 
@@ -106,14 +104,15 @@ export async function updateTeam(ctx: TeamTRPCContext, input: UpdateTeamInput) {
       where: and(
         eq(customDomain.domain, input.defaultDomain),
         eq(customDomain.teamId, ctx.workspace.teamId),
-        eq(customDomain.status, "active")
+        eq(customDomain.status, "active"),
       ),
     });
 
     if (!validDomain) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Invalid domain. Only verified custom domains belonging to this team can be set as default.",
+        message:
+          "Invalid domain. Only verified custom domains belonging to this team can be set as default.",
       });
     }
   }
@@ -141,10 +140,7 @@ export async function updateTeam(ctx: TeamTRPCContext, input: UpdateTeamInput) {
 /**
  * Update team slug (subdomain)
  */
-export async function updateTeamSlug(
-  ctx: TeamTRPCContext,
-  input: UpdateTeamSlugInput
-) {
+export async function updateTeamSlug(ctx: TeamTRPCContext, input: UpdateTeamSlugInput) {
   requireMinimumRole(ctx.workspace, "owner", "change team slug");
 
   // Normalize and validate slug
@@ -170,10 +166,7 @@ export async function updateTeamSlug(
     });
   }
 
-  await ctx.db
-    .update(team)
-    .set({ slug: normalizedSlug })
-    .where(eq(team.id, ctx.workspace.teamId));
+  await ctx.db.update(team).set({ slug: normalizedSlug }).where(eq(team.id, ctx.workspace.teamId));
 
   return { slug: normalizedSlug };
 }
@@ -192,20 +185,13 @@ export async function deleteTeam(ctx: TeamTRPCContext) {
   // A background cleanup job will permanently delete everything after 30 days
   await ctx.db.transaction(async (tx) => {
     // Delete all pending invites (no need to preserve these)
-    await tx
-      .delete(teamInvite)
-      .where(eq(teamInvite.teamId, ctx.workspace.teamId));
+    await tx.delete(teamInvite).where(eq(teamInvite.teamId, ctx.workspace.teamId));
 
     // Remove all members (they can no longer access the team)
-    await tx
-      .delete(teamMember)
-      .where(eq(teamMember.teamId, ctx.workspace.teamId));
+    await tx.delete(teamMember).where(eq(teamMember.teamId, ctx.workspace.teamId));
 
     // Soft delete the team by setting deletedAt
-    await tx
-      .update(team)
-      .set({ deletedAt: new Date() })
-      .where(eq(team.id, ctx.workspace.teamId));
+    await tx.update(team).set({ deletedAt: new Date() }).where(eq(team.id, ctx.workspace.teamId));
   });
 
   return { success: true };
@@ -238,10 +224,7 @@ export async function listUserTeams(ctx: ProtectedTRPCContext) {
  * Check if a team slug is available
  * Excludes soft-deleted teams so slugs can be reused after cleanup
  */
-export async function checkSlugAvailability(
-  ctx: ProtectedTRPCContext,
-  slug: string
-) {
+export async function checkSlugAvailability(ctx: ProtectedTRPCContext, slug: string) {
   // Check reserved slugs first
   if (RESERVED_TEAM_SLUGS.includes(slug)) {
     return { available: false, reason: "This slug is reserved and cannot be used" };
@@ -293,18 +276,12 @@ export async function listMembers(ctx: TeamTRPCContext) {
 /**
  * Update a member's role
  */
-export async function updateMemberRole(
-  ctx: TeamTRPCContext,
-  input: UpdateMemberRoleInput
-) {
+export async function updateMemberRole(ctx: TeamTRPCContext, input: UpdateMemberRoleInput) {
   requirePermission(ctx.workspace, "team.settings", "update member role");
 
   // Cannot change owner's role
   const targetMember = await ctx.db.query.teamMember.findFirst({
-    where: and(
-      eq(teamMember.teamId, ctx.workspace.teamId),
-      eq(teamMember.userId, input.userId)
-    ),
+    where: and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.userId)),
   });
 
   if (!targetMember) {
@@ -317,8 +294,7 @@ export async function updateMemberRole(
   if (targetMember.role === "owner") {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Cannot change the owner's role. Use transfer ownership instead.",
+      message: "Cannot change the owner's role. Use transfer ownership instead.",
     });
   }
 
@@ -333,12 +309,7 @@ export async function updateMemberRole(
   await ctx.db
     .update(teamMember)
     .set({ role: input.role })
-    .where(
-      and(
-        eq(teamMember.teamId, ctx.workspace.teamId),
-        eq(teamMember.userId, input.userId)
-      )
-    );
+    .where(and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.userId)));
 
   return { success: true };
 }
@@ -346,10 +317,7 @@ export async function updateMemberRole(
 /**
  * Remove a member from the team
  */
-export async function removeMember(
-  ctx: TeamTRPCContext,
-  input: RemoveMemberInput
-) {
+export async function removeMember(ctx: TeamTRPCContext, input: RemoveMemberInput) {
   requirePermission(ctx.workspace, "team.remove_member", "remove team member");
 
   // Cannot remove self if owner
@@ -362,10 +330,7 @@ export async function removeMember(
 
   // Cannot remove owner
   const targetMember = await ctx.db.query.teamMember.findFirst({
-    where: and(
-      eq(teamMember.teamId, ctx.workspace.teamId),
-      eq(teamMember.userId, input.userId)
-    ),
+    where: and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.userId)),
   });
 
   if (!targetMember) {
@@ -392,12 +357,7 @@ export async function removeMember(
 
   await ctx.db
     .delete(teamMember)
-    .where(
-      and(
-        eq(teamMember.teamId, ctx.workspace.teamId),
-        eq(teamMember.userId, input.userId)
-      )
-    );
+    .where(and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.userId)));
 
   return { success: true };
 }
@@ -409,18 +369,14 @@ export async function leaveTeam(ctx: TeamTRPCContext) {
   if (ctx.workspace.role === "owner") {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Owner cannot leave the team. Transfer ownership first or delete the team.",
+      message: "Owner cannot leave the team. Transfer ownership first or delete the team.",
     });
   }
 
   await ctx.db
     .delete(teamMember)
     .where(
-      and(
-        eq(teamMember.teamId, ctx.workspace.teamId),
-        eq(teamMember.userId, ctx.auth.userId)
-      )
+      and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, ctx.auth.userId)),
     );
 
   return { success: true };
@@ -429,17 +385,14 @@ export async function leaveTeam(ctx: TeamTRPCContext) {
 /**
  * Transfer team ownership to another member
  */
-export async function transferOwnership(
-  ctx: TeamTRPCContext,
-  input: TransferOwnershipInput
-) {
+export async function transferOwnership(ctx: TeamTRPCContext, input: TransferOwnershipInput) {
   requireMinimumRole(ctx.workspace, "owner", "transfer team ownership");
 
   // Check if new owner is a member
   const newOwner = await ctx.db.query.teamMember.findFirst({
     where: and(
       eq(teamMember.teamId, ctx.workspace.teamId),
-      eq(teamMember.userId, input.newOwnerId)
+      eq(teamMember.userId, input.newOwnerId),
     ),
   });
 
@@ -457,10 +410,7 @@ export async function transferOwnership(
       .update(teamMember)
       .set({ role: "admin" })
       .where(
-        and(
-          eq(teamMember.teamId, ctx.workspace.teamId),
-          eq(teamMember.userId, ctx.auth.userId)
-        )
+        and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, ctx.auth.userId)),
       );
 
     // Promote new owner
@@ -468,10 +418,7 @@ export async function transferOwnership(
       .update(teamMember)
       .set({ role: "owner" })
       .where(
-        and(
-          eq(teamMember.teamId, ctx.workspace.teamId),
-          eq(teamMember.userId, input.newOwnerId)
-        )
+        and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.newOwnerId)),
       );
 
     // Update team owner reference
@@ -491,10 +438,7 @@ export async function transferOwnership(
 /**
  * Create an invite to join the team
  */
-export async function createInvite(
-  ctx: TeamTRPCContext,
-  input: InviteMemberInput
-) {
+export async function createInvite(ctx: TeamTRPCContext, input: InviteMemberInput) {
   requirePermission(ctx.workspace, "team.invite", "invite team members");
 
   // Only owners can create admin invites
@@ -519,7 +463,7 @@ export async function createInvite(
       const existingMember = await ctx.db.query.teamMember.findFirst({
         where: and(
           eq(teamMember.teamId, ctx.workspace.teamId),
-          eq(teamMember.userId, existingUser.id)
+          eq(teamMember.userId, existingUser.id),
         ),
       });
 
@@ -616,17 +560,11 @@ export async function listInvites(ctx: TeamTRPCContext) {
 /**
  * Revoke a pending invite
  */
-export async function revokeInvite(
-  ctx: TeamTRPCContext,
-  input: RevokeInviteInput
-) {
+export async function revokeInvite(ctx: TeamTRPCContext, input: RevokeInviteInput) {
   requirePermission(ctx.workspace, "team.invite", "revoke team invite");
 
   const invite = await ctx.db.query.teamInvite.findFirst({
-    where: and(
-      eq(teamInvite.id, input.inviteId),
-      eq(teamInvite.teamId, ctx.workspace.teamId)
-    ),
+    where: and(eq(teamInvite.id, input.inviteId), eq(teamInvite.teamId, ctx.workspace.teamId)),
   });
 
   if (!invite) {
@@ -644,10 +582,7 @@ export async function revokeInvite(
 /**
  * Accept a team invite (called from personal context)
  */
-export async function acceptInvite(
-  ctx: ProtectedTRPCContext,
-  input: AcceptInviteInput
-) {
+export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInviteInput) {
   const invite = await ctx.db.query.teamInvite.findFirst({
     where: eq(teamInvite.token, input.token),
     with: {
@@ -700,10 +635,7 @@ export async function acceptInvite(
 
   // Check if already a member
   const existingMember = await ctx.db.query.teamMember.findFirst({
-    where: and(
-      eq(teamMember.teamId, invite.teamId),
-      eq(teamMember.userId, ctx.auth.userId)
-    ),
+    where: and(eq(teamMember.teamId, invite.teamId), eq(teamMember.userId, ctx.auth.userId)),
   });
 
   if (existingMember) {
@@ -748,10 +680,7 @@ export async function acceptInvite(
 /**
  * Get invite details by token (public - for invite preview page)
  */
-export async function getInviteByToken(
-  ctx: ProtectedTRPCContext,
-  token: string
-) {
+export async function getInviteByToken(ctx: ProtectedTRPCContext, token: string) {
   const invite = await ctx.db.query.teamInvite.findFirst({
     where: eq(teamInvite.token, token),
     with: {

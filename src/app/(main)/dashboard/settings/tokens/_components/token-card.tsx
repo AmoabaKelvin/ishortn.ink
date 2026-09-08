@@ -13,7 +13,7 @@ const TokenCard = ({
   keyID,
 }: {
   start: string;
-  createdAt: number;
+  createdAt: Date | null;
   keyID: number;
 }) => {
   const deleteAPIKeyMutation = api.token.delete.useMutation({
@@ -44,14 +44,16 @@ const TokenCard = ({
             Active
           </span>
         </div>
-        <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
-          Created{" "}
-          {new Date(createdAt).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })}
-        </p>
+        {createdAt && (
+          <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+            Created{" "}
+            {createdAt.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+        )}
       </div>
 
       <button

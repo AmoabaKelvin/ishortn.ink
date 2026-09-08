@@ -1,10 +1,17 @@
-import type { Metadata } from "next";
+import { z } from "zod";
 
 import {
   buildBeaconScript,
   hashDestination,
   verifyVerifiedClickToken,
 } from "@/lib/utils/verified-click-token";
+
+import type { Metadata } from "next";
+
+const redirectQuerySchema = z.object({
+  to: z.string().optional(),
+  t: z.string().min(1).optional(),
+});
 
 export const fetchCache = "force-no-store";
 export const dynamic = "force-dynamic";
@@ -38,17 +45,11 @@ function InvalidRedirect() {
   );
 }
 
-export default async function VerifiedRedirectPage(
-  props: VerifiedRedirectPageProps,
-) {
+export default async function VerifiedRedirectPage(props: VerifiedRedirectPageProps) {
   const searchParams = await props.searchParams;
-  const to = validateDestination(
-    typeof searchParams.to === "string" ? searchParams.to : null,
-  );
-  const rawToken =
-    typeof searchParams.t === "string" && searchParams.t.length > 0
-      ? searchParams.t
-      : null;
+  const query = redirectQuerySchema.safeParse(searchParams).data;
+  const to = validateDestination(query?.to ?? null);
+  const rawToken = query?.t ?? null;
 
   // `to` must match the destination signed into the token at issue time.
   // Without this guard the page is an open redirect — any attacker-crafted

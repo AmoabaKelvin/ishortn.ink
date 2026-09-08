@@ -7,47 +7,37 @@ import { Icon } from "./warm-primitives";
 const defaultFaqs = [
   {
     q: "Is there a free plan?",
-    a:
-      "Yes. The Free plan gives you 30 links a month and 1,000 tracked events, forever. No card, no trial expiry.",
+    a: "Yes. The Free plan gives you 30 links a month and 1,000 tracked events, forever. No card, no trial expiry.",
   },
   {
     q: "What makes iShortn different from Bitly or TinyURL?",
-    a:
-      "Three things: the analytics are easy to understand, the QR codes actually look nice, and we don't inject ads or weird interstitials. Also we're a lot cheaper when you do upgrade.",
+    a: "Three things: the analytics are easy to understand, the QR codes actually look nice, and we don't inject ads or weird interstitials. Also we're a lot cheaper when you do upgrade.",
   },
   {
     q: "Can I use my own domain, like yourbrand.co?",
-    a:
-      "Yes, from the Pro plan up. Add one setting in your domain provider (a CNAME), and we take care of everything else. Usually ready in under two minutes.",
+    a: "Yes, from the Pro plan up. Add one setting in your domain provider (a CNAME), and we take care of everything else. Usually ready in under two minutes.",
   },
   {
     q: "What happens if I have a typo in a link?",
-    a:
-      "You can edit where any short link points to, anytime. The short link itself never changes — so the copy you already sent out still works.",
+    a: "You can edit where any short link points to, anytime. The short link itself never changes — so the copy you already sent out still works.",
   },
   {
     q: "Will my links keep working if I cancel?",
-    a:
-      "Yes, for 30 days after cancellation, so you have time to move or update them. You can also export everything — links and stats — as a CSV or JSON file at any time.",
+    a: "Yes, for 30 days after cancellation, so you have time to move or update them. You can also export everything — links and stats — as a CSV or JSON file at any time.",
   },
   {
     q: "Is this safe and private?",
-    a:
-      "Always. We don't sell data. You can turn off tracking per link if you prefer. All traffic is HTTPS, and we follow GDPR guidelines.",
+    a: "Always. We don't sell data. You can turn off tracking per link if you prefer. All traffic is HTTPS, and we follow GDPR guidelines.",
   },
 ];
 
-type FaqShape = { q: string; a: string };
+type FaqEntry = { q: string; a: string };
 
-export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqShape[] }) => {
+export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqEntry[] }) => {
   const [open, setOpen] = useState<number>(0);
 
   return (
-    <section
-      id="help"
-      className="warm-section"
-      style={{ background: "var(--warm-bg)" }}
-    >
+    <section id="help" className="warm-section" style={{ background: "var(--warm-bg)" }}>
       <div
         className="warm-container warm-faq-grid"
         style={{
@@ -59,15 +49,10 @@ export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqShape[] }) => {
       >
         <div className="warm-faq-intro">
           <div className="warm-eyebrow" style={{ marginBottom: 20 }}>
-            <Icon.Sparkle
-              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-            />
+            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
             Common questions
           </div>
-          <h2
-            className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}
-          >
+          <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}>
             Anything else?
             <br />
             <em style={{ fontStyle: "italic" }}>We're here.</em>
@@ -100,10 +85,7 @@ export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqShape[] }) => {
               key={it.q}
               style={{
                 borderTop: "1px solid var(--warm-line)",
-                borderBottom:
-                  i === faqs.length - 1
-                    ? "1px solid var(--warm-line)"
-                    : "none",
+                borderBottom: i === faqs.length - 1 ? "1px solid var(--warm-line)" : "none",
               }}
             >
               <button
@@ -142,8 +124,7 @@ export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqShape[] }) => {
                     width: 34,
                     height: 34,
                     borderRadius: "50%",
-                    background:
-                      open === i ? "var(--warm-accent)" : "var(--warm-paper)",
+                    background: open === i ? "var(--warm-accent)" : "var(--warm-paper)",
                     border: "1px solid var(--warm-line)",
                     color: open === i ? "#fff" : "var(--warm-ink)",
                     display: "grid",

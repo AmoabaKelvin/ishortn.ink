@@ -37,10 +37,7 @@ export function AudienceFeedbackCard({ hasLinks }: AudienceFeedbackCardProps) {
   });
 
   const shouldShow =
-    hasLinks &&
-    status !== undefined &&
-    !status.hasSubmitted &&
-    status.shouldAutoPrompt;
+    hasLinks && status !== undefined && !status.hasSubmitted && status.shouldAutoPrompt;
 
   return (
     <>
@@ -68,8 +65,7 @@ export function AudienceFeedbackCard({ hasLinks }: AudienceFeedbackCardProps) {
                     Help shape iShortn
                   </h3>
                   <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-                    A quick survey on how you use iShortn — takes about 30
-                    seconds.
+                    A quick survey on how you use iShortn — takes about 30 seconds.
                   </p>
                 </div>
               </div>
@@ -94,11 +90,7 @@ export function AudienceFeedbackCard({ hasLinks }: AudienceFeedbackCardProps) {
           </motion.div>
         )}
       </AnimatePresence>
-      <AudienceFeedbackModal
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        plan={plan}
-      />
+      <AudienceFeedbackModal open={isOpen} onOpenChange={setIsOpen} plan={plan} />
     </>
   );
 }

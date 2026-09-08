@@ -4,15 +4,14 @@ import { and, eq } from "drizzle-orm";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { generateShortLink } from "@/lib/core/links";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
-import { assertUrlSafe } from "@/server/lib/phishing";
-import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
-
 import {
   assertDomainAllowed,
   checkWorkspaceLinkLimit,
   getWorkspaceDefaultDomain,
 } from "@/server/api/routers/link/utils";
+import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
+import { assertUrlSafe } from "@/server/lib/phishing";
+import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 import type { db } from "@/server/db";
@@ -123,10 +122,7 @@ export async function updateHiddenTrackingLink(
   }
 
   const existing = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, linkId),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId),
-    ),
+    where: and(eq(link.id, linkId), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!existing) {

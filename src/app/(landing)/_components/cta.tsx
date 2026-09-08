@@ -34,10 +34,7 @@ export const CTA = () => {
       >
         shortn
       </div>
-      <div
-        className="warm-container"
-        style={{ position: "relative", textAlign: "center" }}
-      >
+      <div className="warm-container" style={{ position: "relative", textAlign: "center" }}>
         <div
           className="warm-eyebrow"
           style={{

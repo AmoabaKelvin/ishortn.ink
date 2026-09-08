@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-export function getRequestGeo(): { country?: string; city?: string } {
+export function getRequestGeo() {
   const { cf } = getCloudflareContext();
   return { country: cf?.country, city: cf?.city };
 }

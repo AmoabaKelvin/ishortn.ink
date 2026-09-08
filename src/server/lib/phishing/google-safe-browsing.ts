@@ -1,16 +1,20 @@
+import { z } from "zod";
+
 import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
 
 const log = logger.child({ component: "phishing.safe-browsing" });
+
+const threatMatchesSchema = z.object({
+  matches: z.array(z.object({ threatType: z.string() })).optional(),
+});
 
 export type SafeBrowsingResult =
   | { status: "safe" }
   | { status: "unsafe"; threats: string[] }
   | { status: "error" };
 
-export async function checkGoogleSafeBrowsing(
-  url: string,
-): Promise<SafeBrowsingResult> {
+export async function checkGoogleSafeBrowsing(url: string): Promise<SafeBrowsingResult> {
   const apiKey = env.GOOGLE_SAFE_BROWSING_API_KEY;
 
   if (!apiKey) {
@@ -52,9 +56,7 @@ export async function checkGoogleSafeBrowsing(
       return { status: "error" };
     }
 
-    const data = (await response.json()) as {
-      matches?: Array<{ threatType: string }>;
-    };
+    const data = threatMatchesSchema.parse(await response.json());
 
     if (data.matches && data.matches.length > 0) {
       return {

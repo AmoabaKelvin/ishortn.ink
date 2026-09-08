@@ -2,7 +2,6 @@
 
 import { IconPhoto, IconUpload, IconX } from "@tabler/icons-react";
 import { Loader2 } from "lucide-react";
-import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -28,6 +27,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
+
+import type React from "react";
 
 const FEEDBACK_TYPES = [
   { value: "bug", label: "Bug Report" },
@@ -91,9 +92,11 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 
         const reader = new FileReader();
         reader.onloadend = () => {
+          // SAFETY: readAsDataURL fills `result` with a data: URL string before loadend fires.
+          const dataUrl = reader.result as string;
           setImages((prev) => {
             if (prev.length >= MAX_IMAGES) return prev;
-            return [...prev, reader.result as string];
+            return [...prev, dataUrl];
           });
         };
         reader.readAsDataURL(file);
@@ -149,9 +152,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
-          <DialogDescription>
-            Report a bug, request a feature, or ask a question.
-          </DialogDescription>
+          <DialogDescription>Report a bug, request a feature, or ask a question.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -170,12 +171,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                 rules={{ required: "Please select a feedback type" }}
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger
-                      className={cn(
-                        "h-10",
-                        errors.type && "border-destructive",
-                      )}
-                    >
+                    <SelectTrigger className={cn("h-10", errors.type && "border-destructive")}>
                       <SelectValue placeholder="What is this about?" />
                     </SelectTrigger>
                     <SelectContent>
@@ -188,11 +184,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                   </Select>
                 )}
               />
-              {errors.type && (
-                <p className="text-xs text-destructive">
-                  {errors.type.message}
-                </p>
-              )}
+              {errors.type && <p className="text-xs text-destructive">{errors.type.message}</p>}
             </div>
 
             {/* Message */}
@@ -217,9 +209,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                 })}
               />
               {errors.message && (
-                <p className="text-xs text-destructive">
-                  {errors.message.message}
-                </p>
+                <p className="text-xs text-destructive">{errors.message.message}</p>
               )}
             </div>
 
@@ -240,6 +230,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                       key={i}
                       className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-200 dark:border-border"
                     >
+                      {/* eslint-disable-next-line next/no-img-element -- data: URL preview of a just-selected file; no static dimensions and nothing to optimise */}
                       <img
                         src={img}
                         alt={`Upload ${i + 1}`}
@@ -263,24 +254,21 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 
               {/* Drop zone */}
               {images.length < MAX_IMAGES && (
-                <div
+                <button
+                  type="button"
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
-                    "flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed px-4 py-4 transition-colors",
+                    "flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed px-4 py-4 transition-colors",
                     isDragging
                       ? "border-blue-400 bg-blue-50/50 dark:bg-blue-950/20"
                       : "border-neutral-300 dark:border-neutral-600 bg-neutral-50/50 dark:bg-accent/30 hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-50 dark:hover:bg-accent/50",
                   )}
                 >
                   {isDragging ? (
-                    <IconPhoto
-                      size={20}
-                      stroke={1.5}
-                      className="text-blue-400"
-                    />
+                    <IconPhoto size={20} stroke={1.5} className="text-blue-400" />
                   ) : (
                     <IconUpload
                       size={20}
@@ -301,10 +289,9 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                     )}
                   </p>
                   <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                    PNG, JPG, GIF, WebP up to 2MB ({MAX_IMAGES - images.length}{" "}
-                    remaining)
+                    PNG, JPG, GIF, WebP up to 2MB ({MAX_IMAGES - images.length} remaining)
                   </p>
-                </div>
+                </button>
               )}
 
               <input
@@ -336,11 +323,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={feedbackMutation.isLoading}
-              className="h-9"
-            >
+            <Button type="submit" disabled={feedbackMutation.isLoading} className="h-9">
               {feedbackMutation.isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

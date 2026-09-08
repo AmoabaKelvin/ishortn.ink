@@ -4,7 +4,6 @@ import { and, count, eq, inArray, sql, sum } from "drizzle-orm";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { assertUrlSafe } from "@/server/lib/phishing";
 import {
   link,
   linkVisit,
@@ -13,22 +12,22 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
+import { assertUrlSafe } from "@/server/lib/phishing";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
-import {
-  insertHiddenTrackingLink,
-  prepareHiddenTrackingLink,
-} from "@/server/lib/tracking-link";
-import {
-  workspaceFilter,
-  workspaceOwnership,
-} from "@/server/lib/workspace";
+import { insertHiddenTrackingLink, prepareHiddenTrackingLink } from "@/server/lib/tracking-link";
+import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import { updateLink } from "../link/link.service";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
-import type { QRCodeInput, QRCodeUpdateInput, QRPresetCreateInput, QRPresetUpdateInput } from "./qrcode.input";
-import type { z } from "zod";
+import type {
+  QRCodeInput,
+  QRCodeUpdateInput,
+  QRPresetCreateInput,
+  QRPresetUpdateInput,
+} from "./qrcode.input";
 import type { qrcodeSaveImageInput } from "./qrcode.input";
+import type { z } from "zod";
 
 const log = logger.child({ component: "qrcode.service" });
 
@@ -93,11 +92,7 @@ export const createQrCode = userFacing(
         kind: "qr",
       });
     } catch (error) {
-      if (
-        error instanceof TRPCError &&
-        error.code === "FORBIDDEN" &&
-        /link/i.test(error.message)
-      ) {
+      if (error instanceof TRPCError && error.code === "FORBIDDEN" && /link/i.test(error.message)) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message:
@@ -116,8 +111,11 @@ export const createQrCode = userFacing(
         title: input.title,
         color: input.selectedColor,
         content: input.content,
-        cornerStyle: input.cornerStyle as typeof qrcode.cornerStyle.enumValues[number],
-        patternStyle: input.patternStyle as typeof qrcode.patternStyle.enumValues[number],
+        // SAFETY: the create form writes its markerFrame vocabulary into this legacy enum
+        // column verbatim; the DB enum, not this layer, validates the value.
+        cornerStyle: input.cornerStyle as (typeof qrcode.cornerStyle.enumValues)[number],
+        // SAFETY: same contract as cornerStyle, fed from the form's pixelStyle.
+        patternStyle: input.patternStyle as (typeof qrcode.patternStyle.enumValues)[number],
         linkId: hiddenLinkId,
         contentType: "link",
       });
@@ -132,10 +130,7 @@ export const createQrCode = userFacing(
 export const saveQrCodeImage = userFacing(
   "saveQrCodeImage",
   "Something went wrong while saving your QR code image. Please try again.",
-  async (
-    ctx: WorkspaceTRPCContext,
-    input: z.infer<typeof qrcodeSaveImageInput>,
-  ) => {
+  async (ctx: WorkspaceTRPCContext, input: z.infer<typeof qrcodeSaveImageInput>) => {
     const record = await ctx.db.query.qrcode.findFirst({
       where: and(
         eq(qrcode.id, input.id),
@@ -153,10 +148,7 @@ export const saveQrCodeImage = userFacing(
     assertValidImageInput(input.qrCodeBase64);
 
     // Persist base64 immediately so we have a fallback
-    await ctx.db
-      .update(qrcode)
-      .set({ qrCode: input.qrCodeBase64 })
-      .where(eq(qrcode.id, input.id));
+    await ctx.db.update(qrcode).set({ qrCode: input.qrCodeBase64 }).where(eq(qrcode.id, input.id));
 
     // Upload to R2
     try {
@@ -167,10 +159,7 @@ export const saveQrCodeImage = userFacing(
       });
 
       if (imageUrl && imageUrl !== input.qrCodeBase64) {
-        await ctx.db
-          .update(qrcode)
-          .set({ qrCode: imageUrl })
-          .where(eq(qrcode.id, input.id));
+        await ctx.db.update(qrcode).set({ qrCode: imageUrl }).where(eq(qrcode.id, input.id));
 
         return imageUrl;
       }
@@ -188,10 +177,7 @@ export const getQrCode = userFacing(
   "Something went wrong while loading this QR code. Please try again.",
   async (ctx: WorkspaceTRPCContext, id: number) => {
     const qrCode = await ctx.db.query.qrcode.findFirst({
-      where: and(
-        eq(qrcode.id, id),
-        workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
-      ),
+      where: and(eq(qrcode.id, id), workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId)),
       with: {
         link: true,
       },
@@ -221,7 +207,9 @@ export const retrieveUserQrCodes = userFacing(
 
     // Get visit counts in a single aggregation query instead of loading all visit rows.
     // Combine raw visits with archived clicks rolled up by the analytics cleanup job.
-    const linkIds = qrCodes.map((qr) => qr.linkId).filter((id): id is number => id != null && id > 0);
+    const linkIds = qrCodes
+      .map((qr) => qr.linkId)
+      .filter((id): id is number => id != null && id > 0);
     const [visitCounts, archivedCounts] =
       linkIds.length > 0
         ? await Promise.all([
@@ -258,10 +246,7 @@ export const deleteQrCode = userFacing(
   "Something went wrong while deleting your QR code. Please try again.",
   async (ctx: WorkspaceTRPCContext, id: number) => {
     const qrCode = await ctx.db.query.qrcode.findFirst({
-      where: and(
-        eq(qrcode.id, id),
-        workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
-      ),
+      where: and(eq(qrcode.id, id), workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId)),
       with: { link: true },
     });
 
@@ -316,24 +301,22 @@ export const deleteQrCode = userFacing(
 /** Fetch a QR code by ID with workspace ownership check, joining the associated link. */
 async function fetchQrCodeWithLink(ctx: WorkspaceTRPCContext, id: number) {
   const qrCode = await ctx.db.query.qrcode.findFirst({
-    where: and(
-      eq(qrcode.id, id),
-      workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
-    ),
+    where: and(eq(qrcode.id, id), workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId)),
     with: { link: true },
   });
 
   if (!qrCode) {
     throw new TRPCError({ code: "NOT_FOUND", message: "QR code not found." });
   }
-  if (!qrCode.linkId || !qrCode.link) {
+  const { linkId, link: trackingLink } = qrCode;
+  if (!linkId || !trackingLink) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "This QR code has no associated link.",
     });
   }
 
-  return qrCode as typeof qrCode & { linkId: number; link: NonNullable<typeof qrCode.link> };
+  return { ...qrCode, linkId, link: trackingLink };
 }
 
 export const updateQrCode = userFacing(
@@ -363,10 +346,7 @@ export const updateQrCode = userFacing(
     });
 
     if (Object.keys(qrUpdates).length > 0) {
-      await ctx.db
-        .update(qrcode)
-        .set(qrUpdates)
-        .where(eq(qrcode.id, input.id));
+      await ctx.db.update(qrcode).set(qrUpdates).where(eq(qrcode.id, input.id));
     }
 
     return true;
@@ -424,8 +404,8 @@ export const createQrPreset = userFacing(
       userId: ownership.userId ?? "",
       teamId: ownership.teamId,
       pixelStyle: input.pixelStyle,
-      markerShape: input.markerShape,
-      markerInnerShape: input.markerInnerShape,
+      markerFrame: input.markerFrame,
+      markerCenter: input.markerCenter,
       darkColor: input.darkColor,
       lightColor: input.lightColor,
       effect: input.effect,
@@ -597,8 +577,8 @@ export const updateQrPreset = userFacing(
       .update(qrPreset)
       .set({
         pixelStyle: input.pixelStyle,
-        markerShape: input.markerShape,
-        markerInnerShape: input.markerInnerShape,
+        markerFrame: input.markerFrame,
+        markerCenter: input.markerCenter,
         darkColor: input.darkColor,
         lightColor: input.lightColor,
         effect: input.effect,

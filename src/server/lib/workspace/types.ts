@@ -1,5 +1,5 @@
-import type { Team, TeamMember, TeamRole } from "@/server/db/schema";
 import type { Plan } from "@/lib/billing/plans";
+import type { Team, TeamMember, TeamRole } from "@/server/db/schema";
 
 /**
  * Workspace types
@@ -43,7 +43,7 @@ export type WorkspacePermission =
  * Admin: Can manage resources and invite members, but cannot manage domains or delete team
  * Member: Can create and manage resources, but cannot manage team settings
  */
-export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
+export const ROLE_PERMISSIONS = {
   owner: [
     "links.create",
     "links.edit",
@@ -119,7 +119,7 @@ export const ROLE_PERMISSIONS: Record<TeamRole, WorkspacePermission[]> = {
     "campaigns.edit",
     "campaigns.delete",
   ],
-};
+} satisfies Record<TeamRole, WorkspacePermission[]>;
 
 /**
  * Personal workspace context
@@ -155,9 +155,7 @@ export type WorkspaceContext = PersonalWorkspaceContext | TeamWorkspaceContext;
 /**
  * Type guard to check if workspace is a team workspace
  */
-export function isTeamWorkspace(
-  workspace: WorkspaceContext
-): workspace is TeamWorkspaceContext {
+export function isTeamWorkspace(workspace: WorkspaceContext): workspace is TeamWorkspaceContext {
   return workspace.type === "team";
 }
 
@@ -165,7 +163,7 @@ export function isTeamWorkspace(
  * Type guard to check if workspace is a personal workspace
  */
 export function isPersonalWorkspace(
-  workspace: WorkspaceContext
+  workspace: WorkspaceContext,
 ): workspace is PersonalWorkspaceContext {
   return workspace.type === "personal";
 }

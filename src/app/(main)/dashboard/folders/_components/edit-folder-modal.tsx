@@ -24,18 +24,12 @@ import type { UpdateFolderInput } from "@/server/api/routers/folder/folder.input
 import type { RouterOutputs } from "@/trpc/shared";
 
 type EditFolderModalProps = {
-  folder:
-    | (RouterOutputs["folder"]["list"][number] | RouterOutputs["folder"]["get"])
-    | null;
+  folder: (RouterOutputs["folder"]["list"][number] | RouterOutputs["folder"]["get"]) | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export function EditFolderModal({
-  folder,
-  open,
-  onOpenChange,
-}: EditFolderModalProps) {
+export function EditFolderModal({ folder, open, onOpenChange }: EditFolderModalProps) {
   const {
     register,
     handleSubmit,
@@ -98,8 +92,7 @@ export function EditFolderModal({
                 placeholder="Folder name"
                 className={cn(
                   "h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400",
-                  errors.name &&
-                    "border-red-300 focus-visible:ring-red-300"
+                  errors.name && "border-red-300 focus-visible:ring-red-300",
                 )}
                 {...register("name", {
                   required: "Folder name is required",
@@ -109,9 +102,7 @@ export function EditFolderModal({
                   },
                 })}
               />
-              {errors.name && (
-                <p className="text-[12px] text-red-500">{errors.name.message}</p>
-              )}
+              {errors.name && <p className="text-[12px] text-red-500">{errors.name.message}</p>}
             </div>
 
             <div className="space-y-1.5">

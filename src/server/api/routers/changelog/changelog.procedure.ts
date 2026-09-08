@@ -1,12 +1,10 @@
-import { z } from "zod";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "../../trpc";
-import {
-  getChangelogEntries,
-  getChangelogEntriesSince,
-  getLatestChangelog,
-} from "@/lib/changelog";
-import { user } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { getChangelogEntries, getChangelogEntriesSince, getLatestChangelog } from "@/lib/changelog";
+import { user } from "@/server/db/schema";
+
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../../trpc";
 
 export const changelogRouter = createTRPCRouter({
   list: publicProcedure.query(async () => {
@@ -36,9 +34,7 @@ export const changelogRouter = createTRPCRouter({
       },
     });
 
-    const newEntries = await getChangelogEntriesSince(
-      userData?.lastViewedChangelogSlug ?? null
-    );
+    const newEntries = await getChangelogEntriesSince(userData?.lastViewedChangelogSlug ?? null);
 
     return newEntries.length;
   }),

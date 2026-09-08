@@ -1,15 +1,24 @@
 import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
+export type JsonLdValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | readonly JsonLdValue[]
+  | { readonly [key: string]: JsonLdValue };
+
+/** A schema.org node as embedded by `<JsonLd>`. */
+export type JsonLdNode = { readonly [key: string]: JsonLdValue };
+
 export const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "iShortn",
   url: "https://ishortn.ink",
   logo: "https://ishortn.ink/icon.png",
-  sameAs: [
-    "https://twitter.com/kelamoaba",
-    "https://github.com/AmoabaKelvin/ishortn.ink",
-  ],
+  sameAs: ["https://twitter.com/kelamoaba", "https://github.com/AmoabaKelvin/ishortn.ink"],
   description: "Free URL shortener with powerful analytics, custom domains, and QR codes.",
 };
 

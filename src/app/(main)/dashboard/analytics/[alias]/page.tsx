@@ -1,13 +1,14 @@
 import { IconClick, IconShieldCheck, IconShieldHalf, IconUsers } from "@tabler/icons-react";
+import { z } from "zod";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { aggregateVisits, mergeArchivedClicks } from "@/lib/core/analytics";
 import { cn } from "@/lib/utils";
+import { rangeEnum } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
 
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
-
 import { BarChart } from "./_components/bar-chart";
 import { CountriesAndCitiesStats } from "./_components/countries-and-cities-stats";
 import { GeoRulesStats } from "./_components/geo-rules-stats";
@@ -17,13 +18,18 @@ import { ReferrerStats } from "./_components/referrers";
 import { UserAgentStats } from "./_components/user-agent-stats";
 import WorldMapHeatmap from "./_components/world-map-heatmap";
 
-import type { RangeEnum } from "@/server/api/routers/link/link.input";
 type LinksAnalyticsPageProps = {
   params: Promise<{
     alias: string;
   }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+// Search params are user-controlled: fall back to defaults rather than error.
+const analyticsSearchParamsSchema = z.object({
+  range: rangeEnum.catch("7d"),
+  domain: z.string().catch(DEFAULT_PLATFORM_DOMAIN),
+});
 
 // Null when prior is 0 — a 0→N change has no meaningful ratio, so hide the pill
 // rather than show a misleading 100%/∞.
@@ -32,13 +38,10 @@ const percentGrowth = (current: number, prior: number | undefined | null) => {
   return ((current - prior) / prior) * 100;
 };
 
-export default async function LinkAnalyticsPage(
-  props: LinksAnalyticsPageProps
-) {
+export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const range = (searchParams?.range ?? "7d") as RangeEnum;
-  const domain = (searchParams?.domain as string) ?? DEFAULT_PLATFORM_DOMAIN;
+  const { range, domain } = analyticsSearchParamsSchema.parse(searchParams);
 
   const { totalVisits, uniqueVisits, referers, isProPlan, geoRules, previous, archived } =
     await api.link.linkVisits.query({
@@ -69,8 +72,8 @@ export default async function LinkAnalyticsPage(
           </h1>
           {!isProPlan && (
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              Viewing limited analytics (last 7 days).{" "}
-              <UpgradeText text="Upgrade to Pro" /> for full data.
+              Viewing limited analytics (last 7 days). <UpgradeText text="Upgrade to Pro" /> for
+              full data.
             </p>
           )}
         </div>
@@ -124,7 +127,6 @@ export default async function LinkAnalyticsPage(
         <BarChart
           clicksPerDate={series.clicksPerDate}
           uniqueClicksPerDate={series.uniqueClicksPerDate}
-          className="h-96"
           isProPlan={isProPlan}
           geoRules={geoRules}
           totalVisits={totalVisits.map((v) => ({

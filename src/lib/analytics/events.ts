@@ -49,10 +49,13 @@ export const POSTHOG_EVENTS = {
 
 type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];
 
+type EventProperties = Record<string, string | number | boolean | null | undefined>;
+
 /**
  * Track an event in PostHog
  */
-export function trackEvent(eventName: PostHogEventName, properties?: Record<string, unknown>) {
+export function trackEvent(eventName: PostHogEventName, properties?: EventProperties) {
+  // eslint-disable-next-line anti-slop/no-runtime-typeof -- SSR guard
   if (typeof window !== "undefined") {
     posthog.capture(eventName, properties);
   }

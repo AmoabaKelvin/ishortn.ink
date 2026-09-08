@@ -1,6 +1,8 @@
 import { decode, encode } from "@jsquash/jpeg";
 import exifr from "exifr";
 
+import type sharp from "sharp";
+
 const ENCODE_QUALITY = 85;
 
 // sharp is a native module and only exists on Node; on Cloudflare Workers we
@@ -10,15 +12,16 @@ const ENCODE_QUALITY = 85;
 // import("sharp") fails the `opennextjs-cloudflare build` step. In workerd,
 // `new Function` itself throws (no code generation from strings) and lands in
 // the catch, which is the fallback we want.
-async function loadSharp() {
+async function loadSharp(): Promise<typeof sharp | undefined> {
   try {
+    // SAFETY: the Function body is exactly `import(s)`; hiding the specifier
+    // only affects bundling, not the namespace "sharp" resolves to. A stubbed
+    // module (the test's Workers path) has no default export, hence optional.
     const dynamicImport = new Function("s", "return import(s)") as (
-      s: string,
-    ) => Promise<{ default?: unknown }>;
+      s: "sharp",
+    ) => Promise<{ default?: typeof sharp }>;
     const mod = await dynamicImport("sharp");
-    return typeof mod.default === "function"
-      ? (mod.default as typeof import("sharp").default)
-      : undefined;
+    return mod.default;
   } catch {
     return undefined;
   }
@@ -101,10 +104,7 @@ export async function normalizeImageOrientation(buffer: Buffer, format: string):
     const sharp = await loadSharp();
     if (sharp) return await sharp(buffer).rotate().toBuffer(); // auto-orient + strip the tag
 
-    const bytes = buffer.buffer.slice(
-      buffer.byteOffset,
-      buffer.byteOffset + buffer.byteLength,
-    ) as ArrayBuffer;
+    const bytes = new Uint8Array(buffer).buffer;
     const upright = applyOrientation(await decode(bytes), orientation);
     return Buffer.from(await encode(upright, { quality: ENCODE_QUALITY }));
   } catch (error) {

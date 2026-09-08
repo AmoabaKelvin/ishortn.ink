@@ -23,7 +23,7 @@ import {
   utmParamsEqual,
 } from "./utils";
 
-import type { SQL } from "drizzle-orm";
+import type { WorkspaceTRPCContext } from "../../trpc";
 import type {
   AddLinksInput,
   CampaignAnalyticsInput,
@@ -33,14 +33,14 @@ import type {
   UpdateCampaignInput,
 } from "./campaign.input";
 import type { Campaign } from "@/server/db/schema";
-import type { WorkspaceTRPCContext } from "../../trpc";
+import type { SQL } from "drizzle-orm";
 
-async function fetchWorkspaceCampaign(
-  ctx: WorkspaceTRPCContext,
-  id: number,
-): Promise<Campaign> {
+async function fetchWorkspaceCampaign(ctx: WorkspaceTRPCContext, id: number): Promise<Campaign> {
   const row = await ctx.db.query.campaign.findFirst({
-    where: and(eq(campaign.id, id), workspaceFilter(ctx.workspace, campaign.userId, campaign.teamId)),
+    where: and(
+      eq(campaign.id, id),
+      workspaceFilter(ctx.workspace, campaign.userId, campaign.teamId),
+    ),
   });
   if (!row) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
@@ -122,11 +122,7 @@ async function assertNoDuplicate(
 }
 
 export async function listCampaigns(ctx: WorkspaceTRPCContext, input: ListCampaignsInput) {
-  let condition: SQL | undefined = workspaceFilter(
-    ctx.workspace,
-    campaign.userId,
-    campaign.teamId,
-  );
+  let condition: SQL | undefined = workspaceFilter(ctx.workspace, campaign.userId, campaign.teamId);
   if (input.status !== "all") {
     condition = and(condition, eq(campaign.status, input.status));
   }
@@ -324,7 +320,8 @@ export async function createCampaign(ctx: WorkspaceTRPCContext, input: CreateCam
 
     return { id: Number(result.insertId), slug };
   } catch (error) {
-    rethrowCampaignDuplicate(error);
+    if (error instanceof Error) rethrowCampaignDuplicate(error);
+    throw error;
   }
 }
 
@@ -382,11 +379,13 @@ export async function updateCampaign(ctx: WorkspaceTRPCContext, input: UpdateCam
         utmSource: input.utmSource !== undefined ? normalizeUtmValue(input.utmSource) : undefined,
         utmMedium: input.utmMedium !== undefined ? normalizeUtmValue(input.utmMedium) : undefined,
         utmTerm: input.utmTerm !== undefined ? normalizeUtmValue(input.utmTerm) : undefined,
-        utmContent: input.utmContent !== undefined ? normalizeUtmValue(input.utmContent) : undefined,
+        utmContent:
+          input.utmContent !== undefined ? normalizeUtmValue(input.utmContent) : undefined,
       })
       .where(eq(campaign.id, existing.id));
   } catch (error) {
-    rethrowCampaignDuplicate(error);
+    if (error instanceof Error) rethrowCampaignDuplicate(error);
+    throw error;
   }
 
   // Return the final slug so the client can redirect the slug-based route
@@ -446,7 +445,12 @@ export async function addLinks(ctx: WorkspaceTRPCContext, input: AddLinksInput) 
   await ctx.db
     .update(link)
     .set({ campaignId: row.id })
-    .where(inArray(link.id, candidates.map((c) => c.id)));
+    .where(
+      inArray(
+        link.id,
+        candidates.map((c) => c.id),
+      ),
+    );
 
   if (input.applyUtmDefaults) {
     // Stamp only links whose params actually change; rows are disjoint so the
@@ -487,10 +491,37 @@ export async function removeLink(ctx: WorkspaceTRPCContext, input: RemoveLinkInp
 
 const BREAKDOWN_LIMIT = 10;
 
+export type CampaignAnalytics = {
+  totals: {
+    clicks: number;
+    scans: number;
+    engagements: number;
+    uniqueVisitors: number;
+    prevEngagements: number;
+  };
+  series: { date: string; clicks: number; scans: number }[];
+  links: {
+    id: number;
+    name: string | null;
+    alias: string | null;
+    domain: string;
+    url: string | null;
+    isQrCode: boolean | null;
+    clicks: number;
+    share: number;
+  }[];
+  channels: Record<string, number>;
+  countries: Record<string, number>;
+  devices: Record<string, number>;
+  referrers: Record<string, number>;
+  range: CampaignAnalyticsInput["range"];
+  isProPlan: boolean;
+};
+
 export async function getCampaignAnalytics(
   ctx: WorkspaceTRPCContext,
   input: CampaignAnalyticsInput,
-) {
+): Promise<CampaignAnalytics> {
   const row = await fetchWorkspaceCampaign(ctx, input.id);
   const plan = ctx.workspace.plan;
   const isProPlan = plan !== "free";
@@ -514,27 +545,19 @@ export async function getCampaignAnalytics(
     },
   });
 
-  const emptyPayload = {
-    totals: { clicks: 0, scans: 0, engagements: 0, uniqueVisitors: 0, prevEngagements: 0 },
-    series: [] as { date: string; clicks: number; scans: number }[],
-    links: [] as {
-      id: number;
-      name: string | null;
-      alias: string | null;
-      domain: string;
-      url: string | null;
-      isQrCode: boolean | null;
-      clicks: number;
-      share: number;
-    }[],
-    channels: {} as Record<string, number>,
-    countries: {} as Record<string, number>,
-    devices: {} as Record<string, number>,
-    referrers: {} as Record<string, number>,
-    range,
-    isProPlan,
-  };
-  if (members.length === 0) return emptyPayload;
+  if (members.length === 0) {
+    return {
+      totals: { clicks: 0, scans: 0, engagements: 0, uniqueVisitors: 0, prevEngagements: 0 },
+      series: [],
+      links: [],
+      channels: {},
+      countries: {},
+      devices: {},
+      referrers: {},
+      range,
+      isProPlan,
+    };
+  }
 
   const memberIds = members.map((m) => m.id);
   const inWindow = and(
@@ -660,7 +683,7 @@ export async function getCampaignAnalytics(
     channels[key] = (channels[key] ?? 0) + (perLinkMap.get(member.id) ?? 0);
   }
 
-  const toRecord = (rows: { value: string | null; count: number }[]): Record<string, number> => {
+  const toRecord = (rows: { value: string | null; count: number }[]) => {
     const record: Record<string, number> = {};
     for (const entry of rows) {
       record[entry.value && entry.value !== "" ? entry.value : "Unknown"] = Number(entry.count);

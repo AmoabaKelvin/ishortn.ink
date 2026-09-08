@@ -13,11 +13,7 @@ type GeoRulesStatsProps = {
   totalClicks: number;
 };
 
-export function GeoRulesStats({
-  totalVisits,
-  geoRules,
-  totalClicks,
-}: GeoRulesStatsProps) {
+export function GeoRulesStats({ totalVisits, geoRules, totalClicks }: GeoRulesStatsProps) {
   // Build a map of geo rule IDs to their actions
   const ruleActionMap = new Map<number, "redirect" | "block">();
   geoRules.forEach((rule) => {
@@ -42,7 +38,7 @@ export function GeoRulesStats({
       }
       return acc;
     },
-    { defaultCount: 0, redirectCount: 0, blockCount: 0 }
+    { defaultCount: 0, redirectCount: 0, blockCount: 0 },
   );
 
   // Convert to BarList format

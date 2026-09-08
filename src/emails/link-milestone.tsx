@@ -20,7 +20,9 @@ export const LinkMilestoneEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>Your link &quot;{displayName}&quot; just hit {milestone.toLocaleString()} clicks</Preview>
+      <Preview>
+        Your link &quot;{displayName}&quot; just hit {milestone.toLocaleString()} clicks
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={section}>

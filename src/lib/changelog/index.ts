@@ -1,14 +1,14 @@
 import fs from "fs";
 import path from "path";
+
 import matter from "gray-matter";
 import { remark } from "remark";
-import html from "remark-html";
 import gfm from "remark-gfm";
-import type {
-  ChangelogEntry,
-  ChangelogFrontmatter,
-  ChangelogManifest,
-} from "./types";
+import html from "remark-html";
+
+import { changelogFrontmatterSchema } from "./types";
+
+import type { ChangelogEntry, ChangelogManifest } from "./types";
 
 const changelogsDirectory = path.join(process.cwd(), "content/changelogs");
 
@@ -28,37 +28,19 @@ export async function getChangelogEntries(): Promise<ChangelogEntry[]> {
 
       const { data, content } = matter(fileContents);
 
-      // Ensure date is a string (gray-matter may parse it as a Date object)
-      // Supports both date-only (2025-12-18) and datetime (2025-12-18T14:30:00) formats
-      const dateValue = data.date;
-      let dateString: string;
-      if (dateValue instanceof Date) {
-        dateString = dateValue.toISOString();
-      } else {
-        const strValue = String(dateValue);
-        // If it's just a date (no time component), append T00:00:00 for consistent sorting
-        dateString = strValue.includes("T") ? strValue : `${strValue}T00:00:00`;
-      }
-
       const processedContent = await remark().use(gfm).use(html).process(content);
       const htmlContent = processedContent.toString();
 
       return {
+        ...changelogFrontmatterSchema.parse(data),
         slug,
         content,
         htmlContent,
-        date: dateString,
-        version: String(data.version),
-        title: String(data.title),
-        shortDesc: String(data.shortDesc),
-        category: data.category as ChangelogEntry["category"],
-      } as ChangelogEntry;
-    })
+      };
+    }),
   );
 
-  return entries.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export async function getChangelogManifest(): Promise<ChangelogManifest> {
@@ -68,7 +50,7 @@ export async function getChangelogManifest(): Promise<ChangelogManifest> {
     return {
       entries: [],
       latestVersion: "0.0.0",
-      latestDate: new Date().toISOString().split("T")[0] as string,
+      latestDate: new Date().toISOString().slice(0, 10),
     };
   }
 
@@ -81,7 +63,7 @@ export async function getChangelogManifest(): Promise<ChangelogManifest> {
 }
 
 export async function getChangelogEntriesSince(
-  lastViewedSlug: string | null
+  lastViewedSlug: string | null,
 ): Promise<ChangelogEntry[]> {
   const entries = await getChangelogEntries();
 

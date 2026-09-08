@@ -1,14 +1,21 @@
-import type { Metadata } from "next";
-
 import { IconPlus } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
+import { z } from "zod";
 
 import { env } from "@/env.mjs";
+import {
+  linkArchivedFilterEnum,
+  linkOrderByEnum,
+  linkOrderDirectionEnum,
+  listLinksSchema,
+} from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
 
 import { AudienceFeedbackCard } from "./_components/audience-feedback-card";
 import { BulkLinkActions } from "./_components/bulk-actions/bulk-actions";
 import { Links } from "./_components/links/links";
+
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
@@ -22,33 +29,29 @@ interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function DashboardPage(props: Props) {
-  const searchParams = await props.searchParams;
-  const page = Number.parseInt(searchParams.page as string) || 1;
-  const pageSize = 10;
-  const orderBy = searchParams.orderBy as "createdAt" | "totalClicks";
-  const orderDirection = searchParams.orderDirection as "desc" | "asc";
-  const tag = searchParams.tag as string | undefined;
-  const archivedFilter = searchParams.archivedFilter as
-    | "active"
-    | "archived"
-    | "all"
-    | undefined;
-  const search = searchParams.search as string | undefined;
-  const campaignIdParam = Number.parseInt(searchParams.campaign as string);
-  const campaignId = Number.isNaN(campaignIdParam) ? undefined : campaignIdParam;
+// Search params are user-controlled: fall back to defaults rather than error.
+const dashboardSearchParamsSchema = listLinksSchema.pick({ tag: true, search: true }).extend({
+  orderBy: linkOrderByEnum.catch("createdAt"),
+  orderDirection: linkOrderDirectionEnum.catch("desc"),
+  archivedFilter: linkArchivedFilterEnum.optional().catch(undefined),
+  page: z.coerce.number().int().min(1).catch(1),
+  campaign: z.coerce.number().int().optional().catch(undefined),
+});
 
-  const { links, totalLinks, totalPages, currentPage } =
-    await api.link.list.query({
-      page,
-      pageSize,
-      orderBy,
-      orderDirection,
-      tag,
-      campaignId,
-      archivedFilter,
-      search,
-    });
+export default async function DashboardPage(props: Props) {
+  const { page, orderBy, orderDirection, tag, campaign, archivedFilter, search } =
+    dashboardSearchParamsSchema.parse(await props.searchParams);
+
+  const { links, totalLinks, totalPages, currentPage } = await api.link.list.query({
+    page,
+    pageSize: 10,
+    orderBy,
+    orderDirection,
+    tag,
+    campaignId: campaign,
+    archivedFilter,
+    search,
+  });
 
   return (
     <div>
@@ -75,12 +78,7 @@ export default async function DashboardPage(props: Props) {
         </div>
       </div>
 
-      <Links
-        links={links}
-        totalPages={totalPages as number}
-        currentPage={currentPage as number}
-        totalLinks={totalLinks as number}
-      />
+      <Links links={links} totalPages={totalPages} currentPage={currentPage} />
 
       <AudienceFeedbackCard hasLinks={totalLinks > 0} />
     </div>

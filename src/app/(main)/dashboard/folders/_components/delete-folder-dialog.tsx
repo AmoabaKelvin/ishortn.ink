@@ -17,9 +17,7 @@ import { api } from "@/trpc/react";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type DeleteFolderDialogProps = {
-  folder:
-    | (RouterOutputs["folder"]["list"][number] | RouterOutputs["folder"]["get"])
-    | null;
+  folder: (RouterOutputs["folder"]["list"][number] | RouterOutputs["folder"]["get"]) | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -52,8 +50,7 @@ export function DeleteFolderDialog({
 
   if (!folder) return null;
 
-  const linkCount =
-    "linkCount" in folder ? folder.linkCount : folder.links.length;
+  const linkCount = "linkCount" in folder ? folder.linkCount : folder.links.length;
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -72,9 +69,8 @@ export function DeleteFolderDialog({
             </span>
             {linkCount > 0 && (
               <span className="mt-2 block text-amber-600 dark:text-amber-400">
-                This folder contains {linkCount}{" "}
-                {linkCount === 1 ? "link" : "links"}. The links will be moved
-                out and won't be deleted.
+                This folder contains {linkCount} {linkCount === 1 ? "link" : "links"}. The links
+                will be moved out and won't be deleted.
               </span>
             )}
           </AlertDialogDescription>

@@ -10,7 +10,7 @@ export const abuseCategoryValues = [
   "other",
 ] as const;
 
-export const ABUSE_CATEGORY_LABELS: Record<(typeof abuseCategoryValues)[number], string> = {
+export const ABUSE_CATEGORY_LABELS = {
   phishing: "Phishing",
   malware: "Malware",
   spam: "Spam",
@@ -18,7 +18,7 @@ export const ABUSE_CATEGORY_LABELS: Record<(typeof abuseCategoryValues)[number],
   illegal: "Illegal content",
   privacy: "Privacy violation",
   other: "Other",
-};
+} satisfies Record<(typeof abuseCategoryValues)[number], string>;
 
 export const reportAbuseSchema = z.object({
   shortUrl: z.string().trim().min(1, "Enter the short link you want to report.").max(2048),

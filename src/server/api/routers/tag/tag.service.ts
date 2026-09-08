@@ -1,12 +1,9 @@
 import { and, eq, isNull } from "drizzle-orm";
 
 import { link, linkTag, tag } from "@/server/db/schema";
-import {
-  workspaceFilter,
-  workspaceOwnership,
-} from "@/server/lib/workspace";
+import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
-import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
+import type { WorkspaceTRPCContext } from "../../trpc";
 
 // Create a new tag if it doesn't exist
 // Uses transaction to prevent race conditions for personal workspace tags
@@ -20,10 +17,7 @@ export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
   if (ctx.workspace.type === "team") {
     // Check if tag already exists for this team
     const existingTag = await ctx.db.query.tag.findFirst({
-      where: and(
-        eq(tag.name, normalizedName),
-        eq(tag.teamId, ctx.workspace.teamId)
-      ),
+      where: and(eq(tag.name, normalizedName), eq(tag.teamId, ctx.workspace.teamId)),
     });
 
     if (existingTag) {
@@ -50,24 +44,18 @@ export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
       // Check if this is a duplicate key error (MySQL error code 1062).
       // drizzle-orm >= 0.44 wraps driver errors in DrizzleQueryError, so the
       // original mysql2 error lives at error.cause.
-      const cause =
-        error instanceof Error && error.cause instanceof Error
-          ? error.cause
-          : error;
-      const isDuplicateKey = (candidate: unknown) =>
-        candidate instanceof Error &&
-        (candidate.message.includes("Duplicate entry") ||
-          candidate.message.includes("ER_DUP_ENTRY") ||
-          (candidate as { code?: string }).code === "ER_DUP_ENTRY");
-      const isDuplicateKeyError = isDuplicateKey(error) || isDuplicateKey(cause);
+      const isDuplicateKey = (candidate: Error) =>
+        candidate.message.includes("Duplicate entry") ||
+        candidate.message.includes("ER_DUP_ENTRY") ||
+        ("code" in candidate && candidate.code === "ER_DUP_ENTRY");
+      const isDuplicateKeyError =
+        error instanceof Error &&
+        (isDuplicateKey(error) || (error.cause instanceof Error && isDuplicateKey(error.cause)));
 
       if (isDuplicateKeyError) {
         // Another request created the tag concurrently, fetch and return it
         const createdTag = await ctx.db.query.tag.findFirst({
-          where: and(
-            eq(tag.name, normalizedName),
-            eq(tag.teamId, ctx.workspace.teamId)
-          ),
+          where: and(eq(tag.name, normalizedName), eq(tag.teamId, ctx.workspace.teamId)),
         });
 
         if (createdTag) {
@@ -88,7 +76,7 @@ export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
       where: and(
         eq(tag.name, normalizedName),
         eq(tag.userId, ctx.auth.userId),
-        isNull(tag.teamId) // Personal workspace has null teamId
+        isNull(tag.teamId), // Personal workspace has null teamId
       ),
     });
 
@@ -124,14 +112,11 @@ export const getUserTags = async (ctx: WorkspaceTRPCContext) => {
 export const associateTagsWithLink = async (
   ctx: WorkspaceTRPCContext,
   linkId: number,
-  tagNames: string[]
+  tagNames: string[],
 ) => {
   // Verify the link belongs to the current workspace before modifying
   const linkRecord = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, linkId),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId)
-    ),
+    where: and(eq(link.id, linkId), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!linkRecord) {
@@ -163,16 +148,10 @@ export const associateTagsWithLink = async (
 
 // Get tags for a specific link
 // Verifies the link belongs to the current workspace before returning tags
-export const getTagsForLink = async (
-  ctx: WorkspaceTRPCContext,
-  linkId: number
-) => {
+export const getTagsForLink = async (ctx: WorkspaceTRPCContext, linkId: number) => {
   // Verify the link belongs to the current workspace
   const linkRecord = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, linkId),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId)
-    ),
+    where: and(eq(link.id, linkId), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!linkRecord) {
@@ -193,14 +172,11 @@ export const getTagsForLink = async (
 };
 
 // Get links by tag
-export const getLinksByTag = async (
-  ctx: WorkspaceTRPCContext,
-  tagName: string
-) => {
+export const getLinksByTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
   const tagRecord = await ctx.db.query.tag.findFirst({
     where: and(
       eq(tag.name, tagName.toLowerCase().trim()),
-      workspaceFilter(ctx.workspace, tag.userId, tag.teamId)
+      workspaceFilter(ctx.workspace, tag.userId, tag.teamId),
     ),
   });
 

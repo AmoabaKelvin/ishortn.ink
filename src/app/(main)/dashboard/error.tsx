@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { useEffect } from "react";
 
-import { clientLogger } from "@/lib/logger/client";
 import { Button } from "@/components/ui/button";
+import { clientLogger } from "@/lib/logger/client";
 
 export default function DashboardError({
   error,
@@ -30,8 +30,8 @@ export default function DashboardError({
           Something went wrong
         </h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400 max-w-md">
-          We encountered an error while loading this page. Please try again or
-          contact support if the problem persists.
+          We encountered an error while loading this page. Please try again or contact support if
+          the problem persists.
         </p>
         {process.env.NODE_ENV === "development" && error?.message && (
           <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-mono bg-red-50 dark:bg-red-500/10 p-2 rounded max-w-md">
@@ -44,10 +44,7 @@ export default function DashboardError({
           <RefreshCw className="h-4 w-4" />
           Try again
         </Button>
-        <Button
-          onClick={() => (window.location.href = "/dashboard")}
-          variant="outline"
-        >
+        <Button onClick={() => (window.location.href = "/dashboard")} variant="outline">
           Go to Dashboard
         </Button>
       </div>

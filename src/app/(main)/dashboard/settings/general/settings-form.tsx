@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { IconCheck, IconLoader2, IconWorld } from "@tabler/icons-react";
+import { Link } from "next-view-transitions";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -36,10 +38,7 @@ type SettingsFormProps = {
   availableDomains: RouterOutputs["customDomain"]["list"];
 };
 
-export function SettingsForm({
-  userSettings,
-  availableDomains,
-}: SettingsFormProps) {
+export function SettingsForm({ userSettings, availableDomains }: SettingsFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
 
@@ -82,13 +81,10 @@ export function SettingsForm({
             name="defaultDomain"
             render={({ field }) => (
               <FormItem>
-                <label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   Default Domain
-                </label>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                </FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
                       <SelectValue placeholder="Select a domain" />
@@ -115,12 +111,12 @@ export function SettingsForm({
                 </Select>
                 <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                   Used when creating quick shortened links.{" "}
-                  <a
+                  <Link
                     href="/dashboard/domains"
                     className="text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Manage domains
-                  </a>
+                  </Link>
                 </p>
                 <FormMessage className="text-[11px]" />
               </FormItem>
@@ -135,11 +131,7 @@ export function SettingsForm({
             >
               {isSaving ? (
                 <>
-                  <IconLoader2
-                    size={14}
-                    stroke={1.5}
-                    className="mr-1.5 animate-spin"
-                  />
+                  <IconLoader2 size={14} stroke={1.5} className="mr-1.5 animate-spin" />
                   Saving...
                 </>
               ) : justSaved ? (

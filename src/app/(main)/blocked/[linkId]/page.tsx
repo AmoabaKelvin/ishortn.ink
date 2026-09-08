@@ -33,22 +33,17 @@ export default async function BlockedPage({ params, searchParams }: BlockedPageP
 
   if (linkRecord.blocked) {
     reason =
-      linkRecord.blockedReason ??
-      "This link has been blocked for violating our terms of service.";
+      linkRecord.blockedReason ?? "This link has been blocked for violating our terms of service.";
   } else if (geo) {
     // Fetch the geo rule's custom block message server-side
     const geoRuleId = Number(geo);
     const rule = Number.isFinite(geoRuleId)
       ? await db.query.geoRule.findFirst({
-          where: and(
-            eq(geoRule.id, geoRuleId),
-            eq(geoRule.linkId, linkRecord.id),
-          ),
+          where: and(eq(geoRule.id, geoRuleId), eq(geoRule.linkId, linkRecord.id)),
           columns: { blockMessage: true },
         })
       : null;
-    reason =
-      rule?.blockMessage ?? "This link is not available in your region.";
+    reason = rule?.blockMessage ?? "This link is not available in your region.";
   } else {
     reason = "This link is not available in your region.";
   }
@@ -64,9 +59,7 @@ export default async function BlockedPage({ params, searchParams }: BlockedPageP
         <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
           <IconBan size={24} stroke={1.5} className="text-red-600" />
         </div>
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
-          Access Restricted
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Access Restricted</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-neutral-500">
           This link has been blocked and is no longer accessible.
         </p>

@@ -79,8 +79,7 @@ export const Footer = () => {
                 lineHeight: 1.6,
               }}
             >
-              A quietly lovely URL shortener — for people who make things on the
-              internet.
+              A quietly lovely URL shortener — for people who make things on the internet.
             </p>
             <div style={{ marginTop: 28, display: "flex", gap: 10 }}>
               {socials.map((s) => (
@@ -134,11 +133,7 @@ export const Footer = () => {
                       <a
                         href={l.href}
                         target={l.href.startsWith("http") ? "_blank" : undefined}
-                        rel={
-                          l.href.startsWith("http")
-                            ? "noopener noreferrer"
-                            : undefined
-                        }
+                        rel={l.href.startsWith("http") ? "noopener noreferrer" : undefined}
                         style={{
                           fontSize: 14,
                           color: "var(--warm-paper)",

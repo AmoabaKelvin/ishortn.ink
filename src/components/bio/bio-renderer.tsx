@@ -53,7 +53,7 @@ export function BioRenderer({
       <div className="flex w-full max-w-md flex-col items-center">
         <div className={BIO_ENTER} style={{ animationDelay: "0ms", animationDuration: "450ms" }}>
           {model.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
+            // eslint-disable-next-line next/no-img-element -- user-supplied avatar URL with unknown host and dimensions
             <img
               src={model.avatarUrl}
               alt={model.title ?? "Avatar"}

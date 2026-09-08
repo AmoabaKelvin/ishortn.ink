@@ -1,7 +1,13 @@
+import { z } from "zod";
+
 import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
 
 const log = logger.child({ component: "phishing.web-risk" });
+
+const uriSearchSchema = z.object({
+  threat: z.object({ threatTypes: z.array(z.string()) }).optional(),
+});
 
 type WebRiskResult =
   | { status: "safe" }
@@ -23,11 +29,7 @@ export async function checkGoogleWebRisk(url: string): Promise<WebRiskResult> {
     });
 
     // Web Risk supports these threat types
-    for (const threatType of [
-      "MALWARE",
-      "SOCIAL_ENGINEERING",
-      "UNWANTED_SOFTWARE",
-    ]) {
+    for (const threatType of ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"]) {
       params.append("threatTypes", threatType);
     }
 
@@ -44,9 +46,7 @@ export async function checkGoogleWebRisk(url: string): Promise<WebRiskResult> {
       return { status: "error" };
     }
 
-    const data = (await response.json()) as {
-      threat?: { threatTypes: string[]; expireTime: string };
-    };
+    const data = uriSearchSchema.parse(await response.json());
 
     if (data.threat) {
       return {

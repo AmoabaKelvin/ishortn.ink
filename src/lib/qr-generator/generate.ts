@@ -5,7 +5,6 @@ import { clientLogger } from "@/lib/logger/client";
 
 import { effects } from "./effects";
 import Perspective from "./perspective";
-import { resolveMargin } from "./utils";
 
 import type {
   GenerateQRCodeResult,
@@ -54,16 +53,9 @@ export async function generateQRCode(
     renderPointsType,
   } = state;
 
-  const {
-    top: marginTop,
-    right: marginRight,
-    bottom: marginBottom,
-    left: marginLeft,
-  } = resolveMargin(margin);
-
   const halfcell = cell / 2;
-  const width: number = (qr.size + marginLeft + marginRight) * cell;
-  const height: number = (qr.size + marginTop + marginBottom) * cell;
+  const width: number = (qr.size + margin * 2) * cell;
+  const height: number = (qr.size + margin * 2) * cell;
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -75,7 +67,7 @@ export async function generateQRCode(
   ctx.imageSmoothingEnabled = false;
 
   // Define effective light color once
-  const effectiveLightColor = state.transparent ? 'rgba(0,0,0,0)' : state.lightColor;
+  const effectiveLightColor = state.transparent ? "rgba(0,0,0,0)" : state.lightColor;
 
   // Set initial background
   ctx.fillStyle = invert ? state.darkColor : effectiveLightColor;
@@ -85,29 +77,23 @@ export async function generateQRCode(
     return seedrandom([seed, type, x, y].join("|"))();
   }
 
-  function getBorderOpacity(x: number, y: number) {
-    if (typeof state.marginNoiseOpacity === "number") return state.marginNoiseOpacity;
-    const [min, max] = state.marginNoiseOpacity;
-    return rand(x, y, "border-op") * (max - min) + min;
-  }
-
   function resolveMarkerStyle(index: number): QrCodeGeneratorMarkerState {
     const s = (index === 0 ? state : state.markers[index - 1]) ?? state;
 
-    const { markerStyle, markerShape } = s;
+    const { markerStyle, markerFrame } = s;
 
-    let markerInnerShape = s.markerInnerShape;
-    if (markerInnerShape === "auto") {
-      if (markerShape === "circle") markerInnerShape = "circle";
-      else if (markerShape === "tiny-plus") markerInnerShape = "plus";
-      else if (markerShape === "octagon") markerInnerShape = "diamond";
-      else markerInnerShape = "square";
+    let markerCenter = s.markerCenter;
+    if (markerCenter === "auto") {
+      if (markerFrame === "circle") markerCenter = "circle";
+      else if (markerFrame === "tiny-plus") markerCenter = "plus";
+      else if (markerFrame === "octagon") markerCenter = "diamond";
+      else markerCenter = "square";
     }
 
     return {
       markerStyle,
-      markerShape,
-      markerInnerShape,
+      markerFrame,
+      markerCenter,
     };
   }
 
@@ -223,25 +209,25 @@ export async function generateQRCode(
     if (marker) {
       if (marker.position !== "sub") {
         if (marker.isBorder) {
-          const { markerShape } = marker.style;
-          if (markerShape === "circle" || markerShape === "octagon") isDark = false;
+          const { markerFrame } = marker.style;
+          if (markerFrame === "circle" || markerFrame === "octagon") isDark = false;
 
-          if (markerShape === "plus") {
+          if (markerFrame === "plus") {
             if (!((marker.x >= 2 && marker.x <= 4) || (marker.y >= 2 && marker.y <= 4)))
               isDark = false;
-          } else if (markerShape === "box") {
+          } else if (markerFrame === "box") {
             if (!((marker.x >= 1 && marker.x <= 5) || (marker.y >= 1 && marker.y <= 5)))
               isDark = false;
-          } else if (markerShape === "random") {
+          } else if (markerFrame === "random") {
             if (marker.x !== 3 && marker.y !== 3) {
               if (isDark) isDark = rand(x, y, "marker") < 0.5;
             }
-          } else if (markerShape === "tiny-plus") {
+          } else if (markerFrame === "tiny-plus") {
             if (marker.x !== 3 && marker.y !== 3) isDark = false;
           }
         }
 
-        if (marker?.isInner && marker.style.markerInnerShape === "plus") {
+        if (marker?.isInner && marker.style.markerCenter === "plus") {
           if (marker.x !== 3 && marker.y !== 3) isDark = false;
         }
       } else if (marker?.position === "sub") {
@@ -304,8 +290,8 @@ export async function generateQRCode(
       }
     }
 
-    targetX += marginLeft;
-    targetY += marginTop;
+    targetX += margin;
+    targetY += margin;
 
     if (renderPointsType === "guide" && marker) {
       isDark = false;
@@ -329,8 +315,8 @@ export async function generateQRCode(
 
   const pixels: PixelInfo[] = [];
 
-  for (let y = -marginTop; y < qr.size + marginBottom; y++) {
-    for (let x = -marginLeft; x < qr.size + marginRight; x++) pixels.push(getInfo(x, y));
+  for (let y = -margin; y < qr.size + margin; y++) {
+    for (let x = -margin; x < qr.size + margin; x++) pixels.push(getInfo(x, y));
   }
 
   // Sort pixels so the markers are drawn in the correct order
@@ -351,7 +337,7 @@ export async function generateQRCode(
 
     let _pixelStyle = pixelStyle;
 
-    const opacity = isBorder ? getBorderOpacity(x, y) : 1;
+    const opacity = isBorder ? state.marginNoiseOpacity : 1;
     const _darkColor =
       opacity === 1
         ? state.darkColor
@@ -371,13 +357,13 @@ export async function generateQRCode(
       const _markerStyle =
         marker.style.markerStyle === "auto" ? pixelStyle : marker.style.markerStyle;
 
-      const { markerShape } = marker.style;
+      const { markerFrame } = marker.style;
 
       _pixelStyle = _markerStyle;
 
       if (renderPointsType === "data") continue;
 
-      if (markerShape === "circle") {
+      if (markerFrame === "circle") {
         if (marker.isBorder) continue;
 
         if (marker.isCenter) {
@@ -396,7 +382,7 @@ export async function generateQRCode(
 
           ctx.fillStyle = darkColor;
         }
-      } else if (markerShape === "octagon") {
+      } else if (markerFrame === "octagon") {
         if (marker.isBorder) continue;
 
         if (marker.isCenter) {
@@ -458,9 +444,9 @@ export async function generateQRCode(
       }
 
       if (marker.isInner) {
-        const { markerInnerShape } = marker.style;
+        const { markerCenter } = marker.style;
         // inner markers
-        if (markerInnerShape === "circle") {
+        if (markerCenter === "circle") {
           if (marker.isCenter) {
             ctx.fillStyle = lightColor;
             ctx.fillRect(cX - cell * 1.5, cY - cell * 1.5, cell * 3, cell * 3);
@@ -470,7 +456,7 @@ export async function generateQRCode(
             ctx.fill();
           }
           continue;
-        } else if (markerInnerShape === "eye") {
+        } else if (markerCenter === "eye") {
           if (marker.isCenter) {
             ctx.fillStyle = lightColor;
             ctx.fillRect(cX - cell * 1.5, cY - cell * 1.5, cell * 3, cell * 3);
@@ -483,7 +469,7 @@ export async function generateQRCode(
             ctx.fill();
           }
           continue;
-        } else if (markerInnerShape === "diamond") {
+        } else if (markerCenter === "diamond") {
           if (marker.isCenter) {
             ctx.fillStyle = lightColor;
             ctx.fillRect(cX - cell * 1.5, cY - cell * 1.5, cell * 3, cell * 3);
@@ -712,7 +698,7 @@ export async function generateQRCode(
     } catch (error) {
       clientLogger.warn(
         {
-          err: error instanceof Error ? error.message : error,
+          err: error instanceof Error ? error.message : String(error),
           logoImagePreview: state.logoImage.substring(0, 50),
         },
         "failed to draw logo; continuing without it",
@@ -725,7 +711,7 @@ export async function generateQRCode(
 
     const data = ctx.getImageData(0, 0, width, height);
     ctx.clearRect(0, 0, width, height);
-    const perspective = new Perspective(ctx as unknown as CanvasRenderingContext2D, data);
+    const perspective = new Perspective(ctx, data);
 
     const perspectiveX = state.transformPerspectiveX;
     const perspectiveY = state.transformPerspectiveY;

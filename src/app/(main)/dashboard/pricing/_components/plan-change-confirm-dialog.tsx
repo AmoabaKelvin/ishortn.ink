@@ -18,6 +18,13 @@ import type { BillingInterval, Plan } from "@/lib/billing/plans";
 
 type PlanChangeKind = "switch" | "upgrade";
 
+type PlanChangeCopy = {
+  title: string;
+  description: string;
+  note?: string;
+  confirmLabel: string;
+};
+
 /**
  * Copy for confirming an immediate-charge, in-place plan change. Only used for
  * paths that bypass the Lemon Squeezy hosted checkout (interval switch and an
@@ -27,7 +34,7 @@ export function buildPlanChangeCopy(
   kind: PlanChangeKind,
   targetPlan: Exclude<Plan, "free">,
   interval: BillingInterval,
-): { title: string; description: string; note?: string; confirmLabel: string } {
+): PlanChangeCopy {
   const price =
     interval === "annual" ? PLAN_PRICES_ANNUAL_USD[targetPlan] : PLAN_PRICES_USD[targetPlan];
   const planName = targetPlan === "pro" ? "Pro" : "Ultra";
@@ -57,13 +64,9 @@ export function buildPlanChangeCopy(
   };
 }
 
-type PlanChangeConfirmDialogProps = {
+type PlanChangeConfirmDialogProps = PlanChangeCopy & {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
-  description: string;
-  note?: string;
-  confirmLabel: string;
   isLoading: boolean;
   onConfirm: () => void;
 };

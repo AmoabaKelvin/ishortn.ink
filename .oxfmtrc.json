@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "sortImports": {
+    "groups": ["builtin", "external", "internal", ["parent", "sibling", "index"], "type", "unknown"]
+  },
+  "ignorePatterns": [
+    ".github",
+    ".next",
+    ".open-next",
+    ".wrangler",
+    "cloudflare-env.d.ts",
+    "content",
+    "docs",
+    "drizzle",
+    "public",
+    "src/components/ui"
+  ]
+}

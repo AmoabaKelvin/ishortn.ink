@@ -6,6 +6,7 @@ import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 export const transformer = superjson;
 
 function getBaseUrl() {
+  // eslint-disable-next-line anti-slop/no-runtime-typeof -- SSR guard
   if (typeof window !== "undefined") return "";
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
   return `http://localhost:${process.env.PORT ?? 3000}`;

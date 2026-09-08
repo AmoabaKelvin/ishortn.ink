@@ -1,6 +1,5 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { Link } from "next-view-transitions";
+import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { Paths } from "@/lib/constants/app";
@@ -11,6 +10,8 @@ import { CTA } from "../../_components/cta";
 import { Footer } from "../../_components/footer";
 import { Header } from "../../_components/header";
 import { Icon } from "../../_components/warm-primitives";
+
+import type { Metadata } from "next";
 
 export function generateStaticParams() {
   return Object.values(competitors).map((c) => ({ slug: c.slug }));
@@ -74,11 +75,7 @@ const featureRows: FeatureRow[] = [
   { label: "Pricing", competitorKey: "pricing" },
 ];
 
-export default async function ComparePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function ComparePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const competitor = getCompetitor(slug);
   if (!competitor) return notFound();
@@ -99,20 +96,13 @@ export default async function ComparePage({
       <section className="warm-subhero">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <Icon.Sparkle
-              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-            />
+            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
             Comparison
           </div>
-          <h1
-            className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}
-          >
+          <h1 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}>
             {competitor.name}
             <br />
-            <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>
-              vs iShortn.
-            </em>
+            <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>vs iShortn.</em>
           </h1>
           <p
             style={{
@@ -131,15 +121,10 @@ export default async function ComparePage({
       <section className="warm-section warm-section-paper">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
-            <Icon.Chart
-              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-            />
+            <Icon.Chart style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
             Features
           </div>
-          <h2
-            className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}
-          >
+          <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}>
             Feature-by-feature
             <br />
             <em style={{ fontStyle: "italic" }}>side by side.</em>
@@ -201,8 +186,7 @@ export default async function ComparePage({
                   style={{
                     display: "grid",
                     gridTemplateColumns: "repeat(3, minmax(200px, 1fr))",
-                    borderTop:
-                      i === 0 ? "none" : "1px solid var(--warm-line-soft)",
+                    borderTop: i === 0 ? "none" : "1px solid var(--warm-line-soft)",
                   }}
                 >
                   <div
@@ -245,15 +229,10 @@ export default async function ComparePage({
       <section className="warm-section">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
-            <Icon.Heart
-              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-            />
+            <Icon.Heart style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
             Why switch
           </div>
-          <h2
-            className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}
-          >
+          <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}>
             Why teams leave
             <br />
             <em style={{ fontStyle: "italic" }}>{competitor.name}.</em>
@@ -309,15 +288,10 @@ export default async function ComparePage({
       <section className="warm-section warm-section-paper">
         <div className="warm-container">
           <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
-            <Icon.Sparkle
-              style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-            />
+            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
             Pricing
           </div>
-          <h2
-            className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}
-          >
+          <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}>
             Pricing,
             <br />
             <em style={{ fontStyle: "italic" }}>plain and simple.</em>
@@ -410,19 +384,18 @@ export default async function ComparePage({
                 }}
               >
                 <p style={{ margin: 0 }}>
-                  <strong style={{ color: "var(--warm-paper)" }}>Free</strong> —
-                  30 links/month, 1,000 tracked events, 7-day analytics.
+                  <strong style={{ color: "var(--warm-paper)" }}>Free</strong> — 30 links/month,
+                  1,000 tracked events, 7-day analytics.
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong style={{ color: "var(--warm-paper)" }}>Pro $8/mo</strong>{" "}
-                  — 1,000 links/month, 10,000 tracked events, unlimited
-                  analytics history, 3 custom domains, branded + dynamic QR
-                  codes, REST API.
+                  <strong style={{ color: "var(--warm-paper)" }}>Pro $8/mo</strong> — 1,000
+                  links/month, 10,000 tracked events, unlimited analytics history, 3 custom domains,
+                  branded + dynamic QR codes, REST API.
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong style={{ color: "var(--warm-paper)" }}>Ultra $15/mo</strong>{" "}
-                  — everything in Pro plus unlimited links and events,
-                  unlimited custom domains, team workspaces, resource transfer.
+                  <strong style={{ color: "var(--warm-paper)" }}>Ultra $15/mo</strong> — everything
+                  in Pro plus unlimited links and events, unlimited custom domains, team workspaces,
+                  resource transfer.
                 </p>
               </div>
               <Link

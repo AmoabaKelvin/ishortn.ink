@@ -1,9 +1,6 @@
 import type { RouterOutputs } from "@/trpc/shared";
 
-function safeIncrement<T extends string>(
-  record: Record<T, number>,
-  key: T
-): void {
+function safeIncrement<T extends string>(record: Record<T, number>, key: T): void {
   record[key] = (record[key] || 0) + 1;
 }
 
@@ -14,7 +11,7 @@ type AggregateVisitsParams = {
 
 export const aggregateVisits = (
   visits: AggregateVisitsParams["visits"],
-  uniqueVisits: AggregateVisitsParams["uniqueVisits"]
+  uniqueVisits: AggregateVisitsParams["uniqueVisits"],
 ) => {
   const clicksPerDate: Record<string, number> = {};
   const uniqueClicksPerDate: Record<string, number> = {};
@@ -29,7 +26,6 @@ export const aggregateVisits = (
   let totalClicks = 0;
   let verifiedClicks = 0;
 
-  // biome-ignore lint/complexity/noForEach: <explanation>
   visits.forEach((visit) => {
     const date = new Date(visit.createdAt!).toISOString().split("T")[0];
     safeIncrement(clicksPerDate, date!);
@@ -64,7 +60,6 @@ export const aggregateVisits = (
       clicksPerModel,
     };
 
-  // biome-ignore lint/complexity/noForEach: <explanation>
   uniqueVisits.forEach((uniqueVisit) => {
     const date = new Date(uniqueVisit.createdAt!).toISOString().split("T")[0];
     safeIncrement(uniqueClicksPerDate, date!);
@@ -97,11 +92,14 @@ export type ArchivedClicks = {
 // summaries by the cleanup job. Only counts survive, so per-date series and
 // totals can include them but country/device/referrer breakdowns cannot.
 export const mergeArchivedClicks = (
-  aggregated: { clicksPerDate: Record<string, number>; uniqueClicksPerDate?: Record<string, number> },
+  aggregated: {
+    clicksPerDate: Record<string, number>;
+    uniqueClicksPerDate?: Record<string, number>;
+  },
   archived: ArchivedClicks,
 ) => {
   const clicksPerDate = { ...aggregated.clicksPerDate };
-  const uniqueClicksPerDate = { ...(aggregated.uniqueClicksPerDate ?? {}) };
+  const uniqueClicksPerDate = { ...aggregated.uniqueClicksPerDate };
   for (const [date, n] of Object.entries(archived.clicksPerDate)) {
     clicksPerDate[date] = (clicksPerDate[date] ?? 0) + n;
   }
@@ -110,13 +108,16 @@ export const mergeArchivedClicks = (
   }
   const sortByDate = (m: Record<string, number>) =>
     Object.fromEntries(Object.entries(m).sort(([a], [b]) => a.localeCompare(b)));
-  return { clicksPerDate: sortByDate(clicksPerDate), uniqueClicksPerDate: sortByDate(uniqueClicksPerDate) };
+  return {
+    clicksPerDate: sortByDate(clicksPerDate),
+    uniqueClicksPerDate: sortByDate(uniqueClicksPerDate),
+  };
 };
 
 export const summarizeArchived = (
   rows: { date: string; clicks: number; uniqueClicks: number }[],
 ): ArchivedClicks =>
-  rows.reduce(
+  rows.reduce<ArchivedClicks>(
     (acc, s) => {
       acc.clicks += s.clicks;
       acc.uniqueClicks += s.uniqueClicks;
@@ -124,5 +125,5 @@ export const summarizeArchived = (
       acc.uniqueClicksPerDate[s.date] = (acc.uniqueClicksPerDate[s.date] ?? 0) + s.uniqueClicks;
       return acc;
     },
-    { clicks: 0, uniqueClicks: 0, clicksPerDate: {}, uniqueClicksPerDate: {} } as ArchivedClicks,
+    { clicks: 0, uniqueClicks: 0, clicksPerDate: {}, uniqueClicksPerDate: {} },
   );

@@ -20,6 +20,7 @@ import {
   workspaceFilter,
   workspaceOwnership,
 } from "@/server/lib/workspace";
+
 import { getTagsForLink } from "../tag/tag.service";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
@@ -34,10 +35,7 @@ import type {
   UpdateFolderPermissionsInput,
 } from "./folder.input";
 
-export const createFolder = async (
-  ctx: WorkspaceTRPCContext,
-  input: CreateFolderInput
-) => {
+export const createFolder = async (ctx: WorkspaceTRPCContext, input: CreateFolderInput) => {
   // Use workspace plan - team workspaces have Ultra features (unlimited folders)
   const workspacePlan = ctx.workspace.plan;
   const caps = getPlanCaps(workspacePlan);
@@ -46,8 +44,7 @@ export const createFolder = async (
   if (folderLimit === 0) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Folders are available on Pro and Ultra plans. Upgrade to create folders.",
+      message: "Folders are available on Pro and Ultra plans. Upgrade to create folders.",
     });
   }
 
@@ -65,8 +62,7 @@ export const createFolder = async (
       if (Number(currentFolders[0]?.count ?? 0) >= folderLimit) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message:
-            "You have reached your folder limit. Upgrade to Ultra for unlimited folders.",
+          message: "You have reached your folder limit. Upgrade to Ultra for unlimited folders.",
         });
       }
     }
@@ -75,7 +71,7 @@ export const createFolder = async (
     const existingFolder = await tx.query.folder.findFirst({
       where: and(
         eq(folder.name, input.name),
-        workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+        workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
       ),
     });
 
@@ -86,12 +82,15 @@ export const createFolder = async (
       });
     }
 
-    const [inserted] = await tx.insert(folder).values({
-      name: input.name,
-      description: input.description,
-      userId: ownership.userId,
-      teamId: ownership.teamId,
-    }).$returningId();
+    const [inserted] = await tx
+      .insert(folder)
+      .values({
+        name: input.name,
+        description: input.description,
+        userId: ownership.userId,
+        teamId: ownership.teamId,
+      })
+      .$returningId();
 
     if (!inserted) {
       throw new TRPCError({
@@ -137,7 +136,10 @@ export const listFolders = async (ctx: WorkspaceTRPCContext) => {
         .select({ count: sql<number>`count(*)` })
         .from(link)
         .where(
-          and(workspaceFilter(ctx.workspace, link.userId, link.teamId), eq(link.folderId, folderItem.id))
+          and(
+            workspaceFilter(ctx.workspace, link.userId, link.teamId),
+            eq(link.folderId, folderItem.id),
+          ),
         );
 
       const permittedUserIds = permissionMap.get(folderItem.id) ?? [];
@@ -149,20 +151,17 @@ export const listFolders = async (ctx: WorkspaceTRPCContext) => {
         hasRestrictions: permittedUserIds.length > 0,
         permittedUserIds,
       };
-    })
+    }),
   );
 
   return foldersWithCounts;
 };
 
-export const getFolder = async (
-  ctx: WorkspaceTRPCContext,
-  input: GetFolderInput
-) => {
+export const getFolder = async (ctx: WorkspaceTRPCContext, input: GetFolderInput) => {
   const folderData = await ctx.db.query.folder.findFirst({
     where: and(
       eq(folder.id, input.id),
-      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
     ),
   });
 
@@ -190,15 +189,16 @@ export const getFolder = async (
   const folderLinks = await ctx.db
     .select({
       ...getTableColumns(link),
-      totalClicks: sql<number>`${count(linkVisit.id)} + COALESCE(MAX(${archivedClicksPerLink.clicks}), 0)`
-        .mapWith(Number)
-        .as("total_clicks"),
+      totalClicks:
+        sql<number>`${count(linkVisit.id)} + COALESCE(MAX(${archivedClicksPerLink.clicks}), 0)`
+          .mapWith(Number)
+          .as("total_clicks"),
     })
     .from(link)
     .leftJoin(linkVisit, eq(link.id, linkVisit.linkId))
     .leftJoin(archivedClicksPerLink, eq(link.id, archivedClicksPerLink.linkId))
     .where(
-      and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId))
+      and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
     )
     .groupBy(link.id)
     .orderBy(desc(link.createdAt));
@@ -212,7 +212,7 @@ export const getFolder = async (
         tags: tagRecords.map((tagRecord) => tagRecord.name),
         folder: { id: folderData.id, name: folderData.name },
       };
-    })
+    }),
   );
 
   return {
@@ -221,15 +221,12 @@ export const getFolder = async (
   };
 };
 
-export const updateFolder = async (
-  ctx: WorkspaceTRPCContext,
-  input: UpdateFolderInput
-) => {
+export const updateFolder = async (ctx: WorkspaceTRPCContext, input: UpdateFolderInput) => {
   // Check if folder exists and belongs to workspace
   const existingFolder = await ctx.db.query.folder.findFirst({
     where: and(
       eq(folder.id, input.id),
-      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
     ),
   });
 
@@ -249,7 +246,7 @@ export const updateFolder = async (
       and(
         eq(table.name, input.name),
         workspaceFilter(ctx.workspace, table.userId, table.teamId),
-        ne(table.id, input.id)
+        ne(table.id, input.id),
       ),
   });
 
@@ -266,7 +263,9 @@ export const updateFolder = async (
       name: input.name,
       description: input.description,
     })
-    .where(and(eq(folder.id, input.id), workspaceFilter(ctx.workspace, folder.userId, folder.teamId)));
+    .where(
+      and(eq(folder.id, input.id), workspaceFilter(ctx.workspace, folder.userId, folder.teamId)),
+    );
 
   return {
     id: input.id,
@@ -275,15 +274,12 @@ export const updateFolder = async (
   };
 };
 
-export const deleteFolder = async (
-  ctx: WorkspaceTRPCContext,
-  input: DeleteFolderInput
-) => {
+export const deleteFolder = async (ctx: WorkspaceTRPCContext, input: DeleteFolderInput) => {
   // Check if folder exists and belongs to workspace
   const existingFolder = await ctx.db.query.folder.findFirst({
     where: and(
       eq(folder.id, input.id),
-      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
     ),
   });
 
@@ -303,12 +299,12 @@ export const deleteFolder = async (
     await tx
       .update(link)
       .set({ folderId: null })
-      .where(and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+      .where(
+        and(eq(link.folderId, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
+      );
 
     // Delete folder permissions
-    await tx
-      .delete(folderPermission)
-      .where(eq(folderPermission.folderId, input.id));
+    await tx.delete(folderPermission).where(eq(folderPermission.folderId, input.id));
 
     // Delete the folder
     await tx.delete(folder).where(eq(folder.id, input.id));
@@ -317,16 +313,10 @@ export const deleteFolder = async (
   return { success: true };
 };
 
-export const moveLinkToFolder = async (
-  ctx: WorkspaceTRPCContext,
-  input: MoveLinkToFolderInput
-) => {
+export const moveLinkToFolder = async (ctx: WorkspaceTRPCContext, input: MoveLinkToFolderInput) => {
   // Check if link exists and belongs to workspace
   const existingLink = await ctx.db.query.link.findFirst({
-    where: and(
-      eq(link.id, input.linkId),
-      workspaceFilter(ctx.workspace, link.userId, link.teamId)
-    ),
+    where: and(eq(link.id, input.linkId), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
   });
 
   if (!existingLink) {
@@ -342,7 +332,7 @@ export const moveLinkToFolder = async (
     const existingFolder = await ctx.db.query.folder.findFirst({
       where: and(
         eq(folder.id, folderId),
-        workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+        workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
       ),
     });
 
@@ -358,17 +348,14 @@ export const moveLinkToFolder = async (
   }
 
   // Update link's folderId
-  await ctx.db
-    .update(link)
-    .set({ folderId: input.folderId })
-    .where(eq(link.id, input.linkId));
+  await ctx.db.update(link).set({ folderId: input.folderId }).where(eq(link.id, input.linkId));
 
   return { success: true };
 };
 
 export const moveBulkLinksToFolder = async (
   ctx: WorkspaceTRPCContext,
-  input: MoveBulkLinksToFolderInput
+  input: MoveBulkLinksToFolderInput,
 ) => {
   if (input.linkIds.length === 0) {
     throw new TRPCError({
@@ -383,7 +370,7 @@ export const moveBulkLinksToFolder = async (
     const existingFolder = await ctx.db.query.folder.findFirst({
       where: and(
         eq(folder.id, folderId),
-        workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+        workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
       ),
     });
 
@@ -403,7 +390,10 @@ export const moveBulkLinksToFolder = async (
     .update(link)
     .set({ folderId: input.folderId })
     .where(
-      and(inArray(link.id, input.linkIds), workspaceFilter(ctx.workspace, link.userId, link.teamId))
+      and(
+        inArray(link.id, input.linkIds),
+        workspaceFilter(ctx.workspace, link.userId, link.teamId),
+      ),
     );
 
   return {
@@ -429,7 +419,7 @@ export const getFolderStats = async (ctx: WorkspaceTRPCContext) => {
  */
 export const getFolderPermissions = async (
   ctx: WorkspaceTRPCContext,
-  input: GetFolderPermissionsInput
+  input: GetFolderPermissionsInput,
 ) => {
   // Require admin/owner role
   requireFolderPermissionManagement(ctx.workspace);
@@ -438,7 +428,7 @@ export const getFolderPermissions = async (
   const folderData = await ctx.db.query.folder.findFirst({
     where: and(
       eq(folder.id, input.folderId),
-      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
     ),
   });
 
@@ -483,7 +473,7 @@ export const getFolderPermissions = async (
  */
 export const updateFolderPermissions = async (
   ctx: WorkspaceTRPCContext,
-  input: UpdateFolderPermissionsInput
+  input: UpdateFolderPermissionsInput,
 ) => {
   // Require admin/owner role
   requireFolderPermissionManagement(ctx.workspace);
@@ -492,7 +482,7 @@ export const updateFolderPermissions = async (
   const folderData = await ctx.db.query.folder.findFirst({
     where: and(
       eq(folder.id, input.folderId),
-      workspaceFilter(ctx.workspace, folder.userId, folder.teamId)
+      workspaceFilter(ctx.workspace, folder.userId, folder.teamId),
     ),
   });
 
@@ -511,7 +501,7 @@ export const updateFolderPermissions = async (
     const validMembers = await ctx.db.query.teamMember.findMany({
       where: and(
         eq(teamMember.teamId, ctx.workspace.teamId),
-        inArray(teamMember.userId, uniqueUserIds)
+        inArray(teamMember.userId, uniqueUserIds),
       ),
       columns: { userId: true },
     });
@@ -535,9 +525,7 @@ export const updateFolderPermissions = async (
       .where(eq(folder.id, input.folderId));
 
     // Remove all existing permissions for this folder
-    await tx
-      .delete(folderPermission)
-      .where(eq(folderPermission.folderId, input.folderId));
+    await tx.delete(folderPermission).where(eq(folderPermission.folderId, input.folderId));
 
     // If restricted with specific users, create permission records
     if (input.isRestricted && uniqueUserIds.length > 0) {
@@ -545,7 +533,7 @@ export const updateFolderPermissions = async (
         uniqueUserIds.map((userId) => ({
           folderId: input.folderId,
           userId,
-        }))
+        })),
       );
     }
   });

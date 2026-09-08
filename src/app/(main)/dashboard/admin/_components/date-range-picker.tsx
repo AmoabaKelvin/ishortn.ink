@@ -6,11 +6,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 import type { DateRange } from "react-day-picker";
@@ -122,11 +118,7 @@ export function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-auto p-0"
-        align="end"
-        sideOffset={8}
-      >
+      <PopoverContent className="w-auto p-0" align="end" sideOffset={8}>
         <div className="flex gap-1.5 border-b border-neutral-100 dark:border-border/50 px-3 py-2.5">
           {presets.map((preset) => (
             <button

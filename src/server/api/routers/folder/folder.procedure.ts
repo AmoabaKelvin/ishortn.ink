@@ -1,62 +1,52 @@
 import { createTRPCRouter, workspaceProcedure } from "../../trpc";
 import {
-    createFolderInput,
-    deleteFolderInput,
-    getFolderInput,
-    getFolderPermissionsInput,
-    moveBulkLinksToFolderInput,
-    moveLinkToFolderInput,
-    updateFolderInput,
-    updateFolderPermissionsInput,
+  createFolderInput,
+  deleteFolderInput,
+  getFolderInput,
+  getFolderPermissionsInput,
+  moveBulkLinksToFolderInput,
+  moveLinkToFolderInput,
+  updateFolderInput,
+  updateFolderPermissionsInput,
 } from "./folder.input";
 import {
-    createFolder,
-    deleteFolder,
-    getFolder,
-    getFolderPermissions,
-    getFolderStats,
-    listFolders,
-    moveBulkLinksToFolder,
-    moveLinkToFolder,
-    updateFolder,
-    updateFolderPermissions,
+  createFolder,
+  deleteFolder,
+  getFolder,
+  getFolderPermissions,
+  getFolderStats,
+  listFolders,
+  moveBulkLinksToFolder,
+  moveLinkToFolder,
+  updateFolder,
+  updateFolderPermissions,
 } from "./folder.service";
 
 export const folderRouter = createTRPCRouter({
-  create: workspaceProcedure
-    .input(createFolderInput)
-    .mutation(async ({ ctx, input }) => {
-      // Folder limit check is done atomically in createFolder via transaction
-      return createFolder(ctx, input);
-    }),
+  create: workspaceProcedure.input(createFolderInput).mutation(async ({ ctx, input }) => {
+    // Folder limit check is done atomically in createFolder via transaction
+    return createFolder(ctx, input);
+  }),
 
   list: workspaceProcedure.query(async ({ ctx }) => {
     return listFolders(ctx);
   }),
 
-  get: workspaceProcedure
-    .input(getFolderInput)
-    .query(async ({ ctx, input }) => {
-      return getFolder(ctx, input);
-    }),
+  get: workspaceProcedure.input(getFolderInput).query(async ({ ctx, input }) => {
+    return getFolder(ctx, input);
+  }),
 
-  update: workspaceProcedure
-    .input(updateFolderInput)
-    .mutation(async ({ ctx, input }) => {
-      return updateFolder(ctx, input);
-    }),
+  update: workspaceProcedure.input(updateFolderInput).mutation(async ({ ctx, input }) => {
+    return updateFolder(ctx, input);
+  }),
 
-  delete: workspaceProcedure
-    .input(deleteFolderInput)
-    .mutation(async ({ ctx, input }) => {
-      return deleteFolder(ctx, input);
-    }),
+  delete: workspaceProcedure.input(deleteFolderInput).mutation(async ({ ctx, input }) => {
+    return deleteFolder(ctx, input);
+  }),
 
-  moveLink: workspaceProcedure
-    .input(moveLinkToFolderInput)
-    .mutation(async ({ ctx, input }) => {
-      return moveLinkToFolder(ctx, input);
-    }),
+  moveLink: workspaceProcedure.input(moveLinkToFolderInput).mutation(async ({ ctx, input }) => {
+    return moveLinkToFolder(ctx, input);
+  }),
 
   moveBulkLinks: workspaceProcedure
     .input(moveBulkLinksToFolderInput)
@@ -83,4 +73,3 @@ export const folderRouter = createTRPCRouter({
 });
 
 export type FolderRouter = typeof folderRouter;
-

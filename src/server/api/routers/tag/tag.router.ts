@@ -3,7 +3,6 @@ import { z } from "zod";
 import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
 
 import { verifyLinkOwnership } from "../link/utils";
-
 import {
   associateTagsWithLink,
   createTag,
@@ -41,7 +40,7 @@ export const tagRouter = createTRPCRouter({
       z.object({
         linkId: z.number(),
         tagNames: z.array(z.string()),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       await verifyLinkOwnership(ctx, input.linkId);

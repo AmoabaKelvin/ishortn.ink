@@ -1,13 +1,4 @@
-import {
-  Body,
-  Container,
-  Head,
-  Hr,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import { Body, Container, Head, Hr, Html, Preview, Section, Text } from "@react-email/components";
 
 type TransferDeclinedEmailProps = {
   senderName?: string | null;
@@ -30,25 +21,22 @@ export const TransferDeclinedEmail = ({
             <Text style={text}>Hi {senderName || "there"},</Text>
 
             <Text style={text}>
-              Your resource transfer request to <strong>{recipientName}</strong>{" "}
-              ({recipientEmail}) has been declined.
+              Your resource transfer request to <strong>{recipientName}</strong> ({recipientEmail})
+              has been declined.
             </Text>
 
             <Hr style={hr} />
 
             <Text style={text}>
-              Your resources remain in your account and have not been
-              transferred. If you&apos;d like to transfer your resources to a
-              different account, you can initiate a new transfer from your
-              settings.
+              Your resources remain in your account and have not been transferred. If you&apos;d
+              like to transfer your resources to a different account, you can initiate a new
+              transfer from your settings.
             </Text>
 
             <Hr style={hr} />
 
             <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>
-              Kelvin & the iShortn team
-            </Text>
+            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
           </Section>
         </Container>
       </Body>

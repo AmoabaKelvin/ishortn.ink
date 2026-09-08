@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  IconBan,
-  IconCheck,
-  IconFlag,
-  IconShieldCheck,
-} from "@tabler/icons-react";
+import { IconBan, IconCheck, IconFlag, IconShieldCheck } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -34,9 +29,7 @@ export default function AdminFlaggedLinksPage() {
   const resolveMutation = api.admin.resolveFlaggedLink.useMutation({
     onSuccess: (_, variables) => {
       toast.success(
-        variables.action === "blocked"
-          ? "Link blocked successfully"
-          : "Flag dismissed",
+        variables.action === "blocked" ? "Link blocked successfully" : "Flag dismissed",
       );
       void refetch();
     },
@@ -98,7 +91,11 @@ export default function AdminFlaggedLinksPage() {
             </>
           ) : (
             <>
-              <IconFlag size={32} stroke={1.5} className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+              <IconFlag
+                size={32}
+                stroke={1.5}
+                className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600"
+              />
               <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
                 No flagged links found
               </p>
@@ -144,19 +141,25 @@ export default function AdminFlaggedLinksPage() {
                     </p>
                     {f.reason && (
                       <p className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-400">
-                        <span className="font-medium text-neutral-600 dark:text-neutral-400">Reason:</span>{" "}
+                        <span className="font-medium text-neutral-600 dark:text-neutral-400">
+                          Reason:
+                        </span>{" "}
                         {f.reason}
                       </p>
                     )}
                     {f.details && (
                       <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
-                        <span className="font-medium text-neutral-600 dark:text-neutral-400">Details:</span>{" "}
+                        <span className="font-medium text-neutral-600 dark:text-neutral-400">
+                          Details:
+                        </span>{" "}
                         {f.details}
                       </p>
                     )}
                     {f.reporterEmail && (
                       <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
-                        <span className="font-medium text-neutral-600 dark:text-neutral-400">Reporter:</span>{" "}
+                        <span className="font-medium text-neutral-600 dark:text-neutral-400">
+                          Reporter:
+                        </span>{" "}
                         {f.reporterEmail}
                       </p>
                     )}

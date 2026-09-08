@@ -6,21 +6,15 @@ import { RESERVED_TEAM_SLUGS } from "@/server/db/schema";
 const slugRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
 export const createTeamSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Team name is required")
-    .max(255, "Team name is too long"),
+  name: z.string().min(1, "Team name is required").max(255, "Team name is too long"),
   slug: z
     .string()
     .min(3, "Team slug must be at least 3 characters")
     .max(50, "Team slug is too long")
-    .regex(
-      slugRegex,
-      "Slug can only contain lowercase letters, numbers, and hyphens"
-    )
+    .regex(slugRegex, "Slug can only contain lowercase letters, numbers, and hyphens")
     .refine(
       (slug) => !RESERVED_TEAM_SLUGS.includes(slug),
-      "This slug is reserved and cannot be used"
+      "This slug is reserved and cannot be used",
     ),
 });
 
@@ -35,13 +29,10 @@ export const updateTeamSlugSchema = z.object({
     .string()
     .min(3, "Team slug must be at least 3 characters")
     .max(50, "Team slug is too long")
-    .regex(
-      slugRegex,
-      "Slug can only contain lowercase letters, numbers, and hyphens"
-    )
+    .regex(slugRegex, "Slug can only contain lowercase letters, numbers, and hyphens")
     .refine(
       (slug) => !RESERVED_TEAM_SLUGS.includes(slug),
-      "This slug is reserved and cannot be used"
+      "This slug is reserved and cannot be used",
     ),
 });
 

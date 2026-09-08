@@ -1,8 +1,4 @@
-import {
-  DeleteObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import { env } from "@/env.mjs";
 
@@ -14,13 +10,8 @@ let publicUrl: string | null = null;
 function getClient(): S3Client | null {
   if (client) return client;
 
-  const {
-    R2_ACCOUNT_ID,
-    R2_ACCESS_KEY_ID,
-    R2_SECRET_ACCESS_KEY,
-    R2_BUCKET_NAME,
-    R2_PUBLIC_URL,
-  } = env;
+  const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL } =
+    env;
 
   if (
     !R2_ACCOUNT_ID ||
@@ -34,7 +25,9 @@ function getClient(): S3Client | null {
 
   client = new S3Client({
     region: "auto",
-    endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    endpoint: env.R2_ENDPOINT ?? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    // MinIO (local R2_ENDPOINT) needs path-style bucket addressing
+    forcePathStyle: env.R2_ENDPOINT !== undefined,
     credentials: {
       accessKeyId: R2_ACCESS_KEY_ID,
       secretAccessKey: R2_SECRET_ACCESS_KEY,
@@ -49,9 +42,7 @@ export function isR2Configured(): boolean {
   return getClient() !== null;
 }
 
-export async function r2UploadImage(
-  params: UploadImageParams
-): Promise<string> {
+export async function r2UploadImage(params: UploadImageParams): Promise<string> {
   const s3Client = getClient();
   if (!s3Client || !publicUrl) {
     throw new Error("R2 storage not configured");
@@ -65,7 +56,7 @@ export async function r2UploadImage(
       Key: key,
       Body: params.buffer,
       ContentType: params.contentType,
-    })
+    }),
   );
 
   return `${publicUrl}/${key}`;
@@ -79,18 +70,12 @@ export async function r2DeleteImage(key: string): Promise<void> {
     new DeleteObjectCommand({
       Bucket: env.R2_BUCKET_NAME!,
       Key: key,
-    })
+    }),
   );
 }
 
 function generateKey(params: UploadImageParams): string {
-  const {
-    workspaceId,
-    workspaceType,
-    imageType,
-    resourceId,
-    extension = "png",
-  } = params;
+  const { workspaceId, workspaceType, imageType, resourceId, extension = "png" } = params;
   const prefix = workspaceType === "team" ? "teams" : "users";
   return `${prefix}/${workspaceId}/${imageType}/${resourceId}.${extension}`;
 }

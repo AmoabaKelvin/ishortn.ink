@@ -1,16 +1,7 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import {
-  AlertCircle,
-  ArrowRight,
-  Check,
-  Clock,
-  Loader2,
-  Shield,
-  User,
-  Users,
-} from "lucide-react";
+import { AlertCircle, ArrowRight, Check, Clock, Loader2, Shield, User, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { toast } from "sonner";
@@ -66,7 +57,7 @@ function StateCard({
           <div
             className={cn(
               "inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5",
-              iconBg
+              iconBg,
             )}
           >
             {icon}
@@ -74,9 +65,7 @@ function StateCard({
 
           {/* Text */}
           <h1 className="font-display text-xl text-neutral-900 mb-2">{title}</h1>
-          <p className="text-sm text-neutral-500 mb-6 leading-relaxed">
-            {description}
-          </p>
+          <p className="text-sm text-neutral-500 mb-6 leading-relaxed">{description}</p>
 
           {/* Actions */}
           {children}
@@ -107,7 +96,7 @@ function AcceptInviteContent() {
     { token: token! },
     {
       enabled: !!token && isSignedIn,
-    }
+    },
   );
 
   const baseDomain = getAppBaseDomain();
@@ -137,11 +126,7 @@ function AcceptInviteContent() {
         title="Invalid invite"
         description="This invite link is incomplete or malformed."
       >
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard")}
-          className="w-full"
-        >
+        <Button variant="outline" onClick={() => router.push("/dashboard")} className="w-full">
           Go to Dashboard
         </Button>
       </StateCard>
@@ -164,9 +149,7 @@ function AcceptInviteContent() {
       >
         <Button
           onClick={() =>
-            router.push(
-              `/auth/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`
-            )
+            router.push(`/auth/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`)
           }
           className="w-full bg-neutral-900 hover:bg-neutral-800"
         >
@@ -191,11 +174,7 @@ function AcceptInviteContent() {
         title="Invite not found"
         description="This invite may have been revoked or doesn't exist."
       >
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard")}
-          className="w-full"
-        >
+        <Button variant="outline" onClick={() => router.push("/dashboard")} className="w-full">
           Go to Dashboard
         </Button>
       </StateCard>
@@ -215,11 +194,7 @@ function AcceptInviteContent() {
         title="Invite expired"
         description={`This invitation to ${invite.team.name} has expired. Ask the team admin to send a new one.`}
       >
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard")}
-          className="w-full"
-        >
+        <Button variant="outline" onClick={() => router.push("/dashboard")} className="w-full">
           Go to Dashboard
         </Button>
       </StateCard>
@@ -274,10 +249,7 @@ function AcceptInviteContent() {
           <div className="flex justify-center mb-6">
             <div className="relative">
               <Avatar className="h-20 w-20 ring-4 ring-white shadow-lg">
-                <AvatarImage
-                  src={invite.team.avatarUrl ?? undefined}
-                  alt={invite.team.name}
-                />
+                <AvatarImage src={invite.team.avatarUrl ?? undefined} alt={invite.team.name} />
                 <AvatarFallback className="bg-gradient-to-br from-neutral-100 to-neutral-200 text-neutral-700 text-2xl font-semibold">
                   {invite.team.name[0]?.toUpperCase() ?? "T"}
                 </AvatarFallback>
@@ -291,12 +263,9 @@ function AcceptInviteContent() {
 
           {/* Title */}
           <div className="text-center mb-8">
-            <h1 className="font-display text-2xl text-neutral-900 mb-2">
-              Join {invite.team.name}
-            </h1>
+            <h1 className="font-display text-2xl text-neutral-900 mb-2">Join {invite.team.name}</h1>
             <p className="text-sm text-neutral-500">
-              {invite.invitedBy?.name || "A team member"} invited you to
-              collaborate
+              {invite.invitedBy?.name || "A team member"} invited you to collaborate
             </p>
           </div>
 
@@ -308,9 +277,7 @@ function AcceptInviteContent() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-neutral-500">Team</span>
-                <span className="text-sm font-medium text-neutral-900">
-                  {invite.team.name}
-                </span>
+                <span className="text-sm font-medium text-neutral-900">{invite.team.name}</span>
               </div>
               <div className="h-px bg-neutral-200/60" />
               <div className="flex items-center justify-between">
@@ -325,7 +292,7 @@ function AcceptInviteContent() {
                 <span
                   className={cn(
                     "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
-                    config.className
+                    config.className,
                   )}
                 >
                   <RoleIcon className="h-3 w-3" />
@@ -405,9 +372,7 @@ export default function AcceptInvitePage() {
           className="mb-10 animate-in fade-in slide-in-from-top-4 duration-500"
           style={{ animationFillMode: "backwards" }}
         >
-          <span className="text-3xl font-bold text-neutral-900 tracking-tight">
-            iShortn
-          </span>
+          <span className="text-3xl font-bold text-neutral-900 tracking-tight">iShortn</span>
         </div>
 
         {/* Main content */}

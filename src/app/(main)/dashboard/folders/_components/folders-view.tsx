@@ -1,7 +1,7 @@
 "use client";
 
-import { AnimatePresence } from "framer-motion";
 import { IconPlus } from "@tabler/icons-react";
+import { AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
 import { api } from "@/trpc/react";
@@ -38,8 +38,7 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
   const isTeamWorkspace = currentWorkspace.data?.type === "team";
   const isAdminOrOwner =
     isTeamWorkspace &&
-    (currentWorkspace.data?.role === "owner" ||
-      currentWorkspace.data?.role === "admin");
+    (currentWorkspace.data?.role === "owner" || currentWorkspace.data?.role === "admin");
 
   const folders = initialFolders;
   const hasFolders = folders && folders.length > 0;
@@ -94,10 +93,7 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
         </div>
       )}
 
-      <CreateFolderModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-      />
+      <CreateFolderModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
 
       <EditFolderModal
         folder={editingFolder}

@@ -38,7 +38,6 @@ export async function sendTeamInviteEmail({
       react: TeamInviteEmail({
         recipientName,
         teamName,
-        teamSlug,
         inviterName,
         role,
         inviteUrl,

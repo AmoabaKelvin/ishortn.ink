@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { env } from "@/env.mjs";
 
 const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
@@ -5,28 +7,28 @@ const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
 // Cloudflare error code for a custom hostname that already exists on the zone
 const DUPLICATE_HOSTNAME_ERROR_CODE = 1406;
 
-export interface CloudflareCustomHostname {
-  id: string;
-  hostname: string;
-  status: string;
-  ssl?: {
-    status: string;
-  } | null;
-  ownership_verification?: {
-    type: string;
-    name: string;
-    value: string;
-  } | null;
+const customHostnameSchema = z.object({
+  id: z.string(),
+  hostname: z.string(),
+  status: z.string(),
+  ssl: z.object({ status: z.string() }).nullish(),
+  ownership_verification: z
+    .object({ type: z.string(), name: z.string(), value: z.string() })
+    .nullish(),
+});
+
+export type CloudflareCustomHostname = z.infer<typeof customHostnameSchema>;
+
+function apiResponseSchema<Result extends z.ZodType>(result: Result) {
+  return z.object({
+    success: z.boolean(),
+    errors: z.array(z.object({ code: z.number(), message: z.string() })).optional(),
+    result: result.nullable(),
+  });
 }
 
-interface CloudflareApiResponse<T> {
-  success: boolean;
-  errors?: {
-    code: number;
-    message: string;
-  }[];
-  result: T | null;
-}
+const customHostnameResponseSchema = apiResponseSchema(customHostnameSchema);
+const customHostnameListResponseSchema = apiResponseSchema(z.array(customHostnameSchema));
 
 export type CustomHostnameChallenge = {
   type: "TXT" | "A" | "CNAME";
@@ -36,13 +38,24 @@ export type CustomHostnameChallenge = {
 
 const CLOUDFLARE_API_TIMEOUT_MS = 10_000;
 
+function saasCredentials() {
+  const token = env.CLOUDFLARE_API_TOKEN;
+  const zoneId = env.CLOUDFLARE_SAAS_ZONE_ID;
+  if (!token || !zoneId) {
+    throw new Error(
+      "Custom domains are not configured: set CLOUDFLARE_API_TOKEN and CLOUDFLARE_SAAS_ZONE_ID.",
+    );
+  }
+  return { token, zoneId };
+}
+
 function zoneUrl(path: string) {
-  return `${CLOUDFLARE_API_BASE}/zones/${env.CLOUDFLARE_SAAS_ZONE_ID}${path}`;
+  return `${CLOUDFLARE_API_BASE}/zones/${saasCredentials().zoneId}${path}`;
 }
 
 function requestHeaders() {
   return {
-    Authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
+    Authorization: `Bearer ${saasCredentials().token}`,
     "Content-Type": "application/json",
   };
 }
@@ -72,7 +85,7 @@ export async function addCustomHostname(domain: string) {
     }),
   });
 
-  const data = (await response.json()) as CloudflareApiResponse<CloudflareCustomHostname>;
+  const data = customHostnameResponseSchema.parse(await response.json());
 
   if (!data.success || !data.result) {
     if (data.errors?.some((error) => error.code === DUPLICATE_HOSTNAME_ERROR_CODE)) {
@@ -96,7 +109,7 @@ export async function getCustomHostname(domain: string) {
     },
   );
 
-  const data = (await response.json()) as CloudflareApiResponse<CloudflareCustomHostname[]>;
+  const data = customHostnameListResponseSchema.parse(await response.json());
 
   // A failed lookup must throw rather than read as "hostname absent" — callers
   // rely on the distinction (fetchError flag, delete refusing to run blind).

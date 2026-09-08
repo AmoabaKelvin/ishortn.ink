@@ -1,7 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDown, IconDiamond } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 
@@ -49,7 +49,7 @@ export function SectionToggle({
           stroke={1.5}
           className={cn(
             "shrink-0 text-neutral-400 transition-transform duration-200",
-            isOpen && "rotate-180"
+            isOpen && "rotate-180",
           )}
         />
       </button>

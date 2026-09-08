@@ -16,7 +16,11 @@ import { Link } from "next-view-transitions";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { BioRenderer, type BioRenderBlock, type BioRenderModel } from "@/components/bio/bio-renderer";
+import {
+  BioRenderer,
+  type BioRenderBlock,
+  type BioRenderModel,
+} from "@/components/bio/bio-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,16 +31,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Plan } from "@/lib/billing/plans";
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/shared";
-import type { BioBlockType } from "@/server/db/schema";
 
 import { AnalyticsPanel } from "./analytics-panel";
 import { BlockFormDialog } from "./block-form-dialog";
 import { BlockList } from "./block-list";
 import { PageQrDialog } from "./page-qr-dialog";
 import { SettingsPanel, type BioSettingsDraft } from "./settings-panel";
+
+import type { Plan } from "@/lib/billing/plans";
+import type { BioBlockType } from "@/server/db/schema";
+import type { RouterOutputs } from "@/trpc/shared";
 
 type BioPageData = RouterOutputs["bioPage"]["get"];
 type EditorBlock = BioPageData["blocks"][number];
@@ -167,7 +172,10 @@ export function BioPageBuilder({
             </p>
           </div>
           {page.isPublished ? (
-            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+            <Badge
+              variant="secondary"
+              className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+            >
               Live
             </Badge>
           ) : (

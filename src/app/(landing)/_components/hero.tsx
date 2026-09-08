@@ -70,9 +70,8 @@ export const Hero = () => {
               textWrap: "pretty" as const,
             }}
           >
-            Shorten any link in a second. See who clicked, and from where. Make
-            QR codes that match your brand. A quiet, friendly tool — no
-            spreadsheets required.
+            Shorten any link in a second. See who clicked, and from where. Make QR codes that match
+            your brand. A quiet, friendly tool — no spreadsheets required.
           </p>
 
           <form
@@ -144,15 +143,11 @@ export const Hero = () => {
               color: "var(--warm-mute)",
             }}
           >
-            Free to start — no credit card. Quick sign-up, your URL comes
-            along for the ride.
+            Free to start — no credit card. Quick sign-up, your URL comes along for the ride.
           </div>
         </div>
 
-        <div
-          className="warm-hero-cards"
-          style={{ position: "relative", height: 460 }}
-        >
+        <div className="warm-hero-cards" style={{ position: "relative", height: 460 }}>
           {heroCards.map((c, i) => (
             <div
               key={c.slug}
@@ -198,9 +193,7 @@ export const Hero = () => {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 12, color: "var(--warm-mute)" }}>
-                    Clicks this week
-                  </div>
+                  <div style={{ fontSize: 12, color: "var(--warm-mute)" }}>Clicks this week</div>
                   <div
                     style={{
                       fontFamily: "var(--font-warm-display)",
@@ -225,12 +218,7 @@ export const Hero = () => {
                   ↑ {c.delta}
                 </div>
               </div>
-              <svg
-                viewBox="0 0 200 40"
-                width="100%"
-                height="40"
-                style={{ marginTop: 14 }}
-              >
+              <svg viewBox="0 0 200 40" width="100%" height="40" style={{ marginTop: 14 }}>
                 <path
                   d={`M 0 ${30 - i * 4} Q 40 ${10 + i * 5}, 80 ${20 - i * 2} T 160 ${12 + i * 3} T 200 ${8 + i * 2}`}
                   stroke="var(--warm-accent)"
@@ -253,28 +241,22 @@ export const Hero = () => {
           flexWrap: "wrap",
         }}
       >
-        <span style={{ fontSize: 13, color: "var(--warm-mute)" }}>
-          Featured on
-        </span>
-        {[
-          "Product Hunt #1",
-          "Indie Hackers",
-          "Sidebar",
-          "Designer News",
-          "The Newsletter",
-        ].map((x) => (
-          <span
-            key={x}
-            className="warm-hero-featured-item"
-            style={{
-              fontFamily: "var(--font-warm-display)",
-              color: "var(--warm-ink-soft)",
-              opacity: 0.7,
-            }}
-          >
-            {x}
-          </span>
-        ))}
+        <span style={{ fontSize: 13, color: "var(--warm-mute)" }}>Featured on</span>
+        {["Product Hunt #1", "Indie Hackers", "Sidebar", "Designer News", "The Newsletter"].map(
+          (x) => (
+            <span
+              key={x}
+              className="warm-hero-featured-item"
+              style={{
+                fontFamily: "var(--font-warm-display)",
+                color: "var(--warm-ink-soft)",
+                opacity: 0.7,
+              }}
+            >
+              {x}
+            </span>
+          ),
+        )}
       </div>
 
       <style>{`

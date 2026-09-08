@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
 import {
   IconChevronRight,
   IconFilter,
@@ -11,6 +9,8 @@ import {
   IconWorld,
   IconX,
 } from "@tabler/icons-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,14 +21,9 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { api } from "@/trpc/react";
-import { cn } from "@/lib/utils";
 
 type FilterType = "all" | "folder" | "domain" | "link";
 
@@ -38,25 +33,22 @@ export function AnalyticsFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const filterType = (searchParams.get("filterType") ?? "all") as FilterType;
+  const filterType = searchParams.get("filterType") ?? "all";
   const filterId = searchParams.get("filterId") ?? undefined;
 
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("categories");
-  const [selectedCategory, setSelectedCategory] =
-    useState<FilterType>("folder");
+  const [selectedCategory, setSelectedCategory] = useState<FilterType>("folder");
 
   // Fetch folders
-  const { data: folders, isLoading: foldersLoading } =
-    api.folder.list.useQuery(undefined, {
-      enabled: open && selectedCategory === "folder",
-    });
+  const { data: folders, isLoading: foldersLoading } = api.folder.list.useQuery(undefined, {
+    enabled: open && selectedCategory === "folder",
+  });
 
   // Fetch domains
-  const { data: domains, isLoading: domainsLoading } =
-    api.customDomain.list.useQuery(undefined, {
-      enabled: open && selectedCategory === "domain",
-    });
+  const { data: domains, isLoading: domainsLoading } = api.customDomain.list.useQuery(undefined, {
+    enabled: open && selectedCategory === "domain",
+  });
 
   // Fetch links
   const { data: linksData, isLoading: linksLoading } = api.link.list.useQuery(
@@ -69,7 +61,7 @@ export function AnalyticsFilter() {
     },
     {
       enabled: open && selectedCategory === "link",
-    }
+    },
   );
 
   // Get current filter label
@@ -149,12 +141,13 @@ export function AnalyticsFilter() {
   };
 
   const getDomainItems = () => {
-    const items: { value: string; label: string; subtitle: string }[] =
-      PLATFORM_DOMAINS.map((domain) => ({
+    const items: { value: string; label: string; subtitle: string }[] = PLATFORM_DOMAINS.map(
+      (domain) => ({
         value: domain,
         label: domain,
         subtitle: domain === DEFAULT_PLATFORM_DOMAIN ? "Default" : "Platform",
-      }));
+      }),
+    );
     if (domains) {
       domains.forEach((domain) => {
         if (domain.domain) {
@@ -203,12 +196,15 @@ export function AnalyticsFilter() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          role="combobox"
           aria-expanded={open}
           className="h-9 w-full justify-between gap-2 border-neutral-200 dark:border-border bg-white dark:bg-card px-3 text-[13px] sm:w-[240px]"
         >
           <div className="flex min-w-0 items-center gap-2">
-            <IconFilter size={14} stroke={1.5} className="shrink-0 text-neutral-400 dark:text-neutral-500" />
+            <IconFilter
+              size={14}
+              stroke={1.5}
+              className="shrink-0 text-neutral-400 dark:text-neutral-500"
+            />
             <span className="truncate font-medium">{getFilterLabel()}</span>
           </div>
           {filterType !== "all" ? (
@@ -219,17 +215,21 @@ export function AnalyticsFilter() {
               onClick={clearFilter}
             />
           ) : (
-            <IconChevronRight size={14} stroke={1.5} className="shrink-0 text-neutral-400 dark:text-neutral-500" />
+            <IconChevronRight
+              size={14}
+              stroke={1.5}
+              className="shrink-0 text-neutral-400 dark:text-neutral-500"
+            />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] rounded-lg border-neutral-200 dark:border-border p-0" align="start">
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] rounded-lg border-neutral-200 dark:border-border p-0"
+        align="start"
+      >
         <Command>
           {viewMode === "items" && (
-            <CommandInput
-              placeholder={`Search ${selectedCategory}...`}
-              className="h-9"
-            />
+            <CommandInput placeholder={`Search ${selectedCategory}...`} className="h-9" />
           )}
 
           <CommandList className="max-h-[300px]">
@@ -245,11 +245,19 @@ export function AnalyticsFilter() {
                       className="flex items-center justify-between rounded-md px-3 py-2"
                     >
                       <div className="flex items-center gap-2.5">
-                        <Icon size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+                        <Icon
+                          size={14}
+                          stroke={1.5}
+                          className="text-neutral-400 dark:text-neutral-500"
+                        />
                         <span className="text-[13px] font-medium">{category.label}</span>
                       </div>
                       {category.value !== "all" && (
-                        <IconChevronRight size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+                        <IconChevronRight
+                          size={14}
+                          stroke={1.5}
+                          className="text-neutral-400 dark:text-neutral-500"
+                        />
                       )}
                     </CommandItem>
                   );
@@ -259,11 +267,17 @@ export function AnalyticsFilter() {
               <>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <IconLoader2 size={18} stroke={1.5} className="animate-spin text-neutral-400 dark:text-neutral-500" />
+                    <IconLoader2
+                      size={18}
+                      stroke={1.5}
+                      className="animate-spin text-neutral-400 dark:text-neutral-500"
+                    />
                   </div>
                 ) : (
                   <>
-                    <CommandEmpty className="py-8 text-[13px] text-neutral-400 dark:text-neutral-500">No {selectedCategory} found.</CommandEmpty>
+                    <CommandEmpty className="py-8 text-[13px] text-neutral-400 dark:text-neutral-500">
+                      No {selectedCategory} found.
+                    </CommandEmpty>
                     <CommandGroup className="p-1.5">
                       {getCurrentItems().map((item) => (
                         <CommandItem

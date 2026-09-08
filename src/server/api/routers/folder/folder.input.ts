@@ -50,4 +50,3 @@ export type MoveLinkToFolderInput = z.infer<typeof moveLinkToFolderInput>;
 export type MoveBulkLinksToFolderInput = z.infer<typeof moveBulkLinksToFolderInput>;
 export type GetFolderPermissionsInput = z.infer<typeof getFolderPermissionsInput>;
 export type UpdateFolderPermissionsInput = z.infer<typeof updateFolderPermissionsInput>;
-

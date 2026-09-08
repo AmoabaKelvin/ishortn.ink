@@ -62,7 +62,7 @@ export const renderWelcomeEmail = (name: string) => {
 
 WelcomeEmail.PreviewProps = {
   userFirstname: "Kelvin",
-} as WelcomeEmailProps;
+} satisfies WelcomeEmailProps;
 
 export default WelcomeEmail;
 

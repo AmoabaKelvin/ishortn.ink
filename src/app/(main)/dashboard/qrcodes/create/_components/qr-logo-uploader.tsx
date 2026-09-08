@@ -1,8 +1,9 @@
 import { IconUpload } from "@tabler/icons-react";
-import type React from "react";
 import { useCallback, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+
+import type React from "react";
 
 interface LogoUploaderProps {
   setLogoImage: (image: string | null) => void;
@@ -11,58 +12,46 @@ interface LogoUploaderProps {
 export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
   const [error, setError] = useState<string | null>(null);
 
+  const loadLogoFile = useCallback(
+    (file: File) => {
+      if (file.size > 2 * 1024 * 1024) {
+        setError("File size exceeds 2MB limit");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // SAFETY: readAsDataURL always yields a string result on load.
+        setLogoImage(reader.result as string);
+        setError(null);
+      };
+      reader.onerror = () => {
+        setError("Error reading file");
+      };
+      reader.readAsDataURL(file);
+    },
+    [setLogoImage],
+  );
+
   const handleFileUpload = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
-      if (file) {
-        if (file.size > 2 * 1024 * 1024) {
-          setError("File size exceeds 2MB limit");
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setLogoImage(reader.result as string);
-          setError(null);
-        };
-        reader.onerror = () => {
-          setError("Error reading file");
-        };
-        reader.readAsDataURL(file);
-      }
+      if (file) loadLogoFile(file);
     },
-    [setLogoImage]
+    [loadLogoFile],
   );
 
-  const handleDragOver = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-    },
-    []
-  );
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  }, []);
 
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
       const file = event.dataTransfer.files[0];
-      if (file) {
-        if (file.size > 2 * 1024 * 1024) {
-          setError("File size exceeds 2MB limit");
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setLogoImage(reader.result as string);
-          setError(null);
-        };
-        reader.onerror = () => {
-          setError("Error reading file");
-        };
-        reader.readAsDataURL(file);
-      }
+      if (file) loadLogoFile(file);
     },
-    [setLogoImage]
+    [loadLogoFile],
   );
 
   return (
@@ -88,9 +77,7 @@ export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
         </label>
         <span className="text-neutral-400">or drag and drop</span>
       </div>
-      <p className="text-[11px] text-neutral-400">
-        PNG, JPG, GIF up to 2MB
-      </p>
+      <p className="text-[11px] text-neutral-400">PNG, JPG, GIF up to 2MB</p>
       {error && <p className="text-[11px] text-red-500">{error}</p>}
     </div>
   );

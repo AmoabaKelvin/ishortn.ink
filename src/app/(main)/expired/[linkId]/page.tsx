@@ -70,9 +70,7 @@ export default async function ExpiredPage({ params }: ExpiredPageProps) {
         <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50">
           <IconClockOff size={24} stroke={1.5} className="text-amber-600" />
         </div>
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
-          Link Expired
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Link Expired</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-neutral-500">
           The link you are trying to visit is no longer active.
         </p>

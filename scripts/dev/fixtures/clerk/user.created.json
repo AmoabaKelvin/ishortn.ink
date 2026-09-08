@@ -1,0 +1,53 @@
+{
+  "object": "event",
+  "type": "user.created",
+  "data": {
+    "id": "__USER_ID__",
+    "object": "user",
+    "first_name": "Local",
+    "last_name": "Dev",
+    "username": null,
+    "image_url": "https://img.clerk.com/preview.png",
+    "profile_image_url": "https://img.clerk.com/preview.png",
+    "has_image": false,
+    "primary_email_address_id": "idn_local_dev_email",
+    "primary_phone_number_id": null,
+    "primary_web3_wallet_id": null,
+    "email_addresses": [
+      {
+        "id": "idn_local_dev_email",
+        "object": "email_address",
+        "email_address": "__EMAIL__",
+        "reserved": false,
+        "linked_to": [],
+        "verification": {
+          "status": "verified",
+          "strategy": "email_code",
+          "attempts": 1,
+          "expire_at": null
+        }
+      }
+    ],
+    "phone_numbers": [],
+    "web3_wallets": [],
+    "external_accounts": [],
+    "saml_accounts": [],
+    "external_id": null,
+    "public_metadata": {},
+    "private_metadata": {},
+    "unsafe_metadata": {},
+    "password_enabled": true,
+    "two_factor_enabled": false,
+    "totp_enabled": false,
+    "backup_code_enabled": false,
+    "banned": false,
+    "locked": false,
+    "delete_self_enabled": true,
+    "create_organization_enabled": true,
+    "birthday": "",
+    "gender": "",
+    "last_sign_in_at": null,
+    "created_at": "__NOW_MS__",
+    "updated_at": "__NOW_MS__"
+  }
+}

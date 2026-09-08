@@ -3,14 +3,15 @@
 import { Card } from "@/components/ui/card";
 import { type PaidPlan } from "@/lib/constants/plan-pricing";
 import { timeAgo } from "@/lib/utils";
+
 import type { RouterOutputs } from "@/trpc/shared";
 
 type Subscription = RouterOutputs["admin"]["getRecentSubscriptions"][number];
 
-const PLAN_BADGE: Record<PaidPlan, string> = {
+const PLAN_BADGE = {
   pro: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
   ultra: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400",
-};
+} satisfies Record<PaidPlan, string>;
 
 function planBadgeClass(plan: Subscription["plan"]): string | null {
   if (plan === "pro" || plan === "ultra") return PLAN_BADGE[plan];
@@ -51,6 +52,7 @@ export function RecentSubscriptionsCard({
             return (
               <div key={s.id} className="flex items-center gap-3 px-5 py-3">
                 {s.userImage ? (
+                  // eslint-disable-next-line next/no-img-element -- Clerk avatar URL from an unconfigured remote host
                   <img
                     src={s.userImage}
                     alt=""

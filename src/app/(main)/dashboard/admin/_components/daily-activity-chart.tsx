@@ -1,13 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Bar,
-  BarChart as RechartsBarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { z } from "zod";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -37,13 +32,17 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-type MetricView = "links" | "users" | "clicks";
+const metricViewSchema = z.enum(["links", "users", "clicks"]);
+type MetricView = z.infer<typeof metricViewSchema>;
+
+const granularitySchema = z.enum(["day", "month"]);
+type Granularity = z.infer<typeof granularitySchema>;
 
 type ActivityChartProps = {
   data: { date: string; links: number; users: number; clicks: number }[] | undefined;
   isLoading: boolean;
-  granularity: "day" | "month";
-  onGranularityChange: (g: "day" | "month") => void;
+  granularity: Granularity;
+  onGranularityChange: (g: Granularity) => void;
 };
 
 export function ActivityChart({
@@ -67,15 +66,10 @@ export function ActivityChart({
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Activity
           </h2>
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-            {description}
-          </p>
+          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">{description}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Tabs
-            value={metricView}
-            onValueChange={(v) => setMetricView(v as MetricView)}
-          >
+          <Tabs value={metricView} onValueChange={(v) => setMetricView(metricViewSchema.parse(v))}>
             <TabsList className="h-7">
               <TabsTrigger value="links" className="px-2.5 text-[11px]">
                 Links
@@ -90,7 +84,7 @@ export function ActivityChart({
           </Tabs>
           <Tabs
             value={granularity}
-            onValueChange={(v) => onGranularityChange(v as "day" | "month")}
+            onValueChange={(v) => onGranularityChange(granularitySchema.parse(v))}
           >
             <TabsList className="h-7">
               <TabsTrigger value="day" className="px-2.5 text-[11px]">
@@ -114,10 +108,7 @@ export function ActivityChart({
             <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No data available</p>
           </div>
         ) : (
-          <ChartContainer
-            config={chartConfig}
-            className="aspect-auto h-64 w-full"
-          >
+          <ChartContainer config={chartConfig} className="aspect-auto h-64 w-full">
             <RechartsBarChart data={data}>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -126,9 +117,7 @@ export function ActivityChart({
                 axisLine={false}
                 tickMargin={8}
                 minTickGap={32}
-                tickFormatter={
-                  granularity === "month" ? formatChartMonth : formatChartDate
-                }
+                tickFormatter={granularity === "month" ? formatChartMonth : formatChartDate}
               />
               <YAxis
                 tickLine={false}
@@ -150,11 +139,7 @@ export function ActivityChart({
                   />
                 }
               />
-              <Bar
-                dataKey={metricView}
-                fill={`var(--color-${metricView})`}
-                radius={4}
-              />
+              <Bar dataKey={metricView} fill={`var(--color-${metricView})`} radius={4} />
               <ChartLegend content={<ChartLegendContent />} />
             </RechartsBarChart>
           </ChartContainer>

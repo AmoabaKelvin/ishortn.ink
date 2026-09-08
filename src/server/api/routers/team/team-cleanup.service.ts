@@ -82,30 +82,36 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
     // Use a transaction to ensure atomic deletion of all resources
     await db.transaction(async (tx) => {
       // 1. Get all links for this team to delete their related records
-      const teamLinks = await tx
-        .select({ id: link.id })
-        .from(link)
-        .where(eq(link.teamId, teamId));
+      const teamLinks = await tx.select({ id: link.id }).from(link).where(eq(link.teamId, teamId));
 
       const linkIds = teamLinks.map((l) => l.id);
 
       if (linkIds.length > 0) {
         // Delete link visits
-        const linkVisitResult = await tx
-          .delete(linkVisit)
-          .where(sql`${linkVisit.linkId} IN (${sql.join(linkIds.map(id => sql`${id}`), sql`, `)})`);
+        const linkVisitResult = await tx.delete(linkVisit).where(
+          sql`${linkVisit.linkId} IN (${sql.join(
+            linkIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        );
         result.linkVisitsDeleted += linkVisitResult[0].affectedRows;
 
         // Delete unique link visits
-        const uniqueVisitResult = await tx
-          .delete(uniqueLinkVisit)
-          .where(sql`${uniqueLinkVisit.linkId} IN (${sql.join(linkIds.map(id => sql`${id}`), sql`, `)})`);
+        const uniqueVisitResult = await tx.delete(uniqueLinkVisit).where(
+          sql`${uniqueLinkVisit.linkId} IN (${sql.join(
+            linkIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        );
         result.uniqueLinkVisitsDeleted += uniqueVisitResult[0].affectedRows;
 
         // Delete link-tag associations
-        const linkTagResult = await tx
-          .delete(linkTag)
-          .where(sql`${linkTag.linkId} IN (${sql.join(linkIds.map(id => sql`${id}`), sql`, `)})`);
+        const linkTagResult = await tx.delete(linkTag).where(
+          sql`${linkTag.linkId} IN (${sql.join(
+            linkIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        );
         result.linkTagsDeleted += linkTagResult[0].affectedRows;
       }
 
@@ -114,15 +120,11 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
       result.linksDeleted += linksResult[0].affectedRows;
 
       // 3. Delete all folders
-      const foldersResult = await tx
-        .delete(folder)
-        .where(eq(folder.teamId, teamId));
+      const foldersResult = await tx.delete(folder).where(eq(folder.teamId, teamId));
       result.foldersDeleted += foldersResult[0].affectedRows;
 
       // 4. Delete all QR codes
-      const qrCodesResult = await tx
-        .delete(qrcode)
-        .where(eq(qrcode.teamId, teamId));
+      const qrCodesResult = await tx.delete(qrcode).where(eq(qrcode.teamId, teamId));
       result.qrCodesDeleted += qrCodesResult[0].affectedRows;
 
       // 5. Delete all tags
@@ -130,27 +132,19 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
       result.tagsDeleted += tagsResult[0].affectedRows;
 
       // 6. Delete all custom domains
-      const domainsResult = await tx
-        .delete(customDomain)
-        .where(eq(customDomain.teamId, teamId));
+      const domainsResult = await tx.delete(customDomain).where(eq(customDomain.teamId, teamId));
       result.customDomainsDeleted += domainsResult[0].affectedRows;
 
       // 7. Delete all UTM templates
-      const utmResult = await tx
-        .delete(utmTemplate)
-        .where(eq(utmTemplate.teamId, teamId));
+      const utmResult = await tx.delete(utmTemplate).where(eq(utmTemplate.teamId, teamId));
       result.utmTemplatesDeleted += utmResult[0].affectedRows;
 
       // 8. Delete all campaigns (member links were already deleted above)
-      const campaignsResult = await tx
-        .delete(campaign)
-        .where(eq(campaign.teamId, teamId));
+      const campaignsResult = await tx.delete(campaign).where(eq(campaign.teamId, teamId));
       result.campaignsDeleted += campaignsResult[0].affectedRows;
 
       // 9. Delete site settings
-      const settingsResult = await tx
-        .delete(siteSettings)
-        .where(eq(siteSettings.teamId, teamId));
+      const settingsResult = await tx.delete(siteSettings).where(eq(siteSettings.teamId, teamId));
       result.siteSettingsDeleted += settingsResult[0].affectedRows;
 
       // 10. Finally, delete the team itself
@@ -179,12 +173,7 @@ export async function getCleanupStats() {
   const inGracePeriod = await db
     .select({ count: sql<number>`count(*)` })
     .from(team)
-    .where(
-      and(
-        isNotNull(team.deletedAt),
-        sql`${team.deletedAt} >= ${cutoffDate}`
-      )
-    );
+    .where(and(isNotNull(team.deletedAt), sql`${team.deletedAt} >= ${cutoffDate}`));
 
   // Active teams
   const activeTeams = await db

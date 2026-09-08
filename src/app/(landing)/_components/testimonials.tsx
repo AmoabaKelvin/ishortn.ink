@@ -2,33 +2,28 @@ import { Icon } from "./warm-primitives";
 
 const quotes = [
   {
-    q:
-      "This tool is a godsend. I am using the link shortener and the QR code generator. It does everything I need it to.",
+    q: "This tool is a godsend. I am using the link shortener and the QR code generator. It does everything I need it to.",
     name: "FixatedManufacturing",
     role: "Small Business Owner",
     large: true,
   },
   {
-    q:
-      "We pasted posters around town using the QR codes and now we know which ones perform best. It has really helped us grow.",
+    q: "We pasted posters around town using the QR codes and now we know which ones perform best. It has really helped us grow.",
     name: "Plamagandalla",
     role: "Marketing Team",
   },
   {
-    q:
-      "Looks awesome. Minimalist and accurate. Exactly what I was looking for. Clean interface, fast redirects, and the analytics are spot on.",
+    q: "Looks awesome. Minimalist and accurate. Exactly what I was looking for. Clean interface, fast redirects, and the analytics are spot on.",
     name: "Anonymous",
     role: "Developer",
   },
   {
-    q:
-      "The QR codes look great on our packaging. Finally something I'm not embarrassed to print.",
+    q: "The QR codes look great on our packaging. Finally something I'm not embarrassed to print.",
     name: "Sachi Tanaka",
     role: "Founder, Fieldnotes",
   },
   {
-    q:
-      "Switched from Bitly in ten minutes. My links are mine again, and they look nice now.",
+    q: "Switched from Bitly in ten minutes. My links are mine again, and they look nice now.",
     name: "Devon Park",
     role: "Indie maker",
   },
@@ -61,15 +56,10 @@ export const Testimonials = () => {
         >
           <div>
             <div className="warm-eyebrow" style={{ marginBottom: 20 }}>
-              <Icon.Heart
-                style={{ width: 12, height: 12, color: "var(--warm-accent)" }}
-              />
+              <Icon.Heart style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
               From the folks using it
             </div>
-            <h2
-              className="warm-display"
-              style={{ margin: 0, fontSize: "clamp(44px, 7vw, 80px)" }}
-            >
+            <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 7vw, 80px)" }}>
               Kind words
               <br />
               <em style={{ fontStyle: "italic" }}>from real people.</em>
@@ -147,9 +137,7 @@ export const Testimonials = () => {
                 </span>
                 <p
                   style={{
-                    fontFamily: t.large
-                      ? "var(--font-warm-display)"
-                      : "var(--font-warm-ui)",
+                    fontFamily: t.large ? "var(--font-warm-display)" : "var(--font-warm-ui)",
                     fontSize: t.large ? 28 : 15,
                     lineHeight: t.large ? 1.3 : 1.55,
                     margin: 0,
@@ -188,9 +176,7 @@ export const Testimonials = () => {
                     {t.name[0]}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>
-                      {t.name}
-                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</div>
                     <div style={{ fontSize: 12, opacity: 0.65 }}>{t.role}</div>
                   </div>
                 </div>

@@ -1,15 +1,10 @@
 "use client";
 
 import { scaleLinear } from "d3-scale";
-import {
-  ComposableMap,
-  Geographies,
-  Geography,
-  ZoomableGroup,
-} from "react-simple-maps";
+import { useMemo, useState } from "react";
+import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 
 import { Card } from "@/components/ui/card";
-import { useMemo, useState } from "react";
 
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
 
@@ -23,9 +18,7 @@ type WorldMapHeatmapProps = {
 
 const WorldMapHeatmap = ({ data }: WorldMapHeatmapProps) => {
   const [tooltipContent, setTooltipContent] = useState<string | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<
-    Record<string, number>
-  >({ x: 0, y: 0 });
+  const [tooltipPosition, setTooltipPosition] = useState<Record<string, number>>({ x: 0, y: 0 });
 
   const maxClicks = useMemo(() => {
     const values = Object.values(data);
@@ -33,11 +26,8 @@ const WorldMapHeatmap = ({ data }: WorldMapHeatmapProps) => {
     return Math.max(...values) || 1;
   }, [data]);
   const colorScale = useMemo(
-    () =>
-      scaleLinear<string>()
-        .domain([0, maxClicks])
-        .range(["#f5f5f5", "#2563eb"]),
-    [maxClicks]
+    () => scaleLinear<string>().domain([0, maxClicks]).range(["#f5f5f5", "#2563eb"]),
+    [maxClicks],
   );
 
   const handleMouseMove = (event: React.MouseEvent) => {
@@ -49,13 +39,8 @@ const WorldMapHeatmap = ({ data }: WorldMapHeatmapProps) => {
 
   const handleMouseEnter = (event: React.MouseEvent, countryName: string) => {
     handleMouseMove(event);
-    const displayName =
-      countryName === "United States of America"
-        ? "United States"
-        : countryName;
-    setTooltipContent(
-      `${displayName}: ${getClicksForCountry(displayName)} clicks`
-    );
+    const displayName = countryName === "United States of America" ? "United States" : countryName;
+    setTooltipContent(`${displayName}: ${getClicksForCountry(displayName)} clicks`);
   };
 
   const handleMouseLeave = () => {

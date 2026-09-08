@@ -2,8 +2,14 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Controller, useForm, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
+import { useState } from "react";
+import {
+  Controller,
+  useForm,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+} from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -25,9 +31,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { api } from "@/trpc/react";
+
 import type { Plan } from "@/lib/billing/plans";
 import type { SubmitAudienceFeedbackInput } from "@/server/api/routers/audience-feedback/audience-feedback.input";
-import { api } from "@/trpc/react";
 
 const ROLE_OPTIONS = [
   { value: "founder", label: "Founder or owner" },
@@ -122,11 +129,7 @@ const stepVariants = {
   }),
 };
 
-export function AudienceFeedbackModal({
-  open,
-  onOpenChange,
-  plan,
-}: AudienceFeedbackModalProps) {
+export function AudienceFeedbackModal({ open, onOpenChange, plan }: AudienceFeedbackModalProps) {
   const isPaidPlan = plan !== "free";
   const utils = api.useUtils();
   const [step, setStep] = useState(1);
@@ -141,20 +144,20 @@ export function AudienceFeedbackModal({
     formState: { errors },
   } = useForm<FormData>({ mode: "onTouched" });
 
-  useEffect(() => {
-    if (open) {
+  const handleClose = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      reset();
       setStep(1);
       setDirection(1);
     }
-  }, [open]);
+    onOpenChange(nextOpen);
+  };
 
   const submitMutation = api.audienceFeedback.submit.useMutation({
     onSuccess: () => {
       toast.success("Thanks — this helps a lot.");
-      reset();
-      setStep(1);
       void utils.audienceFeedback.getStatus.invalidate();
-      onOpenChange(false);
+      handleClose(false);
     },
     onError: (error) => {
       toast.error(error.message || "Failed to send feedback");
@@ -170,9 +173,7 @@ export function AudienceFeedbackModal({
   const stepFields: Array<Array<keyof FormData>> = [
     ["role", "useCase", "monthlyVolume"],
     ["acquisitionChannel", "priorTool"],
-    isPaidPlan
-      ? ["magicFeature", "upgradeReason"]
-      : ["magicFeature", "upgradeBlocker"],
+    isPaidPlan ? ["magicFeature", "upgradeReason"] : ["magicFeature", "upgradeBlocker"],
   ];
 
   const goNext = async () => {
@@ -187,15 +188,6 @@ export function AudienceFeedbackModal({
     setStep((s) => Math.max(1, s - 1));
   };
 
-  const handleClose = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      reset();
-      setStep(1);
-      setDirection(1);
-    }
-    onOpenChange(nextOpen);
-  };
-
   const handleMaybeLater = () => {
     dismissMutation.mutate();
     handleClose(false);
@@ -204,8 +196,8 @@ export function AudienceFeedbackModal({
   const onSubmit = (data: FormData) => {
     submitMutation.mutate({
       ...data,
-      upgradeReason: isPaidPlan ? data.upgradeReason ?? null : null,
-      upgradeBlocker: isPaidPlan ? null : data.upgradeBlocker ?? null,
+      upgradeReason: isPaidPlan ? (data.upgradeReason ?? null) : null,
+      upgradeBlocker: isPaidPlan ? null : (data.upgradeBlocker ?? null),
     });
   };
 
@@ -245,11 +237,7 @@ export function AudienceFeedbackModal({
               transition={{ duration: 0.28, ease: STEP_EASE }}
               className="overflow-hidden"
             >
-              <AnimatePresence
-                mode="popLayout"
-                custom={direction}
-                initial={false}
-              >
+              <AnimatePresence mode="popLayout" custom={direction} initial={false}>
                 <motion.div
                   key={step}
                   custom={direction}
@@ -259,15 +247,9 @@ export function AudienceFeedbackModal({
                   exit="exit"
                   transition={{ duration: 0.22, ease: STEP_EASE }}
                 >
-                  {step === 1 && (
-                    <StepAboutYou control={control} errors={errors} />
-                  )}
+                  {step === 1 && <StepAboutYou control={control} errors={errors} />}
                   {step === 2 && (
-                    <StepDiscovery
-                      control={control}
-                      register={register}
-                      errors={errors}
-                    />
+                    <StepDiscovery control={control} register={register} errors={errors} />
                   )}
                   {step === 3 && (
                     <StepWhatMatters
@@ -304,12 +286,7 @@ export function AudienceFeedbackModal({
               </Button>
             )}
             {step < TOTAL_STEPS ? (
-              <Button
-                type="button"
-                onClick={goNext}
-                disabled={isBusy}
-                className="h-9"
-              >
+              <Button type="button" onClick={goNext} disabled={isBusy} className="h-9">
                 Next
               </Button>
             ) : (
@@ -363,14 +340,8 @@ function SelectField({
         control={control}
         rules={{ required }}
         render={({ field }) => (
-          <Select
-            onValueChange={field.onChange}
-            value={(field.value as string | undefined) ?? ""}
-          >
-            <SelectTrigger
-              id={name}
-              className={cn("h-10", error && "border-destructive")}
-            >
+          <Select onValueChange={field.onChange} value={field.value ?? ""}>
+            <SelectTrigger id={name} className={cn("h-10", error && "border-destructive")}>
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent>
@@ -383,9 +354,7 @@ function SelectField({
           </Select>
         )}
       />
-      {error?.message && (
-        <p className="text-xs text-destructive">{String(error.message)}</p>
-      )}
+      {error?.message && <p className="text-xs text-destructive">{String(error.message)}</p>}
     </div>
   );
 }
@@ -418,19 +387,14 @@ function TextareaField({
       >
         <span>{label}</span>
         {!required && (
-          <span className="text-[11px] font-normal text-muted-foreground/70">
-            optional
-          </span>
+          <span className="text-[11px] font-normal text-muted-foreground/70">optional</span>
         )}
       </Label>
       <Textarea
         id={name}
         placeholder={placeholder}
         rows={rows}
-        className={cn(
-          "resize-none text-sm",
-          error && "border-destructive",
-        )}
+        className={cn("resize-none text-sm", error && "border-destructive")}
         {...register(name, {
           required,
           maxLength: {
@@ -439,9 +403,7 @@ function TextareaField({
           },
         })}
       />
-      {error?.message && (
-        <p className="text-xs text-destructive">{String(error.message)}</p>
-      )}
+      {error?.message && <p className="text-xs text-destructive">{String(error.message)}</p>}
     </div>
   );
 }

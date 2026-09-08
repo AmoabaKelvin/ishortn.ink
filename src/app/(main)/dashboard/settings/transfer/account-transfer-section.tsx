@@ -15,10 +15,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { api } from "@/trpc/react";
 
+import type { RouterOutputs } from "@/trpc/shared";
+
+type ValidationResult = RouterOutputs["accountTransfer"]["validate"];
+
 export function AccountTransferSection() {
   const [targetEmail, setTargetEmail] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
 
   const utils = api.useUtils();
 
@@ -50,7 +54,7 @@ export function AccountTransferSection() {
       if (result.isValid) {
         setShowConfirmDialog(true);
       }
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -64,8 +68,7 @@ export function AccountTransferSection() {
     await cancelMutation.mutateAsync({ transferId: pendingTransfer.id });
   };
 
-  const isLoading =
-    validateMutation.isLoading || initiateMutation.isLoading || isPendingLoading;
+  const isLoading = validateMutation.isLoading || initiateMutation.isLoading || isPendingLoading;
 
   return (
     <>
@@ -78,8 +81,7 @@ export function AccountTransferSection() {
                 Transfer pending
               </p>
               <p className="mt-1 text-[12px] text-amber-700/80 dark:text-amber-300/80">
-                Waiting for <strong>{pendingTransfer.targetEmail}</strong> to
-                accept. Expires{" "}
+                Waiting for <strong>{pendingTransfer.targetEmail}</strong> to accept. Expires{" "}
                 {new Date(pendingTransfer.expiresAt).toLocaleDateString()}.
               </p>
               <button
@@ -133,15 +135,13 @@ export function AccountTransferSection() {
               {/* Validation Errors */}
               {validationResult && !validationResult.isValid && (
                 <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-500/10 p-3">
-                  {validationResult.errors.map(
-                    (error: any, index: number) => (
-                      <p key={index} className="text-[12px] text-red-700 dark:text-red-400">
-                        {error.message}
-                        {error.resourceType &&
-                          ` (${error.currentCount}/${error.limit} ${error.resourceType})`}
-                      </p>
-                    )
-                  )}
+                  {validationResult.errors.map((error, index) => (
+                    <p key={index} className="text-[12px] text-red-700 dark:text-red-400">
+                      {error.message}
+                      {error.resourceType &&
+                        ` (${error.currentCount}/${error.limit} ${error.resourceType})`}
+                    </p>
+                  ))}
                 </div>
               )}
             </div>
@@ -150,13 +150,12 @@ export function AccountTransferSection() {
           {/* Info */}
           <div className="space-y-2 text-[12px] text-neutral-400 dark:text-neutral-500">
             <p>
-              <strong className="text-neutral-600 dark:text-neutral-400">Transferred:</strong> Links,
-              custom domains, QR codes, UTM templates, folders, tags, and
-              analytics data.
+              <strong className="text-neutral-600 dark:text-neutral-400">Transferred:</strong>{" "}
+              Links, custom domains, QR codes, UTM templates, folders, tags, and analytics data.
             </p>
             <p>
-              <strong className="text-neutral-600 dark:text-neutral-400">Not transferred:</strong> API
-              tokens, subscription, and team memberships.
+              <strong className="text-neutral-600 dark:text-neutral-400">Not transferred:</strong>{" "}
+              API tokens, subscription, and team memberships.
             </p>
           </div>
         </div>
@@ -171,7 +170,9 @@ export function AccountTransferSection() {
             </DialogTitle>
             <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
               You&apos;re about to transfer your resources to{" "}
-              <span className="font-medium text-neutral-700 dark:text-neutral-300">{targetEmail}</span>
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                {targetEmail}
+              </span>
             </DialogDescription>
           </DialogHeader>
 

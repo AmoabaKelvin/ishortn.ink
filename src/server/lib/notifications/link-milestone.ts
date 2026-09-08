@@ -38,9 +38,6 @@ export async function sendLinkMilestoneEmail({
       }),
     });
   } catch (error) {
-    log.error(
-      { err: error, email, linkAlias, milestone },
-      "failed to send link milestone email",
-    );
+    log.error({ err: error, email, linkAlias, milestone }, "failed to send link milestone email");
   }
 }

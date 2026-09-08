@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,10 @@ export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
     onError: (error) => toast.error(error.message),
   });
 
-  const normalizedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+  const normalizedSlug = slug
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "-");
   // Mirror the server's slug constraint (3–100 chars) to avoid failed submissions.
   const canCreate =
     normalizedSlug.length >= 3 && normalizedSlug.length <= MAX_SLUG_LENGTH && !create.isLoading;
@@ -66,7 +69,6 @@ export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
                 placeholder="yourname"
                 maxLength={MAX_SLUG_LENGTH}
                 className="h-full flex-1 bg-transparent px-3 text-sm font-medium text-gray-900 outline-none placeholder:text-gray-500 dark:text-foreground dark:placeholder:text-gray-400"
-                autoFocus
               />
             </div>
           </div>
@@ -84,7 +86,9 @@ export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
 
         <DialogFooter>
           <Button
-            onClick={() => create.mutate({ slug: normalizedSlug, title: title.trim() || undefined })}
+            onClick={() =>
+              create.mutate({ slug: normalizedSlug, title: title.trim() || undefined })
+            }
             disabled={!canCreate}
           >
             {create.isLoading ? "Creating…" : "Create page"}

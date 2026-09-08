@@ -1,12 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  Bar,
-  BarChart as RechartsBarChart,
-  CartesianGrid,
-  XAxis,
-} from "recharts";
+import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis } from "recharts";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -47,7 +42,7 @@ export function OverallClicksChart({
         clicks,
         uniqueClicks: uniqueClicksPerDate[date] ?? 0,
       })),
-    [clicksPerDate, uniqueClicksPerDate]
+    [clicksPerDate, uniqueClicksPerDate],
   );
 
   const paddedChartData = useMemo(() => {
@@ -80,10 +75,7 @@ export function OverallClicksChart({
       </div>
 
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-72 w-full"
-        >
+        <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
           <RechartsBarChart data={paddedChartData}>
             <CartesianGrid vertical={false} />
             <XAxis

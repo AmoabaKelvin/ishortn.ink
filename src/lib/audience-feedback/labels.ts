@@ -1,4 +1,6 @@
-export const AUDIENCE_FEEDBACK_LABELS: Record<string, string> = {
+import { lookup } from "@/lib/utils/lookup";
+
+const AUDIENCE_FEEDBACK_LABELS = {
   free: "Free",
   pro: "Pro",
   ultra: "Ultra",
@@ -45,5 +47,5 @@ export const AUDIENCE_FEEDBACK_LABELS: Record<string, string> = {
 
 export function formatAudienceFeedbackLabel(value: string | null | undefined): string {
   if (!value) return "—";
-  return AUDIENCE_FEEDBACK_LABELS[value] ?? value;
+  return lookup(AUDIENCE_FEEDBACK_LABELS, value) ?? value;
 }

@@ -9,26 +9,27 @@ export function liquidify(
   lightColor: string,
   darkColor: string,
 ) {
-  const blurred = imageDataRGB(imageData, 0, 0, imageData.width, imageData.height, radius)
-  const blurredData = blurred.data
+  const blurred = imageDataRGB(imageData, 0, 0, imageData.width, imageData.height, radius);
+  const blurredData = blurred.data;
 
-  const lightRgb = colorHexToRgb(lightColor)
-  const darkRgb = colorHexToRgb(darkColor)
+  const lightRgb = colorHexToRgb(lightColor);
+  const darkRgb = colorHexToRgb(darkColor);
 
   if (!lightRgb) {
-    throw new Error(`Invalid light color hex string: "${lightColor}"`)
+    throw new Error(`Invalid light color hex string: "${lightColor}"`);
   }
   if (!darkRgb) {
-    throw new Error(`Invalid dark color hex string: "${darkColor}"`)
+    throw new Error(`Invalid dark color hex string: "${darkColor}"`);
   }
 
   for (let i = 0; i < blurredData.length; i += 4) {
-    const averageLuminance = ((blurredData[i] ?? 0) + (blurredData[i + 1] ?? 0) + (blurredData[i + 2] ?? 0)) / 3
-    const color = averageLuminance > threshold ? lightRgb : darkRgb
-    blurredData[i] = color[0]
-    blurredData[i + 1] = color[1]
-    blurredData[i + 2] = color[2]
+    const averageLuminance =
+      ((blurredData[i] ?? 0) + (blurredData[i + 1] ?? 0) + (blurredData[i + 2] ?? 0)) / 3;
+    const color = averageLuminance > threshold ? lightRgb : darkRgb;
+    blurredData[i] = color[0];
+    blurredData[i + 1] = color[1];
+    blurredData[i + 2] = color[2];
   }
 
-  return new ImageData(blurredData, imageData.width, imageData.height)
+  return new ImageData(blurredData, imageData.width, imageData.height);
 }

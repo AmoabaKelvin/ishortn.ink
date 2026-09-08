@@ -6,9 +6,10 @@ import { Link } from "next-view-transitions";
 import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { AddLinksDialog } from "./add-links-dialog";
+
+import type { RouterOutputs } from "@/trpc/shared";
 
 type CampaignData = RouterOutputs["campaign"]["get"];
 
@@ -129,9 +130,7 @@ export function CampaignLinks({ campaign }: { campaign: CampaignData }) {
                   <button
                     aria-label="Remove from campaign"
                     title="Remove from campaign"
-                    onClick={() =>
-                      removeLink.mutate({ id: campaign.id, linkId: memberLink.id })
-                    }
+                    onClick={() => removeLink.mutate({ id: campaign.id, linkId: memberLink.id })}
                     className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
                   >
                     <IconX size={15} stroke={1.5} />

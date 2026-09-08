@@ -14,10 +14,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
-import {
-  buildPlanChangeCopy,
-  PlanChangeConfirmDialog,
-} from "./plan-change-confirm-dialog";
+import { buildPlanChangeCopy, PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan } from "@/lib/billing/plans";
 
@@ -26,9 +23,21 @@ type PricingCardsProps = {
   currentInterval: BillingInterval;
 };
 
+type PricingPlanSpec = {
+  id: Plan;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  annualPrice: number;
+  features: readonly string[];
+  limitations?: readonly string[];
+  popular?: boolean;
+  comingSoon?: readonly string[];
+};
+
 const plans = [
   {
-    id: "free" as Plan,
+    id: "free",
     name: "Free",
     description: "For personal use with basic features",
     monthlyPrice: PLAN_PRICES_USD.free,
@@ -37,7 +46,7 @@ const plans = [
     limitations: ["No custom domains", "No folders", "Limited analytics"],
   },
   {
-    id: "pro" as Plan,
+    id: "pro",
     name: "Pro",
     description: "For creators and small businesses",
     monthlyPrice: PLAN_PRICES_USD.pro,
@@ -46,7 +55,7 @@ const plans = [
     features: PLAN_FEATURES.pro.features,
   },
   {
-    id: "ultra" as Plan,
+    id: "ultra",
     name: "Ultra",
     description: "For teams and power users",
     monthlyPrice: PLAN_PRICES_USD.ultra,
@@ -54,24 +63,37 @@ const plans = [
     features: PLAN_FEATURES.ultra.features,
     comingSoon: PLAN_FEATURES.ultra.comingSoon,
   },
-];
+] satisfies PricingPlanSpec[];
+
+type PricingPlan = (typeof plans)[number];
+type PaidPricingPlan = Exclude<PricingPlan, { id: "free" }>;
+type PendingChange = { plan: PaidPricingPlan; kind: "switch" | "upgrade" };
+
+const PLAN_ORDER = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
 export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps) {
   const searchParams = useSearchParams();
-  const autoCheckoutFired = useRef(false);
   const [interval, setIntervalState] = useState<BillingInterval>(
     searchParams?.get("interval") === "annual" ? "annual" : "monthly",
   );
-  const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
+  // Arriving with ?plan=pro|ultra (e.g. right after signup) starts that upgrade
+  // right away: hosted checkout for free users, the confirm dialog otherwise.
+  const [autoUpgrade] = useState(() => {
+    const plan = plans.find((p) => p.id === searchParams?.get("plan"));
+    if (!plan || plan.id === "free" || PLAN_ORDER[plan.id] <= PLAN_ORDER[currentPlan]) return null;
+    return plan;
+  });
+  const autoCheckout = autoUpgrade && currentPlan === "free" ? autoUpgrade : null;
+  const autoCheckoutFired = useRef(false);
+  const [loadingPlan, setLoadingPlan] = useState<Plan | null>(autoCheckout?.id ?? null);
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
   const [targetDowngradePlan, setTargetDowngradePlan] = useState<Exclude<Plan, "ultra"> | null>(
     null,
   );
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingChange, setPendingChange] = useState<{
-    plan: (typeof plans)[number];
-    kind: "switch" | "upgrade";
-  } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(autoUpgrade !== null && autoCheckout === null);
+  const [pendingChange, setPendingChange] = useState<PendingChange | null>(
+    autoUpgrade && autoCheckout === null ? { plan: autoUpgrade, kind: "upgrade" } : null,
+  );
 
   const createCheckoutOrUpdateMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
     onSuccess: (data) => {
@@ -108,16 +130,12 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
     },
   });
 
-  const runUpgrade = (plan: (typeof plans)[number]) => {
-    if (plan.id === "free") return;
+  const runUpgrade = (plan: PaidPricingPlan) => {
     setLoadingPlan(plan.id);
-    createCheckoutOrUpdateMutation.mutate({
-      plan: plan.id as Exclude<Plan, "free">,
-      interval,
-    });
+    createCheckoutOrUpdateMutation.mutate({ plan: plan.id, interval });
   };
 
-  const requestUpgrade = (plan: (typeof plans)[number], kind: "switch" | "upgrade") => {
+  const requestUpgrade = (plan: PricingPlan, kind: "switch" | "upgrade") => {
     if (plan.id === "free") return;
     // Free → paid goes through the Lemon Squeezy hosted checkout (its own
     // confirmation). In-place changes for an existing paid subscriber charge
@@ -135,40 +153,21 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
     getSubscriptionDetails.mutate();
   };
 
-  const getPlanOrder = (plan: Plan) => {
-    const order = { free: 0, pro: 1, ultra: 2 };
-    return order[plan];
-  };
-
   const handleDowngrade = (targetPlan: Plan) => {
     if (targetPlan === "ultra") return;
-    setTargetDowngradePlan(targetPlan as Exclude<Plan, "ultra">);
+    setTargetDowngradePlan(targetPlan);
     setDowngradeModalOpen(true);
   };
 
-  // Auto-start checkout when arriving with ?plan=pro|ultra (e.g. right after signup).
+  const { mutate: createCheckoutOrUpdate } = createCheckoutOrUpdateMutation;
   useEffect(() => {
-    if (autoCheckoutFired.current) return;
-
-    const requestedPlan = searchParams?.get("plan");
-    if (requestedPlan !== "pro" && requestedPlan !== "ultra") return;
-
-    const targetPlan = plans.find((p) => p.id === requestedPlan);
-    if (!targetPlan) return;
-
-    const canUpgrade = getPlanOrder(targetPlan.id) > getPlanOrder(currentPlan);
-    if (!canUpgrade) return;
-
+    if (!autoCheckout || autoCheckoutFired.current) return;
     autoCheckoutFired.current = true;
-    requestUpgrade(targetPlan, "upgrade");
-  }, [searchParams, currentPlan]);
+    createCheckoutOrUpdate({ plan: autoCheckout.id, interval });
+  }, [autoCheckout, createCheckoutOrUpdate, interval]);
 
   const confirmCopy = pendingChange
-    ? buildPlanChangeCopy(
-        pendingChange.kind,
-        pendingChange.plan.id as Exclude<Plan, "free">,
-        interval,
-      )
+    ? buildPlanChangeCopy(pendingChange.kind, pendingChange.plan.id, interval)
     : null;
 
   return (
@@ -211,8 +210,8 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
       <div className="grid gap-6 lg:grid-cols-3">
         {plans.map((plan) => {
           const isCurrentPlan = plan.id === currentPlan;
-          const canUpgrade = getPlanOrder(plan.id) > getPlanOrder(currentPlan);
-          const canDowngrade = getPlanOrder(plan.id) < getPlanOrder(currentPlan);
+          const canUpgrade = PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan];
+          const canDowngrade = PLAN_ORDER[plan.id] < PLAN_ORDER[currentPlan];
           // Same tier, but the toggle points at the other billing interval —
           // offer a switch instead of "Manage Subscription".
           const canSwitchInterval =

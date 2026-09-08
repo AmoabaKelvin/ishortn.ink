@@ -2,12 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, ne, sum } from "drizzle-orm";
 
 import { isSubscriptionEntitled, PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
-import { customDomain, link, linkVisit, linkVisitDailySummary, teamMember } from "@/server/db/schema";
 import {
-  requirePermission,
-  workspaceFilter,
-  workspaceOwnership,
-} from "@/server/lib/workspace";
+  customDomain,
+  link,
+  linkVisit,
+  linkVisitDailySummary,
+  teamMember,
+} from "@/server/db/schema";
+import { requirePermission, workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import {
   addCustomHostname,
@@ -53,7 +55,11 @@ export async function addDomainToUserAccount(
   input: CreateCustomDomainInput,
 ) {
   // Check permission for domain creation (owners only in team workspaces)
-  requirePermission(ctx.workspace, "domains.create", "add custom domains. Only team owners can manage domains");
+  requirePermission(
+    ctx.workspace,
+    "domains.create",
+    "add custom domains. Only team owners can manage domains",
+  );
 
   const userId = ctx.auth.userId;
 
@@ -93,7 +99,7 @@ export async function addDomainToUserAccount(
   const existingDomainInWorkspace = await ctx.db.query.customDomain.findFirst({
     where: and(
       eq(customDomain.domain, domain),
-      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId)
+      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
     ),
   });
 
@@ -156,12 +162,16 @@ export async function getCustomDomainsForUser(ctx: WorkspaceTRPCContext) {
 
 export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, domainId: number) {
   // Check permission for domain deletion (owners only in team workspaces)
-  requirePermission(ctx.workspace, "domains.delete", "delete custom domains. Only team owners can manage domains");
+  requirePermission(
+    ctx.workspace,
+    "domains.delete",
+    "delete custom domains. Only team owners can manage domains",
+  );
 
   const domain = await ctx.db.query.customDomain.findFirst({
     where: and(
       eq(customDomain.id, domainId),
-      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId)
+      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
     ),
   });
 
@@ -178,7 +188,12 @@ export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, 
     const linksToDelete = await tx
       .select({ id: link.id })
       .from(link)
-      .where(and(eq(link.domain, domain.domain!), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+      .where(
+        and(
+          eq(link.domain, domain.domain!),
+          workspaceFilter(ctx.workspace, link.userId, link.teamId),
+        ),
+      );
 
     const linkIds = linksToDelete.map((link) => link.id);
 
@@ -188,14 +203,18 @@ export async function deleteDomainAndAssociatedLinks(ctx: WorkspaceTRPCContext, 
     }
 
     // delete all links
-    await tx.delete(link).where(and(eq(link.domain, domain.domain!), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+    await tx
+      .delete(link)
+      .where(
+        and(
+          eq(link.domain, domain.domain!),
+          workspaceFilter(ctx.workspace, link.userId, link.teamId),
+        ),
+      );
 
     // Check if other workspaces are using this domain BEFORE deleting
     const otherWorkspacesUsingDomain = await tx.query.customDomain.findFirst({
-      where: and(
-        eq(customDomain.domain, domain.domain!),
-        ne(customDomain.id, domainId)
-      ),
+      where: and(eq(customDomain.domain, domain.domain!), ne(customDomain.id, domainId)),
     });
 
     // If no other workspaces use this domain, delete from Cloudflare first
@@ -230,29 +249,26 @@ export async function getDomainStatistics(ctx: WorkspaceTRPCContext, domain: str
   let totalClicks = 0;
   if (linkIds.length > 0) {
     const [clicksResult, archivedResult] = await Promise.all([
-      ctx.db
-        .select({ count: count() })
-        .from(linkVisit)
-        .where(inArray(linkVisit.linkId, linkIds)),
+      ctx.db.select({ count: count() }).from(linkVisit).where(inArray(linkVisit.linkId, linkIds)),
       ctx.db
         .select({ total: sum(linkVisitDailySummary.clicks) })
         .from(linkVisitDailySummary)
         .where(inArray(linkVisitDailySummary.linkId, linkIds)),
     ]);
 
-    totalClicks =
-      (clicksResult[0]?.count ?? 0) + (Number(archivedResult[0]?.total) || 0);
+    totalClicks = (clicksResult[0]?.count ?? 0) + (Number(archivedResult[0]?.total) || 0);
   }
 
   // Find last used date (most recent link creation)
-  const lastUsedAt = domainLinks.length > 0
-    ? domainLinks.reduce((latest, current) => {
-        const currentDate = current.createdAt ? new Date(current.createdAt) : null;
-        if (!currentDate) return latest;
-        if (!latest) return currentDate;
-        return currentDate > latest ? currentDate : latest;
-      }, null as Date | null)
-    : null;
+  const lastUsedAt =
+    domainLinks.length > 0
+      ? domainLinks.reduce<Date | null>((latest, current) => {
+          const currentDate = current.createdAt ? new Date(current.createdAt) : null;
+          if (!currentDate) return latest;
+          if (!latest) return currentDate;
+          return currentDate > latest ? currentDate : latest;
+        }, null)
+      : null;
 
   return {
     linkCount,

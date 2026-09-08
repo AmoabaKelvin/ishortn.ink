@@ -23,11 +23,7 @@ type BulkLinkUploadDialogProps = {
   proMembership: boolean;
 };
 
-export function BulkLinkUploadDialog({
-  open,
-  setOpen,
-  proMembership,
-}: BulkLinkUploadDialogProps) {
+export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkUploadDialogProps) {
   const [file, setFile] = useState<File | null>(null);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -37,8 +33,7 @@ export function BulkLinkUploadDialog({
     maxFiles: 1,
     multiple: false,
     onDrop: (acceptedFiles) => {
-      const file = acceptedFiles[0];
-      setFile(file as File);
+      setFile(acceptedFiles[0] ?? null);
     },
     onDropRejected: () => {
       toast.error("Unsupported file type. Please upload a CSV file.");
@@ -59,12 +54,8 @@ export function BulkLinkUploadDialog({
   const handleUpload = async () => {
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const csv = e.target?.result as string;
-      await uploadMutation.mutateAsync({ csv });
-    };
-    reader.readAsText(file);
+    const csv = await file.text();
+    await uploadMutation.mutateAsync({ csv });
   };
 
   return (
@@ -74,25 +65,20 @@ export function BulkLinkUploadDialog({
           <DialogTitle>Bulk Link Upload</DialogTitle>
           {proMembership && (
             <DialogDescription>
-              Upload a CSV file with your links. The CSV should have our
-              required columns: 'url', 'alias' (optional), 'domain' (optional),
-              'note' (optional). (optional).
+              Upload a CSV file with your links. The CSV should have our required columns: 'url',
+              'alias' (optional), 'domain' (optional), 'note' (optional). (optional).
             </DialogDescription>
           )}
         </DialogHeader>
         {proMembership && (
-          <div
-            className="flex w-full items-center justify-center"
-            {...getRootProps()}
-          >
+          <div className="flex w-full items-center justify-center" {...getRootProps()}>
             <input {...getInputProps()} />
-            <label
-              htmlFor="dropzone-file"
+            <div
               className={cn(
                 "flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-border bg-gray-50 dark:bg-accent/50 transition-all duration-300 hover:bg-gray-100 dark:hover:bg-accent",
                 {
                   "border-gray-500 dark:border-neutral-400": isDragActive,
-                }
+                },
               )}
             >
               <div className="flex flex-col items-center justify-center pb-6 pt-5">
@@ -106,11 +92,11 @@ export function BulkLinkUploadDialog({
                   {isDragActive
                     ? "Drop the files here to upload"
                     : file
-                    ? `Successfully uploaded ${file.name}`
-                    : "Drag 'n' drop some files here, or click to select files"}
+                      ? `Successfully uploaded ${file.name}`
+                      : "Drag 'n' drop some files here, or click to select files"}
                 </p>
               </div>
-            </label>
+            </div>
           </div>
         )}
 
@@ -121,10 +107,7 @@ export function BulkLinkUploadDialog({
         )}
 
         {proMembership ? (
-          <Button
-            onClick={handleUpload}
-            disabled={!file || uploadMutation.isLoading}
-          >
+          <Button onClick={handleUpload} disabled={!file || uploadMutation.isLoading}>
             {uploadMutation.isLoading ? "Creating links ..." : "Create links"}
           </Button>
         ) : (

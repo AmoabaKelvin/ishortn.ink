@@ -2,9 +2,13 @@
 // email, a bare domain, or a full URL — into a canonical, safe href. The bio
 // editor accepts loose input and this is the single place that canonicalizes it.
 
+import { lookup } from "@/lib/utils/lookup";
+
+type PlatformLink = { base: (handle: string) => string; hosts: string[] };
+
 // For each handle-style platform: how a bare handle becomes a profile URL, and
 // the hostnames that signal the user pasted a full URL instead of a handle.
-const PLATFORM_LINKS: Record<string, { base: (handle: string) => string; hosts: string[] }> = {
+const PLATFORM_LINKS = {
   twitter: { base: (h) => `https://x.com/${h}`, hosts: ["twitter.com", "x.com"] },
   instagram: { base: (h) => `https://instagram.com/${h}`, hosts: ["instagram.com"] },
   tiktok: { base: (h) => `https://tiktok.com/@${h}`, hosts: ["tiktok.com"] },
@@ -16,8 +20,11 @@ const PLATFORM_LINKS: Record<string, { base: (handle: string) => string; hosts: 
   threads: { base: (h) => `https://threads.net/@${h}`, hosts: ["threads.net"] },
   twitch: { base: (h) => `https://twitch.tv/${h}`, hosts: ["twitch.tv"] },
   snapchat: { base: (h) => `https://snapchat.com/add/${h}`, hosts: ["snapchat.com"] },
-  whatsapp: { base: (h) => `https://wa.me/${h.replace(/[^0-9]/g, "")}`, hosts: ["wa.me", "whatsapp.com"] },
-};
+  whatsapp: {
+    base: (h) => `https://wa.me/${h.replace(/[^0-9]/g, "")}`,
+    hosts: ["wa.me", "whatsapp.com"],
+  },
+} satisfies Record<string, PlatformLink>;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -47,7 +54,7 @@ export function normalizeSocialUrl(platform: string, raw: string): string | null
     return asSafeUrl(`https://${value.replace(/^\/+/, "")}`);
   }
 
-  const config = PLATFORM_LINKS[platform];
+  const config = lookup(PLATFORM_LINKS, platform);
   if (config) {
     const lower = value.toLowerCase();
     // Pasted the platform's own host without a scheme → treat it as a URL.

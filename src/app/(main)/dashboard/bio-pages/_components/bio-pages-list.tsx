@@ -18,12 +18,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import type { Plan } from "@/lib/billing/plans";
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/shared";
 
 import { CreateBioPageDialog } from "./create-bio-page-dialog";
+
+import type { Plan } from "@/lib/billing/plans";
+import type { RouterOutputs } from "@/trpc/shared";
 
 type BioPagesListProps = {
   pages: RouterOutputs["bioPage"]["list"];
@@ -106,7 +106,10 @@ export function BioPagesList({ pages, bioPageLimit }: BioPagesListProps) {
                       {page.title || `/${page.slug}`}
                     </span>
                     {page.isPublished ? (
-                      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                      <Badge
+                        variant="secondary"
+                        className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                      >
                         Live
                       </Badge>
                     ) : (

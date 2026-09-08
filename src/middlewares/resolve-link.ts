@@ -61,15 +61,7 @@ export function isLinkScheduled(link: Pick<Link, "activateAt">): boolean {
   return !!link.activateAt && new Date() < link.activateAt;
 }
 
-type UtmParams = {
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  utm_term?: string;
-  utm_content?: string;
-} | null;
-
-function appendUtmParams(baseUrl: string, utmParams: UtmParams): string {
+function appendUtmParams(baseUrl: string, utmParams: Link["utmParams"]): string {
   if (!utmParams) return baseUrl;
 
   try {
@@ -170,9 +162,7 @@ export async function resolveShortLink(
       os: device?.os ?? null,
     });
 
-    const issueToken = (
-      destination: string,
-    ): { visitId: string | null; verificationToken: string | null } => {
+    const issueToken = (destination: string) => {
       if (!ownerPaid) return { visitId: null, verificationToken: null };
       const candidate = generateVisitId();
       const token = signVerifiedClickToken(candidate, destination);
@@ -187,7 +177,7 @@ export async function resolveShortLink(
         return { url: `${baseUrl}/blocked/${link.id}${geoParam}` };
       }
 
-      const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams as UtmParams);
+      const destinationUrl = appendUtmParams(geoResult.destination, link.utmParams);
       const { visitId, verificationToken } = issueToken(destinationUrl);
 
       void runBackgroundTask(
@@ -210,7 +200,7 @@ export async function resolveShortLink(
       return null;
     }
 
-    const destinationUrl = appendUtmParams(link.url, link.utmParams as UtmParams);
+    const destinationUrl = appendUtmParams(link.url, link.utmParams);
     const { visitId, verificationToken } = issueToken(destinationUrl);
 
     void runBackgroundTask(recordClick({ headers, link, ip, country, city, visitId }));

@@ -4,9 +4,9 @@ import TransferDeclinedEmail from "@/emails/transfer-declined";
 import { getAppBaseDomain } from "@/lib/constants/domains";
 import { logger } from "@/lib/logger";
 
-import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
-
 import { resend } from "./resend-client";
+
+import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
 
 const log = logger.child({ notification: "account-transfer" });
 

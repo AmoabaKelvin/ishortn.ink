@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
-
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { AbuseReportForm } from "./abuse-report-form";
+
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Report Abuse - iShortn",

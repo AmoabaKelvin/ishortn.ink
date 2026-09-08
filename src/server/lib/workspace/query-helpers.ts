@@ -1,7 +1,7 @@
 import { and, eq, isNull, type SQL } from "drizzle-orm";
-import type { MySqlColumn } from "drizzle-orm/mysql-core";
 
 import type { WorkspaceContext } from "./types";
+import type { MySqlColumn } from "drizzle-orm/mysql-core";
 
 /**
  * Builds a WHERE clause for workspace-scoped queries.
@@ -14,13 +14,10 @@ import type { WorkspaceContext } from "./types";
  * @param teamIdColumn - The teamId column from the table
  * @returns SQL condition for filtering by workspace
  */
-export function workspaceFilter<
-  TUserId extends MySqlColumn,
-  TTeamId extends MySqlColumn,
->(
+export function workspaceFilter<TUserId extends MySqlColumn, TTeamId extends MySqlColumn>(
   workspace: WorkspaceContext,
   userIdColumn: TUserId,
-  teamIdColumn: TTeamId
+  teamIdColumn: TTeamId,
 ): SQL {
   if (workspace.type === "team") {
     // Team workspace: only show team resources
@@ -42,10 +39,7 @@ export function workspaceFilter<
  * @param workspace - The current workspace context
  * @returns Object with userId and teamId values
  */
-export function workspaceOwnership(workspace: WorkspaceContext): {
-  userId: string;
-  teamId: number | null;
-} {
+export function workspaceOwnership(workspace: WorkspaceContext) {
   return {
     userId: workspace.userId,
     teamId: workspace.type === "team" ? workspace.teamId : null,

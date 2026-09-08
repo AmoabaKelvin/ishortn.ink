@@ -6,7 +6,6 @@ export function ReleaseNotesScript() {
       <Script
         id="headway-config"
         strategy="lazyOnload"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
         dangerouslySetInnerHTML={{
           __html: `
             var HW_config = {
@@ -16,11 +15,7 @@ export function ReleaseNotesScript() {
           `,
         }}
       />
-      <Script
-        id="headway-widget"
-        strategy="lazyOnload"
-        src="https://cdn.headwayapp.co/widget.js"
-      />
+      <Script id="headway-widget" strategy="lazyOnload" src="https://cdn.headwayapp.co/widget.js" />
     </>
   );
 }

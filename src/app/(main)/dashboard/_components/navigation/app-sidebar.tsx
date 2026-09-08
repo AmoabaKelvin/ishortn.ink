@@ -31,11 +31,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { APP_TITLE } from "@/lib/constants/app";
 import { cn } from "@/lib/utils";
 
@@ -186,8 +182,7 @@ export function AppSidebar({
                 const Icon = item.icon;
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== "/dashboard" &&
-                    pathname.startsWith(item.href));
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
                 return (
                   <li key={item.name}>
@@ -255,8 +250,7 @@ export function AppSidebar({
                     const Icon = item.icon;
                     const isActive =
                       pathname === item.href ||
-                      (item.href !== "/dashboard/admin" &&
-                        pathname.startsWith(item.href));
+                      (item.href !== "/dashboard/admin" && pathname.startsWith(item.href));
 
                     return (
                       <li key={item.name}>
@@ -328,10 +322,7 @@ export function AppSidebar({
                 <PopoverTrigger asChild>
                   <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={user?.imageUrl}
-                        alt={user?.firstName || "User"}
-                      />
+                      <AvatarImage src={user?.imageUrl} alt={user?.firstName || "User"} />
                       <AvatarFallback className="bg-neutral-100 dark:bg-muted text-xs font-medium text-neutral-600 dark:text-neutral-400">
                         {user?.firstName?.[0] || user?.username?.[0] || "U"}
                       </AvatarFallback>
@@ -351,12 +342,7 @@ export function AppSidebar({
                     />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent
-                  className="w-56 p-1.5"
-                  align="start"
-                  side="top"
-                  sideOffset={8}
-                >
+                <PopoverContent className="w-56 p-1.5" align="start" side="top" sideOffset={8}>
                   <div className="space-y-0.5">
                     <button
                       onClick={() => {
@@ -403,6 +389,7 @@ export function AppSidebar({
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
         <div
+          role="presentation"
           className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
