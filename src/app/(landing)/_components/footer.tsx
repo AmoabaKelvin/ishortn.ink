@@ -1,6 +1,7 @@
+import { IconBrandGithub, IconBrandX, IconMail } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
-import { Wordmark } from "./warm-primitives";
+import { Section, Wordmark } from "./site-primitives";
 
 const columns = [
   {
@@ -43,192 +44,101 @@ const columns = [
 ];
 
 const socials = [
-  { label: "𝕏", href: "https://twitter.com/kelamoaba" },
-  { label: "GH", href: "https://github.com/AmoabaKelvin/ishortn.ink" },
-  { label: "@", href: "mailto:support@ishortn.ink" },
+  { label: "X (Twitter)", href: "https://twitter.com/kelamoaba", icon: IconBrandX },
+  { label: "GitHub", href: "https://github.com/AmoabaKelvin/ishortn.ink", icon: IconBrandGithub },
+  { label: "Email support", href: "mailto:support@ishortn.ink", icon: IconMail },
 ];
+
+const isExternal = (href: string) => href.startsWith("http") || href.startsWith("mailto:");
 
 export const Footer = () => {
   return (
-    <footer
-      style={{
-        background: "var(--warm-ink)",
-        color: "var(--warm-paper)",
-        padding: "64px 0 32px",
-        overflow: "hidden",
-      }}
-    >
-      <div className="warm-container">
-        <div
-          style={{
-            display: "grid",
-            gap: 60,
-            paddingBottom: 60,
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-          }}
-          className="warm-footer-grid"
-        >
+    <footer>
+      <Section className="py-16 sm:py-20">
+        <div className="grid gap-x-8 gap-y-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
           <div>
-            <Wordmark onInk />
-            <p
-              style={{
-                fontSize: 14,
-                color: "rgba(252,245,238,0.65)",
-                marginTop: 20,
-                maxWidth: 280,
-                lineHeight: 1.6,
-              }}
-            >
-              A quietly lovely URL shortener — for people who make things on the internet.
+            <Link href="/" aria-label="Homepage">
+              <Wordmark className="text-2xl" />
+            </Link>
+            <p className="mt-5 max-w-[36ch] text-pretty text-base text-neutral-700 sm:text-sm">
+              Short links, QR codes, and link-in-bio pages with analytics you can actually read.
             </p>
-            <div style={{ marginTop: 28, display: "flex", gap: 10 }}>
-              {socials.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: "50%",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    display: "grid",
-                    placeItems: "center",
-                    fontSize: 13,
-                    color: "rgba(252,245,238,0.7)",
-                    transition: "all .2s",
-                  }}
-                >
-                  {s.label}
-                </a>
-              ))}
-            </div>
-          </div>
-          {columns.map((col) => (
-            <div key={col.title}>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "rgba(252,245,238,0.5)",
-                  marginBottom: 18,
-                  letterSpacing: "0.02em",
-                }}
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <a
+                href="https://status.ishortn.ink"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 font-mono text-xs font-medium text-neutral-800 shadow-site-btn hover:bg-neutral-50"
               >
-                {col.title}
-              </div>
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 12,
-                }}
-              >
-                {col.links.map((l) => (
-                  <li key={l.label}>
-                    {l.href.startsWith("http") || l.href.startsWith("mailto:") ? (
-                      <a
-                        href={l.href}
-                        target={l.href.startsWith("http") ? "_blank" : undefined}
-                        rel={l.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                        style={{
-                          fontSize: 14,
-                          color: "var(--warm-paper)",
-                          opacity: 0.8,
-                        }}
-                      >
-                        {l.label}
-                      </a>
-                    ) : (
-                      <Link
-                        href={l.href}
-                        style={{
-                          fontSize: 14,
-                          color: "var(--warm-paper)",
-                          opacity: 0.8,
-                        }}
-                      >
-                        {l.label}
-                      </Link>
-                    )}
+                All systems operational
+                <span aria-hidden="true" className="size-1.5 rounded-full bg-emerald-500" />
+              </a>
+              <ul className="flex items-center gap-1">
+                {socials.map((social) => (
+                  <li key={social.label}>
+                    <a
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={social.label}
+                      className="grid size-9 place-items-center rounded-lg text-neutral-700 hover:bg-neutral-950/5 hover:text-neutral-900"
+                    >
+                      <social.icon aria-hidden="true" className="size-5" />
+                    </a>
                   </li>
                 ))}
               </ul>
             </div>
-          ))}
-        </div>
-        <div
-          style={{
-            paddingTop: 28,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 16,
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontSize: 12,
-            color: "rgba(252,245,238,0.5)",
-          }}
-        >
-          <div>
-            © {new Date().getFullYear()} iShortn — built by{" "}
-            <a
-              href="https://twitter.com/kelamoaba"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "rgba(252,245,238,0.75)" }}
-            >
-              Amoaba Kelvin
-            </a>
+
+            <p className="mt-8 text-base text-neutral-600 sm:text-sm">
+              © {new Date().getFullYear()} iShortn. Built by{" "}
+              <a
+                href="https://twitter.com/kelamoaba"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
+              >
+                Amoaba Kelvin
+              </a>
+              .
+            </p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: "var(--warm-sage)",
-              }}
-            />
-            All systems normal
-          </div>
+
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
+            {columns.map((column) => (
+              <div key={column.title}>
+                <h3 className="font-title text-base font-semibold text-neutral-900">
+                  {column.title}
+                </h3>
+                <ul className="mt-4 space-y-3">
+                  {column.links.map((link) => (
+                    <li key={link.label}>
+                      {isExternal(link.href) ? (
+                        <a
+                          href={link.href}
+                          target={link.href.startsWith("http") ? "_blank" : undefined}
+                          rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                          className="text-base font-normal text-neutral-700 hover:text-neutral-900 sm:text-[0.9375rem]"
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className="text-base font-normal text-neutral-700 hover:text-neutral-900 sm:text-[0.9375rem]"
+                        >
+                          {link.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
         </div>
-        <div
-          aria-hidden
-          style={{
-            marginTop: 48,
-            fontFamily: "var(--font-warm-display)",
-            fontSize: "clamp(80px, 20vw, 300px)",
-            lineHeight: 0.8,
-            color: "rgba(255,255,255,0.04)",
-            letterSpacing: "-0.03em",
-            textAlign: "center",
-            userSelect: "none",
-            fontStyle: "italic",
-            whiteSpace: "nowrap",
-          }}
-        >
-          iShortn
-          <span style={{ color: "var(--warm-accent)", opacity: 0.5 }}>.</span>
-        </div>
-      </div>
-      <style>{`
-        .warm-footer-grid {
-          grid-template-columns: 1fr;
-        }
-        @media (min-width: 720px) {
-          .warm-footer-grid {
-            grid-template-columns: 1.4fr repeat(2, 1fr);
-          }
-        }
-        @media (min-width: 1024px) {
-          .warm-footer-grid {
-            grid-template-columns: 1.4fr repeat(4, 1fr);
-          }
-        }
-      `}</style>
+      </Section>
     </footer>
   );
 };

@@ -1,9 +1,13 @@
+import { IconBoltFilled } from "@tabler/icons-react";
+
 import { JsonLd } from "@/components/seo/json-ld";
 import { getChangelogEntries } from "@/lib/changelog";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
+import { cn } from "@/lib/utils";
 
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
+import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
 import { ChangelogList } from "./_components/changelog-list";
 
 import type { Metadata } from "next";
@@ -22,7 +26,7 @@ export default async function ChangelogPage() {
   const entries = await getChangelogEntries();
 
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <JsonLd
         data={createBreadcrumbSchema([
           { name: "Home", url: "https://ishortn.ink" },
@@ -31,20 +35,19 @@ export default async function ChangelogPage() {
       />
       <Header />
 
-      <section className="cl-header">
-        <div className="warm-container">
-          <h1 className="cl-title">Changelog</h1>
-          <p className="cl-subtitle">
+      <Section className="py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow icon={<IconBoltFilled aria-hidden="true" />}>Changelog</Eyebrow>
+          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>What&apos;s new in iShortn</h1>
+          <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>
             Every release in order. New features, improvements, and fixes.
           </p>
         </div>
-      </section>
+      </Section>
 
-      <section className="cl-section">
-        <div className="warm-container">
-          <ChangelogList entries={entries} />
-        </div>
-      </section>
+      <Section className="py-6 sm:py-10">
+        <ChangelogList entries={entries} />
+      </Section>
 
       <Footer />
     </main>

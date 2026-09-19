@@ -14,6 +14,7 @@ import { Features } from "./_components/features";
 import { Footer } from "./_components/footer";
 import { Header } from "./_components/header";
 import { Hero } from "./_components/hero";
+import { HowItWorks } from "./_components/how-it-works";
 import { Pricing } from "./_components/pricing";
 import { QRSection } from "./_components/qr-section";
 import { Testimonials } from "./_components/testimonials";
@@ -22,7 +23,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "iShortn — Links, made lovely. Free URL shortener with analytics",
+    absolute: "iShortn — The better way to share your links. Free URL shortener with analytics",
   },
   description:
     "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
@@ -39,14 +40,14 @@ export const metadata: Metadata = {
     "url shortener free",
   ],
   openGraph: {
-    title: "iShortn — Links, made lovely. Free URL shortener with analytics",
+    title: "iShortn — The better way to share your links. Free URL shortener with analytics",
     description:
       "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "iShortn — Links, made lovely. Free URL shortener with analytics",
+    title: "iShortn — The better way to share your links. Free URL shortener with analytics",
     description:
       "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
   },
@@ -54,18 +55,19 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <JsonLd data={organizationSchema} />
       <JsonLd data={softwareApplicationSchema} />
       <JsonLd data={createFaqSchema(landingPageCopy.faq)} />
       <JsonLd data={websiteSchema} />
       <Header />
       <Hero />
-      <DashboardPreview />
+      <HowItWorks />
       <Features />
+      <DashboardPreview />
       <QRSection />
-      <Pricing />
       <Testimonials />
+      <Pricing />
       <Faq />
       <CTA />
       <Footer />

@@ -1,48 +1,25 @@
+import "@/styles/site.css";
+import "@/styles/site-auth.css";
 import { Link } from "next-view-transitions";
 
-import { Wordmark } from "../../(landing)/_components/warm-primitives";
+import { Wordmark } from "../../(landing)/_components/site-primitives";
 
 import type { ReactNode } from "react";
 
+// Wordmark (ours) → Clerk tray: white card with Clerk's header + form, footer strip.
+// Clerk styling: ./_shared/clerk-appearance.ts + src/styles/site-auth.css
 const AuthLayout = ({ children }: { children: ReactNode }) => {
   return (
-    <div
-      data-theme="warm"
-      data-accent="terracotta"
-      style={{
-        minHeight: "100vh",
-        background: "var(--warm-bg)",
-        color: "var(--warm-ink)",
-        display: "grid",
-        gridTemplateRows: "auto 1fr auto",
-      }}
-    >
-      <header style={{ padding: "32px 48px" }}>
-        <Link href="/" aria-label="iShortn home">
-          <Wordmark />
-        </Link>
-      </header>
-
-      <main
-        style={{
-          display: "grid",
-          placeItems: "center",
-          padding: "24px 24px 48px",
-        }}
-      >
-        {children}
+    <div data-theme="site" className="relative isolate min-h-screen overflow-hidden">
+      <div aria-hidden="true" className="site-dots pointer-events-none absolute inset-0" />
+      <main className="relative grid min-h-screen place-items-center px-4 py-12">
+        <div className="w-full max-w-[28rem]">
+          <Link href="/" aria-label="Homepage" className="mx-auto mb-8 flex w-fit">
+            <Wordmark />
+          </Link>
+          {children}
+        </div>
       </main>
-
-      <footer
-        style={{
-          padding: "24px 48px",
-          fontSize: 12,
-          color: "var(--warm-mute)",
-          textAlign: "center",
-        }}
-      >
-        A quietly lovely URL shortener. © {new Date().getFullYear()} iShortn.
-      </footer>
     </div>
   );
 };

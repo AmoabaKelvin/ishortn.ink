@@ -1,6 +1,6 @@
 import { SignUp } from "@clerk/nextjs";
 
-import { warmClerkAppearance } from "../../_shared/clerk-appearance";
+import { siteClerkAppearance } from "../../_shared/clerk-appearance";
 
 export default async function Page({
   searchParams,
@@ -20,7 +20,7 @@ export default async function Page({
   return (
     <SignUp
       path="/auth/sign-up"
-      appearance={warmClerkAppearance}
+      appearance={siteClerkAppearance}
       forceRedirectUrl={afterSignUpUrl}
       signInForceRedirectUrl={afterSignUpUrl}
     />

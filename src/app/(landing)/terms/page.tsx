@@ -1,7 +1,12 @@
+import { IconShieldCheckFilled } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
+
+import { cn } from "@/lib/utils";
+import "@/styles/site-content.css";
 
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
+import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
 
 import type { Metadata } from "next";
 
@@ -17,29 +22,22 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <Header />
 
-      <section className="warm-subhero">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <span className="warm-eyebrow-dot" />
-            Legal
-          </div>
-          <h1 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}>
-            Terms of <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>service</em>.
-          </h1>
-          <p style={{ marginTop: 20, fontSize: 14, color: "var(--warm-mute)" }}>
-            Last updated: March 2026
+      <Section className="py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow icon={<IconShieldCheckFilled aria-hidden="true" />}>Legal</Eyebrow>
+          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>Terms of service</h1>
+          <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>
+            The terms and conditions for using the iShortn URL shortening service.
           </p>
+          <p className="mt-6 font-mono text-sm text-neutral-600">Last updated: March 2026</p>
         </div>
-      </section>
+      </Section>
 
-      <section style={{ padding: "24px 0 120px" }}>
-        <article
-          className="warm-container warm-legal-prose"
-          style={{ maxWidth: 760, fontFamily: "var(--font-warm-ui)" }}
-        >
+      <Section className="py-16 sm:py-20">
+        <article className="site-prose mx-auto">
           <p>
             Welcome to iShortn. These Terms of Service (&quot;Terms&quot;) govern your access to and
             use of the iShortn URL shortening service available at ishortn.ink
@@ -225,7 +223,7 @@ export default function TermsPage() {
             <a href="mailto:support@ishortn.ink">support@ishortn.ink</a>.
           </p>
         </article>
-      </section>
+      </Section>
 
       <Footer />
     </main>

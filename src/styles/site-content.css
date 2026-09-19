@@ -1,0 +1,177 @@
+/* ---------------------------------------------------------------------
+   Long-form content for the "site" theme: blog posts, changelog bodies,
+   legal pages. Plain CSS (no @tailwind directives in this file).
+   Design language: docs/design-language.md
+----------------------------------------------------------------------*/
+[data-theme="site"] .site-prose {
+  max-width: 70ch;
+  color: #525252;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+[data-theme="site"] .site-prose > * {
+  margin: 0;
+}
+[data-theme="site"] .site-prose > * + * {
+  margin-top: 1.25em;
+}
+
+[data-theme="site"] .site-prose h2,
+[data-theme="site"] .site-prose h3,
+[data-theme="site"] .site-prose h4 {
+  color: #171717;
+  font-family: var(--font-title), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+  scroll-margin-top: 6rem;
+}
+[data-theme="site"] .site-prose h2 {
+  margin-top: 2.25em;
+  font-size: 1.75rem;
+}
+[data-theme="site"] .site-prose h3 {
+  margin-top: 2em;
+  font-size: 1.3125rem;
+}
+[data-theme="site"] .site-prose h4 {
+  margin-top: 1.75em;
+  font-size: 1.0625rem;
+}
+[data-theme="site"] .site-prose > :first-child {
+  margin-top: 0;
+}
+[data-theme="site"] .site-prose h2 + *,
+[data-theme="site"] .site-prose h3 + *,
+[data-theme="site"] .site-prose h4 + * {
+  margin-top: 0.75em;
+}
+
+[data-theme="site"] .site-prose strong {
+  color: #171717;
+  font-weight: 600;
+}
+[data-theme="site"] .site-prose a {
+  color: #171717;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: rgb(10 10 10 / 0.25);
+  text-underline-offset: 3px;
+}
+[data-theme="site"] .site-prose a:hover {
+  text-decoration-color: #171717;
+}
+
+[data-theme="site"] .site-prose ul,
+[data-theme="site"] .site-prose ol {
+  padding-left: 1.375em;
+}
+[data-theme="site"] .site-prose ul {
+  list-style: disc;
+}
+[data-theme="site"] .site-prose ol {
+  list-style: decimal;
+}
+[data-theme="site"] .site-prose li + li,
+[data-theme="site"] .site-prose li > ul,
+[data-theme="site"] .site-prose li > ol {
+  margin-top: 0.5em;
+}
+[data-theme="site"] .site-prose li::marker {
+  color: #a3a3a3;
+}
+
+[data-theme="site"] .site-prose blockquote {
+  padding-left: 1.125em;
+  border-left: 2px solid rgb(10 10 10 / 0.15);
+  color: #171717;
+}
+[data-theme="site"] .site-prose blockquote > * + * {
+  margin-top: 0.75em;
+}
+
+[data-theme="site"] .site-prose code {
+  padding: 0.125em 0.375em;
+  border-radius: 6px;
+  background: #f5f5f5;
+  box-shadow: inset 0 0 0 1px rgb(10 10 10 / 0.06);
+  color: #171717;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+[data-theme="site"] .site-prose pre {
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: #171717;
+  color: #f5f5f5;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-wrap: normal;
+}
+[data-theme="site"] .site-prose pre code {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font-size: inherit;
+}
+
+[data-theme="site"] .site-prose hr {
+  height: 0;
+  margin-block: 2.5em;
+  border: 0;
+  border-top: 1px solid rgb(10 10 10 / 0.07);
+}
+
+[data-theme="site"] .site-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  outline: 1px solid rgb(0 0 0 / 0.05);
+  outline-offset: -1px;
+}
+
+/* Wide tables scroll inside themselves instead of pushing the page */
+[data-theme="site"] .site-prose table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  overflow-wrap: normal;
+}
+[data-theme="site"] .site-prose th,
+[data-theme="site"] .site-prose td {
+  padding: 0.625rem 1rem 0.625rem 0;
+  border-bottom: 1px solid rgb(10 10 10 / 0.07);
+  text-align: left;
+  vertical-align: top;
+}
+[data-theme="site"] .site-prose th {
+  color: #525252;
+  font-weight: 500;
+  white-space: nowrap;
+}
+[data-theme="site"] .site-prose td:first-child {
+  color: #171717;
+  font-weight: 500;
+}
+
+/* Compact headings for bodies that sit under their own title (changelog entries) */
+[data-theme="site"] .site-prose-compact h2 {
+  margin-top: 1.75em;
+  font-size: 1.25rem;
+}
+[data-theme="site"] .site-prose-compact h3,
+[data-theme="site"] .site-prose-compact h4 {
+  margin-top: 1.5em;
+  font-size: 1.0625rem;
+}

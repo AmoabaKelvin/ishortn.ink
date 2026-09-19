@@ -1,13 +1,26 @@
+import { IconArticleFilled, IconChevronLeft } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 import { notFound } from "next/navigation";
 
 import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog";
-import { Paths } from "@/lib/constants/app";
 import { createArticleSchema, createBreadcrumbSchema } from "@/lib/seo/structured-data";
+import { cn } from "@/lib/utils";
+import "@/styles/site-content.css";
 
+import { CTA } from "../../_components/cta";
 import { Footer } from "../../_components/footer";
 import { Header } from "../../_components/header";
-import { Icon } from "../../_components/warm-primitives";
+import {
+  bodyClass,
+  ButtonLink,
+  cardClass,
+  Eyebrow,
+  h1Class,
+  h3Class,
+  leadClass,
+  Section,
+  SectionHeading,
+} from "../../_components/site-primitives";
 
 import type { Metadata } from "next";
 
@@ -88,7 +101,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   ]);
 
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <Header />
 
       <script
@@ -100,243 +113,70 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
-      <section className="warm-subhero">
-        <div className="warm-container" style={{ maxWidth: 860 }}>
-          <Link
-            href="/blog"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: 13,
-              color: "var(--warm-mute)",
-            }}
-          >
-            ← Back to blog
-          </Link>
-
-          {primaryTag && (
-            <div
-              style={{
-                marginTop: 32,
-                fontSize: 11,
-                fontWeight: 500,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "var(--warm-accent)",
-              }}
-            >
-              {primaryTag}
-            </div>
-          )}
-
-          <h1
-            className="warm-display"
-            style={{
-              margin: "16px 0 0",
-              fontSize: "clamp(40px, 6vw, 64px)",
-              lineHeight: 1.1,
-            }}
-          >
-            {post.title}
-          </h1>
-
-          <p
-            style={{
-              fontSize: 19,
-              color: "var(--warm-ink-soft)",
-              marginTop: 20,
-              lineHeight: 1.55,
-              fontFamily: "var(--font-warm-display)",
-              fontWeight: 300,
-            }}
-          >
-            {post.description}
-          </p>
-
-          <div
-            style={{
-              marginTop: 28,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 14,
-              fontSize: 14,
-              color: "var(--warm-mute)",
-              alignItems: "center",
-            }}
-          >
-            <span>{post.author}</span>
-            <span>·</span>
+      <Section className="py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow icon={<IconArticleFilled aria-hidden="true" />}>{primaryTag ?? "Blog"}</Eyebrow>
+          <h1 className={cn(h1Class, "mt-5 max-w-[24ch]")}>{post.title}</h1>
+          <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>{post.description}</p>
+          <p className="mt-6 text-base text-neutral-600 sm:text-sm">
+            {post.author}
+            <span aria-hidden="true"> · </span>
             <time dateTime={post.date}>{formatDate(post.date)}</time>
-            <span>·</span>
-            <span>{post.readingTime} min read</span>
-          </div>
-
+            <span aria-hidden="true"> · </span>
+            {post.readingTime} min read
+          </p>
           {post.tags.length > 0 && (
-            <div
-              style={{
-                marginTop: 20,
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-              }}
-            >
+            <ul className="mt-5 flex flex-wrap justify-center gap-2">
               {post.tags.map((tag) => (
-                <span
+                <li
                   key={tag}
-                  style={{
-                    padding: "4px 12px",
-                    borderRadius: 999,
-                    border: "1px solid var(--warm-line)",
-                    background: "var(--warm-paper)",
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: "var(--warm-ink-soft)",
-                  }}
+                  className="rounded-full bg-neutral-950/[0.06] px-2.5 py-0.5 text-sm font-medium text-neutral-800"
                 >
                   {tag}
-                </span>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
-      </section>
+      </Section>
 
-      <section style={{ padding: "24px 0 120px" }}>
+      <Section className="py-16 sm:py-20">
         <article
-          className="warm-container warm-legal-prose"
-          style={{ maxWidth: 760, fontFamily: "var(--font-warm-ui)" }}
+          className="site-prose mx-auto"
           dangerouslySetInnerHTML={{ __html: post.htmlContent }}
         />
-      </section>
+        <div className="mx-auto mt-14 max-w-[70ch]">
+          <ButtonLink href="/blog" variant="soft" arrow={false} className="pl-2.5">
+            <IconChevronLeft aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+            All articles
+          </ButtonLink>
+        </div>
+      </Section>
 
       {relatedPosts.length > 0 && (
-        <section
-          style={{
-            padding: "72px 0",
-            borderTop: "1px solid var(--warm-line-soft)",
-          }}
-        >
-          <div className="warm-container">
-            <div className="warm-eyebrow" style={{ marginBottom: 20 }}>
-              <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-              Related posts
-            </div>
-            <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(36px, 5vw, 48px)" }}>
-              Keep reading.
-            </h2>
-            <div className="warm-blog-grid" style={{ display: "grid", gap: 20, marginTop: 40 }}>
-              {relatedPosts.map((relatedPost) => {
-                const relatedTag = relatedPost.tags[0];
-                return (
-                  <Link
-                    key={relatedPost.slug}
-                    href={`/blog/${relatedPost.slug}`}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      background: "var(--warm-paper)",
-                      border: "1px solid var(--warm-line)",
-                      borderRadius: 24,
-                      padding: 28,
-                    }}
-                  >
-                    {relatedTag && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 500,
-                          letterSpacing: "0.08em",
-                          textTransform: "uppercase",
-                          color: "var(--warm-accent)",
-                        }}
-                      >
-                        {relatedTag}
-                      </div>
-                    )}
-                    <h3
-                      style={{
-                        fontFamily: "var(--font-warm-display)",
-                        fontSize: 22,
-                        fontWeight: 500,
-                        letterSpacing: "-0.02em",
-                        margin: "12px 0 12px",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {relatedPost.title}
-                    </h3>
-                    <p
-                      style={{
-                        fontSize: 14,
-                        color: "var(--warm-mute)",
-                        margin: 0,
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      {relatedPost.description}
-                    </p>
-                    <div
-                      style={{
-                        marginTop: 24,
-                        fontSize: 12,
-                        color: "var(--warm-mute)",
-                      }}
-                    >
-                      <time dateTime={relatedPost.date}>{formatDate(relatedPost.date)}</time> ·{" "}
-                      {relatedPost.readingTime} min read
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+        <Section>
+          <SectionHeading title="Keep reading" />
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {relatedPosts.map((relatedPost) => (
+              <Link
+                key={relatedPost.slug}
+                href={`/blog/${relatedPost.slug}`}
+                className={cn(cardClass, "flex flex-col p-6 hover:bg-neutral-50")}
+              >
+                <p className="text-sm text-neutral-600">
+                  <time dateTime={relatedPost.date}>{formatDate(relatedPost.date)}</time>
+                  <span aria-hidden="true"> · </span>
+                  {relatedPost.readingTime} min read
+                </p>
+                <h3 className={cn(h3Class, "mt-3 text-balance")}>{relatedPost.title}</h3>
+                <p className={cn(bodyClass, "mt-2 line-clamp-3")}>{relatedPost.description}</p>
+              </Link>
+            ))}
           </div>
-        </section>
+        </Section>
       )}
 
-      <section
-        style={{
-          padding: "96px 0",
-          borderTop: "1px solid var(--warm-line-soft)",
-        }}
-      >
-        <div className="warm-container">
-          <div
-            style={{
-              background: "var(--warm-paper)",
-              border: "1px solid var(--warm-line)",
-              borderRadius: 32,
-              padding: "56px 32px",
-              textAlign: "center",
-            }}
-          >
-            <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(36px, 5vw, 48px)" }}>
-              Start <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>shortening</em>
-              .
-            </h2>
-            <p
-              style={{
-                fontSize: 17,
-                color: "var(--warm-mute)",
-                marginTop: 16,
-                maxWidth: 460,
-                marginLeft: "auto",
-                marginRight: "auto",
-              }}
-            >
-              Free to start. No credit card required.
-            </p>
-            <Link
-              href={Paths.Signup}
-              className="warm-btn warm-btn-accent warm-btn-lg"
-              style={{ marginTop: 28 }}
-            >
-              Get started free <Icon.Arrow />
-            </Link>
-          </div>
-        </div>
-      </section>
-
+      <CTA />
       <Footer />
     </main>
   );

@@ -1,12 +1,20 @@
 "use client";
 
-import Link from "next/link";
+import { IconCheck, IconTagFilled } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+import { cn } from "@/lib/utils";
 
-import { Icon } from "./warm-primitives";
+import {
+  ButtonLink,
+  cardClass,
+  Eyebrow,
+  h3Class,
+  Section,
+  SectionHeading,
+} from "./site-primitives";
 
 const signupHref = (next: string) => `/auth/sign-up?next=${encodeURIComponent(next)}`;
 
@@ -15,10 +23,9 @@ const buildPlans = (annual: boolean) => [
     name: "Free",
     price: PLAN_PRICES_USD.free,
     cadence: "forever",
-    tagline: "For tinkering and side projects.",
+    tagline: "For side projects and trying things out.",
     cta: "Start for free",
     href: signupHref("/dashboard"),
-    style: "ghost" as const,
     featured: false,
     features: PLAN_FEATURES.free.features,
   },
@@ -26,10 +33,9 @@ const buildPlans = (annual: boolean) => [
     name: "Pro",
     price: annual ? PLAN_PRICES_ANNUAL_USD.pro : PLAN_PRICES_USD.pro,
     cadence: annual ? "/year" : "/month",
-    tagline: "For creators, indie makers, and growing teams.",
+    tagline: "For creators, makers, and growing teams.",
     cta: "Get Pro",
     href: signupHref(`/dashboard/pricing?plan=pro${annual ? "&interval=annual" : ""}`),
-    style: "accent" as const,
     featured: true,
     features: PLAN_FEATURES.pro.features,
   },
@@ -37,10 +43,9 @@ const buildPlans = (annual: boolean) => [
     name: "Ultra",
     price: annual ? PLAN_PRICES_ANNUAL_USD.ultra : PLAN_PRICES_USD.ultra,
     cadence: annual ? "/year" : "/month",
-    tagline: "For studios, agencies, and whoever wants no ceilings.",
+    tagline: "For agencies and teams that want no limits.",
     cta: "Go Ultra",
     href: signupHref(`/dashboard/pricing?plan=ultra${annual ? "&interval=annual" : ""}`),
-    style: "primary" as const,
     featured: false,
     features: PLAN_FEATURES.ultra.features,
   },
@@ -51,227 +56,77 @@ export const Pricing = () => {
   const plans = buildPlans(annual);
 
   return (
-    <section id="pricing" className="warm-section" style={{ background: "var(--warm-bg)" }}>
-      <div className="warm-container">
-        <div
-          style={{
-            textAlign: "center",
-            maxWidth: 720,
-            margin: "0 auto 56px",
-          }}
-        >
-          <div className="warm-eyebrow" style={{ marginBottom: 20, justifyContent: "center" }}>
-            <Icon.Heart
-              style={{
-                width: 12,
-                height: 12,
-                color: "var(--warm-accent)",
-              }}
-            />
-            Fair pricing
-          </div>
-          <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 7vw, 80px)" }}>
-            Simple prices,
-            <br />
-            <em style={{ fontStyle: "italic" }}>no surprises.</em>
-          </h2>
-          <p
-            style={{
-              fontSize: 17,
-              color: "var(--warm-mute)",
-              marginTop: 20,
-              lineHeight: 1.6,
-            }}
-          >
-            Start free forever. Upgrade when you're ready. Cancel in one click.
-          </p>
+    <Section id="pricing">
+      <SectionHeading
+        eyebrow={<Eyebrow icon={<IconTagFilled aria-hidden="true" />}>Pricing</Eyebrow>}
+        title="Simple pricing, no surprises"
+        subtitle="Start free. Upgrade when you're ready. Cancel anytime."
+      />
 
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 12,
-              marginTop: 28,
-            }}
-          >
-            <div
-              className="warm-card"
-              style={{
-                display: "inline-flex",
-                padding: 4,
-                borderRadius: 999,
-                gap: 4,
-              }}
-            >
-              {([false, true] as const).map((value) => (
-                <button
-                  key={String(value)}
-                  type="button"
-                  onClick={() => setAnnual(value)}
-                  className="warm-btn"
-                  style={{
-                    padding: "8px 18px",
-                    borderRadius: 999,
-                    fontSize: 13,
-                    background: annual === value ? "var(--warm-ink)" : "transparent",
-                    color: annual === value ? "var(--warm-paper)" : "var(--warm-mute)",
-                  }}
-                >
-                  {value ? "Annual" : "Monthly"}
-                </button>
-              ))}
-            </div>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: "var(--warm-sage-deep)",
-              }}
-            >
-              Save 2 months
-            </span>
-          </div>
-        </div>
-
-        <div className="warm-pricing-grid" style={{ display: "grid", gap: 20 }}>
-          {plans.map((p) => (
-            <div
-              key={p.name}
-              style={{
-                background: p.featured ? "var(--warm-ink)" : "var(--warm-paper)",
-                color: p.featured ? "var(--warm-paper)" : "var(--warm-ink)",
-                border: `1px solid ${p.featured ? "var(--warm-ink)" : "var(--warm-line)"}`,
-                borderRadius: 24,
-                padding: 32,
-                position: "relative",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              {p.featured && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: -12,
-                    left: 32,
-                    padding: "4px 12px",
-                    background: "var(--warm-accent)",
-                    color: "#fff",
-                    borderRadius: 999,
-                    fontSize: 11,
-                    fontWeight: 500,
-                    letterSpacing: "0.02em",
-                  }}
-                >
-                  ♥ Most popular
-                </div>
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="inline-flex rounded-[10px] bg-neutral-950/[0.06] p-0.5">
+          {([false, true] as const).map((value) => (
+            <button
+              key={String(value)}
+              type="button"
+              aria-pressed={annual === value}
+              onClick={() => setAnnual(value)}
+              className={cn(
+                "rounded-lg px-3.5 py-1.5 text-base font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 sm:text-sm",
+                annual === value
+                  ? "bg-white text-neutral-900 shadow-site-btn"
+                  : "text-neutral-600 hover:text-neutral-900",
               )}
-              <h3
-                style={{
-                  fontFamily: "var(--font-warm-display)",
-                  fontSize: 30,
-                  margin: 0,
-                  fontWeight: 500,
-                }}
-              >
-                {p.name}
-              </h3>
-              <p
-                style={{
-                  fontSize: 13,
-                  opacity: 0.7,
-                  margin: "8px 0 24px",
-                  lineHeight: 1.5,
-                }}
-              >
-                {p.tagline}
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "baseline",
-                  gap: 6,
-                  marginBottom: 24,
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--font-warm-display)",
-                    fontSize: 60,
-                    lineHeight: 1,
-                    fontWeight: 500,
-                  }}
-                >
+            >
+              {value ? "Annual" : "Monthly"}
+            </button>
+          ))}
+        </div>
+        <span className="text-base font-medium text-neutral-600 sm:text-sm">Save 2 months</span>
+      </div>
+
+      <div className="mt-12 grid gap-4 lg:grid-cols-3">
+        {plans.map((p) => (
+          <div key={p.name} className={cn(cardClass, "flex flex-col justify-between p-6 sm:p-8")}>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className={h3Class}>{p.name}</h3>
+                {p.featured && (
+                  <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-xs font-medium text-white">
+                    Popular
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 text-pretty text-base text-neutral-600 sm:text-sm">{p.tagline}</p>
+              <p className="mt-6 flex items-baseline gap-1.5">
+                <span className="font-title text-5xl font-semibold tabular-nums tracking-tight text-neutral-900">
                   ${p.price}
                 </span>
-                <span style={{ fontSize: 13, opacity: 0.6 }}>{p.cadence}</span>
-              </div>
-              <Link
-                href={p.href}
-                className={`warm-btn warm-btn-lg ${
-                  p.style === "accent"
-                    ? "warm-btn-accent"
-                    : p.style === "primary"
-                      ? "warm-btn-primary"
-                      : "warm-btn-ghost"
-                }`}
-                style={{
-                  width: "100%",
-                  justifyContent: "center",
-                  marginBottom: 24,
-                }}
-              >
-                {p.cta} <Icon.Arrow />
-              </Link>
-              <div
-                style={{
-                  height: 1,
-                  background: "currentColor",
-                  opacity: 0.12,
-                  marginBottom: 20,
-                }}
-              />
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 12,
-                }}
-              >
+                <span className="text-base text-neutral-600">{p.cadence}</span>
+              </p>
+              <hr className="my-6 border-neutral-950/[0.07]" />
+              <ul className="flex flex-col gap-3">
                 {p.features.map((f) => (
-                  <li
-                    key={f}
-                    style={{
-                      display: "flex",
-                      gap: 12,
-                      fontSize: 14,
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <Icon.Check
-                      style={{
-                        width: 14,
-                        height: 14,
-                        color: p.featured ? "var(--warm-accent)" : "var(--warm-sage-deep)",
-                        flexShrink: 0,
-                        marginTop: 3,
-                      }}
+                  <li key={f} className="flex gap-2.5 text-base text-neutral-700 sm:text-sm">
+                    <IconCheck
+                      aria-hidden="true"
+                      className="mt-1 size-4 shrink-0 text-neutral-900"
                     />
                     {f}
                   </li>
                 ))}
               </ul>
             </div>
-          ))}
-        </div>
+            <ButtonLink
+              href={p.href}
+              variant={p.featured ? "primary" : "secondary"}
+              className="mt-8 w-full"
+            >
+              {p.cta}
+            </ButtonLink>
+          </div>
+        ))}
       </div>
-      <style>{`
-        .warm-pricing-grid { grid-template-columns: 1fr; }
-        @media (min-width: 780px) { .warm-pricing-grid { grid-template-columns: repeat(3, 1fr); } }
-      `}</style>
-    </section>
+    </Section>
   );
 };

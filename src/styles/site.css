@@ -1,0 +1,97 @@
+/* ---------------------------------------------------------------------
+   Marketing + auth theme ("site")
+   Scoped to [data-theme="site"] so the dashboard & signed-in app are
+   never affected. Applied by (landing)/layout.tsx and (auth)/layout.tsx.
+   Design language: docs/design-language.md
+----------------------------------------------------------------------*/
+[data-theme="site"] {
+  background: #f5f5f5; /* neutral-100 canvas */
+  color: #171717; /* neutral-900 ink */
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+[data-theme="site"] ::selection {
+  background: #171717;
+  color: #fff;
+}
+
+/* "+" registration mark that sits on a hairline intersection. The canvas
+   coloured box cuts the lines so the plus floats in a small gap. */
+.site-plus {
+  position: absolute;
+  z-index: 1;
+  width: 21px;
+  height: 21px;
+  background: #f5f5f5;
+  pointer-events: none;
+}
+.site-plus::before,
+.site-plus::after {
+  content: "";
+  position: absolute;
+  background: rgb(10 10 10 / 0.22);
+}
+.site-plus::before {
+  left: 10px;
+  top: 4px;
+  width: 1px;
+  height: 13px;
+}
+.site-plus::after {
+  top: 10px;
+  left: 4px;
+  height: 1px;
+  width: 13px;
+}
+
+/* Faint rounded-square tile pattern used behind CTA panels */
+.site-tiles {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect x='5' y='5' width='90' height='90' rx='12' fill='%23fafafa' stroke='%230a0a0a' stroke-opacity='.06'/%3E%3C/svg%3E");
+  background-size: 100px 100px;
+  background-position: center;
+  -webkit-mask-image: radial-gradient(ellipse 60% 70% at center, #000 10%, transparent 75%);
+  mask-image: radial-gradient(ellipse 60% 70% at center, #000 10%, transparent 75%);
+}
+
+/* Halftone dot field used behind the auth card */
+.site-dots {
+  background-image:
+    radial-gradient(rgb(10 10 10 / 0.3) 3px, transparent 3.5px),
+    radial-gradient(rgb(10 10 10 / 0.16) 1.5px, transparent 2px);
+  background-size:
+    30px 30px,
+    30px 30px;
+  background-position:
+    0 0,
+    15px 15px;
+  -webkit-mask-image:
+    radial-gradient(ellipse 50% 60% at 100% 10%, #000 20%, transparent 75%),
+    radial-gradient(ellipse 40% 45% at 0% 95%, #000 20%, transparent 75%);
+  mask-image:
+    radial-gradient(ellipse 50% 60% at 100% 10%, #000 20%, transparent 75%),
+    radial-gradient(ellipse 40% 45% at 0% 95%, #000 20%, transparent 75%);
+}
+
+@keyframes site-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.site-marquee {
+  animation: site-marquee 40s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-marquee {
+    animation: none;
+  }
+}
