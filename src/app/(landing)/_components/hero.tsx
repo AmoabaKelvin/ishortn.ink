@@ -1,327 +1,219 @@
 "use client";
 
+import {
+  IconChevronRight,
+  IconCopy,
+  IconLink,
+  IconLock,
+  IconQrcode,
+  IconWorld,
+} from "@tabler/icons-react";
+import { Link } from "next-view-transitions";
 import { useState } from "react";
 
-import { Icon } from "./warm-primitives";
+import { Paths } from "@/lib/constants/app";
+import { cn } from "@/lib/utils";
 
-const heroCards = [
-  { bg: "var(--warm-paper)", slug: "open-house", count: "2,841", flag: "🇺🇸", delta: "+24%" },
-  { bg: "var(--warm-cream)", slug: "summer-zine", count: "1,204", flag: "🇬🇧", delta: "+18%" },
-  { bg: "#E4EADD", slug: "field-notes", count: "912", flag: "🇯🇵", delta: "+6%" },
+import {
+  ButtonLink,
+  buttonClass,
+  h1Class,
+  leadClass,
+  panelClass,
+  Section,
+} from "./site-primitives";
+
+// Illustrative numbers for the mock only
+const bars = [38, 52, 44, 61, 47, 72, 58, 66, 49, 83, 70, 92, 64, 78];
+const mutedBars = new Set([2, 8, 12]);
+const countries = [
+  { name: "United States", share: 42 },
+  { name: "United Kingdom", share: 18 },
+  { name: "Germany", share: 11 },
+  { name: "Ghana", share: 9 },
+  { name: "Japan", share: 6 },
 ];
+const linkRows = [
+  { icon: IconQrcode, label: "QR code ready" },
+  { icon: IconWorld, label: "Custom domain" },
+  { icon: IconLock, label: "Password protected" },
+];
+const recentClicks = [
+  { place: "Accra, Ghana", meta: "Chrome · 2m ago" },
+  { place: "London, United Kingdom", meta: "Safari · 5m ago" },
+  { place: "Austin, United States", meta: "Firefox · 9m ago" },
+  { place: "Berlin, Germany", meta: "Chrome · 14m ago" },
+];
+
+const LinkCardMock = () => (
+  <div
+    aria-hidden="true"
+    className="absolute left-6 top-0 grid w-[640px] grid-cols-[1fr_1.15fr] divide-x divide-neutral-950/[0.07] overflow-hidden rounded-xl bg-white shadow-site-card sm:left-14 lg:-bottom-10 lg:left-4 lg:top-20 lg:w-[700px]"
+  >
+    <div className="min-w-0 p-6">
+      <div className="flex items-center gap-2">
+        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-neutral-900 text-white">
+          <IconLink className="size-3" />
+        </span>
+        <span className="truncate font-mono text-sm font-medium text-neutral-900">
+          ishortn.ink/launch
+        </span>
+        <IconCopy className="size-4 shrink-0 text-neutral-400" />
+      </div>
+      <p className="mt-2 truncate text-xs text-neutral-500">
+        https://acme.com/blog/2026/product-launch-announcement?ref=newsletter
+      </p>
+
+      <div className="mt-5 grid grid-cols-4 rounded-lg bg-neutral-100 p-0.5 text-center text-xs font-medium text-neutral-500">
+        {["24h", "7d", "30d", "All"].map((range) => (
+          <span
+            key={range}
+            className={cn(
+              "rounded-md py-1",
+              range === "7d" && "bg-white text-neutral-900 shadow-site-btn",
+            )}
+          >
+            {range}
+          </span>
+        ))}
+      </div>
+
+      <ul className="mt-5 space-y-3 text-[0.8125rem] text-neutral-700">
+        {linkRows.map(({ icon: RowIcon, label }) => (
+          <li key={label} className="flex items-center gap-2">
+            <RowIcon className="size-4 shrink-0 text-neutral-500" />
+            {label}
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-6 border-t border-neutral-950/[0.07] pt-5 text-xs font-medium text-neutral-500">
+        Recent clicks
+      </p>
+      <ul className="mt-3 space-y-3">
+        {recentClicks.map((click) => (
+          <li key={click.place} className="min-w-0">
+            <p className="truncate text-[0.8125rem] text-neutral-900">{click.place}</p>
+            <p className="text-xs text-neutral-500">{click.meta}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div className="min-w-0 p-6">
+      <p className="text-xs font-medium text-neutral-500">Clicks</p>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="font-title text-3xl font-semibold tracking-tight text-neutral-900 tabular-nums">
+          12,847
+        </span>
+        <span className="text-xs font-medium text-emerald-600">+12.4%</span>
+      </div>
+
+      <div className="mt-5 flex h-32 items-end gap-1.5">
+        {bars.map((height, i) => (
+          <span
+            // oxlint-disable-next-line react/no-array-index-key -- static mock data
+            key={i}
+            className={cn(
+              "flex-1 rounded-sm",
+              mutedBars.has(i) ? "bg-neutral-200" : "bg-neutral-900",
+            )}
+            style={{ height: `${height}%` }}
+          />
+        ))}
+      </div>
+
+      <p className="mt-6 text-xs font-medium text-neutral-500">Top countries</p>
+      <ul className="mt-3 space-y-3">
+        {countries.map((country) => (
+          <li key={country.name}>
+            <div className="flex justify-between text-[0.8125rem] text-neutral-700">
+              <span>{country.name}</span>
+              <span className="tabular-nums text-neutral-500">{country.share}%</span>
+            </div>
+            <div className="mt-1.5 h-1 rounded-full bg-neutral-100">
+              <div
+                className="h-full rounded-full bg-neutral-900"
+                style={{ width: `${country.share}%` }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+);
 
 export const Hero = () => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const shorten = (event?: React.FormEvent) => {
-    event?.preventDefault();
+  const shorten = (event: React.FormEvent) => {
+    event.preventDefault();
     const trimmed = url.trim();
     if (!trimmed) return;
     setLoading(true);
-    const target = `/auth/sign-up?url=${encodeURIComponent(trimmed)}`;
-    window.location.assign(target);
+    window.location.assign(`${Paths.Signup}?url=${encodeURIComponent(trimmed)}`);
   };
 
   return (
-    <section
-      style={{
-        position: "relative",
-        overflow: "hidden",
-        padding: "40px 0 96px",
-      }}
-    >
-      <div
-        className="warm-container warm-hero-grid"
-        style={{
-          display: "grid",
-          gap: 60,
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <div className="warm-eyebrow" style={{ marginBottom: 28 }}>
-            <span className="warm-eyebrow-dot" />
-            Loved by 40,000+ creators &amp; small teams
-          </div>
-          <h1
-            className="warm-display warm-hero-title"
-            style={{ margin: 0, fontSize: "clamp(48px, 11vw, 104px)" }}
+    <Section className="px-3 py-3 sm:px-3 sm:py-3 xl:px-3">
+      <div className={cn(panelClass, "relative grid overflow-hidden lg:grid-cols-2")}>
+        <div className="min-w-0 px-6 py-12 sm:px-14 sm:py-20 lg:pr-8">
+          <Link
+            href="/changelog"
+            className="inline-flex items-center gap-1 rounded-full bg-white py-1 pl-3 pr-1.5 text-[0.8125rem] font-medium text-neutral-800 shadow-site-btn hover:bg-neutral-50"
           >
-            Links, made
-            <br />
-            <em
-              style={{
-                color: "var(--warm-accent)",
-                fontWeight: 400,
-                fontStyle: "italic",
-              }}
-            >
-              lovely.
-            </em>
-          </h1>
-          <p
-            style={{
-              fontSize: 19,
-              color: "var(--warm-mute)",
-              lineHeight: 1.6,
-              marginTop: 28,
-              maxWidth: 500,
-              textWrap: "pretty" as const,
-            }}
-          >
-            Shorten any link in a second. See who clicked, and from where. Make QR codes that match
-            your brand. A quiet, friendly tool — no spreadsheets required.
+            See what&apos;s new
+            <IconChevronRight aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+          </Link>
+
+          <h1 className={cn(h1Class, "mt-6 max-w-[14ch]")}>The better way to share your links</h1>
+          <p className={cn(leadClass, "mt-5 max-w-[48ch]")}>
+            Short links, QR codes, and link-in-bio pages with analytics built in. Made for creators,
+            marketers, and teams who want to know what works.
           </p>
 
-          <form
-            onSubmit={shorten}
-            className="warm-hero-form"
-            style={{
-              background: "var(--warm-paper)",
-              marginTop: 40,
-              border: "1px solid var(--warm-line)",
-              boxShadow: "0 12px 40px -20px rgba(43,31,23,0.15)",
-              maxWidth: 620,
-            }}
-          >
-            <label
-              className="warm-hero-form-field"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                flex: 1,
-                minWidth: 0,
-              }}
-            >
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0 14px 0 18px",
-                  color: "var(--warm-mute)",
-                }}
-              >
-                <Icon.Link />
-              </span>
+          <div className="mt-8 flex max-w-md flex-col gap-2">
+            <form onSubmit={shorten} className="flex flex-col gap-2">
+              <label htmlFor="hero-url" className="sr-only">
+                Link to shorten
+              </label>
               <input
+                id="hero-url"
+                name="url"
+                required
+                inputMode="url"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
                 placeholder="Paste a long link here..."
-                style={{
-                  flex: 1,
-                  width: "100%",
-                  border: "none",
-                  background: "transparent",
-                  outline: "none",
-                  fontSize: 16,
-                  padding: "12px 0",
-                  color: "var(--warm-ink)",
-                  minWidth: 0,
-                }}
+                className="w-full min-w-0 rounded-[10px] bg-white px-3.5 py-2.5 text-base text-neutral-900 shadow-site-btn placeholder:text-neutral-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
               />
-            </label>
-            <button
-              type="submit"
-              className="warm-btn warm-btn-accent warm-btn-lg warm-hero-form-submit"
-              style={{ margin: 0 }}
-            >
-              {loading ? (
-                "Taking you in…"
-              ) : (
-                <>
-                  Make it short <Icon.Arrow />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div
-            style={{
-              marginTop: 14,
-              fontSize: 13,
-              color: "var(--warm-mute)",
-            }}
-          >
-            Free to start — no credit card. Quick sign-up, your URL comes along for the ride.
+              <button
+                type="submit"
+                className={cn(
+                  buttonClass({ variant: "primary", size: "lg", arrow: true }),
+                  "w-full",
+                )}
+              >
+                {loading ? "Redirecting…" : "Shorten link"}
+                <IconChevronRight aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+              </button>
+            </form>
+            <ButtonLink href={Paths.Signup} variant="soft" size="lg" className="w-full">
+              Sign up with email
+            </ButtonLink>
           </div>
+          <p className="mt-3 text-sm text-neutral-500">Free to start. No credit card required.</p>
         </div>
 
-        <div className="warm-hero-cards" style={{ position: "relative", height: 460 }}>
-          {heroCards.map((c, i) => (
-            <div
-              key={c.slug}
-              style={{
-                position: "absolute",
-                top: i * 54,
-                left: i * 26,
-                right: -i * 8,
-                background: c.bg,
-                borderRadius: 22,
-                padding: "26px 28px",
-                border: "1px solid var(--warm-line)",
-                transform: `rotate(${(i - 1) * 1.8}deg)`,
-                boxShadow: "0 24px 50px -25px rgba(43,31,23,0.2)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "var(--font-warm-display)",
-                    fontSize: 28,
-                    fontWeight: 500,
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  ishortn.ink/
-                  <span style={{ color: "var(--warm-accent)" }}>{c.slug}</span>
-                </div>
-                <span style={{ fontSize: 20 }}>{c.flag}</span>
-              </div>
-              <div
-                style={{
-                  marginTop: 20,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 12, color: "var(--warm-mute)" }}>Clicks this week</div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-warm-display)",
-                      fontSize: 32,
-                      fontWeight: 500,
-                      lineHeight: 1.1,
-                    }}
-                  >
-                    {c.count}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 999,
-                    background: "var(--warm-sage)",
-                    color: "#fff",
-                    fontSize: 12,
-                    fontWeight: 500,
-                  }}
-                >
-                  ↑ {c.delta}
-                </div>
-              </div>
-              <svg viewBox="0 0 200 40" width="100%" height="40" style={{ marginTop: 14 }}>
-                <path
-                  d={`M 0 ${30 - i * 4} Q 40 ${10 + i * 5}, 80 ${20 - i * 2} T 160 ${12 + i * 3} T 200 ${8 + i * 2}`}
-                  stroke="var(--warm-accent)"
-                  strokeWidth="2"
-                  fill="none"
-                />
-              </svg>
-            </div>
-          ))}
+        <div className="relative h-72 lg:h-auto">
+          <LinkCardMock />
         </div>
       </div>
-
-      <div
-        className="warm-container warm-hero-featured"
-        style={{
-          marginTop: 72,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ fontSize: 13, color: "var(--warm-mute)" }}>Featured on</span>
-        {["Product Hunt #1", "Indie Hackers", "Sidebar", "Designer News", "The Newsletter"].map(
-          (x) => (
-            <span
-              key={x}
-              className="warm-hero-featured-item"
-              style={{
-                fontFamily: "var(--font-warm-display)",
-                color: "var(--warm-ink-soft)",
-                opacity: 0.7,
-              }}
-            >
-              {x}
-            </span>
-          ),
-        )}
-      </div>
-
-      <style>{`
-        .warm-hero-featured {
-          gap: 16px 20px;
-        }
-        .warm-hero-featured-item {
-          font-size: 15px;
-        }
-        @media (min-width: 640px) {
-          .warm-hero-featured {
-            margin-top: 96px !important;
-            gap: 40px;
-          }
-          .warm-hero-featured-item {
-            font-size: 18px;
-          }
-        }
-        .warm-hero-grid {
-          grid-template-columns: 1fr;
-        }
-        .warm-hero-cards {
-          display: none;
-        }
-
-        /* Mobile-first: form stacks vertically inside a rounded card so the
-           input stays full-width and the submit button sits below. */
-        .warm-hero-form {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          padding: 10px;
-          border-radius: 22px;
-        }
-        .warm-hero-form-field {
-          padding: 4px 0;
-        }
-        .warm-hero-form-submit {
-          width: 100%;
-          justify-content: center;
-        }
-
-        /* From ~640px up, collapse back to the single pill-shaped row. */
-        @media (min-width: 640px) {
-          .warm-hero-form {
-            flex-direction: row;
-            align-items: stretch;
-            gap: 0;
-            padding: 8px;
-            border-radius: 999px;
-          }
-          .warm-hero-form-submit {
-            width: auto;
-          }
-        }
-
-        @media (min-width: 980px) {
-          .warm-hero-grid {
-            grid-template-columns: 1.3fr 1fr;
-          }
-          .warm-hero-cards {
-            display: block;
-          }
-        }
-      `}</style>
-    </section>
+    </Section>
   );
 };

@@ -1,0 +1,95 @@
+/* ---------------------------------------------------------------------
+   Clerk <SignIn/> / <SignUp/> under the "site" theme.
+   Static styles: src/app/(auth)/auth/_shared/clerk-appearance.ts.
+   This file only holds what the appearance object can't express: states,
+   :first-of-type, media queries. `!important` where Clerk's own state rules
+   (hover/focus box-shadows) out-rank a plain override.
+----------------------------------------------------------------------*/
+
+/* White card padding: px-6 py-10 sm:px-10 */
+[data-theme="site"] .cl-card {
+  padding: 2.5rem 1.5rem;
+}
+@media (min-width: 640px) {
+  [data-theme="site"] .cl-card {
+    padding: 2.5rem;
+  }
+}
+
+/* Social buttons: stacked full width. First one primary, the rest soft. */
+[data-theme="site"] .cl-socialButtons {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+[data-theme="site"] .cl-socialButtonsBlockButton,
+[data-theme="site"] .cl-socialButtonsBlockButton:focus,
+[data-theme="site"] .cl-socialButtonsBlockButton:active {
+  box-shadow: none !important;
+}
+[data-theme="site"] .cl-socialButtonsBlockButton:hover {
+  background: rgb(10 10 10 / 0.1) !important;
+}
+[data-theme="site"] .cl-socialButtonsBlockButton:first-of-type,
+[data-theme="site"] .cl-formButtonPrimary,
+[data-theme="site"] .cl-formButtonPrimary:focus,
+[data-theme="site"] .cl-formButtonPrimary:active {
+  background: #171717 !important;
+  color: #fff !important;
+  /* shadow-site-btn-primary */
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 0 0 1px #171717,
+    0 1px 3px rgb(10 10 10 / 0.3) !important;
+}
+[data-theme="site"] .cl-socialButtonsBlockButton:first-of-type:hover,
+[data-theme="site"] .cl-formButtonPrimary:hover {
+  background: #262626 !important;
+}
+/* Monochrome provider marks would vanish on the dark first button */
+[data-theme="site"] .cl-socialButtonsBlockButton:first-of-type .cl-providerIcon__github,
+[data-theme="site"] .cl-socialButtonsBlockButton:first-of-type .cl-providerIcon__apple {
+  filter: invert(1);
+}
+[data-theme="site"] .cl-socialButtonsBlockButton:focus-visible,
+[data-theme="site"] .cl-formButtonPrimary:focus-visible {
+  outline: 2px solid #171717 !important;
+  outline-offset: 2px;
+}
+
+/* Inputs: hairline ring + tiny shadow, 2px ink ring on focus */
+[data-theme="site"] .cl-formFieldInput:hover,
+[data-theme="site"] .cl-otpCodeFieldInput:hover {
+  box-shadow:
+    0 0 0 1px rgb(10 10 10 / 0.16),
+    0 1px 2px rgb(10 10 10 / 0.06) !important;
+}
+[data-theme="site"] .cl-formFieldInput:focus,
+[data-theme="site"] .cl-formFieldInput:focus-within,
+[data-theme="site"] .cl-otpCodeFieldInput:focus {
+  box-shadow: 0 0 0 2px #171717 !important;
+  outline: none !important;
+}
+
+/* Secondary links */
+[data-theme="site"] .cl-formFieldAction:hover {
+  color: #171717 !important;
+}
+[data-theme="site"] .cl-footerActionLink:hover {
+  text-decoration: underline;
+}
+
+/* Footer strip under the white card: px-6 py-5 text-center text-base sm:text-sm */
+[data-theme="site"] .cl-footerAction {
+  justify-content: center;
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+}
+[data-theme="site"] .cl-footerActionText,
+[data-theme="site"] .cl-footerActionLink {
+  font-size: 1rem;
+}
+@media (min-width: 640px) {
+  [data-theme="site"] .cl-footerActionText,
+  [data-theme="site"] .cl-footerActionLink {
+    font-size: 0.875rem;
+  }
+}

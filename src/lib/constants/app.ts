@@ -4,7 +4,7 @@ export const EMAIL_SENDER = '"Acme" <noreply@acme.com>';
 
 export enum Paths {
   Home = "/",
-  Login = "auth/sign-in",
+  Login = "/auth/sign-in",
   Signup = "/auth/sign-up",
   Dashboard = "/dashboard",
 }

@@ -19,6 +19,16 @@ export default {
         display: ["var(--font-display)", "Georgia", "serif"],
         heading: ["var(--font-heading)", ...fontFamily.sans],
         logo: ["var(--font-logo)", ...fontFamily.sans],
+        // Marketing + auth theme (docs/design-language.md)
+        title: ["var(--font-title)", ...fontFamily.sans],
+      },
+      boxShadow: {
+        // Hairline ring is baked in so surfaces never pair a shadow with a solid border
+        "site-card":
+          "0 0 0 1px rgb(10 10 10 / 0.06), 0 1px 2px rgb(10 10 10 / 0.04), 0 6px 16px -6px rgb(10 10 10 / 0.05)",
+        "site-btn": "0 0 0 1px rgb(10 10 10 / 0.1), 0 1px 2px rgb(10 10 10 / 0.06)",
+        "site-btn-primary":
+          "inset 0 1px 0 rgb(255 255 255 / 0.14), 0 0 0 1px #171717, 0 1px 3px rgb(10 10 10 / 0.3)",
       },
       colors: {
         border: "hsl(var(--border))",

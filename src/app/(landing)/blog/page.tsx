@@ -1,12 +1,22 @@
+import { IconArticleFilled, IconChevronRight } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { getAllPosts } from "@/lib/blog";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
+import { cn } from "@/lib/utils";
 
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
-import { Icon } from "../_components/warm-primitives";
+import {
+  bodyClass,
+  cardClass,
+  Eyebrow,
+  h1Class,
+  h3Class,
+  leadClass,
+  Section,
+} from "../_components/site-primitives";
 
 import type { Metadata } from "next";
 
@@ -45,7 +55,7 @@ export default async function BlogPage() {
   const posts = await getAllPosts();
 
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <JsonLd
         data={createBreadcrumbSchema([
           { name: "Home", url: "https://ishortn.ink" },
@@ -54,146 +64,50 @@ export default async function BlogPage() {
       />
       <Header />
 
-      <section className="warm-subhero">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-            Blog
-          </div>
-          <h1 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}>
-            Writing from
-            <br />
-            <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>the iShortn team.</em>
-          </h1>
-          <p
-            style={{
-              fontSize: 19,
-              color: "var(--warm-mute)",
-              marginTop: 24,
-              lineHeight: 1.6,
-              maxWidth: 620,
-            }}
-          >
+      <Section className="py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow icon={<IconArticleFilled aria-hidden="true" />}>Blog</Eyebrow>
+          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>Guides and updates from iShortn</h1>
+          <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>
             Product updates, guides, and deep dives on link management, analytics, and digital
             marketing.
           </p>
         </div>
-      </section>
+      </Section>
 
-      <section style={{ padding: "24px 0 120px" }}>
-        <div className="warm-container">
-          {posts.length === 0 ? (
-            <div
-              style={{
-                background: "var(--warm-paper)",
-                border: "1px solid var(--warm-line)",
-                borderRadius: 24,
-                padding: "80px 32px",
-                textAlign: "center",
-                color: "var(--warm-mute)",
-                fontSize: 14,
-              }}
-            >
-              No posts yet. Check back soon.
-            </div>
-          ) : (
-            <div className="warm-blog-grid" style={{ display: "grid", gap: 20 }}>
-              {posts.map((post) => {
-                const primaryTag = post.tags[0];
-                return (
-                  <Link
-                    key={post.slug}
-                    href={`/blog/${post.slug}`}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      background: "var(--warm-paper)",
-                      border: "1px solid var(--warm-line)",
-                      borderRadius: 24,
-                      padding: 28,
-                      transition: "transform .25s, border-color .2s",
-                    }}
-                  >
-                    {primaryTag && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 500,
-                          letterSpacing: "0.08em",
-                          textTransform: "uppercase",
-                          color: "var(--warm-accent)",
-                        }}
-                      >
-                        {primaryTag}
-                      </div>
-                    )}
-                    <h3
-                      style={{
-                        fontFamily: "var(--font-warm-display)",
-                        fontSize: 26,
-                        fontWeight: 500,
-                        letterSpacing: "-0.02em",
-                        margin: "12px 0 0",
-                        lineHeight: 1.15,
-                      }}
-                    >
-                      {post.title}
-                    </h3>
-                    <p
-                      style={{
-                        fontSize: 14,
-                        color: "var(--warm-mute)",
-                        margin: "12px 0 0",
-                        lineHeight: 1.6,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: "vertical" as const,
-                        overflow: "hidden",
-                      }}
-                    >
-                      {post.description}
-                    </p>
-                    <div
-                      style={{
-                        marginTop: 24,
-                        fontSize: 12,
-                        color: "var(--warm-mute)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                      }}
-                    >
-                      <time dateTime={post.date}>{formatDate(post.date)}</time>
-                      <span>·</span>
-                      <span>{post.readingTime} min read</span>
-                    </div>
-                    <div
-                      style={{
-                        marginTop: 24,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        fontSize: 14,
-                        color: "var(--warm-accent)",
-                        fontWeight: 500,
-                      }}
-                    >
-                      Read article <Icon.Arrow />
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
+      <Section>
+        {posts.length === 0 ? (
+          <p className={cn(cardClass, bodyClass, "mx-auto max-w-md p-10 text-center")}>
+            No posts yet. Check back soon.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => (
+              <Link
+                key={post.slug}
+                href={`/blog/${post.slug}`}
+                className={cn(cardClass, "flex flex-col hover:bg-neutral-50")}
+              >
+                <div className="flex flex-1 flex-col p-6">
+                  <p className="text-sm text-neutral-600">
+                    <time dateTime={post.date}>{formatDate(post.date)}</time>
+                    <span aria-hidden="true"> · </span>
+                    {post.readingTime} min read
+                  </p>
+                  <h2 className={cn(h3Class, "mt-3 text-balance")}>{post.title}</h2>
+                  <p className={cn(bodyClass, "mt-2 line-clamp-3")}>{post.description}</p>
+                  <span className="mt-auto inline-flex items-center gap-1 pt-6 text-sm font-medium text-neutral-900">
+                    Read article
+                    <IconChevronRight aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Section>
 
       <Footer />
-      <style>{`
-        .warm-blog-grid { grid-template-columns: 1fr; }
-        @media (min-width: 720px) { .warm-blog-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (min-width: 1024px) { .warm-blog-grid { grid-template-columns: repeat(3, 1fr); } }
-      `}</style>
     </main>
   );
 }

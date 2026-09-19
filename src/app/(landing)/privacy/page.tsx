@@ -1,5 +1,11 @@
+import { IconShieldCheckFilled } from "@tabler/icons-react";
+
+import { cn } from "@/lib/utils";
+import "@/styles/site-content.css";
+
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
+import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
 
 import type { Metadata } from "next";
 
@@ -15,29 +21,22 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <Header />
 
-      <section className="warm-subhero">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <span className="warm-eyebrow-dot" />
-            Legal
-          </div>
-          <h1 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}>
-            Privacy <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>policy</em>.
-          </h1>
-          <p style={{ marginTop: 20, fontSize: 14, color: "var(--warm-mute)" }}>
-            Last updated: March 2026
+      <Section className="py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow icon={<IconShieldCheckFilled aria-hidden="true" />}>Legal</Eyebrow>
+          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>Privacy policy</h1>
+          <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>
+            How iShortn collects, uses, and protects your personal information.
           </p>
+          <p className="mt-6 font-mono text-sm text-neutral-600">Last updated: March 2026</p>
         </div>
-      </section>
+      </Section>
 
-      <section style={{ padding: "24px 0 120px" }}>
-        <article
-          className="warm-container warm-legal-prose"
-          style={{ maxWidth: 760, fontFamily: "var(--font-warm-ui)" }}
-        >
+      <Section className="py-16 sm:py-20">
+        <article className="site-prose mx-auto">
           <p>
             At iShortn, we take your privacy seriously. This Privacy Policy explains how we collect,
             use, disclose, and safeguard your information when you use our URL shortening service at
@@ -49,7 +48,7 @@ export default function PrivacyPage() {
 
           <p>We collect information in the following ways when you use our service:</p>
 
-          <p className="!mb-2 font-medium text-zinc-50">Account Information</p>
+          <h3>Account Information</h3>
           <ul>
             <li>
               Name, email address, and profile information provided through your authentication
@@ -58,7 +57,7 @@ export default function PrivacyPage() {
             <li>Account preferences, settings, and subscription details.</li>
           </ul>
 
-          <p className="!mb-2 font-medium text-zinc-50">Usage Data</p>
+          <h3>Usage Data</h3>
           <ul>
             <li>Links you create, including original URLs and shortened URLs.</li>
             <li>QR codes you generate through the platform.</li>
@@ -68,7 +67,7 @@ export default function PrivacyPage() {
             </li>
           </ul>
 
-          <p className="!mb-2 font-medium text-zinc-50">Analytics Data from Shortened Links</p>
+          <h3>Analytics Data from Shortened Links</h3>
           <ul>
             <li>
               When someone clicks a shortened link, we collect information about that click,
@@ -82,7 +81,7 @@ export default function PrivacyPage() {
             </li>
           </ul>
 
-          <p className="!mb-2 font-medium text-zinc-50">Technical Information</p>
+          <h3>Technical Information</h3>
           <ul>
             <li>
               Browser type, IP address, device information, and operating system when you access our
@@ -236,7 +235,7 @@ export default function PrivacyPage() {
             please contact us at <a href="mailto:support@ishortn.ink">support@ishortn.ink</a>.
           </p>
         </article>
-      </section>
+      </Section>
 
       <Footer />
     </main>

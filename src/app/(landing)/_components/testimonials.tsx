@@ -1,11 +1,14 @@
-import { Icon } from "./warm-primitives";
+import { IconUserFilled } from "@tabler/icons-react";
+
+import { cn } from "@/lib/utils";
+
+import { cardClass, Eyebrow, Section, SectionHeading } from "./site-primitives";
 
 const quotes = [
   {
     q: "This tool is a godsend. I am using the link shortener and the QR code generator. It does everything I need it to.",
     name: "FixatedManufacturing",
     role: "Small Business Owner",
-    large: true,
   },
   {
     q: "We pasted posters around town using the QR codes and now we know which ones perform best. It has really helped us grow.",
@@ -29,170 +32,45 @@ const quotes = [
   },
 ];
 
-const bgs = [
-  "var(--warm-ink)",
-  "var(--warm-cream)",
-  "var(--warm-bg)",
-  "var(--warm-accent)",
-  "var(--warm-paper)",
-];
+export const Testimonials = () => (
+  <Section id="stories">
+    <SectionHeading
+      eyebrow={<Eyebrow icon={<IconUserFilled aria-hidden="true" />}>Testimonials</Eyebrow>}
+      title="Don't just take our word for it"
+      subtitle="Our users are our best ambassadors. See why they chose iShortn."
+    />
 
-export const Testimonials = () => {
-  return (
-    <section
-      id="stories"
-      className="warm-section warm-section-paper"
-      style={{ background: "var(--warm-paper)" }}
-    >
-      <div className="warm-container">
-        <div
-          className="warm-testi-header"
-          style={{
-            display: "grid",
-            gap: 40,
-            alignItems: "end",
-            marginBottom: 60,
-          }}
-        >
-          <div>
-            <div className="warm-eyebrow" style={{ marginBottom: 20 }}>
-              <Icon.Heart style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-              From the folks using it
-            </div>
-            <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 7vw, 80px)" }}>
-              Kind words
-              <br />
-              <em style={{ fontStyle: "italic" }}>from real people.</em>
-            </h2>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 32,
-              paddingBottom: 16,
-            }}
+    {/* ponytail: native scroll-snap row, no carousel lib. Active-card fade and "+" corner marks need JS; add if wanted. */}
+    <div className="-mx-5 mt-14 border-y border-neutral-950/[0.07] py-4 sm:-mx-8 xl:-mx-16">
+      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 py-1 [mask-image:linear-gradient(to_right,transparent,#000_5%,#000_95%,transparent)] [scrollbar-width:none] sm:px-8 xl:px-16 [&::-webkit-scrollbar]:hidden">
+        {quotes.map((t) => (
+          <figure
+            key={t.name}
+            className={cn(
+              cardClass,
+              "flex min-h-[17rem] w-[85vw] max-w-[32.5rem] shrink-0 snap-center flex-col justify-between gap-8 p-7",
+            )}
           >
-            <div style={{ display: "flex", gap: 2 }}>
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Icon.Star
-                  key={i}
-                  style={{
-                    width: 18,
-                    height: 18,
-                    color: "var(--warm-accent)",
-                  }}
-                />
-              ))}
-            </div>
-            <div>
-              <div
-                style={{
-                  fontFamily: "var(--font-warm-display)",
-                  fontSize: 28,
-                  lineHeight: 1,
-                }}
+            <blockquote className="text-pretty indent-[-0.4em] font-title text-2xl font-semibold tracking-tight text-neutral-900">
+              &quot;{t.q}&quot;
+            </blockquote>
+            <figcaption className="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="grid size-11 shrink-0 place-items-center rounded-lg bg-neutral-100 font-title text-base font-semibold text-neutral-700 outline outline-1 -outline-offset-1 outline-black/5"
               >
-                4.9 / 5
-              </div>
-              <div style={{ fontSize: 12, color: "var(--warm-mute)", marginTop: 2 }}>
-                from 2,400+ reviews
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="warm-testi-grid" style={{ display: "grid", gap: 20 }}>
-          {quotes.map((t, i) => {
-            const span = t.large ? 4 : i === 1 ? 2 : 3;
-            const bg = bgs[i] ?? "var(--warm-paper)";
-            const onDark = i === 0 || i === 3;
-            const color = onDark ? "var(--warm-paper)" : "var(--warm-ink)";
-            return (
-              <div
-                key={t.name}
-                style={{
-                  gridColumn: `span ${span}`,
-                  background: bg,
-                  color,
-                  border: onDark ? "none" : "1px solid var(--warm-line)",
-                  borderRadius: 24,
-                  padding: t.large ? 44 : 28,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 18,
-                  minHeight: t.large ? 280 : 200,
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--font-warm-display)",
-                    fontSize: t.large ? 100 : 60,
-                    lineHeight: 0.6,
-                    opacity: 0.5,
-                    height: t.large ? 50 : 30,
-                  }}
-                >
-                  "
+                {t.name[0]}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium text-neutral-900">
+                  {t.name}
                 </span>
-                <p
-                  style={{
-                    fontFamily: t.large ? "var(--font-warm-display)" : "var(--font-warm-ui)",
-                    fontSize: t.large ? 28 : 15,
-                    lineHeight: t.large ? 1.3 : 1.55,
-                    margin: 0,
-                    flex: 1,
-                    textWrap: "pretty" as const,
-                    letterSpacing: t.large ? "-0.015em" : 0,
-                    fontWeight: 400,
-                  }}
-                >
-                  {t.q}
-                </p>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    paddingTop: 14,
-                    borderTop: `1px solid ${
-                      onDark ? "rgba(255,255,255,0.15)" : "var(--warm-line-soft)"
-                    }`,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      background: onDark ? "var(--warm-accent)" : "var(--warm-ink)",
-                      color: "#fff",
-                      display: "grid",
-                      placeItems: "center",
-                      fontFamily: "var(--font-warm-display)",
-                      fontSize: 15,
-                    }}
-                  >
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</div>
-                    <div style={{ fontSize: 12, opacity: 0.65 }}>{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                <span className="block truncate text-sm text-neutral-600">{t.role}</span>
+              </span>
+            </figcaption>
+          </figure>
+        ))}
       </div>
-      <style>{`
-        .warm-testi-header { grid-template-columns: 1fr; }
-        .warm-testi-grid { grid-template-columns: 1fr; }
-        @media (min-width: 800px) {
-          .warm-testi-header { grid-template-columns: auto 1fr; gap: 60px; }
-          .warm-testi-grid { grid-template-columns: repeat(6, 1fr); }
-        }
-      `}</style>
-    </section>
-  );
-};
+    </div>
+  </Section>
+);

@@ -1,16 +1,19 @@
+import { IconTagFilled } from "@tabler/icons-react";
+
 import { JsonLd } from "@/components/seo/json-ld";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
   softwareApplicationSchema,
 } from "@/lib/seo/structured-data";
+import { cn } from "@/lib/utils";
 
 import { CTA } from "../_components/cta";
 import { Faq } from "../_components/faq";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { Pricing } from "../_components/pricing";
-import { Icon } from "../_components/warm-primitives";
+import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
 
 import type { Metadata } from "next";
 
@@ -57,7 +60,7 @@ const pricingFaqs = [
 
 export default function PricingPage() {
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <JsonLd
         data={createBreadcrumbSchema([
           { name: "Home", url: "https://ishortn.ink" },
@@ -68,31 +71,15 @@ export default function PricingPage() {
       <JsonLd data={createFaqSchema(pricingFaqs.map((f) => ({ question: f.q, answer: f.a })))} />
       <Header />
 
-      <section className="warm-subhero">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <Icon.Heart style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-            Pricing
-          </div>
-          <h1 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}>
-            Fair prices,
-            <br />
-            <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>no surprises.</em>
-          </h1>
-          <p
-            style={{
-              fontSize: 19,
-              color: "var(--warm-mute)",
-              marginTop: 24,
-              lineHeight: 1.6,
-              maxWidth: 620,
-            }}
-          >
-            Start free forever. Upgrade when you need more. Cancel in one click — no lock-in, no
-            nagging emails.
+      <Section className="py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow icon={<IconTagFilled aria-hidden="true" />}>Pricing</Eyebrow>
+          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>Plans that grow with your links</h1>
+          <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>
+            Start free forever. Upgrade when you need more, and cancel in one click.
           </p>
         </div>
-      </section>
+      </Section>
 
       <Pricing />
 

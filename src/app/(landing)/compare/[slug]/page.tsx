@@ -1,15 +1,32 @@
-import { Link } from "next-view-transitions";
+import {
+  IconCheck,
+  IconLayoutGridFilled,
+  IconScaleFilled,
+  IconSparklesFilled,
+  IconTagFilled,
+} from "@tabler/icons-react";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { Paths } from "@/lib/constants/app";
 import { competitors, type Competitor } from "@/lib/seo/competitors";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
+import { cn } from "@/lib/utils";
 
 import { CTA } from "../../_components/cta";
 import { Footer } from "../../_components/footer";
 import { Header } from "../../_components/header";
-import { Icon } from "../../_components/warm-primitives";
+import {
+  bodyClass,
+  ButtonLink,
+  cardClass,
+  Eyebrow,
+  h1Class,
+  h3Class,
+  leadClass,
+  Section,
+  SectionHeading,
+} from "../../_components/site-primitives";
 
 import type { Metadata } from "next";
 
@@ -30,7 +47,7 @@ export async function generateMetadata({
   const competitor = getCompetitor(slug);
   if (!competitor) return {};
 
-  const title = `${competitor.name} vs iShortn — a warmer URL shortener`;
+  const title = `${competitor.name} vs iShortn — URL shortener comparison`;
   const description = `Compare ${competitor.name} and iShortn side by side. See features, pricing, and why creators and small teams pick iShortn.`;
 
   return {
@@ -81,7 +98,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
   if (!competitor) return notFound();
 
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <JsonLd
         data={createBreadcrumbSchema([
           { name: "Home", url: "https://ishortn.ink" },
@@ -93,333 +110,120 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
       />
       <Header />
 
-      <section className="warm-subhero">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-            Comparison
-          </div>
-          <h1 className="warm-display" style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)" }}>
-            {competitor.name}
-            <br />
-            <em style={{ fontStyle: "italic", color: "var(--warm-accent)" }}>vs iShortn.</em>
-          </h1>
-          <p
-            style={{
-              fontSize: 19,
-              color: "var(--warm-mute)",
-              marginTop: 24,
-              lineHeight: 1.6,
-              maxWidth: 620,
-            }}
-          >
-            {competitor.description}
-          </p>
+      <Section className="py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow icon={<IconScaleFilled aria-hidden="true" />}>Comparison</Eyebrow>
+          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>iShortn vs {competitor.name}</h1>
+          <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>{competitor.description}</p>
         </div>
-      </section>
+      </Section>
 
-      <section className="warm-section warm-section-paper">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
-            <Icon.Chart style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-            Features
-          </div>
-          <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}>
-            Feature-by-feature
-            <br />
-            <em style={{ fontStyle: "italic" }}>side by side.</em>
-          </h2>
-
-          <div
-            className="warm-card"
-            style={{
-              marginTop: 40,
-              overflow: "hidden",
-              background: "var(--warm-paper-2)",
-            }}
-          >
-            <div style={{ overflowX: "auto" }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, minmax(200px, 1fr))",
-                  borderBottom: "1px solid var(--warm-line)",
-                  background: "var(--warm-paper)",
-                }}
-              >
-                <div
-                  style={{
-                    padding: "18px 22px",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--warm-ink)",
-                  }}
-                >
+      <Section>
+        <SectionHeading
+          eyebrow={<Eyebrow icon={<IconLayoutGridFilled aria-hidden="true" />}>Features</Eyebrow>}
+          title="Feature by feature, side by side"
+        />
+        <div className={cn(cardClass, "mt-14 overflow-x-auto")}>
+          <table className="w-full min-w-[640px] border-collapse text-left text-base sm:text-sm">
+            <thead>
+              <tr className="border-b border-neutral-950/[0.07]">
+                <th scope="col" className="w-1/4 px-6 py-4 font-medium text-neutral-600">
                   Feature
-                </div>
-                <div
-                  style={{
-                    padding: "18px 22px",
-                    borderLeft: "1px solid var(--warm-line-soft)",
-                    fontSize: 13,
-                    fontWeight: 500,
-                  }}
-                >
+                </th>
+                <th scope="col" className="px-6 py-4 font-medium text-neutral-600">
                   {competitor.name}
-                </div>
-                <div
-                  style={{
-                    padding: "18px 22px",
-                    borderLeft: "1px solid var(--warm-line-soft)",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--warm-accent)",
-                  }}
-                >
+                </th>
+                <th scope="col" className="bg-neutral-50 px-6 py-4 font-medium text-neutral-900">
                   iShortn
-                </div>
-              </div>
-
-              {featureRows.map((row, i) => (
-                <div
-                  key={row.label}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, minmax(200px, 1fr))",
-                    borderTop: i === 0 ? "none" : "1px solid var(--warm-line-soft)",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "16px 22px",
-                      fontSize: 14,
-                      color: "var(--warm-ink-soft)",
-                    }}
-                  >
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-950/[0.07]">
+              {featureRows.map((row) => (
+                <tr key={row.label}>
+                  <th scope="row" className="px-6 py-4 align-top font-medium text-neutral-900">
                     {row.label}
-                  </div>
-                  <div
-                    style={{
-                      padding: "16px 22px",
-                      borderLeft: "1px solid var(--warm-line-soft)",
-                      fontSize: 14,
-                      color: "var(--warm-mute)",
-                    }}
-                  >
+                  </th>
+                  <td className="px-6 py-4 align-top text-neutral-600">
                     {competitor[row.competitorKey]}
-                  </div>
-                  <div
-                    style={{
-                      padding: "16px 22px",
-                      borderLeft: "1px solid var(--warm-line-soft)",
-                      background: "var(--warm-paper)",
-                      fontSize: 14,
-                      color: "var(--warm-ink)",
-                    }}
-                  >
+                  </td>
+                  <td className="bg-neutral-50 px-6 py-4 align-top text-neutral-900">
                     {ishortn[row.competitorKey]}
-                  </div>
-                </div>
+                  </td>
+                </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section>
+        <SectionHeading
+          eyebrow={<Eyebrow icon={<IconSparklesFilled aria-hidden="true" />}>Why switch</Eyebrow>}
+          title={`Why teams switch from ${competitor.name}`}
+        />
+        <ul className="mt-14 grid gap-4 md:grid-cols-2">
+          {competitor.whySwitch.map((reason) => (
+            <li key={reason} className={cn(cardClass, "flex items-start gap-3 p-6")}>
+              <IconCheck aria-hidden="true" className="mt-1 size-4 shrink-0 text-neutral-900" />
+              <span className={bodyClass}>{reason}</span>
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <Section>
+        <SectionHeading
+          eyebrow={<Eyebrow icon={<IconTagFilled aria-hidden="true" />}>Pricing</Eyebrow>}
+          title="How the pricing compares"
+        />
+        <div className="mt-14 grid gap-4 md:grid-cols-2">
+          <div className={cn(cardClass, "p-6 sm:p-8")}>
+            <h3 className={h3Class}>{competitor.name}</h3>
+            <p className="mt-1 text-base text-neutral-600 sm:text-sm">{competitor.tagline}</p>
+            <p className={cn(bodyClass, "mt-5")}>{competitor.pricing}</p>
+          </div>
+
+          <div className={cn(cardClass, "flex flex-col justify-between p-6 sm:p-8")}>
+            <div>
+              <h3 className={h3Class}>iShortn</h3>
+              <p className="mt-1 text-base text-neutral-600 sm:text-sm">
+                Free forever, Pro $8/mo, Ultra $15/mo
+              </p>
+              <dl className="mt-5 space-y-3">
+                <div>
+                  <dt className="inline font-medium text-neutral-900">Free: </dt>
+                  <dd className={cn(bodyClass, "inline")}>
+                    30 links/month, 1,000 tracked events, 7-day analytics.
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline font-medium text-neutral-900">Pro $8/mo: </dt>
+                  <dd className={cn(bodyClass, "inline")}>
+                    1,000 links/month, 10,000 tracked events, unlimited analytics history, 3 custom
+                    domains, branded + dynamic QR codes, REST API.
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline font-medium text-neutral-900">Ultra $15/mo: </dt>
+                  <dd className={cn(bodyClass, "inline")}>
+                    Everything in Pro plus unlimited links and events, unlimited custom domains,
+                    team workspaces, resource transfer.
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <div className="mt-8">
+              <ButtonLink href={Paths.Signup} variant="secondary">
+                Start free
+              </ButtonLink>
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="warm-section">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
-            <Icon.Heart style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-            Why switch
-          </div>
-          <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}>
-            Why teams leave
-            <br />
-            <em style={{ fontStyle: "italic" }}>{competitor.name}.</em>
-          </h2>
-
-          <ul
-            className="warm-switch-grid"
-            style={{
-              marginTop: 40,
-              display: "grid",
-              gap: 12,
-              padding: 0,
-              listStyle: "none",
-            }}
-          >
-            {competitor.whySwitch.map((reason) => (
-              <li
-                key={reason}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 14,
-                  background: "var(--warm-paper)",
-                  border: "1px solid var(--warm-line)",
-                  borderRadius: 20,
-                  padding: "20px 24px",
-                }}
-              >
-                <Icon.Check
-                  style={{
-                    width: 16,
-                    height: 16,
-                    color: "var(--warm-accent)",
-                    flexShrink: 0,
-                    marginTop: 4,
-                  }}
-                />
-                <span
-                  style={{
-                    color: "var(--warm-ink-soft)",
-                    lineHeight: 1.6,
-                    fontSize: 15,
-                  }}
-                >
-                  {reason}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="warm-section warm-section-paper">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 16 }}>
-            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-            Pricing
-          </div>
-          <h2 className="warm-display" style={{ margin: 0, fontSize: "clamp(40px, 6vw, 60px)" }}>
-            Pricing,
-            <br />
-            <em style={{ fontStyle: "italic" }}>plain and simple.</em>
-          </h2>
-
-          <div
-            className="warm-compare-pricing"
-            style={{
-              marginTop: 40,
-              display: "grid",
-              gap: 20,
-            }}
-          >
-            <div
-              style={{
-                background: "var(--warm-paper)",
-                border: "1px solid var(--warm-line)",
-                borderRadius: 24,
-                padding: "32px 32px",
-              }}
-            >
-              <h3
-                style={{
-                  fontFamily: "var(--font-warm-display)",
-                  fontSize: 28,
-                  margin: 0,
-                  fontWeight: 500,
-                }}
-              >
-                {competitor.name}
-              </h3>
-              <p
-                style={{
-                  marginTop: 8,
-                  color: "var(--warm-mute)",
-                  fontSize: 13,
-                }}
-              >
-                {competitor.tagline}
-              </p>
-              <p
-                style={{
-                  marginTop: 20,
-                  color: "var(--warm-ink-soft)",
-                  lineHeight: 1.6,
-                  fontSize: 15,
-                }}
-              >
-                {competitor.pricing}
-              </p>
-            </div>
-
-            <div
-              style={{
-                background: "var(--warm-ink)",
-                color: "var(--warm-paper)",
-                border: "1px solid var(--warm-ink)",
-                borderRadius: 24,
-                padding: "32px 32px",
-              }}
-            >
-              <h3
-                style={{
-                  fontFamily: "var(--font-warm-display)",
-                  fontSize: 28,
-                  margin: 0,
-                  fontWeight: 500,
-                }}
-              >
-                iShortn
-              </h3>
-              <p
-                style={{
-                  marginTop: 8,
-                  opacity: 0.7,
-                  fontSize: 13,
-                }}
-              >
-                Simple, warm, and gets out of the way.
-              </p>
-              <div
-                style={{
-                  marginTop: 20,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 12,
-                  fontSize: 15,
-                  lineHeight: 1.55,
-                  opacity: 0.85,
-                }}
-              >
-                <p style={{ margin: 0 }}>
-                  <strong style={{ color: "var(--warm-paper)" }}>Free</strong> — 30 links/month,
-                  1,000 tracked events, 7-day analytics.
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong style={{ color: "var(--warm-paper)" }}>Pro $8/mo</strong> — 1,000
-                  links/month, 10,000 tracked events, unlimited analytics history, 3 custom domains,
-                  branded + dynamic QR codes, REST API.
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong style={{ color: "var(--warm-paper)" }}>Ultra $15/mo</strong> — everything
-                  in Pro plus unlimited links and events, unlimited custom domains, team workspaces,
-                  resource transfer.
-                </p>
-              </div>
-              <Link
-                href={Paths.Signup}
-                className="warm-btn warm-btn-accent"
-                style={{ marginTop: 28 }}
-              >
-                Start free <Icon.Arrow />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      </Section>
 
       <CTA />
       <Footer />
-      <style>{`
-        .warm-switch-grid { grid-template-columns: 1fr; }
-        .warm-compare-pricing { grid-template-columns: 1fr; }
-        @media (min-width: 800px) {
-          .warm-switch-grid { grid-template-columns: repeat(2, 1fr); }
-          .warm-compare-pricing { grid-template-columns: repeat(2, 1fr); }
-        }
-      `}</style>
     </main>
   );
 }

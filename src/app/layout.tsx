@@ -9,15 +9,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env.mjs";
 import { APP_TITLE } from "@/lib/constants/app";
-import {
-  fontDisplay,
-  fontHeading,
-  fontLogo,
-  fontSans,
-  fontWarmDisplay,
-  fontWarmUi,
-} from "@/lib/fonts";
+import { fontDisplay, fontHeading, fontLogo, fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
+import { fontTitle, inter } from "@/styles/fonts";
 import { TRPCReactProvider } from "@/trpc/react";
 
 import { CSPostHogProvider } from "./providers";
@@ -55,7 +49,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      localization={{
+        signIn: { start: { title: "Welcome back", subtitle: "Sign in to continue" } },
+        signUp: {
+          start: { title: "Create your account", subtitle: "Start shortening in seconds" },
+        },
+      }}
+    >
       <ViewTransitions>
         {env.UMAMI_TRACKING_ID && (
           <Script
@@ -75,8 +76,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 fontDisplay.variable,
                 fontHeading.variable,
                 fontLogo.variable,
-                fontWarmDisplay.variable,
-                fontWarmUi.variable,
+                fontTitle.variable,
+                inter.variable,
               )}
             >
               <ThemeProvider

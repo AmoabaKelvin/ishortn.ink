@@ -1,5 +1,8 @@
+import { IconSparklesFilled } from "@tabler/icons-react";
+
 import { JsonLd } from "@/components/seo/json-ld";
 import { createBreadcrumbSchema, softwareApplicationSchema } from "@/lib/seo/structured-data";
+import { cn } from "@/lib/utils";
 
 import { CTA } from "../_components/cta";
 import { DashboardPreview } from "../_components/dashboard-preview";
@@ -7,7 +10,7 @@ import { Features } from "../_components/features";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { QRSection } from "../_components/qr-section";
-import { Icon } from "../_components/warm-primitives";
+import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
 
 import type { Metadata } from "next";
 
@@ -32,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function FeaturesPage() {
   return (
-    <main style={{ background: "var(--warm-bg)", color: "var(--warm-ink)" }}>
+    <main>
       <JsonLd data={softwareApplicationSchema} />
       <JsonLd
         data={createBreadcrumbSchema([
@@ -42,36 +45,17 @@ export default function FeaturesPage() {
       />
       <Header />
 
-      <section className="warm-subhero">
-        <div className="warm-container">
-          <div className="warm-eyebrow" style={{ marginBottom: 24 }}>
-            <Icon.Sparkle style={{ width: 12, height: 12, color: "var(--warm-accent)" }} />
-            Features
-          </div>
-          <h1
-            className="warm-display"
-            style={{ margin: 0, fontSize: "clamp(44px, 11vw, 104px)", maxWidth: 980 }}
-          >
-            Everything inside,
-            <br />
-            <em style={{ color: "var(--warm-accent)", fontStyle: "italic" }}>
-              none of the clutter.
-            </em>
+      <Section className="py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow icon={<IconSparklesFilled aria-hidden="true" />}>Features</Eyebrow>
+          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>
+            Everything you need to manage your links
           </h1>
-          <p
-            style={{
-              fontSize: 19,
-              color: "var(--warm-mute)",
-              marginTop: 24,
-              lineHeight: 1.6,
-              maxWidth: 620,
-            }}
-          >
-            Every feature iShortn ships — from real-time analytics to branded QR codes and bulk CSV
-            shortening. Made for creators and small teams who want tools that get out of the way.
+          <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>
+            Real-time analytics, custom domains, branded QR codes, and bulk shortening in one place.
           </p>
         </div>
-      </section>
+      </Section>
 
       <Features />
       <DashboardPreview />

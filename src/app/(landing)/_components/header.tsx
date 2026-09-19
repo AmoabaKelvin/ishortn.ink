@@ -1,17 +1,19 @@
 "use client";
 
 import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { IconMenu2, IconX } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 import { useEffect, useState } from "react";
 
 import { Paths } from "@/lib/constants/app";
+import { cn } from "@/lib/utils";
 
-import { Icon, Wordmark } from "./warm-primitives";
+import { ButtonLink, Wordmark } from "./site-primitives";
 
 const routes = [
   { name: "Features", href: "/features" },
   { name: "Pricing", href: "/pricing" },
-  { name: "Stories", href: "/#stories" },
+  { name: "Blog", href: "/blog" },
   { name: "Changelog", href: "/changelog" },
 ] as const;
 
@@ -21,178 +23,101 @@ export const Header = () => {
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const raised = scrolled || mobileOpen;
+
   return (
-    <nav
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        background: scrolled ? "rgba(247,241,232,0.85)" : "transparent",
-        backdropFilter: scrolled ? "blur(12px)" : "none",
-        WebkitBackdropFilter: scrolled ? "blur(12px)" : "none",
-        borderBottom: `1px solid ${scrolled ? "var(--warm-line-soft)" : "transparent"}`,
-        transition: "all .25s",
-      }}
-    >
+    <header className="sticky top-0 z-50 px-3 pt-3">
       <div
-        className="warm-container"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          height: 76,
-        }}
+        className={cn(
+          "mx-auto max-w-[1240px] rounded-2xl",
+          raised && "bg-white/90 shadow-site-card backdrop-blur-md",
+        )}
       >
-        <Link href="/" aria-label="iShortn home">
-          <Wordmark />
-        </Link>
-
-        <div className="hidden md:flex" style={{ gap: 36 }}>
-          {routes.map((x) => (
-            <Link
-              key={x.name}
-              href={x.href}
-              style={{ fontSize: 14, color: "var(--warm-ink-soft)" }}
-            >
-              {x.name}
+        <div className="flex items-center py-2.5 pl-4 pr-2.5 xl:pl-6">
+          <div className="flex flex-1 items-center">
+            <Link href="/" aria-label="Homepage">
+              <Wordmark />
             </Link>
-          ))}
-        </div>
+          </div>
 
-        <div className="hidden md:flex" style={{ gap: 10 }}>
-          <SignedOut>
-            <Link
-              href={Paths.Login}
-              className="warm-btn warm-btn-ghost"
-              style={{ padding: "10px 18px" }}
-            >
-              Sign in
-            </Link>
-            <Link
-              href={Paths.Signup}
-              className="warm-btn warm-btn-primary"
-              style={{ padding: "10px 18px" }}
-            >
-              Get started <Icon.Arrow />
-            </Link>
-          </SignedOut>
-          <SignedIn>
-            <Link
-              href={Paths.Dashboard}
-              className="warm-btn warm-btn-primary"
-              style={{ padding: "10px 18px" }}
-            >
-              Dashboard <Icon.Arrow />
-            </Link>
-          </SignedIn>
-        </div>
-
-        <button
-          type="button"
-          aria-label="Menu"
-          onClick={() => setMobileOpen((o) => !o)}
-          className="md:hidden"
-          style={{
-            padding: 8,
-            background: "transparent",
-            border: 0,
-            color: "var(--warm-ink)",
-            cursor: "pointer",
-          }}
-        >
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            {mobileOpen ? (
-              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" strokeLinejoin="round" />
-            ) : (
-              <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" strokeLinejoin="round" />
-            )}
-          </svg>
-        </button>
-      </div>
-
-      {mobileOpen && (
-        <div
-          className="md:hidden"
-          style={{
-            margin: "0 16px 8px",
-            padding: 18,
-            background: "var(--warm-paper)",
-            border: "1px solid var(--warm-line)",
-            borderRadius: 20,
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {routes.map((x) => (
+          <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
+            {routes.map((route) => (
               <Link
-                key={x.name}
-                href={x.href}
-                onClick={() => setMobileOpen(false)}
-                style={{
-                  padding: "10px 12px",
-                  fontSize: 14,
-                  color: "var(--warm-ink-soft)",
-                  borderRadius: 10,
-                }}
+                key={route.name}
+                href={route.href}
+                className="rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-950/5 hover:text-neutral-900"
               >
-                {x.name}
+                {route.name}
               </Link>
             ))}
-            <div
-              style={{
-                height: 1,
-                background: "var(--warm-line-soft)",
-                margin: "8px 0",
-              }}
-            />
-            <SignedOut>
-              <Link
-                href={Paths.Login}
-                className="warm-btn warm-btn-ghost"
-                style={{
-                  justifyContent: "center",
-                  padding: "12px 16px",
-                }}
-              >
-                Sign in
-              </Link>
-              <Link
-                href={Paths.Signup}
-                className="warm-btn warm-btn-primary"
-                style={{
-                  justifyContent: "center",
-                  padding: "12px 16px",
-                  marginTop: 6,
-                }}
-              >
-                Get started <Icon.Arrow />
-              </Link>
-            </SignedOut>
-            <SignedIn>
-              <Link
-                href={Paths.Dashboard}
-                className="warm-btn warm-btn-primary"
-                style={{
-                  justifyContent: "center",
-                  padding: "12px 16px",
-                }}
-              >
-                Dashboard <Icon.Arrow />
-              </Link>
-            </SignedIn>
+          </nav>
+
+          <div className="flex flex-1 items-center justify-end gap-1">
+            <div className="hidden items-center gap-1 lg:flex">
+              <SignedOut>
+                <Link
+                  href={Paths.Login}
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-950/5"
+                >
+                  Sign in
+                </Link>
+                <ButtonLink href={Paths.Signup}>Get started</ButtonLink>
+              </SignedOut>
+              <SignedIn>
+                <ButtonLink href={Paths.Dashboard}>Dashboard</ButtonLink>
+              </SignedIn>
+            </div>
+
+            <button
+              type="button"
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileOpen}
+              aria-controls="site-mobile-menu"
+              onClick={() => setMobileOpen((open) => !open)}
+              className="grid size-11 place-items-center rounded-lg text-neutral-900 hover:bg-neutral-950/5 lg:hidden"
+            >
+              {mobileOpen ? <IconX className="size-6" /> : <IconMenu2 className="size-6" />}
+            </button>
           </div>
         </div>
-      )}
-    </nav>
+
+        {mobileOpen && (
+          <div id="site-mobile-menu" className="border-t border-neutral-950/[0.07] p-3 lg:hidden">
+            <nav aria-label="Mobile" className="flex flex-col">
+              {routes.map((route) => (
+                <Link
+                  key={route.name}
+                  href={route.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-base text-neutral-700 hover:bg-neutral-950/5"
+                >
+                  {route.name}
+                </Link>
+              ))}
+            </nav>
+            <div className="mt-3 grid gap-2 border-t border-neutral-950/[0.07] pt-3">
+              <SignedOut>
+                <ButtonLink href={Paths.Login} variant="secondary" size="lg" arrow={false}>
+                  Sign in
+                </ButtonLink>
+                <ButtonLink href={Paths.Signup} size="lg">
+                  Get started
+                </ButtonLink>
+              </SignedOut>
+              <SignedIn>
+                <ButtonLink href={Paths.Dashboard} size="lg">
+                  Dashboard
+                </ButtonLink>
+              </SignedIn>
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
   );
 };
