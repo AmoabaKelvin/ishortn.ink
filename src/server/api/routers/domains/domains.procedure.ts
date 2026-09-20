@@ -9,7 +9,7 @@ import { workspaceFilter } from "@/server/lib/workspace";
 
 import {
   buildVerificationChallenges,
-  getCustomHostname,
+  getLiveCustomHostname,
   mapStatus,
   wwwFallbackActive,
 } from "./cloudflare";
@@ -83,7 +83,7 @@ export const customDomainRouter = createTRPCRouter({
           const domain = record.domain!;
 
           try {
-            const hostname = await getCustomHostname(domain);
+            const hostname = await getLiveCustomHostname(domain);
             const cloudflareActive =
               (hostname !== null && mapStatus(hostname) === "active") ||
               (await wwwFallbackActive(domain));
@@ -114,7 +114,7 @@ export const customDomainRouter = createTRPCRouter({
       const domain = input.domain;
       log.debug({ domain }, "checking domain status");
 
-      const hostname = await getCustomHostname(domain);
+      const hostname = await getLiveCustomHostname(domain);
 
       log.debug(
         {

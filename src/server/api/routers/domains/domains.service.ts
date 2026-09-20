@@ -15,7 +15,7 @@ import {
   addCustomHostname,
   buildVerificationChallenges,
   deleteCustomHostname,
-  getCustomHostname,
+  getLiveCustomHostname,
   mapStatus,
 } from "./cloudflare";
 
@@ -129,7 +129,9 @@ export async function addDomainToUserAccount(
     const response = await addCustomHostname(domain);
 
     // If the hostname already exists on the zone (added by another workspace), reuse it
-    const hostname = response.alreadyExists ? await getCustomHostname(domain) : response.hostname;
+    const hostname = response.alreadyExists
+      ? await getLiveCustomHostname(domain)
+      : response.hostname;
 
     if (!hostname) {
       throw new Error("Failed to retrieve domain configuration");
