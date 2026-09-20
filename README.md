@@ -31,12 +31,6 @@
 
 <br />
 
-<p align="center">
-  <img width="3362" height="2808" alt="CleanShot 2026-04-18 at 14 11 53@2x" src="https://github.com/user-attachments/assets/08e274b2-8712-4b59-ac36-5e0976f6ce35" />
-</p>
-
-<br />
-
 ## About
 
 iShortn is an open-source URL shortener and link intelligence platform. It turns long URLs into short, branded links and gives you deep insight into every click — country, city, device, referrer, and hour-by-hour trends — without shipping third-party cookies or chasing visitors across the web.
