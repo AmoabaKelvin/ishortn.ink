@@ -7,6 +7,12 @@ const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
 // Cloudflare error code for a custom hostname that already exists on the zone
 const DUPLICATE_HOSTNAME_ERROR_CODE = 1406;
 
+const SSL_CONFIG = {
+  method: "http",
+  type: "dv",
+  settings: { min_tls_version: "1.2" },
+} as const;
+
 const customHostnameSchema = z.object({
   id: z.string(),
   hostname: z.string(),
@@ -75,14 +81,7 @@ export async function addCustomHostname(domain: string) {
   const response = await cloudflareFetch(zoneUrl("/custom_hostnames"), {
     method: "POST",
     headers: requestHeaders(),
-    body: JSON.stringify({
-      hostname: domain,
-      ssl: {
-        method: "http",
-        type: "dv",
-        settings: { min_tls_version: "1.2" },
-      },
-    }),
+    body: JSON.stringify({ hostname: domain, ssl: SSL_CONFIG }),
   });
 
   const data = customHostnameResponseSchema.parse(await response.json());
@@ -138,6 +137,37 @@ export async function deleteCustomHostname(domain: string) {
   if (!response.ok) {
     throw new Error("Failed to remove the domain. Please try again.");
   }
+}
+
+// Cloudflare retires a hostname whose DV challenge never completed (~14 days).
+// The record still reads back over the API but can never go active.
+export function isRetiredCustomHostname(hostname: CloudflareCustomHostname): boolean {
+  return hostname.status === "deleted" || hostname.ssl?.status === "validation_timed_out";
+}
+
+// PATCH re-arms validation in place; delete + re-add rotates the ownership
+// token and invalidates any TXT record the customer already created.
+async function refreshCustomHostname(id: string) {
+  const response = await cloudflareFetch(zoneUrl(`/custom_hostnames/${id}`), {
+    method: "PATCH",
+    headers: requestHeaders(),
+    body: JSON.stringify({ ssl: SSL_CONFIG }),
+  });
+
+  if (!response.ok) return null;
+
+  const data = customHostnameResponseSchema.parse(await response.json());
+  return data.success ? data.result : null;
+}
+
+export async function getLiveCustomHostname(domain: string) {
+  const hostname = await getCustomHostname(domain);
+
+  if (!hostname || !isRetiredCustomHostname(hostname)) {
+    return hostname;
+  }
+
+  return (await refreshCustomHostname(hostname.id)) ?? hostname;
 }
 
 export function mapStatus(hostname: CloudflareCustomHostname): "active" | "pending" {
