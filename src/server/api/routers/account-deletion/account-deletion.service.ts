@@ -1,4 +1,4 @@
-import { cancelSubscription } from "@lemonsqueezy/lemonsqueezy.js";
+import { cancelSubscription, getSubscription } from "@lemonsqueezy/lemonsqueezy.js";
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, or } from "drizzle-orm";
 
@@ -23,6 +23,24 @@ import type { ProtectedTRPCContext } from "../../trpc";
 import type { RequestAccountDeletionInput } from "./account-deletion.input";
 
 const log = logger.child({ component: "account-deletion" });
+
+type CachedLink = { alias: string | null; domain: string };
+
+// A blocked (or restored) row only takes effect once its cache entry is gone,
+// so failed evictions get two more tries. Anything still stuck ages out with
+// the cache TTL.
+async function evictLinkCache(links: CachedLink[], userId: string) {
+  let keys = links.map((l) => buildCacheKey(l.domain, l.alias!));
+
+  for (let attempt = 0; attempt < 3 && keys.length > 0; attempt++) {
+    const evicted = await Promise.all(keys.map((key) => deleteFromCache(key)));
+    keys = keys.filter((_, i) => !evicted[i]);
+  }
+
+  if (keys.length > 0) {
+    log.error({ userId, keys }, "link cache eviction failed; entries expire with the cache TTL");
+  }
+}
 
 export async function getDeletionStatus(ctx: ProtectedTRPCContext) {
   const [record, teams] = await Promise.all([
@@ -119,23 +137,32 @@ export async function requestAccountDeletion(
   ) {
     configureLemonSqueezy();
     const cancelled = await cancelSubscription(userSubscription.subscriptionId);
+    let remote = cancelled.data?.data.attributes;
 
+    // An earlier attempt may have cancelled remotely and then failed to record
+    // it here. Ask Lemon Squeezy what's true before giving up.
     if (cancelled.error) {
-      log.error({ err: cancelled.error, userId }, "failed to cancel subscription before deletion");
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message:
-          "We couldn't cancel your subscription, so your account was not deleted. Please try again or contact support@ishortn.ink.",
-      });
+      const current = await getSubscription(userSubscription.subscriptionId);
+      remote = current.data?.data.attributes;
+
+      if (remote?.status !== "cancelled" && remote?.status !== "expired") {
+        log.error(
+          { err: cancelled.error, userId },
+          "failed to cancel subscription before deletion",
+        );
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            "We couldn't cancel your subscription, so your account was not deleted. Please try again or contact support@ishortn.ink.",
+        });
+      }
     }
 
     await ctx.db
       .update(subscription)
       .set({
-        status: cancelled.data?.data.attributes.status,
-        endsAt: cancelled.data?.data.attributes.ends_at
-          ? new Date(cancelled.data.data.attributes.ends_at)
-          : null,
+        status: remote?.status,
+        endsAt: remote?.ends_at ? new Date(remote.ends_at) : null,
       })
       .where(eq(subscription.userId, userId));
   }
@@ -179,8 +206,7 @@ export async function requestAccountDeletion(
     await tx.insert(accountDeletion).values(survey).onDuplicateKeyUpdate({ set: survey });
   });
 
-  // Cache holds resolved links; blocked rows only take effect once it's purged.
-  await Promise.all(linksToBlock.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))));
+  await evictLinkCache(linksToBlock, userId);
 
   const purgeAt = purgeDateFor(deletedAt);
 
@@ -221,6 +247,15 @@ export async function restoreAccount(ctx: ProtectedTRPCContext) {
     return { restored: false };
   }
 
+  // Independent of when the purge job actually runs: past this point the job
+  // may already be deleting the account.
+  if (purgeDateFor(currentUser.deletedAt) <= new Date()) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "The restore window for this account has ended.",
+    });
+  }
+
   // Only the links this cascade blocked — anything blocked for abuse stays blocked.
   const blockedLinks = await ctx.db
     .select({ alias: link.alias, domain: link.domain })
@@ -243,7 +278,7 @@ export async function restoreAccount(ctx: ProtectedTRPCContext) {
       .where(eq(accountDeletion.userId, userId));
   });
 
-  await Promise.all(blockedLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))));
+  await evictLinkCache(blockedLinks, userId);
 
   log.info({ userId, links: blockedLinks.length }, "account restored");
 

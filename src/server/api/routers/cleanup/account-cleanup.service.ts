@@ -1,7 +1,7 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { and, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 
-import { DELETION_GRACE_PERIOD_DAYS } from "@/lib/account-deletion/constants";
+import { DELETION_GRACE_PERIOD_DAYS, purgeDateFor } from "@/lib/account-deletion/constants";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
@@ -84,8 +84,7 @@ export async function cleanupDeletedAccounts(): Promise<AccountCleanupResult> {
 
   for (const record of usersToDelete) {
     try {
-      await purgeAccount(record.id, result);
-      result.accountsDeleted += 1;
+      if (await purgeAccount(record.id, result)) result.accountsDeleted += 1;
     } catch (err) {
       result.failures += 1;
       log.error({ err, userId: record.id }, "failed to purge account; will retry next run");
@@ -95,7 +94,20 @@ export async function cleanupDeletedAccounts(): Promise<AccountCleanupResult> {
   return result;
 }
 
-async function purgeAccount(userId: string, result: AccountCleanupResult): Promise<void> {
+async function purgeAccount(userId: string, result: AccountCleanupResult): Promise<boolean> {
+  // The candidate list is a snapshot; earlier purges in this run take time.
+  // Re-read so an account restored since then is never destroyed. Same deadline
+  // restoreAccount enforces, so the two can't overlap.
+  const current = await db.query.user.findFirst({
+    where: eq(user.id, userId),
+    columns: { deletedAt: true },
+  });
+
+  if (!current?.deletedAt || purgeDateFor(current.deletedAt) > new Date()) {
+    log.info({ userId }, "account no longer eligible for purge; skipping");
+    return false;
+  }
+
   // Personal resources only: teamId IS NULL. Team-owned rows stay put.
   const [links, bioPages, domains, folders] = await Promise.all([
     db
@@ -127,6 +139,11 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
     const status = (err as { status?: number }).status;
     if (status !== 404) throw err;
   }
+
+  // Before the rows go: once customDomain is deleted nothing can rediscover the
+  // hostname, so a Cloudflare failure aborts here and the next run retries.
+  // Already-removed hostnames are a no-op.
+  await Promise.all(domains.map((d) => (d.domain ? deleteCustomHostname(d.domain) : undefined)));
 
   const linkIds = links.map((l) => l.id);
   const bioPageIds = bioPages.map((p) => p.id);
@@ -199,12 +216,10 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
       .where(eq(accountDeletion.userId, userId));
   });
 
-  // Best effort, after the rows are gone: a stuck Cloudflare hostname or a
-  // stale cache key shouldn't fail an otherwise complete purge.
-  await Promise.allSettled([
-    ...links.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
-    ...domains.map((d) => (d.domain ? deleteCustomHostname(d.domain) : Promise.resolve())),
-  ]);
+  // Best effort: these links were blocked at deletion, so a stale key only
+  // serves the blocked page until the cache TTL.
+  await Promise.allSettled(links.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))));
 
   log.info({ userId, links: linkIds.length, bioPages: bioPageIds.length }, "account purged");
+  return true;
 }

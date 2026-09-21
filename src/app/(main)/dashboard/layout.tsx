@@ -81,6 +81,7 @@ export default async function DashboardLayout({ children }: Props) {
 
     if (currentUser?.deletedAt) {
       const purgeAt = purgeDateFor(currentUser.deletedAt);
+      const canRestore = purgeAt > new Date();
 
       return (
         <div
@@ -105,12 +106,14 @@ export default async function DashboardLayout({ children }: Props) {
               })}
               .
             </p>
-            <p className="mt-4 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-              Changed your mind? Restore it and your links, bio pages, and analytics come back. A
-              paid subscription stays cancelled — you&apos;d need to subscribe again.
-            </p>
+            {canRestore && (
+              <p className="mt-4 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+                Changed your mind? Restore it and your links, bio pages, and analytics come back. A
+                paid subscription stays cancelled — you&apos;d need to subscribe again.
+              </p>
+            )}
             <div className="mt-6 flex flex-col items-center gap-3">
-              <RestoreAccountButton />
+              {canRestore && <RestoreAccountButton />}
               <SignOutButton />
             </div>
           </div>

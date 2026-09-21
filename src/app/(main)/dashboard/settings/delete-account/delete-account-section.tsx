@@ -103,7 +103,7 @@ export function DeleteAccountSection() {
           type="button"
           variant="outline"
           className="mt-4 h-9 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
-          disabled={isLoading || blockedByTeams}
+          disabled={isLoading || blockedByTeams || !status?.email}
           onClick={() => setOpen(true)}
         >
           Delete account
