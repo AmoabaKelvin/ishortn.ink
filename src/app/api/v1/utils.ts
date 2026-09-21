@@ -19,12 +19,12 @@ export async function validateAndGetToken(apiKey: string | null) {
   const [userRecord, userSubscription] = await Promise.all([
     db.query.user.findFirst({
       where: eq(user.id, userId),
-      columns: { banned: true },
+      columns: { banned: true, deletedAt: true },
     }),
     db.select().from(subscription).where(eq(subscription.userId, userId)),
   ]);
 
-  if (userRecord?.banned) {
+  if (userRecord?.banned || userRecord?.deletedAt) {
     return null;
   }
 

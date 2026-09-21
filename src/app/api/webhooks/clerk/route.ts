@@ -1,3 +1,4 @@
+import { and, eq, isNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { z } from "zod";
@@ -53,6 +54,20 @@ export async function POST(req: Request) {
     });
   }
 
+  // Deletions from Clerk's own account portal never carry a user profile, so
+  // they'd fail the schema below and retry forever. Mirror them as a soft
+  // delete instead: the DB row is only ever removed by the purge job.
+  const deletion = clerkUserDeletedEventSchema.safeParse(payload);
+  if (deletion.success) {
+    const deletedUserId = deletion.data.data.id;
+    await db
+      .update(user)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(user.id, deletedUserId), isNull(user.deletedAt)));
+    log.info({ userId: deletedUserId }, "soft-deleted user from clerk deletion webhook");
+    return new Response("", { status: 200 });
+  }
+
   const event = clerkUserEventSchema.safeParse(payload);
   if (!event.success) {
     log.error({ issues: event.error.issues }, "unexpected webhook payload");
@@ -96,6 +111,11 @@ export async function POST(req: Request) {
 
   return new Response("", { status: 201 });
 }
+
+const clerkUserDeletedEventSchema = z.object({
+  type: z.literal("user.deleted"),
+  data: z.object({ id: z.string() }),
+});
 
 const clerkUserEventSchema = z.object({
   type: z.string(),

@@ -646,8 +646,9 @@ export async function getPublicBioPageBySlug(
 ): Promise<PublicBioPage | null> {
   const page = await ctx.db.query.bioPage.findFirst({
     where: and(eq(bioPage.slug, slug), eq(bioPage.isPublished, true)),
+    with: { user: { columns: { deletedAt: true } } },
   });
-  if (!page) return null;
+  if (!page || page.user?.deletedAt) return null;
   return assemblePublicBioPage(ctx.db, page);
 }
 
@@ -661,8 +662,9 @@ export async function getPublicBioPageByDomain(
     .replace(/^www\./, "");
   const page = await ctx.db.query.bioPage.findFirst({
     where: and(eq(bioPage.customDomain, normalized), eq(bioPage.isPublished, true)),
+    with: { user: { columns: { deletedAt: true } } },
   });
-  if (!page) return null;
+  if (!page || page.user?.deletedAt) return null;
   return assemblePublicBioPage(ctx.db, page);
 }
 

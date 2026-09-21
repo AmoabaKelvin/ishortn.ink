@@ -4,6 +4,7 @@ import { api } from "@/trpc/server";
 
 import { SettingsNav } from "./_components/settings-nav";
 import Billing from "./billing/billing";
+import { DeleteAccountSection } from "./delete-account/delete-account-section";
 import { SettingsForm } from "./general/settings-form";
 import { ProfileForm } from "./profile/profile-form";
 import GenerateTokenTrigger from "./tokens/_components/create-token";
@@ -111,6 +112,19 @@ async function SettingsPage() {
             </p>
             <div className="mt-4">
               <AccountTransferSection />
+            </div>
+          </section>
+
+          {/* Delete Account */}
+          <section id="delete-account" className="scroll-mt-24">
+            <h2 className="text-[14px] font-semibold text-red-600 dark:text-red-400">
+              Delete Account
+            </h2>
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+              Close your account and remove your data
+            </p>
+            <div className="mt-4">
+              <DeleteAccountSection />
             </div>
           </section>
         </div>

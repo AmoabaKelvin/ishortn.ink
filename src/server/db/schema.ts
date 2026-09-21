@@ -1157,6 +1157,35 @@ export type AudienceFeedback = typeof audienceFeedback.$inferSelect;
 export type NewAudienceFeedback = typeof audienceFeedback.$inferInsert;
 
 // ============================================================================
+// ACCOUNT DELETION (offboarding survey + soft-delete record)
+// ============================================================================
+
+// Survives the purge on purpose: the churn answers are the reason we ask, and
+// they are worth keeping once the User row is gone. userId is kept as a plain
+// string, not a live reference.
+export const accountDeletion = mysqlTable(
+  "AccountDeletion",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull().unique(),
+    email: varchar("email", { length: 255 }),
+    reason: varchar("reason", { length: 64 }),
+    destination: varchar("destination", { length: 64 }),
+    improvement: text("improvement"),
+    planSnapshot: mysqlEnum("planSnapshot", ["free", "pro", "ultra"]),
+    requestedAt: timestamp("requestedAt").defaultNow(),
+    restoredAt: timestamp("restoredAt"),
+    purgedAt: timestamp("purgedAt"),
+  },
+  (table) => ({
+    requestedAtIdx: index("requestedAt_idx").on(table.requestedAt),
+  }),
+);
+
+export type AccountDeletion = typeof accountDeletion.$inferSelect;
+export type NewAccountDeletion = typeof accountDeletion.$inferInsert;
+
+// ============================================================================
 // BIO PAGES (Link-in-Bio)
 // ============================================================================
 

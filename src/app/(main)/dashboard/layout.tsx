@@ -1,15 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
-import { IconBan } from "@tabler/icons-react";
+import { IconBan, IconTrash } from "@tabler/icons-react";
 import { Funnel_Sans } from "next/font/google";
 
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { ChangelogToast } from "@/components/changelog/changelog-toast";
+import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { ensureUser } from "@/server/lib/ensure-user";
 
 import { DomainMigrationGate } from "./_components/domain-migration-gate";
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
+import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
 
 interface Props {
@@ -70,6 +72,45 @@ export default async function DashboardLayout({ children }: Props) {
               </a>
             </p>
             <div className="mt-8">
+              <SignOutButton />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (currentUser?.deletedAt) {
+      const purgeAt = purgeDateFor(currentUser.deletedAt);
+
+      return (
+        <div
+          className={cn(
+            "flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-accent/50 px-4",
+            funnelSans.className,
+          )}
+        >
+          <div className="w-full max-w-md text-center">
+            <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-500/10">
+              <IconTrash size={24} stroke={1.5} className="text-amber-600 dark:text-amber-400" />
+            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+              Account scheduled for deletion
+            </h1>
+            <p className="mt-2 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+              Your links and bio pages have stopped working. Everything is permanently deleted on{" "}
+              {purgeAt.toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+              .
+            </p>
+            <p className="mt-4 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+              Changed your mind? Restore it and your links, bio pages, and analytics come back. A
+              paid subscription stays cancelled — you&apos;d need to subscribe again.
+            </p>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <RestoreAccountButton />
               <SignOutButton />
             </div>
           </div>

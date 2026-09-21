@@ -5,6 +5,7 @@ import {
   IconCreditCard,
   IconKey,
   IconSettings,
+  IconTrash,
   IconUser,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -17,6 +18,7 @@ const navItems = [
   { id: "billing", label: "Billing", icon: IconCreditCard },
   { id: "api-keys", label: "API Keys", icon: IconKey },
   { id: "account-transfer", label: "Transfer", icon: IconArrowsExchange },
+  { id: "delete-account", label: "Delete", icon: IconTrash },
 ];
 
 export function SettingsNav() {
