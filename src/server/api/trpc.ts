@@ -53,14 +53,15 @@ export type ProtectedTRPCContext = Omit<TRPCContext, "auth"> & {
   };
   /** Whether the user has isAdmin=true, fetched once during auth */
   isAdmin: boolean;
+  deletedAt: Date | null;
 };
 
 // Per-request memo so batched procedures share one ban/admin lookup.
 // Keyed on the ctx object — same request = same ctx = same cached promise.
 const currentUserCache = new WeakMap<object, Promise<UserAccess | undefined>>();
 
-// Protected procedure middleware
-export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+// Like protectedProcedure, but still reachable after a soft delete.
+export const softDeletedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.auth.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
@@ -86,9 +87,22 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
       userId: ctx.auth.userId,
     },
     isAdmin: currentUser?.isAdmin ?? false,
+    deletedAt: currentUser?.deletedAt ?? null,
   };
 
   return next({ ctx: protectedCtx });
+});
+
+// Protected procedure middleware
+export const protectedProcedure = softDeletedProcedure.use(({ ctx, next }) => {
+  if (ctx.deletedAt) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This account is scheduled for deletion. Restore it to keep using iShortn.",
+    });
+  }
+
+  return next({ ctx });
 });
 
 // ============================================================================

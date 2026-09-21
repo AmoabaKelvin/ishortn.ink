@@ -1,4 +1,5 @@
 import { env } from "@/env.mjs";
+import { formatAccountDeletionLabel } from "@/lib/account-deletion/labels";
 import { formatAudienceFeedbackLabel } from "@/lib/audience-feedback/labels";
 import { logger } from "@/lib/logger";
 
@@ -295,6 +296,47 @@ export async function sendAudienceFeedbackNotification(params: {
     timestamp: new Date().toISOString(),
     footer: {
       text: "iShortn Audience Feedback",
+    },
+  };
+
+  return sendDiscordNotification({ embeds: [embed] });
+}
+
+export async function sendAccountDeletionNotification(params: {
+  userEmail: string;
+  userName?: string | null;
+  planSnapshot: string;
+  reason: string;
+  destination?: string | null;
+  improvement?: string | null;
+  linksAffected: number;
+}): Promise<boolean> {
+  const embed: DiscordEmbed = {
+    title: "Account Deleted",
+    color: DISCORD_COLORS.error,
+    fields: [
+      {
+        name: "User",
+        value: params.userName ? `${params.userName} (${params.userEmail})` : params.userEmail,
+        inline: true,
+      },
+      { name: "Plan", value: params.planSnapshot, inline: true },
+      { name: "Links Blocked", value: String(params.linksAffected), inline: true },
+      { name: "Reason", value: formatAccountDeletionLabel(params.reason), inline: false },
+      {
+        name: "Moving To",
+        value: formatAccountDeletionLabel(params.destination),
+        inline: true,
+      },
+      {
+        name: "What We Could Have Done Better",
+        value: formatOptionalDiscordValue(params.improvement),
+        inline: false,
+      },
+    ],
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: "iShortn Offboarding",
     },
   };
 

@@ -484,6 +484,13 @@
       "when": 1788384909667,
       "tag": "0068_red_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "5",
+      "when": 1789973928472,
+      "tag": "0069_optimal_the_executioner",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
+import { cleanupDeletedAccounts } from "@/server/api/routers/cleanup/account-cleanup.service";
 import { cleanupExpiredData } from "@/server/api/routers/cleanup/expired-data-cleanup.service";
 import { isInternalRequest } from "@/server/lib/internal-request";
 
@@ -10,6 +11,7 @@ const log = logger.child({ job: "cleanup-expired" });
  * Cron job endpoint to clean up expired data:
  * - Expired team invites (past expiresAt and not accepted)
  * - Invalid custom domains older than 30 days
+ * - Accounts soft-deleted more than the 30-day grace period ago
  *
  * This endpoint requires API key authentication via the CRON_SECRET environment variable.
  * The Worker's scheduled handler sends GET requests with the Authorization header.
@@ -36,21 +38,24 @@ export async function GET(request: Request) {
     log.debug("starting cleanup");
     const startTime = Date.now();
 
-    const result = await cleanupExpiredData();
+    const expired = await cleanupExpiredData();
+    const accounts = await cleanupDeletedAccounts();
 
     const durationMs = Date.now() - startTime;
     log.info(
       {
         durationMs,
-        expiredInvitesDeleted: result.expiredInvitesDeleted,
-        invalidDomainsDeleted: result.invalidDomainsDeleted,
+        expiredInvitesDeleted: expired.expiredInvitesDeleted,
+        invalidDomainsDeleted: expired.invalidDomainsDeleted,
+        accountsDeleted: accounts.accountsDeleted,
+        accountPurgeFailures: accounts.failures,
       },
       "cleanup complete",
     );
 
     return NextResponse.json({
       success: true,
-      result,
+      result: { ...expired, ...accounts },
       duration: `${durationMs}ms`,
     });
   } catch (error) {

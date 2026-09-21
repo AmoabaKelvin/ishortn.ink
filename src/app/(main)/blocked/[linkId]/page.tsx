@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { Funnel_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 
+import { DELETION_CASCADE_REASON } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { db } from "@/server/db";
 import { geoRule, link } from "@/server/db/schema";
@@ -32,8 +33,12 @@ export default async function BlockedPage({ params, searchParams }: BlockedPageP
   let reason: string;
 
   if (linkRecord.blocked) {
+    // Internal sentinel, never shown to visitors.
     reason =
-      linkRecord.blockedReason ?? "This link has been blocked for violating our terms of service.";
+      linkRecord.blockedReason === DELETION_CASCADE_REASON
+        ? "This link is no longer active."
+        : (linkRecord.blockedReason ??
+          "This link has been blocked for violating our terms of service.");
   } else if (geo) {
     // Fetch the geo rule's custom block message server-side
     const geoRuleId = Number(geo);
