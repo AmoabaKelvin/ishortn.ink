@@ -27,7 +27,7 @@ const log = logger.child({ component: "account-deletion" });
 type CachedLink = { alias: string | null; domain: string };
 
 async function evictLinkCache(links: CachedLink[], userId: string) {
-  let keys = links.map((l) => buildCacheKey(l.domain, l.alias!));
+  let keys = links.flatMap((l) => (l.alias ? [buildCacheKey(l.domain, l.alias)] : []));
 
   for (let attempt = 0; attempt < 3 && keys.length > 0; attempt++) {
     const evicted = await Promise.all(keys.map((key) => deleteFromCache(key)));

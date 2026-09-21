@@ -86,17 +86,6 @@ export async function cleanupDeletedAccounts(): Promise<AccountCleanupResult> {
 }
 
 async function purgeAccount(userId: string, result: AccountCleanupResult): Promise<boolean> {
-  // The candidate list is a snapshot; the account may have been restored since.
-  const current = await db.query.user.findFirst({
-    where: eq(user.id, userId),
-    columns: { deletedAt: true },
-  });
-
-  if (!current?.deletedAt || purgeDateFor(current.deletedAt) > new Date()) {
-    log.info({ userId }, "account no longer eligible for purge; skipping");
-    return false;
-  }
-
   const [links, bioPages, domains, folders] = await Promise.all([
     db
       .select({ id: link.id, alias: link.alias, domain: link.domain })
@@ -116,25 +105,35 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
       .where(and(eq(folder.userId, userId), isNull(folder.teamId))),
   ]);
 
-  // Clerk first, so nobody signs in mid-purge. Failure aborts; next run retries.
-  try {
-    await (await clerkClient()).users.deleteUser(userId);
-  } catch (err) {
-    // SAFETY: Clerk's backend SDK throws errors carrying a numeric `status`;
-    // reading it off an unknown shape yields undefined, which we rethrow. A 404
-    // means the identity is already gone, which is not a failure.
-    const status = (err as { status?: number }).status;
-    if (status !== 404) throw err;
-  }
-
-  // Before the customDomain rows go, or a failed hostname can't be found again.
-  await Promise.all(domains.map((d) => (d.domain ? deleteCustomHostname(d.domain) : undefined)));
-
   const linkIds = links.map((l) => l.id);
   const bioPageIds = bioPages.map((p) => p.id);
   const folderIds = folders.map((f) => f.id);
 
-  await db.transaction(async (tx) => {
+  const purged = await db.transaction(async (tx) => {
+    // Row lock: a restore racing this purge either lands first (and we skip) or
+    // waits until the account is gone.
+    const [current] = await tx
+      .select({ deletedAt: user.deletedAt })
+      .from(user)
+      .where(eq(user.id, userId))
+      .for("update");
+
+    if (!current?.deletedAt || purgeDateFor(current.deletedAt) > new Date()) return false;
+
+    // Clerk first, so nobody signs in mid-purge. Failure aborts; next run retries.
+    try {
+      await (await clerkClient()).users.deleteUser(userId);
+    } catch (err) {
+      // SAFETY: Clerk's backend SDK throws errors carrying a numeric `status`;
+      // reading it off an unknown shape yields undefined, which we rethrow. A 404
+      // means the identity is already gone, which is not a failure.
+      const status = (err as { status?: number }).status;
+      if (status !== 404) throw err;
+    }
+
+    // Before the customDomain rows go, or a failed hostname can't be found again.
+    await Promise.all(domains.map((d) => (d.domain ? deleteCustomHostname(d.domain) : undefined)));
+
     for (const ids of chunk(linkIds)) {
       await tx.delete(linkVisit).where(inArray(linkVisit.linkId, ids));
       await tx.delete(uniqueLinkVisit).where(inArray(uniqueLinkVisit.linkId, ids));
@@ -198,9 +197,18 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
       .update(accountDeletion)
       .set({ purgedAt: sql`CURRENT_TIMESTAMP` })
       .where(eq(accountDeletion.userId, userId));
+
+    return true;
   });
 
-  await Promise.allSettled(links.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))));
+  if (!purged) {
+    log.info({ userId }, "account no longer eligible for purge; skipping");
+    return false;
+  }
+
+  await Promise.allSettled(
+    links.flatMap((l) => (l.alias ? [deleteFromCache(buildCacheKey(l.domain, l.alias))] : [])),
+  );
 
   log.info({ userId, links: linkIds.length, bioPages: bioPageIds.length }, "account purged");
   return true;
