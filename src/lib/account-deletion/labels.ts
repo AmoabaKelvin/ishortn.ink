@@ -3,7 +3,6 @@ import {
   accountDeletionReasonValues,
 } from "@/server/api/routers/account-deletion/account-deletion.input";
 
-/** Ordered for the exit survey dropdown; also the source for Discord labels. */
 export const ACCOUNT_DELETION_REASON_OPTIONS = [
   { value: "no_longer_needed", label: "I don't need a link shortener anymore" },
   { value: "found_alternative", label: "I'm moving to another tool" },

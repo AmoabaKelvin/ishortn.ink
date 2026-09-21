@@ -33,8 +33,7 @@ export default async function BlockedPage({ params, searchParams }: BlockedPageP
   let reason: string;
 
   if (linkRecord.blocked) {
-    // The deletion cascade's reason is an internal sentinel — visitors get
-    // neutral copy instead of the owner's account state.
+    // Internal sentinel, never shown to visitors.
     reason =
       linkRecord.blockedReason === DELETION_CASCADE_REASON
         ? "This link is no longer active."

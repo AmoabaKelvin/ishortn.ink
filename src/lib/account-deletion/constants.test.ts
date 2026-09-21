@@ -12,7 +12,6 @@ describe("purgeDateFor", () => {
   });
 
   test("crosses month and year boundaries", () => {
-    // 2026-12-15 + 30d = 2027-01-14, and February gets its real length.
     expect(purgeDateFor(new Date("2026-12-15T00:00:00.000Z")).toISOString()).toStartWith(
       "2027-01-14",
     );
@@ -29,8 +28,7 @@ describe("purgeDateFor", () => {
 });
 
 describe("DELETION_CASCADE_REASON", () => {
-  // Restore only un-blocks links carrying this exact string, so a drift here
-  // would silently strand every link of a restored account.
+  // Restore matches on this exact string.
   test("is the exact sentinel restore matches on", () => {
     expect(DELETION_CASCADE_REASON).toBe("Owner account deleted");
   });

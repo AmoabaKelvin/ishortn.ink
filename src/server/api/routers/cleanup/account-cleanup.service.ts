@@ -42,8 +42,7 @@ import { deleteCustomHostname } from "../domains/cloudflare";
 
 const log = logger.child({ job: "cleanup-accounts" });
 
-// ponytail: IN-list chunk, keeps a 50k-link account from building one giant
-// statement. Raise it if the purge ever becomes the slow part.
+// ponytail: caps IN-list size; raise if the purge gets slow.
 function chunk<T>(items: T[], size = 500): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
@@ -57,15 +56,7 @@ export interface AccountCleanupResult {
   failures: number;
 }
 
-/**
- * Permanently delete accounts that were soft-deleted more than the grace period
- * ago. Mirrors cleanupDeletedTeams, but scoped to a user's personal resources —
- * team-owned rows are never touched (a user who owns a team can't get here;
- * deletion is blocked until the team is handled).
- *
- * The AccountDeletion survey row is deliberately kept: it is the churn data the
- * whole flow exists to collect.
- */
+// Personal resources only; team-owned rows and the AccountDeletion survey row stay.
 export async function cleanupDeletedAccounts(): Promise<AccountCleanupResult> {
   const result: AccountCleanupResult = {
     accountsDeleted: 0,
@@ -95,9 +86,7 @@ export async function cleanupDeletedAccounts(): Promise<AccountCleanupResult> {
 }
 
 async function purgeAccount(userId: string, result: AccountCleanupResult): Promise<boolean> {
-  // The candidate list is a snapshot; earlier purges in this run take time.
-  // Re-read so an account restored since then is never destroyed. Same deadline
-  // restoreAccount enforces, so the two can't overlap.
+  // The candidate list is a snapshot; the account may have been restored since.
   const current = await db.query.user.findFirst({
     where: eq(user.id, userId),
     columns: { deletedAt: true },
@@ -108,7 +97,6 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
     return false;
   }
 
-  // Personal resources only: teamId IS NULL. Team-owned rows stay put.
   const [links, bioPages, domains, folders] = await Promise.all([
     db
       .select({ id: link.id, alias: link.alias, domain: link.domain })
@@ -128,8 +116,7 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
       .where(and(eq(folder.userId, userId), isNull(folder.teamId))),
   ]);
 
-  // Identity first: once Clerk is gone the user can't sign back in mid-purge.
-  // A failure here aborts before any row is touched, so the next run retries.
+  // Clerk first, so nobody signs in mid-purge. Failure aborts; next run retries.
   try {
     await (await clerkClient()).users.deleteUser(userId);
   } catch (err) {
@@ -140,9 +127,7 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
     if (status !== 404) throw err;
   }
 
-  // Before the rows go: once customDomain is deleted nothing can rediscover the
-  // hostname, so a Cloudflare failure aborts here and the next run retries.
-  // Already-removed hostnames are a no-op.
+  // Before the customDomain rows go, or a failed hostname can't be found again.
   await Promise.all(domains.map((d) => (d.domain ? deleteCustomHostname(d.domain) : undefined)));
 
   const linkIds = links.map((l) => l.id);
@@ -209,15 +194,12 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
 
     await tx.delete(user).where(eq(user.id, userId));
 
-    // Survey row survives the user — stamp it so we know the purge ran.
     await tx
       .update(accountDeletion)
       .set({ purgedAt: sql`CURRENT_TIMESTAMP` })
       .where(eq(accountDeletion.userId, userId));
   });
 
-  // Best effort: these links were blocked at deletion, so a stale key only
-  // serves the blocked page until the cache TTL.
   await Promise.allSettled(links.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))));
 
   log.info({ userId, links: linkIds.length, bioPages: bioPageIds.length }, "account purged");

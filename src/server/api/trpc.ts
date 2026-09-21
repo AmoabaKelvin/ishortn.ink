@@ -53,7 +53,6 @@ export type ProtectedTRPCContext = Omit<TRPCContext, "auth"> & {
   };
   /** Whether the user has isAdmin=true, fetched once during auth */
   isAdmin: boolean;
-  /** Set while the account is soft-deleted and inside the restore grace period */
   deletedAt: Date | null;
 };
 
@@ -61,8 +60,7 @@ export type ProtectedTRPCContext = Omit<TRPCContext, "auth"> & {
 // Keyed on the ctx object — same request = same ctx = same cached promise.
 const currentUserCache = new WeakMap<object, Promise<UserAccess | undefined>>();
 
-// Signed-in and not banned, but reachable after a soft delete — only the
-// deletion status and restore procedures use it directly.
+// Like protectedProcedure, but still reachable after a soft delete.
 export const softDeletedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.auth.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });

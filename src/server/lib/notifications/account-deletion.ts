@@ -12,10 +12,6 @@ type SendAccountDeletionEmailInput = {
   purgeAt: Date;
 };
 
-/**
- * Confirms the soft delete and carries the restore link — also the only signal
- * a user gets if someone else deleted their account.
- */
 export async function sendAccountDeletionEmail({
   toEmail,
   toName,

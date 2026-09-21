@@ -54,9 +54,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // Deletions from Clerk's own account portal never carry a user profile, so
-  // they'd fail the schema below and retry forever. Mirror them as a soft
-  // delete instead: the DB row is only ever removed by the purge job.
+  // user.deleted carries no profile, so it would fail the schema below.
   const deletion = clerkUserDeletedEventSchema.safeParse(payload);
   if (deletion.success) {
     const deletedUserId = deletion.data.data.id;

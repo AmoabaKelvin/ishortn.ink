@@ -26,9 +26,6 @@ const log = logger.child({ component: "account-deletion" });
 
 type CachedLink = { alias: string | null; domain: string };
 
-// A blocked (or restored) row only takes effect once its cache entry is gone,
-// so failed evictions get two more tries. Anything still stuck ages out with
-// the cache TTL.
 async function evictLinkCache(links: CachedLink[], userId: string) {
   let keys = links.map((l) => buildCacheKey(l.domain, l.alias!));
 
@@ -64,11 +61,6 @@ export async function getDeletionStatus(ctx: ProtectedTRPCContext) {
   };
 }
 
-/**
- * Soft-delete the account: record the exit survey, stamp user.deletedAt, and
- * cascade-block the user's personal links so they stop resolving immediately.
- * Everything is reversible until the purge job runs.
- */
 export async function requestAccountDeletion(
   ctx: ProtectedTRPCContext,
   input: RequestAccountDeletionInput,
@@ -96,7 +88,6 @@ export async function requestAccountDeletion(
     });
   }
 
-  // Owned teams block deletion — members would silently lose the workspace.
   const ownedTeams = await ctx.db.query.team.findMany({
     where: and(eq(team.ownerId, userId), isNull(team.deletedAt)),
     columns: { name: true },
@@ -124,10 +115,7 @@ export async function requestAccountDeletion(
   const userSubscription = currentUser.subscriptions;
   const planSnapshot = resolvePlan(userSubscription);
 
-  // Cancel billing first: if this fails we abort, so nobody keeps paying for an
-  // account they can no longer reach. A subscription the user already cancelled
-  // stays entitled until endsAt — cancelling it twice just makes Lemon Squeezy
-  // error and locks them out of deleting.
+  // A cancelled subscription stays entitled until endsAt; don't cancel it twice.
   const alreadyCancelled = userSubscription?.status === "cancelled";
 
   if (
@@ -139,8 +127,7 @@ export async function requestAccountDeletion(
     const cancelled = await cancelSubscription(userSubscription.subscriptionId);
     let remote = cancelled.data?.data.attributes;
 
-    // An earlier attempt may have cancelled remotely and then failed to record
-    // it here. Ask Lemon Squeezy what's true before giving up.
+    // An earlier attempt may have cancelled remotely without recording it here.
     if (cancelled.error) {
       const current = await getSubscription(userSubscription.subscriptionId);
       remote = current.data?.data.attributes;
@@ -167,9 +154,7 @@ export async function requestAccountDeletion(
       .where(eq(subscription.userId, userId));
   }
 
-  // Personal links only — team links belong to the team, not the leaving user.
-  // Skip links that are already blocked: overwriting an abuse block with our
-  // sentinel would hand the link back on restore.
+  // Skip already-blocked links so restore can't lift an abuse block.
   const cascadeTarget = and(
     eq(link.userId, userId),
     isNull(link.teamId),
@@ -234,7 +219,6 @@ export async function requestAccountDeletion(
   return { deletedAt, purgeAt };
 }
 
-/** Undo a soft delete inside the grace period. */
 export async function restoreAccount(ctx: ProtectedTRPCContext) {
   const userId = ctx.auth.userId;
 
@@ -247,8 +231,6 @@ export async function restoreAccount(ctx: ProtectedTRPCContext) {
     return { restored: false };
   }
 
-  // Independent of when the purge job actually runs: past this point the job
-  // may already be deleting the account.
   if (purgeDateFor(currentUser.deletedAt) <= new Date()) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -256,7 +238,6 @@ export async function restoreAccount(ctx: ProtectedTRPCContext) {
     });
   }
 
-  // Only the links this cascade blocked — anything blocked for abuse stays blocked.
   const blockedLinks = await ctx.db
     .select({ alias: link.alias, domain: link.domain })
     .from(link)

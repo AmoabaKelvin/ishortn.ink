@@ -59,7 +59,6 @@ export function DeleteAccountSection() {
 
   const deleteMutation = api.accountDeletion.request.useMutation({
     onSuccess: () => {
-      // Signing out is the confirmation: the dashboard is gone for them now.
       void signOut({ redirectUrl: "/" });
     },
     onError: (error) => toast.error(error.message || "Couldn't delete your account"),

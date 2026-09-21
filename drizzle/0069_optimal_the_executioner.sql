@@ -15,6 +15,5 @@ CREATE TABLE `AccountDeletion` (
 --> statement-breakpoint
 CREATE INDEX `requestedAt_idx` ON `AccountDeletion` (`requestedAt`);
 --> statement-breakpoint
--- New tables default to utf8mb4_0900_ai_ci while User is utf8mb4_unicode_ci, which
--- breaks any join on userId. Same fix as 0033, 0037, 0039, 0055, 0060.
+-- Match User's collation so joins on userId work (same fix as 0060).
 ALTER TABLE `AccountDeletion` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

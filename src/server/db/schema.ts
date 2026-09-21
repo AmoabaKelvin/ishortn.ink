@@ -1160,9 +1160,7 @@ export type NewAudienceFeedback = typeof audienceFeedback.$inferInsert;
 // ACCOUNT DELETION (offboarding survey + soft-delete record)
 // ============================================================================
 
-// Survives the purge on purpose: the churn answers are the reason we ask, and
-// they are worth keeping once the User row is gone. userId is kept as a plain
-// string, not a live reference.
+// Outlives the User row, so userId is a plain string.
 export const accountDeletion = mysqlTable(
   "AccountDeletion",
   {
