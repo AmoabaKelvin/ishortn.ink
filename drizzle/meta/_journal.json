@@ -505,6 +505,13 @@
       "when": 1795144408012,
       "tag": "0071_numerous_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1795187856462,
+      "tag": "0072_low_vermin",
+      "breakpoints": true
     }
   ]
 }
