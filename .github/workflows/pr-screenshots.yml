@@ -1,0 +1,44 @@
+name: PR Screenshots
+
+# UI changes must show desktop and mobile screenshots in a collapsed
+# <details><summary>Screenshots</summary> section of the PR description.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require screenshots when UI changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          # Fetch separately so an API failure fails the check instead of reading as "no UI files".
+          files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')
+          ui=$(printf '%s\n' "$files" \
+            | grep -E '^src/(app|components)/.+\.(tsx|css)$|^src/styles/|^tailwind\.config\.' \
+            | grep -vE '\.test\.tsx?$|/route\.ts$' || true)
+          if [ -z "$ui" ]; then
+            echo "No UI files changed."
+            exit 0
+          fi
+          echo "UI files changed:"
+          printf '  %s\n' $ui
+          # Only the Screenshots section counts, up to its own closing tag.
+          section=$(printf '%s' "$BODY" | perl -0777 -ne 'print $1 if m{<summary>\s*Screenshots\s*</summary>(.*?)</details>}is')
+          images=$(printf '%s' "$section" | grep -oE '<img |!\[[^]]*\]\(https://' | wc -l)
+          if [ "$images" -ge 2 ] && printf '%s' "$section" | grep -qi 'desktop' && printf '%s' "$section" | grep -qi 'mobile'; then
+            echo "Desktop and mobile screenshots found ($images images)."
+            exit 0
+          fi
+          echo "::error::This PR changes UI. Add desktop and mobile screenshots (labelled Desktop and Mobile) in a collapsed <details><summary>Screenshots</summary> section of the PR description."
+          exit 1
