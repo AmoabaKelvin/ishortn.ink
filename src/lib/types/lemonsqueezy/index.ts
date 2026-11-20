@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-const customDataSchema = z.object({ user_id: z.string() });
+// Only the in-app checkout sets user_id. Subscriptions created elsewhere (the
+// Lemon Squeezy dashboard, a shared checkout link) arrive without it.
+const customDataSchema = z.object({ user_id: z.string().optional() }).nullish();
 
-/** Every Lemon Squeezy webhook, whatever the event, identifies the user it concerns. */
 export const lemonsqueezyWebhookEnvelopeSchema = z.object({
   meta: z.object({
     event_name: z.string(),
-    custom_data: customDataSchema,
   }),
 });
 
@@ -23,6 +23,7 @@ export const lemonsqueezySubscriptionAttributesSchema = z.object({
   product_id: z.number(),
   variant_id: z.number(),
   status: z.string(),
+  user_email: z.string().nullish(),
   card_brand: z.string().nullable(),
   card_last_four: z.string().nullable(),
   renews_at: z.string(),

@@ -35,7 +35,6 @@ When you share a short link without custom metadata, social platforms typically 
 
 - **Brand consistency** — Use your own branded images instead of random page screenshots
 - **Campaign messaging** — Write compelling titles and descriptions that drive clicks
-- **A/B testing** — Try different preview images to see what performs best
 - **Clean appearance** — Avoid broken or missing previews from pages with poor metadata
 
 ## How it works

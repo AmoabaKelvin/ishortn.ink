@@ -49,7 +49,7 @@ If you are running a thread, use distinct short links for each tweet so you can 
 
 Instagram does not allow clickable links in post captions, which makes your bio link the most valuable piece of real estate on the platform. A link-in-bio strategy using short links lets you rotate the destination URL as campaigns change without altering the link itself. Point your bio to a single short link, then update the destination behind it whenever you launch a new campaign, product, or piece of content. If you need a full landing page with several links rather than a single redirect, see how [iShortn compares to Linktree](/compare/linktree).
 
-For Stories (available to accounts with sufficient reach), swipe-up or link sticker URLs benefit from short links as well. Each story can use a unique short link so you can compare performance across individual stories.
+For Stories, the link sticker (available to all accounts since swipe-up was retired) is a natural place for a short link as well. Each story can use a unique short link so you can compare performance across individual stories.
 
 ### LinkedIn
 

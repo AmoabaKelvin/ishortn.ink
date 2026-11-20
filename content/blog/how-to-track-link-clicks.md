@@ -1,5 +1,6 @@
 ---
 title: "How to Track Link Clicks: The Complete Guide to Link Analytics"
+seoTitle: "How to Track Link Clicks: Link Analytics Guide"
 description: "Learn how to track link clicks, measure campaign performance, and understand your audience with link analytics. Step-by-step guide with practical examples."
 date: "2026-03-05"
 updated: "2026-11-20"

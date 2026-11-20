@@ -1,9 +1,11 @@
+// category is the product type the comparison is framed as, used in the page title and description.
 // pricesCheckedOn is the ISO date the competitor's plans and prices were last verified on their
 // live pricing page; it is shown on the comparison page, so bump it whenever the data is re-checked.
 export const competitors = {
   bitly: {
     name: "Bitly",
     slug: "bitly",
+    category: "URL shortener",
     pricesCheckedOn: "2026-11-20",
     tagline: "The most popular URL shortener",
     description:
@@ -28,29 +30,31 @@ export const competitors = {
   tinyurl: {
     name: "TinyURL",
     slug: "tinyurl",
-    pricesCheckedOn: "2026-06-23",
+    category: "URL shortener",
+    pricesCheckedOn: "2026-11-20",
     tagline: "The original URL shortener",
     description:
       "TinyURL was one of the first URL shorteners, but it lacks analytics and modern features. See how iShortn compares.",
-    freeLinks: "Unlimited (no account needed)",
+    freeLinks: "30/month (no cap without an account)",
     freeAnalytics: "None",
     customDomains: "Paid only",
-    qrCodes: "Paid only",
-    apiAccess: "Paid only",
+    qrCodes: "Yes (static)",
+    apiAccess: "Yes (free account)",
     teamFeatures: "None",
     passwordProtection: "None",
-    pricing: "Free, Pro $9.99/mo, Bulk $99/mo",
+    pricing: "Free, Pro from $9/mo (billed annually), Bulk from $69/mo (billed annually)",
     whySwitch: [
       "TinyURL offers zero analytics on the free plan — iShortn tracks every click with detailed data",
-      "No QR codes, custom domains, or password protection on TinyURL free",
+      "No custom domains or password protection on TinyURL free",
       "TinyURL free plan shows ads — iShortn is ad-free on all plans",
-      "Even TinyURL Pro at $9.99/month only offers basic click counts — iShortn free gives you more",
+      "TinyURL Pro starts at $9/month (billed annually) for 125 links a month — iShortn Pro is $8/month for 1,000 links",
       "iShortn includes AI-powered link safety scanning on all plans",
     ],
   },
   rebrandly: {
     name: "Rebrandly",
     slug: "rebrandly",
+    category: "URL shortener",
     pricesCheckedOn: "2026-11-20",
     tagline: "Branded link management platform",
     description:
@@ -67,12 +71,13 @@ export const competitors = {
       "Rebrandly free gives 10 links and 100 tracked clicks a month — iShortn gives 30 links and 1,000 tracked events",
       "Rebrandly Free includes 1 custom domain and 100 tracked clicks a month. iShortn Pro includes 3 custom domains and 10,000 tracked events for $8/month",
       "Rebrandly QR codes have watermarks on free — iShortn QR codes are clean on all plans",
-      "iShortn includes geo-targeting and AI-powered security that Rebrandly charges extra for",
+      "iShortn Pro adds geo and device targeting for $8/month, and AI-powered phishing detection checks links on every plan",
     ],
   },
   "short-io": {
     name: "Short.io",
     slug: "short-io",
+    category: "URL shortener",
     pricesCheckedOn: "2026-11-20",
     tagline: "White-label link shortener",
     description:
@@ -88,12 +93,13 @@ export const competitors = {
     whySwitch: [
       "Short.io free gives 1,000 links total lifetime — iShortn gives fresh links every month",
       "Short.io Pro is $18/month and Team is $48/month — iShortn Pro is just $8/month",
-      "iShortn includes password protection and AI-powered phishing detection on all links",
+      "iShortn Pro ($8/month) includes password protection, and AI-powered phishing detection checks links on every plan",
     ],
   },
   dub: {
     name: "Dub.co",
     slug: "dub",
+    category: "URL shortener",
     pricesCheckedOn: "2026-11-20",
     tagline: "Open-source link management",
     description:
@@ -116,13 +122,14 @@ export const competitors = {
   linktree: {
     name: "Linktree",
     slug: "linktree",
+    category: "link in bio",
     pricesCheckedOn: "2026-06-23",
     tagline: "The default link-in-bio — but you pay to see what's working",
     description:
       "Linktree is the most recognized link-in-bio tool, with a generous free page and a huge template library. The catch: the analytics that show which links convert sit behind paid plans. See how iShortn compares.",
     freeLinks: "Unlimited links on the bio page",
     freeAnalytics: "Basic views only — per-link geo/device data is paid",
-    customDomains: "Paid only",
+    customDomains: "Not available",
     qrCodes: "Yes, all plans",
     apiAccess: "No public API",
     teamFeatures: "Higher paid tiers only",
@@ -133,12 +140,13 @@ export const competitors = {
       "iShortn Pro ($8/mo) gives unlimited analytics retention; Linktree's link-level insight only arrives on paid tiers",
       "iShortn is link-in-bio plus a full URL shortener, QR codes, and analytics in one tool — not a bio page with analytics sold separately",
       "iShortn Pro adds password-protected links, which Linktree doesn't offer at all",
-      "iShortn Pro ships a full REST API to automate your links and bio — Linktree has no comparable public API",
+      "iShortn Pro includes a REST API for links and analytics — Linktree has no comparable public API",
     ],
   },
   beacons: {
     name: "Beacons",
     slug: "beacons",
+    category: "link in bio",
     pricesCheckedOn: "2026-06-23",
     tagline: "A creator-commerce platform first, a link-in-bio second",
     description:
@@ -156,12 +164,13 @@ export const competitors = {
       "Every iShortn bio link is a tracked short link with click, geo, device, and referrer data on all plans — see where your audience comes from, not just store conversions",
       "If you just want a fast, tracked bio page plus short links and QR codes, iShortn does it in one focused tool instead of a sprawling commerce suite",
       "iShortn Pro ($8/mo) includes 3 custom domains outright, while Beacons gates domains to paid plans (free only for year one)",
-      "iShortn Pro ships a full REST API for your links and bio — Beacons offers no equivalent public API",
+      "iShortn Pro includes a REST API for links and analytics — Beacons offers no equivalent public API",
     ],
   },
   carrd: {
     name: "Carrd",
     slug: "carrd",
+    category: "link in bio",
     pricesCheckedOn: "2026-06-23",
     tagline: "A great one-page site builder — not a link-in-bio analytics tool",
     description:
@@ -179,9 +188,12 @@ export const competitors = {
       "iShortn is a bio page plus a real URL shortener and QR codes in one tool, where Carrd is a static site builder with no link tracking or QR support",
       "iShortn's free plan includes a bio page, 30 tracked short links/month, and 5 dynamic QR codes",
       "iShortn Pro ($8/mo) adds password-protected links and removes branding; Carrd only unlocks password protection on its $49/yr Pro Plus plan",
-      "iShortn Pro includes a full REST API and custom domains, neither of which Carrd offers",
+      "iShortn Pro includes a REST API for links and analytics plus custom domains, neither of which Carrd offers",
     ],
   },
 } as const;
 
 export type Competitor = (typeof competitors)[keyof typeof competitors];
+
+export const comparisonTitle = (competitor: Competitor) =>
+  `${competitor.name} vs iShortn: ${competitor.category} comparison`;

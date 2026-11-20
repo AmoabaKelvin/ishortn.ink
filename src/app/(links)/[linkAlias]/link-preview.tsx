@@ -4,19 +4,21 @@ import { Funnel_Sans } from "next/font/google";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import type { RouterOutputs } from "@/trpc/shared";
-
 const funnelSans = Funnel_Sans({
   subsets: ["latin"],
   weight: ["400", "700"],
 });
 
-function LinkPreview({
-  link,
-}: {
-  link: NonNullable<RouterOutputs["link"]["retrieveOriginalUrl"]>;
-}) {
-  const shortUrl = `${link.domain}/${link.alias}`;
+type LinkPreviewProps = {
+  domain: string;
+  alias: string | null;
+  url: string | null;
+};
+
+// Server component: only reached for links that are not password protected,
+// blocked, disabled or scheduled, so showing the destination is intended.
+function LinkPreview({ domain, alias, url }: LinkPreviewProps) {
+  const shortUrl = `${domain}/${alias}`;
 
   return (
     <main
@@ -46,7 +48,7 @@ function LinkPreview({
             <span className="text-[12px]">Redirects to</span>
           </div>
           <p className="text-[13px] break-all text-neutral-700 dark:text-neutral-300">
-            {link.url ?? "No destination set"}
+            {url ?? "No destination set"}
           </p>
         </div>
 
