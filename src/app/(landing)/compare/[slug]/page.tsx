@@ -34,6 +34,16 @@ export function generateStaticParams() {
   return Object.values(competitors).map((c) => ({ slug: c.slug }));
 }
 
+function formatCheckedDate(iso: string) {
+  // UTC so the build machine's timezone can't shift the date by a day.
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function getCompetitor(slug: string): Competitor | undefined {
   return Object.values(competitors).find((c) => c.slug === slug);
 }
@@ -69,7 +79,8 @@ const ishortn = {
   freeLinks: "30/month on Free, 1,000 on Pro, unlimited on Ultra",
   freeAnalytics: "7 days on Free, unlimited on Pro and Ultra",
   customDomains: "3 on Pro, unlimited on Ultra",
-  qrCodes: "All plans — branded + dynamic on Pro and Ultra",
+  qrCodes:
+    "5 dynamic QR codes on Free (edit anytime, never expire, no ads), branded on Pro and Ultra",
   apiAccess: "Pro and Ultra",
   teamFeatures: "Ultra plan",
   passwordProtection: "Pro and Ultra",
@@ -155,6 +166,13 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             </tbody>
           </table>
         </div>
+        <p className="mt-4 text-base text-neutral-600 sm:text-sm">
+          {competitor.name} prices checked on{" "}
+          <time dateTime={competitor.pricesCheckedOn}>
+            {formatCheckedDate(competitor.pricesCheckedOn)}
+          </time>
+          .
+        </p>
       </Section>
 
       <Section>
@@ -194,7 +212,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                 <div>
                   <dt className="inline font-medium text-neutral-900">Free: </dt>
                   <dd className={cn(bodyClass, "inline")}>
-                    30 links/month, 1,000 tracked events, 7-day analytics.
+                    30 links/month, 1,000 tracked events, 7-day analytics, 5 dynamic QR codes.
                   </dd>
                 </div>
                 <div>

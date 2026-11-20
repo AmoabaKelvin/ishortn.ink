@@ -87,8 +87,8 @@ export const QRSection = () => {
             subtitle="Pick a shape, add your logo, and use your own colors. Download a PNG that's ready for posters, packaging, or menus."
           />
           <p className={cn(bodyClass, "mt-4 max-w-[52ch]")}>
-            Branded and dynamic QR codes come with Pro: change the destination any time without
-            reprinting. Every scan is tracked.
+            Free includes 5 dynamic QR codes: change the destination any time without reprinting,
+            they never expire, and there are no ads. Pro adds branded codes. Every scan is tracked.
           </p>
 
           <fieldset className="mt-8">
