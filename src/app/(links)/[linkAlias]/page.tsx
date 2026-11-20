@@ -5,7 +5,7 @@ import { socialMediaAgents } from "@/lib/constants/app";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { noIndexMetadata } from "@/lib/seo/indexing";
-import { isLinkScheduled, resolveShortLink } from "@/middlewares/resolve-link";
+import { getLinkStateRoute, resolveShortLink } from "@/middlewares/resolve-link";
 import { findLinkByAlias } from "@/server/api/routers/link/link.service";
 import { toPublicLink } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
@@ -101,18 +101,13 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
     const link = await findLinkByAlias(db, { alias, domain });
 
     if (!link) return notFound();
-    if (link.blocked) {
-      redirect(`/blocked/${link.id}`);
-    }
-    if (link.disabled) {
-      redirect(`/expired/${link.id}`);
-    }
-    if (link.disableLinkAfterDate && new Date() >= link.disableLinkAfterDate) {
-      redirect(`/expired/${link.id}`);
-    }
-    if (isLinkScheduled(link)) {
-      redirect(`/scheduled/${link.id}`);
-    }
+    // Same access policy as the redirect below (state, click cap, geo rules),
+    // minus the click.
+    const stateRoute = await getLinkStateRoute(link, {
+      country: getRequestGeo().country ?? "Unknown",
+      headers: headersList,
+    });
+    if (stateRoute) redirect(stateRoute);
     if (link.passwordHash) {
       return <LinkPasswordVerification id={link.id} />;
     }
@@ -151,6 +146,8 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
     }
   }
 
+  // Blocked/expired/scheduled redirects are rendered in place with the right
+  // status by the worker entry (src/lib/routing/link-state.ts).
   // The interstitial routes still exist for direct hits; rendering their page
   // components inline keeps the short-link URL in the address bar, which a
   // page (unlike middleware) cannot do via rewrite.
