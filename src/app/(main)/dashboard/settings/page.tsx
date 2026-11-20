@@ -7,6 +7,7 @@ import { SettingsNav } from "./_components/settings-nav";
 import Billing from "./billing/billing";
 import { DeleteAccountSection } from "./delete-account/delete-account-section";
 import { SettingsForm } from "./general/settings-form";
+import { NotificationSettings } from "./notifications/notification-settings";
 import { ProfileForm } from "./profile/profile-form";
 import { ApiKeySunsetNotice, ApiProGate } from "./tokens/_components/api-access-notice";
 import GenerateTokenTrigger from "./tokens/_components/create-token";
@@ -64,6 +65,19 @@ async function SettingsPage() {
             </p>
             <div className="mt-4">
               <SettingsForm userSettings={userSettings} availableDomains={userDomains} />
+            </div>
+          </section>
+
+          {/* Notifications */}
+          <section id="notifications" className="scroll-mt-24">
+            <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+              Notifications
+            </h2>
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+              Emails we send about your links and domains
+            </p>
+            <div className="mt-4">
+              <NotificationSettings productEmailsEnabled={userProfile.productEmailsEnabled} />
             </div>
           </section>
 

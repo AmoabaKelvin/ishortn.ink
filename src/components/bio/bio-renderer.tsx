@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 
+import { getInitials } from "./initials";
 import { socialIcon } from "./social-icons";
 import { type ResolvedBioTheme, resolveBioTheme } from "./theme";
 
@@ -44,6 +45,7 @@ export function BioRenderer({
   heightClass?: string;
 }) {
   const t = resolveBioTheme(model.theme);
+  const initials = getInitials(model.title);
 
   return (
     <div
@@ -51,21 +53,32 @@ export function BioRenderer({
       style={{ background: t.backgroundCss, color: t.textColor, fontFamily: t.fontFamily }}
     >
       <div className="flex w-full max-w-md flex-col items-center">
-        <div className={BIO_ENTER} style={{ animationDelay: "0ms", animationDuration: "450ms" }}>
-          {model.avatarUrl ? (
-            // eslint-disable-next-line next/no-img-element -- user-supplied avatar URL with unknown host and dimensions
+        {model.avatarUrl ? (
+          <div className={BIO_ENTER} style={{ animationDelay: "0ms", animationDuration: "450ms" }}>
+            {/* eslint-disable-next-line next/no-img-element -- user-supplied avatar URL with unknown host and dimensions */}
             <img
               src={model.avatarUrl}
               alt={model.title ?? "Avatar"}
               className="h-24 w-24 rounded-full object-cover ring-2 ring-black/5"
             />
-          ) : (
+          </div>
+        ) : (
+          initials && (
+            // Decorative: the title right below already names the page.
             <div
-              className="h-24 w-24 rounded-full"
-              style={{ background: t.accentColor, opacity: 0.15 }}
-            />
-          )}
-        </div>
+              aria-hidden="true"
+              className={`flex h-24 w-24 items-center justify-center rounded-full text-2xl font-semibold ${BIO_ENTER}`}
+              style={{
+                background: t.accentColor,
+                color: t.accentTextColor,
+                animationDelay: "0ms",
+                animationDuration: "450ms",
+              }}
+            >
+              {initials}
+            </div>
+          )
+        )}
 
         {model.title && (
           <h1

@@ -1,5 +1,6 @@
 // @ts-ignore `.open-next/worker.js` is generated at build time
 import { default as handler } from "./.open-next/worker.js";
+import { applyLinkStateStatus } from "./src/lib/routing/link-state";
 import { getWwwRedirectUrl } from "./src/lib/routing/www-redirect";
 
 import type { ClickEvent } from "./src/lib/core/analytics/click-event";
@@ -42,7 +43,8 @@ export default {
   fetch(request, env, ctx) {
     const wwwRedirect = getWwwRedirectUrl(request.url);
     if (wwwRedirect) return Response.redirect(wwwRedirect, 301);
-    return handler.fetch(request, env, ctx);
+    const render = (req: Request): Promise<Response> => handler.fetch(req, env, ctx);
+    return render(request).then((response) => applyLinkStateStatus(request, response, render));
   },
 
   async scheduled(controller, env) {

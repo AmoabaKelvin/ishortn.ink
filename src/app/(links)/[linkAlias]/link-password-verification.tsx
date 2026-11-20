@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { api } from "@/trpc/react";
+import { api, TRPCReactProvider } from "@/trpc/react";
 
 import type { AppRouter } from "@/server/api/root";
 import type { TRPCClientErrorLike } from "@trpc/client";
@@ -28,7 +28,15 @@ function errorMessage(error: TRPCClientErrorLike<AppRouter>): string {
   return GENERIC_ERROR;
 }
 
-export const LinkPasswordVerification = ({ id }: { id: number }) => {
+// The root layout has no tRPC provider (short-link pages ship without it), so
+// the one short-link screen that calls tRPC brings its own.
+export const LinkPasswordVerification = ({ id }: { id: number }) => (
+  <TRPCReactProvider>
+    <PasswordForm id={id} />
+  </TRPCReactProvider>
+);
+
+const PasswordForm = ({ id }: { id: number }) => {
   const verifyPasswordMutation = api.link.verifyLinkPassword.useMutation();
   const router = useTransitionRouter();
   const [error, setError] = useState<string | null>(null);
