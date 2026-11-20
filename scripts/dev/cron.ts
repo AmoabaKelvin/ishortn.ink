@@ -11,6 +11,7 @@ const CRON_ROUTES = [
   "cleanup-expired",
   "phishing-rescan",
   "api-access-sunset",
+  "link-creation-health",
 ];
 
 async function main() {
