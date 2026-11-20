@@ -209,6 +209,30 @@ export const subscription = mysqlTable(
   }),
 );
 
+// First-touch campaign attribution for a signup, written once by
+// `attribution.record` from the `ish_ft` cookie.
+export const userAttribution = mysqlTable(
+  "UserAttribution",
+  {
+    userId: varchar("userId", { length: 32 }).primaryKey(),
+    utmSource: varchar("utmSource", { length: 255 }),
+    utmMedium: varchar("utmMedium", { length: 255 }),
+    utmCampaign: varchar("utmCampaign", { length: 255 }),
+    utmTerm: varchar("utmTerm", { length: 255 }),
+    utmContent: varchar("utmContent", { length: 255 }),
+    clickId: varchar("clickId", { length: 255 }),
+    // gclid, gbraid, wbraid, msclkid, rdt_cid, fbclid or li_fat_id
+    clickIdType: varchar("clickIdType", { length: 16 }),
+    landingPath: varchar("landingPath", { length: 255 }),
+    referrerHost: varchar("referrerHost", { length: 255 }),
+    firstSeenAt: timestamp("firstSeenAt").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    utmCampaignIdx: index("utmCampaign_idx").on(table.utmCampaign),
+  }),
+);
+
 export const link = mysqlTable(
   "Link",
   {

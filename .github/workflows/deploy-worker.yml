@@ -3,14 +3,51 @@ name: Deploy Worker
 on:
   push:
     branches: [main]
-
-# Never cancel a running deploy: stopping it between deploy and verify would
-# skip the rollback. A newer push waits for the current one to finish.
-concurrency:
-  group: deploy-worker
-  cancel-in-progress: false
+  # Kelvin runs this by hand to ship a migration the automatic deploy refused.
+  workflow_dispatch:
+    inputs:
+      allow_dangerous_migrations:
+        description: "Apply migrations that drop, rename, rewrite or delete data"
+        type: boolean
+        default: false
 
 jobs:
+  # Pending drizzle migrations go in before the code that needs them. The
+  # migrator Worker applies them through Hyperdrive, so CI never sees the
+  # database password, and it refuses dangerous ones unless allowed above.
+  migrate:
+    runs-on: ubuntu-latest
+    # Never cancelled halfway through a migration; a newer push waits its turn.
+    concurrency:
+      group: db-migrate
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Bundle migrations into the migrator
+        run: bun scripts/migrations/bundle.ts
+
+      - name: Deploy the migrator
+        run: |
+          npx wrangler deploy -c workers/migrator/wrangler.jsonc
+          printf '%s' "$MIGRATE_KEY" | npx wrangler secret put MIGRATE_KEY -c workers/migrator/wrangler.jsonc
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: e1c30154a387214494e77fad7672e39e
+          MIGRATE_KEY: ${{ secrets.MIGRATE_KEY }}
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder
+
+      - name: Apply pending migrations
+        run: bun scripts/migrations/apply.ts apply
+        env:
+          MIGRATE_KEY: ${{ secrets.MIGRATE_KEY }}
+          MIGRATOR_URL: https://ishortn-migrator.kel-amoaba.workers.dev
+          ALLOW_DANGEROUS_MIGRATIONS: ${{ inputs.allow_dangerous_migrations == true }}
+
   # Repo variable DEPLOY_FREEZE=true holds a pause or rollback through later merges.
   freeze:
     if: vars.DEPLOY_FREEZE == 'true'
@@ -19,8 +56,14 @@ jobs:
       - run: echo "::notice::DEPLOY_FREEZE is true, so ${GITHUB_SHA} was not deployed. Unset the repo variable and re-run this workflow to deploy it."
 
   deploy:
+    needs: migrate
     if: vars.DEPLOY_FREEZE != 'true'
     runs-on: ubuntu-latest
+    # Never cancel a running deploy: stopping it between deploy and verify would
+    # skip the rollback. A newer push waits for the current one to finish.
+    concurrency:
+      group: deploy-worker
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -32,8 +75,8 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      # Deploys don't run migrations, so refuse to ship code whose migrations
-      # production hasn't applied yet.
+      # The migrate job can refuse a dangerous migration, so refuse to ship code
+      # whose migrations production hasn't applied yet.
       - name: Check production has applied this commit's migrations
         run: bun scripts/ci/deploy-health.ts gate
         env:

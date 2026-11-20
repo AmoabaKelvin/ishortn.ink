@@ -1,4 +1,5 @@
-import { eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
@@ -98,16 +99,76 @@ export async function normalizeMonthlyLinkCount(
   const lastReset = ctx.userRecord.lastLinkCountReset ?? ctx.userRecord.createdAt ?? new Date();
 
   if (lastReset < monthStart) {
-    await dbClient
+    // `ctx` may come from a snapshot read, so re-check the reset date under the
+    // row lock: when a parallel request has already reset (and counted) this
+    // month, matching 0 rows here keeps its count instead of zeroing it again.
+    const [result] = await dbClient
       .update(user)
       .set({
         monthlyLinkCount: 0,
         lastLinkCountReset: new Date(),
       })
-      .where(eq(user.id, ctx.userRecord.id));
+      .where(
+        and(
+          eq(user.id, ctx.userRecord.id),
+          or(isNull(user.lastLinkCountReset), lt(user.lastLinkCountReset, monthStart)),
+        ),
+      );
 
-    return 0;
+    if (result.affectedRows > 0) return 0;
+
+    const [current] = await dbClient
+      .select({ monthlyLinkCount: user.monthlyLinkCount })
+      .from(user)
+      .where(eq(user.id, ctx.userRecord.id))
+      .for("update");
+    return current?.monthlyLinkCount ?? 0;
   }
 
   return ctx.userRecord.monthlyLinkCount ?? 0;
+}
+
+export function monthlyLinkLimitMessage(plan: Plan, limit: number): string {
+  const limitText = limit.toLocaleString();
+  return plan === "free"
+    ? `You've reached your monthly limit of ${limitText} links. Upgrade to Pro for more.`
+    : `You've reached your monthly limit of ${limitText} links. Upgrade to Ultra for unlimited links.`;
+}
+
+/**
+ * Checks the user's monthly link quota and counts one link against it in a
+ * single conditional UPDATE, so parallel requests can't overshoot the cap.
+ * Call it inside the transaction that inserts the link: the row lock taken by
+ * the UPDATE serialises concurrent callers, and a failed insert rolls the
+ * count back. Plans without a limit are not counted. Throws
+ * TRPCError("FORBIDDEN") with the user-facing message when the limit is
+ * reached, and "NOT_FOUND" when the user doesn't exist.
+ */
+export async function reserveMonthlyLinkSlot(
+  userId: string,
+  dbClient: DbClient = db,
+): Promise<UserPlanContext> {
+  const planCtx = await getUserPlanContext(userId, dbClient);
+  if (!planCtx) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+  }
+
+  const limit = planCtx.caps.linksLimit;
+  if (limit === undefined) return planCtx;
+
+  await normalizeMonthlyLinkCount(planCtx, dbClient);
+
+  const [result] = await dbClient
+    .update(user)
+    .set({ monthlyLinkCount: sql`coalesce(${user.monthlyLinkCount}, 0) + 1` })
+    .where(and(eq(user.id, userId), lt(sql`coalesce(${user.monthlyLinkCount}, 0)`, limit)));
+
+  if (result.affectedRows === 0) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: monthlyLinkLimitMessage(planCtx.plan, limit),
+    });
+  }
+
+  return planCtx;
 }

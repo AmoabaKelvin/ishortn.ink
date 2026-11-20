@@ -1,12 +1,15 @@
+import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { resolvePlan } from "@/lib/billing/plans";
 import { generateShortLink } from "@/lib/core/links";
+import { validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
 import { resolveApiDomainForUser, validateAndGetToken } from "../utils";
 
@@ -28,16 +31,17 @@ export async function POST(request: Request) {
   if (!requestedDomain) {
     return new Response("Domain not available for this API key", { status: 403 });
   }
-  if (parsedData.alias && (await checkLinkAliasCollision(parsedData.alias, requestedDomain))) {
-    return new Response("Alias already exists", { status: 400 });
-  }
-  if (parsedData.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
+  const plan = resolvePlan(token.subscription ?? null);
+  if (parsedData.activatesAt && plan === "free") {
     return new Response("Scheduled links are only available on Pro and Ultra plans", {
       status: 403,
     });
   }
 
   try {
+    if (parsedData.alias) {
+      await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
+    }
     const newLink = await createNewLink(
       parsedData,
       token.userId,
@@ -50,6 +54,9 @@ export async function POST(request: Request) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    if (error instanceof TRPCError && error.code === "FORBIDDEN") {
+      return new Response(error.message, { status: 403 });
+    }
     if (error instanceof Error) {
       return new Response(error.message, { status: 400 });
     }
@@ -77,14 +84,6 @@ const shortenLinkSchema = z.object({
 });
 
 type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
-
-async function checkLinkAliasCollision(alias: string, domain: string) {
-  const existingLink = await db
-    .select()
-    .from(link)
-    .where(and(eq(link.alias, alias), eq(link.domain, domain)));
-  return existingLink.length > 0;
-}
 
 async function createNewLink(
   data: ShortenLinkInput,
@@ -115,11 +114,6 @@ async function createNewLink(
     }
   }
 
-  const aliasRegex = /^[a-zA-Z0-9-_]+$/;
-  if (data.alias && !aliasRegex.test(data.alias ?? "")) {
-    throw new Error("Alias can only contain alphanumeric characters, dashes, and underscores");
-  }
-
   await assertUrlSafe(data.url);
 
   const newLinkData = {
@@ -131,11 +125,17 @@ async function createNewLink(
     passwordHash: data.password,
     domain,
     userId,
+    createdByUserId: userId,
     utmParams: data.utmParams ?? null,
   };
 
-  const newLink = await db.insert(link).values(newLinkData);
-  const newLinkId = newLink[0].insertId;
+  // Count the link and insert it together so a failed insert doesn't consume
+  // quota and parallel requests can't exceed the monthly limit.
+  const newLinkId = await db.transaction(async (tx) => {
+    await reserveMonthlyLinkSlot(userId, tx);
+    const newLink = await tx.insert(link).values(newLinkData);
+    return newLink[0].insertId;
+  });
 
   const retrievedLink = await db.select().from(link).where(eq(link.id, newLinkId));
   return {

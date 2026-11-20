@@ -13,6 +13,10 @@ if (process.env.NODE_ENV === "development") {
 const config = {
   // CLAUDE.md is maintained by hand; stop `next dev` injecting its agent block.
   agentRules: false,
+  // The deploy runs in GitHub Actions; Workers Builds names the same thing differently.
+  env: {
+    BUILD_COMMIT_SHA: process.env.GITHUB_SHA ?? process.env.WORKERS_CI_COMMIT_SHA ?? "",
+  },
   experimental: {
     optimizePackageImports: ["@tabler/icons-react"],
   },

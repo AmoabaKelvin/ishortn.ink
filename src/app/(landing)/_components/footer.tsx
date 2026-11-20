@@ -9,6 +9,7 @@ const columns = [
     title: "Product",
     links: [
       { label: "Features", href: "/features" },
+      { label: "QR code generator", href: "/qr-code-generator" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },
       { label: "API docs", href: "https://docs.ishortn.ink/api" },
@@ -23,6 +24,9 @@ const columns = [
       { label: "vs Rebrandly", href: "/compare/rebrandly" },
       { label: "vs Short.io", href: "/compare/short-io" },
       { label: "vs Dub", href: "/compare/dub" },
+      { label: "vs Linktree", href: "/compare/linktree" },
+      { label: "vs Beacons", href: "/compare/beacons" },
+      { label: "vs Carrd", href: "/compare/carrd" },
     ],
   },
   {

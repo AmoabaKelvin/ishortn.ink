@@ -24,6 +24,8 @@ export const env = createEnv({
     DISCORD_WEBHOOK_URL: z.string().url().optional(),
     // Google Safe Browsing & Web Risk (same key, Web Risk requires billing enabled)
     GOOGLE_SAFE_BROWSING_API_KEY: z.string().optional(),
+    // abuse.ch Auth-Key for the URLhaus feed in the phishing rescan (skipped when unset)
+    URLHAUS_AUTH_KEY: z.string().optional(),
     // Cloudflare R2 Storage (S3-compatible)
     R2_ACCOUNT_ID: z.string().optional(),
     R2_ACCESS_KEY_ID: z.string().optional(),
@@ -53,6 +55,10 @@ export const env = createEnv({
     // Public status API (OpenStatus, Better Stack or Statuspage-compatible) for the footer badge.
     // Unset: the footer shows a plain "Status" link with no uptime claim.
     STATUS_PAGE_API_URL: z.string().url().optional(),
+    // Bearer for GET /api/health/deep. Unset: the endpoint answers 503 "not configured".
+    HEALTHCHECK_TOKEN: z.string().optional(),
+    // Inlined at build time by next.config.js; reported by /api/health/deep.
+    BUILD_COMMIT_SHA: z.string().optional(),
   },
 
   /**
@@ -91,6 +97,7 @@ export const env = createEnv({
     DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,
     // Google Safe Browsing & Web Risk
     GOOGLE_SAFE_BROWSING_API_KEY: process.env.GOOGLE_SAFE_BROWSING_API_KEY,
+    URLHAUS_AUTH_KEY: process.env.URLHAUS_AUTH_KEY,
     // Cloudflare R2 Storage
     R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
     R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
@@ -109,6 +116,8 @@ export const env = createEnv({
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
     STATUS_PAGE_API_URL: process.env.STATUS_PAGE_API_URL,
+    HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
+    BUILD_COMMIT_SHA: process.env.BUILD_COMMIT_SHA,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,

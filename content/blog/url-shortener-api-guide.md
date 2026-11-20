@@ -196,7 +196,7 @@ Store API keys in environment variables or a secrets manager, never in source co
 
 ## iShortn API Overview
 
-iShortn provides a RESTful API that gives you programmatic access to link creation, management, and analytics. The API is available on the **Pro plan** and supports all the features you can access through the dashboard, including custom slugs, link expiration, and detailed click analytics.
+iShortn provides a RESTful API that gives you programmatic access to link creation, management, and analytics. The API is available on the **Pro plan** ([see pricing](/pricing)) and supports all the features you can access through the dashboard, including custom slugs, link expiration, and detailed click analytics.
 
 Key highlights of the iShortn API:
 
@@ -206,7 +206,7 @@ Key highlights of the iShortn API:
 - **Consistent error responses** with clear status codes and messages.
 - **Generous rate limits** designed for production workloads.
 
-Whether you are building a SaaS product that needs shareable links, an internal tool that generates tracking URLs, or a marketing platform that creates campaign links at scale, the iShortn API gives you the building blocks to integrate programmatic URL shortening into your stack.
+Whether you are building a SaaS product that needs shareable links, an internal tool that generates tracking URLs, or a marketing platform that creates campaign links at scale, the iShortn API gives you the building blocks to integrate programmatic URL shortening into your stack. To decide which metrics to pull from the analytics endpoints, see [how to track link clicks](/blog/how-to-track-link-clicks).
 
 ## Getting Started
 

@@ -49,7 +49,18 @@
     ],
   },
   "triggers": {
-    "crons": ["0 9 * * *", "0 0 * * *", "0 2 * * SUN", "0 4 * * *"],
+    "crons": [
+      "0 9 * * *",
+      "0 0 * * *",
+      "0 2 * * SUN",
+      "0 4 * * *",
+      "30 */6 * * *",
+      "5,20,35,50 * * * *",
+    ],
+  },
+  // The phishing rescan streams ~1.2M feed lines in one invocation; this is a ceiling, not a cost.
+  "limits": {
+    "cpu_ms": 300000,
   },
   "observability": {
     "enabled": true,

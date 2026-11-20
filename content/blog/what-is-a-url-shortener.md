@@ -2,6 +2,7 @@
 title: "What Is a URL Shortener and How Does It Work?"
 description: "Learn what URL shorteners are, how they work, and why they're essential for marketing, social media, and tracking link performance."
 date: "2026-03-08"
+updated: "2026-11-20"
 author: "Kelvin Amoaba"
 tags: ["url shortener", "link management", "guide"]
 published: true
@@ -62,11 +63,11 @@ Most URL shorteners use 302 redirects by default because they allow you to updat
 
 ### Click Tracking and Analytics
 
-Every time someone clicks a short link, the shortening service can record data such as the click timestamp, geographic location, device type, browser, and referral source. This gives you visibility into how your links are performing without requiring any additional tracking setup.
+Every time someone clicks a short link, the shortening service can record data such as the click timestamp, geographic location, device type, browser, and referral source. This gives you visibility into how your links are performing without requiring any additional tracking setup. Our guide on [how to track link clicks](/blog/how-to-track-link-clicks) covers this in depth.
 
 ### Branded Links Build Trust
 
-Generic short links from unknown domains can look suspicious. Custom branded short links, like `links.yourcompany.com/sale`, reinforce your brand identity and increase click-through rates. Studies have shown that branded short links can boost click-through rates by up to 34% compared to generic short URLs.
+Generic short links from unknown domains can look suspicious. Custom branded short links, like `links.yourcompany.com/sale`, reinforce your brand identity and increase click-through rates (see [how to create custom short links for your brand](/blog/custom-short-links-for-your-brand)). Studies have shown that branded short links can boost click-through rates by up to 34% compared to generic short URLs.
 
 ### Cleaner Sharing Experience
 
@@ -115,9 +116,9 @@ Not all URL shorteners are equal. Here are the features that separate a basic to
 
 iShortn is built around the idea that link management should be simple without sacrificing power. With iShortn, you get a clean dashboard where you can create short links, attach custom domains, generate styled QR codes, and review analytics, all in one place.
 
-The analytics dashboard gives you real-time insights into click performance, including geographic breakdowns, device types, and referral sources. If you work with a team, shared workspaces let everyone collaborate on link management without stepping on each other's toes.
+The analytics dashboard gives you real-time insights into click performance, including geographic breakdowns, device types, and referral sources. If you work with a team, shared team workspaces on the Ultra plan let everyone collaborate on link management without stepping on each other's toes.
 
-For developers, iShortn provides a straightforward API to create and manage links programmatically, making it easy to integrate link shortening into your existing tools and workflows.
+For developers, iShortn's Pro and Ultra plans include a straightforward REST API to create and manage links programmatically, making it easy to integrate link shortening into your existing tools and workflows. The [pricing page](/pricing) compares what each plan includes.
 
 ## Getting Started
 

@@ -6,7 +6,11 @@ import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domai
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
 import { normalizeAlias } from "@/lib/utils";
 import { customDomain, link, team, user } from "@/server/db/schema";
-import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user-plan";
+import {
+  getUserPlanContext,
+  monthlyLinkLimitMessage,
+  normalizeMonthlyLinkCount,
+} from "@/server/lib/user-plan";
 import { requireFolderAccess, workspaceFilter } from "@/server/lib/workspace";
 
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
@@ -66,15 +70,9 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
   const limit = caps.linksLimit;
 
   if (limit !== undefined && currentCount >= limit) {
-    const limitText = limit.toLocaleString();
-    const linkLimitMessage =
-      plan === "free"
-        ? `You've reached your monthly limit of ${limitText} links. Upgrade to Pro for more.`
-        : `You've reached your monthly limit of ${limitText} links. Upgrade to Ultra for unlimited links.`;
-
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: linkLimitMessage,
+      message: monthlyLinkLimitMessage(plan, limit),
     });
   }
 
@@ -110,6 +108,7 @@ export async function incrementLinkCount(
   ctx: ProtectedTRPCContext,
   currentCount: number,
   limit?: number,
+  created = 1,
 ) {
   if (limit === undefined) {
     return;
@@ -118,7 +117,7 @@ export async function incrementLinkCount(
   await ctx.db
     .update(user)
     .set({
-      monthlyLinkCount: currentCount + 1,
+      monthlyLinkCount: currentCount + created,
     })
     .where(eq(user.id, ctx.auth.userId));
 }
@@ -131,13 +130,14 @@ export async function incrementWorkspaceLinkCount(
   ctx: WorkspaceTRPCContext,
   currentCount: number,
   limit?: number,
+  created = 1,
 ) {
   // Don't track usage for team workspaces
   if (ctx.workspace.type === "team") {
     return;
   }
 
-  return incrementLinkCount(ctx, currentCount, limit);
+  return incrementLinkCount(ctx, currentCount, limit, created);
 }
 
 export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<string> {
@@ -222,7 +222,7 @@ export async function assertDomainAllowed(
 const MINIMUM_ALIAS_LENGTH_FREE = 6;
 
 export const validateAlias = (
-  ctx: ProtectedTRPCContext,
+  ctx: Pick<ProtectedTRPCContext, "db">,
   alias: string,
   domain: string,
   isPaidUser = false,
@@ -248,7 +248,7 @@ export const validateAlias = (
 };
 
 export const checkAliasAvailability = async (
-  ctx: ProtectedTRPCContext,
+  ctx: Pick<ProtectedTRPCContext, "db">,
   alias: string,
   domain: string,
 ): Promise<void> => {

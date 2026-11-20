@@ -31,6 +31,19 @@ Tool versions are pinned in `mise.toml` (`mise install`), matching CI.
 Sign in with a Clerk test address (`anything+clerk_test@example.com`, code `424242`). Your user row
 is created on the first authenticated request, so no webhook delivery is needed locally.
 
+## Database tests
+
+Tests that need MySQL (the link quota in `src/server/lib/user-plan.test.ts` and
+`src/app/api/v1/links/route.test.ts`) are skipped unless `TEST_DATABASE_URL` is set. Point it at a
+disposable database, never your dev one: the tests delete and recreate their own rows, and
+`test/setup.ts` points the app's db client at the same database.
+
+```bash
+mysql -uroot -proot -h127.0.0.1 -e "CREATE DATABASE ishortn_test; GRANT ALL ON ishortn_test.* TO 'ishortn'@'%'"
+DATABASE_URL=mysql://ishortn:ishortn@127.0.0.1:3306/ishortn_test bun run db:push
+TEST_DATABASE_URL=mysql://ishortn:ishortn@127.0.0.1:3306/ishortn_test bun test
+```
+
 ## Schema changes
 
 1. Edit `src/server/db/schema.ts`.

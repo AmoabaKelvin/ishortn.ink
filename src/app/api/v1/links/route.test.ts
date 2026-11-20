@@ -1,0 +1,105 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import crypto from "node:crypto";
+
+import { eq } from "drizzle-orm";
+
+import { env } from "@/env.mjs";
+import { db } from "@/server/db";
+import * as schema from "@/server/db/schema";
+import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
+
+import { POST } from "./route";
+
+// Runs against a disposable MySQL with the schema pushed (test/setup.ts points
+// the app's db client at it); see CONTRIBUTING.md, "Database tests".
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+
+describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
+  const USER_ID = "api_links_route_test";
+  const API_KEY = "api-links-route-test-key";
+  // localhost is refused by the metadata scraper, so the URL safety check
+  // fails open without any network call.
+  const TARGET_URL = "http://localhost/route-test";
+
+  beforeAll(() => {
+    // Another test file replaces @/env.mjs with a partial object for the whole
+    // run, dropping DATABASE_URL; the app's db client reads it on first use.
+    if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
+  });
+
+  async function reset(monthlyLinkCount: number) {
+    await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
+    await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
+    await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
+    await db.insert(schema.user).values({
+      id: USER_ID,
+      monthlyLinkCount,
+      lastLinkCountReset: new Date(),
+    });
+    await db.insert(schema.token).values({
+      userId: USER_ID,
+      token: crypto.createHash("sha256").update(API_KEY).digest("hex"),
+    });
+  }
+
+  function createLink(body: { alias?: string } = {}) {
+    return POST(
+      new Request("http://localhost/api/v1/links", {
+        method: "POST",
+        headers: { "x-api-key": API_KEY, "content-type": "application/json" },
+        body: JSON.stringify({ url: TARGET_URL, ...body }),
+      }),
+    );
+  }
+
+  async function storedCount() {
+    const row = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
+    return row?.monthlyLinkCount;
+  }
+
+  beforeEach(() => reset(0));
+
+  afterAll(async () => {
+    await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
+    await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
+    await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
+  });
+
+  test("counts the link and attributes it to the token owner", async () => {
+    const response = await createLink();
+    expect(response.status).toBe(201);
+
+    const links = await db.select().from(schema.link).where(eq(schema.link.userId, USER_ID));
+    expect(links).toHaveLength(1);
+    expect(links[0]?.createdByUserId).toBe(USER_ID);
+    expect(await storedCount()).toBe(1);
+  });
+
+  test("returns 403 with the dashboard message once the free limit is reached", async () => {
+    await reset(30);
+
+    const response = await createLink();
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe(monthlyLinkLimitMessage("free", 30));
+    expect(await storedCount()).toBe(30);
+  });
+
+  test("rejects custom aliases that fail validateAlias with 400", async () => {
+    const tooShort = await createLink({ alias: "abc" });
+    expect(tooShort.status).toBe(400);
+
+    const badChars = await createLink({ alias: "bad alias!" });
+    expect(badChars.status).toBe(400);
+
+    expect(await storedCount()).toBe(0);
+  });
+
+  test("rejects an alias that differs only in case from an existing one", async () => {
+    expect((await createLink({ alias: "RouteTestAlias" })).status).toBe(201);
+
+    const duplicate = await createLink({ alias: "routetestalias" });
+    expect(duplicate.status).toBe(400);
+    expect(await duplicate.text()).toBe("Alias already exists");
+    expect(await storedCount()).toBe(1);
+  });
+});

@@ -119,9 +119,9 @@ This combination is powerful for multichannel campaigns. Print the QR code on ph
 
 iShortn provides a free QR code generator tightly integrated with its link shortening and analytics platform. Create a short link and generate a QR code for it directly from the dashboard. Every scan is tracked alongside link clicks, giving you a unified view of engagement.
 
-Customize your QR code's appearance with colors and your logo. All codes are dynamic by default, so you can update the destination URL at any time without regenerating the code. The analytics dashboard surfaces scan counts, geographic data, device breakdowns, and time-based trends in one place.
+Customize your QR code's appearance with colors and your logo. All codes are dynamic by default, so you can update the destination URL at any time without regenerating the code. The analytics dashboard surfaces scan counts, geographic data, device breakdowns, and time-based trends in one place. For more on reading that data, see [how to track link clicks](/blog/how-to-track-link-clicks).
 
-Sign up for a free account at [ishortn.ink](https://ishortn.ink), create a short link, and generate your QR code. You will have a scannable, trackable code ready in under a minute.
+Sign up for a free account at [ishortn.ink](https://ishortn.ink), create a short link, and generate your QR code. You will have a scannable, trackable code ready in under a minute. The free plan includes 5 dynamic QR codes, and the [pricing page](/pricing) lists what each plan adds.
 
 ## Start Creating QR Codes for Your Business
 
