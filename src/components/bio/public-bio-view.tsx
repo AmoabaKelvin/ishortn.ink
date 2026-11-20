@@ -7,6 +7,7 @@ type PublicBioPage = NonNullable<RouterOutputs["bioPage"]["getBySlug"]>;
 
 function toRenderModel(page: PublicBioPage): BioRenderModel {
   return {
+    slug: page.slug,
     title: page.title,
     description: page.description,
     avatarUrl: page.avatarUrl,

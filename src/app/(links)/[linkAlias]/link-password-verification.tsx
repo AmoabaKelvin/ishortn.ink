@@ -6,6 +6,7 @@ import { useTransitionRouter } from "next-view-transitions";
 import { Funnel_Sans } from "next/font/google";
 import { useState } from "react";
 
+import { ShortLinkAttribution } from "@/components/link-status/short-link-attribution";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +29,8 @@ function errorMessage(error: TRPCClientErrorLike<AppRouter>): string {
   return GENERIC_ERROR;
 }
 
-export const LinkPasswordVerification = ({ id }: { id: number }) => {
+// `branded` is decided on the server: platform domain and not a cloaked link.
+export const LinkPasswordVerification = ({ id, branded }: { id: number; branded: boolean }) => {
   const verifyPasswordMutation = api.link.verifyLinkPassword.useMutation();
   const router = useTransitionRouter();
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +127,8 @@ export const LinkPasswordVerification = ({ id }: { id: number }) => {
             {busy ? "Unlocking..." : "Unlock link"}
           </Button>
         </form>
+
+        {branded && <ShortLinkAttribution campaign="password" />}
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isPlatformRequest } from "@/components/link-status/branding";
+import { ShortLinkAttribution } from "@/components/link-status/short-link-attribution";
 import { noIndexMetadata } from "@/lib/seo/indexing";
 import {
   buildBeaconScript,
@@ -38,16 +40,20 @@ function validateDestination(raw: string | undefined | null): string | null {
   }
 }
 
-function InvalidRedirect() {
+function InvalidRedirect({ branded }: { branded: boolean }) {
   return (
-    <div className="flex h-screen w-full items-center justify-center">
+    <div className="flex h-screen w-full flex-col items-center justify-center">
       <p className="text-gray-500">Invalid redirect</p>
+      {branded && <ShortLinkAttribution campaign="verified_redirect" />}
     </div>
   );
 }
 
 export default async function VerifiedRedirectPage(props: VerifiedRedirectPageProps) {
-  const searchParams = await props.searchParams;
+  // The credit only appears where a visitor actually sees this page (the
+  // invalid state and the no-JS fallback), never in the redirect itself.
+  // Cloaked links resolve to the cloaked view instead of this page.
+  const [searchParams, branded] = await Promise.all([props.searchParams, isPlatformRequest()]);
   const query = redirectQuerySchema.safeParse(searchParams).data;
   const to = validateDestination(query?.to ?? null);
   const rawToken = query?.t ?? null;
@@ -55,10 +61,10 @@ export default async function VerifiedRedirectPage(props: VerifiedRedirectPagePr
   // `to` must match the destination signed into the token at issue time.
   // Without this guard the page is an open redirect — any attacker-crafted
   // `?to=` would be obediently followed by window.location.replace.
-  if (!to || !rawToken) return <InvalidRedirect />;
+  if (!to || !rawToken) return <InvalidRedirect branded={branded} />;
   const decoded = verifyVerifiedClickToken(rawToken);
   if (!decoded || decoded.destHash !== hashDestination(to)) {
-    return <InvalidRedirect />;
+    return <InvalidRedirect branded={branded} />;
   }
 
   const inline = `${buildBeaconScript(rawToken)}window.location.replace(${JSON.stringify(to)});`;
@@ -71,6 +77,7 @@ export default async function VerifiedRedirectPage(props: VerifiedRedirectPagePr
         <p style={{ fontFamily: "sans-serif", padding: "1rem" }}>
           Redirecting... <a href={to}>continue</a>
         </p>
+        {branded && <ShortLinkAttribution campaign="verified_redirect" />}
       </noscript>
     </>
   );

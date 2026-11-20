@@ -1,5 +1,6 @@
 import { Link } from "next-view-transitions";
 
+import { withProductUtm } from "@/lib/attribution/referral";
 import { getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/server";
 
@@ -102,7 +103,11 @@ async function SettingsPage() {
               </h2>
               <Link
                 // Absolute: docs are served on the app host only, not on team subdomains.
-                href={`https://${getAppBaseDomain()}/docs/api`}
+                href={withProductUtm(
+                  `https://${getAppBaseDomain()}/docs/api`,
+                  "app",
+                  "settings_api_docs",
+                )}
                 target="_blank"
                 className="text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700"
               >

@@ -7,6 +7,7 @@ import {
   parseFirstTouch,
   serializeFirstTouch,
 } from "./first-touch";
+import { getBioReferralUrl } from "./referral";
 
 const NOW = new Date("2026-11-20T12:00:00Z");
 
@@ -24,6 +25,23 @@ describe("buildFirstTouch", () => {
       gclid: "abc",
       landingPath: "/compare/bitly",
       referrerHost: "www.google.com",
+      ts: NOW.getTime(),
+    });
+  });
+
+  test("attributes a visit from a bio page footer link", () => {
+    const touch = buildFirstTouch({
+      url: getBioReferralUrl("jane"),
+      referrer: "https://isht.app/p/jane",
+      now: NOW.getTime(),
+    });
+    expect(touch).toEqual({
+      utm_source: "bio_page",
+      utm_medium: "referral",
+      utm_campaign: "made_with_ishortn",
+      utm_content: "jane",
+      landingPath: "/",
+      referrerHost: "isht.app",
       ts: NOW.getTime(),
     });
   });
