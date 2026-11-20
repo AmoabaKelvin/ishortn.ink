@@ -422,7 +422,8 @@ export default function TeamSettingsPage() {
                         Delete team?
                       </AlertDialogTitle>
                       <AlertDialogDescription className="text-[12px] text-neutral-500 dark:text-neutral-400">
-                        This action cannot be undone. Type{" "}
+                        Every member loses access immediately, and the team&apos;s links, domains
+                        and analytics are permanently deleted. This can&apos;t be undone. Type{" "}
                         <span className="font-medium text-neutral-700 dark:text-neutral-300">
                           {teamData.data?.name}
                         </span>{" "}

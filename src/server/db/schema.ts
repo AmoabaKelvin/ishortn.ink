@@ -69,6 +69,9 @@ export const teamInvite = mysqlTable(
     invitedBy: varchar("invitedBy", { length: 32 }).notNull(),
     expiresAt: timestamp("expiresAt").notNull(),
     acceptedAt: timestamp("acceptedAt"),
+    declinedAt: timestamp("declinedAt"),
+    // Revoked invites are kept until they expire so they still count toward the daily email limit.
+    revokedAt: timestamp("revokedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({

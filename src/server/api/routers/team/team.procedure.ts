@@ -105,7 +105,7 @@ export const teamRouter = createTRPCRouter({
     .mutation(({ ctx, input }) => services.createInvite(ctx, input)),
 
   /**
-   * List pending invites for the team
+   * List pending and declined invites for the team
    */
   listInvites: teamProcedure.query(({ ctx }) => services.listInvites(ctx)),
 
@@ -122,6 +122,13 @@ export const teamRouter = createTRPCRouter({
   acceptInvite: protectedProcedure
     .input(inputs.acceptInviteSchema)
     .mutation(({ ctx, input }) => services.acceptInvite(ctx, input)),
+
+  /**
+   * Decline a team invite
+   */
+  declineInvite: protectedProcedure
+    .input(inputs.declineInviteSchema)
+    .mutation(({ ctx, input }) => services.declineInvite(ctx, input)),
 
   /**
    * Get invite details by token (for invite preview page)

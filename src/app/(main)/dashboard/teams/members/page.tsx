@@ -78,6 +78,18 @@ const inviteSchema = z.object({
 
 type InviteInput = z.infer<typeof inviteSchema>;
 
+// Hover-revealed on desktop; always shown on touch screens (no hover), while
+// focused, and while the menu is open.
+const rowActionClassName =
+  "flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity hover:bg-neutral-100 hover:text-neutral-600 group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 dark:text-neutral-500 dark:hover:bg-accent [@media(hover:none)]:opacity-100";
+
+const inviteStatusConfig = {
+  pending: { color: "bg-emerald-500", label: "Active" },
+  expired: { color: "bg-red-500", label: "Expired" },
+  declined: { color: "bg-neutral-400", label: "Declined" },
+  accepted: { color: "bg-neutral-400", label: "Accepted" },
+};
+
 const roleConfig = {
   owner: { color: "bg-amber-500", label: "Owner" },
   admin: { color: "bg-violet-500", label: "Admin" },
@@ -89,6 +101,9 @@ export default function TeamMembersPage() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(null);
   const [transferOwnershipMemberId, setTransferOwnershipMemberId] = useState<string | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<{ userId: string; name: string } | null>(
+    null,
+  );
 
   const currentWorkspace = api.team.currentWorkspace.useQuery();
   const isTeamWorkspace = currentWorkspace.data?.type === "team";
@@ -138,6 +153,7 @@ export default function TeamMembersPage() {
   const removeMemberMutation = api.team.removeMember.useMutation({
     onSuccess: () => {
       toast.success("Member removed");
+      setMemberToRemove(null);
       members.refetch();
     },
     onError: (error) => {
@@ -417,7 +433,7 @@ export default function TeamMembersPage() {
                       {config.label}
                     </span>
                   </div>
-                  <div className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <div className="mt-1 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
                     {member.user?.email}
                   </div>
                 </div>
@@ -428,7 +444,8 @@ export default function TeamMembersPage() {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 opacity-0 transition-all hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 group-hover:opacity-100"
+                          aria-label={`Actions for ${member.user?.name || member.user?.email || "member"}`}
+                          className={rowActionClassName}
                         >
                           <IconDots size={15} stroke={1.5} />
                         </button>
@@ -477,8 +494,9 @@ export default function TeamMembersPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() =>
-                            removeMemberMutation.mutate({
+                            setMemberToRemove({
                               userId: member.userId,
+                              name: member.user?.name || member.user?.email || "this member",
                             })
                           }
                           className="text-[13px] text-red-600 dark:text-red-400"
@@ -500,7 +518,7 @@ export default function TeamMembersPage() {
       {canManageMembers && invites.data && invites.data.length > 0 && (
         <div className="mt-10">
           <h2 className="mb-2 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
-            Pending invites
+            Invites
           </h2>
           <div className="divide-y divide-neutral-300/60">
             {invites.data.map((invite, index) => (
@@ -535,16 +553,16 @@ export default function TeamMembersPage() {
                       </span>
                       <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
                         <span
-                          className={`inline-block h-1.5 w-1.5 rounded-full ${invite.isExpired ? "bg-red-500" : "bg-emerald-500"}`}
+                          className={`inline-block h-1.5 w-1.5 rounded-full ${inviteStatusConfig[invite.status].color}`}
                         />
-                        {invite.isExpired ? "Expired" : "Active"}
+                        {inviteStatusConfig[invite.status].label}
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
                       <span className="text-neutral-400 dark:text-neutral-500">
-                        {invite.isExpired
-                          ? "Expired"
-                          : `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`}
+                        {invite.status === "pending"
+                          ? `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`
+                          : inviteStatusConfig[invite.status].label}
                       </span>
                       <span className="text-neutral-300">&middot;</span>
                       <span className="capitalize text-neutral-500 dark:text-neutral-400">
@@ -558,7 +576,8 @@ export default function TeamMembersPage() {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 opacity-0 transition-all hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 group-hover:opacity-100"
+                          aria-label={`Actions for invite to ${invite.email || "open link"}`}
+                          className={rowActionClassName}
                         >
                           <IconDots size={15} stroke={1.5} />
                         </button>
@@ -597,6 +616,43 @@ export default function TeamMembersPage() {
           </div>
         </div>
       )}
+
+      {/* Remove Member Confirmation */}
+      <AlertDialog
+        open={!!memberToRemove}
+        onOpenChange={(open) => !open && setMemberToRemove(null)}
+      >
+        <AlertDialogContent className="max-w-md rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+              Remove member?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12px] text-neutral-500 dark:text-neutral-400">
+              <span className="break-all font-medium text-neutral-700 dark:text-neutral-300">
+                {memberToRemove?.name}
+              </span>{" "}
+              will lose access to this team right away. Links they created stay with the team.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg border-neutral-200 dark:border-border text-[13px]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (memberToRemove) {
+                  removeMemberMutation.mutate({ userId: memberToRemove.userId });
+                }
+              }}
+              disabled={removeMemberMutation.isLoading}
+              className="rounded-lg bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {removeMemberMutation.isLoading ? "Removing..." : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Transfer Ownership Confirmation */}
       <AlertDialog
