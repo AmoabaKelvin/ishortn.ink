@@ -15,6 +15,10 @@ import { UserAgentStats } from "../../analytics/[alias]/_components/user-agent-s
 import WorldMapHeatmap from "../../analytics/[alias]/_components/world-map-heatmap";
 import UpgradeText from "../_components/upgrade-text";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "QR Code Analytics" };
+
 type QRCodeAnalyticsPageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;

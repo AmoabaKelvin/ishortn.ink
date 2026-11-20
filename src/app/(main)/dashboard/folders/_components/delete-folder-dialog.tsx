@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
@@ -30,13 +31,16 @@ export function DeleteFolderDialog({
   onSuccess,
 }: DeleteFolderDialogProps) {
   const utils = api.useUtils();
+  const router = useRouter();
 
   const deleteFolderMutation = api.folder.delete.useMutation({
     onSuccess: async () => {
       toast.success("Folder deleted successfully");
       await utils.folder.list.invalidate();
       onOpenChange(false);
-      onSuccess?.();
+      // The folder page navigates away itself; refreshing it first would render the 404.
+      if (onSuccess) onSuccess();
+      else router.refresh();
     },
     onError: (error) => {
       toast.error(error.message);

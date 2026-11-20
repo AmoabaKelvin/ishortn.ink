@@ -15,6 +15,10 @@ import GenerateTokenTrigger from "./tokens/_components/create-token";
 import TokenCard from "./tokens/_components/token-card";
 import { AccountTransferSection } from "./transfer/account-transfer-section";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Settings" };
+
 export const dynamic = "force-dynamic";
 
 async function SettingsPage() {

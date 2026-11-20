@@ -135,6 +135,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     resetMilestones();
   }
 
+  const utils = api.useUtils();
   const formUpdateMutation = api.link.update.useMutation();
   const milestoneUpsertMutation = api.linkMilestone.upsert.useMutation();
   const isSaving = formUpdateMutation.isLoading || milestoneUpsertMutation.isLoading;
@@ -238,7 +239,12 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
         const reason = error instanceof Error ? error.message : "";
         throw new Error(`Link saved, but milestones were not updated. ${reason}`.trim());
       } finally {
-        await revalidateHomepage();
+        // Reopening resets from these queries, so they must reflect what was just saved.
+        await Promise.all([
+          utils.geoRules.getByLinkId.invalidate({ linkId: link.id }),
+          utils.linkMilestone.getByLinkId.invalidate({ linkId: link.id }),
+          revalidateHomepage(),
+        ]);
       }
     };
     toast.promise(

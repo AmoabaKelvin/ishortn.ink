@@ -44,7 +44,7 @@ import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { normalizeAlias } from "@/lib/utils";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { normalizeDestinationUrl } from "@/lib/utils/destination-url";
+import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
@@ -62,6 +62,11 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
+import {
+  classifyLinkCreationError,
+  recordLinkCreationFailures,
+  trackLinkCreation,
+} from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
@@ -107,6 +112,8 @@ import type {
   VerifyLinkPasswordInput,
 } from "./link.input";
 import type { Link } from "@/server/db/schema";
+import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
+import type { ScrapedMetadata } from "@/server/lib/metadata";
 
 const log = logger.child({ component: "link.service" });
 
@@ -365,7 +372,41 @@ export const getLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) =>
   return linkData;
 };
 
-export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInput) => {
+// Seams for tests; callers use the defaults.
+type LinkCreationDeps = {
+  checkUrl?: (url: string) => Promise<void>;
+  fetchMetadata?: (url: string) => Promise<ScrapedMetadata>;
+};
+
+// Best-effort: a metadata-service outage must not block link creation.
+async function fetchMetadataFailOpen(
+  fetchMetadata: (url: string) => Promise<ScrapedMetadata>,
+  url: string,
+): Promise<ScrapedMetadata | null> {
+  try {
+    return await fetchMetadata(url);
+  } catch (error) {
+    const { code } = classifyLinkCreationError("metadata", error);
+    log.warn({ step: "metadata", code }, "metadata fetch failed, creating link without it");
+    return null;
+  }
+}
+
+export const createLink = (
+  ctx: WorkspaceTRPCContext,
+  input: CreateLinkInput,
+  deps: LinkCreationDeps = {},
+) =>
+  trackLinkCreation(ctx.db, "dashboard", ctx.auth.userId, (attempt) =>
+    createLinkSteps(ctx, input, attempt, deps),
+  );
+
+const createLinkSteps = async (
+  ctx: WorkspaceTRPCContext,
+  input: CreateLinkInput,
+  attempt: LinkCreationAttempt,
+  { checkUrl = assertUrlSafe, fetchMetadata = scrapeMetadata }: LinkCreationDeps,
+) => {
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
 
@@ -373,27 +414,34 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
   await assertDomainAllowed(ctx, domain);
   const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
 
-  await assertUrlSafe(input.url);
+  attempt.step = "safety";
+  await checkUrl(input.url);
 
-  // Best-effort: a metadata-service outage must not block link creation.
-  const fetchedMetadata = await scrapeMetadata(input.url).catch(() => null);
+  attempt.step = "metadata";
+  const fetchedMetadata = await fetchMetadataFailOpen(fetchMetadata, input.url);
 
+  attempt.step = "validation";
   if (input.alias) {
     await validateAlias(ctx, input.alias, domain, isPaidPlan);
   }
 
   if (input.password) {
     if (!isPaidPlan) {
-      throw new Error("You need to upgrade to a pro plan to use password protection");
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You need to upgrade to a pro plan to use password protection",
+      });
     }
 
     input.password = await bcrypt.hash(input.password, 10);
   }
 
   if (input.activateAt && !isPaidPlan) {
-    throw new Error(
-      "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-    );
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+    });
   }
 
   const inputMetaData = input.metadata;
@@ -403,7 +451,10 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
   );
   if (hasUserFilledMetadata) {
     if (!isPaidPlan) {
-      throw new Error("You need to upgrade to a pro plan to use custom social media previews");
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You need to upgrade to a pro plan to use custom social media previews",
+      });
     }
   }
 
@@ -414,18 +465,22 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
   );
   if (hasUtmParams) {
     if (plan !== "ultra") {
-      throw new Error(
-        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
+      });
     }
   }
 
   // Check for link cloaking - Ultra plan only
   if (input.cloaking) {
     if (plan !== "ultra") {
-      throw new Error(
-        "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
+      });
     }
   }
 
@@ -443,10 +498,13 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
       ),
     });
     if (!campaignRow) {
-      throw new Error("Campaign not found");
+      throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
     }
     if (campaignRow.status === "archived") {
-      throw new Error("This campaign is archived. Restore it before adding links.");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "This campaign is archived. Restore it before adding links.",
+      });
     }
     if (canUseCampaignUtmDefaults(plan)) {
       input.utmParams = mergeCampaignUtm(campaignRow, input.utmParams);
@@ -464,22 +522,27 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
 
   if (input.metadata?.image) assertValidImageInput(input.metadata.image);
 
+  // Plan checks run before the insert so a rejected request leaves no link behind.
   const geoRulesInput = input.geoRules;
   if (geoRulesInput && geoRulesInput.length > 0) {
     if (!canUseGeoRules(plan)) {
-      throw new Error(
-        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+      });
     }
 
     const geoLimit = getGeoRulesLimit(plan);
     if (!isUnlimitedGeoRules(plan) && geoLimit !== undefined && geoRulesInput.length > geoLimit) {
-      throw new Error(
-        `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
+      });
     }
   }
 
+  attempt.step = "db";
   // Create link without tags field
   const { tags: _tags, ...linkData } = input;
   const ownership = workspaceOwnership(ctx.workspace);
@@ -987,22 +1050,34 @@ export const retrieveOriginalUrl = async (
   return found ? toPublicLink(found) : null;
 };
 
-export const shortenLinkWithAutoAlias = async (
+export const shortenLinkWithAutoAlias = (
   ctx: WorkspaceTRPCContext,
   input: QuickLinkShorteningInput,
+) =>
+  trackLinkCreation(ctx.db, "dashboard", ctx.auth.userId, (attempt) =>
+    shortenLinkSteps(ctx, input, attempt),
+  );
+
+const shortenLinkSteps = async (
+  ctx: WorkspaceTRPCContext,
+  input: QuickLinkShorteningInput,
+  attempt: LinkCreationAttempt,
 ) => {
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
   const alias = await generateShortLink();
   const domain = await getWorkspaceDefaultDomain(ctx);
 
+  attempt.step = "safety";
   await assertUrlSafe(input.url);
 
-  const fetchedMetadata = await scrapeMetadata(input.url).catch(() => null);
+  attempt.step = "metadata";
+  const fetchedMetadata = await fetchMetadataFailOpen(scrapeMetadata, input.url);
   const name = fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
 
+  attempt.step = "db";
   const result = await ctx.db.transaction(async (tx) => {
     const [inserted] = await tx.insert(link).values({
       url: input.url,
@@ -1644,10 +1719,20 @@ export const checkAliasAvailability = async (
 };
 
 // `checkUrl` is a seam for tests; callers use the default.
-export const bulkCreateLinks = async (
+export const bulkCreateLinks = (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
   checkUrl: (url: string) => Promise<void> = assertUrlSafe,
+) =>
+  // Records failures that reject the whole import; per-row failures are recorded below.
+  trackLinkCreation(ctx.db, "bulk", ctx.auth.userId, () =>
+    bulkCreateLinkRows(ctx, csvContent, checkUrl),
+  );
+
+const bulkCreateLinkRows = async (
+  ctx: WorkspaceTRPCContext,
+  csvContent: string,
+  checkUrl: (url: string) => Promise<void>,
 ) => {
   const rows: unknown[] = parse(csvContent, {
     columns: true,
@@ -1672,7 +1757,7 @@ export const bulkCreateLinks = async (
   });
 
   // One ownership lookup per distinct domain, not per row.
-  const domainErrors = new Map<string, string | null>();
+  const domainErrors = new Map<string, unknown>();
   await Promise.all(
     [...new Set(records.flatMap((record) => (record ? [record.domain] : [])))].map(
       async (domain) => {
@@ -1680,7 +1765,7 @@ export const bulkCreateLinks = async (
           await assertDomainAllowed(ctx, domain);
           domainErrors.set(domain, null);
         } catch (error) {
-          domainErrors.set(domain, error instanceof Error ? error.message : "Domain check failed");
+          domainErrors.set(domain, error);
         }
       },
     ),
@@ -1690,13 +1775,18 @@ export const bulkCreateLinks = async (
   // the unique index; the first one in the file wins.
   const seenAliases = new Set<string>();
   const aliasChecks = records.map(async (record) => {
-    if (!record) throw new Error("Missing or invalid url");
+    if (!record) throw new TRPCError({ code: "BAD_REQUEST", message: INVALID_URL_MESSAGE });
     const domainError = domainErrors.get(record.domain);
-    if (domainError) throw new Error(domainError);
+    if (domainError) throw domainError;
     if (!record.alias) return record;
 
     const aliasKey = `${record.domain.toLowerCase()}/${normalizeAlias(record.alias)}`;
-    if (seenAliases.has(aliasKey)) throw new Error("Alias is used by an earlier row in this file");
+    if (seenAliases.has(aliasKey)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Alias is used by an earlier row in this file",
+      });
+    }
     seenAliases.add(aliasKey);
 
     await validateAlias(ctx, record.alias, record.domain, isPaidPlan);
@@ -1707,19 +1797,23 @@ export const bulkCreateLinks = async (
   // Allowance goes to valid rows in file order, before the (slow) URL safety
   // scan, so rows past the limit are never scanned.
   let allotted = 0;
+  const rowSteps = validated.map((): LinkCreationStep => "validation");
   const results = await Promise.allSettled(
-    validated.map(async (check) => {
+    validated.map(async (check, index) => {
       if (check.status === "rejected") throw check.reason;
       if (allotted >= remaining) {
-        throw new Error(
-          `Monthly limit of ${limit?.toLocaleString()} links reached. Upgrade your plan to create more.`,
-        );
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Monthly limit of ${limit?.toLocaleString()} links reached. Upgrade your plan to create more.`,
+        });
       }
       allotted++;
 
       const record = check.value;
+      rowSteps[index] = "safety";
       await checkUrl(record.url);
 
+      rowSteps[index] = "db";
       const ownership = workspaceOwnership(ctx.workspace);
       await ctx.db.insert(link).values({
         url: record.url,
@@ -1746,6 +1840,17 @@ export const bulkCreateLinks = async (
       : [],
   );
   const created = results.length - failures.length;
+
+  await recordLinkCreationFailures(
+    ctx.db,
+    "bulk",
+    ctx.auth.userId,
+    results.flatMap((result, index) =>
+      result.status === "rejected"
+        ? [classifyLinkCreationError(rowSteps[index] ?? "validation", result.reason)]
+        : [],
+    ),
+  );
 
   if (created > 0) {
     await incrementWorkspaceLinkCount(ctx, currentCount, limit, created);
