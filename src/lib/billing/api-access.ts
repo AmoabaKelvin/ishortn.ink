@@ -36,6 +36,9 @@ export function parseApiSunset(value: string | undefined | null): Date | null {
   return Number.isNaN(ms) ? null : new Date(ms);
 }
 
+// Statuses a real provider subscription ends in once it stops being paid.
+const LAPSED_STATUSES = new Set(["cancelled", "expired", "unpaid", "paused"]);
+
 /**
  * When a subscription that used to grant a paid plan stopped doing so: the
  * end of the paid period, else the provider's last update. Null for accounts
@@ -43,7 +46,11 @@ export function parseApiSunset(value: string | undefined | null): Date | null {
  */
 function lapsedAt(subscription: Subscription | null, nowMs: number): Date | null {
   if (!subscription || resolvePlan(subscription, nowMs) !== "free") return null;
+  // The webhook zeroes plan, variantId and productId when a subscription ends
+  // (subscription_expired and friends), so the provider subscription id and a
+  // terminal status are the evidence that survives a lapse.
   const wasPaid =
+    ((subscription.subscriptionId ?? 0) > 0 && LAPSED_STATUSES.has(subscription.status ?? "")) ||
     getPlanFromIds(subscription.variantId, subscription.productId) !== null ||
     subscription.plan === "pro" ||
     subscription.plan === "ultra";

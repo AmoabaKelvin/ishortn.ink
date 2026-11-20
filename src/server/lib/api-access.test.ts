@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import crypto from "node:crypto";
 
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, not } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
-import { dueApiSunsetEmail, sendApiSunsetEmailsDue } from "./api-access";
+import { dueApiSunsetEmail, paidSubscription, sendApiSunsetEmailsDue } from "./api-access";
 
 const HOUR = 60 * 60 * 1000;
 const SUNSET = new Date("2026-11-27T12:00:00Z");
@@ -83,6 +83,21 @@ describe.skipIf(!testDatabaseUrl || !!process.env.RESEND_API_KEY)(
       return row?.apiSunsetNoticeSentAt ?? null;
     }
 
+    test("accounts without a subscription row are not treated as paid", async () => {
+      const rows = await db
+        .select({ id: schema.user.id })
+        .from(schema.user)
+        .leftJoin(schema.subscription, eq(schema.subscription.userId, schema.user.id))
+        .where(
+          and(
+            inArray(schema.user.id, USERS),
+            not(paidSubscription(new Date(SUNSET.getTime() - HOUR))),
+          ),
+        );
+
+      expect(rows.map((row) => row.id)).toEqual([FREE]);
+    });
+
     test("does nothing once the sunset has passed", async () => {
       const result = await sendApiSunsetEmailsDue(new Date(SUNSET.getTime() + HOUR));
       expect(result).toEqual({ kind: null, sent: 0, skipped: 0 });
@@ -94,13 +109,13 @@ describe.skipIf(!testDatabaseUrl || !!process.env.RESEND_API_KEY)(
       expect(await noticeSentAt(FREE)).toBeNull();
     });
 
-    test("marks paid owners as handled without emailing them", async () => {
+    test("leaves paid owners unmarked and unemailed, so a later lapse still gets the notice", async () => {
       await db.delete(schema.token).where(eq(schema.token.userId, FREE));
 
       const result = await sendApiSunsetEmailsDue(new Date(SUNSET.getTime() - 3 * 24 * HOUR));
 
-      expect(result).toEqual({ kind: "notice", sent: 0, skipped: 1 });
-      expect(await noticeSentAt(PAID)).not.toBeNull();
+      expect(result).toEqual({ kind: "notice", sent: 0, skipped: 0 });
+      expect(await noticeSentAt(PAID)).toBeNull();
     });
   },
 );

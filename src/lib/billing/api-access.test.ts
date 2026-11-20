@@ -113,6 +113,34 @@ describe("getApiAccess", () => {
       });
     });
 
+    test("expired subscriptions as the webhook stores them get 7 days from the lapse", () => {
+      // subscription_expired resets plan and ids and stamps endsAt with the processing time.
+      const lapse = new Date(SUNSET.getTime() + 13 * DAY);
+      const expired = sub({
+        status: "expired",
+        plan: "free",
+        variantId: 0,
+        productId: 0,
+        endsAt: lapse,
+        providerUpdatedAt: lapse,
+      });
+      const lapseSunset = new Date(lapse.getTime() + 7 * DAY);
+      expect(getApiAccess(expired, SUNSET, new Date(lapse.getTime() + 60_000))).toEqual({
+        status: "sunsetting",
+        deprecatedAt: lapse,
+        sunsetAt: lapseSunset,
+      });
+      expect(getApiAccess(expired, SUNSET, lapseSunset)).toEqual({
+        status: "revoked",
+        sunsetAt: lapseSunset,
+      });
+    });
+
+    test("a zeroed row with no provider subscription is not a lapse", () => {
+      const row = sub({ status: "expired", plan: "free", variantId: 0, subscriptionId: 0 });
+      expect(getApiAccess(row, SUNSET, AFTER)).toEqual({ status: "revoked", sunsetAt: SUNSET });
+    });
+
     test("a lapse long before the cutoff still gets the configured cutoff", () => {
       const old = sub({ status: "expired", endsAt: new Date("2025-01-01T00:00:00Z") });
       expect(getApiAccess(old, SUNSET, BEFORE)).toMatchObject({
