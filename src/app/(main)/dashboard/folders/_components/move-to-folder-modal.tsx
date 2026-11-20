@@ -10,6 +10,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -59,6 +60,7 @@ export function MoveToFolderModal({
   });
 
   const utils = api.useUtils();
+  const router = useRouter();
 
   const createFolderMutation = api.folder.create.useMutation({
     onSuccess: async (newFolder) => {
@@ -85,8 +87,9 @@ export function MoveToFolderModal({
     onSuccess: async () => {
       toast.success("Link moved");
       trackEvent(POSTHOG_EVENTS.LINK_MOVED_TO_FOLDER);
-      await utils.link.list.invalidate();
-      await utils.folder.list.invalidate();
+      await Promise.all([utils.link.list.invalidate(), utils.folder.list.invalidate()]);
+      // The dashboard and folder pages render server data, so they need a refresh too.
+      router.refresh();
       setIsCreatingNew(false);
       setNewFolderName("");
       setNewFolderDescription("");
@@ -104,8 +107,9 @@ export function MoveToFolderModal({
         bulk: true,
         count: data.count,
       });
-      await utils.link.list.invalidate();
-      await utils.folder.list.invalidate();
+      await Promise.all([utils.link.list.invalidate(), utils.folder.list.invalidate()]);
+      // The dashboard and folder pages render server data, so they need a refresh too.
+      router.refresh();
       setIsCreatingNew(false);
       setNewFolderName("");
       setNewFolderDescription("");
@@ -177,6 +181,7 @@ export function MoveToFolderModal({
                     setNewFolderName("");
                     setNewFolderDescription("");
                   }}
+                  aria-label="Back to folder list"
                   className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
                 >
                   <IconChevronLeft size={18} stroke={1.5} />

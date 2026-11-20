@@ -31,7 +31,7 @@ export function FolderLinks({ links }: FolderLinksProps) {
 
   return (
     <SelectionProvider>
-      <div className="divide-y divide-neutral-300/60">
+      <div className="divide-y divide-neutral-300/60 dark:divide-border">
         <AnimatePresence>
           {links.map((link, index) => (
             <motion.div
