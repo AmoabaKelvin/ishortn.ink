@@ -16,7 +16,7 @@ const log = logger.child({ job: "entitlements" });
  * hourly, so reminders and end-of-grace emails go out within an hour of when
  * they are due instead of waiting for the next daily run.
  *
- * Schedule: 0 5 * * * (reconcile, daily at 5 AM UTC) and 10 * * * * (emails) -
+ * Schedule: 0 5 * * * (reconcile, daily at 5 AM UTC) and 25 * * * * (emails) -
  * configured in wrangler.jsonc
  *
  * Usage:

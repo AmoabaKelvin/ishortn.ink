@@ -8,6 +8,10 @@ import { DeleteFolderButton } from "./_components/delete-folder-button";
 import { EditFolderButton } from "./_components/edit-folder-button";
 import { FolderLinks } from "./_components/folder-links";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Folder" };
+
 type FolderDetailPageProps = {
   params: Promise<{ folderId: string }>;
 };

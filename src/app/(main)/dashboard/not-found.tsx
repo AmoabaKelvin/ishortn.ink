@@ -21,7 +21,7 @@ export default function DashboardNotFound() {
         asChild
         className="mt-6 rounded-lg bg-blue-600 text-[13px] text-white hover:bg-blue-700"
       >
-        <Link href="/dashboard">Back to dashboard</Link>
+        <Link href="/dashboard">Back to links</Link>
       </Button>
     </div>
   );

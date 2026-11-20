@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { getHTTPStatusCodeFromError } from "@trpc/server/http";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -7,6 +8,7 @@ import { generateShortLink } from "@/lib/core/links";
 import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
+import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
@@ -18,6 +20,7 @@ import {
 } from "../utils";
 
 import type { Plan } from "@/lib/billing/plans";
+import type { LinkCreationAttempt } from "@/server/lib/link-creation/failures";
 
 export const POST = withApiKey(async (request: Request, token) => {
   const restricted = restrictedAccountResponse(token);
@@ -30,26 +33,32 @@ export const POST = withApiKey(async (request: Request, token) => {
   }
 
   const parsedData = input.data;
-  const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
-  if (!requestedDomain) {
-    return new Response("Domain not available for this API key", { status: 403 });
-  }
-  const plan = token.plan;
-  const domainError = await apiDomainWriteError(token.userId, plan, requestedDomain);
-  if (domainError) {
-    return new Response(domainError, { status: 403 });
-  }
-  if (parsedData.activatesAt && plan === "free") {
-    return new Response("Scheduled links are only available on Pro and Ultra plans", {
-      status: 403,
-    });
-  }
 
   try {
-    if (parsedData.alias) {
-      await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
-    }
-    const newLink = await createNewLink(parsedData, token.userId, plan, requestedDomain);
+    const newLink = await trackLinkCreation(db, "api", token.userId, async (attempt) => {
+      const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
+      if (!requestedDomain) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Domain not available for this API key",
+        });
+      }
+      const plan = token.plan;
+      const domainError = await apiDomainWriteError(token.userId, plan, requestedDomain);
+      if (domainError) {
+        throw new TRPCError({ code: "FORBIDDEN", message: domainError });
+      }
+      if (parsedData.activatesAt && plan === "free") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Scheduled links are only available on Pro and Ultra plans",
+        });
+      }
+      if (parsedData.alias) {
+        await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
+      }
+      return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt);
+    });
     return new Response(JSON.stringify(newLink), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -58,10 +67,12 @@ export const POST = withApiKey(async (request: Request, token) => {
     if (error instanceof TRPCError && error.code === "FORBIDDEN") {
       return new Response(error.message, { status: 403 });
     }
-    if (error instanceof Error) {
+    if (error instanceof TRPCError && getHTTPStatusCodeFromError(error) < 500) {
       return new Response(error.message, { status: 400 });
     }
-    return new Response("An error occurred", { status: 400 });
+    // Server-side failures (database, timeouts) are not the caller's fault and
+    // their messages are internal.
+    return new Response("An error occurred", { status: 500 });
   }
 });
 
@@ -86,10 +97,19 @@ const shortenLinkSchema = z.object({
 
 type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 
-async function createNewLink(data: ShortenLinkInput, userId: string, plan: Plan, domain: string) {
+async function createNewLink(
+  data: ShortenLinkInput,
+  userId: string,
+  plan: Plan,
+  domain: string,
+  attempt: LinkCreationAttempt,
+) {
   if (data.password) {
     if (plan === "free") {
-      throw new Error("You need to upgrade to a pro plan to use password protection");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "You need to upgrade to a pro plan to use password protection",
+      });
     }
 
     const hashedPassword = bcrypt.hashSync(data.password, 10);
@@ -103,13 +123,18 @@ async function createNewLink(data: ShortenLinkInput, userId: string, plan: Plan,
       (value) => value !== undefined && value !== null && value !== "",
     );
     if (hasUtmParams && plan !== "ultra") {
-      throw new Error(
-        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      );
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
+      });
     }
   }
 
+  attempt.step = "safety";
   await assertUrlSafe(data.url);
+
+  attempt.step = "db";
 
   const newLinkData = {
     url: data.url,

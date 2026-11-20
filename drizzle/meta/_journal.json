@@ -544,8 +544,15 @@
     {
       "idx": 77,
       "version": "5",
-      "when": 1795215937102,
-      "tag": "0077_lame_chameleon",
+      "when": 1795216219929,
+      "tag": "0077_amusing_secret_warriors",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "5",
+      "when": 1795217167871,
+      "tag": "0078_complete_jackpot",
       "breakpoints": true
     }
   ]

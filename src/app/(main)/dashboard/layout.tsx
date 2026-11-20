@@ -3,7 +3,6 @@ import { IconAlertTriangle, IconBan, IconTrash } from "@tabler/icons-react";
 import { Funnel_Sans } from "next/font/google";
 
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
-import { ChangelogToast } from "@/components/changelog/changelog-toast";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { ensureUser } from "@/server/lib/ensure-user";
@@ -31,12 +30,14 @@ export default async function DashboardLayout({ children }: Props) {
   const session = await auth();
   let isAdmin = false;
   let isRestricted = false;
+  let userName: string | null = null;
 
   if (session?.userId) {
     const currentUser = await ensureUser(session.userId);
 
     isAdmin = currentUser?.isAdmin ?? false;
     isRestricted = !!currentUser?.restrictedAt;
+    userName = currentUser?.name ?? null;
 
     if (currentUser?.banned) {
       return (
@@ -128,16 +129,12 @@ export default async function DashboardLayout({ children }: Props) {
 
   return (
     <div className={cn("min-h-screen bg-neutral-50 dark:bg-accent/50", funnelSans.className)}>
-      {/* Changelog banner at the top */}
-      <div className="fixed top-0 left-0 right-0 z-50 lg:left-[280px]">
-        <ChangelogBanner />
-      </div>
-
-      <SidebarWrapper isAdmin={isAdmin} />
+      <SidebarWrapper isAdmin={isAdmin} userName={userName} />
 
       {/* Main content area with left margin for sidebar */}
       <div className="lg:pl-[280px]">
-        <div className="mx-auto max-w-[1180px] px-4 pt-16 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
+        <ChangelogBanner />
+        <div className="mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
           <DashboardNav />
           {isRestricted && (
             <div className="mt-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
@@ -159,9 +156,6 @@ export default async function DashboardLayout({ children }: Props) {
           </div>
         </div>
       </div>
-
-      {/* Changelog toast notification */}
-      <ChangelogToast />
 
       <DomainMigrationGate />
 

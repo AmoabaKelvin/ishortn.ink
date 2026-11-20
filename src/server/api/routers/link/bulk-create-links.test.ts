@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
+import { TRPCError } from "@trpc/server";
+
+import { link, linkCreationFailure } from "@/server/db/schema";
+
 import { bulkCreateLinks } from "./link.service";
 import { RESTRICTED_LINK_REASON } from "./utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
+import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
 
 type InsertedLink = {
   url: string;
@@ -15,9 +20,10 @@ type InsertedLink = {
 
 // In-memory stand-in for the queries bulkCreateLinks makes: the plan lookup,
 // custom-domain ownership (the workspace owns none), alias availability (all
-// free), link inserts and the monthly count update.
+// free), link inserts, failure records and the monthly count update.
 function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null) {
   const inserted: InsertedLink[] = [];
+  const recordedFailures: LinkCreationFailure[] = [];
   const countUpdates: Array<{ monthlyLinkCount: number }> = [];
   const db = {
     query: {
@@ -33,9 +39,13 @@ function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null)
       customDomain: { findFirst: async () => undefined },
     },
     select: () => ({ from: () => ({ where: async () => [] }) }),
-    insert: () => ({
-      values: async (values: InsertedLink) => {
-        inserted.push(values);
+    insert: (table: typeof link | typeof linkCreationFailure) => ({
+      values: async (values: InsertedLink | LinkCreationFailure[]) => {
+        if (table === linkCreationFailure && Array.isArray(values)) {
+          recordedFailures.push(...values);
+        } else if (!Array.isArray(values)) {
+          inserted.push(values);
+        }
       },
     }),
     update: () => ({
@@ -61,7 +71,7 @@ function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null)
       plan: "free",
     },
   } as WorkspaceTRPCContext;
-  return { ctx, inserted, countUpdates };
+  return { ctx, inserted, countUpdates, recordedFailures };
 }
 
 const allowUrl = async () => {};
@@ -167,6 +177,43 @@ describe("bulkCreateLinks", () => {
     ]);
     expect(inserted).toEqual([]);
     expect(countUpdates).toEqual([]);
+  });
+
+  test("records each failed row with the step it failed in", async () => {
+    const { ctx, recordedFailures } = fakeContext(0);
+    const result = await bulkCreateLinks(
+      ctx,
+      csv(",,,", "https://bad.example,,,", "https://ok.example,,,"),
+      async (url) => {
+        if (url === "https://bad.example") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This URL looks suspicious" });
+        }
+      },
+    );
+
+    expect(result).toMatchObject({ created: 1, failed: 2 });
+    expect(recordedFailures).toEqual([
+      expect.objectContaining({
+        source: "bulk",
+        step: "validation",
+        code: "BAD_REQUEST",
+        serverError: false,
+      }),
+      expect.objectContaining({
+        source: "bulk",
+        step: "safety",
+        code: "BAD_REQUEST",
+        serverError: false,
+      }),
+    ]);
+  });
+
+  test("records a whole-import rejection once", async () => {
+    const { ctx, recordedFailures } = fakeContext(30);
+    await expect(bulkCreateLinks(ctx, csv("https://a.example,,,"), allowUrl)).rejects.toThrow();
+    expect(recordedFailures).toEqual([
+      { source: "bulk", step: "validation", code: "FORBIDDEN", serverError: false },
+    ]);
   });
 
   test("inserts links already blocked if the account is restricted", async () => {

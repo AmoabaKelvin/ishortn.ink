@@ -6,6 +6,10 @@ import { DomainCardNew } from "./_components/domain-card-new";
 import { DomainMigrationBanner } from "./_components/domain-migration-banner";
 import EmptyState from "./_components/empty-state";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Domains" };
+
 export const dynamic = "force-dynamic";
 
 async function CustomDomainsPage() {

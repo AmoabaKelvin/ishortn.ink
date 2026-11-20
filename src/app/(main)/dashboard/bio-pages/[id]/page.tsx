@@ -5,6 +5,9 @@ import { api } from "@/trpc/server";
 import { BioPageBuilder } from "./_components/bio-page-builder";
 
 import type { RouterOutputs } from "@/trpc/shared";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Edit Bio Page" };
 
 export const dynamic = "force-dynamic";
 

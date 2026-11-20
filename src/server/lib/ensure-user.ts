@@ -13,6 +13,7 @@ export type UserAccess = {
   restrictedAt: Date | null;
   isAdmin: boolean | null;
   deletedAt: Date | null;
+  name: string | null;
 };
 
 /**
@@ -29,6 +30,7 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
       restrictedAt: true,
       isAdmin: true,
       deletedAt: true,
+      name: true,
     },
   });
   if (existing) return existing;
@@ -61,5 +63,6 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
     restrictedAt: null,
     isAdmin: false,
     deletedAt: null,
+    name,
   };
 }

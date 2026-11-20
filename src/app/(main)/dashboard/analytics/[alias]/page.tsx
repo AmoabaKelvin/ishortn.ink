@@ -19,6 +19,15 @@ import { ReferrerStats } from "./_components/referrers";
 import { UserAgentStats } from "./_components/user-agent-stats";
 import WorldMapHeatmap from "./_components/world-map-heatmap";
 
+import type { Metadata } from "next";
+
+export async function generateMetadata(props: {
+  params: Promise<{ alias: string }>;
+}): Promise<Metadata> {
+  const { alias } = await props.params;
+  return { title: `Analytics for ${alias}` };
+}
+
 type LinksAnalyticsPageProps = {
   params: Promise<{
     alias: string;
