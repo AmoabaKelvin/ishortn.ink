@@ -91,4 +91,6 @@ export const adminRouter = createTRPCRouter({
   getRecentSubscriptions: adminProcedure
     .input(inputs.getRecentSubscriptionsSchema)
     .query(({ ctx, input }) => services.getRecentSubscriptions(ctx, input)),
+
+  getSignupAttribution: adminProcedure.query(({ ctx }) => services.getSignupAttribution(ctx)),
 });
