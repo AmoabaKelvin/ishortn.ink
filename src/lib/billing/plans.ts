@@ -122,7 +122,30 @@ export function resolvePlan(subscription?: Subscription | null): Plan {
     return mappedPlan;
   }
 
-  return "pro"; // entitled subscription without recognized plan defaults to pro
+  // Rows with no recognised variant and no stored paid plan (e.g. `plan: "free"`
+  // with zeroed ids) carry no evidence of a paid subscription.
+  return "free";
+}
+
+/**
+ * How a plan change applies to a user's subscription:
+ * - `checkout`: no paid subscription, so start a new hosted checkout.
+ * - `update`: a live paid subscription, changed in place on Lemon Squeezy.
+ * - `resume`: cancelled but still inside the paid period; it must be resumed
+ *   rather than replaced, or the user would end up with two subscriptions.
+ */
+export type SubscriptionMode = "checkout" | "update" | "resume";
+
+export function getSubscriptionMode(subscription?: Subscription | null): SubscriptionMode {
+  if (
+    !subscription?.subscriptionId ||
+    subscription.subscriptionId <= 0 ||
+    resolvePlan(subscription) === "free"
+  ) {
+    return "checkout";
+  }
+
+  return subscription.status === "cancelled" ? "resume" : "update";
 }
 
 export function getPlanCaps(plan: Plan): PlanCaps {
