@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>
             How iShortn collects, uses, and protects your personal information.
           </p>
-          <p className="mt-6 font-mono text-sm text-neutral-600">Last updated: March 2026</p>
+          <p className="mt-6 font-mono text-sm text-neutral-600">Last updated: November 2026</p>
         </div>
       </Section>
 
@@ -151,6 +151,11 @@ export default function PrivacyPage() {
             <li>
               <strong>Analytics cookies:</strong> Used to understand how visitors interact with our
               website so we can improve the experience.
+            </li>
+            <li>
+              <strong>Campaign attribution cookie:</strong> A first-party cookie stores the campaign
+              parameters of the visit that brought you to iShortn, used to measure which campaigns
+              lead to signups, kept up to 90 days or until you sign up.
             </li>
           </ul>
           <p>

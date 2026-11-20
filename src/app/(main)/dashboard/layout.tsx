@@ -8,6 +8,7 @@ import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { ensureUser } from "@/server/lib/ensure-user";
 
+import { AttributionRecorder } from "./_components/attribution-recorder";
 import { DomainMigrationGate } from "./_components/domain-migration-gate";
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
@@ -143,6 +144,8 @@ export default async function DashboardLayout({ children }: Props) {
       <ChangelogToast />
 
       <DomainMigrationGate />
+
+      <AttributionRecorder />
     </div>
   );
 }
