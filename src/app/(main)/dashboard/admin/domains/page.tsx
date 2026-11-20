@@ -4,6 +4,16 @@ import { IconPlus, IconTrash, IconWorld } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +32,7 @@ export default function AdminDomainsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newDomain, setNewDomain] = useState("");
   const [newReason, setNewReason] = useState("");
+  const [pendingRemoval, setPendingRemoval] = useState<{ id: number; domain: string } | null>(null);
 
   const { data: domains, refetch } = api.admin.getBlockedDomains.useQuery();
 
@@ -39,6 +50,7 @@ export default function AdminDomainsPage() {
   const removeMutation = api.admin.removeBlockedDomain.useMutation({
     onSuccess: () => {
       toast.success("Domain removed from blocklist");
+      setPendingRemoval(null);
       void refetch();
     },
     onError: (error) => toast.error(error.message),
@@ -140,9 +152,9 @@ export default function AdminDomainsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      onClick={() => removeMutation.mutate({ id: d.id })}
-                      disabled={removeMutation.isLoading}
+                      className="h-7 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                      onClick={() => setPendingRemoval({ id: d.id, domain: d.domain })}
+                      aria-label={`Unblock ${d.domain}`}
                     >
                       <IconTrash size={14} />
                     </Button>
@@ -153,6 +165,43 @@ export default function AdminDomainsPage() {
           </table>
         </div>
       )}
+
+      <AlertDialog
+        open={pendingRemoval !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRemoval(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-md rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+              Unblock domain?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12px] text-neutral-500 dark:text-neutral-400">
+              New links to{" "}
+              <span className="font-medium break-all text-neutral-700 dark:text-neutral-300">
+                {pendingRemoval?.domain}
+              </span>{" "}
+              will be accepted again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg border-neutral-200 text-[13px] dark:border-border">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingRemoval) removeMutation.mutate({ id: pendingRemoval.id });
+              }}
+              disabled={removeMutation.isLoading}
+              className="rounded-lg bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {removeMutation.isLoading ? "Unblocking..." : "Unblock"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add domain dialog */}
       <Dialog

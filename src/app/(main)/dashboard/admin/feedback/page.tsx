@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 
+import { useCursorPages } from "../_components/use-cursor-pages";
+
 type StatusFilter = "open" | "resolved" | "dismissed" | undefined;
 
 const statusTabs: { label: string; value: StatusFilter }[] = [
@@ -44,7 +46,8 @@ const typeConfig = {
 
 export default function AdminFeedbackPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
-  const [cursor, setCursor] = useState<number | undefined>(undefined);
+  const pages = useCursorPages();
+  const { cursor } = pages;
 
   const { data, refetch, isLoading } = api.feedback.list.useQuery({
     status: statusFilter,
@@ -53,7 +56,7 @@ export default function AdminFeedbackPage() {
   });
 
   const updateStatusMutation = api.feedback.updateStatus.useMutation({
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       toast.success(
         variables.status === "resolved"
           ? "Marked as resolved"
@@ -61,7 +64,9 @@ export default function AdminFeedbackPage() {
             ? "Feedback dismissed"
             : "Reopened",
       );
-      void refetch();
+      const { data: fresh } = await refetch();
+      // Resolving every item on a later page empties it; step back instead of stranding there.
+      if (fresh?.items.length === 0 && pages.hasPrevious) pages.previous();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -84,7 +89,7 @@ export default function AdminFeedbackPage() {
             key={tab.label}
             onClick={() => {
               setStatusFilter(tab.value);
-              setCursor(undefined);
+              pages.reset();
             }}
             className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
               statusFilter === tab.value
@@ -261,28 +266,26 @@ export default function AdminFeedbackPage() {
           </div>
 
           {/* Pagination */}
-          {(data.nextCursor || cursor) && (
+          {(data.nextCursor || pages.hasPrevious) && (
             <div className="mt-4 flex items-center justify-end gap-2">
-              {cursor && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCursor(undefined)}
-                  className="h-8 text-[12px]"
-                >
-                  Back to first
-                </Button>
-              )}
-              {data.nextCursor && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCursor(data.nextCursor)}
-                  className="h-8 text-[12px]"
-                >
-                  Load more
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={pages.previous}
+                disabled={!pages.hasPrevious}
+                className="h-8 text-[12px]"
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => data.nextCursor && pages.next(data.nextCursor)}
+                disabled={!data.nextCursor}
+                className="h-8 text-[12px]"
+              >
+                Next
+              </Button>
             </div>
           )}
         </>

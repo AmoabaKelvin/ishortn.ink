@@ -22,6 +22,10 @@ import { OverviewRangeSelector } from "./_components/overview-range-selector";
 import { ReferrersCard } from "./_components/referrers-card";
 import { ShortLinksCard } from "./_components/short-links-card";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Analytics" };
+
 // Search params are user-controlled, so a bad value falls back to the default
 // instead of erroring the page. The tRPC input stays strict.
 const overviewSearchParamsSchema = allAnalyticsSchema.extend({

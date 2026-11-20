@@ -2,6 +2,10 @@ import { api } from "@/trpc/server";
 
 import { BioPagesList } from "./_components/bio-pages-list";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Bio Pages" };
+
 export const dynamic = "force-dynamic";
 
 async function BioPagesPage() {

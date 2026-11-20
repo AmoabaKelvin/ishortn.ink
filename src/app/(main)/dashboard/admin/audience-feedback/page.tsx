@@ -21,6 +21,8 @@ import {
 } from "@/server/api/routers/audience-feedback/audience-feedback.input";
 import { api } from "@/trpc/react";
 
+import { useCursorPages } from "../_components/use-cursor-pages";
+
 import type { Plan } from "@/lib/billing/plans";
 
 type PlanFilter = Plan | "all";
@@ -51,7 +53,8 @@ export default function AdminAudienceFeedbackPage() {
   const [channel, setChannel] = useState<ChannelFilter>("all");
   const [priorTool, setPriorTool] = useState<PriorToolFilter>("all");
   const [role, setRole] = useState<RoleFilter>("all");
-  const [cursor, setCursor] = useState<number | undefined>(undefined);
+  const pages = useCursorPages();
+  const { cursor } = pages;
 
   const { data: stats, isLoading: statsLoading } = api.audienceFeedback.stats.useQuery();
 
@@ -83,7 +86,7 @@ export default function AdminAudienceFeedbackPage() {
           value={plan}
           onChange={(v) => {
             setPlan(v);
-            setCursor(undefined);
+            pages.reset();
           }}
           options={planFilterOptions.map((v) => ({
             value: v,
@@ -95,7 +98,7 @@ export default function AdminAudienceFeedbackPage() {
           value={channel}
           onChange={(v) => {
             setChannel(v);
-            setCursor(undefined);
+            pages.reset();
           }}
           options={withAllOption(audienceFeedbackAcquisitionChannelValues, "All channels")}
         />
@@ -104,7 +107,7 @@ export default function AdminAudienceFeedbackPage() {
           value={priorTool}
           onChange={(v) => {
             setPriorTool(v);
-            setCursor(undefined);
+            pages.reset();
           }}
           options={withAllOption(audienceFeedbackPriorToolValues, "All prior tools")}
         />
@@ -113,7 +116,7 @@ export default function AdminAudienceFeedbackPage() {
           value={role}
           onChange={(v) => {
             setRole(v);
-            setCursor(undefined);
+            pages.reset();
           }}
           options={withAllOption(audienceFeedbackRoleValues, "All roles")}
         />
@@ -148,28 +151,26 @@ export default function AdminAudienceFeedbackPage() {
             ))}
           </div>
 
-          {(data.nextCursor || cursor) && (
+          {(data.nextCursor || pages.hasPrevious) && (
             <div className="mt-4 flex items-center justify-end gap-2">
-              {cursor && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCursor(undefined)}
-                  className="h-8 text-[12px]"
-                >
-                  Back to first
-                </Button>
-              )}
-              {data.nextCursor && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCursor(data.nextCursor)}
-                  className="h-8 text-[12px]"
-                >
-                  Load more
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={pages.previous}
+                disabled={!pages.hasPrevious}
+                className="h-8 text-[12px]"
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => data.nextCursor && pages.next(data.nextCursor)}
+                disabled={!data.nextCursor}
+                className="h-8 text-[12px]"
+              >
+                Next
+              </Button>
             </div>
           )}
         </>

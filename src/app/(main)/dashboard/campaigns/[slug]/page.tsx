@@ -6,6 +6,14 @@ import { api } from "@/trpc/server";
 import { CampaignDetail } from "./_components/campaign-detail";
 
 import type { RouterOutputs } from "@/trpc/shared";
+import type { Metadata } from "next";
+
+export async function generateMetadata(props: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await props.params;
+  return { title: `${slug} | Campaigns` };
+}
 
 export const dynamic = "force-dynamic";
 

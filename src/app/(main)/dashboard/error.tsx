@@ -1,10 +1,17 @@
 "use client";
 
-import { AlertCircle, RefreshCw } from "lucide-react";
-import { useEffect } from "react";
+import { IconAlertCircle, IconRefresh } from "@tabler/icons-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { startTransition, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { clientLogger } from "@/lib/logger/client";
+
+// The boundary remounts when a retry throws again, so component state can't
+// remember the retry; a module-level timestamp does.
+const RETRY_WINDOW_MS = 10_000;
+let lastRetryAt = 0;
 
 export default function DashboardError({
   error,
@@ -13,40 +20,77 @@ export default function DashboardError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+  const [retryFailed] = useState(() => Date.now() - lastRetryAt < RETRY_WINDOW_MS);
+
   useEffect(() => {
     clientLogger.error(
-      { err: error, digest: error.digest },
+      { err: error, digest: error.digest, retryFailed },
       "dashboard error boundary caught error",
     );
-  }, [error]);
+  }, [error, retryFailed]);
+
+  const retry = () => {
+    lastRetryAt = Date.now();
+    // refresh() refetches server components; reset() alone only re-renders the client tree.
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  };
 
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 px-4">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/10">
-        <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+    <div className="flex min-h-[400px] flex-col items-center justify-center py-20 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-red-50 dark:bg-red-500/10">
+        <IconAlertCircle size={24} stroke={1.5} className="text-red-600 dark:text-red-400" />
       </div>
-      <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-foreground">
-          Something went wrong
-        </h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400 max-w-md">
-          We encountered an error while loading this page. Please try again or contact support if
-          the problem persists.
+      <p className="mt-6 text-[14px] font-medium text-neutral-900 dark:text-foreground">
+        Something went wrong
+      </p>
+      <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+        {retryFailed
+          ? "This page still isn't loading. Head back to the dashboard, or contact support if it keeps happening."
+          : "We couldn't load this page. Try again, or contact support if the problem persists."}
+      </p>
+      {error.digest && (
+        <p className="mt-2 font-mono text-[11px] break-all text-neutral-400 dark:text-neutral-500">
+          Reference: {error.digest}
         </p>
-        {process.env.NODE_ENV === "development" && error?.message && (
-          <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-mono bg-red-50 dark:bg-red-500/10 p-2 rounded max-w-md">
-            {error.message}
-          </p>
+      )}
+      {process.env.NODE_ENV === "development" && error.message && (
+        <p className="mt-3 max-w-md rounded-lg bg-red-50 p-2 font-mono text-[12px] break-all text-red-600 dark:bg-red-500/10 dark:text-red-400">
+          {error.message}
+        </p>
+      )}
+      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row">
+        {retryFailed ? (
+          <>
+            <Button type="button" variant="outline" onClick={retry} className="text-[13px]">
+              <IconRefresh size={14} stroke={1.5} />
+              Try again
+            </Button>
+            <Button
+              asChild
+              className="rounded-lg bg-blue-600 text-[13px] text-white hover:bg-blue-700"
+            >
+              <Link href="/dashboard">Go to dashboard</Link>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button asChild variant="outline" className="text-[13px]">
+              <Link href="/dashboard">Go to dashboard</Link>
+            </Button>
+            <Button
+              type="button"
+              onClick={retry}
+              className="rounded-lg bg-blue-600 text-[13px] text-white hover:bg-blue-700"
+            >
+              <IconRefresh size={14} stroke={2} />
+              Try again
+            </Button>
+          </>
         )}
-      </div>
-      <div className="flex gap-3">
-        <Button onClick={reset} variant="default" className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Try again
-        </Button>
-        <Button onClick={() => (window.location.href = "/dashboard")} variant="outline">
-          Go to Dashboard
-        </Button>
       </div>
     </div>
   );
