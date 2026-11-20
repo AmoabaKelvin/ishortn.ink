@@ -2,6 +2,7 @@
 title: "What Is a URL Shortener and How Does It Work?"
 description: "Learn what URL shorteners are, how they work, and why they're essential for marketing, social media, and tracking link performance."
 date: "2026-03-08"
+updated: "2026-11-20"
 author: "Kelvin Amoaba"
 tags: ["url shortener", "link management", "guide"]
 published: true
@@ -115,9 +116,9 @@ Not all URL shorteners are equal. Here are the features that separate a basic to
 
 iShortn is built around the idea that link management should be simple without sacrificing power. With iShortn, you get a clean dashboard where you can create short links, attach custom domains, generate styled QR codes, and review analytics, all in one place.
 
-The analytics dashboard gives you real-time insights into click performance, including geographic breakdowns, device types, and referral sources. If you work with a team, shared workspaces let everyone collaborate on link management without stepping on each other's toes.
+The analytics dashboard gives you real-time insights into click performance, including geographic breakdowns, device types, and referral sources. If you work with a team, shared team workspaces on the Ultra plan let everyone collaborate on link management without stepping on each other's toes.
 
-For developers, iShortn provides a straightforward API to create and manage links programmatically, making it easy to integrate link shortening into your existing tools and workflows.
+For developers, iShortn's Pro and Ultra plans include a straightforward REST API to create and manage links programmatically, making it easy to integrate link shortening into your existing tools and workflows.
 
 ## Getting Started
 
