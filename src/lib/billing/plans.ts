@@ -80,6 +80,23 @@ export const PLAN_CAPS: PlanCapsByPlan = {
   },
 };
 
+export type ApiRateLimits = {
+  perMinute: number;
+  perDay: number;
+};
+
+// Requests to the key-authenticated /api/v1 endpoints, shared by all of an
+// account's API keys (keys are free to mint, so a per-key budget would be no limit).
+export const API_RATE_LIMITS = {
+  free: { perMinute: 60, perDay: 1000 },
+  pro: { perMinute: 300, perDay: 10000 },
+  ultra: { perMinute: 1200, perDay: 100000 },
+} satisfies Record<Plan, ApiRateLimits>;
+
+export function getApiRateLimits(plan: Plan): ApiRateLimits {
+  return API_RATE_LIMITS[plan];
+}
+
 export function getPlanFromIds(variantId?: number | null, productId?: number | null): Plan | null {
   if (variantId && ULTRA_VARIANT_IDS.has(variantId)) return "ultra";
   if (productId && ULTRA_PRODUCT_IDS.has(productId)) return "ultra";
