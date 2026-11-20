@@ -3,9 +3,8 @@ import { describe, expect, it } from "bun:test";
 import { getChangelogEntries } from "@/lib/changelog";
 import { competitors } from "@/lib/seo/competitors";
 
-// absoluteUrl reads NEXT_PUBLIC_APP_URL through env.mjs at import time, so set it before loading.
-process.env.NEXT_PUBLIC_APP_URL ??= "https://ishortn.ink";
-const { default: sitemap } = await import("./sitemap");
+// test/setup.ts sets NEXT_PUBLIC_APP_URL before env.mjs loads.
+import sitemap from "./sitemap";
 
 describe("sitemap", () => {
   it("returns the same lastModified values on every call", async () => {
