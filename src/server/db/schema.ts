@@ -171,6 +171,10 @@ export const user = mysqlTable(
     banned: boolean("banned").default(false),
     bannedAt: timestamp("bannedAt"),
     bannedReason: varchar("bannedReason", { length: 255 }),
+    // API access sunset emails (see src/server/lib/api-access.ts): set once the
+    // account has been handled, i.e. emailed, or skipped for being on a paid plan.
+    apiSunsetNoticeSentAt: timestamp("apiSunsetNoticeSentAt"),
+    apiSunsetReminderSentAt: timestamp("apiSunsetReminderSentAt"),
   },
   (table) => ({
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),

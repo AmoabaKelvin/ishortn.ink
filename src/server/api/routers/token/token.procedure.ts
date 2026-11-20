@@ -7,6 +7,10 @@ export const tokenRouter = createTRPCRouter({
     return services.getTokens(ctx);
   }),
 
+  access: protectedProcedure.query(({ ctx }) => {
+    return services.getApiAccessStatus(ctx);
+  }),
+
   create: protectedProcedure.input(inputs.createTokenSchema).mutation(({ ctx, input }) => {
     return services.createToken(ctx, input);
   }),

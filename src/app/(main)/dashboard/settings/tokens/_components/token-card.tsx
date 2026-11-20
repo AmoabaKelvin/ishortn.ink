@@ -11,10 +11,12 @@ const TokenCard = ({
   start,
   createdAt,
   keyID,
+  active = true,
 }: {
   start: string;
   createdAt: Date | null;
   keyID: number;
+  active?: boolean;
 }) => {
   const deleteAPIKeyMutation = api.token.delete.useMutation({
     onSuccess: async () => {
@@ -39,10 +41,17 @@ const TokenCard = ({
           <code className="rounded-md bg-neutral-50 dark:bg-accent/50 px-2 py-0.5 font-mono text-[12px] text-neutral-600 dark:text-neutral-400">
             {start}••••••••••••
           </code>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Active
-          </span>
+          {active ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Active
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500" />
+              Inactive
+            </span>
+          )}
         </div>
         {createdAt && (
           <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">

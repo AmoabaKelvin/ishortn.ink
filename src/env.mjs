@@ -59,6 +59,15 @@ export const env = createEnv({
     HEALTHCHECK_TOKEN: z.string().optional(),
     // Inlined at build time by next.config.js; reported by /api/health/deep.
     BUILD_COMMIT_SHA: z.string().optional(),
+    // ISO timestamp after which API keys on accounts without Pro/Ultra stop working
+    // (set at deploy to deploy time + 7 days). Unset: those keys keep working.
+    API_FREE_ACCESS_SUNSET_AT: z
+      .string()
+      .refine(
+        (value) => !Number.isNaN(Date.parse(value)),
+        "API_FREE_ACCESS_SUNSET_AT must be a parseable date",
+      )
+      .optional(),
   },
 
   /**
@@ -118,6 +127,7 @@ export const env = createEnv({
     STATUS_PAGE_API_URL: process.env.STATUS_PAGE_API_URL,
     HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
     BUILD_COMMIT_SHA: process.env.BUILD_COMMIT_SHA,
+    API_FREE_ACCESS_SUNSET_AT: process.env.API_FREE_ACCESS_SUNSET_AT,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
