@@ -26,6 +26,7 @@ const columns = [
       { label: "vs Linktree", href: "/compare/linktree" },
       { label: "vs Beacons", href: "/compare/beacons" },
       { label: "vs Carrd", href: "/compare/carrd" },
+      { label: "All comparisons", href: "/compare" },
     ],
   },
   {
