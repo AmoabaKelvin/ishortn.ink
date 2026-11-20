@@ -10,6 +10,7 @@ const log = logger.child({ component: "ensure-user" });
 export type UserAccess = {
   banned: boolean | null;
   bannedReason: string | null;
+  restrictedAt: Date | null;
   isAdmin: boolean | null;
   deletedAt: Date | null;
 };
@@ -22,7 +23,13 @@ export type UserAccess = {
 export async function ensureUser(userId: string): Promise<UserAccess | undefined> {
   const existing = await db.query.user.findFirst({
     where: eq(user.id, userId),
-    columns: { banned: true, bannedReason: true, isAdmin: true, deletedAt: true },
+    columns: {
+      banned: true,
+      bannedReason: true,
+      restrictedAt: true,
+      isAdmin: true,
+      deletedAt: true,
+    },
   });
   if (existing) return existing;
 
@@ -41,5 +48,11 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
     .onDuplicateKeyUpdate({ set: { name, email: primaryEmail, imageUrl: profile.imageUrl } });
   log.info({ userId }, "provisioned user row from Clerk profile");
 
-  return { banned: false, bannedReason: null, isAdmin: false, deletedAt: null };
+  return {
+    banned: false,
+    bannedReason: null,
+    restrictedAt: null,
+    isAdmin: false,
+    deletedAt: null,
+  };
 }

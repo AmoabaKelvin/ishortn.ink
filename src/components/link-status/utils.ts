@@ -5,7 +5,13 @@ import {
   isPlatformDomain,
 } from "@/lib/constants/domains";
 
-export type MarketingCampaign = "not_found" | "expired" | "blocked";
+export type MarketingCampaign =
+  | "not_found"
+  | "expired"
+  | "blocked"
+  | "password"
+  | "preview"
+  | "verified_redirect";
 
 export const UNSAFE_LINK_MESSAGE = "This link was flagged as unsafe and has been disabled.";
 export const INACTIVE_LINK_MESSAGE = "This link is no longer active.";

@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
+import { isPlatformHost } from "@/components/link-status/utils";
 import { socialMediaAgents } from "@/lib/constants/app";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
@@ -108,13 +109,14 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
       headers: headersList,
     });
     if (stateRoute) redirect(stateRoute);
+    const branded = isPlatformHost(incomingDomain) && !link.cloaking;
     if (link.passwordHash) {
-      return <LinkPasswordVerification id={link.id} />;
+      return <LinkPasswordVerification id={link.id} branded={branded} />;
     }
     if (isSocialMediaAgent(userAgent)) {
       return <div>Redirecting...</div>;
     }
-    return <LinkPreview domain={link.domain} alias={link.alias} url={link.url} />;
+    return <LinkPreview domain={link.domain} alias={link.alias} url={link.url} branded={branded} />;
   }
 
   // Full resolution: geo rules, expiration, click recording, verified-click

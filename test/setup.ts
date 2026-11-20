@@ -3,8 +3,9 @@ import { mock } from "bun:test";
 // Modules that import env.mjs would otherwise refuse to load without prod secrets.
 process.env.SKIP_ENV_VALIDATION = "1";
 
-// env.mjs reads this at import time; CI runs tests without a .env, so give it the production origin.
-process.env.NEXT_PUBLIC_APP_URL ||= "https://ishortn.ink";
+// env.mjs reads this at import time. Pin the production origin so tests don't depend on a local
+// .env (Bun loads it before this preload, and dev setups point it at localhost).
+process.env.NEXT_PUBLIC_APP_URL = "https://ishortn.ink";
 
 // `server-only` throws outside a React Server Components bundle.
 mock.module("server-only", () => ({}));

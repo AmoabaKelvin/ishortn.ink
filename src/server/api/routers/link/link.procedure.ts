@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { createTRPCRouter, publicProcedure, workspaceProcedure } from "../../trpc";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  contentWriteProcedure,
+  workspaceProcedure,
+} from "../../trpc";
 import * as inputs from "./link.input";
 import * as services from "./link.service";
 import * as transferServices from "./transfer.service";
@@ -22,11 +27,11 @@ export const linkRouter = createTRPCRouter({
     return services.getLink(ctx, input);
   }),
 
-  create: workspaceProcedure.input(inputs.createLinkSchema).mutation(({ ctx, input }) => {
+  create: contentWriteProcedure.input(inputs.createLinkSchema).mutation(({ ctx, input }) => {
     return services.createLink(ctx, input);
   }),
 
-  update: workspaceProcedure.input(inputs.updateLinkSchema).mutation(({ ctx, input }) => {
+  update: contentWriteProcedure.input(inputs.updateLinkSchema).mutation(({ ctx, input }) => {
     return services.updateLink(ctx, input);
   }),
 
@@ -34,7 +39,7 @@ export const linkRouter = createTRPCRouter({
     return services.deleteLink(ctx, input);
   }),
 
-  quickShorten: workspaceProcedure
+  quickShorten: contentWriteProcedure
     .input(inputs.quickLinkShorteningSchema)
     .mutation(({ ctx, input }) => {
       return services.shortenLinkWithAutoAlias(ctx, input);
@@ -68,7 +73,7 @@ export const linkRouter = createTRPCRouter({
     return services.getAllUserAnalytics(ctx, input);
   }),
 
-  toggleLinkStatus: workspaceProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
+  toggleLinkStatus: contentWriteProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
     return services.toggleLinkStatus(ctx, input);
   }),
 
@@ -91,7 +96,7 @@ export const linkRouter = createTRPCRouter({
       return services.verifyLinkPassword(ctx, input);
     }),
 
-  changeLinkPassword: workspaceProcedure
+  changeLinkPassword: contentWriteProcedure
     .input(inputs.verifyLinkPasswordSchema)
     .mutation(({ ctx, input }) => {
       return services.changeLinkPassword(ctx, input);
@@ -103,7 +108,7 @@ export const linkRouter = createTRPCRouter({
       return services.checkAliasAvailability(ctx, input);
     }),
 
-  bulkUpload: workspaceProcedure
+  bulkUpload: contentWriteProcedure
     .input(z.object({ csv: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return services.bulkCreateLinks(ctx, input.csv);
@@ -134,7 +139,7 @@ export const linkRouter = createTRPCRouter({
     }),
 
   /** Transfer links to another workspace */
-  transferToWorkspace: workspaceProcedure
+  transferToWorkspace: contentWriteProcedure
     .input(inputs.transferLinksToWorkspaceSchema)
     .mutation(async ({ ctx, input }) => {
       return transferServices.transferLinksToWorkspace(ctx, input);
@@ -155,7 +160,7 @@ export const linkRouter = createTRPCRouter({
     }),
 
   /** Bulk activate/deactivate links */
-  bulkToggleStatus: workspaceProcedure
+  bulkToggleStatus: contentWriteProcedure
     .input(inputs.bulkToggleLinkStatusSchema)
     .mutation(async ({ ctx, input }) => {
       return services.bulkToggleLinkStatus(ctx, input);

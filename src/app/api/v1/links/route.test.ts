@@ -2,12 +2,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import crypto from "node:crypto";
 
 import { eq } from "drizzle-orm";
+import { NextRequest } from "next/server";
 
 import { env } from "@/env.mjs";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
 
+import { PATCH } from "./[alias]/route";
 import { POST } from "./route";
 
 // Runs against a disposable MySQL with the schema pushed (test/setup.ts points
@@ -27,7 +30,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
   });
 
-  async function reset(monthlyLinkCount: number) {
+  async function reset(monthlyLinkCount: number, restrictedAt: Date | null = null) {
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
@@ -35,6 +38,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
       id: USER_ID,
       monthlyLinkCount,
       lastLinkCountReset: new Date(),
+      restrictedAt,
     });
     await db.insert(schema.token).values({
       userId: USER_ID,
@@ -100,6 +104,33 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     const duplicate = await createLink({ alias: "routetestalias" });
     expect(duplicate.status).toBe(400);
     expect(await duplicate.text()).toBe("Alias already exists");
+    expect(await storedCount()).toBe(1);
+  });
+
+  test("refuses creates and edits from a restricted account with 403", async () => {
+    expect((await createLink({ alias: "restricted-edit" })).status).toBe(201);
+    await db
+      .update(schema.user)
+      .set({ restrictedAt: new Date() })
+      .where(eq(schema.user.id, USER_ID));
+
+    const created = await createLink();
+    expect(created.status).toBe(403);
+    expect(await created.text()).toBe(ACCOUNT_RESTRICTED_MESSAGE);
+
+    const edited = await PATCH(
+      new NextRequest("http://localhost/api/v1/links/restricted-edit", {
+        method: "PATCH",
+        headers: { "x-api-key": API_KEY, "content-type": "application/json" },
+        body: JSON.stringify({ url: "http://localhost/elsewhere" }),
+      }),
+      { params: Promise.resolve({ alias: "restricted-edit" }) },
+    );
+    expect(edited.status).toBe(403);
+    expect(await edited.text()).toBe(ACCOUNT_RESTRICTED_MESSAGE);
+
+    const links = await db.select().from(schema.link).where(eq(schema.link.userId, USER_ID));
+    expect(links.map((l) => l.url)).toEqual([TARGET_URL]);
     expect(await storedCount()).toBe(1);
   });
 });
