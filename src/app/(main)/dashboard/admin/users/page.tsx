@@ -1,6 +1,6 @@
 "use client";
 
-import { IconBan, IconCheck, IconSearch } from "@tabler/icons-react";
+import { IconAlertTriangle, IconBan, IconCheck, IconSearch } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -24,12 +24,32 @@ import { SubscriptionGrowthChart } from "./_components/subscription-growth-chart
 import { TierBreakdownCard } from "./_components/tier-breakdown-card";
 import { UserBaseStats } from "./_components/user-base-stats";
 
-type UserToBan = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  linkCount: number;
+type ModerationAction = "ban" | "restrict";
+
+type PendingModeration = {
+  action: ModerationAction;
+  user: { id: string; name: string | null; email: string | null; linkCount: number };
 } | null;
+
+const MODERATION_COPY = {
+  ban: {
+    title: "Ban User",
+    description: "This will ban the user and immediately block all their links.",
+    label: "Reason for banning",
+    placeholder: "e.g. Repeated creation of phishing links...",
+    submit: "Ban User",
+    submitting: "Banning...",
+  },
+  restrict: {
+    title: "Restrict User",
+    description:
+      "The user can still sign in and pay, but can't create or edit links, custom domains, bio pages or QR codes. Their custom domains are removed from Cloudflare until the restriction is lifted.",
+    label: "Reason for restricting",
+    placeholder: "e.g. Custom domain used to host phishing pages...",
+    submit: "Restrict User",
+    submitting: "Restricting...",
+  },
+} as const;
 
 function getDefault30d() {
   const to = new Date();
@@ -46,8 +66,8 @@ export default function AdminUsersPage() {
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [userToBan, setUserToBan] = useState<UserToBan>(null);
-  const [banReason, setBanReason] = useState("");
+  const [pending, setPending] = useState<PendingModeration>(null);
+  const [reason, setReason] = useState("");
 
   const { from, to } = dateRange;
 
@@ -72,8 +92,7 @@ export default function AdminUsersPage() {
   const banMutation = api.admin.banUser.useMutation({
     onSuccess: () => {
       toast.success("User banned and all their links blocked");
-      setUserToBan(null);
-      setBanReason("");
+      closeDialog();
       void refetch();
     },
     onError: (error) => toast.error(error.message),
@@ -87,16 +106,54 @@ export default function AdminUsersPage() {
     onError: (error) => toast.error(error.message),
   });
 
+  const restrictMutation = api.admin.restrictUser.useMutation({
+    onSuccess: ({ domainFailures }) => {
+      if (domainFailures.length > 0) {
+        toast.warning(
+          `User restricted, but these domains could not be removed: ${domainFailures.join(", ")}`,
+        );
+      } else {
+        toast.success("User restricted and their custom domains removed");
+      }
+      closeDialog();
+      void refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const unrestrictMutation = api.admin.unrestrictUser.useMutation({
+    onSuccess: ({ domainFailures }) => {
+      if (domainFailures.length > 0) {
+        toast.warning(
+          `Restriction lifted, but these domains could not be re-added: ${domainFailures.join(", ")}`,
+        );
+      } else {
+        toast.success("Restriction lifted and custom domains re-added");
+      }
+      void refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  function closeDialog() {
+    setPending(null);
+    setReason("");
+  }
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
     setSearchQuery(query);
   };
 
-  const handleBan = () => {
-    if (!userToBan || !banReason.trim()) return;
-    banMutation.mutate({ userId: userToBan.id, reason: banReason.trim() });
+  const handleConfirm = () => {
+    if (!pending || !reason.trim()) return;
+    const mutation = pending.action === "ban" ? banMutation : restrictMutation;
+    mutation.mutate({ userId: pending.user.id, reason: reason.trim() });
   };
+
+  const copy = MODERATION_COPY[pending?.action ?? "ban"];
+  const isSubmitting = banMutation.isLoading || restrictMutation.isLoading;
 
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 0;
 
@@ -132,7 +189,7 @@ export default function AdminUsersPage() {
           Find a user
         </h2>
         <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
-          Search by email or name to manage bans
+          Search by email or name to manage bans and restrictions
         </p>
       </div>
 
@@ -246,6 +303,14 @@ export default function AdminUsersPage() {
                           <IconBan size={11} />
                           Banned
                         </span>
+                      ) : u.restrictedAt ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
+                          title={u.restrictedReason ?? undefined}
+                        >
+                          <IconAlertTriangle size={11} />
+                          Restricted
+                        </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
                           <IconCheck size={11} />
@@ -265,21 +330,56 @@ export default function AdminUsersPage() {
                           Unban
                         </Button>
                       ) : (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() =>
-                            setUserToBan({
-                              id: u.id,
-                              name: u.name,
-                              email: u.email,
-                              linkCount: u.linkCount,
-                            })
-                          }
-                          className="h-7 text-[12px]"
-                        >
-                          Ban
-                        </Button>
+                        <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:justify-end">
+                          {u.restrictedAt ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => unrestrictMutation.mutate({ userId: u.id })}
+                              disabled={unrestrictMutation.isLoading}
+                              className="h-7 text-[12px]"
+                            >
+                              Unrestrict
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setPending({
+                                  action: "restrict",
+                                  user: {
+                                    id: u.id,
+                                    name: u.name,
+                                    email: u.email,
+                                    linkCount: u.linkCount,
+                                  },
+                                })
+                              }
+                              className="h-7 text-[12px]"
+                            >
+                              Restrict
+                            </Button>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() =>
+                              setPending({
+                                action: "ban",
+                                user: {
+                                  id: u.id,
+                                  name: u.name,
+                                  email: u.email,
+                                  linkCount: u.linkCount,
+                                },
+                              })
+                            }
+                            className="h-7 text-[12px]"
+                          >
+                            Ban
+                          </Button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -319,69 +419,59 @@ export default function AdminUsersPage() {
       )}
 
       <Dialog
-        open={!!userToBan}
+        open={!!pending}
         onOpenChange={(open) => {
-          if (!open) {
-            setUserToBan(null);
-            setBanReason("");
-          }
+          if (!open) closeDialog();
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ban User</DialogTitle>
-            <DialogDescription>
-              This will ban the user and immediately block all their links.
-            </DialogDescription>
+            <DialogTitle>{copy.title}</DialogTitle>
+            <DialogDescription>{copy.description}</DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-4">
             <div className="rounded-lg bg-neutral-50 dark:bg-accent/50 p-3">
               <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                {userToBan?.name ?? "Unnamed"}
+                {pending?.user.name ?? "Unnamed"}
               </p>
               <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                {userToBan?.email}
+                {pending?.user.email}
               </p>
-              {userToBan && userToBan.linkCount > 0 && (
+              {pending?.action === "ban" && pending.user.linkCount > 0 && (
                 <p className="mt-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
-                  {userToBan.linkCount} {userToBan.linkCount === 1 ? "link" : "links"} will be
+                  {pending.user.linkCount} {pending.user.linkCount === 1 ? "link" : "links"} will be
                   blocked
                 </p>
               )}
             </div>
             <div>
               <label
-                htmlFor="ban-user-reason"
+                htmlFor="moderation-reason"
                 className="mb-1.5 block text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
               >
-                Reason for banning
+                {copy.label}
               </label>
               <Textarea
-                id="ban-user-reason"
-                value={banReason}
-                onChange={(e) => setBanReason(e.target.value)}
-                placeholder="e.g. Repeated creation of phishing links..."
+                id="moderation-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                maxLength={255}
+                placeholder={copy.placeholder}
                 rows={3}
                 className="text-[13px]"
               />
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setUserToBan(null);
-                setBanReason("");
-              }}
-            >
+            <Button variant="outline" onClick={closeDialog}>
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={handleBan}
-              disabled={!banReason.trim() || banMutation.isLoading}
+              onClick={handleConfirm}
+              disabled={!reason.trim() || isSubmitting}
             >
-              {banMutation.isLoading ? "Banning..." : "Ban User"}
+              {isSubmitting ? copy.submitting : copy.submit}
             </Button>
           </DialogFooter>
         </DialogContent>

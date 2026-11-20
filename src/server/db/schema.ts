@@ -171,6 +171,9 @@ export const user = mysqlTable(
     banned: boolean("banned").default(false),
     bannedAt: timestamp("bannedAt"),
     bannedReason: varchar("bannedReason", { length: 255 }),
+    // Restriction: can sign in and pay, but can't create or edit links, domains, bio pages or QR codes
+    restrictedAt: timestamp("restrictedAt"),
+    restrictedReason: varchar("restrictedReason", { length: 255 }),
   },
   (table) => ({
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),

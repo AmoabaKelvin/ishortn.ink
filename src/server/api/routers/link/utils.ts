@@ -18,6 +18,19 @@ import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 
+/** blockedReason for links a restricted account created; lifting the restriction restores them. */
+export const RESTRICTED_LINK_REASON = "Owner account restricted" as const;
+
+/**
+ * Backstop for restricted accounts: contentWriteProcedure and the v1 API refuse
+ * them, but a link one still manages to create (a path that skips the gate, or
+ * a restriction landing mid-request) is inserted already blocked.
+ */
+export function restrictedLinkValues(restrictedAt: Date | null | undefined) {
+  if (!restrictedAt) return {};
+  return { blocked: true, blockedAt: new Date(), blockedReason: RESTRICTED_LINK_REASON };
+}
+
 /**
  * Loads a link that belongs to the caller's workspace, and — when the link
  * lives in a folder — that the caller is allowed to see that folder. Workspace

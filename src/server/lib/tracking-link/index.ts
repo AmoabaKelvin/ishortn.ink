@@ -9,6 +9,7 @@ import {
   checkWorkspaceLinkLimit,
   countsTowardMonthlyLinkQuota,
   getWorkspaceDefaultDomain,
+  restrictedLinkValues,
 } from "@/server/api/routers/link/utils";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
@@ -93,6 +94,7 @@ export async function prepareHiddenTrackingLink(
       userId: ownership.userId ?? ctx.auth.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId,
+      ...restrictedLinkValues(ctx.restrictedAt),
     },
     trackingUrl: `https://${domain}/${alias}`,
     alias,

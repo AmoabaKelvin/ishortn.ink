@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getPlanCaps, isUnlimitedDomains, resolvePlan } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
-import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, contentWriteProcedure, workspaceProcedure } from "@/server/api/trpc";
 import { customDomain } from "@/server/db/schema";
 import { workspaceFilter } from "@/server/lib/workspace";
 
@@ -29,7 +29,7 @@ function toMigrationRecords(domain: string, hostname?: CloudflareCustomHostname 
 }
 
 export const customDomainRouter = createTRPCRouter({
-  create: workspaceProcedure
+  create: contentWriteProcedure
     .input(input.createCustomDomainSchema)
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.db.query.user.findFirst({

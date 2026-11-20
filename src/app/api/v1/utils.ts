@@ -4,6 +4,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { resolvePlan } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
 
@@ -18,11 +19,11 @@ export async function validateAndGetToken(apiKey: string | null) {
 
   const userId = existingToken[0]!.userId;
 
-  // Run ban check and subscription lookup in parallel
+  // Run ban/restriction check and subscription lookup in parallel
   const [userRecord, userSubscription] = await Promise.all([
     db.query.user.findFirst({
       where: eq(user.id, userId),
-      columns: { banned: true, deletedAt: true },
+      columns: { banned: true, deletedAt: true, restrictedAt: true },
     }),
     db.select().from(subscription).where(eq(subscription.userId, userId)),
   ]);
@@ -31,10 +32,19 @@ export async function validateAndGetToken(apiKey: string | null) {
     return null;
   }
 
-  return { ...existingToken[0]!, subscription: userSubscription[0] };
+  return {
+    ...existingToken[0]!,
+    subscription: userSubscription[0],
+    restrictedAt: userRecord?.restrictedAt ?? null,
+  };
 }
 
 export type ApiToken = NonNullable<Awaited<ReturnType<typeof validateAndGetToken>>>;
+
+/** 403 for write routes when the token owner's account is restricted, else null. */
+export function restrictedAccountResponse(token: ApiToken): Response | null {
+  return token.restrictedAt ? new Response(ACCOUNT_RESTRICTED_MESSAGE, { status: 403 }) : null;
+}
 
 /**
  * Wraps a v1 route handler with API key auth and the plan's rate limit. The
