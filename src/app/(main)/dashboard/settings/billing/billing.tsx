@@ -6,10 +6,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { getIntervalFromVariantId } from "@/lib/billing/plans";
+import { getIntervalFromVariantId, PLAN_CAPS } from "@/lib/billing/plans";
+import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { PlanSwitcher } from "./plan-switcher";
+import { ResumeSubscriptionButton } from "./resume-subscription-button";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -17,33 +19,95 @@ type BillingProps = {
   subscriptions: RouterOutputs["subscriptions"]["get"];
 };
 
+type SubscriptionRow = NonNullable<RouterOutputs["subscriptions"]["get"]["subscriptions"]>;
+type Tone = "success" | "warning" | "neutral";
+
+const TONE_CLASSES = {
+  success: { text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
+  warning: { text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
+  neutral: { text: "text-neutral-500 dark:text-neutral-400", dot: "bg-neutral-400" },
+} satisfies Record<Tone, { text: string; dot: string }>;
+
+const formatDate = (date: Date | string) => format(new Date(date), "MMM d, yyyy");
+
+type StatusDisplay = {
+  label: string;
+  tone: Tone;
+  detail: string | null;
+};
+
+function getStatusDisplay(subscription: SubscriptionRow): StatusDisplay {
+  const { status, renewsAt, endsAt } = subscription;
+
+  switch (status) {
+    case "active":
+      return {
+        label: "Active",
+        tone: "success",
+        detail: renewsAt ? `Renews ${formatDate(renewsAt)}` : null,
+      };
+    case "on_trial":
+      return {
+        label: "Trial",
+        tone: "neutral",
+        detail: renewsAt ? `Trial ends ${formatDate(renewsAt)}` : null,
+      };
+    case "past_due":
+      return {
+        label: "Past due",
+        tone: "warning",
+        detail: null,
+      };
+    case "cancelled":
+      return {
+        label: "Cancelled",
+        tone: "neutral",
+        detail: endsAt ? `Access until ${formatDate(endsAt)}` : null,
+      };
+    default:
+      return {
+        label: status ? status.replace(/_/g, " ") : "Unknown",
+        tone: "neutral",
+        detail: null,
+      };
+  }
+}
+
+const proLinksLimit = PLAN_CAPS.pro.linksLimit?.toLocaleString() ?? "more";
+
 export default function Billing({ subscriptions }: BillingProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingTarget, setLoadingTarget] = useState<"portal" | "payment" | null>(null);
 
   const subscription = subscriptions?.subscriptions;
   const currentPlan = subscriptions?.plan ?? "free";
+  const subscriptionMode = subscriptions?.subscriptionMode ?? "checkout";
   const currentInterval = getIntervalFromVariantId(subscription?.variantId);
-  const isActive = subscription?.status === "active";
+  // A row that resolves to Free (expired, or never paid) has no live status worth showing.
+  const isPaid = currentPlan !== "free";
+  const statusDisplay = subscription && isPaid ? getStatusDisplay(subscription) : null;
+  const isPastDue = isPaid && subscription?.status === "past_due";
 
   const getSubscriptionDetails = api.lemonsqueezy.subscriptionDetails.useMutation({
     onSuccess: (urls) => {
-      if (urls.customer_portal) {
-        window.location.href = urls.customer_portal;
-      } else if (urls.update_payment_method) {
-        window.location.href = urls.update_payment_method;
+      const url =
+        loadingTarget === "payment"
+          ? (urls.update_payment_method ?? urls.customer_portal)
+          : (urls.customer_portal ?? urls.update_payment_method);
+      if (url) {
+        window.location.href = url;
       } else {
         toast.error("Could not find subscription portal URL");
-        setIsLoading(false);
+        setLoadingTarget(null);
       }
     },
     onError: (error) => {
       toast.error(error.message);
-      setIsLoading(false);
+      setLoadingTarget(null);
     },
   });
 
-  const handleManageSubscription = () => {
-    setIsLoading(true);
+  const openPortal = (target: "portal" | "payment") => {
+    setLoadingTarget(target);
     getSubscriptionDetails.mutate();
   };
 
@@ -55,34 +119,32 @@ export default function Billing({ subscriptions }: BillingProps) {
           <p className="text-[14px] font-medium capitalize text-neutral-900 dark:text-foreground">
             {currentPlan} Plan
           </p>
-          {subscription && (
+          {statusDisplay && (
             <span
-              className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${
-                isActive
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-red-600 dark:text-red-400"
-              }`}
+              className={cn(
+                "inline-flex items-center gap-1.5 text-[11px] font-medium",
+                TONE_CLASSES[statusDisplay.tone].text,
+              )}
             >
               <span
-                className={`inline-block h-1.5 w-1.5 rounded-full ${
-                  isActive ? "bg-emerald-500" : "bg-red-500"
-                }`}
+                className={cn(
+                  "inline-block h-1.5 w-1.5 rounded-full",
+                  TONE_CLASSES[statusDisplay.tone].dot,
+                )}
               />
-              {subscription.status}
+              {statusDisplay.label}
             </span>
           )}
         </div>
 
-        {subscription ? (
+        {statusDisplay && subscription ? (
           <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
-            {subscription.renewsAt && (
-              <span className="text-neutral-400 dark:text-neutral-500">
-                Renews {format(new Date(subscription.renewsAt), "MMM d, yyyy")}
-              </span>
+            {statusDisplay.detail && (
+              <span className="text-neutral-400 dark:text-neutral-500">{statusDisplay.detail}</span>
             )}
             {subscription.cardLastFour && (
               <>
-                {subscription.renewsAt && (
+                {statusDisplay.detail && (
                   <span className="text-neutral-300 dark:text-neutral-600">&middot;</span>
                 )}
                 <span className="capitalize text-neutral-500 dark:text-neutral-400">
@@ -93,19 +155,43 @@ export default function Billing({ subscriptions }: BillingProps) {
           </div>
         ) : (
           <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
-            Upgrade for unlimited links, custom domains, and advanced analytics.
+            Upgrade for up to {proLinksLimit} links a month, custom domains, and advanced analytics.
           </p>
         )}
 
+        {isPastDue && (
+          <div className="mt-3 flex flex-col gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[12px] text-amber-700 dark:text-amber-400">
+              Your last payment failed. Update your payment method to keep your plan.
+            </p>
+            <button
+              type="button"
+              onClick={() => openPortal("payment")}
+              disabled={loadingTarget !== null}
+              className="inline-flex shrink-0 items-center text-[12px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:opacity-50"
+            >
+              {loadingTarget === "payment" && (
+                <IconLoader2 size={14} stroke={1.5} className="mr-1 animate-spin" />
+              )}
+              Update payment method
+            </button>
+          </div>
+        )}
+
         {subscription && (
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {subscriptionMode === "resume" && (
+              <ResumeSubscriptionButton className="h-8 text-[12px]" />
+            )}
             <Button
-              onClick={handleManageSubscription}
-              disabled={isLoading}
+              onClick={() => openPortal("portal")}
+              disabled={loadingTarget !== null}
               variant="outline"
               className="h-8 border-neutral-200 dark:border-border text-[12px]"
             >
-              {isLoading && <IconLoader2 size={14} stroke={1.5} className="mr-1.5 animate-spin" />}
+              {loadingTarget === "portal" && (
+                <IconLoader2 size={14} stroke={1.5} className="mr-1.5 animate-spin" />
+              )}
               Manage Subscription
             </Button>
           </div>
@@ -114,7 +200,12 @@ export default function Billing({ subscriptions }: BillingProps) {
 
       {/* Inline plan switcher */}
       <div className="border-t border-neutral-100 dark:border-border/50 pt-5">
-        <PlanSwitcher currentPlan={currentPlan} currentInterval={currentInterval} />
+        <PlanSwitcher
+          currentPlan={currentPlan}
+          currentInterval={currentInterval}
+          subscriptionMode={subscriptionMode}
+          renewsAt={subscription?.renewsAt ?? null}
+        />
       </div>
     </div>
   );

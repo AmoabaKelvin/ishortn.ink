@@ -11,7 +11,12 @@ async function PricingPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <PricingCards currentPlan={subscriptions.plan} currentInterval={currentInterval} />
+      <PricingCards
+        currentPlan={subscriptions.plan}
+        currentInterval={currentInterval}
+        subscriptionMode={subscriptions.subscriptionMode}
+        renewsAt={subscriptions.subscriptions?.renewsAt ?? null}
+      />
     </div>
   );
 }
