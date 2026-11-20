@@ -107,7 +107,7 @@ async function createShortLink(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const { error } = await response.json();
     throw new Error(`Failed to create short link: ${error.message}`);
   }
 

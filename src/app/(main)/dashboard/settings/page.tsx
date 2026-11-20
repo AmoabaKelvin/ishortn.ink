@@ -7,8 +7,7 @@ import Billing from "./billing/billing";
 import { DeleteAccountSection } from "./delete-account/delete-account-section";
 import { SettingsForm } from "./general/settings-form";
 import { ProfileForm } from "./profile/profile-form";
-import GenerateTokenTrigger from "./tokens/_components/create-token";
-import TokenCard from "./tokens/_components/token-card";
+import { ApiKeys } from "./tokens/_components/api-keys";
 import { AccountTransferSection } from "./transfer/account-transfer-section";
 
 export const dynamic = "force-dynamic";
@@ -83,7 +82,7 @@ async function SettingsPage() {
                 API Keys
               </h2>
               <Link
-                href="https://ishortn.mintlify.app/introduction"
+                href="https://ishortn.mintlify.app/api-reference/introduction"
                 target="_blank"
                 className="text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700"
               >
@@ -94,11 +93,7 @@ async function SettingsPage() {
               Programmatic access to your account
             </p>
             <div className="mt-4">
-              {tokens.length > 0 && tokens[0] ? (
-                <TokenCard start="******" createdAt={tokens[0].createdAt} keyID={tokens[0].id} />
-              ) : (
-                <GenerateTokenTrigger />
-              )}
+              <ApiKeys tokens={tokens} />
             </div>
           </section>
 

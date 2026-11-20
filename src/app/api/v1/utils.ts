@@ -4,10 +4,15 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { resolvePlan } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
 
+import { apiError } from "./errors";
 import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
+
+// Bounds the write load from busy keys: lastUsedAt is only for display.
+const LAST_USED_RESOLUTION_MS = 60 * 60 * 1000;
 
 export async function validateAndGetToken(apiKey: string | null) {
   if (!apiKey) return null;
@@ -31,7 +36,18 @@ export async function validateAndGetToken(apiKey: string | null) {
     return null;
   }
 
-  return { ...existingToken[0]!, subscription: userSubscription[0] };
+  const now = new Date();
+  const { id, lastUsedAt } = existingToken[0]!;
+  if (!lastUsedAt || now.getTime() - lastUsedAt.getTime() >= LAST_USED_RESOLUTION_MS) {
+    void runBackgroundTask(db.update(token).set({ lastUsedAt: now }).where(eq(token.id, id))).catch(
+      () => undefined,
+    );
+  }
+
+  const userSub = userSubscription[0];
+  // Every paid-feature check in v1 reads this plan, so a trialing, past-due or
+  // cancelled-but-paid-up subscriber gets the same access as in the dashboard.
+  return { ...existingToken[0]!, subscription: userSub, plan: resolvePlan(userSub ?? null) };
 }
 
 export type ApiToken = NonNullable<Awaited<ReturnType<typeof validateAndGetToken>>>;
@@ -47,13 +63,10 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
   return async (request: Req, ...args: Args): Promise<Response> => {
     const token = await validateAndGetToken(request.headers.get("x-api-key"));
     if (!token) {
-      return new Response("Invalid or missing API key", { status: 401 });
+      return apiError(401, "unauthorized", "Invalid or missing API key");
     }
 
-    const decision = await consumeApiRateLimit(
-      token.userId,
-      resolvePlan(token.subscription ?? null),
-    );
+    const decision = await consumeApiRateLimit(token.userId, token.plan);
     if (!decision.allowed) return rateLimitedResponse(decision);
 
     const response = await handler(request, token, ...args);

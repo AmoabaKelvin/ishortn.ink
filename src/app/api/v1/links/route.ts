@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { resolvePlan } from "@/lib/billing/plans";
 import { generateShortLink } from "@/lib/core/links";
 import { validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
@@ -11,50 +10,35 @@ import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
+import { apiError, errorResponse, readJsonBody, validationError } from "../errors";
 import { resolveApiDomainForUser, withApiKey } from "../utils";
 
-export const POST = withApiKey(async (request: Request, token) => {
-  const input = shortenLinkSchema.safeParse(await request.json());
+import type { Plan } from "@/lib/billing/plans";
 
-  if (!input.success) {
-    return new Response(input.error.message, { status: 400 });
-  }
+export const POST = withApiKey(async (request: Request, token) => {
+  const body = await readJsonBody(request);
+  if (!body.ok) return body.response;
+
+  const input = shortenLinkSchema.safeParse(body.body);
+  if (!input.success) return validationError(input.error);
 
   const parsedData = input.data;
   const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
   if (!requestedDomain) {
-    return new Response("Domain not available for this API key", { status: 403 });
+    return apiError(403, "forbidden", "Domain not available for this API key");
   }
-  const plan = resolvePlan(token.subscription ?? null);
-  if (parsedData.activatesAt && plan === "free") {
-    return new Response("Scheduled links are only available on Pro and Ultra plans", {
-      status: 403,
-    });
+  if (parsedData.activatesAt && token.plan === "free") {
+    return apiError(403, "forbidden", "Scheduled links are only available on Pro and Ultra plans");
   }
 
   try {
     if (parsedData.alias) {
-      await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
+      await validateAlias({ db }, parsedData.alias, requestedDomain, token.plan !== "free");
     }
-    const newLink = await createNewLink(
-      parsedData,
-      token.userId,
-      token.subscription?.status,
-      token.subscription?.plan,
-      requestedDomain,
-    );
-    return new Response(JSON.stringify(newLink), {
-      status: 201,
-      headers: { "Content-Type": "application/json" },
-    });
+    const newLink = await createNewLink(parsedData, token.userId, token.plan, requestedDomain);
+    return Response.json(newLink, { status: 201 });
   } catch (error) {
-    if (error instanceof TRPCError && error.code === "FORBIDDEN") {
-      return new Response(error.message, { status: 403 });
-    }
-    if (error instanceof Error) {
-      return new Response(error.message, { status: 400 });
-    }
-    return new Response("An error occurred", { status: 400 });
+    return errorResponse(error);
   }
 });
 
@@ -79,16 +63,13 @@ const shortenLinkSchema = z.object({
 
 type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 
-async function createNewLink(
-  data: ShortenLinkInput,
-  userId: string,
-  subStatus: string | undefined | null,
-  plan: string | undefined | null,
-  domain: string,
-) {
+async function createNewLink(data: ShortenLinkInput, userId: string, plan: Plan, domain: string) {
   if (data.password) {
-    if (subStatus !== "active" || subStatus === undefined) {
-      throw new Error("You need to upgrade to a pro plan to use password protection");
+    if (plan === "free") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You need to upgrade to a pro plan to use password protection",
+      });
     }
 
     const hashedPassword = bcrypt.hashSync(data.password, 10);
@@ -102,9 +83,11 @@ async function createNewLink(
       (value) => value !== undefined && value !== null && value !== "",
     );
     if (hasUtmParams && plan !== "ultra") {
-      throw new Error(
-        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
+      });
     }
   }
 

@@ -173,7 +173,13 @@ describe("rate limit responses", () => {
     expect(response.headers.get("X-RateLimit-Limit")).toBe("60");
     expect(response.headers.get("X-RateLimit-Remaining")).toBe("0");
     expect(response.headers.get("X-RateLimit-Reset")).toBe("1795000000");
-    expect(await response.text()).toBe("Rate limit exceeded. Retry in 12 seconds.");
+    expect(await response.json()).toEqual({
+      error: {
+        code: "rate_limited",
+        message: "Rate limit exceeded. Retry in 12 seconds.",
+        details: [],
+      },
+    });
   });
 
   test("allowed responses get the headers without Retry-After", () => {

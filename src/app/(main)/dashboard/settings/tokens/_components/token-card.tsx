@@ -1,74 +1,118 @@
 "use client";
 
-import { IconKey, IconLoader2, IconTrash } from "@tabler/icons-react";
+import { IconKey, IconTrash } from "@tabler/icons-react";
+import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { api } from "@/trpc/react";
 
-const TokenCard = ({
-  start,
-  createdAt,
-  keyID,
-}: {
-  start: string;
-  createdAt: Date | null;
-  keyID: number;
-}) => {
-  const deleteAPIKeyMutation = api.token.delete.useMutation({
+import type { RouterOutputs } from "@/trpc/shared";
+
+type Token = RouterOutputs["token"]["list"][number];
+
+const formatDate = (date: Date) =>
+  date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+
+const TokenCard = ({ token }: { token: Token }) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Keys created before names were stored have none.
+  const name = token.name ?? "API key";
+
+  const deleteTokenMutation = api.token.delete.useMutation({
     onSuccess: async () => {
-      await revalidateRoute("/dashboard/settings");
       trackEvent(POSTHOG_EVENTS.API_KEY_REVOKED);
-      toast.success("API Token revoked");
+      toast.success("API key revoked");
+      setConfirmOpen(false);
+      await revalidateRoute("/dashboard/settings");
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 
-  const handleKeyRevoke = () => {
-    deleteAPIKeyMutation.mutate({ id: keyID });
-  };
-
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3 px-4 py-3">
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
         <IconKey size={15} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <code className="rounded-md bg-neutral-50 dark:bg-accent/50 px-2 py-0.5 font-mono text-[12px] text-neutral-600 dark:text-neutral-400">
-            {start}••••••••••••
-          </code>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Active
-          </span>
-        </div>
-        {createdAt && (
-          <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
-            Created{" "}
-            {createdAt.toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
+            {name}
           </p>
-        )}
+          {token.prefix && (
+            <code className="flex-shrink-0 rounded-md bg-neutral-50 px-1.5 py-0.5 font-mono text-[11px] text-neutral-500 dark:bg-accent/50 dark:text-neutral-400">
+              {token.prefix}••••
+            </code>
+          )}
+        </div>
+        <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+          {token.createdAt && <>Created {formatDate(token.createdAt)} &middot; </>}
+          {token.lastUsedAt ? (
+            <span title={token.lastUsedAt.toLocaleString()}>
+              Last used {formatDistanceToNow(token.lastUsedAt, { addSuffix: true })}
+            </span>
+          ) : (
+            "Never used"
+          )}
+        </p>
       </div>
 
       <button
         type="button"
-        onClick={handleKeyRevoke}
-        disabled={deleteAPIKeyMutation.isLoading}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-border px-3 py-1.5 text-[12px] font-medium text-red-600 dark:text-red-400 transition-colors hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50"
+        onClick={() => setConfirmOpen(true)}
+        aria-label={`Revoke ${name}`}
+        className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:border-red-200 hover:bg-red-50 dark:border-border dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-500/10"
       >
-        {deleteAPIKeyMutation.isLoading ? (
-          <IconLoader2 size={13} stroke={1.5} className="animate-spin" />
-        ) : (
-          <IconTrash size={13} stroke={1.5} />
-        )}
-        Revoke
+        <IconTrash size={13} stroke={1.5} />
+        <span className="hidden sm:inline">Revoke</span>
       </button>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="max-w-md rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+              Revoke API key?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12px] text-neutral-500 dark:text-neutral-400">
+              Requests using{" "}
+              <span className="break-all font-medium text-neutral-700 dark:text-neutral-300">
+                {name}
+              </span>{" "}
+              will fail immediately. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg border-neutral-200 text-[13px] dark:border-border">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                deleteTokenMutation.mutate({ id: token.id });
+              }}
+              disabled={deleteTokenMutation.isLoading}
+              className="rounded-lg bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleteTokenMutation.isLoading ? "Revoking..." : "Revoke"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

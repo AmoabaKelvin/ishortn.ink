@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { PLAN_VARIANT_IDS } from "@/lib/billing/plans";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
@@ -28,6 +29,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
   });
 
   async function reset(monthlyLinkCount: number) {
+    await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
@@ -42,7 +44,18 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     });
   }
 
-  function createLink(body: { alias?: string } = {}) {
+  function subscribe(values: Partial<typeof schema.subscription.$inferInsert>) {
+    return db.insert(schema.subscription).values({
+      userId: USER_ID,
+      plan: "pro",
+      variantId: PLAN_VARIANT_IDS.pro.monthly,
+      ...values,
+    });
+  }
+
+  function createLink(
+    body: { alias?: string; password?: string; utmParams?: { utm_source?: string } } = {},
+  ) {
     return POST(
       new Request("http://localhost/api/v1/links", {
         method: "POST",
@@ -60,6 +73,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
   beforeEach(() => reset(0));
 
   afterAll(async () => {
+    await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
@@ -80,7 +94,9 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
 
     const response = await createLink();
     expect(response.status).toBe(403);
-    expect(await response.text()).toBe(monthlyLinkLimitMessage("free", 30));
+    expect(await response.json()).toEqual({
+      error: { code: "forbidden", message: monthlyLinkLimitMessage("free", 30), details: [] },
+    });
     expect(await storedCount()).toBe(30);
   });
 
@@ -99,7 +115,74 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
 
     const duplicate = await createLink({ alias: "routetestalias" });
     expect(duplicate.status).toBe(400);
-    expect(await duplicate.text()).toBe("Alias already exists");
+    expect((await duplicate.json()).error.message).toBe("Alias already exists");
     expect(await storedCount()).toBe(1);
+  });
+
+  test("answers a malformed JSON body with a 400 JSON error", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/v1/links", {
+        method: "POST",
+        headers: { "x-api-key": API_KEY, "content-type": "application/json" },
+        body: "{not json",
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: { code: "invalid_json", message: "Request body must be valid JSON", details: [] },
+    });
+  });
+
+  test("reports schema failures as JSON with per-field details", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/v1/links", {
+        method: "POST",
+        headers: { "x-api-key": API_KEY, "content-type": "application/json" },
+        body: JSON.stringify({ url: "not a url" }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe("validation_failed");
+    expect(body.error.details).toEqual([{ path: "url", message: "Invalid URL" }]);
+  });
+
+  test("answers a missing API key with a 401 JSON error", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/v1/links", { method: "POST", body: "{}" }),
+    );
+    expect(response.status).toBe(401);
+    expect((await response.json()).error.code).toBe("unauthorized");
+  });
+
+  test("refuses password protection on the free plan", async () => {
+    const response = await createLink({ password: "hunter22" });
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.code).toBe("forbidden");
+  });
+
+  for (const status of ["on_trial", "past_due"]) {
+    test(`allows password protection for a ${status} Pro subscriber`, async () => {
+      await subscribe({ status });
+      const response = await createLink({ password: "hunter22" });
+      expect(response.status).toBe(201);
+      expect((await response.json()).isProtected).toBe(true);
+    });
+  }
+
+  test("allows password protection while a cancelled subscription is still paid up", async () => {
+    await subscribe({ status: "cancelled", endsAt: new Date(Date.now() + 86_400_000) });
+    expect((await createLink({ password: "hunter22" })).status).toBe(201);
+  });
+
+  test("refuses UTM parameters to a lapsed Ultra subscriber", async () => {
+    await subscribe({
+      status: "expired",
+      plan: "ultra",
+      variantId: PLAN_VARIANT_IDS.ultra.monthly,
+    });
+    const response = await createLink({ utmParams: { utm_source: "newsletter" } });
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.message).toContain("Ultra plan");
   });
 });
