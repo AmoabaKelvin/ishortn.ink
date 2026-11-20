@@ -17,6 +17,10 @@ import { cn } from "@/lib/utils";
 import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
 
+import type { RouterOutputs } from "@/trpc/shared";
+
+type ImportFailure = RouterOutputs["link"]["bulkUpload"]["failures"][number];
+
 type BulkLinkUploadDialogProps = {
   open: boolean;
   setOpen: (open: boolean) => void;
@@ -25,6 +29,7 @@ type BulkLinkUploadDialogProps = {
 
 export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkUploadDialogProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [failures, setFailures] = useState<ImportFailure[]>([]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -34,6 +39,7 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
     multiple: false,
     onDrop: (acceptedFiles) => {
       setFile(acceptedFiles[0] ?? null);
+      setFailures([]);
     },
     onDropRejected: () => {
       toast.error("Unsupported file type. Please upload a CSV file.");
@@ -42,9 +48,16 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
 
   const uploadMutation = api.link.bulkUpload.useMutation({
     onSuccess: (result) => {
-      toast.success(result.message);
-      setOpen(false);
       setFile(null);
+      if (result.failed === 0) {
+        toast.success(result.message);
+        setOpen(false);
+        return;
+      }
+      // Keep the dialog open so the per-row reasons stay readable.
+      if (result.created > 0) toast.success(result.message);
+      else toast.error(result.message);
+      setFailures(result.failures);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -59,7 +72,13 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setFailures([]);
+      }}
+    >
       <DialogContent className={`sm:max-w-[425px] ${satoshi.className}`}>
         <DialogHeader>
           <DialogTitle>Bulk Link Upload</DialogTitle>
@@ -97,6 +116,27 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {failures.length > 0 && (
+          <div className="rounded-lg border border-neutral-200 dark:border-border">
+            <p className="border-b border-neutral-100 px-3 py-2 text-[13px] font-medium text-neutral-900 dark:border-border/50 dark:text-foreground">
+              {failures.length.toLocaleString()} {failures.length === 1 ? "row was" : "rows were"}{" "}
+              not imported
+            </p>
+            <ul className="max-h-48 divide-y divide-neutral-300/60 overflow-y-auto dark:divide-border">
+              {failures.map((failure) => (
+                <li key={failure.row} className="flex gap-2 px-3 py-2 text-[12px]">
+                  <span className="shrink-0 tabular-nums text-neutral-400 dark:text-neutral-500">
+                    Row {failure.row.toLocaleString()}
+                  </span>
+                  <span className="min-w-0 break-words text-red-600 dark:text-red-400">
+                    {failure.reason}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
