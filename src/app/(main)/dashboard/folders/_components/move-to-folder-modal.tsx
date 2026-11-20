@@ -36,6 +36,8 @@ type MoveToFolderModalProps = {
   linkIds?: number[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Runs after the links move; closing without moving doesn't call it. */
+  onSuccess?: () => void;
   currentFolderId?: number | null;
 };
 
@@ -44,6 +46,7 @@ export function MoveToFolderModal({
   linkIds,
   open,
   onOpenChange,
+  onSuccess,
   currentFolderId,
 }: MoveToFolderModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,6 +93,7 @@ export function MoveToFolderModal({
       setIsCreatingNew(false);
       setNewFolderName("");
       setNewFolderDescription("");
+      onSuccess?.();
       onOpenChange(false);
     },
     onError: (error) => {
@@ -109,6 +113,7 @@ export function MoveToFolderModal({
       setIsCreatingNew(false);
       setNewFolderName("");
       setNewFolderDescription("");
+      onSuccess?.();
       onOpenChange(false);
     },
     onError: (error) => {

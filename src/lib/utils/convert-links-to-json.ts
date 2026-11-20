@@ -7,5 +7,5 @@ export const convertDataToJSON = (data: LinkExportData[]) => {
     createdAt: item.createdAt instanceof Date ? item.createdAt.toISOString() : item.createdAt,
   }));
 
-  return `data:text/json;charset=utf-8,${JSON.stringify(formattedData, null, 2)}`;
+  return JSON.stringify(formattedData, null, 2);
 };

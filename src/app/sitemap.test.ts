@@ -7,12 +7,14 @@ import { competitors } from "@/lib/seo/competitors";
 import sitemap from "./sitemap";
 
 describe("sitemap", () => {
+  // Each call renders every blog post through remark (~4s under a full parallel run), so two calls
+  // exceed bun's 5s default.
   it("returns the same lastModified values on every call", async () => {
     const first = await sitemap();
     await Bun.sleep(5);
     const second = await sitemap();
     expect(second).toEqual(first);
-  });
+  }, 30_000);
 
   it("lists the compare hub and dates each compare page by its prices check", async () => {
     const entries = await sitemap();

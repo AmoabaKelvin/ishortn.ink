@@ -101,7 +101,7 @@ describe("bulkCreateLinks", () => {
 
     expect(result.created).toBe(2);
     expect(result.failures).toEqual([
-      { row: 3, reason: expect.stringContaining("Monthly limit of 30 links reached") },
+      { row: 4, reason: expect.stringContaining("Monthly limit of 30 links reached") },
     ]);
     expect(inserted.map((row) => row.url).sort()).toEqual([
       "https://a.example",
@@ -129,7 +129,7 @@ describe("bulkCreateLinks", () => {
     );
 
     expect(result.failures).toEqual([
-      { row: 1, reason: "Selected domain is not available for this workspace." },
+      { row: 2, reason: "Selected domain is not available for this workspace." },
     ]);
     expect(inserted.map((row) => row.url)).toEqual(["https://b.example"]);
   });
@@ -148,25 +148,62 @@ describe("bulkCreateLinks", () => {
     );
 
     expect(result.failures).toEqual([
-      { row: 1, reason: expect.stringContaining("alphanumeric") },
-      { row: 2, reason: expect.stringContaining("at least 6 characters") },
-      { row: 4, reason: "Alias is used by an earlier row in this file" },
+      { row: 2, reason: expect.stringContaining("alphanumeric") },
+      { row: 3, reason: expect.stringContaining("at least 6 characters") },
+      { row: 5, reason: "Alias is used by an earlier row in this file" },
     ]);
     expect(inserted.map((row) => row.alias)).toEqual(["Repeated"]);
   });
 
   test("reports rows that fail the URL safety check or have no url", async () => {
     const { ctx, inserted, countUpdates } = fakeContext(0);
-    const result = await bulkCreateLinks(ctx, csv(",,,", "https://bad.example,,,"), async () => {
-      throw new Error("This URL looks suspicious");
-    });
+    const result = await bulkCreateLinks(
+      ctx,
+      csv(",,,no url", "https://bad.example,,,"),
+      async () => {
+        throw new Error("This URL looks suspicious");
+      },
+    );
 
     expect(result.failures).toEqual([
-      { row: 1, reason: "Missing or invalid url" },
-      { row: 2, reason: "This URL looks suspicious" },
+      { row: 2, reason: "Missing url" },
+      { row: 3, reason: "This URL looks suspicious" },
     ]);
     expect(inserted).toEqual([]);
     expect(countUpdates).toEqual([]);
+  });
+
+  test("reports spreadsheet row numbers, counting the header and blank rows", async () => {
+    const { ctx, inserted } = fakeContext(0);
+    const result = await bulkCreateLinks(
+      ctx,
+      [
+        "\uFEFFURL,Alias,Note",
+        "https://a.example,,",
+        "",
+        '"https://b.example",,"two',
+        'lines"',
+        ",,no url here",
+      ].join("\r\n"),
+      allowUrl,
+    );
+
+    expect(result.failures).toEqual([{ row: 5, reason: "Missing url" }]);
+    expect(inserted.map((row) => row.url).sort()).toEqual([
+      "https://a.example",
+      "https://b.example",
+    ]);
+  });
+
+  test("refuses files without a url column or without rows", async () => {
+    const { ctx, inserted } = fakeContext(0);
+    await expect(bulkCreateLinks(ctx, "link,alias\nhttps://a.example,x", allowUrl)).rejects.toThrow(
+      '"url" column',
+    );
+    await expect(bulkCreateLinks(ctx, "url,alias\n", allowUrl)).rejects.toThrow(
+      "no links to import",
+    );
+    expect(inserted).toEqual([]);
   });
 
   test("inserts links already blocked if the account is restricted", async () => {
