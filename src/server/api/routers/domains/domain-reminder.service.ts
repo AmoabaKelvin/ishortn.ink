@@ -1,4 +1,6 @@
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { subDays } from "date-fns";
+import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
@@ -18,6 +20,8 @@ const log = logger.child({ component: "domain-reminder" });
 
 // Reminder throttle: don't send more than once per 7 days
 const REMINDER_INTERVAL_DAYS = 7;
+// Pending domains get a few days to finish setup before the first reminder
+const PENDING_GRACE_DAYS = 3;
 
 async function checkDomainHealth(
   domain: string,
@@ -55,11 +59,32 @@ function calculateDaysSince(date: Date): number {
 }
 
 /**
- * Send configuration reminder emails for domains with 'invalid' status.
- * Only sends reminders to domains that haven't received one in the past 7 days.
+ * Domains that should get a reminder: 'invalid' ones, and 'pending' ones older
+ * than PENDING_GRACE_DAYS (setup is still in progress before that), skipping
+ * any reminded in the last REMINDER_INTERVAL_DAYS.
+ */
+function needsReminder(now: Date) {
+  const reminderCutoff = subDays(now, REMINDER_INTERVAL_DAYS);
+  return and(
+    or(
+      eq(customDomain.status, "invalid"),
+      and(
+        eq(customDomain.status, "pending"),
+        lt(customDomain.createdAt, subDays(now, PENDING_GRACE_DAYS)),
+      ),
+    ),
+    or(
+      isNull(customDomain.lastReminderSentAt),
+      lt(customDomain.lastReminderSentAt, reminderCutoff),
+    ),
+  );
+}
+
+/**
+ * Send configuration reminder emails for domains that still aren't set up.
  *
  * For personal workspaces: sends to the user who owns the domain
- * For team workspaces: sends to the team owner
+ * For team workspaces: sends to the team owner, linking to the team's workspace
  */
 export async function sendDomainConfigurationReminders(): Promise<ReminderResult> {
   const result: ReminderResult = {
@@ -69,46 +94,36 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
     errors: [],
   };
 
-  // Calculate cutoff date for reminder throttling
-  const reminderCutoffDate = new Date();
-  reminderCutoffDate.setDate(reminderCutoffDate.getDate() - REMINDER_INTERVAL_DAYS);
+  const teamOwner = alias(user, "teamOwner");
 
-  // Query all invalid domains that need reminders
-  // Conditions:
-  // 1. status = 'invalid'
-  // 2. lastReminderSentAt is NULL (never reminded) OR older than 7 days ago
-  const invalidDomains = await db
+  const domains = await db
     .select({
       id: customDomain.id,
       domain: customDomain.domain,
-      userId: customDomain.userId,
-      teamId: customDomain.teamId,
       createdAt: customDomain.createdAt,
-      // User info (for personal workspaces)
-      userEmail: user.email,
-      userName: user.name,
+      teamSlug: team.slug,
+      // Team domains go to the team owner, personal ones to the user who added them.
+      recipientId: sql<string | null>`coalesce(${teamOwner.id}, ${user.id})`,
+      recipientEmail: sql<string | null>`coalesce(${teamOwner.email}, ${user.email})`,
+      recipientName: sql<string | null>`coalesce(${teamOwner.name}, ${user.name})`,
+      emailsEnabled: sql<
+        number | null
+      >`coalesce(${teamOwner.productEmailsEnabled}, ${user.productEmailsEnabled})`,
     })
     .from(customDomain)
-    .leftJoin(user, eq(customDomain.userId, user.id))
-    .where(
-      and(
-        eq(customDomain.status, "invalid"),
-        or(
-          isNull(customDomain.lastReminderSentAt),
-          lt(customDomain.lastReminderSentAt, reminderCutoffDate),
-        ),
-      ),
-    );
+    .leftJoin(team, eq(customDomain.teamId, team.id))
+    .leftJoin(user, and(isNull(customDomain.teamId), eq(customDomain.userId, user.id)))
+    .leftJoin(teamOwner, eq(team.ownerId, teamOwner.id))
+    .where(and(needsReminder(new Date()), or(isNull(customDomain.teamId), isNull(team.deletedAt))));
 
-  result.domainsChecked = invalidDomains.length;
+  result.domainsChecked = domains.length;
 
-  if (invalidDomains.length === 0) {
+  if (domains.length === 0) {
     log.debug("no domains need reminders");
     return result;
   }
 
-  // Process each domain
-  for (const domainRecord of invalidDomains) {
+  for (const domainRecord of domains) {
     const domainName = domainRecord.domain ?? "unknown";
 
     try {
@@ -128,35 +143,8 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
         continue;
       }
 
-      // Determine recipient based on workspace type
-      let recipientEmail: string | null = null;
-      let recipientName: string | null = null;
-
-      if (domainRecord.teamId) {
-        // Team workspace: get team owner's email
-        const teamRecord = await db.query.team.findFirst({
-          where: eq(team.id, domainRecord.teamId),
-          columns: { ownerId: true },
-        });
-
-        if (teamRecord) {
-          const ownerRecord = await db.query.user.findFirst({
-            where: eq(user.id, teamRecord.ownerId),
-            columns: { email: true, name: true },
-          });
-
-          if (ownerRecord) {
-            recipientEmail = ownerRecord.email;
-            recipientName = ownerRecord.name;
-          }
-        }
-      } else {
-        // Personal workspace: use the user's email
-        recipientEmail = domainRecord.userEmail;
-        recipientName = domainRecord.userName;
-      }
-
-      if (!recipientEmail) {
+      const { recipientId, recipientEmail } = domainRecord;
+      if (!recipientId || !recipientEmail) {
         log.warn({ domain: domainName }, "no recipient email found");
         result.errors.push({
           domain: domainName,
@@ -165,32 +153,40 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
         continue;
       }
 
+      // The recipient turned off product notification emails.
+      if (!domainRecord.emailsEnabled) continue;
+
       // Build the current Cloudflare DNS instructions rather than reusing stored
       // challenges
       const challenges = buildVerificationChallenges(domainName, hostname);
 
-      // Calculate days misconfigured
       const daysMisconfigured = domainRecord.createdAt
         ? calculateDaysSince(new Date(domainRecord.createdAt))
         : 0;
 
-      // Send the reminder email
-      await sendDomainReminderEmail({
+      const sent = await sendDomainReminderEmail({
+        userId: recipientId,
         email: recipientEmail,
-        recipientName,
+        recipientName: domainRecord.recipientName,
         domain: domainName,
+        teamSlug: domainRecord.teamSlug,
         daysMisconfigured,
         challenges,
       });
 
-      // Update lastReminderSentAt after successful send
+      if (!sent) {
+        result.errors.push({ domain: domainName, error: "Email send failed" });
+        continue;
+      }
+
+      // Throttle only delivered reminders, so a failed send is retried on the next run
       await db
         .update(customDomain)
         .set({ lastReminderSentAt: new Date() })
         .where(eq(customDomain.id, domainRecord.id));
 
       result.remindersSent++;
-      log.info({ domain: domainName, recipientEmail }, "reminder sent");
+      log.info({ domain: domainName, recipientId }, "reminder sent");
     } catch (error) {
       log.error({ err: error, domain: domainName }, "reminder processing failed");
       result.errors.push({
@@ -207,22 +203,13 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
  * Get stats about domains that may need reminders (for monitoring).
  */
 export async function getDomainReminderStats() {
-  const reminderCutoffDate = new Date();
-  reminderCutoffDate.setDate(reminderCutoffDate.getDate() - REMINDER_INTERVAL_DAYS);
+  const reminderCutoffDate = subDays(new Date(), REMINDER_INTERVAL_DAYS);
 
   // Domains needing reminders
   const needingReminders = await db
     .select({ count: sql<number>`count(*)` })
     .from(customDomain)
-    .where(
-      and(
-        eq(customDomain.status, "invalid"),
-        or(
-          isNull(customDomain.lastReminderSentAt),
-          lt(customDomain.lastReminderSentAt, reminderCutoffDate),
-        ),
-      ),
-    );
+    .where(needsReminder(new Date()));
 
   // Total invalid domains
   const totalInvalid = await db
@@ -236,7 +223,7 @@ export async function getDomainReminderStats() {
     .from(customDomain)
     .where(
       and(
-        eq(customDomain.status, "invalid"),
+        inArray(customDomain.status, ["invalid", "pending"]),
         sql`${customDomain.lastReminderSentAt} >= ${reminderCutoffDate}`,
       ),
     );

@@ -163,6 +163,8 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
+    // Milestone, usage-alert and domain-reminder emails. Account, billing and team emails ignore it.
+    productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
     // Account transfer deletion tracking
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period
     // Platform admin

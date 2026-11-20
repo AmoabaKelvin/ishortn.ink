@@ -1,43 +1,51 @@
 import LinkMilestoneEmail from "@/emails/link-milestone";
-import { logger } from "@/lib/logger";
+import { getAppUrl } from "@/lib/constants/domains";
 
-import { resend } from "./resend-client";
-
-const log = logger.child({ notification: "link-milestone" });
+import { sendEmail } from "./send-email";
+import { productNotificationOptions } from "./unsubscribe";
 
 type SendLinkMilestoneEmailInput = {
+  userId: string;
   email: string;
   name?: string | null;
   linkAlias: string;
+  linkDomain: string;
   linkName?: string | null;
+  teamSlug: string | null;
   milestone: number;
   totalClicks: number;
 };
 
 export async function sendLinkMilestoneEmail({
+  userId,
   email,
   name,
   linkAlias,
+  linkDomain,
   linkName,
+  teamSlug,
   milestone,
   totalClicks,
 }: SendLinkMilestoneEmailInput) {
-  if (!resend) return;
+  const shortUrl = `${linkDomain}/${linkAlias}`;
+  const { notificationSettingsUrl, headers } = productNotificationOptions(userId);
+  const analyticsPath = `/dashboard/analytics/${encodeURIComponent(linkAlias)}?domain=${encodeURIComponent(linkDomain)}`;
 
-  try {
-    await resend.emails.send({
-      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-      to: email,
-      subject: `Your link "${linkName || linkAlias}" hit ${milestone.toLocaleString()} clicks`,
-      react: LinkMilestoneEmail({
-        userName: name,
-        linkAlias,
-        linkName,
-        milestone,
-        totalClicks,
-      }),
-    });
-  } catch (error) {
-    log.error({ err: error, email, linkAlias, milestone }, "failed to send link milestone email");
-  }
+  await sendEmail({
+    template: "link-milestone",
+    recipientId: userId,
+    to: email,
+    subject: `Your link "${linkName || shortUrl}" hit ${milestone.toLocaleString()} clicks`,
+    react: LinkMilestoneEmail({
+      userName: name,
+      shortUrl,
+      linkName,
+      milestone,
+      totalClicks,
+      analyticsUrl: getAppUrl(analyticsPath, teamSlug),
+      notificationSettingsUrl,
+    }),
+    headers,
+    context: { linkAlias, milestone },
+  });
 }
