@@ -34,6 +34,7 @@ import { requirePermission, workspaceFilter, workspaceOwnership } from "@/server
 import { assertDomainAllowed } from "../link/utils";
 import {
   assertSlugAllowed,
+  checkBioLinkBlockLimit,
   checkBioPageLimit,
   pageBelongsToWorkspace,
   rethrowBioDuplicate,
@@ -428,6 +429,7 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
         message: "A link block needs a destination URL.",
       });
     }
+    await checkBioLinkBlockLimit(ctx, page.id);
     const prepared = await prepareHiddenTrackingLink(ctx, {
       url: destination,
       name: input.title || page.title || "Bio link",

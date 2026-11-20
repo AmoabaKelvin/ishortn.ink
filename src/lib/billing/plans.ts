@@ -12,6 +12,7 @@ type PlanCaps = {
   geoRulesLimit?: number; // Max targeting rules (geo/device/OS) per link (undefined => unlimited)
   milestonesPerLinkLimit?: number; // Max milestones per link (undefined => unlimited)
   bioPageLimit?: number; // Max bio pages (undefined => unlimited)
+  bioLinkBlocksPerPageLimit?: number; // Max link blocks per bio page (undefined => unlimited)
   campaignLimit?: number; // Max ACTIVE campaigns (archived don't count; undefined => unlimited)
 };
 
@@ -61,6 +62,7 @@ export const PLAN_CAPS: PlanCapsByPlan = {
     geoRulesLimit: 0, // Targeting rules not available for free plan
     milestonesPerLinkLimit: 0,
     bioPageLimit: 1,
+    bioLinkBlocksPerPageLimit: 3,
     campaignLimit: 1,
   },
   pro: {
@@ -171,6 +173,10 @@ export function canUseMilestones(plan: Plan): boolean {
 
 export function getBioPageLimit(plan: Plan): number | undefined {
   return PLAN_CAPS[plan].bioPageLimit;
+}
+
+export function getBioLinkBlockLimit(plan: Plan): number | undefined {
+  return PLAN_CAPS[plan].bioLinkBlocksPerPageLimit;
 }
 
 /** Pro+ may remove the "Made with iShortn" badge from their bio page. */

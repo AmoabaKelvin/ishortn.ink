@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { api } from "@/trpc/react";
 
 import type { BioBlockType } from "@/server/db/schema";
@@ -94,7 +95,16 @@ function BlockForm({
     },
     onError: (e: { message: string }) => toast.error(e.message),
   };
-  const addBlock = api.bioPage.addBlock.useMutation(mutationOptions);
+  const addBlock = api.bioPage.addBlock.useMutation({
+    ...mutationOptions,
+    onError: (error) => {
+      if (error.data?.code === "FORBIDDEN" && /upgrade/i.test(error.message)) {
+        notifyPlanLimit(error.message, "bio_link_block_limit");
+      } else {
+        toast.error(error.message);
+      }
+    },
+  });
   const updateBlock = api.bioPage.updateBlock.useMutation(mutationOptions);
 
   const pending = addBlock.isLoading || updateBlock.isLoading;
