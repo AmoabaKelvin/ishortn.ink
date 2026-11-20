@@ -43,3 +43,24 @@ jobs:
           NEXT_PUBLIC_APP_URL: https://ishortn.ink
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
           CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder
+
+      # A successful build can still crash on every request (Next 16.4 with an
+      # OpenNext that predates it took production down on 2026-11-20). Serve
+      # the built worker locally and require a real page to render.
+      - name: Smoke-test the built worker
+        run: |
+          printf 'SKIP_ENV_VALIDATION=1\nCLERK_SECRET_KEY=sk_test_placeholder\n' > .dev.vars
+          bunx wrangler dev --port 8788 --ip 127.0.0.1 > wrangler-dev.log 2>&1 &
+          code=000
+          for _ in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8788/pricing || true)
+            [ "$code" != "000" ] && break
+            sleep 2
+          done
+          echo "GET /pricing -> $code"
+          if [ "$code" != "200" ]; then
+            tail -60 wrangler-dev.log
+            exit 1
+          fi
+        env:
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@127.0.0.1:3306/placeholder
