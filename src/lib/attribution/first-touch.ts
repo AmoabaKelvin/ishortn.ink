@@ -58,6 +58,8 @@ function clean(value: string | null | undefined): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+const AUTH_PATH = /^\/auth(\/|$)/;
+
 function hostOf(url: string): string {
   try {
     return new URL(url).hostname.toLowerCase();
@@ -77,7 +79,7 @@ function isSameSite(a: string, b: string): boolean {
 
 /**
  * Builds the cookie payload for a page view, or null when there is nothing worth
- * recording (no tracked params and no external referrer).
+ * recording (no tracked params, and no external referrer or an auth page).
  */
 export function buildFirstTouch(input: {
   url: string;
@@ -95,7 +97,11 @@ export function buildFirstTouch(input: {
   const referrerHost =
     referrer && !isSameSite(referrer, url.hostname.toLowerCase()) ? referrer : "";
 
-  if (Object.keys(params).length === 0 && !referrerHost) return null;
+  if (Object.keys(params).length === 0) {
+    // Auth pages are reached back from OAuth providers (sso-callback) and webmail
+    // verification links, so their referrer is not an acquisition source.
+    if (!referrerHost || AUTH_PATH.test(url.pathname)) return null;
+  }
 
   return {
     ...params,

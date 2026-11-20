@@ -60,6 +60,33 @@ describe("buildFirstTouch", () => {
     ).toBeNull();
   });
 
+  test("ignores referrer-only visits to auth pages", () => {
+    expect(
+      buildFirstTouch({
+        url: "https://ishortn.ink/auth/sign-up/sso-callback",
+        referrer: "https://accounts.google.com/",
+        now: 1,
+      }),
+    ).toBeNull();
+    expect(
+      buildFirstTouch({
+        url: "https://ishortn.ink/auth/sign-in",
+        referrer: "https://mail.google.com/",
+        now: 1,
+      }),
+    ).toBeNull();
+  });
+
+  test("still captures tracked params on auth pages", () => {
+    const touch = buildFirstTouch({
+      url: "https://ishortn.ink/auth/sign-up?utm_source=reddit",
+      referrer: "https://www.reddit.com/",
+      now: 1,
+    });
+    expect(touch?.utm_source).toBe("reddit");
+    expect(touch?.landingPath).toBe("/auth/sign-up");
+  });
+
   test("trims oversized values to 255 chars", () => {
     const touch = buildFirstTouch({
       url: `https://ishortn.ink/?utm_campaign=${"a".repeat(400)}`,
