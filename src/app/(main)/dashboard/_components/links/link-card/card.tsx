@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  IconArchive,
   IconCheck,
   IconClock,
   IconCopy,
@@ -58,11 +59,13 @@ const Link = ({ link, onTagClick }: LinkProps) => {
             "flex shrink-0 items-center transition-all duration-150",
             isSelectionMode
               ? "w-5 opacity-100"
-              : "w-0 overflow-hidden opacity-0 group-hover:w-5 group-hover:opacity-100",
+              : "w-0 overflow-hidden opacity-0 group-focus-within:w-5 group-focus-within:opacity-100 group-hover:w-5 group-hover:opacity-100 [@media(hover:none)]:w-5 [@media(hover:none)]:opacity-100",
           )}
         >
           <button
             type="button"
+            aria-pressed={selected}
+            aria-label={`Select ${link.domain}/${link.alias}`}
             onClick={(e) => {
               e.stopPropagation();
               toggleSelection(link.id);
@@ -109,6 +112,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
             </button>
             <button
               type="button"
+              aria-label={`Copy ${link.domain}/${link.alias}`}
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
               onClick={async (e) => {
                 e.stopPropagation();
@@ -207,6 +211,16 @@ const Link = ({ link, onTagClick }: LinkProps) => {
         <div className="flex shrink-0 items-center gap-2">
           {link.note && <LinkNoteTooltip note={link.note} />}
 
+          {link.archived && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md border border-neutral-200 dark:border-border px-2 py-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
+              title="Archived"
+            >
+              <IconArchive size={12} stroke={1.5} aria-hidden />
+              <span className="sr-only sm:not-sr-only">Archived</span>
+            </span>
+          )}
+
           {link.cloaking && (
             <span
               className="inline-flex items-center gap-1 rounded-md border border-neutral-200 dark:border-border px-2 py-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400"
@@ -228,6 +242,8 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           )}
 
           <button
+            type="button"
+            aria-label={`${link.totalClicks.toLocaleString("en-US")} ${link.totalClicks === 1 ? "click" : "clicks"}, view analytics`}
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900 dark:hover:text-foreground"
             onClick={(e) => {
               if (!isSelectionMode) {
@@ -237,7 +253,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
             }}
           >
             <IconClick size={14} stroke={1.5} />
-            <span className="font-medium">{link.totalClicks}</span>
+            <span className="font-medium">{link.totalClicks.toLocaleString("en-US")}</span>
           </button>
 
           {!isSelectionMode && <LinkActions link={link} />}

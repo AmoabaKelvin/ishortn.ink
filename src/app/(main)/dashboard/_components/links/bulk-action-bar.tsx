@@ -2,6 +2,7 @@
 
 import {
   IconArchive,
+  IconArchiveOff,
   IconChevronDown,
   IconFolderShare,
   IconLink,
@@ -38,7 +39,12 @@ import { api } from "@/trpc/react";
 import { useSelection } from "./selection-context";
 import { TransferToWorkspaceModal } from "./transfer-to-workspace-modal";
 
-export function BulkActionBar() {
+type BulkActionBarProps = {
+  /** The status filter on screen; decides whether Archive, Restore or both are offered. */
+  archivedFilter: "active" | "archived" | "all";
+};
+
+export function BulkActionBar({ archivedFilter }: BulkActionBarProps) {
   const { selectedLinkIds, clearSelection, exitSelectionMode } = useSelection();
   const [moveToFolderOpen, setMoveToFolderOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
@@ -166,6 +172,7 @@ export function BulkActionBar() {
             <div className="flex items-center gap-0.5 px-1">
               <button
                 type="button"
+                aria-label="Move to folder"
                 onClick={() => setMoveToFolderOpen(true)}
                 className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
               >
@@ -177,6 +184,7 @@ export function BulkActionBar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
+                    aria-label="More actions"
                     className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-900 dark:hover:text-foreground"
                   >
                     <span className="hidden sm:inline">More</span>
@@ -198,13 +206,24 @@ export function BulkActionBar() {
                     <IconFolderShare size={15} stroke={1.5} className="mr-2 text-neutral-400" />
                     Transfer to workspace
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => openArchiveDialog("archive")}
-                    className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
-                  >
-                    <IconArchive size={15} stroke={1.5} className="mr-2 text-neutral-400" />
-                    Archive
-                  </DropdownMenuItem>
+                  {archivedFilter !== "archived" && (
+                    <DropdownMenuItem
+                      onClick={() => openArchiveDialog("archive")}
+                      className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
+                    >
+                      <IconArchive size={15} stroke={1.5} className="mr-2 text-neutral-400" />
+                      Archive
+                    </DropdownMenuItem>
+                  )}
+                  {archivedFilter !== "active" && (
+                    <DropdownMenuItem
+                      onClick={() => openArchiveDialog("restore")}
+                      className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50"
+                    >
+                      <IconArchiveOff size={15} stroke={1.5} className="mr-2 text-neutral-400" />
+                      Restore
+                    </DropdownMenuItem>
+                  )}
 
                   <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
 
@@ -243,6 +262,7 @@ export function BulkActionBar() {
 
             <button
               type="button"
+              aria-label="Clear selection"
               onClick={exitSelectionMode}
               className="flex items-center justify-center rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600"
             >
@@ -255,10 +275,8 @@ export function BulkActionBar() {
       <MoveToFolderModal
         linkIds={selectedLinkIds}
         open={moveToFolderOpen}
-        onOpenChange={(open) => {
-          setMoveToFolderOpen(open);
-          if (!open) handleMoveSuccess();
-        }}
+        onOpenChange={setMoveToFolderOpen}
+        onSuccess={handleMoveSuccess}
       />
 
       <TransferToWorkspaceModal
