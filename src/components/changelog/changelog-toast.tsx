@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { useState, useEffect } from "react";
 
+import { withProductUtm } from "@/lib/attribution/referral";
 import { api } from "@/trpc/react";
 
 const STORAGE_KEY = "changelog-toast-dismissed";
@@ -78,7 +79,7 @@ export function ChangelogToast() {
 
             {/* Action */}
             <Link
-              href="/changelog"
+              href={withProductUtm("/changelog", "app", "changelog_toast")}
               onClick={handleViewChangelog}
               className="text-sm font-medium text-neutral-900 underline underline-offset-4 hover:text-neutral-600"
             >

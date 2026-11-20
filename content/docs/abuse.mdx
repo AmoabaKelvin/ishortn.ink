@@ -1,0 +1,37 @@
+---
+title: Abuse and acceptable use
+description: What you can't use iShortn for, how links are checked for phishing and malware, and how to report a harmful short link.
+---
+
+iShortn links are trusted because they aren't used to hurt people. The [Terms of Service](/terms) set out what isn't allowed. In short, don't use iShortn to link to:
+
+- Phishing pages, or pages that impersonate another person or brand.
+- Malware, or downloads that harm devices.
+- Spam, including links sent in unsolicited bulk messages.
+- Illegal content, or content that violates someone's privacy.
+
+Links that break these rules are blocked. Visitors to a blocked link see "This link has been blocked for violating our terms of service." instead of the destination, and accounts used for abuse can be suspended.
+
+## Link safety checks
+
+Every destination is checked when a link is created, when its destination changes, and when links come in through the [API](/docs/api) or a [CSV import](/docs/bulk-import). The checks include known-bad domains, suspicious URL patterns, and Google Safe Browsing. Live links are also re-checked against threat feeds several times a day.
+
+When a destination fails a check, the link isn't created and you see one of these messages:
+
+| Message | Meaning |
+| --- | --- |
+| `This URL has been flagged as potentially unsafe and cannot be shortened. If you believe this is a mistake, please contact support.` | A threat database or our phishing detection flagged the URL. |
+| `This URL belongs to a domain that has been blocked. If you believe this is a mistake, please contact support.` | The domain is on iShortn's blocklist. |
+| `This URL looks suspicious and cannot be shortened. Please double-check the URL and try again, or contact support if you believe this is an error.` | The URL matches a pattern common in abuse, such as a raw IP address as the host. |
+
+If you think a legitimate URL was flagged, email [support@ishortn.ink](mailto:support@ishortn.ink) with the URL.
+
+## Report a harmful link
+
+If a short link on `isht.app`, `isht.ink`, `ishortn.ink` or a custom domain led you somewhere harmful, report it on the [abuse report page](/abuse):
+
+1. Paste the short link, such as `isht.app/abc123`.
+2. Pick a category: phishing, malware, spam, impersonation, illegal content, privacy violation or other.
+3. Add details and, optionally, your email so we can follow up.
+
+Every report is reviewed, and links that break the rules are blocked. You can also email [support@ishortn.ink](mailto:support@ishortn.ink).

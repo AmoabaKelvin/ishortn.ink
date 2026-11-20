@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 
-import WelcomeEmail from "@/emails/welcome-to-pro";
 import { env } from "@/env.mjs";
 import { getIntervalFromVariantId, getPlanFromIds } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
@@ -18,12 +17,16 @@ import {
   applyBillingEventEntitlements,
   syncEntitlementsAfterBillingEvent,
 } from "@/server/lib/entitlements/grace";
-import { resend } from "@/server/lib/notifications/resend-client";
+import {
+  sendSubscriptionCancelledEmail,
+  sendWelcomeEmail,
+} from "@/server/lib/notifications/billing";
 
 import { eventIsBehindProvider } from "./reconcile";
 
 import type { LemonsqueezySubscriptionEvent } from "@/lib/types/lemonsqueezy";
 import type { Subscription } from "@/server/db/schema";
+import type { BillingRecipient } from "@/server/lib/notifications/billing";
 import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 
 const log = logger.child({ webhook: "lemonsqueezy" });
@@ -255,6 +258,29 @@ async function processWebhook(
     return "no_row_matched";
   };
 
+  const paidPlan = plan === "ultra" ? "ultra" : "pro";
+
+  // Billing emails go out after the write and outside the response: a mail
+  // failure must not fail the delivery, and a retry would be dropped as stale.
+  const emailOwner = (send: (recipient: BillingRecipient) => Promise<boolean>) => {
+    void runBackgroundTask(
+      (async () => {
+        const owner = await db.query.user.findFirst({
+          where: eq(user.id, userId),
+          columns: { email: true, name: true },
+        });
+        if (!owner?.email) {
+          log.error(
+            { event: event_name, subscriptionId, userId },
+            "user has no email for billing email",
+          );
+          return;
+        }
+        await send({ userId, email: owner.email, name: owner.name });
+      })(),
+    );
+  };
+
   if (event_name === "subscription_created") {
     const account = await db.query.user.findFirst({
       where: eq(user.id, userId),
@@ -311,66 +337,64 @@ async function processWebhook(
       });
 
     const email = account.email;
-    const emailPlan = plan === "ultra" ? "ultra" : "pro";
 
     if (!email) {
       log.error({ event: event_name, subscriptionId, userId }, "user has no email for welcome");
-    } else if (resend) {
-      // Sent after the write and outside the response: a mail failure must not
-      // fail the delivery, and a retry would be dropped as stale anyway.
-      void runBackgroundTask(
-        resend.emails.send({
-          from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-          to: email,
-          subject: `Welcome to iShortn ${emailPlan === "ultra" ? "Ultra" : "Pro"}`,
-          react: WelcomeEmail({ userName: account.name ?? "there", plan: emailPlan }),
-        }),
-      );
+    } else {
+      void runBackgroundTask(sendWelcomeEmail({ userId, email, name: account.name }, paidPlan));
     }
     return { result: "applied", userId, previous: existing ?? null };
   }
 
   if (event_name === "subscription_updated") {
-    return {
-      result: updateResult(
-        await db
-          .update(subscription)
-          .set({
-            status,
-            plan,
-            billingInterval,
-            variantId,
-            productId,
-            renewsAt: renewsAt ? new Date(renewsAt) : null,
-            endsAt: endsAt ? new Date(endsAt) : null,
-            cardBrand,
-            cardLastFour,
-            providerUpdatedAt,
-          })
-          .where(currentSubscription),
-      ),
-      userId,
-      previous: existing ?? null,
-    };
+    const storedPlan = existing
+      ? (getPlanFromIds(existing.variantId, existing.productId) ?? existing.plan)
+      : null;
+    const result = updateResult(
+      await db
+        .update(subscription)
+        .set({
+          status,
+          plan,
+          billingInterval,
+          variantId,
+          productId,
+          renewsAt: renewsAt ? new Date(renewsAt) : null,
+          endsAt: endsAt ? new Date(endsAt) : null,
+          cardBrand,
+          cardLastFour,
+          providerUpdatedAt,
+        })
+        .where(currentSubscription),
+    );
+
+    // An in-place upgrade arrives as an update, not a new subscription.
+    if (result === "applied" && storedPlan === "pro" && plan === "ultra" && status === "active") {
+      emailOwner((recipient) => sendWelcomeEmail(recipient, "ultra"));
+    }
+    return { result, userId, previous: existing ?? null };
   }
 
   if (event_name === "subscription_cancelled") {
     // Keep the plan/variant intact — a cancelled subscription stays entitled
     // until endsAt (see paidPlan in src/lib/billing/entitlements.ts).
-    return {
-      result: updateResult(
-        await db
-          .update(subscription)
-          .set({
-            status,
-            endsAt: endsAt ? new Date(endsAt) : null,
-            providerUpdatedAt,
-          })
-          .where(currentSubscription),
-      ),
-      userId,
-      previous: existing ?? null,
-    };
+    const result = updateResult(
+      await db
+        .update(subscription)
+        .set({
+          status,
+          endsAt: endsAt ? new Date(endsAt) : null,
+          providerUpdatedAt,
+        })
+        .where(currentSubscription),
+    );
+
+    if (result === "applied") {
+      emailOwner((recipient) =>
+        sendSubscriptionCancelledEmail(recipient, paidPlan, endsAt ? new Date(endsAt) : null),
+      );
+    }
+    return { result, userId, previous: existing ?? null };
   }
 
   // The row is reset to free here, so the lapse grace (which needs the plan the

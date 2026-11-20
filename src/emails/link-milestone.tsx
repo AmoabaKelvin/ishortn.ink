@@ -1,72 +1,63 @@
-import { Body, Container, Head, Html, Preview, Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
+
+import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
 type LinkMilestoneEmailProps = {
   userName?: string | null;
-  linkAlias: string;
+  shortUrl: string;
   linkName?: string | null;
   milestone: number;
   totalClicks: number;
+  analyticsUrl: string;
+  notificationSettingsUrl: string;
 };
 
 export const LinkMilestoneEmail = ({
   userName,
-  linkAlias,
+  shortUrl,
   linkName,
   milestone,
   totalClicks,
+  analyticsUrl,
+  notificationSettingsUrl,
 }: LinkMilestoneEmailProps) => {
-  const displayName = linkName || linkAlias;
-
   return (
-    <Html>
-      <Head />
-      <Preview>
-        Your link &quot;{displayName}&quot; just hit {milestone.toLocaleString()} clicks
-      </Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={section}>
-            <Text style={text}>Hi {userName || "there"},</Text>
+    <EmailLayout
+      preview={`${linkName || shortUrl} just hit ${milestone.toLocaleString()} clicks`}
+      notificationSettingsUrl={notificationSettingsUrl}
+    >
+      <Text style={text}>Hi {userName || "there"},</Text>
 
-            <Text style={text}>
-              Your link <strong>{displayName}</strong> (ishortn.ink/{linkAlias}) just reached{" "}
-              <strong>{totalClicks.toLocaleString()} clicks</strong>, passing your{" "}
-              {milestone.toLocaleString()}-click milestone.
-            </Text>
+      <Text style={text}>
+        {linkName ? (
+          <>
+            Your link <strong>{linkName}</strong> ({shortUrl})
+          </>
+        ) : (
+          <>
+            Your link <strong>{shortUrl}</strong>
+          </>
+        )}{" "}
+        just reached <strong>{totalClicks.toLocaleString()} clicks</strong>, passing your{" "}
+        {milestone.toLocaleString()}-click milestone.
+      </Text>
 
-            <Text style={text}>
-              You can view detailed analytics for this link in your dashboard.
-            </Text>
+      <EmailButton href={analyticsUrl}>View link analytics</EmailButton>
 
-            <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+      <Signoff />
+    </EmailLayout>
   );
 };
 
-const main = {
-  backgroundColor: "#ffffff",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-};
-
-const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  maxWidth: "560px",
-};
-
-const section = {
-  padding: "24px",
-};
-
-const text = {
-  color: "#333",
-  fontSize: "16px",
-  lineHeight: "24px",
-};
+LinkMilestoneEmail.PreviewProps = {
+  userName: "Ama",
+  shortUrl: "go.acmestudio.com/spring-launch-2026",
+  linkName: "Spring launch newsletter",
+  milestone: 10000,
+  totalClicks: 10012,
+  analyticsUrl:
+    "https://ishortn.ink/dashboard/analytics/spring-launch-2026?domain=go.acmestudio.com",
+  notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
+} satisfies LinkMilestoneEmailProps;
 
 export default LinkMilestoneEmail;

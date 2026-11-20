@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 
 import { TEAM_READ_ONLY_MESSAGE } from "@/lib/billing/entitlements";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { db } from "@/server/db";
 import { ensureUser, type UserAccess } from "@/server/lib/ensure-user";
 import {
@@ -55,6 +56,8 @@ export type ProtectedTRPCContext = Omit<TRPCContext, "auth"> & {
   /** Whether the user has isAdmin=true, fetched once during auth */
   isAdmin: boolean;
   deletedAt: Date | null;
+  /** Set when moderation restricted the account; see contentWriteProcedure */
+  restrictedAt: Date | null;
 };
 
 // Per-request memo so batched procedures share one ban/admin lookup.
@@ -89,6 +92,7 @@ export const softDeletedProcedure = t.procedure.use(async ({ ctx, next }) => {
     },
     isAdmin: currentUser?.isAdmin ?? false,
     deletedAt: currentUser?.deletedAt ?? null,
+    restrictedAt: currentUser?.restrictedAt ?? null,
   };
 
   return next({ ctx: protectedCtx });
@@ -152,6 +156,19 @@ const READ_ONLY_TEAM_MUTATIONS = new Set([
   "team.removeMember",
   "team.revokeInvite",
 ]);
+
+/**
+ * Workspace procedure for creating or editing links, custom domains, bio pages
+ * and QR codes. A restricted account keeps read, delete and billing access but
+ * is refused here in every workspace, personal or team.
+ */
+export const contentWriteProcedure = workspaceProcedure.use(({ ctx, next }) => {
+  if (ctx.restrictedAt) {
+    throw new TRPCError({ code: "FORBIDDEN", message: ACCOUNT_RESTRICTED_MESSAGE });
+  }
+
+  return next({ ctx });
+});
 
 /**
  * Context type for team-only procedures

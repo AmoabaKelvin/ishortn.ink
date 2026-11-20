@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { user } from "@/server/db/schema";
 
 import type { ProtectedTRPCContext } from "../../trpc";
-import type { UpdateUserProfileInput } from "./user.input";
+import type { UpdateNotificationPreferencesInput, UpdateUserProfileInput } from "./user.input";
 
 export async function getUserProfile(ctx: ProtectedTRPCContext) {
   const userProfile = await ctx.db.query.user.findFirst({
@@ -15,6 +15,7 @@ export async function getUserProfile(ctx: ProtectedTRPCContext) {
       email: true,
       imageUrl: true,
       isAdmin: true,
+      productEmailsEnabled: true,
     },
   });
 
@@ -32,4 +33,16 @@ export async function updateUserProfile(ctx: ProtectedTRPCContext, input: Update
   await ctx.db.update(user).set({ name: input.name }).where(eq(user.id, ctx.auth.userId));
 
   return getUserProfile(ctx);
+}
+
+export async function updateNotificationPreferences(
+  ctx: ProtectedTRPCContext,
+  input: UpdateNotificationPreferencesInput,
+) {
+  await ctx.db
+    .update(user)
+    .set({ productEmailsEnabled: input.productEmailsEnabled })
+    .where(eq(user.id, ctx.auth.userId));
+
+  return { productEmailsEnabled: input.productEmailsEnabled };
 }

@@ -42,3 +42,11 @@ export function extractPlatformSubdomain(host: string): string | null {
   }
   return null;
 }
+
+// Absolute URL into the authenticated app. Team workspaces are resolved from
+// the `<slug>.` subdomain, so links into team resources must carry the slug or
+// they open the personal workspace.
+export function getAppUrl(path: string, teamSlug?: string | null): string {
+  const host = teamSlug ? `${teamSlug}.${getAppBaseDomain()}` : getAppBaseDomain();
+  return `https://${host}${path}`;
+}

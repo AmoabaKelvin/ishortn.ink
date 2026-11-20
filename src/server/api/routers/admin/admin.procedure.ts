@@ -39,6 +39,14 @@ export const adminRouter = createTRPCRouter({
     .input(inputs.unbanUserSchema)
     .mutation(({ ctx, input }) => services.unbanUser(ctx, input)),
 
+  restrictUser: adminProcedure
+    .input(inputs.restrictUserSchema)
+    .mutation(({ ctx, input }) => services.restrictUser(ctx, input)),
+
+  unrestrictUser: adminProcedure
+    .input(inputs.unrestrictUserSchema)
+    .mutation(({ ctx, input }) => services.unrestrictUser(ctx, input)),
+
   getBlockedDomains: adminProcedure.query(({ ctx }) => services.getBlockedDomains(ctx)),
 
   addBlockedDomain: adminProcedure
@@ -95,4 +103,6 @@ export const adminRouter = createTRPCRouter({
   getRecentSubscriptions: adminProcedure
     .input(inputs.getRecentSubscriptionsSchema)
     .query(({ ctx, input }) => services.getRecentSubscriptions(ctx, input)),
+
+  getSignupAttribution: adminProcedure.query(({ ctx }) => services.getSignupAttribution(ctx)),
 });

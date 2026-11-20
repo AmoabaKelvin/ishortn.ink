@@ -1,125 +1,104 @@
 import AccountTransferEmail from "@/emails/account-transfer";
 import TransferCompletedEmail from "@/emails/transfer-completed";
 import TransferDeclinedEmail from "@/emails/transfer-declined";
-import { getAppBaseDomain } from "@/lib/constants/domains";
-import { logger } from "@/lib/logger";
+import { getAppUrl } from "@/lib/constants/domains";
 
-import { resend } from "./resend-client";
+import { sendEmail } from "./send-email";
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
 
-const log = logger.child({ notification: "account-transfer" });
-
 type SendAccountTransferEmailInput = {
   toEmail: string;
+  toUserId: string;
   toName?: string | null;
   fromEmail: string;
   fromName: string;
-  token: string;
+  acceptUrl: string;
   resourceCounts: ResourceCounts;
 };
 
-export async function sendAccountTransferEmail({
+/** Resolves to false when the email could not be sent, so the caller can offer the link instead. */
+export function sendAccountTransferEmail({
   toEmail,
+  toUserId,
   toName,
   fromEmail,
   fromName,
-  token,
+  acceptUrl,
   resourceCounts,
-}: SendAccountTransferEmailInput) {
-  if (!resend) return;
-
-  const baseDomain = getAppBaseDomain();
-  const acceptUrl = `https://${baseDomain}/account/accept-transfer?token=${encodeURIComponent(token)}`;
-
-  try {
-    await resend.emails.send({
-      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-      to: toEmail,
-      subject: `${fromName} wants to transfer their iShortn resources to you`,
-      react: AccountTransferEmail({
-        recipientName: toName,
-        senderName: fromName,
-        senderEmail: fromEmail,
-        acceptUrl,
-        resourceCounts,
-      }),
-    });
-  } catch (error) {
-    log.error(
-      { err: error, toEmail, fromEmail, stage: "transfer-request" },
-      "failed to send account transfer email",
-    );
-  }
+}: SendAccountTransferEmailInput): Promise<boolean> {
+  return sendEmail({
+    template: "account-transfer",
+    recipientId: toUserId,
+    to: toEmail,
+    subject: `${fromName} wants to transfer their iShortn resources to you`,
+    react: AccountTransferEmail({
+      recipientName: toName,
+      senderName: fromName,
+      senderEmail: fromEmail,
+      acceptUrl,
+      resourceCounts,
+    }),
+  });
 }
 
 type SendTransferCompletedEmailInput = {
   toEmail: string;
+  toUserId: string;
   toName?: string | null;
   recipientName: string;
   recipientEmail: string;
   resourceCounts: ResourceCounts;
 };
 
-export async function sendTransferCompletedEmail({
+export function sendTransferCompletedEmail({
   toEmail,
+  toUserId,
   toName,
   recipientName,
   recipientEmail,
   resourceCounts,
-}: SendTransferCompletedEmailInput) {
-  if (!resend) return;
-
-  try {
-    await resend.emails.send({
-      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-      to: toEmail,
-      subject: "Your iShortn resources have been transferred",
-      react: TransferCompletedEmail({
-        senderName: toName,
-        recipientName,
-        recipientEmail,
-        resourceCounts,
-      }),
-    });
-  } catch (error) {
-    log.error(
-      { err: error, toEmail, recipientEmail, stage: "completed" },
-      "failed to send transfer completed email",
-    );
-  }
+}: SendTransferCompletedEmailInput): Promise<boolean> {
+  return sendEmail({
+    template: "transfer-completed",
+    recipientId: toUserId,
+    to: toEmail,
+    subject: "Your iShortn resources have been transferred",
+    react: TransferCompletedEmail({
+      senderName: toName,
+      recipientName,
+      recipientEmail,
+      resourceCounts,
+      dashboardUrl: getAppUrl("/dashboard"),
+    }),
+  });
 }
 
 type SendTransferDeclinedEmailInput = {
   toEmail: string;
+  toUserId: string;
   toName?: string | null;
   recipientName: string;
   recipientEmail: string;
 };
 
-export async function sendTransferDeclinedEmail({
+export function sendTransferDeclinedEmail({
   toEmail,
+  toUserId,
   toName,
   recipientName,
   recipientEmail,
-}: SendTransferDeclinedEmailInput) {
-  if (!resend) return;
-
-  try {
-    await resend.emails.send({
-      from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-      to: toEmail,
-      subject: "Your iShortn transfer request was declined",
-      react: TransferDeclinedEmail({
-        senderName: toName,
-        recipientName,
-        recipientEmail,
-      }),
-    });
-  } catch (error) {
-    log.error(
-      { err: error, toEmail, recipientEmail, stage: "declined" },
-      "failed to send transfer declined email",
-    );
-  }
+}: SendTransferDeclinedEmailInput): Promise<boolean> {
+  return sendEmail({
+    template: "transfer-declined",
+    recipientId: toUserId,
+    to: toEmail,
+    subject: "Your iShortn transfer request was declined",
+    react: TransferDeclinedEmail({
+      senderName: toName,
+      recipientName,
+      recipientEmail,
+      transferSettingsUrl: getAppUrl("/dashboard/settings#account-transfer"),
+    }),
+  });
 }

@@ -1,13 +1,15 @@
+import { Section, Text } from "@react-email/components";
+
 import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+  CodeBlock,
+  EmailButton,
+  EmailLayout,
+  panel,
+  panelItem,
+  Signoff,
+  smallText,
+  text,
+} from "./_components/layout";
 
 export type PlanGraceEmailProps = {
   recipientName?: string | null;
@@ -47,122 +49,60 @@ export const PlanGraceEmail = (props: PlanGraceEmailProps) => {
   const { recipientName, kind, reason, planName, items, upgradeUrl } = props;
 
   return (
-    <Html>
-      <Head />
-      <Preview>
-        {reason === "team"
+    <EmailLayout
+      preview={
+        reason === "team"
           ? `${props.teamName} needs its owner on Ultra`
           : kind === "ended"
             ? "Your account is on the Free plan now"
-            : `Keep your ${planName} features after ${props.endsOn}`}
-      </Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={section}>
-            <Text style={text}>Hi {recipientName || "there"},</Text>
+            : `Keep your ${planName} features after ${props.endsOn}`
+      }
+    >
+      <Text style={text}>Hi {recipientName || "there"},</Text>
 
-            <Text style={text}>{intro(props)}</Text>
+      <Text style={text}>{intro(props)}</Text>
 
-            {items.length > 0 && (
-              <ul style={list}>
-                {items.map((item) => (
-                  <li key={item} style={listItem}>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <Text style={text}>
-              Your links keep redirecting with their current settings, and nothing is deleted.{" "}
-              {kind === "ended"
-                ? `Upgrading to ${planName} restores everything straight away.`
-                : `Upgrade to ${planName} to keep everything as it is. Upgrading later restores it straight away.`}
+      {items.length > 0 && (
+        <Section style={panel}>
+          {items.map((item) => (
+            <Text key={item} style={panelItem}>
+              {item}
             </Text>
+          ))}
+        </Section>
+      )}
 
-            <Section style={buttonContainer}>
-              <Button style={button} href={upgradeUrl}>
-                Upgrade to {planName}
-              </Button>
-            </Section>
+      <Text style={text}>
+        Your links keep redirecting with their current settings, and nothing is deleted.{" "}
+        {kind === "ended"
+          ? `Upgrading to ${planName} restores everything straight away.`
+          : `Upgrade to ${planName} to keep everything as it is. Upgrading later restores it straight away.`}
+      </Text>
 
-            <Text style={smallText}>
-              Or copy and paste this URL into your browser:{" "}
-              <span style={linkText}>{upgradeUrl}</span>
-            </Text>
+      <EmailButton href={upgradeUrl}>Upgrade to {planName}</EmailButton>
 
-            <Text style={text}>Questions? Reply to this email and we&apos;ll help.</Text>
+      <Text style={smallText}>Or copy and paste this URL into your browser:</Text>
+      <CodeBlock>{upgradeUrl}</CodeBlock>
 
-            <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+      <Text style={text}>Questions? Reply to this email and we&apos;ll help.</Text>
+
+      <Signoff />
+    </EmailLayout>
   );
 };
 
-const main = {
-  backgroundColor: "#ffffff",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-};
-
-const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  maxWidth: "560px",
-};
-
-const section = {
-  padding: "24px",
-};
-
-const text = {
-  color: "#333",
-  fontSize: "16px",
-  lineHeight: "24px",
-};
-
-const list = {
-  color: "#333",
-  fontSize: "15px",
-  lineHeight: "24px",
-  paddingLeft: "20px",
-};
-
-const listItem = {
-  marginBottom: "4px",
-};
-
-const smallText = {
-  color: "#666",
-  fontSize: "14px",
-  lineHeight: "20px",
-  marginTop: "16px",
-};
-
-const linkText = {
-  color: "#2563eb",
-  wordBreak: "break-all" as const,
-};
-
-const buttonContainer = {
-  textAlign: "center" as const,
-  marginTop: "24px",
-  marginBottom: "24px",
-};
-
-const button = {
-  backgroundColor: "#111827",
-  borderRadius: "6px",
-  color: "#fff",
-  fontSize: "16px",
-  fontWeight: 500,
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "inline-block",
-  padding: "12px 24px",
-};
+PlanGraceEmail.PreviewProps = {
+  recipientName: "Ama",
+  kind: "started",
+  reason: "lapsed",
+  planName: "Pro",
+  endsOn: "November 27, 2026",
+  timeLeft: "7 days",
+  items: [
+    "Links on custom domains beyond the first one",
+    "Password protection on new or edited links",
+  ],
+  upgradeUrl: "https://ishortn.ink/dashboard/pricing",
+} satisfies PlanGraceEmailProps;
 
 export default PlanGraceEmail;

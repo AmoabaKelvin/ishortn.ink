@@ -107,7 +107,8 @@ export function getPlanFromIds(variantId?: number | null, productId?: number | n
 }
 
 // Lemon Squeezy statuses that grant paid access outright.
-const ENTITLED_STATUSES = new Set(["active", "on_trial", "past_due"]);
+export const ENTITLED_SUBSCRIPTION_STATUSES = ["active", "on_trial", "past_due"];
+const ENTITLED_STATUSES = new Set(ENTITLED_SUBSCRIPTION_STATUSES);
 
 /**
  * Whether a subscription currently grants paid access. Honors the paid period:
@@ -115,21 +116,24 @@ const ENTITLED_STATUSES = new Set(["active", "on_trial", "past_due"]);
  * entitled until its `endsAt` passes (users keep access until the end of the
  * period they already paid for).
  */
-export function isSubscriptionEntitled(subscription?: Subscription | null): boolean {
+export function isSubscriptionEntitled(
+  subscription?: Subscription | null,
+  nowMs = Date.now(),
+): boolean {
   if (!subscription) return false;
 
   const status = subscription.status ?? "";
   if (ENTITLED_STATUSES.has(status)) return true;
 
   if (status === "cancelled" && subscription.endsAt) {
-    return subscription.endsAt.getTime() > Date.now();
+    return subscription.endsAt.getTime() > nowMs;
   }
 
   return false;
 }
 
-export function resolvePlan(subscription?: Subscription | null): Plan {
-  if (!subscription || !isSubscriptionEntitled(subscription)) {
+export function resolvePlan(subscription?: Subscription | null, nowMs = Date.now()): Plan {
+  if (!subscription || !isSubscriptionEntitled(subscription, nowMs)) {
     return "free";
   }
 

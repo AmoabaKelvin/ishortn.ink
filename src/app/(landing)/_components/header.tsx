@@ -13,6 +13,7 @@ import { ButtonLink, Wordmark } from "./site-primitives";
 const routes = [
   { name: "Features", href: "/features" },
   { name: "Pricing", href: "/pricing" },
+  { name: "Docs", href: "/docs" },
   { name: "Blog", href: "/blog" },
   { name: "Changelog", href: "/changelog" },
 ] as const;

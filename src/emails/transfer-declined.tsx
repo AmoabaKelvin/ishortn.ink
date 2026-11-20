@@ -1,75 +1,46 @@
-import { Body, Container, Head, Hr, Html, Preview, Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
+
+import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
 type TransferDeclinedEmailProps = {
   senderName?: string | null;
   recipientName: string;
   recipientEmail: string;
+  transferSettingsUrl: string;
 };
 
 export const TransferDeclinedEmail = ({
   senderName,
   recipientName,
   recipientEmail,
+  transferSettingsUrl,
 }: TransferDeclinedEmailProps) => {
   return (
-    <Html>
-      <Head />
-      <Preview>Your iShortn transfer request was declined</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={section}>
-            <Text style={text}>Hi {senderName || "there"},</Text>
+    <EmailLayout preview="Your iShortn transfer request was declined">
+      <Text style={text}>Hi {senderName || "there"},</Text>
 
-            <Text style={text}>
-              Your resource transfer request to <strong>{recipientName}</strong> ({recipientEmail})
-              has been declined.
-            </Text>
+      <Text style={text}>
+        Your resource transfer request to <strong>{recipientName}</strong> ({recipientEmail}) has
+        been declined.
+      </Text>
 
-            <Hr style={hr} />
+      <Text style={text}>
+        Your resources remain in your account and have not been transferred. If you&apos;d like to
+        transfer them to a different account, you can start a new transfer from your settings.
+      </Text>
 
-            <Text style={text}>
-              Your resources remain in your account and have not been transferred. If you&apos;d
-              like to transfer your resources to a different account, you can initiate a new
-              transfer from your settings.
-            </Text>
+      <EmailButton href={transferSettingsUrl}>Open transfer settings</EmailButton>
 
-            <Hr style={hr} />
-
-            <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+      <Signoff />
+    </EmailLayout>
   );
 };
 
-const main = {
-  backgroundColor: "#ffffff",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-};
-
-const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  maxWidth: "560px",
-};
-
-const section = {
-  padding: "24px",
-};
-
-const text = {
-  color: "#333",
-  fontSize: "16px",
-  lineHeight: "24px",
-};
-
-const hr = {
-  borderColor: "#e5e7eb",
-  marginTop: "24px",
-  marginBottom: "24px",
-};
+TransferDeclinedEmail.PreviewProps = {
+  senderName: "Kofi",
+  recipientName: "Ama Owusu",
+  recipientEmail: "ama@example.com",
+  transferSettingsUrl: "https://ishortn.ink/dashboard/settings#account-transfer",
+} satisfies TransferDeclinedEmailProps;
 
 export default TransferDeclinedEmail;

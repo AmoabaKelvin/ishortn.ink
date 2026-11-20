@@ -1,0 +1,214 @@
+import { describe, expect, test } from "bun:test";
+
+import { apiSunsetWarning, canUseApi, getApiAccess, parseApiSunset } from "./api-access";
+import { NO_GRACE } from "./entitlements";
+
+import type { Subscription } from "@/server/db/schema";
+
+const DAY = 24 * 60 * 60 * 1000;
+const PRO_MONTHLY_VARIANT_ID = 1811616;
+const SUNSET = new Date("2026-11-27T12:00:00Z");
+const BEFORE = new Date(SUNSET.getTime() - 3 * DAY);
+const AFTER = new Date(SUNSET.getTime() + 1000);
+
+function sub(overrides: Partial<Subscription>): Subscription {
+  return {
+    id: 1,
+    userId: "user_1",
+    orderId: 10,
+    subscriptionId: 100,
+    customerId: 1000,
+    renewsAt: null,
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    endsAt: null,
+    status: "active",
+    plan: "pro",
+    billingInterval: "monthly",
+    variantId: PRO_MONTHLY_VARIANT_ID,
+    productId: 0,
+    providerUpdatedAt: null,
+    cardBrand: "visa",
+    cardLastFour: "4242",
+    ...overrides,
+  };
+}
+
+describe("canUseApi", () => {
+  test("only paid plans can use the API", () => {
+    expect(canUseApi("free")).toBe(false);
+    expect(canUseApi("pro")).toBe(true);
+    expect(canUseApi("ultra")).toBe(true);
+  });
+});
+
+describe("parseApiSunset", () => {
+  test("parses ISO timestamps and ignores unset or invalid values", () => {
+    expect(parseApiSunset("2026-11-27T12:00:00Z")?.toISOString()).toBe(SUNSET.toISOString());
+    expect(parseApiSunset(undefined)).toBeNull();
+    expect(parseApiSunset("")).toBeNull();
+    expect(parseApiSunset("not a date")).toBeNull();
+  });
+});
+
+describe("getApiAccess", () => {
+  test("paid plans keep full access before and after the sunset", () => {
+    expect(getApiAccess(sub({}), NO_GRACE, SUNSET, AFTER)).toEqual({ status: "full" });
+    expect(getApiAccess(sub({ status: "on_trial" }), NO_GRACE, SUNSET, AFTER)).toEqual({
+      status: "full",
+    });
+  });
+
+  test("free accounts keep full access while no sunset is configured", () => {
+    expect(getApiAccess(null, NO_GRACE, null, AFTER)).toEqual({ status: "full" });
+  });
+
+  test("free accounts are sunsetting until the configured cutoff", () => {
+    expect(getApiAccess(null, NO_GRACE, SUNSET, BEFORE)).toEqual({
+      status: "sunsetting",
+      deprecatedAt: new Date(SUNSET.getTime() - 7 * DAY),
+      sunsetAt: SUNSET,
+    });
+  });
+
+  test("free accounts are revoked from the cutoff on", () => {
+    expect(getApiAccess(null, NO_GRACE, SUNSET, SUNSET)).toEqual({
+      status: "revoked",
+      sunsetAt: SUNSET,
+    });
+    expect(getApiAccess(null, NO_GRACE, SUNSET, AFTER)).toEqual({
+      status: "revoked",
+      sunsetAt: SUNSET,
+    });
+  });
+
+  test("a free-plan subscription row with no paid history uses the configured cutoff", () => {
+    const row = sub({
+      subscriptionId: 0,
+      status: "",
+      plan: "free",
+      variantId: 0,
+      endsAt: new Date(BEFORE),
+    });
+    expect(getApiAccess(row, NO_GRACE, SUNSET, AFTER)).toEqual({
+      status: "revoked",
+      sunsetAt: SUNSET,
+    });
+  });
+
+  describe("lapsed accounts", () => {
+    const endsAt = new Date(SUNSET.getTime() + 10 * DAY);
+    const cancelled = sub({ status: "cancelled", endsAt });
+    const lapsedSunset = new Date(endsAt.getTime() + 7 * DAY);
+
+    test("keep full access until the paid period ends", () => {
+      const now = new Date(endsAt.getTime() - 1000);
+      expect(getApiAccess(cancelled, NO_GRACE, SUNSET, now)).toEqual({ status: "full" });
+    });
+
+    test("get 7 days on Free limits after the paid period ends", () => {
+      const now = new Date(endsAt.getTime() + 2 * DAY);
+      expect(getApiAccess(cancelled, NO_GRACE, SUNSET, now)).toEqual({
+        status: "sunsetting",
+        deprecatedAt: endsAt,
+        sunsetAt: lapsedSunset,
+      });
+    });
+
+    test("are revoked 7 days after the paid period ends", () => {
+      expect(getApiAccess(cancelled, NO_GRACE, SUNSET, lapsedSunset)).toEqual({
+        status: "revoked",
+        sunsetAt: lapsedSunset,
+      });
+    });
+
+    test("expired subscriptions count from the provider's last update", () => {
+      const lapse = new Date(SUNSET.getTime() + DAY);
+      const expired = sub({ status: "expired", providerUpdatedAt: lapse });
+      const now = new Date(lapse.getTime() + DAY);
+      expect(getApiAccess(expired, NO_GRACE, SUNSET, now)).toMatchObject({
+        status: "sunsetting",
+        sunsetAt: new Date(lapse.getTime() + 7 * DAY),
+      });
+    });
+
+    // What the LemonSqueezy webhook stores on subscription_expired (and unpaid,
+    // paused): plan and variant reset, endsAt set to the time of the event.
+    function webhookExpired(at: Date) {
+      return sub({
+        status: "expired",
+        plan: "free",
+        variantId: 0,
+        productId: 0,
+        endsAt: at,
+        providerUpdatedAt: at,
+      });
+    }
+
+    test("expired subscriptions as stored by the webhook get 7 days on Free limits", () => {
+      const lapse = new Date(SUNSET.getTime() + 13 * DAY);
+      const expired = webhookExpired(lapse);
+      const lapsedSunset = new Date(lapse.getTime() + 7 * DAY);
+
+      expect(
+        getApiAccess(expired, NO_GRACE, SUNSET, new Date(lapse.getTime() + 60 * 1000)),
+      ).toEqual({
+        status: "sunsetting",
+        deprecatedAt: lapse,
+        sunsetAt: lapsedSunset,
+      });
+      expect(
+        getApiAccess(expired, NO_GRACE, SUNSET, new Date(lapsedSunset.getTime() - 1)),
+      ).toMatchObject({
+        status: "sunsetting",
+      });
+      expect(getApiAccess(expired, NO_GRACE, SUNSET, lapsedSunset)).toEqual({
+        status: "revoked",
+        sunsetAt: lapsedSunset,
+      });
+    });
+
+    test("expired subscriptions get no window while the cutoff isn't set", () => {
+      const expired = webhookExpired(BEFORE);
+      expect(getApiAccess(expired, NO_GRACE, null, AFTER)).toEqual({ status: "full" });
+    });
+
+    test("keep full access during a plan grace period, then count the notice from its end", () => {
+      const lapse = new Date(SUNSET.getTime() + DAY);
+      const expired = webhookExpired(lapse);
+      const graceEnd = new Date(lapse.getTime() + 7 * DAY);
+      const grace = { planGracePlan: "pro" as const, planGraceEndsAt: graceEnd };
+
+      expect(getApiAccess(expired, grace, SUNSET, new Date(graceEnd.getTime() - 1))).toEqual({
+        status: "full",
+      });
+      expect(getApiAccess(expired, grace, SUNSET, graceEnd)).toEqual({
+        status: "sunsetting",
+        deprecatedAt: graceEnd,
+        sunsetAt: new Date(graceEnd.getTime() + 7 * DAY),
+      });
+    });
+
+    test("a past_due subscription keeps the API until its grace period is recorded", () => {
+      const pastDue = sub({ status: "past_due" });
+      expect(getApiAccess(pastDue, NO_GRACE, SUNSET, AFTER)).toEqual({ status: "full" });
+      const ended = { planGracePlan: "pro" as const, planGraceEndsAt: BEFORE };
+      expect(getApiAccess(pastDue, ended, SUNSET, AFTER)).toMatchObject({ status: "sunsetting" });
+    });
+
+    test("a lapse long before the cutoff still gets the configured cutoff", () => {
+      const old = sub({ status: "expired", endsAt: new Date("2025-01-01T00:00:00Z") });
+      expect(getApiAccess(old, NO_GRACE, SUNSET, BEFORE)).toMatchObject({
+        status: "sunsetting",
+        sunsetAt: SUNSET,
+      });
+    });
+  });
+});
+
+describe("apiSunsetWarning", () => {
+  test("names the cutoff date and the upgrade URL", () => {
+    const warning = apiSunsetWarning(SUNSET);
+    expect(warning).toContain("November 27, 2026");
+    expect(warning).toContain("https://ishortn.ink/pricing");
+  });
+});

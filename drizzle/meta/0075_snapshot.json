@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "f102f728-cc13-4dbc-8bba-d81888a336cb",
-  "prevId": "ae390e38-04ad-4616-82f5-bf0f241bae80",
+  "id": "fc432bab-1dd1-4877-992e-3db57c732625",
+  "prevId": "c26699a5-5f1f-4043-9031-ff20a5bfe84b",
   "tables": {
     "AccountDeletion": {
       "name": "AccountDeletion",
@@ -272,6 +272,45 @@
           ]
         }
       },
+      "checkConstraint": {}
+    },
+    "ApiAccessSunset": {
+      "name": "ApiAccessSunset",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sunsetAt": {
+          "name": "sunsetAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "ApiAccessSunset_id": {
+          "name": "ApiAccessSunset_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "AudienceFeedback": {
@@ -3069,21 +3108,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "ownerPlanGraceEndsAt": {
-          "name": "ownerPlanGraceEndsAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ownerPlanGraceEmailStage": {
-          "name": "ownerPlanGraceEmailStage",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": 0
         }
       },
       "indexes": {
@@ -3634,6 +3658,14 @@
           "notNull": false,
           "autoincrement": false
         },
+        "productEmailsEnabled": {
+          "name": "productEmailsEnabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
         "deletedAt": {
           "name": "deletedAt",
           "type": "timestamp",
@@ -3671,37 +3703,15 @@
           "notNull": false,
           "autoincrement": false
         },
-        "planGracePlan": {
-          "name": "planGracePlan",
-          "type": "enum('free','pro','ultra')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "planGraceEndsAt": {
-          "name": "planGraceEndsAt",
+        "apiSunsetNoticeSentAt": {
+          "name": "apiSunsetNoticeSentAt",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "planGraceReason": {
-          "name": "planGraceReason",
-          "type": "enum('lapsed','over_plan')",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "planGraceEmailStage": {
-          "name": "planGraceEmailStage",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": 0
-        },
-        "planCheckedAt": {
-          "name": "planCheckedAt",
+        "apiSunsetReminderSentAt": {
+          "name": "apiSunsetReminderSentAt",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
@@ -3713,13 +3723,6 @@
           "name": "deletedAt_idx",
           "columns": [
             "deletedAt"
-          ],
-          "isUnique": false
-        },
-        "planGraceEndsAt_idx": {
-          "name": "planGraceEndsAt_idx",
-          "columns": [
-            "planGraceEndsAt"
           ],
           "isUnique": false
         },

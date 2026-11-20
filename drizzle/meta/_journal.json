@@ -523,15 +523,29 @@
     {
       "idx": 74,
       "version": "5",
-      "when": 1795212014313,
-      "tag": "0074_acoustic_jackpot",
+      "when": 1795212151567,
+      "tag": "0074_marvelous_loki",
       "breakpoints": true
     },
     {
       "idx": 75,
       "version": "5",
-      "when": 1795213626697,
-      "tag": "0075_smart_veda",
+      "when": 1795213124724,
+      "tag": "0075_harsh_moonstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "5",
+      "when": 1795214016517,
+      "tag": "0076_glamorous_loa",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "5",
+      "when": 1795215937102,
+      "tag": "0077_lame_chameleon",
       "breakpoints": true
     }
   ]

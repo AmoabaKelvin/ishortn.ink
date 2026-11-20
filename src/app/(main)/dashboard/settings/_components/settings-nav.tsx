@@ -2,6 +2,7 @@
 
 import {
   IconArrowsExchange,
+  IconBell,
   IconCreditCard,
   IconKey,
   IconSettings,
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { id: "profile", label: "Profile", icon: IconUser },
   { id: "general", label: "General", icon: IconSettings },
+  { id: "notifications", label: "Notifications", icon: IconBell },
   { id: "billing", label: "Billing", icon: IconCreditCard },
   { id: "api-keys", label: "API Keys", icon: IconKey },
   { id: "account-transfer", label: "Transfer", icon: IconArrowsExchange },

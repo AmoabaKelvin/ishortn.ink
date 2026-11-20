@@ -1,7 +1,6 @@
 import { and, eq, gt, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 
 import PlanGraceEmail from "@/emails/plan-grace";
-import { env } from "@/env.mjs";
 import {
   describeOverPlanFeature,
   dueGraceEmail,
@@ -20,11 +19,13 @@ import {
   subscribedPlan,
 } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
+import { getAppUrl } from "@/lib/constants/domains";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, team, user } from "@/server/db/schema";
 import { resend } from "@/server/lib/notifications/resend-client";
+import { EMAIL_FROM } from "@/server/lib/notifications/send-email";
 
 import { getPlanUsageByUser } from "./usage";
 
@@ -386,7 +387,7 @@ function timeLeft(endsAt: Date, now: Date): string {
   return days === 1 ? "24 hours" : `${days} days`;
 }
 
-const upgradeUrl = () => `${env.NEXT_PUBLIC_APP_URL}/dashboard/pricing`;
+const upgradeUrl = () => getAppUrl("/dashboard/pricing");
 
 function accountSubject(
   kind: GraceEmailKind,
@@ -567,7 +568,7 @@ export async function sendDueGraceEmails(options: {
     try {
       ({ error } = await resend.batch.send(
         batch.map((email) => ({
-          from: "Kelvin from iShortn <kelvin@ishortn.ink>",
+          from: EMAIL_FROM,
           to: email.to,
           subject: email.subject,
           react: email.react,

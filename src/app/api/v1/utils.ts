@@ -2,14 +2,18 @@ import crypto from "node:crypto";
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 
+import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
 import { effectivePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { domainBeyondPlanMessage, getUsableCustomDomains } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
+import { getApiSunset } from "@/server/lib/api-access";
 import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
 
+import { apiAccessRevokedResponse, withApiSunsetNotice } from "./api-access";
 import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
 
 import type { Plan } from "@/lib/billing/plans";
@@ -23,7 +27,7 @@ export async function validateAndGetToken(apiKey: string | null) {
 
   const userId = existingToken[0]!.userId;
 
-  // Run ban check and subscription lookup in parallel
+  // Run ban/restriction check and subscription lookup in parallel
   const [userRecord, userSubscription] = await Promise.all([
     db.query.user.findFirst({
       where: eq(user.id, userId),
@@ -31,6 +35,7 @@ export async function validateAndGetToken(apiKey: string | null) {
         id: true,
         banned: true,
         deletedAt: true,
+        restrictedAt: true,
         planGracePlan: true,
         planGraceEndsAt: true,
         planCheckedAt: true,
@@ -43,19 +48,31 @@ export async function validateAndGetToken(apiKey: string | null) {
     return null;
   }
 
-  const userSub = userSubscription[0];
+  const userSub = userSubscription[0] ?? null;
   // The same entitlement the dashboard uses: API links live in the personal workspace.
-  const grace = await ensurePlanChecked(userRecord, userSub ?? null);
-  const plan = effectivePlan(userSub ?? null, grace);
-  return { ...existingToken[0]!, subscription: userSub, plan };
+  const grace = await ensurePlanChecked(userRecord, userSub);
+  const plan = effectivePlan(userSub, grace);
+  return {
+    ...existingToken[0]!,
+    subscription: userSub,
+    grace,
+    plan,
+    restrictedAt: userRecord.restrictedAt ?? null,
+  };
 }
 
 export type ApiToken = NonNullable<Awaited<ReturnType<typeof validateAndGetToken>>>;
 
+/** 403 for write routes when the token owner's account is restricted, else null. */
+export function restrictedAccountResponse(token: ApiToken): Response | null {
+  return token.restrictedAt ? new Response(ACCOUNT_RESTRICTED_MESSAGE, { status: 403 }) : null;
+}
+
 /**
- * Wraps a v1 route handler with API key auth and the plan's rate limit. The
- * limit is checked after auth (it needs the plan) and every response carries
- * the X-RateLimit-* headers.
+ * Wraps a v1 route handler with API key auth, the plan's API access and its
+ * rate limit. The limit is checked after auth (it needs the plan) and every
+ * response carries the X-RateLimit-* headers. Keys on accounts without a paid
+ * plan get 403 after their sunset and the sunset headers until then.
  */
 export function withApiKey<Req extends Request, Args extends unknown[]>(
   handler: (request: Req, token: ApiToken, ...args: Args) => Promise<Response>,
@@ -66,14 +83,19 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
       return new Response("Invalid or missing API key", { status: 401 });
     }
 
+    // Paid keys skip the sunset lookup; for the rest it's cached per isolate.
+    const sunsetAt = canUseApi(token.plan) ? null : await getApiSunset();
+    const access = getApiAccess(token.subscription, token.grace, sunsetAt, new Date());
+    if (access.status === "revoked") return apiAccessRevokedResponse();
+
     const decision = await consumeApiRateLimit(token.userId, token.plan);
-    if (!decision.allowed) return rateLimitedResponse(decision);
+    if (!decision.allowed) return withApiSunsetNotice(rateLimitedResponse(decision), access);
 
     const response = await handler(request, token, ...args);
     for (const [name, value] of Object.entries(rateLimitHeaders(decision))) {
       response.headers.set(name, value);
     }
-    return response;
+    return withApiSunsetNotice(response, access);
   };
 }
 

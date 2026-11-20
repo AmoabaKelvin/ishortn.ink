@@ -9,6 +9,7 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import {
@@ -35,8 +36,8 @@ const GenerateTokenTrigger = () => {
         setKey(results[0]!.token);
         trackEvent(POSTHOG_EVENTS.API_KEY_CREATED);
       })
-      .catch(() => {
-        return;
+      .catch((error: Error) => {
+        toast.error(error.message);
       });
   };
 

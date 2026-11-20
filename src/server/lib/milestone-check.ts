@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
-import { link, linkMilestone, user } from "@/server/db/schema";
+import { link, linkMilestone, team, user } from "@/server/db/schema";
 import { sendLinkMilestoneEmail } from "@/server/lib/notifications/link-milestone";
 import { getTotalClicks } from "@/server/lib/total-clicks";
 
@@ -34,18 +34,23 @@ export async function checkAndFireMilestones(linkId: number, userId: string): Pr
     if (reachedMilestones.length === 0) return;
 
     // Fetch user info and link info for the email
-    const [linkOwner, linkRecord] = await Promise.all([
+    const [linkOwner, [linkRecord]] = await Promise.all([
       db.query.user.findFirst({
         where: eq(user.id, userId),
-        columns: { email: true, name: true },
+        columns: { email: true, name: true, productEmailsEnabled: true },
       }),
-      db.query.link.findFirst({
-        where: eq(link.id, linkId),
-        columns: { alias: true, name: true },
-      }),
+      db
+        .select({ alias: link.alias, domain: link.domain, name: link.name, teamSlug: team.slug })
+        .from(link)
+        .leftJoin(team, eq(team.id, link.teamId))
+        .where(eq(link.id, linkId))
+        .limit(1),
     ]);
 
     if (!linkOwner?.email || !linkRecord?.alias) return;
+
+    // Milestones are still marked notified when emails are off, so they don't fire later.
+    const sendEmails = linkOwner.productEmailsEnabled;
 
     // Fire notifications — atomic UPDATE guards against duplicates,
     // then send emails in parallel
@@ -56,13 +61,16 @@ export async function checkAndFireMilestones(linkId: number, userId: string): Pr
         .set({ notifiedAt: new Date() })
         .where(and(eq(linkMilestone.id, milestone.id), isNull(linkMilestone.notifiedAt)));
 
-      if (updateResult[0].affectedRows === 1) {
+      if (updateResult[0].affectedRows === 1 && sendEmails) {
         emailPromises.push(
           sendLinkMilestoneEmail({
+            userId,
             email: linkOwner.email,
             name: linkOwner.name,
             linkAlias: linkRecord.alias,
+            linkDomain: linkRecord.domain,
             linkName: linkRecord.name,
+            teamSlug: linkRecord.teamSlug,
             milestone: milestone.threshold,
             totalClicks,
           }),

@@ -154,8 +154,9 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Campaign attribution cookie:</strong> A first-party cookie stores the campaign
-              parameters of the visit that brought you to iShortn, used to measure which campaigns
-              lead to signups, kept up to 90 days or until you sign up.
+              parameters, referring site and landing page of the visit that brought you to iShortn,
+              used to measure which campaigns lead to signups, kept up to 90 days or until you sign
+              up.
             </li>
           </ul>
           <p>

@@ -5,3 +5,11 @@ export const updateUserProfileSchema = z.object({
 });
 
 export type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;
+
+export const updateNotificationPreferencesSchema = z.object({
+  productEmailsEnabled: z.boolean(),
+});
+
+export type UpdateNotificationPreferencesInput = z.infer<
+  typeof updateNotificationPreferencesSchema
+>;

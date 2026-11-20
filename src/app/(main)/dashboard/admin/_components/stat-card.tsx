@@ -11,11 +11,11 @@ type StatCardProps = {
 
 export function StatCard({ title, value, growth, hint }: StatCardProps) {
   return (
-    <Card className="rounded-xl border-neutral-200 dark:border-border p-5 shadow-none">
+    <Card className="min-w-0 rounded-xl border-neutral-200 dark:border-border p-5 shadow-none">
       <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
         {title}
       </p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-neutral-900 dark:text-foreground">
+      <p className="mt-1 truncate text-2xl font-semibold tabular-nums tracking-tight text-neutral-900 dark:text-foreground">
         {value}
       </p>
       <div className="mt-1 flex items-center gap-2">
