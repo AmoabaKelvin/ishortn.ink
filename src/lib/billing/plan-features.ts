@@ -48,7 +48,7 @@ export const PLAN_FEATURES = {
       "UTM parameters & templates",
       "Unlimited bio pages with scheduled blocks",
       "Unlimited campaigns",
-      "Team workspaces & resource transfer",
+      "Team workspaces",
       "Priority support",
     ],
     comingSoon: ["Conversion tracking", "Customization of password-protected pages"],

@@ -61,7 +61,7 @@ Some links point to content that should not be publicly accessible: internal rep
 
 ### Geo-Targeting and Device Targeting
 
-A single link can behave differently depending on who clicks it. Geo-targeting redirects visitors to region-specific landing pages, while device targeting can direct mobile users to an app store and desktop users to a web page. These url shortener features eliminate clunky workarounds and keep the experience seamless for every visitor.
+A single link can behave differently depending on who clicks it. Geo-targeting redirects visitors to region-specific landing pages, while device targeting can direct mobile users to an app store and desktop users to a web page. These URL shortener features eliminate clunky workarounds and keep the experience seamless for every visitor.
 
 ## When a Basic Shortener Is Enough
 
@@ -111,7 +111,7 @@ The real cost of a free shortener is not monetary — it is the data you never c
 
 ## How iShortn Bridges the Gap
 
-iShortn is designed for people who have outgrown basic shorteners but do not want to overpay for enterprise complexity. It is the best url shortener for teams and individuals who want powerful features without a steep learning curve.
+iShortn is designed for people who have outgrown basic shorteners but do not want to overpay for enterprise complexity. It is the best URL shortener for teams and individuals who want powerful features without a steep learning curve.
 
 With iShortn, you get:
 

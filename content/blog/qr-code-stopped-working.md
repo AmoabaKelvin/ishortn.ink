@@ -62,12 +62,12 @@ If the code points to your own domain, or to a branded short domain you set up, 
 If the phone camera doesn't react at all (no link preview appears), the problem is physical, not the link. Common reasons:
 
 - **Too small.** A practical minimum is about 2 × 2 cm (0.8 in) for something held in the hand, and much bigger for posters read from a distance. A common rule of thumb is a code width of about a tenth of the scanning distance.
-- **Low contrast or inverted colours.** Dark code on a light background is the safest choice. Light-on-dark and pale brand colours fail on some phones.
+- **Low contrast or inverted colors.** Dark code on a light background is the safest choice. Light-on-dark and pale brand colors fail on some phones.
 - **No quiet zone.** The code needs a clear margin around it. Cropping it tight against a border or photo can break it.
 - **A logo or effect covering too much.** Codes tolerate some damage, but a big logo, glossy laminate glare or a heavy design effect can push them past it.
 - **Too much data.** A very long URL in a static code makes a dense pattern that's hard to scan from print. A short link gives you a simpler code.
 
-**How to fix it:** test the printed piece, not the file on your screen, with an iPhone and an Android phone, in the light it will actually be seen in. If it's marginal, regenerate it larger with plain colours and a clear margin.
+**How to fix it:** test the printed piece, not the file on your screen, with an iPhone and an Android phone, in the light it will actually be seen in. If it's marginal, regenerate it larger with plain colors and a clear margin.
 
 ## Cause 5: The provider blocked or removed the link
 

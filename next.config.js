@@ -29,6 +29,15 @@ const config = {
       fullUrl: true,
     },
   },
+  // Guessable auth URLs. Scoped to the app host so `/sign-in` stays usable as a
+  // short-link alias on the short and custom domains.
+  async redirects() {
+    const has = [{ type: "host", value: "(?:www\\.)?ishortn\\.ink|localhost" }];
+    return [
+      { source: "/sign-in", destination: "/auth/sign-in", permanent: true, has },
+      { source: "/sign-up", destination: "/auth/sign-up", permanent: true, has },
+    ];
+  },
   async headers() {
     return [
       {

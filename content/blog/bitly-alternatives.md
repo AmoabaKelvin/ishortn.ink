@@ -70,9 +70,10 @@ TinyURL is one of the oldest URL shorteners, launched in 2002. It remains a stra
 - No account required for basic link shortening
 - Custom aliases for short links
 - Simple browser bookmarklet
-- API access on paid plans
+- QR code for every link
+- API access with a free account
 
-**Pricing:** Free plan with limited features. Pro plan starts at $9.99/month with branded domains and analytics.
+**Pricing:** Free plan with 30 links per month and no analytics. Pro starts at $9/month billed annually ($108/year) with 125 links per month, analytics, and 3 branded domains.
 
 **Best for:** Users who need a quick, no-signup link shortener for occasional use.
 
@@ -128,7 +129,7 @@ Short.io is a link shortener built around custom domains. It requires you to bri
 
 - Custom domain required (no shared short domain)
 - Detailed click analytics with filtering
-- Geo-targeting and device targeting
+- Geo-targeting on paid plans (country targeting from Hobby at $5/month)
 - Team management with roles
 - API and integrations (Zapier, Slack)
 
@@ -246,14 +247,14 @@ T.ly is a lightweight URL shortener that focuses on simplicity and affordability
 
 | Feature | iShortn | TinyURL | Rebrandly | Short.io | Dub.co | BL.INK | T.ly |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Free plan | Yes (30 links/mo) | Yes (limited) | Yes (10 links/mo) | Yes (1,000 links total) | No (14-day trial) | No | Yes (limited) |
+| Free plan | Yes (30 links/mo) | Yes (30 links/mo) | Yes (10 links/mo) | Yes (1,000 links total) | No (14-day trial) | No | Yes (limited) |
 | Click analytics | Yes | Basic | Yes | Yes | Yes | Yes | Basic |
 | Custom domains | Pro ($8/mo) | Paid only | 1 free | Required (5 free) | Business ($90/mo) | Yes | Paid only |
-| QR codes | 5 dynamic free | No | 10/mo free (watermarked) | Yes | Yes | Yes | Yes |
-| API access | Pro ($8/mo) | Paid only | Paid only | Yes | Yes | Paid only | Paid only |
-| Geo-targeting | Pro ($8/mo) | No | Paid only | Yes | No | Yes | No |
+| QR codes | 5 dynamic free | Yes (static) | 10/mo free (watermarked) | Yes | Yes | Yes | Yes |
+| API access | Pro ($8/mo) | Yes (free account) | Paid only | Yes | Yes | Paid only | Paid only |
+| Geo-targeting | Pro ($8/mo) | No | Paid only | Paid ($5/mo+) | No | Yes | No |
 | Team collaboration | Ultra ($15/mo) | No | Yes | Yes | Yes | Yes | No |
-| Paid plan starting price | $8/mo | $9.99/mo | Essentials | $5/mo | $90/mo | $48/mo | $12/mo |
+| Paid plan starting price | $8/mo | $9/mo (annual) | Essentials | $5/mo | $90/mo | $48/mo | $12/mo |
 
 ## How to Choose the Right Bitly Alternative
 
