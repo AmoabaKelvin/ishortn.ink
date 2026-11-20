@@ -232,18 +232,22 @@ export const validateAlias = (
   const aliasRegex = /^[a-zA-Z0-9-_]+$/;
 
   if (!aliasRegex.test(alias)) {
-    throw new Error("Alias can only contain alphanumeric characters, dashes, and underscores");
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Alias can only contain alphanumeric characters, dashes, and underscores",
+    });
   }
 
   if (alias.includes(".")) {
-    throw new Error("Cannot include periods in alias");
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot include periods in alias" });
   }
 
   // Free users must have aliases with at least 6 characters
   if (!isPaidUser && alias.length < MINIMUM_ALIAS_LENGTH_FREE) {
-    throw new Error(
-      `Custom aliases must be at least ${MINIMUM_ALIAS_LENGTH_FREE} characters on the free plan. Upgrade to Pro for shorter aliases.`,
-    );
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Custom aliases must be at least ${MINIMUM_ALIAS_LENGTH_FREE} characters on the free plan. Upgrade to Pro for shorter aliases.`,
+    });
   }
 
   return checkAliasAvailability(ctx, alias, domain);
@@ -261,7 +265,7 @@ export const checkAliasAvailability = async (
     .where(and(sql`lower(${link.alias}) = ${normalizedAlias}`, eq(link.domain, domain)));
 
   if (aliasExists.length) {
-    throw new Error("Alias already exists");
+    throw new TRPCError({ code: "CONFLICT", message: "Alias already exists" });
   }
 };
 
