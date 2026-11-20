@@ -1,13 +1,6 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import { Link, Text } from "@react-email/components";
+
+import { EmailButton, EmailLayout, link, Signoff, smallText, text } from "./_components/layout";
 
 type TeamInviteEmailProps = {
   recipientName?: string | null;
@@ -27,101 +20,43 @@ export const TeamInviteEmail = ({
   const roleLabel = role === "admin" ? "an admin" : "a member";
 
   return (
-    <Html>
-      <Head />
-      <Preview>
-        {inviterName} invited you to join {teamName} on iShortn
-      </Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={section}>
-            <Text style={text}>Hi {recipientName || "there"},</Text>
+    <EmailLayout preview={`${inviterName} invited you to join ${teamName} on iShortn`}>
+      <Text style={text}>Hi {recipientName || "there"},</Text>
 
-            <Text style={text}>
-              {inviterName} has invited you to join <strong>{teamName}</strong> as {roleLabel} on
-              iShortn.
-            </Text>
+      <Text style={text}>
+        {inviterName} has invited you to join <strong>{teamName}</strong> as {roleLabel} on iShortn.
+      </Text>
 
-            <Text style={text}>
-              As a team member, you&apos;ll be able to create and manage links, view analytics, and
-              collaborate with your team.
-            </Text>
+      <Text style={text}>
+        As a team member, you&apos;ll be able to create and manage links, view analytics, and
+        collaborate with your team.
+      </Text>
 
-            <Section style={buttonContainer}>
-              <Button style={button} href={inviteUrl}>
-                Accept Invitation
-              </Button>
-            </Section>
+      <EmailButton href={inviteUrl}>Accept invitation</EmailButton>
 
-            <Text style={smallText}>
-              Or copy and paste this URL into your browser:{" "}
-              <span style={linkText}>{inviteUrl}</span>
-            </Text>
+      <Text style={smallText}>
+        Or copy and paste this URL into your browser:{" "}
+        <Link href={inviteUrl} style={link}>
+          {inviteUrl}
+        </Link>
+      </Text>
 
-            <Text style={smallText}>
-              This invitation will expire in 7 days. If you don&apos;t want to join this team, you
-              can safely ignore this email.
-            </Text>
+      <Text style={smallText}>
+        This invitation will expire in 7 days. If you don&apos;t want to join this team, you can
+        safely ignore this email.
+      </Text>
 
-            <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+      <Signoff />
+    </EmailLayout>
   );
 };
 
-const main = {
-  backgroundColor: "#ffffff",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-};
-
-const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  maxWidth: "560px",
-};
-
-const section = {
-  padding: "24px",
-};
-
-const text = {
-  color: "#333",
-  fontSize: "16px",
-  lineHeight: "24px",
-};
-
-const smallText = {
-  color: "#666",
-  fontSize: "14px",
-  lineHeight: "20px",
-  marginTop: "16px",
-};
-
-const linkText = {
-  color: "#2563eb",
-  wordBreak: "break-all" as const,
-};
-
-const buttonContainer = {
-  textAlign: "center" as const,
-  marginTop: "24px",
-  marginBottom: "24px",
-};
-
-const button = {
-  backgroundColor: "#111827",
-  borderRadius: "6px",
-  color: "#fff",
-  fontSize: "16px",
-  fontWeight: 500,
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "inline-block",
-  padding: "12px 24px",
-};
+TeamInviteEmail.PreviewProps = {
+  recipientName: "Ama",
+  teamName: "Acme Studio",
+  inviterName: "Kofi Mensah",
+  role: "member",
+  inviteUrl: "https://ishortn.ink/teams/accept-invite?token=3f9a1c0e7b2d4a6f8e1c3b5d7f9a1c3e",
+} satisfies TeamInviteEmailProps;
 
 export default TeamInviteEmail;

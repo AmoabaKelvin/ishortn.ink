@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  IconAlertTriangle,
   IconCheck,
   IconCopy,
   IconCrown,
@@ -88,6 +89,7 @@ export default function TeamMembersPage() {
   const router = useRouter();
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(null);
+  const [inviteEmailFailed, setInviteEmailFailed] = useState(false);
   const [transferOwnershipMemberId, setTransferOwnershipMemberId] = useState<string | null>(null);
 
   const currentWorkspace = api.team.currentWorkspace.useQuery();
@@ -108,6 +110,10 @@ export default function TeamMembersPage() {
   const createInviteMutation = api.team.createInvite.useMutation({
     onSuccess: (data) => {
       setGeneratedInviteUrl(data.inviteUrl);
+      setInviteEmailFailed(data.emailSent === false);
+      if (data.emailSent === false) {
+        toast.error("Invite created but the email failed to send — copy the link instead");
+      }
       invites.refetch();
     },
     onError: (error) => {
@@ -182,6 +188,7 @@ export default function TeamMembersPage() {
   const closeInviteDialog = () => {
     setInviteDialogOpen(false);
     setGeneratedInviteUrl(null);
+    setInviteEmailFailed(false);
     inviteForm.reset();
   };
 
@@ -254,12 +261,21 @@ export default function TeamMembersPage() {
 
               {generatedInviteUrl ? (
                 <div className="space-y-3">
-                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-500/10 p-3">
-                    <div className="flex items-center gap-1.5 text-[12px] font-medium text-emerald-700">
-                      <IconCheck size={14} stroke={1.5} />
-                      Invite created
+                  {inviteEmailFailed ? (
+                    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 p-3">
+                      <div className="flex items-center gap-1.5 text-[12px] font-medium text-amber-700 dark:text-amber-400">
+                        <IconAlertTriangle size={14} stroke={1.5} className="shrink-0" />
+                        Invite created, but the email failed to send. Copy the link and share it.
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-500/10 p-3">
+                      <div className="flex items-center gap-1.5 text-[12px] font-medium text-emerald-700">
+                        <IconCheck size={14} stroke={1.5} />
+                        Invite created
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Input
                       value={generatedInviteUrl}
@@ -269,6 +285,7 @@ export default function TeamMembersPage() {
                     <button
                       type="button"
                       onClick={copyInviteUrl}
+                      aria-label="Copy invite link"
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-200 dark:border-border text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-700"
                     >
                       <IconCopy size={14} stroke={1.5} />

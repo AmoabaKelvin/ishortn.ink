@@ -198,6 +198,7 @@ export async function requestAccountDeletion(
   void runBackgroundTask(
     Promise.all([
       sendAccountDeletionEmail({
+        userId,
         toEmail: currentUser.email,
         toName: currentUser.name,
         purgeAt,

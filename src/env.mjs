@@ -52,6 +52,9 @@ export const env = createEnv({
     // beacons. Optional: when unset, tokens are not issued and no verification
     // events are accepted — the feature is effectively disabled.
     VERIFIED_CLICKS_SECRET: z.string().min(32).optional(),
+    // Signs one-click unsubscribe links in notification emails. Unset: those emails carry only a
+    // mailto List-Unsubscribe and the settings link in the footer.
+    EMAIL_UNSUBSCRIBE_SECRET: z.string().min(32).optional(),
     // Public status API (OpenStatus, Better Stack or Statuspage-compatible) for the footer badge.
     // Unset: the footer shows a plain "Status" link with no uptime claim.
     STATUS_PAGE_API_URL: z.string().url().optional(),
@@ -115,6 +118,7 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
+    EMAIL_UNSUBSCRIBE_SECRET: process.env.EMAIL_UNSUBSCRIBE_SECRET,
     STATUS_PAGE_API_URL: process.env.STATUS_PAGE_API_URL,
     HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
     BUILD_COMMIT_SHA: process.env.BUILD_COMMIT_SHA,

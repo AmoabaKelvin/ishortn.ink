@@ -1,13 +1,16 @@
+import { Section, Text } from "@react-email/components";
+
 import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+  CodeBlock,
+  EmailButton,
+  EmailLayout,
+  fieldLabel,
+  panel,
+  recordTitle,
+  Signoff,
+  smallText,
+  text,
+} from "./_components/layout";
 
 type Challenge = {
   type: "TXT" | "A" | "CNAME";
@@ -21,6 +24,7 @@ type DomainReminderEmailProps = {
   daysMisconfigured: number;
   challenges: Challenge[];
   dashboardUrl: string;
+  notificationSettingsUrl: string;
 };
 
 export const DomainReminderEmail = ({
@@ -29,175 +33,71 @@ export const DomainReminderEmail = ({
   daysMisconfigured,
   challenges,
   dashboardUrl,
+  notificationSettingsUrl,
 }: DomainReminderEmailProps) => {
   return (
-    <Html>
-      <Head />
-      <Preview>{domain} needs configuration on iShortn</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={section}>
-            <Text style={text}>Hi {recipientName || "there"},</Text>
+    <EmailLayout
+      preview={`${domain} needs configuration on iShortn`}
+      notificationSettingsUrl={notificationSettingsUrl}
+    >
+      <Text style={text}>Hi {recipientName || "there"},</Text>
 
-            <Text style={text}>
-              Your custom domain <strong>{domain}</strong> has been pending configuration for{" "}
-              <strong>
-                {daysMisconfigured} {daysMisconfigured === 1 ? "day" : "days"}
-              </strong>
-              . Until the DNS is configured correctly, links using this domain won&apos;t work.
-            </Text>
+      <Text style={text}>
+        Your custom domain <strong>{domain}</strong> has been waiting for DNS configuration for{" "}
+        <strong>
+          {daysMisconfigured} {daysMisconfigured === 1 ? "day" : "days"}
+        </strong>
+        . Until the DNS is configured correctly, links using this domain won&apos;t work.
+      </Text>
 
-            <Text style={text}>
-              To get your domain working, add the following DNS records at your domain provider:
-            </Text>
+      <Text style={text}>Add the following DNS records at your domain provider:</Text>
 
-            <Section style={tableContainer}>
-              <table style={table}>
-                <thead>
-                  <tr>
-                    <th style={tableHeader}>Type</th>
-                    <th style={tableHeader}>Name</th>
-                    <th style={tableHeader}>Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {challenges.map((challenge, index) => (
-                    <tr key={`${challenge.type}-${challenge.domain}-${index}`}>
-                      <td style={tableCell}>{challenge.type}</td>
-                      <td style={tableCell}>
-                        <code style={codeStyle}>{challenge.domain}</code>
-                      </td>
-                      <td style={tableCellValue}>
-                        <code style={codeStyle}>{challenge.value}</code>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Section>
+      {/* One stacked block per record: tables overflow on narrow screens. */}
+      {challenges.map((challenge, index) => (
+        <Section key={`${challenge.type}-${challenge.domain}-${index}`} style={panel}>
+          <Text style={recordTitle}>{challenge.type} record</Text>
+          <Text style={fieldLabel}>Name</Text>
+          <CodeBlock>{challenge.domain}</CodeBlock>
+          <Text style={fieldLabel}>Value</Text>
+          <CodeBlock>{challenge.value}</CodeBlock>
+        </Section>
+      ))}
 
-            <Text style={smallText}>
-              DNS changes can take up to 48 hours to propagate. After adding these records, visit
-              your dashboard to verify the configuration.
-            </Text>
+      <Text style={smallText}>
+        DNS changes can take up to 48 hours to propagate. After adding these records, verify the
+        configuration from your dashboard.
+      </Text>
 
-            <Section style={buttonContainer}>
-              <Button style={button} href={dashboardUrl}>
-                View Domain Settings
-              </Button>
-            </Section>
+      <EmailButton href={dashboardUrl}>View domain settings</EmailButton>
 
-            <Text style={smallText}>
-              Or copy and paste this URL into your browser:{" "}
-              <span style={linkText}>{dashboardUrl}</span>
-            </Text>
+      <Text style={text}>
+        If you need help configuring your DNS, reply to this email and we&apos;ll assist you.
+      </Text>
 
-            <Text style={text}>
-              If you need help configuring your DNS, reply to this email and we&apos;ll assist you.
-            </Text>
-
-            <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+      <Signoff />
+    </EmailLayout>
   );
 };
 
-const main = {
-  backgroundColor: "#ffffff",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-};
-
-const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  maxWidth: "560px",
-};
-
-const section = {
-  padding: "24px",
-};
-
-const text = {
-  color: "#333",
-  fontSize: "16px",
-  lineHeight: "24px",
-};
-
-const smallText = {
-  color: "#666",
-  fontSize: "14px",
-  lineHeight: "20px",
-  marginTop: "16px",
-};
-
-const linkText = {
-  color: "#2563eb",
-  wordBreak: "break-all" as const,
-};
-
-const buttonContainer = {
-  textAlign: "center" as const,
-  marginTop: "24px",
-  marginBottom: "24px",
-};
-
-const button = {
-  backgroundColor: "#111827",
-  borderRadius: "6px",
-  color: "#fff",
-  fontSize: "16px",
-  fontWeight: 500,
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "inline-block",
-  padding: "12px 24px",
-};
-
-const tableContainer = {
-  marginTop: "16px",
-  marginBottom: "16px",
-};
-
-const table = {
-  width: "100%",
-  borderCollapse: "collapse" as const,
-  border: "1px solid #e5e7eb",
-  borderRadius: "8px",
-};
-
-const tableHeader = {
-  backgroundColor: "#f9fafb",
-  padding: "10px 12px",
-  textAlign: "left" as const,
-  fontSize: "12px",
-  fontWeight: 600,
-  color: "#6b7280",
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const tableCell = {
-  padding: "10px 12px",
-  fontSize: "14px",
-  color: "#333",
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const tableCellValue = {
-  ...tableCell,
-  maxWidth: "200px",
-  wordBreak: "break-all" as const,
-};
-
-const codeStyle = {
-  backgroundColor: "#f3f4f6",
-  padding: "2px 6px",
-  borderRadius: "4px",
-  fontSize: "13px",
-  fontFamily: "monospace",
-};
+DomainReminderEmail.PreviewProps = {
+  recipientName: "Ama",
+  domain: "go.acmestudio.com",
+  daysMisconfigured: 12,
+  challenges: [
+    { type: "CNAME", domain: "go.acmestudio.com", value: "cname.ishortn.ink" },
+    {
+      type: "TXT",
+      domain: "_cf-custom-hostname.go.acmestudio.com",
+      value: "4f1c2a9e-7b3d-4e8f-a6c5-1d2e3f4a5b6c",
+    },
+    {
+      type: "TXT",
+      domain: "_acme-challenge.go.acmestudio.com",
+      value: "rT9x3kPq2LmN8vB5cZ7wY4hJ6gF1dS0aQeRtYuIoP",
+    },
+  ],
+  dashboardUrl: "https://acme.ishortn.ink/dashboard/domains",
+  notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
+} satisfies DomainReminderEmailProps;
 
 export default DomainReminderEmail;

@@ -15,7 +15,11 @@ import {
   teamMember,
   user,
 } from "@/server/db/schema";
-import { sendTeamInviteEmail } from "@/server/lib/notifications/team-invite";
+import {
+  sendTeamInviteAcceptedEmail,
+  sendTeamInviteEmail,
+  sendTeamMemberRemovedEmail,
+} from "@/server/lib/notifications/team-invite";
 import { requireMinimumRole, requirePermission } from "@/server/lib/workspace/permissions";
 
 import type { ProtectedTRPCContext, TeamTRPCContext, WorkspaceTRPCContext } from "../../trpc";
@@ -359,6 +363,22 @@ export async function removeMember(ctx: TeamTRPCContext, input: RemoveMemberInpu
     .delete(teamMember)
     .where(and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.userId)));
 
+  const removedUser = await ctx.db.query.user.findFirst({
+    where: eq(user.id, input.userId),
+    columns: { email: true, name: true },
+  });
+  if (removedUser?.email) {
+    void runBackgroundTask(
+      sendTeamMemberRemovedEmail({
+        memberId: input.userId,
+        memberEmail: removedUser.email,
+        memberName: removedUser.name,
+        teamName: ctx.workspace.team.name,
+        teamSlug: ctx.workspace.team.slug,
+      }),
+    );
+  }
+
   return { success: true };
 }
 
@@ -485,40 +505,42 @@ export async function createInvite(ctx: TeamTRPCContext, input: InviteMemberInpu
     expiresAt,
   });
 
-  // Send email invitation if email provided
+  const inviteUrl = `https://${getAppBaseDomain()}/teams/accept-invite?token=${token}`;
+
+  // Awaited rather than backgrounded so a failed send can be shown to the
+  // inviter, who still has the link to share by hand.
+  let emailSent: boolean | null = null;
   if (input.email) {
-    // Get inviter's name
-    const inviter = await ctx.db.query.user.findFirst({
-      where: eq(user.id, ctx.auth.userId),
-      columns: { name: true },
-    });
-
-    // Get recipient's name if they exist
-    const recipient = await ctx.db.query.user.findFirst({
-      where: eq(user.email, input.email),
-      columns: { name: true },
-    });
-
-    void runBackgroundTask(
-      sendTeamInviteEmail({
-        email: input.email,
-        recipientName: recipient?.name,
-        teamName: ctx.workspace.team.name,
-        teamSlug: ctx.workspace.team.slug,
-        inviterName: inviter?.name || "Someone",
-        role: input.role,
-        token,
+    const [inviter, recipient] = await Promise.all([
+      ctx.db.query.user.findFirst({
+        where: eq(user.id, ctx.auth.userId),
+        columns: { name: true },
       }),
-    );
-  }
+      ctx.db.query.user.findFirst({
+        where: eq(user.email, input.email),
+        columns: { id: true, name: true },
+      }),
+    ]);
 
-  const baseDomain = getAppBaseDomain();
+    emailSent = await sendTeamInviteEmail({
+      email: input.email,
+      recipientId: recipient?.id,
+      recipientName: recipient?.name,
+      teamName: ctx.workspace.team.name,
+      teamSlug: ctx.workspace.team.slug,
+      inviterName: inviter?.name || "Someone",
+      role: input.role,
+      inviteUrl,
+    });
+  }
 
   return {
     inviteId: Number(result.insertId),
     token,
-    inviteUrl: `https://${baseDomain}/teams/accept-invite?token=${token}`,
+    inviteUrl,
     expiresAt,
+    /** Null when the invite has no email address (link-only). */
+    emailSent,
   };
 }
 
@@ -577,6 +599,38 @@ export async function revokeInvite(ctx: TeamTRPCContext, input: RevokeInviteInpu
   await ctx.db.delete(teamInvite).where(eq(teamInvite.id, input.inviteId));
 
   return { success: true };
+}
+
+async function notifyInviterOfAcceptance(
+  ctx: ProtectedTRPCContext,
+  invite: {
+    invitedBy: string;
+    role: "admin" | "member";
+    team: { name: string; slug: string };
+  },
+) {
+  const [inviter, member] = await Promise.all([
+    ctx.db.query.user.findFirst({
+      where: eq(user.id, invite.invitedBy),
+      columns: { email: true, name: true },
+    }),
+    ctx.db.query.user.findFirst({
+      where: eq(user.id, ctx.auth.userId),
+      columns: { email: true, name: true },
+    }),
+  ]);
+  if (!inviter?.email) return;
+
+  await sendTeamInviteAcceptedEmail({
+    inviterId: invite.invitedBy,
+    inviterEmail: inviter.email,
+    inviterName: inviter.name,
+    memberName: member?.name || member?.email || "A new member",
+    memberEmail: member?.email,
+    teamName: invite.team.name,
+    teamSlug: invite.team.slug,
+    role: invite.role,
+  });
 }
 
 /**
@@ -669,6 +723,8 @@ export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInvit
       role: invite.role,
     });
   });
+
+  void runBackgroundTask(notifyInviterOfAcceptance(ctx, invite));
 
   return {
     teamId: invite.team.id,

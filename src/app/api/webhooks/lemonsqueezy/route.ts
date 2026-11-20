@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 
-import WelcomeEmail from "@/emails/welcome-to-pro";
 import { env } from "@/env.mjs";
 import { getIntervalFromVariantId, getPlanFromIds } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
@@ -14,7 +13,10 @@ import {
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription } from "@/server/db/schema";
-import { resend } from "@/server/lib/notifications/resend-client";
+import {
+  sendSubscriptionCancelledEmail,
+  sendWelcomeEmail,
+} from "@/server/lib/notifications/billing";
 
 import { eventIsBehindProvider } from "./reconcile";
 
@@ -107,7 +109,13 @@ async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
     // can revoke the row a newer subscription now owns.
     const existing = await db.query.subscription.findFirst({
       where: eq(subscription.userId, userId),
-      columns: { subscriptionId: true, providerUpdatedAt: true },
+      columns: {
+        subscriptionId: true,
+        providerUpdatedAt: true,
+        plan: true,
+        variantId: true,
+        productId: true,
+      },
     });
 
     let isStale = false;
@@ -159,8 +167,8 @@ async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
      * subscription we no longer hold. Both are expected, but so is a row whose
      * subscriptionId was never populated — log rather than fail silently.
      */
-    const warnIfNoRowMatched = (result: MySqlRawQueryResult) => {
-      if (result[0]!.affectedRows > 0) return;
+    const warnIfNoRowMatched = (result: MySqlRawQueryResult): boolean => {
+      if (result[0]!.affectedRows > 0) return true;
       log.warn(
         {
           event: event_name,
@@ -175,7 +183,24 @@ async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
         },
         "subscription webhook matched no rows",
       );
+      return false;
     };
+
+    const emailRecipient = async () => {
+      const owner = await db.query.user.findFirst({
+        where: (table, { eq }) => eq(table.id, userId),
+        columns: { email: true, name: true },
+      });
+      if (!owner?.email) {
+        log.error(
+          { event: event_name, subscriptionId, userId },
+          "user has no email for billing email",
+        );
+        return null;
+      }
+      return { userId, email: owner.email, name: owner.name };
+    };
+    const paidPlan = plan === "ultra" ? "ultra" : "pro";
 
     if (event_name === "subscription_created") {
       const user = await db.query.user.findFirst({
@@ -230,25 +255,19 @@ async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
           },
         });
 
-      const email = user.email;
-      const name = user.name;
-      const emailPlan = plan === "ultra" ? "ultra" : "pro";
-
-      if (!email) {
+      if (!user.email) {
         log.error({ event: event_name, subscriptionId, userId }, "user has no email for welcome");
         return;
       }
 
-      await resend?.emails.send({
-        from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-        to: email,
-        subject: `Welcome to iShortn ${emailPlan === "ultra" ? "Ultra" : "Pro"}`,
-        react: WelcomeEmail({ userName: name ?? "there", plan: emailPlan }),
-      });
+      await sendWelcomeEmail({ userId, email: user.email, name: user.name }, paidPlan);
     } else if (event_name === "subscription_updated") {
       // handle subscription updated. Sent when a subscription is updated
+      const storedPlan = existing
+        ? (getPlanFromIds(existing.variantId, existing.productId) ?? existing.plan)
+        : null;
 
-      warnIfNoRowMatched(
+      const applied = warnIfNoRowMatched(
         await db
           .update(subscription)
           .set({
@@ -265,10 +284,16 @@ async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
           })
           .where(currentSubscription),
       );
+
+      // An in-place upgrade arrives as an update, not a new subscription.
+      if (applied && storedPlan === "pro" && plan === "ultra" && status === "active") {
+        const recipient = await emailRecipient();
+        if (recipient) await sendWelcomeEmail(recipient, "ultra");
+      }
     } else if (event_name === "subscription_cancelled") {
       // Keep the plan/variant intact — a cancelled subscription stays entitled
       // until endsAt. resolvePlan() drops it to free once that date passes.
-      warnIfNoRowMatched(
+      const applied = warnIfNoRowMatched(
         await db
           .update(subscription)
           .set({
@@ -278,6 +303,17 @@ async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
           })
           .where(currentSubscription),
       );
+
+      if (applied) {
+        const recipient = await emailRecipient();
+        if (recipient) {
+          await sendSubscriptionCancelledEmail(
+            recipient,
+            paidPlan,
+            endsAt ? new Date(endsAt) : null,
+          );
+        }
+      }
     } else if (event_name === "subscription_expired") {
       warnIfNoRowMatched(
         await db
