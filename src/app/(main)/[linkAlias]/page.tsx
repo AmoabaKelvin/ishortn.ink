@@ -1,13 +1,14 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { z } from "zod";
 
 import { socialMediaAgents } from "@/lib/constants/app";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { noIndexMetadata } from "@/lib/seo/indexing";
 import { isLinkScheduled, resolveShortLink } from "@/middlewares/resolve-link";
-import { api } from "@/trpc/server";
+import { findLinkByAlias } from "@/server/api/routers/link/link.service";
+import { toPublicLink } from "@/server/api/routers/link/utils";
+import { db } from "@/server/db";
 
 import CloakedPage from "../cloaked/[url]/page";
 import VerifiedRedirectPage from "../verified-redirect/[alias]/page";
@@ -21,12 +22,6 @@ type LinkRedirectionPageProps = {
     linkAlias: string;
   }>;
 };
-
-const linkMetadataSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  image: z.string().optional(),
-});
 
 const DEFAULT_DOMAIN = DEFAULT_PLATFORM_DOMAIN;
 
@@ -53,13 +48,12 @@ export async function generateMetadata(props: LinkRedirectionPageProps): Promise
     return noIndexMetadata;
   }
 
-  const link = await api.link.retrieveOriginalUrl.query({
+  const link = await findLinkByAlias(db, {
     alias: cleanAlias(params.linkAlias),
     domain: cleanUrl(domain),
-    from: "metadata",
   });
 
-  const linkMetadata = linkMetadataSchema.safeParse(link?.metadata).data;
+  const linkMetadata = link ? toPublicLink(link).metadata : undefined;
 
   return {
     ...noIndexMetadata,
@@ -102,11 +96,9 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
   // OG scrapers and "!"-preview links need the link rendered, not followed —
   // neither counts as a click.
   if (isSocialMediaAgent(userAgent) || params.linkAlias.endsWith("!")) {
-    const link = await api.link.retrieveOriginalUrl.query({
-      alias,
-      domain,
-      from: "redirection",
-    });
+    // Called directly rather than through the public tRPC router: the full row
+    // (destination, password hash) must stay on the server.
+    const link = await findLinkByAlias(db, { alias, domain });
 
     if (!link) return notFound();
     if (link.blocked) {
@@ -127,7 +119,7 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
     if (isSocialMediaAgent(userAgent)) {
       return <div>Redirecting...</div>;
     }
-    return <LinkPreview link={link} />;
+    return <LinkPreview domain={link.domain} alias={link.alias} url={link.url} />;
   }
 
   // Full resolution: geo rules, expiration, click recording, verified-click
