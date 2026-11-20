@@ -21,7 +21,7 @@ import {
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Blog — iShortn",
+  title: "Blog",
   description:
     "Tips, guides, and updates on URL shortening, link management, QR codes, and digital marketing.",
   keywords: [

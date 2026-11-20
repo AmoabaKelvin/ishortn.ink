@@ -18,7 +18,7 @@ import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primit
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Pricing — iShortn",
+  title: "Pricing",
   description:
     "Start free forever. Upgrade when you're ready. Cancel in one click. Pro and Ultra plans for solo makers and growing teams.",
   keywords: [
