@@ -7,7 +7,6 @@ import { APP_TITLE } from "@/lib/constants/app";
 import { fontDisplay, fontHeading, fontLogo, fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { fontTitle, inter } from "@/styles/fonts";
-import { TRPCReactProvider } from "@/trpc/react";
 
 import type { Metadata, Viewport } from "next";
 
@@ -43,8 +42,9 @@ export const viewport: Viewport = {
   ],
 };
 
-// Kept free of Clerk and analytics: short links, interstitials and bio pages
-// render on short and custom domains. App routes add them via AppProviders.
+// Kept free of Clerk, tRPC and analytics: short links, interstitials and bio
+// pages render on short and custom domains, and marketing pages stay light.
+// Route-group layouts add what they need (AppProviders, AnalyticsProviders).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ViewTransitions>
@@ -66,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             enableSystem
             disableTransitionOnChange
           >
-            <TRPCReactProvider>{children}</TRPCReactProvider>
+            {children}
             <Toaster />
           </ThemeProvider>
         </body>

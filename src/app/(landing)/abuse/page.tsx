@@ -1,6 +1,7 @@
 import { IconFlagFilled } from "@tabler/icons-react";
 
 import { cn } from "@/lib/utils";
+import { TRPCReactProvider } from "@/trpc/react";
 
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
@@ -38,7 +39,10 @@ export default function AbusePage() {
       </Section>
 
       <Section className="py-16 sm:py-20">
-        <AbuseReportForm />
+        {/* The only marketing page that calls tRPC; the provider is not in the root layout. */}
+        <TRPCReactProvider>
+          <AbuseReportForm />
+        </TRPCReactProvider>
         <p className="mx-auto mt-6 max-w-xl text-pretty text-center text-base text-neutral-600 sm:text-sm">
           For urgent legal matters, you can also reach us at{" "}
           <a
