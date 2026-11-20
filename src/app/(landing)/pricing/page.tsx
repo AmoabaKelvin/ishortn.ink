@@ -54,7 +54,7 @@ const pricingFaqs = [
   },
   {
     q: "Is the API available on every plan?",
-    a: "The REST API is available on Pro and Ultra. Free is for interactive use through the dashboard.",
+    a: "The REST API is available on Pro and Ultra. Free is for interactive use through the dashboard and can't create API keys. If a paid plan ends, its API keys keep working on Free limits for 7 days, then requests return 403 until the account upgrades.",
   },
 ];
 

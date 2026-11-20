@@ -1,5 +1,6 @@
 import { getAllPosts } from "@/lib/blog";
 import { getChangelogEntries } from "@/lib/changelog";
+import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
 import { competitors } from "@/lib/seo/competitors";
 import { absoluteUrl } from "@/lib/utils";
 
@@ -10,6 +11,8 @@ import type { MetadataRoute } from "next";
 // change on every build and teach crawlers to ignore lastmod.
 // Floor for the derived dates below, so an empty post list still yields a valid date.
 const SITE_LASTMOD_FLOOR = "2026-09-19";
+// Bump when the docs pages change.
+const DOCS_LASTMOD = "2026-11-20";
 const compareList = Object.values(competitors);
 const maxDate = (a: string, b: string) => (a > b ? a : b);
 
@@ -106,5 +109,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...compareEntries, ...blogPostEntries];
+  const docsEntries: MetadataRoute.Sitemap = DOCS_PAGES.map((page) => ({
+    url: absoluteUrl(docsHref(page.slug)),
+    lastModified: DOCS_LASTMOD,
+    changeFrequency: "weekly",
+    priority: page.slug === "" || page.slug === "api" ? 0.8 : 0.6,
+  }));
+
+  return [...staticRoutes, ...compareEntries, ...docsEntries, ...blogPostEntries];
 }

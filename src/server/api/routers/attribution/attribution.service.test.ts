@@ -64,6 +64,22 @@ describe("recordAttribution", () => {
     ]);
   });
 
+  test("records a direct signup with only the landing path", async () => {
+    const { ctx, inserted } = fakeContext({ createdAt: NOW, hasRow: false });
+    const direct = serializeFirstTouch({
+      landingPath: "/features",
+      referrerHost: "",
+      ts: NOW.getTime(),
+    });
+    expect(await recordAttribution(ctx, { cookie: direct }, NOW)).toEqual({ recorded: true });
+    expect(inserted[0]).toMatchObject({
+      utmSource: null,
+      clickId: null,
+      landingPath: "/features",
+      referrerHost: null,
+    });
+  });
+
   test("never writes a second row", async () => {
     const { ctx, inserted } = fakeContext({ createdAt: NOW, hasRow: true });
     expect(await recordAttribution(ctx, { cookie: COOKIE }, NOW)).toEqual({ recorded: false });
