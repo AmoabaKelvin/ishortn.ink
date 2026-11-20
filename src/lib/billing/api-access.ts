@@ -11,7 +11,7 @@ export const API_ACCESS_NOTICE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * - `full`: paid plan, or the Free cutoff isn't configured yet.
+ * - `full`: Pro or Ultra.
  * - `sunsetting`: not on a paid plan; keys work on Free limits until `sunsetAt`.
  * - `revoked`: not on a paid plan and past `sunsetAt`.
  */
@@ -26,15 +26,11 @@ export function canUseApi(plan: Plan): boolean {
 }
 
 /**
- * Parses the configured cutoff for keys on accounts without a paid plan
- * (`API_FREE_ACCESS_SUNSET_AT`, set at deploy to deploy time + 7 days).
- * Returns null when unset or unparseable.
+ * When API keys on accounts without Pro or Ultra stop working: release day
+ * plus API_ACCESS_NOTICE_DAYS. Committed rather than a Worker variable so every
+ * deploy carries it; a missing value would silently restore Free API access.
  */
-export function parseApiSunset(value: string | undefined | null): Date | null {
-  if (!value) return null;
-  const ms = Date.parse(value);
-  return Number.isNaN(ms) ? null : new Date(ms);
-}
+export const API_FREE_ACCESS_SUNSET_AT = new Date("2026-11-28T12:00:00Z");
 
 // Statuses a real provider subscription ends in once it stops being paid.
 const LAPSED_STATUSES = new Set(["cancelled", "expired", "unpaid", "paused"]);
@@ -65,13 +61,11 @@ function lapsedAt(subscription: Subscription | null, nowMs: number): Date | null
  */
 export function getApiAccess(
   subscription: Subscription | null,
-  configuredSunset: Date | null,
+  configuredSunset: Date,
   now: Date,
 ): ApiAccess {
   const nowMs = now.getTime();
-  if (canUseApi(resolvePlan(subscription, nowMs)) || !configuredSunset) {
-    return { status: "full" };
-  }
+  if (canUseApi(resolvePlan(subscription, nowMs))) return { status: "full" };
 
   const lapse = lapsedAt(subscription, nowMs);
   const sunsetMs = Math.max(

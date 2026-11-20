@@ -8,8 +8,8 @@ const log = logger.child({ job: "api-access-sunset" });
 
 /**
  * Cron job endpoint that emails owners of API keys on accounts without a paid
- * plan before API_FREE_ACCESS_SUNSET_AT: a notice once it's configured and a
- * reminder 24 hours before. A no-op when unset or past.
+ * plan before their keys stop working: a notice when the account's sunset
+ * period starts and a reminder 24 hours before its cutoff.
  *
  * Schedule: 10 * * * * (hourly) - configured in wrangler.jsonc
  *

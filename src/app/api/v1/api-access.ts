@@ -1,8 +1,14 @@
 import { z } from "zod";
 
-import { API_UPGRADE_URL, apiSunsetWarning } from "@/lib/billing/api-access";
+import {
+  API_FREE_ACCESS_SUNSET_AT,
+  API_UPGRADE_URL,
+  apiSunsetWarning,
+  getApiAccess,
+} from "@/lib/billing/api-access";
 
 import type { ApiAccess } from "@/lib/billing/api-access";
+import type { Subscription } from "@/server/db/schema";
 
 export function apiAccessRevokedResponse(): Response {
   return Response.json(
@@ -59,4 +65,19 @@ export async function withApiSunsetNotice(
   }
 
   return new Response(body, { status: response.status, statusText: response.statusText, headers });
+}
+
+/**
+ * Runs `handle` for a key whose account still has API access: 403 without
+ * calling it once access is revoked, and the sunset notice on its response
+ * while access is sunsetting. The clock and cutoff are injectable for tests.
+ */
+export async function withApiAccess(
+  subscription: Subscription | null,
+  handle: () => Promise<Response>,
+  { sunsetAt = API_FREE_ACCESS_SUNSET_AT, now = new Date() } = {},
+): Promise<Response> {
+  const access = getApiAccess(subscription, sunsetAt, now);
+  if (access.status === "revoked") return apiAccessRevokedResponse();
+  return withApiSunsetNotice(await handle(), access);
 }

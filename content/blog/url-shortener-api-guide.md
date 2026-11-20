@@ -221,7 +221,19 @@ The endpoints:
 - **`GET /api/v1/links/{alias}`** returns a link; **`PATCH /api/v1/links/{alias}`** updates its destination, alias or expiration.
 - **`GET /api/v1/analytics/{alias}`** returns click counts by date, country, city, device, OS and browser for your plan's analytics window.
 
-Requests authenticate with an API key in the `x-api-key` header; keys are managed from your dashboard. Errors return a 4xx or 5xx status with a plain-text message, and every response carries `X-RateLimit-*` headers for your plan's per-minute and per-day limits.
+Requests authenticate with an API key in the `x-api-key` header; keys are managed from your dashboard. Most errors return a 4xx or 5xx status with a plain-text message, and every response carries `X-RateLimit-*` headers for your plan's per-minute and per-day limits.
+
+API access is part of the Pro and Ultra plans:
+
+- **Creating keys** needs an active Pro or Ultra plan. Free accounts see an upgrade prompt instead of the create form.
+- **Keys on an account without a paid plan** keep working for 7 days on Free limits: existing Free keys until November 28, 2026 at 12:00 UTC, and keys on a plan that lapses for 7 days after the paid period ends. During that window every response carries a `Deprecation` header, a `Sunset` header with the cutoff, a `Link` header pointing at the pricing page, and JSON responses gain a `warning` field that states the date.
+- **After the cutoff** those keys get `403 Forbidden` with a JSON body:
+
+```json
+{ "error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing" }
+```
+
+Upgrading restores access for the same keys straight away.
 
 Whether you are building a SaaS product that needs shareable links, an internal tool that generates tracking URLs, or a marketing platform that creates campaign links at scale, the iShortn API gives you the building blocks to integrate programmatic URL shortening into your stack. To decide which metrics to pull from the analytics endpoints, see [how to track link clicks](/blog/how-to-track-link-clicks).
 

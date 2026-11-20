@@ -1,7 +1,10 @@
-import { and, asc, eq, gt, inArray, isNotNull, isNull, not, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, not, or, sql } from "drizzle-orm";
 
-import { env } from "@/env.mjs";
-import { getApiAccess, parseApiSunset } from "@/lib/billing/api-access";
+import {
+  API_ACCESS_NOTICE_DAYS,
+  API_FREE_ACCESS_SUNSET_AT,
+  getApiAccess,
+} from "@/lib/billing/api-access";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { subscription, token, user } from "@/server/db/schema";
@@ -12,16 +15,20 @@ import {
 } from "./notifications/api-access-sunset";
 
 import type { ApiSunsetRecipient } from "./notifications/api-access-sunset";
+import type { ApiAccess } from "@/lib/billing/api-access";
 
 const log = logger.child({ component: "api-access" });
 
-const REMINDER_LEAD_MS = 24 * 60 * 60 * 1000;
-// Bounds one cron run; whatever is left goes out on the next run.
-const MAX_BATCHES_PER_RUN = 5;
+type ApiSunsetEmailKind = "notice" | "reminder";
 
-export function getConfiguredApiSunset(): Date | null {
-  return parseApiSunset(env.API_FREE_ACCESS_SUNSET_AT);
-}
+const DAY_MS = 24 * 60 * 60 * 1000;
+const REMINDER_LEAD_MS = DAY_MS;
+// An email counts for an account's current cutoff when sent within this long
+// before it. Wider than the notice period because the configured cutoff can be
+// a little more than 7 days after release, when the first notices go out.
+const SENT_WINDOW_MS = 2 * API_ACCESS_NOTICE_DAYS * DAY_MS;
+// Bounds the emails one cron run sends; whatever is left goes out on the next run.
+const MAX_SEND_BATCHES_PER_RUN = 5;
 
 /**
  * Subscriptions that certainly grant Pro or Ultra at `now` (a subset of
@@ -39,40 +46,65 @@ export function paidSubscription(now: Date) {
   return sql`coalesce(${paid}, false)`;
 }
 
-/** Which sunset email is due at `now`, if any. */
-export function dueApiSunsetEmail(sunsetAt: Date | null, now: Date): "notice" | "reminder" | null {
-  if (!sunsetAt || now >= sunsetAt) return null;
+/** Which sunset email is due at `now` for an account cut off at `sunsetAt`, if any. */
+export function dueApiSunsetEmail(sunsetAt: Date, now: Date): "notice" | "reminder" | null {
+  if (now >= sunsetAt) return null;
   return now.getTime() >= sunsetAt.getTime() - REMINDER_LEAD_MS ? "reminder" : "notice";
 }
 
 /**
- * Emails every owner of an API key whose account isn't on a paid plan: a
- * notice once the cutoff is configured, and a reminder in the last 24 hours
- * before it. One email per account; each kind is sent at most once. Does
- * nothing once the cutoff has passed.
+ * The email an account should get now, from its own cutoff. Emails sent long
+ * before that cutoff (SENT_WINDOW_MS) belong to an earlier sunset period, e.g.
+ * a plan that lapsed, was renewed and lapsed again, so they don't count.
+ * Entering the last 24 hours without the notice sends only the reminder.
+ */
+export function apiSunsetEmailFor(
+  access: ApiAccess,
+  sent: { noticeSentAt: Date | null; reminderSentAt: Date | null },
+  now: Date,
+): "notice" | "reminder" | null {
+  if (access.status !== "sunsetting") return null;
+  const periodStart = access.sunsetAt.getTime() - SENT_WINDOW_MS;
+  const sentThisPeriod = (sentAt: Date | null) => !!sentAt && sentAt.getTime() >= periodStart;
+  const due = dueApiSunsetEmail(access.sunsetAt, now);
+  if (due === "reminder" && !sentThisPeriod(sent.reminderSentAt)) return "reminder";
+  if (due === "notice" && !sentThisPeriod(sent.noticeSentAt)) return "notice";
+  return null;
+}
+
+/**
+ * Emails owners of API keys on accounts without a paid plan, each on its own
+ * cutoff (the configured one, or 7 days after a lapse): a notice when the
+ * sunset period starts and a reminder in its last 24 hours. One email per
+ * account per kind and period.
  */
 export async function sendApiSunsetEmailsDue(now = new Date()) {
-  const sunsetAt = getConfiguredApiSunset();
-  const kind = dueApiSunsetEmail(sunsetAt, now);
-  if (!kind) return { kind, sent: 0, skipped: 0 };
-
-  const sentColumn =
-    kind === "reminder" ? user.apiSunsetReminderSentAt : user.apiSunsetNoticeSentAt;
   let sent = 0;
   let skipped = 0;
-
+  let sendBatches = 0;
   let cursor = "";
 
-  for (let batch = 0; batch < MAX_BATCHES_PER_RUN; batch++) {
+  // A reminder sent more than SENT_WINDOW_MS ago can't count for a cutoff
+  // still ahead, so only those accounts (and never-reminded ones) are read.
+  const staleBefore = new Date(now.getTime() - SENT_WINDOW_MS);
+
+  while (sendBatches < MAX_SEND_BATCHES_PER_RUN) {
     const rows = await db
-      .select({ id: user.id, email: user.email, name: user.name, subscription })
+      .select({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        noticeSentAt: user.apiSunsetNoticeSentAt,
+        reminderSentAt: user.apiSunsetReminderSentAt,
+        subscription,
+      })
       .from(user)
       .leftJoin(subscription, eq(subscription.userId, user.id))
       .where(
         and(
           gt(user.id, cursor),
           inArray(user.id, db.select({ userId: token.userId }).from(token)),
-          isNull(sentColumn),
+          or(isNull(user.apiSunsetReminderSentAt), lt(user.apiSunsetReminderSentAt, staleBefore)),
           isNotNull(user.email),
           isNull(user.deletedAt),
           or(isNull(user.banned), eq(user.banned, false)),
@@ -86,41 +118,45 @@ export async function sendApiSunsetEmailsDue(now = new Date()) {
     if (!rows.length) break;
     cursor = rows.at(-1)?.id ?? cursor;
 
-    const recipients: (ApiSunsetRecipient & { userId: string })[] = [];
+    const due: { kind: ApiSunsetEmailKind; userId: string; recipient: ApiSunsetRecipient }[] = [];
     for (const row of rows) {
-      const access = getApiAccess(row.subscription, sunsetAt, now);
-      if (access.status === "sunsetting" && row.email) {
-        recipients.push({
-          userId: row.id,
-          email: row.email,
-          name: row.name,
-          sunsetAt: access.sunsetAt,
-        });
-      }
+      const access = getApiAccess(row.subscription, API_FREE_ACCESS_SUNSET_AT, now);
+      const kind = apiSunsetEmailFor(access, row, now);
+      if (!kind || !row.email || access.status !== "sunsetting") continue;
+      due.push({
+        kind,
+        userId: row.id,
+        recipient: { email: row.email, name: row.name, sunsetAt: access.sunsetAt },
+      });
     }
 
-    if (recipients.length) {
-      if (!(await sendApiSunsetEmails(recipients, kind))) break;
-
-      // Only emailed accounts are marked: a paid account that lapses before
-      // the cutoff still gets the notice on a later run.
+    const kinds: ApiSunsetEmailKind[] = ["notice", "reminder"];
+    for (const kind of kinds) {
+      const batch = due.filter((entry) => entry.kind === kind);
+      if (!batch.length) continue;
+      sendBatches++;
+      // Unsent accounts stay unmarked and are retried on the next run.
+      const recipients = batch.map((entry) => entry.recipient);
+      if (!(await sendApiSunsetEmails(recipients, kind))) continue;
       await db
         .update(user)
         .set(
-          kind === "reminder" ? { apiSunsetReminderSentAt: now } : { apiSunsetNoticeSentAt: now },
+          kind === "reminder"
+            ? { apiSunsetReminderSentAt: now, apiSunsetNoticeSentAt: now }
+            : { apiSunsetNoticeSentAt: now },
         )
         .where(
           inArray(
             user.id,
-            recipients.map((recipient) => recipient.userId),
+            batch.map((entry) => entry.userId),
           ),
         );
+      sent += batch.length;
     }
-    sent += recipients.length;
-    skipped += rows.length - recipients.length;
+    skipped += rows.length - due.length;
     if (rows.length < API_SUNSET_EMAIL_BATCH_SIZE) break;
   }
 
-  log.info({ kind, sent, skipped }, "api sunset emails processed");
-  return { kind, sent, skipped };
+  log.info({ sent, skipped }, "api sunset emails processed");
+  return { sent, skipped };
 }

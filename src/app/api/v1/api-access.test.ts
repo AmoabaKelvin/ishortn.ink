@@ -1,16 +1,23 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, setSystemTime, test } from "bun:test";
 import crypto from "node:crypto";
 
 import { eq } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { API_FREE_ACCESS_SUNSET_AT } from "@/lib/billing/api-access";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
-import { apiAccessRevokedResponse, apiSunsetHeaders, withApiSunsetNotice } from "./api-access";
+import {
+  apiAccessRevokedResponse,
+  apiSunsetHeaders,
+  withApiAccess,
+  withApiSunsetNotice,
+} from "./api-access";
 import { POST } from "./links/route";
 
 import type { ApiAccess } from "@/lib/billing/api-access";
+import type { Subscription } from "@/server/db/schema";
 
 const DAY = 24 * 60 * 60 * 1000;
 const SUNSET = new Date("2026-11-27T12:00:00Z");
@@ -78,6 +85,92 @@ describe("apiAccessRevokedResponse", () => {
   });
 });
 
+describe("withApiAccess", () => {
+  const before = { sunsetAt: SUNSET, now: new Date(SUNSET.getTime() - 3 * DAY) };
+  const after = { sunsetAt: SUNSET, now: new Date(SUNSET.getTime() + 1000) };
+  const proSubscription: Subscription = {
+    id: 1,
+    userId: "user_1",
+    orderId: 10,
+    subscriptionId: 100,
+    customerId: 1000,
+    renewsAt: null,
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    endsAt: null,
+    status: "active",
+    plan: "pro",
+    billingInterval: "monthly",
+    variantId: 1811616,
+    productId: 0,
+    providerUpdatedAt: null,
+    cardBrand: "visa",
+    cardLastFour: "4242",
+  };
+
+  function handler() {
+    let calls = 0;
+    return {
+      handle: async () => {
+        calls++;
+        return Response.json({ alias: "abc" }, { status: 201 });
+      },
+      calls: () => calls,
+    };
+  }
+
+  test("a Free key before the sunset runs the handler and carries the notice", async () => {
+    const { handle, calls } = handler();
+    const response = await withApiAccess(null, handle, before);
+
+    expect(calls()).toBe(1);
+    expect(response.status).toBe(201);
+    expect(response.headers.get("Sunset")).toBe("Fri, 27 Nov 2026 12:00:00 GMT");
+    expect(response.headers.get("Deprecation")).toStartWith("@");
+    expect(await response.json()).toMatchObject({
+      warning: expect.stringContaining("stops working on November 27, 2026"),
+    });
+  });
+
+  test("a Free key from the sunset on gets 403 without running the handler", async () => {
+    const { handle, calls } = handler();
+    const response = await withApiAccess(null, handle, after);
+
+    expect(calls()).toBe(0);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: "API access requires Pro",
+      upgrade_url: "https://ishortn.ink/pricing",
+    });
+  });
+
+  test("a Pro key after the sunset runs without the notice", async () => {
+    const response = await withApiAccess(proSubscription, handler().handle, after);
+
+    expect(response.status).toBe(201);
+    expect(response.headers.get("Sunset")).toBeNull();
+    expect(await response.json()).toEqual({ alias: "abc" });
+  });
+
+  test("a lapsed key keeps working for 7 days after the lapse, then gets 403", async () => {
+    const lapsed = { ...proSubscription, status: "cancelled", endsAt: after.now };
+
+    const inWindow = await withApiAccess(lapsed, handler().handle, {
+      sunsetAt: SUNSET,
+      now: new Date(after.now.getTime() + 6 * DAY),
+    });
+    expect(inWindow.status).toBe(201);
+    expect(inWindow.headers.get("Sunset")).toBe(
+      new Date(after.now.getTime() + 7 * DAY).toUTCString(),
+    );
+
+    const pastWindow = await withApiAccess(lapsed, handler().handle, {
+      sunsetAt: SUNSET,
+      now: new Date(after.now.getTime() + 7 * DAY),
+    });
+    expect(pastWindow.status).toBe(403);
+  });
+});
+
 // Runs against a disposable MySQL with the schema pushed; see CONTRIBUTING.md,
 // "Database tests".
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
@@ -85,7 +178,6 @@ const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
   const USER_ID = "api_access_test";
   const API_KEY = "api-access-test-key";
-  const originalSunset = env.API_FREE_ACCESS_SUNSET_AT;
 
   beforeAll(() => {
     if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
@@ -108,12 +200,13 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
   });
 
   afterAll(async () => {
-    Object.assign(env, { API_FREE_ACCESS_SUNSET_AT: originalSunset });
+    setSystemTime();
     await cleanup();
   });
 
-  function setSunset(date: Date | undefined) {
-    Object.assign(env, { API_FREE_ACCESS_SUNSET_AT: date?.toISOString() });
+  // Moves the clock relative to the committed cutoff.
+  function setClock(offsetFromSunset: number) {
+    setSystemTime(new Date(API_FREE_ACCESS_SUNSET_AT.getTime() + offsetFromSunset));
   }
 
   function createLink() {
@@ -127,7 +220,7 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
   }
 
   test("a Free key before the sunset works and carries the notice", async () => {
-    setSunset(new Date(Date.now() + 3 * DAY));
+    setClock(-3 * DAY);
     const response = await createLink();
 
     expect(response.status).toBe(201);
@@ -140,7 +233,7 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
   });
 
   test("a Free key after the sunset gets 403", async () => {
-    setSunset(new Date(Date.now() - 1000));
+    setClock(1000);
     const response = await createLink();
 
     expect(response.status).toBe(403);
@@ -151,7 +244,7 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
   });
 
   test("a Pro key after the sunset works without the notice", async () => {
-    setSunset(new Date(Date.now() - 1000));
+    setClock(1000);
     await db.insert(schema.subscription).values({
       userId: USER_ID,
       status: "active",
@@ -165,7 +258,7 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
   });
 
   test("a lapsed key within 7 days of the lapse still works after the sunset", async () => {
-    setSunset(new Date(Date.now() - 1000));
+    setClock(1000);
     await db.insert(schema.subscription).values({
       userId: USER_ID,
       status: "cancelled",

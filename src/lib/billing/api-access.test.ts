@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { apiSunsetWarning, canUseApi, getApiAccess, parseApiSunset } from "./api-access";
+import { apiSunsetWarning, canUseApi, getApiAccess } from "./api-access";
 
 import type { Subscription } from "@/server/db/schema";
 
@@ -40,23 +40,10 @@ describe("canUseApi", () => {
   });
 });
 
-describe("parseApiSunset", () => {
-  test("parses ISO timestamps and ignores unset or invalid values", () => {
-    expect(parseApiSunset("2026-11-27T12:00:00Z")?.toISOString()).toBe(SUNSET.toISOString());
-    expect(parseApiSunset(undefined)).toBeNull();
-    expect(parseApiSunset("")).toBeNull();
-    expect(parseApiSunset("not a date")).toBeNull();
-  });
-});
-
 describe("getApiAccess", () => {
   test("paid plans keep full access before and after the sunset", () => {
     expect(getApiAccess(sub({}), SUNSET, AFTER)).toEqual({ status: "full" });
     expect(getApiAccess(sub({ status: "on_trial" }), SUNSET, AFTER)).toEqual({ status: "full" });
-  });
-
-  test("free accounts keep full access while no sunset is configured", () => {
-    expect(getApiAccess(null, null, AFTER)).toEqual({ status: "full" });
   });
 
   test("free accounts are sunsetting until the configured cutoff", () => {

@@ -2,14 +2,12 @@ import crypto from "node:crypto";
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 
-import { getApiAccess } from "@/lib/billing/api-access";
 import { resolvePlan } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
-import { getConfiguredApiSunset } from "@/server/lib/api-access";
 
-import { apiAccessRevokedResponse, withApiSunsetNotice } from "./api-access";
+import { withApiAccess } from "./api-access";
 import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
 
 export async function validateAndGetToken(apiKey: string | null) {
@@ -54,20 +52,19 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
       return new Response("Invalid or missing API key", { status: 401 });
     }
 
-    const access = getApiAccess(token.subscription ?? null, getConfiguredApiSunset(), new Date());
-    if (access.status === "revoked") return apiAccessRevokedResponse();
+    return withApiAccess(token.subscription ?? null, async () => {
+      const decision = await consumeApiRateLimit(
+        token.userId,
+        resolvePlan(token.subscription ?? null),
+      );
+      if (!decision.allowed) return rateLimitedResponse(decision);
 
-    const decision = await consumeApiRateLimit(
-      token.userId,
-      resolvePlan(token.subscription ?? null),
-    );
-    if (!decision.allowed) return withApiSunsetNotice(rateLimitedResponse(decision), access);
-
-    const response = await handler(request, token, ...args);
-    for (const [name, value] of Object.entries(rateLimitHeaders(decision))) {
-      response.headers.set(name, value);
-    }
-    return withApiSunsetNotice(response, access);
+      const response = await handler(request, token, ...args);
+      for (const [name, value] of Object.entries(rateLimitHeaders(decision))) {
+        response.headers.set(name, value);
+      }
+      return response;
+    });
   };
 }
 

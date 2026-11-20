@@ -1,13 +1,13 @@
 import crypto from "node:crypto";
 
-import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 
-import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
+import { API_FREE_ACCESS_SUNSET_AT, canUseApi, getApiAccess } from "@/lib/billing/api-access";
 import { resolvePlan } from "@/lib/billing/plans";
 import { subscription, token } from "@/server/db/schema";
-import { getConfiguredApiSunset } from "@/server/lib/api-access";
+
+import { assertCanCreateKeys } from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 import type { CreateTokenInput, DeleteTokenInput } from "./token.input";
@@ -39,17 +39,12 @@ export const getApiAccessStatus = async (ctx: ProtectedTRPCContext) => {
   const sub = await getSubscription(ctx);
   return {
     canCreateKeys: canUseApi(resolvePlan(sub)),
-    access: getApiAccess(sub, getConfiguredApiSunset(), new Date()),
+    access: getApiAccess(sub, API_FREE_ACCESS_SUNSET_AT, new Date()),
   };
 };
 
 export const createToken = async (ctx: ProtectedTRPCContext, input: CreateTokenInput) => {
-  if (!canUseApi(resolvePlan(await getSubscription(ctx)))) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "API access is a Pro feature. Upgrade to Pro to create API keys.",
-    });
-  }
+  assertCanCreateKeys(await getSubscription(ctx));
 
   const generatedToken = generateToken();
 
