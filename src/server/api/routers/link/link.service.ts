@@ -562,6 +562,12 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   const workspacePlan = ctx.workspace.plan;
   const isPaidUser = workspacePlan !== "free";
 
+  // Re-scan only when the destination actually changes: the check can reach
+  // Safe Browsing / Web Risk and an LLM, and the current URL already passed it.
+  if (input.url !== undefined && input.url !== existingLink.url) {
+    await assertUrlSafe(input.url);
+  }
+
   // If domain is being changed, it must be platform-owned or a verified
   // custom domain for this workspace.
   if (input.domain !== undefined && input.domain !== existingLink.domain) {
