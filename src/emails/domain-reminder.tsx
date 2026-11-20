@@ -88,12 +88,12 @@ DomainReminderEmail.PreviewProps = {
     {
       type: "TXT",
       domain: "_cf-custom-hostname.go.acmestudio.com",
-      value: "4f1c2a9e-7b3d-4e8f-a6c5-1d2e3f4a5b6c",
+      value: "example-hostname-verification-value",
     },
     {
       type: "TXT",
       domain: "_acme-challenge.go.acmestudio.com",
-      value: "rT9x3kPq2LmN8vB5cZ7wY4hJ6gF1dS0aQeRtYuIoP",
+      value: "example-acme-challenge-value-that-wraps-on-narrow-screens",
     },
   ],
   dashboardUrl: "https://acme.ishortn.ink/dashboard/domains",

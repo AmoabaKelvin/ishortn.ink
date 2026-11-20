@@ -78,14 +78,15 @@ function isSameSite(a: string, b: string): boolean {
 }
 
 /**
- * Builds the cookie payload for a page view, or null when there is nothing worth
- * recording (no tracked params, and no external referrer or an auth page).
+ * Builds the cookie payload for a page view. A visit with no tracked params and no
+ * external referrer is still recorded (landing path only) so the signup counts as
+ * direct rather than unknown.
  */
 export function buildFirstTouch(input: {
   url: string;
   referrer: string;
   now: number;
-}): FirstTouchCookie | null {
+}): FirstTouchCookie {
   const url = new URL(input.url);
   const params: Partial<Record<TrackedParam, string>> = {};
   for (const key of TRACKED_PARAMS) {
@@ -93,15 +94,11 @@ export function buildFirstTouch(input: {
     if (value) params[key] = value;
   }
 
-  const referrer = hostOf(input.referrer);
+  // Auth pages are reached back from OAuth providers (sso-callback) and webmail
+  // verification links, so their referrer is not an acquisition source.
+  const referrer = AUTH_PATH.test(url.pathname) ? "" : hostOf(input.referrer);
   const referrerHost =
     referrer && !isSameSite(referrer, url.hostname.toLowerCase()) ? referrer : "";
-
-  if (Object.keys(params).length === 0) {
-    // Auth pages are reached back from OAuth providers (sso-callback) and webmail
-    // verification links, so their referrer is not an acquisition source.
-    if (!referrerHost || AUTH_PATH.test(url.pathname)) return null;
-  }
 
   return {
     ...params,
@@ -149,11 +146,24 @@ const firstTouchJson = z
   })
   .pipe(firstTouchCookieSchema);
 
+/** True when the visit carried no UTM, click ID or external referrer. */
+export function isDirectTouch(touch: FirstTouch): boolean {
+  return (
+    !touch.utmSource &&
+    !touch.utmMedium &&
+    !touch.utmCampaign &&
+    !touch.utmTerm &&
+    !touch.utmContent &&
+    !touch.clickId &&
+    !touch.referrerHost
+  );
+}
+
 /**
  * Parses an `ish_ft` cookie value (URL-encoded JSON) from an untrusted client.
  * Unknown keys are dropped, strings trimmed to 255 chars, and a missing or
  * implausible timestamp falls back to `now`. Returns null when the value is
- * malformed or carries nothing to attribute.
+ * malformed or carries nothing to attribute (not even a landing path).
  */
 export function parseFirstTouch(raw: string, now: Date): FirstTouch | null {
   const parsed = firstTouchJson.safeParse(raw);
@@ -189,13 +199,5 @@ export function parseFirstTouch(raw: string, now: Date): FirstTouch | null {
     firstSeenAt: tsIsPlausible ? new Date(ts) : now,
   };
 
-  const hasSignal =
-    touch.utmSource ??
-    touch.utmMedium ??
-    touch.utmCampaign ??
-    touch.utmTerm ??
-    touch.utmContent ??
-    touch.clickId ??
-    touch.referrerHost;
-  return hasSignal ? touch : null;
+  return touch.landingPath || !isDirectTouch(touch) ? touch : null;
 }

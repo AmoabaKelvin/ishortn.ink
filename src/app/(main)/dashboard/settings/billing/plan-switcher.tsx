@@ -16,7 +16,7 @@ import {
   PlanChangeConfirmDialog,
 } from "../../pricing/_components/plan-change-confirm-dialog";
 
-import type { BillingInterval, Plan } from "@/lib/billing/plans";
+import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 
 const PLANS: { id: Plan; name: string; monthly: number; annual: number }[] = [
   { id: "free", name: "Free", monthly: PLAN_PRICES_USD.free, annual: 0 },
@@ -34,9 +34,16 @@ const planOrder = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 type PlanSwitcherProps = {
   currentPlan: Plan;
   currentInterval: BillingInterval;
+  subscriptionMode: SubscriptionMode;
+  renewsAt: Date | null;
 };
 
-export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps) {
+export function PlanSwitcher({
+  currentPlan,
+  currentInterval,
+  subscriptionMode,
+  renewsAt,
+}: PlanSwitcherProps) {
   const [interval, setIntervalState] = useState<BillingInterval>(currentInterval);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [downgradeOpen, setDowngradeOpen] = useState(false);
@@ -49,7 +56,7 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
 
   const createCheckoutOrUpdate = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
     onSuccess: (data) => {
-      if (data.status === "redirect" && data.url) {
+      if (data.status === "redirect") {
         window.location.href = data.url;
         return;
       }
@@ -80,7 +87,7 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
     // Free → paid goes through the Lemon Squeezy hosted checkout (its own
     // confirmation). In-place changes for an existing paid subscriber charge
     // the card immediately, so confirm those first.
-    if (currentPlan === "free") {
+    if (subscriptionMode === "checkout") {
       runUpgrade(plan);
       return;
     }
@@ -94,6 +101,8 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
     setDowngradeOpen(true);
   };
 
+  const canChangeInPlace = subscriptionMode === "update";
+  const isResumable = subscriptionMode === "resume";
   const currentPlanName = PLANS.find((p) => p.id === currentPlan)?.name ?? currentPlan;
   const confirmCopy = pendingChange
     ? buildPlanChangeCopy(pendingChange.kind, pendingChange.plan, interval)
@@ -127,15 +136,23 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
         </div>
       </div>
 
+      {isResumable && (
+        <p className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-400">
+          Your subscription is cancelled. Resume it to change plans.
+        </p>
+      )}
+
       <div className="mt-3 divide-y divide-neutral-100 dark:divide-border/50 overflow-hidden rounded-lg border border-neutral-200 dark:border-border">
         {PLANS.map((plan) => {
           const isCurrentTier = plan.id === currentPlan;
           const matchesCurrent =
             isCurrentTier && (plan.id === "free" || interval === currentInterval);
+          // Switching and downgrading change a live subscription in place; a
+          // cancelled one has to be resumed first.
           const canSwitchInterval =
-            isCurrentTier && plan.id !== "free" && interval !== currentInterval;
-          const isUpgrade = planOrder[plan.id] > planOrder[currentPlan];
-          const isDowngrade = planOrder[plan.id] < planOrder[currentPlan];
+            canChangeInPlace && isCurrentTier && plan.id !== "free" && interval !== currentInterval;
+          const isUpgrade = !isResumable && planOrder[plan.id] > planOrder[currentPlan];
+          const isDowngrade = canChangeInPlace && planOrder[plan.id] < planOrder[currentPlan];
 
           const priceLabel =
             plan.id === "free"
@@ -210,6 +227,7 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
           onOpenChange={setDowngradeOpen}
           targetPlan={targetDowngrade}
           currentPlanName={currentPlanName}
+          renewsAt={renewsAt}
           targetPlanName={PLANS.find((p) => p.id === targetDowngrade)?.name ?? targetDowngrade}
         />
       )}

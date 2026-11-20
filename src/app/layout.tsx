@@ -4,7 +4,6 @@ import { ViewTransitions } from "next-view-transitions";
 import Script from "next/script";
 
 import { MicrosoftClarityScript } from "@/components/scripts/clarity";
-import { ReleaseNotesScript } from "@/components/scripts/release-notes";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env.mjs";
@@ -26,7 +25,10 @@ export const metadata: Metadata = {
   },
   description:
     "Free URL shortener with powerful analytics. Create custom short links, track clicks, locations, and devices. QR codes, custom domains, and API included.",
-  icons: [{ rel: "icon", url: "/icon.png" }],
+  icons: [
+    { rel: "icon", url: "/icon.png", type: "image/png", sizes: "512x512" },
+    { rel: "apple-touch-icon", url: "/apple-icon.png", sizes: "180x180" },
+  ],
   openGraph: {
     siteName: "iShortn",
     type: "website",
@@ -65,7 +67,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             data-website-id={env.UMAMI_TRACKING_ID}
           />
         )}
-        <ReleaseNotesScript />
         <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
           <MicrosoftClarityScript />
           <CSPostHogProvider>

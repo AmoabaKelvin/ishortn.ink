@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "432f3b69-d45e-46e6-a255-23570aaecf91",
+  "id": "a69476df-be39-40d1-a07f-c9eddeae7495",
   "prevId": "88d37d61-169c-4e70-aff6-cbb1704b42e7",
   "tables": {
     "AccountDeletion": {
@@ -3166,6 +3166,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "declinedAt": {
+          "name": "declinedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revokedAt": {
+          "name": "revokedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -3604,14 +3618,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "productEmailsEnabled": {
-          "name": "productEmailsEnabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
         },
         "deletedAt": {
           "name": "deletedAt",

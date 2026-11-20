@@ -1,0 +1,57 @@
+---
+title: Verify a click
+description: The endpoint iShortn's redirect page calls to mark a click as verified. You don't need to call it yourself.
+endpoint:
+  method: POST
+  path: /api/v1/clicks/verify
+---
+
+When [verified clicks](/docs/short-links#verified-clicks) are on for a link, visitors pass through a short redirect page. That page runs in the visitor's browser and calls this endpoint with a signed token, which marks the click as verified. Automated clients that never load the page never call it, so their clicks stay unverified.
+
+This endpoint is listed for completeness. Your integration doesn't need it: tokens are issued only by iShortn's own redirect, so there is nothing useful to send from your code.
+
+## Request
+
+No API key is needed. The JSON body has one field:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `token` | string | Yes | The signed click token from the redirect page. It expires 5 minutes after it's issued, and each click can only be verified once. |
+
+<CodeGroup>
+
+```bash title="cURL"
+curl https://ishortn.ink/api/v1/clicks/verify \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{ "token": "CLICK_TOKEN" }'
+```
+
+```javascript title="JavaScript"
+await fetch("https://ishortn.ink/api/v1/clicks/verify", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ token: clickToken }),
+});
+```
+
+```python title="Python"
+import requests
+
+requests.post(
+    "https://ishortn.ink/api/v1/clicks/verify",
+    json={"token": click_token},
+)
+```
+
+</CodeGroup>
+
+## Response
+
+`202 Accepted` with an empty body. The click is marked as verified shortly after, when the analytics queue processes it.
+
+## Errors
+
+| Status | Body | Cause |
+| --- | --- | --- |
+| `400` | Empty | The body isn't valid JSON, `token` is missing, or the token is malformed, expired or has a bad signature. |

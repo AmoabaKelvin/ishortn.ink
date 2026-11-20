@@ -1,5 +1,6 @@
 "use client";
 
+import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -51,6 +52,8 @@ type DowngradeFeedbackModalProps = {
   targetPlan: Exclude<Plan, "ultra">;
   currentPlanName: string;
   targetPlanName: string;
+  /** Next renewal date from the provider; a cancellation keeps access until then. */
+  renewsAt: Date | null;
 };
 
 export function DowngradeFeedbackModal({
@@ -59,7 +62,9 @@ export function DowngradeFeedbackModal({
   targetPlan,
   currentPlanName,
   targetPlanName,
+  renewsAt,
 }: DowngradeFeedbackModalProps) {
+  const renewalDate = renewsAt ? format(new Date(renewsAt), "MMM d, yyyy") : null;
   const {
     control,
     register,
@@ -160,8 +165,8 @@ export function DowngradeFeedbackModal({
 
             <p className="text-sm text-muted-foreground">
               {targetPlan === "free"
-                ? "You'll keep access until the end of your billing period."
-                : "Changes will apply at your next billing date."}
+                ? `You'll keep ${currentPlanName} until ${renewalDate ?? "the end of your billing period"}, then move to ${targetPlanName}.`
+                : `You'll move to ${targetPlanName} right away. Credit for unused ${currentPlanName} time goes toward your next invoice${renewalDate ? ` on ${renewalDate}` : ""}.`}
             </p>
           </DialogBody>
 

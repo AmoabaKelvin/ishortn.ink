@@ -10,6 +10,7 @@ the rules. Every rule below points at the code it was taken from; when in doubt,
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | Dashboard pages          | `src/app/(main)/dashboard/<feature>/page.tsx`, private components in `_components/`                                            |
 | Marketing and auth       | `src/app/(landing)`, `src/app/(auth)`; separate design language in `docs/design-language.md`                                   |
+| Docs (`/docs`)           | MDX in `content/docs/`, nav in `src/lib/docs/navigation.ts`, pages in `src/app/(docs)/docs-site` (middleware rewrites `/docs`) |
 | Redirect path            | `src/app/(main)/[linkAlias]/page.tsx` and `src/middlewares/` (`resolve-link.ts`, `record-click.ts`)                            |
 | Edge middleware          | `src/middleware.ts` (Clerk + custom-domain bio rewrite; must stay edge-safe, no db/pino imports)                               |
 | tRPC procedures          | `src/server/api/trpc.ts` (`publicProcedure`, `protectedProcedure`, `workspaceProcedure`, `teamProcedure`, `adminProcedure`, …) |

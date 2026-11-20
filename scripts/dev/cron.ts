@@ -10,6 +10,7 @@ const CRON_ROUTES = [
   "cleanup-analytics",
   "cleanup-expired",
   "phishing-rescan",
+  "api-access-sunset",
 ];
 
 async function main() {
