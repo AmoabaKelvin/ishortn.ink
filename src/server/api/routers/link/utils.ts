@@ -108,6 +108,7 @@ export async function incrementLinkCount(
   ctx: ProtectedTRPCContext,
   currentCount: number,
   limit?: number,
+  created = 1,
 ) {
   if (limit === undefined) {
     return;
@@ -116,7 +117,7 @@ export async function incrementLinkCount(
   await ctx.db
     .update(user)
     .set({
-      monthlyLinkCount: currentCount + 1,
+      monthlyLinkCount: currentCount + created,
     })
     .where(eq(user.id, ctx.auth.userId));
 }
@@ -129,13 +130,14 @@ export async function incrementWorkspaceLinkCount(
   ctx: WorkspaceTRPCContext,
   currentCount: number,
   limit?: number,
+  created = 1,
 ) {
   // Don't track usage for team workspaces
   if (ctx.workspace.type === "team") {
     return;
   }
 
-  return incrementLinkCount(ctx, currentCount, limit);
+  return incrementLinkCount(ctx, currentCount, limit, created);
 }
 
 export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<string> {
