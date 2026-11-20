@@ -59,8 +59,8 @@ export const env = createEnv({
     HEALTHCHECK_TOKEN: z.string().optional(),
     // Inlined at build time by next.config.js; reported by /api/health/deep.
     BUILD_COMMIT_SHA: z.string().optional(),
-    // ISO timestamp after which API keys on accounts without Pro/Ultra stop working
-    // (set at deploy to deploy time + 7 days). Unset: those keys keep working.
+    // Tests only: overrides the API access sunset that the api-access-sunset cron
+    // stores in the ApiAccessSunset table. Leave unset in every deployed environment.
     API_FREE_ACCESS_SUNSET_AT: z
       .string()
       .refine(

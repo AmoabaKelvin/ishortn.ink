@@ -7,7 +7,7 @@ import { customAlphabet } from "nanoid";
 import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
 import { resolvePlan } from "@/lib/billing/plans";
 import { subscription, token } from "@/server/db/schema";
-import { getConfiguredApiSunset } from "@/server/lib/api-access";
+import { getApiSunset } from "@/server/lib/api-access";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 import type { CreateTokenInput, DeleteTokenInput } from "./token.input";
@@ -37,9 +37,10 @@ const getSubscription = async (ctx: ProtectedTRPCContext) => {
 /** The account's API plan state for the settings page. */
 export const getApiAccessStatus = async (ctx: ProtectedTRPCContext) => {
   const sub = await getSubscription(ctx);
+  const canCreateKeys = canUseApi(resolvePlan(sub));
   return {
-    canCreateKeys: canUseApi(resolvePlan(sub)),
-    access: getApiAccess(sub, getConfiguredApiSunset(), new Date()),
+    canCreateKeys,
+    access: getApiAccess(sub, canCreateKeys ? null : await getApiSunset(), new Date()),
   };
 };
 

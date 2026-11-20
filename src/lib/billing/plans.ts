@@ -106,7 +106,8 @@ export function getPlanFromIds(variantId?: number | null, productId?: number | n
 }
 
 // Lemon Squeezy statuses that grant paid access outright.
-const ENTITLED_STATUSES = new Set(["active", "on_trial", "past_due"]);
+export const ENTITLED_SUBSCRIPTION_STATUSES = ["active", "on_trial", "past_due"];
+const ENTITLED_STATUSES = new Set(ENTITLED_SUBSCRIPTION_STATUSES);
 
 /**
  * Whether a subscription currently grants paid access. Honors the paid period:

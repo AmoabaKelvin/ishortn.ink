@@ -63,10 +63,6 @@
   "limits": {
     "cpu_ms": 300000,
   },
-  "vars": {
-    // Free-plan API keys stop working at this time; sunset headers and notice emails run until then.
-    "API_FREE_ACCESS_SUNSET_AT": "2026-11-28T12:00:00Z",
-  },
   "observability": {
     "enabled": true,
   },

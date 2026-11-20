@@ -73,7 +73,13 @@ describe("getApiAccess", () => {
   });
 
   test("a free-plan subscription row with no paid history uses the configured cutoff", () => {
-    const row = sub({ status: "", plan: "free", variantId: 0, endsAt: new Date(BEFORE) });
+    const row = sub({
+      subscriptionId: 0,
+      status: "",
+      plan: "free",
+      variantId: 0,
+      endsAt: new Date(BEFORE),
+    });
     expect(getApiAccess(row, SUNSET, AFTER)).toEqual({ status: "revoked", sunsetAt: SUNSET });
   });
 
@@ -111,6 +117,43 @@ describe("getApiAccess", () => {
         status: "sunsetting",
         sunsetAt: new Date(lapse.getTime() + 7 * DAY),
       });
+    });
+
+    // What the LemonSqueezy webhook stores on subscription_expired (and unpaid,
+    // paused): plan and variant reset, endsAt set to the time of the event.
+    function webhookExpired(at: Date) {
+      return sub({
+        status: "expired",
+        plan: "free",
+        variantId: 0,
+        productId: 0,
+        endsAt: at,
+        providerUpdatedAt: at,
+      });
+    }
+
+    test("expired subscriptions as stored by the webhook get 7 days on Free limits", () => {
+      const lapse = new Date(SUNSET.getTime() + 13 * DAY);
+      const expired = webhookExpired(lapse);
+      const lapsedSunset = new Date(lapse.getTime() + 7 * DAY);
+
+      expect(getApiAccess(expired, SUNSET, new Date(lapse.getTime() + 60 * 1000))).toEqual({
+        status: "sunsetting",
+        deprecatedAt: lapse,
+        sunsetAt: lapsedSunset,
+      });
+      expect(getApiAccess(expired, SUNSET, new Date(lapsedSunset.getTime() - 1))).toMatchObject({
+        status: "sunsetting",
+      });
+      expect(getApiAccess(expired, SUNSET, lapsedSunset)).toEqual({
+        status: "revoked",
+        sunsetAt: lapsedSunset,
+      });
+    });
+
+    test("expired subscriptions get no window while the cutoff isn't set", () => {
+      const expired = webhookExpired(BEFORE);
+      expect(getApiAccess(expired, null, AFTER)).toEqual({ status: "full" });
     });
 
     test("a lapse long before the cutoff still gets the configured cutoff", () => {

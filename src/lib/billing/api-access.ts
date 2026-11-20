@@ -11,7 +11,7 @@ export const API_ACCESS_NOTICE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * - `full`: paid plan, or the Free cutoff isn't configured yet.
+ * - `full`: paid plan, or the Free cutoff hasn't been set yet.
  * - `sunsetting`: not on a paid plan; keys work on Free limits until `sunsetAt`.
  * - `revoked`: not on a paid plan and past `sunsetAt`.
  */
@@ -26,8 +26,7 @@ export function canUseApi(plan: Plan): boolean {
 }
 
 /**
- * Parses the configured cutoff for keys on accounts without a paid plan
- * (`API_FREE_ACCESS_SUNSET_AT`, set at deploy to deploy time + 7 days).
+ * Parses a sunset override (`API_FREE_ACCESS_SUNSET_AT`, tests only).
  * Returns null when unset or unparseable.
  */
 export function parseApiSunset(value: string | undefined | null): Date | null {
@@ -39,11 +38,14 @@ export function parseApiSunset(value: string | undefined | null): Date | null {
 /**
  * When a subscription that used to grant a paid plan stopped doing so: the
  * end of the paid period, else the provider's last update. Null for accounts
- * that never paid or are still entitled.
+ * that never paid or are still entitled. Only checkout-created rows carry a
+ * provider `subscriptionId`; the plan and variant can't be used here because
+ * the webhook resets them to free/0 on `subscription_expired`.
  */
 function lapsedAt(subscription: Subscription | null, nowMs: number): Date | null {
   if (!subscription || resolvePlan(subscription, nowMs) !== "free") return null;
   const wasPaid =
+    (subscription.subscriptionId ?? 0) !== 0 ||
     getPlanFromIds(subscription.variantId, subscription.productId) !== null ||
     subscription.plan === "pro" ||
     subscription.plan === "ultra";
@@ -53,7 +55,8 @@ function lapsedAt(subscription: Subscription | null, nowMs: number): Date | null
 
 /**
  * Whether an account's API keys work at `now`. Accounts without a paid plan
- * keep working until the configured cutoff; an account whose paid plan lapsed
+ * keep working until the stored cutoff (`configuredSunset`, null until the
+ * first sunset cron run sets it); an account whose paid plan lapsed
  * gets the same notice period counted from the lapse when that ends later.
  */
 export function getApiAccess(

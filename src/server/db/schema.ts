@@ -172,7 +172,7 @@ export const user = mysqlTable(
     bannedAt: timestamp("bannedAt"),
     bannedReason: varchar("bannedReason", { length: 255 }),
     // API access sunset emails (see src/server/lib/api-access.ts): set once the
-    // account has been handled, i.e. emailed, or skipped for being on a paid plan.
+    // email went out, or once the account's keys were already past their cutoff.
     apiSunsetNoticeSentAt: timestamp("apiSunsetNoticeSentAt"),
     apiSunsetReminderSentAt: timestamp("apiSunsetReminderSentAt"),
   },
@@ -527,6 +527,15 @@ export const siteSettings = mysqlTable(
     teamIdIdx: index("teamId_idx").on(table.teamId),
   }),
 );
+
+// When API keys on accounts without Pro/Ultra stop working (see
+// src/server/lib/api-access.ts). A single row (id 1), inserted by the first
+// api-access-sunset cron run after deploy and never moved afterwards.
+export const apiAccessSunset = mysqlTable("ApiAccessSunset", {
+  id: int("id").primaryKey(),
+  sunsetAt: timestamp("sunsetAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
 // Tag model for storing unique tags
 // Uniqueness strategy:

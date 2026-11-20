@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { env } from "@/env.mjs";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
+import { clearApiSunsetCache } from "@/server/lib/api-access";
 
 import { apiAccessRevokedResponse, apiSunsetHeaders, withApiSunsetNotice } from "./api-access";
 import { POST } from "./links/route";
@@ -92,6 +93,8 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
   });
 
   async function cleanup() {
+    await db.delete(schema.apiAccessSunset);
+    clearApiSunsetCache();
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
@@ -125,6 +128,58 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
       }),
     );
   }
+
+  test("a Free key works without the notice until the cutoff is stored", async () => {
+    setSunset(undefined);
+    const response = await createLink();
+
+    expect(response.status).toBe(201);
+    expect(response.headers.get("Sunset")).toBeNull();
+    expect(response.headers.get("Deprecation")).toBeNull();
+    expect(await response.json()).not.toHaveProperty("warning");
+  });
+
+  test("a Free key gets 403 once the stored cutoff has passed", async () => {
+    setSunset(undefined);
+    await db.insert(schema.apiAccessSunset).values({ id: 1, sunsetAt: new Date(Date.now() - DAY) });
+    const response = await createLink();
+
+    expect(response.status).toBe(403);
+  });
+
+  test("an expired subscription keeps working for 7 days after it ends", async () => {
+    setSunset(new Date(Date.now() - 2 * DAY));
+    // What the webhook writes on subscription_expired.
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      subscriptionId: 42,
+      status: "expired",
+      plan: "free",
+      variantId: 0,
+      productId: 0,
+      endsAt: new Date(Date.now() - DAY),
+    });
+    const response = await createLink();
+
+    expect(response.status).toBe(201);
+    expect(response.headers.get("Sunset")).not.toBeNull();
+  });
+
+  test("an expired subscription gets 403 7 days after it ends", async () => {
+    setSunset(new Date(Date.now() - 10 * DAY));
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      subscriptionId: 42,
+      status: "expired",
+      plan: "free",
+      variantId: 0,
+      productId: 0,
+      endsAt: new Date(Date.now() - 8 * DAY),
+    });
+    const response = await createLink();
+
+    expect(response.status).toBe(403);
+  });
 
   test("a Free key before the sunset works and carries the notice", async () => {
     setSunset(new Date(Date.now() + 3 * DAY));

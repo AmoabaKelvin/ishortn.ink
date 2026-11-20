@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "d0572c65-baa5-4201-9548-acc520a0ac39",
+  "id": "c26699a5-5f1f-4043-9031-ff20a5bfe84b",
   "prevId": "a69476df-be39-40d1-a07f-c9eddeae7495",
   "tables": {
     "AccountDeletion": {
@@ -272,6 +272,45 @@
           ]
         }
       },
+      "checkConstraint": {}
+    },
+    "ApiAccessSunset": {
+      "name": "ApiAccessSunset",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sunsetAt": {
+          "name": "sunsetAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "ApiAccessSunset_id": {
+          "name": "ApiAccessSunset_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "AudienceFeedback": {
