@@ -44,6 +44,7 @@ import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { normalizeAlias } from "@/lib/utils";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
@@ -463,37 +464,8 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
 
   if (input.metadata?.image) assertValidImageInput(input.metadata.image);
 
-  // Create link without tags field
-  const { tags: _tags, ...linkData } = input;
-  const ownership = workspaceOwnership(ctx.workspace);
-  const [result] = await ctx.db.insert(link).values({
-    ...linkData,
-    name,
-    alias,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-    passwordHash: input.password,
-    domain,
-    note: input.note,
-    metadata: {
-      ...input.metadata,
-    },
-    cloaking: input.cloaking ?? false,
-    verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
-    ...restrictedLinkValues(ctx.restrictedAt),
-  });
-
-  // Associate tags with the link
-  const linkId = Number(result.insertId);
-  if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, linkId, tagNames);
-  }
-
-  // Handle geo rules if provided
   const geoRulesInput = input.geoRules;
   if (geoRulesInput && geoRulesInput.length > 0) {
-    // Check plan limits
     if (!canUseGeoRules(plan)) {
       throw new Error(
         "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
@@ -506,21 +478,55 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
         `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
       );
     }
-
-    // Insert geo rules
-    await ctx.db.insert(geoRule).values(
-      geoRulesInput.map((rule, index) => ({
-        linkId,
-        type: rule.type,
-        condition: rule.condition,
-        values: rule.values,
-        action: rule.action,
-        destination: rule.action === "redirect" ? rule.destination : null,
-        blockMessage: rule.action === "block" ? rule.blockMessage : null,
-        priority: index,
-      })),
-    );
   }
+
+  // Create link without tags field
+  const { tags: _tags, ...linkData } = input;
+  const ownership = workspaceOwnership(ctx.workspace);
+
+  // One transaction, so a failed tag or rule write doesn't leave a half-made link.
+  const result = await ctx.db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(link).values({
+      ...linkData,
+      name,
+      alias,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      passwordHash: input.password,
+      domain,
+      note: input.note,
+      metadata: {
+        ...input.metadata,
+      },
+      cloaking: input.cloaking ?? false,
+      verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
+      ...restrictedLinkValues(ctx.restrictedAt),
+    });
+    const insertedId = Number(inserted.insertId);
+
+    if (tagNames.length > 0) {
+      await associateTagsWithLink({ ...ctx, db: tx }, insertedId, tagNames);
+    }
+
+    if (geoRulesInput && geoRulesInput.length > 0) {
+      await tx.insert(geoRule).values(
+        geoRulesInput.map((rule, index) => ({
+          linkId: insertedId,
+          type: rule.type,
+          condition: rule.condition,
+          values: rule.values,
+          action: rule.action,
+          destination: rule.action === "redirect" ? rule.destination : null,
+          blockMessage: rule.action === "block" ? rule.blockMessage : null,
+          priority: index,
+        })),
+      );
+    }
+
+    return inserted;
+  });
+  const linkId = Number(result.insertId);
 
   // Upload OG image to R2 if it's base64
   if (input.metadata?.image) {
@@ -646,6 +652,25 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   // Extract tags and geoRules from input
   const { tags: tagNames, geoRules: geoRulesInput, ...linkData } = input;
 
+  if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
+    if (!canUseGeoRules(workspacePlan)) {
+      throw new Error(
+        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+      );
+    }
+
+    const geoLimit = getGeoRulesLimit(workspacePlan);
+    if (
+      !isUnlimitedGeoRules(workspacePlan) &&
+      geoLimit !== undefined &&
+      geoRulesInput.length > geoLimit
+    ) {
+      throw new Error(
+        `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
+      );
+    }
+  }
+
   // Upload OG image to R2 if it's base64
   if (linkData.metadata?.image) {
     try {
@@ -669,59 +694,39 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     }
   }
 
-  // Update link data - use workspace filtering
-  await ctx.db
-    .update(link)
-    .set(linkData)
-    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+  // One transaction: tags are replaced by delete-then-insert, so a failure
+  // part-way must not leave the link without its previous tags.
+  await ctx.db.transaction(async (tx) => {
+    await tx
+      .update(link)
+      .set(linkData)
+      .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
-  // Update tags if provided
-  if (tagNames) {
-    await associateTagsWithLink(ctx, input.id, tagNames);
-  }
+    if (tagNames) {
+      await associateTagsWithLink({ ...ctx, db: tx }, input.id, tagNames);
+    }
 
-  // Handle geo rules if provided
+    if (geoRulesInput !== undefined) {
+      await tx.delete(geoRule).where(eq(geoRule.linkId, input.id));
+
+      if (geoRulesInput.length > 0) {
+        await tx.insert(geoRule).values(
+          geoRulesInput.map((rule, index) => ({
+            linkId: input.id,
+            type: rule.type,
+            condition: rule.condition,
+            values: rule.values,
+            action: rule.action,
+            destination: rule.action === "redirect" ? rule.destination : null,
+            blockMessage: rule.action === "block" ? rule.blockMessage : null,
+            priority: index,
+          })),
+        );
+      }
+    }
+  });
+
   if (geoRulesInput !== undefined) {
-    // Check plan limits for new rules
-    if (geoRulesInput.length > 0) {
-      if (!canUseGeoRules(workspacePlan)) {
-        throw new Error(
-          "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-        );
-      }
-
-      const geoLimit = getGeoRulesLimit(workspacePlan);
-      if (
-        !isUnlimitedGeoRules(workspacePlan) &&
-        geoLimit !== undefined &&
-        geoRulesInput.length > geoLimit
-      ) {
-        throw new Error(
-          `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
-        );
-      }
-    }
-
-    // Delete existing geo rules for this link
-    await ctx.db.delete(geoRule).where(eq(geoRule.linkId, input.id));
-
-    // Insert new geo rules if any
-    if (geoRulesInput.length > 0) {
-      await ctx.db.insert(geoRule).values(
-        geoRulesInput.map((rule, index) => ({
-          linkId: input.id,
-          type: rule.type,
-          condition: rule.condition,
-          values: rule.values,
-          action: rule.action,
-          destination: rule.action === "redirect" ? rule.destination : null,
-          blockMessage: rule.action === "block" ? rule.blockMessage : null,
-          priority: index,
-        })),
-      );
-    }
-
-    // Invalidate geo rules cache
     await deleteGeoRulesFromCache(input.id);
   }
 
@@ -998,27 +1003,29 @@ export const shortenLinkWithAutoAlias = async (
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
 
-  // Create link without tags field
-  const [result] = await ctx.db.insert(link).values({
-    url: input.url,
-    alias,
-    domain,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-    name,
-    metadata: {
-      title: fetchedMetadata?.title,
-      description: fetchedMetadata?.description,
-      image: fetchedMetadata?.image,
-    },
-    ...restrictedLinkValues(ctx.restrictedAt),
-  });
+  const result = await ctx.db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(link).values({
+      url: input.url,
+      alias,
+      domain,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      name,
+      metadata: {
+        title: fetchedMetadata?.title,
+        description: fetchedMetadata?.description,
+        image: fetchedMetadata?.image,
+      },
+      ...restrictedLinkValues(ctx.restrictedAt),
+    });
 
-  // Associate tags with the link
-  if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, Number(result.insertId), tagNames);
-  }
+    if (tagNames.length > 0) {
+      await associateTagsWithLink({ ...ctx, db: tx }, Number(inserted.insertId), tagNames);
+    }
+
+    return inserted;
+  });
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
 
@@ -1654,9 +1661,10 @@ export const bulkCreateLinks = async (
 
   const records = rows.map((row) => {
     const parsed = csvLinkRowSchema.safeParse(row);
-    if (!parsed.success || parsed.data.url.trim() === "") return null;
+    const url = parsed.success ? normalizeDestinationUrl(parsed.data.url) : null;
+    if (!parsed.success || !url) return null;
     return {
-      url: parsed.data.url.trim(),
+      url,
       alias: parsed.data.alias?.trim() || undefined,
       domain: parsed.data.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
       note: parsed.data.note,

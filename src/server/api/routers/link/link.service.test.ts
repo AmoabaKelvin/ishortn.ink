@@ -33,10 +33,15 @@ function fakeContext() {
     },
     update,
   };
-  // SAFETY: updateLink only touches ctx.db.query.link.findFirst, ctx.db.update
-  // and ctx.workspace before the write, which is where ReachedWrite stops it.
+  // The link write runs in a transaction; the fake one hands back the same db.
+  const dbWithTransaction = {
+    ...db,
+    transaction: async <T>(run: (tx: typeof db) => Promise<T>) => run(db),
+  };
+  // SAFETY: updateLink only touches ctx.db.query.link.findFirst, ctx.db.transaction,
+  // tx.update and ctx.workspace before the write, which is where ReachedWrite stops it.
   const ctx = {
-    db,
+    db: dbWithTransaction,
     workspace: {
       type: "personal",
       userId: "user_1",

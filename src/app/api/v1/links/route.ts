@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { resolvePlan } from "@/lib/billing/plans";
 import { generateShortLink } from "@/lib/core/links";
+import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
@@ -62,7 +63,7 @@ export const POST = withApiKey(async (request: Request, token) => {
 });
 
 const shortenLinkSchema = z.object({
-  url: z.string().url(),
+  url: destinationUrlSchema,
   expiresAt: z.string().optional(),
   activatesAt: z.string().datetime({ offset: true }).optional(),
   expiresAfter: z.number().optional(),

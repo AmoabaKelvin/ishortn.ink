@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { qrcodeUpdateInput } from "@/server/api/routers/qrcode/qrcode.input";
+import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -111,8 +112,10 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
     }
   };
 
-  const addTag = (tagToAdd: string) => {
-    if (!tags.includes(tagToAdd)) {
+  const addTag = (rawTag: string) => {
+    // Tags are stored lowercase; "Marketing" next to "marketing" is the same tag.
+    const tagToAdd = normalizeTagName(rawTag);
+    if (tagToAdd && !tags.includes(tagToAdd)) {
       const newTags = [...tags, tagToAdd];
       setTags(newTags);
       form.setValue("tags", newTags);
@@ -134,7 +137,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
             .filter(
               (tag) =>
                 (tagInput === "" || tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
-                !tags.includes(tag.name),
+                !tags.includes(normalizeTagName(tag.name)),
             )
             .map((tag) => tag.name)
         : [],
