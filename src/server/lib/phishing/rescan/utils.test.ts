@@ -27,7 +27,7 @@ import {
   withoutResolvedLinks,
 } from "./utils";
 
-const PLATFORM = ["isht.ink", "ishortn.ink"];
+const PLATFORM = ["isht.app", "isht.ink", "ishortn.ink"];
 
 function indexOf(links: ScanLink[]) {
   const index = createLinkIndex(PLATFORM);
@@ -157,6 +157,7 @@ describe("shared hosts", () => {
       "amazon.ie",
       "google.com.bo",
       "isht.ink",
+      "isht.app",
     ]) {
       expect(isSharedHost(host, own)).toBe(true);
     }
@@ -235,13 +236,20 @@ describe("block vs flag decisions", () => {
       link(1, "https://evil.example/", "qsoi5tx8i", "ishortn.ink"),
       link(2, "https://fine.example/", "promo", "go.customer.com"),
       link(3, "https://fine.example/", "keep", "ishortn.ink"),
+      link(4, "https://evil.example/", "win", "isht.app"),
+      link(5, "https://fine.example/", "win", "isht.ink"),
     ];
-    const feed =
-      "https://ishortn.ink/qSOI5TX8i\nhttps://go.customer.com/promo\nhttps://ishortn.ink/";
+    const feed = [
+      "https://ishortn.ink/qSOI5TX8i",
+      "https://go.customer.com/promo",
+      "https://ishortn.ink/",
+      "https://isht.app/win",
+    ].join("\n");
     const decisions = scan(links, "phishing-database-links", "url", feed);
     expect(decisions.map((d) => [d.linkId, d.action])).toEqual([
       [1, "block"],
       [2, "block"],
+      [4, "block"],
     ]);
   });
 

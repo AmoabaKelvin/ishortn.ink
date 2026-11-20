@@ -14,8 +14,9 @@ type DbClient = typeof db;
 /**
  * Extracts the subdomain from a hostname.
  *
- * Any catalogue platform domain is accepted, so `acme.isht.ink` and
- * `acme.ishortn.ink` both resolve to team slug `acme`.
+ * Any team-capable platform domain is accepted, so `acme.isht.ink` and
+ * `acme.ishortn.ink` both resolve to team slug `acme`. `acme.isht.app` does not
+ * (see TEAM_SUBDOMAIN_DOMAINS).
  *
  * Examples:
  * - "acme.isht.ink" -> "acme"

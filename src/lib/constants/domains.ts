@@ -2,9 +2,16 @@
 // links and the preferred host for short-link previews. All
 // entries must be wired at the infrastructure layer (DNS + SSL + host) and
 // resolve to this Next.js app.
-export const PLATFORM_DOMAINS = ["isht.ink", "ishortn.ink"] as const;
+export const PLATFORM_DOMAINS = ["isht.app", "isht.ink", "ishortn.ink"] as const;
 
 export type PlatformDomain = (typeof PLATFORM_DOMAINS)[number];
+
+// Platform domains that serve team workspaces at `<slug>.<domain>`. isht.app has
+// no wildcard DNS, so `acme.isht.app` must never be generated or accepted.
+export const TEAM_SUBDOMAIN_DOMAINS = [
+  "isht.ink",
+  "ishortn.ink",
+] as const satisfies readonly PlatformDomain[];
 
 export const DEFAULT_PLATFORM_DOMAIN: PlatformDomain = PLATFORM_DOMAINS[0];
 
@@ -26,13 +33,13 @@ export function getAppBaseDomain(): string {
   return configured || APP_BASE_DOMAIN;
 }
 
-// Returns the leading label when `host` is a team subdomain of a platform
-// domain (e.g. "acme.isht.ink" -> "acme"). Returns null for bare platform
+// Returns the leading label when `host` is a team subdomain of a team-capable
+// platform domain (e.g. "acme.isht.ink" -> "acme"). Returns null for bare platform
 // hosts and anything outside the catalogue. Host matching is case-insensitive
 // to match DNS semantics, and a trailing dot (FQDN form) is tolerated.
 export function extractPlatformSubdomain(host: string): string | null {
   const normalized = host.trim().replace(/\.$/, "").toLowerCase();
-  for (const platformDomain of PLATFORM_DOMAINS) {
+  for (const platformDomain of TEAM_SUBDOMAIN_DOMAINS) {
     if (!normalized.endsWith(`.${platformDomain}`)) continue;
     const parts = normalized.split(".");
     if (parts.length !== platformDomain.split(".").length + 1) continue;
