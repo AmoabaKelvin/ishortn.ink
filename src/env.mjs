@@ -53,6 +53,10 @@ export const env = createEnv({
     // Public status API (OpenStatus, Better Stack or Statuspage-compatible) for the footer badge.
     // Unset: the footer shows a plain "Status" link with no uptime claim.
     STATUS_PAGE_API_URL: z.string().url().optional(),
+    // Bearer for GET /api/health/deep. Unset: the endpoint answers 503 "not configured".
+    HEALTHCHECK_TOKEN: z.string().optional(),
+    // Inlined at build time by next.config.js; reported by /api/health/deep.
+    BUILD_COMMIT_SHA: z.string().optional(),
   },
 
   /**
@@ -109,6 +113,8 @@ export const env = createEnv({
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
     STATUS_PAGE_API_URL: process.env.STATUS_PAGE_API_URL,
+    HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
+    BUILD_COMMIT_SHA: process.env.BUILD_COMMIT_SHA,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
