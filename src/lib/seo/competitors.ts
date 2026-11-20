@@ -1,29 +1,34 @@
+// pricesCheckedOn is the ISO date the competitor's plans and prices were last verified on their
+// live pricing page; it is shown on the comparison page, so bump it whenever the data is re-checked.
 export const competitors = {
   bitly: {
     name: "Bitly",
     slug: "bitly",
+    pricesCheckedOn: "2026-11-20",
     tagline: "The most popular URL shortener",
     description:
       "Bitly is the most well-known URL shortener, but its free plan has become extremely restrictive. See how iShortn compares.",
     freeLinks: "5/month",
-    freeAnalytics: "30 days, basic clicks only",
-    customDomains: "Paid only",
+    freeAnalytics: "No analytics history",
+    customDomains: "Growth ($29/mo) and up",
     qrCodes: "2/month on free",
     apiAccess: "Paid only",
     teamFeatures: "Enterprise only",
     passwordProtection: "Paid only",
-    pricing: "Free, Core $35/mo, Growth $300/mo",
+    pricing: "Free, Core $10/mo (billed annually only), Growth $29/mo",
     whySwitch: [
       "Bitly's free plan only allows 5 links per month — iShortn gives you 30",
       "Bitly free links may show interstitial ad pages before redirecting",
-      "Bitly charges $35/month for Core — iShortn Pro is just $8/month",
-      "iShortn includes full analytics and QR codes on all plans, plus password protection on Pro and Ultra",
+      "Bitly Core is $10/month billed annually, and custom domains need Growth at $29/month — iShortn Pro is $8/month with 3 custom domains",
+      "iShortn Free includes 5 dynamic QR codes: edit the destination anytime, they never expire, and there are no ads",
+      "iShortn adds password protection on Pro and Ultra",
       "No API access on Bitly free — iShortn Pro includes full API for $8/month",
     ],
   },
   tinyurl: {
     name: "TinyURL",
     slug: "tinyurl",
+    pricesCheckedOn: "2026-06-23",
     tagline: "The original URL shortener",
     description:
       "TinyURL was one of the first URL shorteners, but it lacks analytics and modern features. See how iShortn compares.",
@@ -46,11 +51,12 @@ export const competitors = {
   rebrandly: {
     name: "Rebrandly",
     slug: "rebrandly",
+    pricesCheckedOn: "2026-11-20",
     tagline: "Branded link management platform",
     description:
       "Rebrandly focuses on branded links with a generous free tier for custom domains, but iShortn delivers more analytics at a lower price.",
-    freeLinks: "500 total",
-    freeAnalytics: "Basic click tracking",
+    freeLinks: "10/month",
+    freeAnalytics: "100 tracked clicks/month",
     customDomains: "5 on free plan",
     qrCodes: "Watermarked on free",
     apiAccess: "Paid only",
@@ -58,7 +64,7 @@ export const competitors = {
     passwordProtection: "Paid only",
     pricing: "Free, Essentials $13/mo, Professional $32/mo",
     whySwitch: [
-      "Rebrandly free gives 500 total links — iShortn gives 30 new links every month, ongoing",
+      "Rebrandly free gives 10 links and 100 tracked clicks a month — iShortn gives 30 links and 1,000 tracked events",
       "Rebrandly Essentials costs $13/month — iShortn Pro is just $8/month",
       "Rebrandly QR codes have watermarks on free — iShortn QR codes are clean on all plans",
       "iShortn includes geo-targeting and AI-powered security that Rebrandly charges extra for",
@@ -67,48 +73,50 @@ export const competitors = {
   "short-io": {
     name: "Short.io",
     slug: "short-io",
+    pricesCheckedOn: "2026-11-20",
     tagline: "White-label link shortener",
     description:
       "Short.io is a solid link shortener focused on custom domains, but iShortn offers a more complete feature set at a better price.",
     freeLinks: "1,000 total",
-    freeAnalytics: "50,000 tracked clicks",
-    customDomains: "Required (bring your own)",
+    freeAnalytics: "50,000 tracked clicks/month",
+    customDomains: "5 on free plan",
     qrCodes: "Yes",
     apiAccess: "Yes (1,000 API links)",
     teamFeatures: "Paid only",
     passwordProtection: "Paid only",
-    pricing: "Free, Pro $19/mo, Business $48/mo",
+    pricing: "Free, Hobby $5/mo, Pro $18/mo, Team $48/mo",
     whySwitch: [
-      "Short.io requires you to bring your own domain even to get started — iShortn works instantly",
       "Short.io free gives 1,000 links total lifetime — iShortn gives fresh links every month",
-      "Short.io Business plan is $48/month — iShortn Pro is just $8/month",
+      "Short.io Pro is $18/month and Team is $48/month — iShortn Pro is just $8/month",
       "iShortn includes password protection and AI-powered phishing detection on all links",
     ],
   },
   dub: {
     name: "Dub.co",
     slug: "dub",
+    pricesCheckedOn: "2026-11-20",
     tagline: "Open-source link management",
     description:
       "Dub.co is an open-source link management platform popular with developers. See how iShortn compares on features and pricing.",
-    freeLinks: "25/month",
-    freeAnalytics: "30-day retention",
-    customDomains: "3 on free plan",
+    freeLinks: "No free plan (14-day trial)",
+    freeAnalytics: "Trial only (no free plan)",
+    customDomains: "Business ($90/mo) and up",
     qrCodes: "Yes",
     apiAccess: "Yes (limited)",
     teamFeatures: "Paid only",
     passwordProtection: "Paid only",
-    pricing: "Free, Pro $24/mo, Business $89/mo",
+    pricing: "14-day trial, Business $90/mo",
     whySwitch: [
-      "Dub Pro costs $24/month — iShortn Pro is just $8/month for similar features",
-      "Dub free analytics only goes back 30 days — same as iShortn free, but iShortn Pro unlocks unlimited retention for $8 vs Dub's $24",
-      "iShortn offers 30 free links/month vs Dub's 25",
+      "Dub has no free plan, only a 14-day trial — iShortn Free is free forever with 30 links/month",
+      "Dub custom domains start on Business at $90/month — iShortn Pro includes 3 custom domains for $8/month",
+      "iShortn Pro unlocks unlimited analytics history for $8/month",
       "iShortn includes password protection and geo-targeting on the Pro plan",
     ],
   },
   linktree: {
     name: "Linktree",
     slug: "linktree",
+    pricesCheckedOn: "2026-06-23",
     tagline: "The default link-in-bio — but you pay to see what's working",
     description:
       "Linktree is the most recognized link-in-bio tool, with a generous free page and a huge template library. The catch: the analytics that show which links convert sit behind paid plans. See how iShortn compares.",
@@ -131,6 +139,7 @@ export const competitors = {
   beacons: {
     name: "Beacons",
     slug: "beacons",
+    pricesCheckedOn: "2026-06-23",
     tagline: "A creator-commerce platform first, a link-in-bio second",
     description:
       "Beacons bundles a link-in-bio with stores, email, and AI tools for creators who sell. That breadth is powerful, but it comes with transaction fees and a busier product if you just want a fast, tracked bio page. See how iShortn compares.",
@@ -153,6 +162,7 @@ export const competitors = {
   carrd: {
     name: "Carrd",
     slug: "carrd",
+    pricesCheckedOn: "2026-06-23",
     tagline: "A great one-page site builder — not a link-in-bio analytics tool",
     description:
       "Carrd is a beloved, low-cost way to build simple one-page sites, and at $9 to $49/year it's hard to beat on price. But it's a static site builder — no native click analytics, no QR codes, no short links — so you can't see how your bio performs. See how iShortn compares.",
@@ -167,7 +177,7 @@ export const competitors = {
     whySwitch: [
       "iShortn gives every bio link full click, geo, device, and referrer analytics on every plan — Carrd has no native analytics, only a Google Analytics bolt-on from $19/yr",
       "iShortn is a bio page plus a real URL shortener and QR codes in one tool, where Carrd is a static site builder with no link tracking or QR support",
-      "iShortn's free plan includes a bio page, 30 tracked short links/month, and QR codes — with no 'Made with' badge the way Carrd's free tier works",
+      "iShortn's free plan includes a bio page, 30 tracked short links/month, and 5 dynamic QR codes",
       "iShortn Pro ($8/mo) adds password-protected links and removes branding; Carrd only unlocks password protection on its $49/yr Pro Plus plan",
       "iShortn Pro includes a full REST API and custom domains, neither of which Carrd offers",
     ],
