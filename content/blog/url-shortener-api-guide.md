@@ -221,7 +221,7 @@ The endpoints:
 - **`GET /api/v1/links/{alias}`** returns a link; **`PATCH /api/v1/links/{alias}`** updates its destination, alias or expiration.
 - **`GET /api/v1/analytics/{alias}`** returns click counts by date, country, city, device, OS and browser for your plan's analytics window.
 
-Requests authenticate with an API key in the `x-api-key` header; keys are managed from your dashboard. Errors return a 4xx or 5xx status with a plain-text message, and every response carries `X-RateLimit-*` headers for your plan's per-minute and per-day limits.
+Requests authenticate with an API key in the `x-api-key` header; keys are managed from your dashboard. Errors return a 4xx or 5xx status with a plain-text message, and every response carries `X-RateLimit-*` headers for your plan's per-minute and per-day limits. A key on an account without Pro or Ultra gets `403` with a JSON body `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}`; during the 7-day notice period before that, its responses carry `Deprecation` and `Sunset` headers and JSON bodies include a `warning` field with the cutoff date.
 
 Whether you are building a SaaS product that needs shareable links, an internal tool that generates tracking URLs, or a marketing platform that creates campaign links at scale, the iShortn API gives you the building blocks to integrate programmatic URL shortening into your stack. To decide which metrics to pull from the analytics endpoints, see [how to track link clicks](/blog/how-to-track-link-clicks).
 
