@@ -30,10 +30,35 @@ export function allocateEventQuota(input: {
   const { currentCount, limit, requested, previousAlertLevel } = input;
   const allowed = Math.max(0, Math.min(requested, limit - currentCount));
   const newCount = currentCount + allowed;
-  return { allowed, newCount, alertLevel: nextAlertLevel(limit, newCount, previousAlertLevel) };
+  return {
+    allowed,
+    dropped: requested - allowed,
+    newCount,
+    alertLevel: nextAlertLevel(limit, newCount, previousAlertLevel),
+  };
 }
 
-/** Charges up to `requested` events to the owner's monthly quota in one atomic increment. */
+export type EventTrackingPause = { dropped: number; pausedAt: Date; resetsAt: Date };
+
+/** Tracking is paused when the owner is at their cap and events have been dropped this month. */
+export function getEventTrackingPause(input: {
+  count: number;
+  limit: number | null;
+  dropped: number;
+  pausedAt: Date | null;
+  now?: Date;
+}): EventTrackingPause | null {
+  const { count, limit, dropped, pausedAt, now = new Date() } = input;
+  if (limit === null || count < limit || dropped <= 0 || !pausedAt) return null;
+  // Counters reset lazily on the first event after the month starts (normalizeMonthlyEventCount).
+  const resetsAt = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return { dropped, pausedAt, resetsAt };
+}
+
+/**
+ * Charges up to `requested` events to the owner's monthly quota in one atomic increment, and
+ * counts the rest as dropped.
+ */
 export async function reserveEventUsage(
   userId: string,
   requested: number,
@@ -51,18 +76,23 @@ export async function reserveEventUsage(
   }
 
   const previousAlertLevel = ctx.userRecord.eventUsageAlertLevel ?? 0;
-  const { allowed, newCount, alertLevel } = allocateEventQuota({
+  const { allowed, dropped, newCount, alertLevel } = allocateEventQuota({
     currentCount,
     limit,
     requested,
     previousAlertLevel,
   });
 
-  if (allowed > 0 || alertLevel !== null) {
+  if (allowed > 0 || dropped > 0 || alertLevel !== null) {
     const usageUpdate: MySqlUpdateSetSource<typeof user> = {
       monthlyEventCount: sql`${user.monthlyEventCount} + ${allowed}`,
     };
     if (alertLevel !== null) usageUpdate.eventUsageAlertLevel = alertLevel;
+    if (dropped > 0) {
+      // Counted in the same update as the charge so the dashboard can show how much went missing.
+      usageUpdate.droppedEventCount = sql`coalesce(${user.droppedEventCount}, 0) + ${dropped}`;
+      usageUpdate.eventTrackingPausedAt = sql`coalesce(${user.eventTrackingPausedAt}, now())`;
+    }
     await dbClient.update(user).set(usageUpdate).where(eq(user.id, userId));
   }
 

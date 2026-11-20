@@ -2,6 +2,7 @@ import { and, count, eq, isNull } from "drizzle-orm";
 
 import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
 import { folder } from "@/server/db/schema";
+import { getEventTrackingPause } from "@/server/lib/event-usage";
 import {
   getUserPlanContext,
   normalizeMonthlyEventCount,
@@ -39,6 +40,7 @@ export const subscriptionsRouter = createTRPCRouter({
     // Effective plan considers workspace context
     const plan = isTeamWorkspace ? "ultra" : personalPlan;
     const caps = getPlanCaps(plan);
+    const eventLimit = isTeamWorkspace ? null : (caps.eventsLimit ?? null);
 
     // For team workspaces, don't show personal usage counts - they're not relevant
     // Team workspaces have unlimited resources (Ultra plan)
@@ -94,7 +96,13 @@ export const subscriptionsRouter = createTRPCRouter({
         },
         events: {
           count: monthlyEventCount,
-          limit: isTeamWorkspace ? null : (caps.eventsLimit ?? null),
+          limit: eventLimit,
+          paused: getEventTrackingPause({
+            count: monthlyEventCount,
+            limit: eventLimit,
+            dropped: planCtx?.userRecord.droppedEventCount ?? 0,
+            pausedAt: planCtx?.userRecord.eventTrackingPausedAt ?? null,
+          }),
         },
         folders: {
           count: folderCount,

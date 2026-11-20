@@ -79,6 +79,8 @@ export async function normalizeMonthlyEventCount(
         monthlyEventCount: 0,
         lastEventCountReset: new Date(),
         eventUsageAlertLevel: 0,
+        droppedEventCount: 0,
+        eventTrackingPausedAt: null,
       })
       .where(eq(user.id, ctx.userRecord.id));
 

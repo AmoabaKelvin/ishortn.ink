@@ -156,6 +156,9 @@ export const user = mysqlTable(
     monthlyEventCount: int("monthlyEventCount").default(0),
     lastEventCountReset: timestamp("lastEventCountReset").defaultNow(),
     eventUsageAlertLevel: int("eventUsageAlertLevel").default(0),
+    // Events dropped this month for being over the cap; reset with monthlyEventCount.
+    droppedEventCount: int("droppedEventCount").default(0),
+    eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
     // Account transfer deletion tracking
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period

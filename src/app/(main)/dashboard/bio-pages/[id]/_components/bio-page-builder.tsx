@@ -41,6 +41,7 @@ import { SettingsPanel, type BioSettingsDraft } from "./settings-panel";
 
 import type { Plan } from "@/lib/billing/plans";
 import type { BioBlockType } from "@/server/db/schema";
+import type { EventTrackingPause } from "@/server/lib/event-usage";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type BioPageData = RouterOutputs["bioPage"]["get"];
@@ -76,10 +77,12 @@ export function BioPageBuilder({
   pageId,
   initialData,
   plan,
+  trackingPause,
 }: {
   pageId: number;
   initialData: BioPageData;
   plan: Plan;
+  trackingPause: EventTrackingPause | null;
 }) {
   const utils = api.useUtils();
   const { data } = api.bioPage.get.useQuery(
@@ -266,7 +269,7 @@ export function BioPageBuilder({
               value="analytics"
               className="mt-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:fill-mode-both motion-safe:duration-300"
             >
-              <AnalyticsPanel pageId={pageId} plan={plan} />
+              <AnalyticsPanel pageId={pageId} plan={plan} trackingPause={trackingPause} />
             </TabsContent>
           </Tabs>
         </div>
