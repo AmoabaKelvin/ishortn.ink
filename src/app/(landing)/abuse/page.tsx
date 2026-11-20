@@ -10,7 +10,7 @@ import { AbuseReportForm } from "./abuse-report-form";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Report Abuse - iShortn",
+  title: "Report Abuse",
   description:
     "Report a short link that is being used for phishing, malware, spam, or other abuse. iShortn reviews every report and acts on links that violate our policies.",
   openGraph: {

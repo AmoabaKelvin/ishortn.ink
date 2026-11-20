@@ -69,7 +69,7 @@ AccountTransferEmail.PreviewProps = {
   recipientName: "Ama",
   senderName: "Kofi Mensah",
   senderEmail: "kofi@example.com",
-  acceptUrl: "https://ishortn.ink/account/accept-transfer?token=8c1e4b7a2f9d3c6e0a5b8d1f4c7e0a3b",
+  acceptUrl: "https://ishortn.ink/account/accept-transfer?token=example-transfer-token",
   resourceCounts: {
     links: 1240,
     customDomains: 2,

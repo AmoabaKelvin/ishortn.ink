@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
+import { noIndexMetadata } from "@/lib/seo/indexing";
 import { buildBeaconScript } from "@/lib/utils/verified-click-token";
 import { scrapeMetadata } from "@/server/lib/metadata";
 
@@ -68,6 +69,7 @@ export async function generateMetadata(props: CloakedPageProps): Promise<Metadat
         description: metatags.description || "",
         images: metatags.image ? [metatags.image] : [],
       },
+      ...noIndexMetadata,
       robots: {
         index: false,
         follow: false,
@@ -81,10 +83,7 @@ export async function generateMetadata(props: CloakedPageProps): Promise<Metadat
     log.error({ err: error, url }, "failed to fetch metadata for cloaked page");
     return {
       title: "Redirecting...",
-      robots: {
-        index: false,
-        follow: false,
-      },
+      ...noIndexMetadata,
     };
   }
 }

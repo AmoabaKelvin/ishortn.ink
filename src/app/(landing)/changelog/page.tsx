@@ -13,7 +13,7 @@ import { ChangelogList } from "./_components/changelog-list";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Changelog — iShortn",
+  title: "Changelog",
   description: "Every iShortn release in order: new features, improvements, and fixes.",
   openGraph: {
     title: "Changelog — iShortn",

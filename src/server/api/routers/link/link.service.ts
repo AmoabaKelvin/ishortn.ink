@@ -34,7 +34,9 @@ import {
   deleteFromCache,
   deleteGeoRulesFromCache,
   getFromCache,
+  getStringFromCache,
   setInCache,
+  setStringInCache,
 } from "@/lib/core/cache";
 import { matchTargetingRules } from "@/lib/core/geo-rules/matcher";
 import { generateShortLink } from "@/lib/core/links";
@@ -42,6 +44,7 @@ import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { normalizeAlias } from "@/lib/utils";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { hashIp } from "@/lib/utils/ip-hash";
 import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
 import {
@@ -80,6 +83,11 @@ import {
   checkWorkspaceLinkLimit,
   getWorkspaceDefaultDomain,
   incrementWorkspaceLinkCount,
+  PASSWORD_ATTEMPTS_PER_IP,
+  PASSWORD_ATTEMPTS_PER_LINK,
+  readAttemptWindow,
+  recordFailedAttempt,
+  toPublicLink,
   validateAlias,
 } from "./utils";
 
@@ -94,6 +102,7 @@ import type {
   RetrieveOriginalUrlInput,
   ToggleArchiveInput,
   UpdateLinkInput,
+  VerifyLinkPasswordInput,
 } from "./link.input";
 import type { Link } from "@/server/db/schema";
 
@@ -940,29 +949,35 @@ export const bulkToggleLinkStatus = async (
   return { success: true, count: linksToUpdate.length, disabled: disable };
 };
 
+/**
+ * Full link row by alias, cache-first. Server-only: the row carries the
+ * destination, password hash and owner fields, so it must never be returned
+ * from a public procedure as-is (see `retrieveOriginalUrl`).
+ */
+export const findLinkByAlias = async (
+  db: PublicTRPCContext["db"],
+  input: Pick<RetrieveOriginalUrlInput, "alias" | "domain">,
+) => {
+  const { alias, domain } = input;
+  const cached = await getFromCache(buildCacheKey(domain, alias));
+  if (cached?.alias) return cached;
+
+  const found = await db.query.link.findFirst({
+    where: (table, { eq, and, sql }) =>
+      and(sql`lower(${table.alias}) = lower(${alias})`, eq(table.domain, domain)),
+  });
+  if (!found) return null;
+
+  await setInCache(buildCacheKey(found.domain, found.alias!), found);
+  return found;
+};
+
 export const retrieveOriginalUrl = async (
   ctx: PublicTRPCContext,
   input: RetrieveOriginalUrlInput,
 ) => {
-  const { alias, domain } = input;
-  const cacheKey = buildCacheKey(domain, alias);
-
-  let link: Link | undefined | null = await getFromCache(cacheKey);
-
-  if (!link?.alias) {
-    link = await ctx.db.query.link.findFirst({
-      where: (table, { eq, and, sql }) =>
-        and(sql`lower(${table.alias}) = lower(${input.alias})`, eq(table.domain, domain)),
-    });
-
-    if (!link) {
-      return null;
-    }
-
-    await setInCache(buildCacheKey(link.domain, link.alias!), link);
-  }
-
-  return link;
+  const found = await findLinkByAlias(ctx.db, input);
+  return found ? toPublicLink(found) : null;
 };
 
 export const shortenLinkWithAutoAlias = async (
@@ -1477,20 +1492,51 @@ export const resetLinkStatistics = async (ctx: WorkspaceTRPCContext, input: GetL
 
 export const verifyLinkPassword = async (
   ctx: PublicTRPCContext,
-  input: { id: number; password: string },
+  input: VerifyLinkPasswordInput,
 ) => {
+  // Checked before bcrypt so a refused guess costs no hashing. KV has no atomic
+  // increment and is eventually consistent, so concurrent guesses can slip a
+  // few past the limit; it still caps brute force at a useless rate.
+  const ip = getClientIp(ctx.headers);
+  const attemptKeys = [
+    { key: `pwattempts:link:${input.id}`, limit: PASSWORD_ATTEMPTS_PER_LINK },
+    ...(ip ? [{ key: `pwattempts:ip:${hashIp(ip)}`, limit: PASSWORD_ATTEMPTS_PER_IP }] : []),
+  ];
+  const now = Date.now();
+  const attempts = await Promise.all(
+    attemptKeys.map(async ({ key, limit }) => ({
+      key,
+      limit,
+      window: readAttemptWindow(await getStringFromCache(key), now),
+    })),
+  );
+  if (attempts.some(({ window, limit }) => window.count >= limit)) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many attempts, try again later",
+    });
+  }
+
   const link = await ctx.db.query.link.findFirst({
     where: (table, { eq }) => eq(table.id, input.id),
   });
 
-  if (!link?.passwordHash) {
-    return null;
-  }
+  // Unknown links and links without a password get the same answer as a wrong
+  // password, so this endpoint can't be used to probe which ids exist.
+  const isPasswordCorrect =
+    !!link?.passwordHash && (await bcrypt.compare(input.password, link.passwordHash));
 
-  const isPasswordCorrect = await bcrypt.compare(input.password, link.passwordHash);
-
-  if (!isPasswordCorrect) {
-    return null;
+  if (!link || !isPasswordCorrect) {
+    await Promise.all(
+      attempts.map(({ key, window }) =>
+        setStringInCache(
+          key,
+          recordFailedAttempt(window),
+          Math.ceil((window.resetAt - now) / 1000),
+        ),
+      ),
+    );
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Wrong password, try again" });
   }
 
   // A correct password is not an access grant. This procedure is callable with

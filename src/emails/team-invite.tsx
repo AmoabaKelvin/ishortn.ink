@@ -56,7 +56,7 @@ TeamInviteEmail.PreviewProps = {
   teamName: "Acme Studio",
   inviterName: "Kofi Mensah",
   role: "member",
-  inviteUrl: "https://ishortn.ink/teams/accept-invite?token=3f9a1c0e7b2d4a6f8e1c3b5d7f9a1c3e",
+  inviteUrl: "https://ishortn.ink/teams/accept-invite?token=example-invite-token",
 } satisfies TeamInviteEmailProps;
 
 export default TeamInviteEmail;

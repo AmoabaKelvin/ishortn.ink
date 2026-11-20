@@ -31,6 +31,8 @@ const optionalFrontmatterDate = z
 
 const blogPostFrontmatterSchema = z.object({
   title: z.string(),
+  // Shorter <title> for posts whose title plus the " | iShortn" suffix exceeds 60 characters.
+  seoTitle: z.string().optional(),
   description: z.string(),
   date: frontmatterDate,
   updated: optionalFrontmatterDate,

@@ -10,7 +10,7 @@ import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primit
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy - iShortn",
+  title: "Privacy Policy",
   description: "Learn how iShortn collects, uses, and protects your personal information.",
   openGraph: {
     title: "Privacy Policy - iShortn",

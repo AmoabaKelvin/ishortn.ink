@@ -4,9 +4,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { satoshi } from "@/styles/fonts";
 
-import type { RouterOutputs } from "@/trpc/shared";
+type LinkPreviewProps = {
+  domain: string;
+  alias: string | null;
+  url: string | null;
+};
 
-function LinkPreview({ link }: { link: RouterOutputs["link"]["retrieveOriginalUrl"] }) {
+// Server component: only reached for links that are not password protected,
+// blocked, disabled or scheduled, so showing the destination is intended.
+function LinkPreview({ domain, alias, url }: LinkPreviewProps) {
   return (
     <div
       className={cn("flex flex-col items-center gap-5 justify-center h-screen", satoshi.className)}
@@ -19,11 +25,11 @@ function LinkPreview({ link }: { link: RouterOutputs["link"]["retrieveOriginalUr
         </p>
       </div>
 
-      <h2 className="text-2xl font-semibold mt-10">{`${link?.domain}/${link?.alias}`}</h2>
+      <h2 className="text-2xl font-semibold mt-10">{`${domain}/${alias}`}</h2>
       <p>Redirects to</p>
-      <h2 className="text-2xl font-semibold">{link?.url}</h2>
+      <h2 className="text-2xl font-semibold">{url}</h2>
       <Button variant="outline" asChild>
-        <a href={`https://${link?.domain}/${link?.alias}`}>
+        <a href={`https://${domain}/${alias}`}>
           Continue to Visit <ExternalLink className="ml-2 size-4" />
         </a>
       </Button>

@@ -12,7 +12,7 @@ import {
 } from "@/lib/types/lemonsqueezy";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
-import { subscription } from "@/server/db/schema";
+import { subscription, user } from "@/server/db/schema";
 import {
   sendSubscriptionCancelledEmail,
   sendWelcomeEmail,
@@ -21,10 +21,14 @@ import {
 import { eventIsBehindProvider } from "./reconcile";
 
 import type { LemonsqueezySubscriptionEvent } from "@/lib/types/lemonsqueezy";
+import type { BillingRecipient } from "@/server/lib/notifications/billing";
 import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 
 const log = logger.child({ webhook: "lemonsqueezy" });
 
+// Lemon Squeezy retries any non-2xx delivery, so 5xx is reserved for failures a
+// retry can fix. Retries are safe: the providerUpdatedAt ordering check turns a
+// redelivered event into a no-op.
 export async function POST(request: Request) {
   const secret = env.LEMONSQUEEZY_WEBHOOK_SECRET;
   if (!secret) {
@@ -35,16 +39,17 @@ export async function POST(request: Request) {
 
   // First, make sure the request is from Lemon Squeezy.
   const rawBody = await request.text();
-
-  const hmac = crypto.createHmac("sha256", secret);
-  const digest = Buffer.from(hmac.update(rawBody).digest("hex"), "utf8");
-  const signature = Buffer.from(request.headers.get("X-Signature") ?? "", "utf8");
-
-  if (!crypto.timingSafeEqual(digest, signature)) {
-    throw new Error("Invalid signature.");
+  if (!hasValidSignature(rawBody, request.headers.get("X-Signature"), secret)) {
+    return new Response("Invalid signature", { status: 401 });
   }
 
-  const body = JSON.parse(rawBody);
+  let body: unknown;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+
   const envelope = lemonsqueezyWebhookEnvelopeSchema.safeParse(body);
   if (!envelope.success) {
     return new Response("Webhook does not have meta", {
@@ -64,161 +69,243 @@ export async function POST(request: Request) {
     return new Response("Malformed subscription payload", { status: 400 });
   }
 
-  void runBackgroundTask(processWebhook(event.data));
-
-  return new Response("OK", { status: 200 });
+  const subscriptionId = Number.parseInt(event.data.data.id);
+  try {
+    const { result, userId } = await processWebhook(event.data);
+    log.info({ event: eventName, subscriptionId, userId, result }, "processed webhook");
+    if (result === "invalid_payload") {
+      return new Response("Invalid updated_at", { status: 400 });
+    }
+    return new Response("OK", { status: 200 });
+  } catch (err) {
+    log.error({ err, event: eventName, subscriptionId }, "processing failed");
+    return new Response("Processing failed", { status: 500 });
+  }
 }
 
-async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
+function hasValidSignature(rawBody: string, header: string | null, secret: string) {
+  if (!header) return false;
+  const digest = Buffer.from(
+    crypto.createHmac("sha256", secret).update(rawBody).digest("hex"),
+    "utf8",
+  );
+  const signature = Buffer.from(header, "utf8");
+  // timingSafeEqual throws on a length mismatch instead of returning false.
+  return signature.length === digest.length && crypto.timingSafeEqual(digest, signature);
+}
+
+type WebhookResult =
+  | "applied"
+  | "stale"
+  | "no_row_matched"
+  | "user_not_found"
+  | "unmatched_user"
+  | "invalid_payload";
+
+// Subscriptions started outside the in-app checkout carry no user_id. Fall back
+// to a row we already hold for the same Lemon Squeezy customer, then to the
+// account with the checkout email.
+async function resolveUserId({ meta, data }: LemonsqueezySubscriptionEvent) {
+  const userId = meta.custom_data?.user_id;
+  if (userId) return userId;
+
+  const byCustomer = await db.query.subscription.findFirst({
+    where: eq(subscription.customerId, data.attributes.customer_id),
+    columns: { userId: true },
+  });
+  if (byCustomer) return byCustomer.userId;
+
+  const email = data.attributes.user_email;
+  if (!email) return null;
+  const byEmail = await db.query.user.findFirst({
+    where: eq(user.email, email),
+    columns: { id: true },
+  });
+  return byEmail?.id ?? null;
+}
+
+/** Applies the event, throwing on any failure a retry could fix. */
+async function processWebhook(
+  webhookEvent: LemonsqueezySubscriptionEvent,
+): Promise<{ result: WebhookResult; userId: string | null }> {
   const { meta, data } = webhookEvent;
-  const { event_name, custom_data } = meta;
-  const { user_id: userId } = custom_data;
+  const { event_name } = meta;
   const subscriptionId = Number.parseInt(data.id);
 
-  try {
-    const lemonsqueezySubscription = data.attributes;
-    const customerId = lemonsqueezySubscription.customer_id;
-    const orderId = lemonsqueezySubscription.order_id;
-    const renewsAt = new Date(lemonsqueezySubscription.renews_at);
-    const createdAt = new Date(lemonsqueezySubscription.created_at);
-    const endsAt = lemonsqueezySubscription.ends_at;
-    const status = lemonsqueezySubscription.status;
-    const productId = lemonsqueezySubscription.product_id;
-    const variantId = lemonsqueezySubscription.variant_id;
-    const plan = getPlanFromIds(variantId, productId) ?? "pro";
-    const billingInterval = getIntervalFromVariantId(variantId);
+  const userId = await resolveUserId(webhookEvent);
+  if (!userId) {
+    log.warn(
+      { event: event_name, subscriptionId, customerId: data.attributes.customer_id },
+      "no user matches subscription webhook by user_id, customer_id or email",
+    );
+    return { result: "unmatched_user", userId };
+  }
 
-    // payment data
-    const cardBrand = lemonsqueezySubscription.card_brand;
-    const cardLastFour = lemonsqueezySubscription.card_last_four;
-    const providerUpdatedAt = new Date(lemonsqueezySubscription.updated_at);
+  const lemonsqueezySubscription = data.attributes;
+  const customerId = lemonsqueezySubscription.customer_id;
+  const orderId = lemonsqueezySubscription.order_id;
+  const renewsAt = new Date(lemonsqueezySubscription.renews_at);
+  const createdAt = new Date(lemonsqueezySubscription.created_at);
+  const endsAt = lemonsqueezySubscription.ends_at;
+  const status = lemonsqueezySubscription.status;
+  const productId = lemonsqueezySubscription.product_id;
+  const variantId = lemonsqueezySubscription.variant_id;
+  const plan = getPlanFromIds(variantId, productId) ?? "pro";
+  const billingInterval = getIntervalFromVariantId(variantId);
 
-    // A malformed timestamp would poison the ordering marker on a billing row
-    // and make every later comparison meaningless, so refuse the delivery.
-    if (Number.isNaN(providerUpdatedAt.getTime())) {
-      log.error(
-        { event: event_name, subscriptionId, userId },
-        "missing or invalid updated_at on subscription payload",
-      );
-      return;
-    }
+  // payment data
+  const cardBrand = lemonsqueezySubscription.card_brand;
+  const cardLastFour = lemonsqueezySubscription.card_last_four;
+  const providerUpdatedAt = new Date(lemonsqueezySubscription.updated_at);
 
-    // Deliveries can arrive out of order or be replayed. Every event must
-    // therefore name the subscription it is about and be newer than the event
-    // we last applied — otherwise a stale event for a cancelled subscription
-    // can revoke the row a newer subscription now owns.
-    const existing = await db.query.subscription.findFirst({
-      where: eq(subscription.userId, userId),
-      columns: {
-        subscriptionId: true,
-        providerUpdatedAt: true,
-        plan: true,
-        variantId: true,
-        productId: true,
+  // A malformed timestamp would poison the ordering marker on a billing row
+  // and make every later comparison meaningless, so refuse the delivery.
+  if (Number.isNaN(providerUpdatedAt.getTime())) {
+    log.error(
+      { event: event_name, subscriptionId, userId },
+      "missing or invalid updated_at on subscription payload",
+    );
+    return { result: "invalid_payload", userId };
+  }
+
+  // Deliveries can arrive out of order or be replayed. Every event must
+  // therefore name the subscription it is about and be newer than the event
+  // we last applied — otherwise a stale event for a cancelled subscription
+  // can revoke the row a newer subscription now owns.
+  const existing = await db.query.subscription.findFirst({
+    where: eq(subscription.userId, userId),
+    columns: {
+      subscriptionId: true,
+      providerUpdatedAt: true,
+      plan: true,
+      variantId: true,
+      productId: true,
+    },
+  });
+
+  let isStale = false;
+
+  if (existing?.providerUpdatedAt) {
+    isStale = existing.providerUpdatedAt >= providerUpdatedAt;
+  } else if (existing) {
+    // A row without a marker accepts the first event it sees, which may be a
+    // retry of an old one. Check that event against the provider's current
+    // state before letting it become the baseline. A provider outage throws
+    // out of here, so the delivery is retried.
+    isStale = await eventIsBehindProvider(subscriptionId, providerUpdatedAt);
+  }
+
+  // MySQL's ON DUPLICATE KEY UPDATE takes no WHERE clause, and the guarded
+  // updates below let a markerless row through, so decide here for every
+  // event rather than relying on the predicate.
+  if (isStale) {
+    log.warn(
+      {
+        event: event_name,
+        subscriptionId,
+        userId,
+        storedSubscriptionId: existing?.subscriptionId ?? null,
       },
+      "ignoring event older than stored or provider state",
+    );
+    return { result: "stale", userId };
+  }
+
+  const currentSubscription = and(
+    eq(subscription.userId, userId),
+    eq(subscription.subscriptionId, subscriptionId),
+    or(
+      isNull(subscription.providerUpdatedAt),
+      lt(subscription.providerUpdatedAt, providerUpdatedAt),
+    ),
+  );
+
+  /**
+   * Guarded updates match nothing when the event is stale or names a
+   * subscription we no longer hold. Both are expected, but so is a row whose
+   * subscriptionId was never populated — log rather than fail silently.
+   */
+  const updateResult = (result: MySqlRawQueryResult): WebhookResult => {
+    if (result[0]!.affectedRows > 0) return "applied";
+    log.warn(
+      {
+        event: event_name,
+        subscriptionId,
+        userId,
+        storedSubscriptionId: existing?.subscriptionId ?? null,
+        reason: !existing
+          ? "no subscription row for user"
+          : existing.subscriptionId !== subscriptionId
+            ? "event names a different subscription"
+            : "event older than stored state",
+      },
+      "subscription webhook matched no rows",
+    );
+    return "no_row_matched";
+  };
+
+  const paidPlan = plan === "ultra" ? "ultra" : "pro";
+
+  // Billing emails go out after the write and outside the response: a mail
+  // failure must not fail the delivery, and a retry would be dropped as stale.
+  const emailOwner = (send: (recipient: BillingRecipient) => Promise<boolean>) => {
+    void runBackgroundTask(
+      (async () => {
+        const owner = await db.query.user.findFirst({
+          where: eq(user.id, userId),
+          columns: { email: true, name: true },
+        });
+        if (!owner?.email) {
+          log.error(
+            { event: event_name, subscriptionId, userId },
+            "user has no email for billing email",
+          );
+          return;
+        }
+        await send({ userId, email: owner.email, name: owner.name });
+      })(),
+    );
+  };
+
+  if (event_name === "subscription_created") {
+    const account = await db.query.user.findFirst({
+      where: eq(user.id, userId),
+      columns: { email: true, name: true },
     });
 
-    let isStale = false;
-
-    if (existing?.providerUpdatedAt) {
-      isStale = existing.providerUpdatedAt >= providerUpdatedAt;
-    } else if (existing) {
-      // A row without a marker accepts the first event it sees, which may be a
-      // retry of an old one. Check that event against the provider's current
-      // state before letting it become the baseline.
-      try {
-        isStale = await eventIsBehindProvider(subscriptionId, providerUpdatedAt);
-      } catch (error) {
-        log.error(
-          { event: event_name, subscriptionId, userId, error },
-          "could not reconcile legacy subscription row with provider; dropping event",
-        );
-        return;
-      }
+    // Not retryable: the account was deleted before the event arrived.
+    if (!account) {
+      log.error(
+        { event: event_name, subscriptionId, userId },
+        "user not found for subscription_created",
+      );
+      return { result: "user_not_found", userId };
     }
 
-    // MySQL's ON DUPLICATE KEY UPDATE takes no WHERE clause, and the guarded
-    // updates below let a markerless row through, so decide here for every
-    // event rather than relying on the predicate.
-    if (isStale) {
-      log.warn(
-        {
-          event: event_name,
-          subscriptionId,
-          userId,
-          storedSubscriptionId: existing?.subscriptionId ?? null,
-        },
-        "ignoring event older than stored or provider state",
-      );
-      return;
-    }
-
-    const currentSubscription = and(
-      eq(subscription.userId, userId),
-      eq(subscription.subscriptionId, subscriptionId),
-      or(
-        isNull(subscription.providerUpdatedAt),
-        lt(subscription.providerUpdatedAt, providerUpdatedAt),
-      ),
-    );
-
-    /**
-     * Guarded updates match nothing when the event is stale or names a
-     * subscription we no longer hold. Both are expected, but so is a row whose
-     * subscriptionId was never populated — log rather than fail silently.
-     */
-    const warnIfNoRowMatched = (result: MySqlRawQueryResult): boolean => {
-      if (result[0]!.affectedRows > 0) return true;
-      log.warn(
-        {
-          event: event_name,
-          subscriptionId,
-          userId,
-          storedSubscriptionId: existing?.subscriptionId ?? null,
-          reason: !existing
-            ? "no subscription row for user"
-            : existing.subscriptionId !== subscriptionId
-              ? "event names a different subscription"
-              : "event older than stored state",
-        },
-        "subscription webhook matched no rows",
-      );
-      return false;
-    };
-
-    const emailRecipient = async () => {
-      const owner = await db.query.user.findFirst({
-        where: (table, { eq }) => eq(table.id, userId),
-        columns: { email: true, name: true },
-      });
-      if (!owner?.email) {
-        log.error(
-          { event: event_name, subscriptionId, userId },
-          "user has no email for billing email",
-        );
-        return null;
-      }
-      return { userId, email: owner.email, name: owner.name };
-    };
-    const paidPlan = plan === "ultra" ? "ultra" : "pro";
-
-    if (event_name === "subscription_created") {
-      const user = await db.query.user.findFirst({
-        where: (table, { eq }) => eq(table.id, userId),
-      });
-
-      if (!user) {
-        log.error(
-          { event: event_name, subscriptionId, userId },
-          "user not found for subscription_created",
-        );
-        return;
-      }
-
-      await db
-        .insert(subscription)
-        .values({
-          userId: userId,
+    await db
+      .insert(subscription)
+      .values({
+        userId: userId,
+        subscriptionId,
+        customerId,
+        orderId,
+        status,
+        plan,
+        billingInterval,
+        variantId,
+        productId,
+        cardBrand,
+        cardLastFour,
+        renewsAt: new Date(renewsAt),
+        createdAt: new Date(createdAt),
+        endsAt: endsAt ? new Date(endsAt) : null,
+        providerUpdatedAt,
+      })
+      .onDuplicateKeyUpdate({
+        // A returning customer already has a row, so refresh the full
+        // subscription state — not just status/dates — or their plan,
+        // interval, and subscriptionId would stay stale.
+        set: {
           subscriptionId,
           customerId,
           orderId,
@@ -230,109 +317,86 @@ async function processWebhook(webhookEvent: LemonsqueezySubscriptionEvent) {
           cardBrand,
           cardLastFour,
           renewsAt: new Date(renewsAt),
-          createdAt: new Date(createdAt),
+          endsAt: endsAt ? new Date(endsAt) : null,
+          providerUpdatedAt,
+        },
+      });
+
+    const email = account.email;
+
+    if (!email) {
+      log.error({ event: event_name, subscriptionId, userId }, "user has no email for welcome");
+    } else {
+      void runBackgroundTask(sendWelcomeEmail({ userId, email, name: account.name }, paidPlan));
+    }
+    return { result: "applied", userId };
+  }
+
+  if (event_name === "subscription_updated") {
+    const storedPlan = existing
+      ? (getPlanFromIds(existing.variantId, existing.productId) ?? existing.plan)
+      : null;
+    const result = updateResult(
+      await db
+        .update(subscription)
+        .set({
+          status,
+          plan,
+          billingInterval,
+          variantId,
+          productId,
+          renewsAt: renewsAt ? new Date(renewsAt) : null,
+          endsAt: endsAt ? new Date(endsAt) : null,
+          cardBrand,
+          cardLastFour,
+          providerUpdatedAt,
+        })
+        .where(currentSubscription),
+    );
+
+    // An in-place upgrade arrives as an update, not a new subscription.
+    if (result === "applied" && storedPlan === "pro" && plan === "ultra" && status === "active") {
+      emailOwner((recipient) => sendWelcomeEmail(recipient, "ultra"));
+    }
+    return { result, userId };
+  }
+
+  if (event_name === "subscription_cancelled") {
+    // Keep the plan/variant intact — a cancelled subscription stays entitled
+    // until endsAt. resolvePlan() drops it to free once that date passes.
+    const result = updateResult(
+      await db
+        .update(subscription)
+        .set({
+          status,
           endsAt: endsAt ? new Date(endsAt) : null,
           providerUpdatedAt,
         })
-        .onDuplicateKeyUpdate({
-          // A returning customer already has a row, so refresh the full
-          // subscription state — not just status/dates — or their plan,
-          // interval, and subscriptionId would stay stale.
-          set: {
-            subscriptionId,
-            customerId,
-            orderId,
-            status,
-            plan,
-            billingInterval,
-            variantId,
-            productId,
-            cardBrand,
-            cardLastFour,
-            renewsAt: new Date(renewsAt),
-            endsAt: endsAt ? new Date(endsAt) : null,
-            providerUpdatedAt,
-          },
-        });
+        .where(currentSubscription),
+    );
 
-      if (!user.email) {
-        log.error({ event: event_name, subscriptionId, userId }, "user has no email for welcome");
-        return;
-      }
-
-      await sendWelcomeEmail({ userId, email: user.email, name: user.name }, paidPlan);
-    } else if (event_name === "subscription_updated") {
-      // handle subscription updated. Sent when a subscription is updated
-      const storedPlan = existing
-        ? (getPlanFromIds(existing.variantId, existing.productId) ?? existing.plan)
-        : null;
-
-      const applied = warnIfNoRowMatched(
-        await db
-          .update(subscription)
-          .set({
-            status,
-            plan,
-            billingInterval,
-            variantId,
-            productId,
-            renewsAt: renewsAt ? new Date(renewsAt) : null,
-            endsAt: endsAt ? new Date(endsAt) : null,
-            cardBrand,
-            cardLastFour,
-            providerUpdatedAt,
-          })
-          .where(currentSubscription),
-      );
-
-      // An in-place upgrade arrives as an update, not a new subscription.
-      if (applied && storedPlan === "pro" && plan === "ultra" && status === "active") {
-        const recipient = await emailRecipient();
-        if (recipient) await sendWelcomeEmail(recipient, "ultra");
-      }
-    } else if (event_name === "subscription_cancelled") {
-      // Keep the plan/variant intact — a cancelled subscription stays entitled
-      // until endsAt. resolvePlan() drops it to free once that date passes.
-      const applied = warnIfNoRowMatched(
-        await db
-          .update(subscription)
-          .set({
-            status,
-            endsAt: endsAt ? new Date(endsAt) : null,
-            providerUpdatedAt,
-          })
-          .where(currentSubscription),
-      );
-
-      if (applied) {
-        const recipient = await emailRecipient();
-        if (recipient) {
-          await sendSubscriptionCancelledEmail(
-            recipient,
-            paidPlan,
-            endsAt ? new Date(endsAt) : null,
-          );
-        }
-      }
-    } else if (event_name === "subscription_expired") {
-      warnIfNoRowMatched(
-        await db
-          .update(subscription)
-          .set({
-            status,
-            plan: "free",
-            variantId: 0,
-            productId: 0,
-            endsAt: new Date(), // set endsAt to now to indicate the subscription has ended
-            providerUpdatedAt,
-          })
-          .where(currentSubscription),
+    if (result === "applied") {
+      emailOwner((recipient) =>
+        sendSubscriptionCancelledEmail(recipient, paidPlan, endsAt ? new Date(endsAt) : null),
       );
     }
-  } catch (err) {
-    // Catch-and-log here (rather than letting runBackgroundTask's generic
-    // handler do it) so prod logs include the webhook context needed to
-    // triage failures on money-moving events.
-    log.error({ err, event: event_name, subscriptionId, userId }, "processing failed");
+    return { result, userId };
   }
+
+  return {
+    result: updateResult(
+      await db
+        .update(subscription)
+        .set({
+          status,
+          plan: "free",
+          variantId: 0,
+          productId: 0,
+          endsAt: new Date(), // set endsAt to now to indicate the subscription has ended
+          providerUpdatedAt,
+        })
+        .where(currentSubscription),
+    ),
+    userId,
+  };
 }

@@ -10,9 +10,9 @@ type PaidPlan = Exclude<Plan, "free">;
 
 const PLAN_NAMES = { pro: "Pro", ultra: "Ultra" } satisfies Record<PaidPlan, string>;
 
-type Recipient = { userId: string; email: string; name?: string | null };
+export type BillingRecipient = { userId: string; email: string; name?: string | null };
 
-export function sendWelcomeEmail({ userId, email, name }: Recipient, plan: PaidPlan) {
+export function sendWelcomeEmail({ userId, email, name }: BillingRecipient, plan: PaidPlan) {
   return sendEmail({
     template: "welcome-to-pro",
     recipientId: userId,
@@ -24,7 +24,7 @@ export function sendWelcomeEmail({ userId, email, name }: Recipient, plan: PaidP
 }
 
 export function sendSubscriptionCancelledEmail(
-  { userId, email, name }: Recipient,
+  { userId, email, name }: BillingRecipient,
   plan: PaidPlan,
   endsAt: Date | null,
 ) {

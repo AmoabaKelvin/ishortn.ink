@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { noIndexMetadata } from "@/lib/seo/indexing";
 import {
   buildBeaconScript,
   hashDestination,
@@ -23,7 +24,7 @@ type VerifiedRedirectPageProps = {
 
 export const metadata: Metadata = {
   title: "Redirecting...",
-  robots: { index: false, follow: false },
+  ...noIndexMetadata,
 };
 
 function validateDestination(raw: string | undefined | null): string | null {

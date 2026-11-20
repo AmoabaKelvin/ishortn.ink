@@ -1,5 +1,6 @@
 ---
 title: "Best Free URL Shorteners in 2026: Complete Comparison Guide"
+seoTitle: "Best Free URL Shorteners in 2026"
 description: "Compare the top free URL shorteners including Bitly, TinyURL, Rebrandly, and iShortn. Find the best link shortener for your needs with our detailed comparison."
 date: "2026-03-06"
 updated: "2026-11-20"

@@ -1,9 +1,11 @@
+// category is the product type the comparison is framed as, used in the page title and description.
 // pricesCheckedOn is the ISO date the competitor's plans and prices were last verified on their
 // live pricing page; it is shown on the comparison page, so bump it whenever the data is re-checked.
 export const competitors = {
   bitly: {
     name: "Bitly",
     slug: "bitly",
+    category: "URL shortener",
     pricesCheckedOn: "2026-11-20",
     tagline: "The most popular URL shortener",
     description:
@@ -28,6 +30,7 @@ export const competitors = {
   tinyurl: {
     name: "TinyURL",
     slug: "tinyurl",
+    category: "URL shortener",
     pricesCheckedOn: "2026-06-23",
     tagline: "The original URL shortener",
     description:
@@ -51,6 +54,7 @@ export const competitors = {
   rebrandly: {
     name: "Rebrandly",
     slug: "rebrandly",
+    category: "URL shortener",
     pricesCheckedOn: "2026-11-20",
     tagline: "Branded link management platform",
     description:
@@ -73,6 +77,7 @@ export const competitors = {
   "short-io": {
     name: "Short.io",
     slug: "short-io",
+    category: "URL shortener",
     pricesCheckedOn: "2026-11-20",
     tagline: "White-label link shortener",
     description:
@@ -94,6 +99,7 @@ export const competitors = {
   dub: {
     name: "Dub.co",
     slug: "dub",
+    category: "URL shortener",
     pricesCheckedOn: "2026-11-20",
     tagline: "Open-source link management",
     description:
@@ -116,13 +122,14 @@ export const competitors = {
   linktree: {
     name: "Linktree",
     slug: "linktree",
+    category: "link in bio",
     pricesCheckedOn: "2026-06-23",
     tagline: "The default link-in-bio — but you pay to see what's working",
     description:
       "Linktree is the most recognized link-in-bio tool, with a generous free page and a huge template library. The catch: the analytics that show which links convert sit behind paid plans. See how iShortn compares.",
     freeLinks: "Unlimited links on the bio page",
     freeAnalytics: "Basic views only — per-link geo/device data is paid",
-    customDomains: "Paid only",
+    customDomains: "Not available",
     qrCodes: "Yes, all plans",
     apiAccess: "No public API",
     teamFeatures: "Higher paid tiers only",
@@ -139,6 +146,7 @@ export const competitors = {
   beacons: {
     name: "Beacons",
     slug: "beacons",
+    category: "link in bio",
     pricesCheckedOn: "2026-06-23",
     tagline: "A creator-commerce platform first, a link-in-bio second",
     description:
@@ -162,6 +170,7 @@ export const competitors = {
   carrd: {
     name: "Carrd",
     slug: "carrd",
+    category: "link in bio",
     pricesCheckedOn: "2026-06-23",
     tagline: "A great one-page site builder — not a link-in-bio analytics tool",
     description:
@@ -185,3 +194,6 @@ export const competitors = {
 } as const;
 
 export type Competitor = (typeof competitors)[keyof typeof competitors];
+
+export const comparisonTitle = (competitor: Competitor) =>
+  `${competitor.name} vs iShortn: ${competitor.category} comparison`;
