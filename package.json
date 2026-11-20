@@ -40,7 +40,7 @@
     "@hookform/resolvers": "^3.3.4",
     "@jsquash/jpeg": "^1.6.0",
     "@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
-    "@opennextjs/cloudflare": "^1.20.2",
+    "@opennextjs/cloudflare": "^1.20.17",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.1.1",
@@ -139,7 +139,7 @@
     "tailwindcss": "^3.4.3",
     "tsx": "^4.7.2",
     "typescript": "^5.4.5",
-    "wrangler": "^4.121.0"
+    "wrangler": "^4.148.0"
   },
   "optionalDependencies": {
     "sharp": "0.35.5"
