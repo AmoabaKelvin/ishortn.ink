@@ -61,6 +61,62 @@ export function isLinkScheduled(link: Pick<Link, "activateAt">): boolean {
   return !!link.activateAt && new Date() < link.activateAt;
 }
 
+type GeoRules = Awaited<ReturnType<typeof getGeoRulesFromCache>>;
+
+async function loadGeoRules(linkId: number): Promise<GeoRules> {
+  const rulesFromDb = await db.query.geoRule.findMany({
+    where: eq(geoRule.linkId, linkId),
+    orderBy: [asc(geoRule.priority)],
+  });
+  if (rulesFromDb.length === 0) return null;
+  void runBackgroundTask(setGeoRulesInCache(linkId, rulesFromDb));
+  return rulesFromDb;
+}
+
+type VisitorDevice = Awaited<ReturnType<typeof parseDeviceDetails>> | null;
+
+/** Device details, parsed only when a rule targets device or OS. */
+export async function getRuleDevice(rules: GeoRules, headers: Headers): Promise<VisitorDevice> {
+  return rulesNeedDevice(rules) ? parseDeviceDetails(headers) : null;
+}
+
+export function matchLinkRules(rules: GeoRules, country: string, device: VisitorDevice) {
+  return matchTargetingRules(rules, {
+    country: country !== "Unknown" ? country : null,
+    device: device?.device ?? null,
+    os: device?.os ?? null,
+  });
+}
+
+/** The link's targeting rules, cache first. */
+export async function getLinkGeoRules(linkId: number): Promise<GeoRules> {
+  return (await getGeoRulesFromCache(linkId)) ?? (await loadGeoRules(linkId));
+}
+
+/**
+ * The state route a visitor would land on instead of the destination (blocked,
+ * expired, scheduled, or geo-blocked), or null when the link resolves. The same
+ * policy as resolveShortLink without recording a click, for "!" previews and
+ * social-media crawlers.
+ */
+export async function getLinkStateRoute(
+  link: Link,
+  { country, headers }: { country: string; headers: Headers },
+): Promise<string | null> {
+  if (link.blocked) return `/blocked/${link.id}`;
+  if (await checkLinkExpiration(link, buildCacheKey(link.domain, link.alias ?? ""))) {
+    return `/expired/${link.id}`;
+  }
+  if (isLinkScheduled(link)) return `/scheduled/${link.id}`;
+
+  const rules = await getLinkGeoRules(link.id);
+  const geoResult = matchLinkRules(rules, country, await getRuleDevice(rules, headers));
+  if (geoResult.matched && geoResult.action === "block") {
+    return `/blocked/${link.id}${geoResult.ruleId ? `?geo=${geoResult.ruleId}` : ""}`;
+  }
+  return null;
+}
+
 function appendUtmParams(baseUrl: string, utmParams: Link["utmParams"]): string {
   if (!utmParams) return baseUrl;
 
@@ -143,24 +199,9 @@ export async function resolveShortLink(
         : Promise.resolve(false),
     ]);
 
-    let geoRules = cachedGeoRules;
-    if (!geoRules) {
-      const rulesFromDb = await db.query.geoRule.findMany({
-        where: eq(geoRule.linkId, link.id),
-        orderBy: [asc(geoRule.priority)],
-      });
-      if (rulesFromDb.length > 0) {
-        void runBackgroundTask(setGeoRulesInCache(link.id, rulesFromDb));
-        geoRules = rulesFromDb;
-      }
-    }
-
+    const geoRules = cachedGeoRules ?? (await loadGeoRules(link.id));
     const device = rulesNeedDevice(geoRules) ? await parseDeviceDetails(headers) : null;
-    const geoResult = matchTargetingRules(geoRules, {
-      country: country !== "Unknown" ? country : null,
-      device: device?.device ?? null,
-      os: device?.os ?? null,
-    });
+    const geoResult = matchLinkRules(geoRules, country, device);
 
     const issueToken = (destination: string) => {
       if (!ownerPaid) return { visitId: null, verificationToken: null };

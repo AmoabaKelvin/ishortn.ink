@@ -1,7 +1,7 @@
 // Edge middleware only. @opennextjs/cloudflare does not support Node.js
 // middleware, so this file must stay edge-safe: no db/pino/react-email
 // imports. Link resolution and click analytics intentionally live in
-// app/(main)/[linkAlias]/page.tsx.
+// app/(links)/[linkAlias]/page.tsx.
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
