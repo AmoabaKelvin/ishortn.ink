@@ -141,7 +141,11 @@ export const workspaceProcedure = protectedProcedure.use(async ({ ctx, next, typ
   return next({ ctx: { ...ctx, workspace } });
 });
 
+// Mutations a read-only team still allows: leaving or winding the team down,
+// and ones that only read (members can still get their links out).
 const READ_ONLY_TEAM_MUTATIONS = new Set([
+  "link.exportUserLinks",
+  "link.validateTransfer",
   "team.leave",
   "team.delete",
   "team.transferOwnership",

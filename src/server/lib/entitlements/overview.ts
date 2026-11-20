@@ -1,7 +1,6 @@
-import { count, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNull, or } from "drizzle-orm";
 
 import {
-  EMPTY_USAGE,
   effectivePlan,
   FEATURE_LABELS,
   higherPlan,
@@ -52,8 +51,34 @@ export type OverPlanTeam = {
 export async function getEntitlementOverview(dbClient: DbClient, now = new Date()) {
   const usage = await getPlanUsageByUser(dbClient, undefined, now);
 
+  // Paid plans come from the live subscriptions (a row per paying customer), so
+  // only accounts actually over their plan are looked up below.
+  const paying = await dbClient
+    .select({
+      userId: subscription.userId,
+      status: subscription.status,
+      endsAt: subscription.endsAt,
+      variantId: subscription.variantId,
+      productId: subscription.productId,
+      plan: subscription.plan,
+    })
+    .from(subscription)
+    .where(
+      or(
+        inArray(subscription.status, ["active", "on_trial"]),
+        and(eq(subscription.status, "cancelled"), gt(subscription.endsAt, now)),
+      ),
+    );
+  const paidByUser = new Map(paying.map((row) => [row.userId, paidPlan(row, now)]));
+  const overByUser = new Map<string, { paid: Plan; features: OverPlanFeature[] }>();
+  for (const [userId, used] of usage) {
+    const paid = paidByUser.get(userId) ?? "free";
+    const features = overPlanFeatures(used, paid);
+    if (features.length > 0) overByUser.set(userId, { paid, features });
+  }
+
   const accounts: OverPlanAccount[] = [];
-  const ids = [...usage.keys()];
+  const ids = [...overByUser.keys()];
   for (let i = 0; i < ids.length; i += LOOKUP_CHUNK) {
     const rows = await dbClient.query.user.findMany({
       where: inArray(user.id, ids.slice(i, i + LOOKUP_CHUNK)),
@@ -68,21 +93,19 @@ export async function getEntitlementOverview(dbClient: DbClient, now = new Date(
       with: { subscriptions: true },
     });
     for (const row of rows) {
-      if (row.deletedAt) continue;
-      const paid = paidPlan(row.subscriptions, now);
-      const features = overPlanFeatures(usage.get(row.id) ?? EMPTY_USAGE, paid);
-      if (features.length === 0) continue;
+      const over = overByUser.get(row.id);
+      if (row.deletedAt || !over) continue;
       accounts.push({
         userId: row.id,
         name: row.name,
         email: row.email,
-        paidPlan: paid,
+        paidPlan: over.paid,
         effectivePlan: effectivePlan(row.subscriptions, row, now),
-        requiredPlan: features.reduce<Plan>(
+        requiredPlan: over.features.reduce<Plan>(
           (plan, item) => higherPlan(plan, item.requiredPlan),
           "free",
         ),
-        features,
+        features: over.features,
         graceEndsAt: row.planGraceEndsAt,
         graceActive: isGraceActive(row.planGraceEndsAt, now),
       });

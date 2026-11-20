@@ -31,22 +31,36 @@ export async function getPlanUsageByUser(
   if (userIds && userIds.length === 0) return new Map();
   const scope = (column: AnyMySqlColumn) => (userIds ? inArray(column, userIds) : undefined);
 
+  // The owner is joined inside each grouped subquery so the scope applies before
+  // grouping; MySQL won't push an outer filter into a grouped derived table.
   const rulesPerLink = dbClient
-    .select({ linkId: geoRule.linkId, total: count().as("total") })
+    .select({ userId: link.userId, total: count().as("total") })
     .from(geoRule)
-    .groupBy(geoRule.linkId)
+    .innerJoin(link, eq(link.id, geoRule.linkId))
+    .where(and(isNull(link.teamId), scope(link.userId)))
+    .groupBy(geoRule.linkId, link.userId)
     .as("rulesPerLink");
   const milestonesPerLink = dbClient
-    .select({ linkId: linkMilestone.linkId, total: count().as("total") })
+    .select({ userId: link.userId, total: count().as("total") })
     .from(linkMilestone)
-    .groupBy(linkMilestone.linkId)
+    .innerJoin(link, eq(link.id, linkMilestone.linkId))
+    .where(and(isNull(link.teamId), scope(link.userId)))
+    .groupBy(linkMilestone.linkId, link.userId)
     .as("milestonesPerLink");
   const linkBlocksPerPage = dbClient
-    .select({ bioPageId: bioBlock.bioPageId, total: count().as("total") })
+    .select({ userId: bioPage.userId, total: count().as("total") })
     .from(bioBlock)
-    .where(eq(bioBlock.type, "link"))
-    .groupBy(bioBlock.bioPageId)
+    .innerJoin(bioPage, eq(bioPage.id, bioBlock.bioPageId))
+    .where(and(eq(bioBlock.type, "link"), isNull(bioPage.teamId), scope(bioPage.userId)))
+    .groupBy(bioBlock.bioPageId, bioPage.userId)
     .as("linkBlocksPerPage");
+  const maxPerUser = (
+    subquery: typeof rulesPerLink | typeof milestonesPerLink | typeof linkBlocksPerPage,
+  ) =>
+    dbClient
+      .select({ userId: subquery.userId, most: sql<string>`max(${subquery.total})` })
+      .from(subquery)
+      .groupBy(subquery.userId);
 
   const flag = (condition: ReturnType<typeof sql>) =>
     sql<string>`coalesce(sum(case when ${condition} then 1 else 0 end), 0)`;
@@ -76,12 +90,7 @@ export async function getPlanUsageByUser(
         .from(bioPage)
         .where(and(isNull(bioPage.teamId), scope(bioPage.userId)))
         .groupBy(bioPage.userId),
-      dbClient
-        .select({ userId: bioPage.userId, most: sql<string>`max(${linkBlocksPerPage.total})` })
-        .from(linkBlocksPerPage)
-        .innerJoin(bioPage, eq(bioPage.id, linkBlocksPerPage.bioPageId))
-        .where(and(isNull(bioPage.teamId), scope(bioPage.userId)))
-        .groupBy(bioPage.userId),
+      maxPerUser(linkBlocksPerPage),
       dbClient
         .select({ userId: campaign.userId, total: count() })
         .from(campaign)
@@ -116,18 +125,8 @@ export async function getPlanUsageByUser(
           ),
         )
         .groupBy(link.userId),
-      dbClient
-        .select({ userId: link.userId, most: sql<string>`max(${rulesPerLink.total})` })
-        .from(rulesPerLink)
-        .innerJoin(link, eq(link.id, rulesPerLink.linkId))
-        .where(and(isNull(link.teamId), scope(link.userId)))
-        .groupBy(link.userId),
-      dbClient
-        .select({ userId: link.userId, most: sql<string>`max(${milestonesPerLink.total})` })
-        .from(milestonesPerLink)
-        .innerJoin(link, eq(link.id, milestonesPerLink.linkId))
-        .where(and(isNull(link.teamId), scope(link.userId)))
-        .groupBy(link.userId),
+      maxPerUser(rulesPerLink),
+      maxPerUser(milestonesPerLink),
     ]);
 
   const usage = new Map<string, PlanUsage>();

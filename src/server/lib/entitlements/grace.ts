@@ -16,6 +16,7 @@ import {
   paidPlan,
   PLAN_NAMES,
   planAtLeast,
+  planBeforeBillingEvent,
   subscribedPlan,
 } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
@@ -124,7 +125,7 @@ export async function ensurePlanChecked(
     return account;
   }
 
-  await db
+  const [result] = await db
     .update(user)
     .set({
       planGracePlan: grace.plan,
@@ -134,8 +135,12 @@ export async function ensurePlanChecked(
       planCheckedAt: now,
     })
     .where(and(eq(user.id, account.id), isNull(user.planGraceEndsAt)));
-  log.info({ userId: account.id, plan: grace.plan }, "started over-plan grace on first check");
-  await runBackgroundTask(sendDueGraceEmails({ userIds: [account.id], now }));
+  // Batched requests can all reach this point; only the one that recorded the
+  // grace sends its email.
+  if (result.affectedRows > 0) {
+    log.info({ userId: account.id, plan: grace.plan }, "started over-plan grace on first check");
+    await runBackgroundTask(sendDueGraceEmails({ userIds: [account.id], now }));
+  }
   return { planGracePlan: grace.plan, planGraceEndsAt: grace.endsAt };
 }
 
@@ -167,36 +172,49 @@ async function syncOwnedTeams(dbClient: DbClient, ownerId: string, ownerPaid: Pl
  * Applies a subscription change to the account's entitlements: a lapse
  * (expiry, failed payment, refund-driven cancellation) starts a grace period at
  * the plan the account had; resubscribing clears it and restores everything at
- * once. `previous` is the subscription row before the event was applied.
+ * once. `previous` is the subscription row before the event was applied. The
+ * webhook runs this in the same transaction as an expiry, which resets the row
+ * to free, so the lapse can't be lost after that write.
  */
-export async function syncEntitlementsAfterBillingEvent(
+export async function applyBillingEventEntitlements(
+  dbClient: DbClient,
   userId: string,
   previous: Subscription | null,
   now = new Date(),
 ): Promise<void> {
-  const record = await db.query.user.findFirst({
+  const record = await dbClient.query.user.findFirst({
     where: eq(user.id, userId),
     with: { subscriptions: true },
   });
   if (!record) return;
 
   const current = record.subscriptions ?? null;
+  const before = planBeforeBillingEvent(previous, record, now);
   const change = graceChangeAfterBillingEvent({
-    before: effectivePlan(previous, record, now),
+    before: before.plan,
+    lapsedAt: before.lapsedAt,
     subscription: current,
     grace: record,
     now,
   });
 
   if (change.type === "start") {
-    await startUserGrace(db, userId, { ...change, reason: "lapsed" }, false, now);
+    await startUserGrace(dbClient, userId, { ...change, reason: "lapsed" }, false, now);
   } else if (change.type === "clear") {
-    await db.update(user).set(CLEARED_GRACE).where(eq(user.id, userId));
+    await dbClient.update(user).set(CLEARED_GRACE).where(eq(user.id, userId));
   }
-  await syncOwnedTeams(db, userId, paidPlan(current, now), now);
-
+  await syncOwnedTeams(dbClient, userId, paidPlan(current, now), now);
   log.info({ userId, change: change.type }, "synced entitlements after billing event");
-  if (change.type === "start") await sendDueGraceEmails({ userIds: [userId], now });
+}
+
+/** applyBillingEventEntitlements, then the grace emails that are now due. */
+export async function syncEntitlementsAfterBillingEvent(
+  userId: string,
+  previous: Subscription | null,
+  now = new Date(),
+): Promise<void> {
+  await applyBillingEventEntitlements(db, userId, previous, now);
+  await sendDueGraceEmails({ userIds: [userId], now });
 }
 
 // ----------------------------------------------------------------------------
@@ -348,7 +366,10 @@ type PendingEmail = {
   to: string;
   subject: string;
   react: ReturnType<typeof PlanGraceEmail>;
-  markSent: () => Promise<void>;
+  /** Moves the row to this email's stage; false when another run already did. */
+  claim: () => Promise<boolean>;
+  /** Undoes the claim after a failed send, so the next run retries it. */
+  release: () => Promise<void>;
 };
 
 function formatDay(date: Date): string {
@@ -450,11 +471,18 @@ export async function sendDueGraceEmails(options: {
         items: items.length > 0 || reason !== "lapsed" ? items : freePlanSummary(),
         upgradeUrl: upgradeUrl(),
       }),
-      markSent: async () => {
-        await db
+      claim: async () => {
+        const [result] = await db
           .update(user)
           .set({ planGraceEmailStage: stage })
           .where(and(eq(user.id, account.id), lt(user.planGraceEmailStage, stage)));
+        return result.affectedRows > 0;
+      },
+      release: async () => {
+        await db
+          .update(user)
+          .set({ planGraceEmailStage: account.planGraceEmailStage ?? GRACE_EMAIL_STAGE.none })
+          .where(and(eq(user.id, account.id), eq(user.planGraceEmailStage, stage)));
       },
     });
   }
@@ -507,11 +535,18 @@ export async function sendDueGraceEmails(options: {
           items: [],
           upgradeUrl: upgradeUrl(),
         }),
-        markSent: async () => {
-          await db
+        claim: async () => {
+          const [result] = await db
             .update(team)
             .set({ ownerPlanGraceEmailStage: stage })
             .where(and(eq(team.id, row.id), lt(team.ownerPlanGraceEmailStage, stage)));
+          return result.affectedRows > 0;
+        },
+        release: async () => {
+          await db
+            .update(team)
+            .set({ ownerPlanGraceEmailStage: row.stage ?? GRACE_EMAIL_STAGE.none })
+            .where(and(eq(team.id, row.id), eq(team.ownerPlanGraceEmailStage, stage)));
         },
       });
     }
@@ -519,22 +554,33 @@ export async function sendDueGraceEmails(options: {
 
   if (!resend || pending.length === 0) return 0;
 
+  // Claimed before sending, so concurrent runs (batched first requests, the
+  // webhook and the cron) never send the same stage twice.
+  const claimed: PendingEmail[] = [];
+  for (const email of pending) {
+    if (await email.claim()) claimed.push(email);
+  }
+
   let sent = 0;
-  for (const batch of chunk(pending, EMAIL_BATCH_SIZE)) {
-    const { error } = await resend.batch.send(
-      batch.map((email) => ({
-        from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-        to: email.to,
-        subject: email.subject,
-        react: email.react,
-      })),
-    );
+  for (const batch of chunk(claimed, EMAIL_BATCH_SIZE)) {
+    let error: Error | null = null;
+    try {
+      ({ error } = await resend.batch.send(
+        batch.map((email) => ({
+          from: "Kelvin from iShortn <kelvin@ishortn.ink>",
+          to: email.to,
+          subject: email.subject,
+          react: email.react,
+        })),
+      ));
+    } catch (err) {
+      error = err instanceof Error ? err : new Error(String(err));
+    }
     if (error) {
-      // Stages stay unsent, so the next run retries this batch.
       log.error({ err: error, size: batch.length }, "failed to send grace emails");
+      await Promise.all(batch.map((email) => email.release()));
       continue;
     }
-    await Promise.all(batch.map((email) => email.markSent()));
     sent += batch.length;
   }
   return sent;

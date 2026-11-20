@@ -6,6 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 import { POST as createApiLink } from "@/app/api/v1/links/route";
 import { env } from "@/env.mjs";
 import { planAtLeast } from "@/lib/billing/entitlements";
+import { appRouter } from "@/server/api/root";
 import { createBioPage } from "@/server/api/routers/bio-page/bio-page.service";
 import { createFolder } from "@/server/api/routers/folder/folder.service";
 import { linkRouter } from "@/server/api/routers/link/link.procedure";
@@ -559,6 +560,20 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
       },
     );
 
+    test("a read-only team still lets members export their links", async () => {
+      // SAFETY: the procedures under test read only ctx.auth.userId from auth.
+      const auth = { userId: ACCOUNTS.free.id } as TRPCContext["auth"];
+      const app = appRouter.createCaller({
+        db,
+        auth,
+        headers: new Headers({ host: `${TEAM_SLUGS[0]!}.localhost:3000` }),
+      });
+      expect(Array.isArray(await app.link.exportUserLinks())).toBe(true);
+      expect(app.link.create({ url: TARGET_URL })).rejects.toThrow(
+        /The workspace owner needs Ultra/,
+      );
+    });
+
     test("an Ultra-owned team stays writable", async () => {
       await caller("ultra", TEAM_SLUGS[1]!).create({ url: TARGET_URL, alias: uniqueAlias() });
     });
@@ -598,6 +613,36 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
       where: eq(schema.team.slug, TEAM_SLUGS[1]!),
     });
     expect(restoredTeam?.ownerPlanGraceEndsAt).toBeNull();
+  });
+
+  test("a cancellation reaching its end date starts the grace from that date", async () => {
+    const userId = ACCOUNTS.pro.id;
+    const where = eq(schema.subscription.userId, userId);
+    const endedAt = new Date(Date.now() - 2 * DAY);
+    await db.update(schema.subscription).set({ status: "cancelled", endsAt: endedAt }).where(where);
+    const cancelled = await db.query.subscription.findFirst({ where });
+
+    // The expiry webhook resets the row to free, as route.ts does.
+    await db
+      .update(schema.subscription)
+      .set({ status: "expired", plan: "free", variantId: 0, productId: 0, endsAt: new Date() })
+      .where(where);
+    await syncEntitlementsAfterBillingEvent(userId, cancelled ?? null);
+    const lapsed = await db.query.user.findFirst({ where: eq(schema.user.id, userId) });
+    expect(lapsed?.planGracePlan).toBe("pro");
+    expect(lapsed?.planGraceReason).toBe("lapsed");
+    // Stored to the second.
+    expect(lapsed?.planGraceEndsAt?.getTime()).toBe(cancelled!.endsAt!.getTime() + 7 * DAY);
+    expect((await workspaceCtx("pro")).workspace.plan).toBe("pro");
+
+    // Restore the active Pro subscription for the tests below.
+    await db
+      .update(schema.subscription)
+      .set({ status: "active", plan: "pro", variantId: PRO_VARIANT, endsAt: null })
+      .where(where);
+    await syncEntitlementsAfterBillingEvent(userId, null);
+    const restored = await db.query.user.findFirst({ where: eq(schema.user.id, userId) });
+    expect(restored?.planGraceEndsAt).toBeNull();
   });
 
   // ---------------------------------------------------------------------------

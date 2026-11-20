@@ -14,7 +14,10 @@ import {
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
-import { syncEntitlementsAfterBillingEvent } from "@/server/lib/entitlements/grace";
+import {
+  applyBillingEventEntitlements,
+  syncEntitlementsAfterBillingEvent,
+} from "@/server/lib/entitlements/grace";
 import { resend } from "@/server/lib/notifications/resend-client";
 
 import { eventIsBehindProvider } from "./reconcile";
@@ -370,9 +373,12 @@ async function processWebhook(
     };
   }
 
-  return {
-    result: updateResult(
-      await db
+  // The row is reset to free here, so the lapse grace (which needs the plan the
+  // account had) is recorded in the same transaction: nothing else could
+  // recover it from the row afterwards.
+  return db.transaction(async (tx) => {
+    const result = updateResult(
+      await tx
         .update(subscription)
         .set({
           status,
@@ -383,8 +389,10 @@ async function processWebhook(
           providerUpdatedAt,
         })
         .where(currentSubscription),
-    ),
-    userId,
-    previous: existing ?? null,
-  };
+    );
+    if (result === "applied") {
+      await applyBillingEventEntitlements(tx, userId, existing ?? null);
+    }
+    return { result, userId, previous: existing ?? null };
+  });
 }

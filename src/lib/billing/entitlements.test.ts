@@ -11,6 +11,7 @@ import {
   NO_GRACE,
   overPlanFeatures,
   paidPlan,
+  planBeforeBillingEvent,
   planForFeature,
   requiredPlanForUsage,
   teamAccess,
@@ -81,6 +82,38 @@ describe("effectivePlan", () => {
 
   test("a grace plan never lowers a higher paid plan", () => {
     expect(effectivePlan(sub("active", "ultra"), grace("pro", at(5)), NOW)).toBe("ultra");
+  });
+});
+
+describe("planBeforeBillingEvent", () => {
+  test("a cancellation whose paid period just ended counts as its plan, lapsed at endsAt", () => {
+    const before = planBeforeBillingEvent(sub("cancelled", "pro", at(-2)), NO_GRACE, NOW);
+    expect(before).toEqual({ plan: "pro", lapsedAt: at(-2) });
+
+    const change = graceChangeAfterBillingEvent({
+      before: before.plan,
+      lapsedAt: before.lapsedAt,
+      subscription: { status: "expired", plan: "free", endsAt: NOW, variantId: 0, productId: 0 },
+      grace: NO_GRACE,
+      now: NOW,
+    });
+    expect(change).toEqual({ type: "start", plan: "pro", endsAt: at(5) });
+  });
+
+  test("a cancellation that ended longer ago than the grace period gets none", () => {
+    const before = planBeforeBillingEvent(sub("cancelled", "pro", at(-8)), NO_GRACE, NOW);
+    expect(before).toEqual({ plan: "free", lapsedAt: NOW });
+  });
+
+  test("other states use the effective plan, lapsed now", () => {
+    expect(planBeforeBillingEvent(sub("active", "ultra"), NO_GRACE, NOW)).toEqual({
+      plan: "ultra",
+      lapsedAt: NOW,
+    });
+    expect(planBeforeBillingEvent(sub("cancelled", "pro", at(3)), NO_GRACE, NOW)).toEqual({
+      plan: "pro",
+      lapsedAt: NOW,
+    });
   });
 });
 

@@ -94,6 +94,28 @@ export function isLapsedStatus(status: string | null | undefined): boolean {
   return status !== "active" && status !== "on_trial";
 }
 
+/**
+ * The plan an account had before a billing event, and when it lost it. Lemon
+ * Squeezy sends `subscription_expired` only after a cancelled subscription's
+ * paid period has ended, by which time `paidPlan` already reads it as free, so
+ * a cancellation whose `endsAt` passed within the last grace window counts as
+ * the subscribed plan, lapsed at `endsAt`.
+ */
+export type PlanBeforeEvent = { plan: Plan; lapsedAt: Date };
+
+export function planBeforeBillingEvent(
+  previous: SubscriptionState | undefined,
+  grace: PlanGrace,
+  now = new Date(),
+): PlanBeforeEvent {
+  const plan = effectivePlan(previous, grace, now);
+  const endsAt = previous?.status === "cancelled" ? previous.endsAt : null;
+  if (endsAt && endsAt <= now && endsAt.getTime() > now.getTime() - GRACE_PERIOD_MS) {
+    return { plan: higherPlan(plan, subscribedPlan(previous)), lapsedAt: endsAt };
+  }
+  return { plan, lapsedAt: now };
+}
+
 export type GraceChange =
   | { type: "none" }
   | { type: "clear" }
@@ -103,10 +125,12 @@ export type GraceChange =
  * What a subscription change does to the account's grace period. `before` is the
  * effective plan under the previous subscription state. Access that drops because
  * the subscription lapsed starts a grace period at the old plan; a paid plan that
- * covers the grace plan again clears it.
+ * covers the grace plan again clears it. The grace period runs from `lapsedAt`
+ * (default `now`).
  */
 export function graceChangeAfterBillingEvent(input: {
   before: Plan;
+  lapsedAt?: Date;
   subscription: SubscriptionState;
   grace: PlanGrace;
   now?: Date;
@@ -119,7 +143,12 @@ export function graceChangeAfterBillingEvent(input: {
 
   const lapsed = isLapsedStatus(input.subscription?.status) && !planAtLeast(after, input.before);
   if (lapsed && !isGraceActive(planGraceEndsAt, now)) {
-    return { type: "start", plan: input.before, endsAt: new Date(now.getTime() + GRACE_PERIOD_MS) };
+    const lapsedAt = input.lapsedAt ?? now;
+    return {
+      type: "start",
+      plan: input.before,
+      endsAt: new Date(lapsedAt.getTime() + GRACE_PERIOD_MS),
+    };
   }
 
   return { type: "none" };
