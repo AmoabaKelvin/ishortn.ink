@@ -3,6 +3,7 @@ import { accountDeletionRouter } from "./routers/account-deletion/account-deleti
 import { accountTransferRouter } from "./routers/account-transfer/account-transfer.procedure";
 import { adminRouter } from "./routers/admin/admin.procedure";
 import { aiRouter } from "./routers/ai/ai.procedure";
+import { attributionRouter } from "./routers/attribution/attribution.procedure";
 import { audienceFeedbackRouter } from "./routers/audience-feedback/audience-feedback.procedure";
 import { bioPageRouter } from "./routers/bio-page/bio-page.procedure";
 import { campaignRouter } from "./routers/campaign/campaign.procedure";
@@ -38,6 +39,7 @@ export const appRouter = createTRPCRouter({
   feedback: feedbackRouter,
   audienceFeedback: audienceFeedbackRouter,
   ai: aiRouter,
+  attribution: attributionRouter,
   siteSettings: siteSettingsRouter,
   tag: tagRouter,
   folder: folderRouter,

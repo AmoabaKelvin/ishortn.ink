@@ -2,6 +2,8 @@ import "@/styles/site.css";
 import "@/styles/site-auth.css";
 import { Link } from "next-view-transitions";
 
+import { FirstTouchCapture } from "@/components/attribution/first-touch-capture";
+
 import { Wordmark } from "../../(landing)/_components/site-primitives";
 
 import type { ReactNode } from "react";
@@ -11,6 +13,7 @@ import type { ReactNode } from "react";
 const AuthLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div data-theme="site" className="relative isolate min-h-screen overflow-hidden">
+      <FirstTouchCapture />
       <div aria-hidden="true" className="site-dots pointer-events-none absolute inset-0" />
       <main className="relative grid min-h-screen place-items-center px-4 py-12">
         <div className="w-full max-w-[28rem]">

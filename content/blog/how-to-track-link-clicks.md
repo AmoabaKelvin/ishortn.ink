@@ -2,6 +2,7 @@
 title: "How to Track Link Clicks: The Complete Guide to Link Analytics"
 description: "Learn how to track link clicks, measure campaign performance, and understand your audience with link analytics. Step-by-step guide with practical examples."
 date: "2026-03-05"
+updated: "2026-11-20"
 author: "Kelvin Amoaba"
 tags: ["link analytics", "click tracking", "marketing", "guide"]
 published: true
@@ -77,7 +78,7 @@ Setting up link tracking with a URL shortener is straightforward. Here is a prac
 
 ### 1. Choose Your URL Shortener
 
-Pick a shortener that offers the analytics depth you need. At a minimum, look for click counts, geographic data, device breakdowns, and referrer tracking. Services like iShortn provide all of these out of the box.
+Pick a shortener that offers the analytics depth you need. At a minimum, look for click counts, geographic data, device breakdowns, and referrer tracking. Services like iShortn provide all of these out of the box. If you are weighing options, our [comparison of free URL shorteners](/blog/best-free-url-shorteners) breaks down what each one tracks.
 
 ### 2. Create Your Destination URL
 
@@ -151,8 +152,8 @@ Over time, your dashboard will accumulate links from past campaigns. Archive or 
 
 iShortn is designed to make click tracking accessible without requiring any technical setup. When you create a short link on iShortn, analytics are enabled automatically. Every click is recorded along with the visitor's location, device, browser, and referrer, and all of it is presented in a clean, real-time dashboard.
 
-You can create custom-branded links that build trust with your audience, generate QR codes for offline use, and manage all of your links from a single workspace. If you work with a team, shared workspaces let everyone see link performance and collaborate on campaigns without needing separate accounts.
+You can create custom-branded links that build trust with your audience, generate QR codes for offline use, and manage all of your links from a single workspace. If you work with a team, shared team workspaces on the Ultra plan let everyone see link performance and collaborate on campaigns without needing separate accounts.
 
-For developers and teams with automated workflows, the iShortn API lets you create tracked links programmatically, making it easy to embed link analytics into your existing tools and processes.
+For developers and teams with automated workflows, the iShortn API (on Pro and Ultra) lets you create tracked links programmatically, making it easy to embed link analytics into your existing tools and processes. The [URL shortener API guide](/blog/url-shortener-api-guide) walks through an example integration, and the [pricing page](/pricing) shows the analytics history on each plan.
 
 Getting started takes less than a minute. Sign up at [ishortn.ink](https://ishortn.ink), create your first short link, share it, and watch the data flow in. Every click tells you something about your audience. The question is whether you are listening.

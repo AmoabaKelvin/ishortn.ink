@@ -2,6 +2,7 @@
 title: "How to Create Custom Short Links for Your Brand"
 description: "Learn how to create branded short links with custom domains. Boost click-through rates and brand recognition with personalized URLs."
 date: "2026-03-04"
+updated: "2026-11-20"
 author: "Kelvin Amoaba"
 tags: ["custom links", "branding", "custom domains", "tutorial"]
 published: true
@@ -139,7 +140,7 @@ This consistency compounds over time. People begin to associate your short link 
 
 ## Getting Started with Custom Domains on iShortn
 
-iShortn makes it straightforward to set up and manage custom domains for your branded links. Here is how to get started:
+iShortn makes it straightforward to set up and manage custom domains for your branded links. Custom domains are available on the Pro plan (3 domains) and the Ultra plan (unlimited); see the [pricing page](/pricing) for the full plan comparison. Here is how to get started:
 
 1. **Sign up or log in** at [ishortn.ink](https://ishortn.ink) and navigate to your dashboard.
 2. **Go to the custom domains section** in your settings and add the domain or subdomain you want to use.
@@ -147,6 +148,6 @@ iShortn makes it straightforward to set up and manage custom domains for your br
 4. **Verify the domain** in your iShortn dashboard once DNS propagation is complete.
 5. **Create your first branded link** by selecting your custom domain and entering a memorable alias.
 
-From there, every link you create carries your brand. The analytics dashboard tracks performance across all your domains, so you can monitor clicks, geographic data, device types, and referral sources in one place.
+From there, every link you create carries your brand. The analytics dashboard tracks performance across all your domains, so you can monitor clicks, geographic data, device types, and referral sources in one place. Our guide on [how to track link clicks](/blog/how-to-track-link-clicks) covers what to look for in that data.
 
 Whether you are running marketing campaigns, building a brand presence on social media, or simply want your links to look professional, custom short links are a small change that makes a measurable difference. A branded URL shortener turns every link into an extension of your brand.
