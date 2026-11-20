@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { IconCheck, IconLoader2 } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const utils = api.useUtils();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,8 +44,11 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
   });
 
   const { mutate: updateProfile } = api.user.updateProfile.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (_data, values) => {
       setIsSaving(false);
+      form.reset(values);
+      // Re-renders the server-fetched profile header and the sidebar name.
+      router.refresh();
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 2000);
       await utils.user.getProfile.invalidate();

@@ -2,6 +2,10 @@ import { api } from "@/trpc/server";
 
 import { FoldersView } from "./_components/folders-view";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Folders" };
+
 export const dynamic = "force-dynamic";
 
 export default async function FoldersPage() {

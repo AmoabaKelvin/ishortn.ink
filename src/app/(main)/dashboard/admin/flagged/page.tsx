@@ -27,11 +27,15 @@ export default function AdminFlaggedLinksPage() {
   });
 
   const resolveMutation = api.admin.resolveFlaggedLink.useMutation({
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       toast.success(
         variables.action === "blocked" ? "Link blocked successfully" : "Flag dismissed",
       );
-      void refetch();
+      const { data: fresh } = await refetch();
+      // Resolving the last item on the last page empties it; clamp to the new last page.
+      if (fresh && fresh.flaggedLinks.length === 0 && page > 1) {
+        setPage(Math.max(1, Math.ceil(fresh.total / fresh.pageSize)));
+      }
     },
     onError: (error) => toast.error(error.message),
   });

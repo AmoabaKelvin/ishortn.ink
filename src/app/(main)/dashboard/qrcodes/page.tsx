@@ -8,6 +8,10 @@ import { QRCodeList } from "./_components/qrcode-list";
 import UpgradeText from "./_components/upgrade-text";
 import { checkIfUserCanCreateMoreQRCodes } from "./utils";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "QR Codes" };
+
 export const dynamic = "force-dynamic";
 
 async function QRCodePage() {

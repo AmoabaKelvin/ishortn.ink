@@ -542,6 +542,24 @@ export const apiAccessSunset = mysqlTable("ApiAccessSunset", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+// One row per failed link creation, read by the link-creation-health cron to
+// alert on failure spikes (src/server/lib/link-creation). Holds no URL or user
+// details; rows older than the retention window are pruned by that cron.
+export const linkCreationFailure = mysqlTable(
+  "LinkCreationFailure",
+  {
+    id: serial("id").primaryKey(),
+    source: mysqlEnum("source", ["dashboard", "bulk", "api"]).notNull(),
+    step: mysqlEnum("step", ["validation", "safety", "metadata", "db"]).notNull(),
+    code: varchar("code", { length: 64 }).notNull(),
+    serverError: boolean("serverError").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
+  }),
+);
+
 // Tag model for storing unique tags
 // Uniqueness strategy:
 // - Team workspaces: unique(name, teamId) enforced at DB level

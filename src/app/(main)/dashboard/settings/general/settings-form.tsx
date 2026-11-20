@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { IconCheck, IconLoader2, IconWorld } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ type SettingsFormProps = {
 export function SettingsForm({ userSettings, availableDomains }: SettingsFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,8 +52,10 @@ export function SettingsForm({ userSettings, availableDomains }: SettingsFormPro
   });
 
   const { mutate: updateSettings } = api.siteSettings.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, values) => {
       setIsSaving(false);
+      form.reset(values);
+      router.refresh();
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 2000);
       toast.success("Settings updated");

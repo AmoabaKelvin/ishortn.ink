@@ -114,6 +114,8 @@ type Metadata = {
   favicon: string;
 };
 
+const PHISHING_CHECK_TIMEOUT_MS = 10_000;
+
 export async function detectPhishingLink(
   url: string,
   metadata: Metadata,
@@ -161,6 +163,8 @@ export async function detectPhishingLink(
     Return FALSE for phishing UNLESS you are HIGHLY CONFIDENT the URL is malicious.
     If you are uncertain, err on the side of marking the URL as legitimate.
     `,
+    // Callers fail open on errors; the timeout keeps a slow provider from stalling link creation.
+    abortSignal: AbortSignal.timeout(PHISHING_CHECK_TIMEOUT_MS),
   });
 
   return result.output.response;
