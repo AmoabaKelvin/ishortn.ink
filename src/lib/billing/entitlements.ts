@@ -315,6 +315,10 @@ export type GraceEmailKind = "started" | "reminder" | "ended";
  * The next grace email due, if any. Lapsed subscriptions are emailed on day 0,
  * day 5 and day 7; accounts found over their plan (and teams) on day 0 and 24
  * hours before the grace period ends.
+ *
+ * Due emails are sent hourly (see /api/cron/entitlements), so each one goes out
+ * within an hour of becoming due; one that is due but missed by a run (cron
+ * jitter, a failed batch) is picked up by the next, as stages only move forward.
  */
 export function dueGraceEmail(input: {
   reason: GraceReason;

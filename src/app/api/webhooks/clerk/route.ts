@@ -89,7 +89,8 @@ export async function POST(req: Request) {
   };
   await db
     .insert(user)
-    .values({ id, ...values })
+    // New accounts have nothing above their plan to check (see ensurePlanChecked).
+    .values({ id, ...values, planCheckedAt: new Date() })
     .onDuplicateKeyUpdate({ set: values });
 
   if (resend) {

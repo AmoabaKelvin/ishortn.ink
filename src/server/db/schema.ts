@@ -183,6 +183,9 @@ export const user = mysqlTable(
     planGraceEndsAt: timestamp("planGraceEndsAt"),
     planGraceReason: mysqlEnum("planGraceReason", ["lapsed", "over_plan"]),
     planGraceEmailStage: int("planGraceEmailStage").default(0),
+    // When the account's usage was last checked against its plan; null until the first check,
+    // so accounts that predate enforcement get their grace period before any restriction applies.
+    planCheckedAt: timestamp("planCheckedAt"),
   },
   (table) => ({
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),

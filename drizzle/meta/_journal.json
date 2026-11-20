@@ -526,6 +526,13 @@
       "when": 1795212014313,
       "tag": "0074_acoustic_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1795213626697,
+      "tag": "0075_smart_veda",
+      "breakpoints": true
     }
   ]
 }

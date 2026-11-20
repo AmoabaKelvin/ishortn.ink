@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
-import { reconcileEntitlements } from "@/server/lib/entitlements/grace";
+import { reconcileEntitlements, sendDueGraceEmails } from "@/server/lib/entitlements/grace";
 import { isInternalRequest } from "@/server/lib/internal-request";
 
 const log = logger.child({ job: "entitlements" });
@@ -12,10 +12,15 @@ const log = logger.child({ job: "entitlements" });
  * sends the grace emails that are due. Idempotent, so it is also safe to call
  * by hand (for example right after a deploy).
  *
- * Schedule: 0 5 * * * (daily at 5 AM UTC) - configured in wrangler.jsonc
+ * With `?emails=1` it only sends the grace emails that are due. That runs
+ * hourly, so reminders and end-of-grace emails go out within an hour of when
+ * they are due instead of waiting for the next daily run.
+ *
+ * Schedule: 0 5 * * * (reconcile, daily at 5 AM UTC) and 10 * * * * (emails) -
+ * configured in wrangler.jsonc
  *
  * Usage:
- * GET /api/cron/entitlements
+ * GET /api/cron/entitlements[?emails=1]
  * Headers: { "Authorization": "Bearer <CRON_SECRET>" }
  */
 export async function GET(request: Request) {
@@ -25,7 +30,10 @@ export async function GET(request: Request) {
 
   try {
     const startTime = Date.now();
-    const result = await reconcileEntitlements();
+    const emailsOnly = new URL(request.url).searchParams.get("emails") === "1";
+    const result = emailsOnly
+      ? { emailsSent: await sendDueGraceEmails({}) }
+      : await reconcileEntitlements();
     const durationMs = Date.now() - startTime;
     log.info({ durationMs, ...result }, "entitlements reconcile complete");
 

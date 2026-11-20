@@ -6,11 +6,14 @@ import { eq, inArray } from "drizzle-orm";
 import { POST as createApiLink } from "@/app/api/v1/links/route";
 import { env } from "@/env.mjs";
 import { planAtLeast } from "@/lib/billing/entitlements";
+import { createBioPage } from "@/server/api/routers/bio-page/bio-page.service";
+import { createFolder } from "@/server/api/routers/folder/folder.service";
 import { linkRouter } from "@/server/api/routers/link/link.procedure";
 import { bulkCreateLinks, createLink, updateLink } from "@/server/api/routers/link/link.service";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { resolveWorkspaceContext } from "@/server/lib/workspace";
+import { userHasUltraPlan } from "@/server/lib/workspace/workspace.service";
 
 import { reconcileEntitlements, syncEntitlementsAfterBillingEvent } from "./grace";
 
@@ -88,7 +91,16 @@ const ACCOUNT_PLAN = {
   lapsedInGrace: "pro",
   lapsedAfterGrace: "free",
 } satisfies Record<AccountKey, Plan>;
-const USER_IDS = Object.values(ACCOUNTS).map((account) => account.id);
+// Accounts set up by individual tests below.
+const UNCHECKED_OVER_ID = "ent_test_unchecked_over";
+const UNCHECKED_FREE_ID = "ent_test_unchecked_free";
+const OVER_PLAN_GRACE_ID = "ent_test_over_plan_grace";
+const USER_IDS = [
+  ...Object.values(ACCOUNTS).map((account) => account.id),
+  UNCHECKED_OVER_ID,
+  UNCHECKED_FREE_ID,
+  OVER_PLAN_GRACE_ID,
+];
 const TEAM_SLUGS = ["ent-test-pro-team", "ent-test-ultra-team"];
 
 const domainOf = (key: AccountKey, n: number) =>
@@ -115,6 +127,8 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
         ),
       );
     await db.delete(schema.link).where(inArray(schema.link.userId, USER_IDS));
+    await db.delete(schema.folder).where(inArray(schema.folder.userId, USER_IDS));
+    await db.delete(schema.bioPage).where(inArray(schema.bioPage.userId, USER_IDS));
     await db.delete(schema.customDomain).where(inArray(schema.customDomain.userId, USER_IDS));
     await db.delete(schema.token).where(inArray(schema.token.userId, USER_IDS));
     await db.delete(schema.subscription).where(inArray(schema.subscription.userId, USER_IDS));
@@ -134,6 +148,8 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
         id: account.id,
         email: `${account.id}@entitlements.test`,
         lastLinkCountReset: new Date(),
+        // Checked already, so the restrictions apply as they will after the first reconcile.
+        planCheckedAt: new Date(),
         planGracePlan: account.grace?.plan ?? null,
         planGraceEndsAt: account.grace?.endsAt ?? null,
         planGraceReason: account.grace ? "lapsed" : null,
@@ -275,6 +291,112 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     expect(
       updateLink(ctx, { id: Number(link.insertId), url: `${TARGET_URL}/new` }),
     ).rejects.toThrow(/Custom domains are available on Pro and Ultra/);
+  });
+
+  test("links on a custom domain within the plan stay editable while it isn't verified", async () => {
+    const domain = domainOf("pro", 1);
+    const where = eq(schema.customDomain.domain, domain);
+    const [link] = await db.insert(schema.link).values({
+      url: TARGET_URL,
+      alias: uniqueAlias(),
+      domain,
+      userId: ACCOUNTS.pro.id,
+    });
+    await db.update(schema.customDomain).set({ status: "pending" }).where(where);
+    try {
+      const ctx = await workspaceCtx("pro");
+      await updateLink(ctx, { id: Number(link.insertId), url: `${TARGET_URL}/pending` });
+      // New links still need a verified domain.
+      expect(await dashboardCreate("pro", { domain })).toMatch(/not available/);
+    } finally {
+      await db.update(schema.customDomain).set({ status: "active" }).where(where);
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Paid workspace features
+  // ---------------------------------------------------------------------------
+
+  // Whether each account can create its first folder and its second bio page.
+  test.each(ACCOUNT_KEYS.map((key) => [key] as const))(
+    "dashboard: %s folders and bio pages follow the plan",
+    async (key) => {
+      const ctx = await workspaceCtx(key);
+      const paid = ACCOUNT_PLAN[key] !== "free";
+      const folder = await createFolder(ctx, { name: `Folder ${uniqueAlias()}` })
+        .then(() => "ok")
+        .catch((error: Error) => error.message);
+      expect(folder === "ok").toBe(paid);
+
+      for (const n of [1, 2]) {
+        const slug = `${uniqueAlias()}-${n}`;
+        const page = await createBioPage(ctx, { slug })
+          .then(() => "ok")
+          .catch((error: Error) => error.message);
+        expect(page === "ok").toBe(n === 1 || paid);
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Accounts not checked yet (enforcement ships)
+  // ---------------------------------------------------------------------------
+
+  test("an unchecked account over its plan gets its grace on the first request", async () => {
+    await db.insert(schema.user).values({ id: UNCHECKED_OVER_ID, lastLinkCountReset: new Date() });
+    const domains = [1, 2].map((n) => `d${n}.ent-test-unchecked.test`);
+    for (const [i, domain] of domains.entries()) {
+      await db.insert(schema.customDomain).values({
+        domain,
+        userId: UNCHECKED_OVER_ID,
+        status: "active",
+        createdAt: new Date(Date.now() - (2 - i) * DAY),
+      });
+    }
+
+    const workspace = await resolveWorkspaceContext(UNCHECKED_OVER_ID, "ishortn.ink", db);
+    expect(workspace.plan).toBe("pro");
+    const row = await db.query.user.findFirst({ where: eq(schema.user.id, UNCHECKED_OVER_ID) });
+    expect(row?.planGraceReason).toBe("over_plan");
+    expect(row?.planCheckedAt).not.toBeNull();
+    expect(row?.planGraceEndsAt?.getTime()).toBeGreaterThan(Date.now() + 6.9 * DAY);
+
+    // Its domains keep taking links through the grace period.
+    const [link] = await db.insert(schema.link).values({
+      url: TARGET_URL,
+      alias: uniqueAlias(),
+      domain: domains[1]!,
+      userId: UNCHECKED_OVER_ID,
+    });
+    // SAFETY: updateLink reads ctx.db, ctx.auth.userId, ctx.headers and ctx.workspace.
+    const ctx = {
+      db,
+      auth: { userId: UNCHECKED_OVER_ID },
+      headers: new Headers({ host: "ishortn.ink" }),
+      workspace,
+    } as WorkspaceTRPCContext;
+    await updateLink(ctx, { id: Number(link.insertId), url: `${TARGET_URL}/unchecked` });
+  });
+
+  test("an unchecked account within its plan is only marked as checked", async () => {
+    await db.insert(schema.user).values({ id: UNCHECKED_FREE_ID, lastLinkCountReset: new Date() });
+    const workspace = await resolveWorkspaceContext(UNCHECKED_FREE_ID, "ishortn.ink", db);
+    expect(workspace.plan).toBe("free");
+    const row = await db.query.user.findFirst({ where: eq(schema.user.id, UNCHECKED_FREE_ID) });
+    expect(row?.planGraceEndsAt).toBeNull();
+    expect(row?.planCheckedAt).not.toBeNull();
+  });
+
+  test("an over-plan grace doesn't unlock team creation", async () => {
+    await db.insert(schema.user).values({
+      id: OVER_PLAN_GRACE_ID,
+      planCheckedAt: new Date(),
+      planGracePlan: "ultra",
+      planGraceEndsAt: new Date(Date.now() + 3 * DAY),
+      planGraceReason: "over_plan",
+    });
+    expect(await userHasUltraPlan(OVER_PLAN_GRACE_ID, db)).toBe(false);
+    expect(await userHasUltraPlan(ACCOUNTS.ultra.id, db)).toBe(true);
   });
 
   // ---------------------------------------------------------------------------

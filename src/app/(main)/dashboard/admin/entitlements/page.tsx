@@ -2,9 +2,10 @@
 
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 
-import { Skeleton } from "@/components/ui/skeleton";
 import { PLAN_NAMES } from "@/lib/billing/entitlements";
 import { api } from "@/trpc/react";
+
+import { EntitlementsSkeleton } from "./_components/entitlements-skeleton";
 
 import type { Plan } from "@/lib/billing/plans";
 import type { RouterOutputs } from "@/trpc/shared";
@@ -76,24 +77,6 @@ function SummaryStats({ data }: { data: Overview }) {
   );
 }
 
-function LoadingState() {
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-[74px] rounded-xl" />
-        ))}
-      </div>
-      <Skeleton className="h-6 w-64" />
-      <div className="space-y-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 rounded-lg" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function AdminEntitlementsPage() {
   const { data, isLoading, error } = api.admin.getEntitlements.useQuery();
 
@@ -108,10 +91,10 @@ export default function AdminEntitlementsPage() {
         </p>
       </div>
 
-      {isLoading && <LoadingState />}
+      {isLoading && <EntitlementsSkeleton />}
 
       {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+        <div className="flex items-start gap-2 rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-600 dark:bg-red-500/10 dark:text-red-400">
           <IconAlertTriangle size={16} stroke={1.5} className="mt-0.5 shrink-0" />
           <p className="min-w-0">Couldn&apos;t load entitlements: {error.message}</p>
         </div>
@@ -124,7 +107,7 @@ export default function AdminEntitlementsPage() {
           {/* Accounts */}
           <section>
             <div className="mb-4">
-              <h2 className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+              <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                 Accounts over their plan
               </h2>
               <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
@@ -219,7 +202,7 @@ export default function AdminEntitlementsPage() {
           {/* Teams */}
           <section>
             <div className="mb-4">
-              <h2 className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+              <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                 Teams below Ultra
               </h2>
               <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">

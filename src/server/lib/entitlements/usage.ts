@@ -57,13 +57,8 @@ export async function getPlanUsageByUser(
       dbClient
         .select({ userId: customDomain.userId, total: count() })
         .from(customDomain)
-        .where(
-          and(
-            isNull(customDomain.teamId),
-            eq(customDomain.status, "active"),
-            scope(customDomain.userId),
-          ),
-        )
+        // Every status counts, as in the domain cap and getUsableCustomDomains.
+        .where(and(isNull(customDomain.teamId), scope(customDomain.userId)))
         .groupBy(customDomain.userId),
       dbClient
         .select({ userId: folder.userId, total: count() })

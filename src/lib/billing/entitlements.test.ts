@@ -218,6 +218,48 @@ describe("dueGraceEmail", () => {
     expect(overPlan(7, GRACE_EMAIL_STAGE.reminder)).toBeNull();
   });
 
+  test("cron jitter only delays a reminder to the next hourly run", () => {
+    const SECOND = 1000;
+    const HOUR = 60 * 60 * SECOND;
+    // The run on day 6 starts a few seconds earlier than the run that started the grace.
+    const day6 = at(6).getTime() - 3 * SECOND;
+    expect(
+      dueGraceEmail({
+        reason: "over_plan",
+        endsAt: at(7),
+        stage: GRACE_EMAIL_STAGE.started,
+        now: new Date(day6),
+      }),
+    ).toBeNull();
+    expect(
+      dueGraceEmail({
+        reason: "over_plan",
+        endsAt: at(7),
+        stage: GRACE_EMAIL_STAGE.started,
+        now: new Date(day6 + HOUR),
+      }),
+    ).toBe("reminder");
+    // A lapse started by a webhook at an arbitrary time still gets its day-5
+    // reminder, and its day-7 email, within the hour.
+    const endsAt = new Date(at(7).getTime() + 5 * HOUR + 17 * SECOND);
+    expect(
+      dueGraceEmail({
+        reason: "lapsed",
+        endsAt,
+        stage: GRACE_EMAIL_STAGE.started,
+        now: new Date(at(5).getTime() + 6 * HOUR),
+      }),
+    ).toBe("reminder");
+    expect(
+      dueGraceEmail({
+        reason: "lapsed",
+        endsAt,
+        stage: GRACE_EMAIL_STAGE.reminder,
+        now: new Date(endsAt.getTime() + HOUR - SECOND),
+      }),
+    ).toBe("ended");
+  });
+
   test("a start email is never sent once grace is over", () => {
     expect(overPlan(8, GRACE_EMAIL_STAGE.none)).toBeNull();
   });

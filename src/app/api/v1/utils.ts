@@ -8,6 +8,7 @@ import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domai
 import { domainBeyondPlanMessage, getUsableCustomDomains } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
+import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
 
 import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
 
@@ -26,7 +27,14 @@ export async function validateAndGetToken(apiKey: string | null) {
   const [userRecord, userSubscription] = await Promise.all([
     db.query.user.findFirst({
       where: eq(user.id, userId),
-      columns: { banned: true, deletedAt: true, planGracePlan: true, planGraceEndsAt: true },
+      columns: {
+        id: true,
+        banned: true,
+        deletedAt: true,
+        planGracePlan: true,
+        planGraceEndsAt: true,
+        planCheckedAt: true,
+      },
     }),
     db.select().from(subscription).where(eq(subscription.userId, userId)),
   ]);
@@ -37,7 +45,8 @@ export async function validateAndGetToken(apiKey: string | null) {
 
   const userSub = userSubscription[0];
   // The same entitlement the dashboard uses: API links live in the personal workspace.
-  const plan = effectivePlan(userSub ?? null, userRecord);
+  const grace = await ensurePlanChecked(userRecord, userSub ?? null);
+  const plan = effectivePlan(userSub ?? null, grace);
   return { ...existingToken[0]!, subscription: userSub, plan };
 }
 

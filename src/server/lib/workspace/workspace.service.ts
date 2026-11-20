@@ -1,10 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 
-import { effectivePlan, teamAccess } from "@/lib/billing/entitlements";
+import { effectivePlan, paidPlan, teamAccess } from "@/lib/billing/entitlements";
 import { extractPlatformSubdomain } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import { RESERVED_TEAM_SLUGS, team, teamMember } from "@/server/db/schema";
+import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
 
 import type { WorkspaceContext, PersonalWorkspaceContext, TeamWorkspaceContext } from "./types";
 import type { TeamAccess } from "@/lib/billing/entitlements";
@@ -102,7 +103,8 @@ async function getPersonalWorkspaceContext(
     });
   }
 
-  const plan = effectivePlan(userRecord.subscriptions ?? null, userRecord);
+  const sub = userRecord.subscriptions ?? null;
+  const plan = effectivePlan(sub, await ensurePlanChecked(userRecord, sub));
 
   return {
     type: "personal",
@@ -227,11 +229,15 @@ export async function getUserEffectivePlan(userId: string, dbClient: DbClient = 
 }
 
 /**
- * Checks if a user has an Ultra plan subscription.
- * Required for team creation and for taking over a team.
+ * Whether a user is paying for Ultra right now. Required for team creation and
+ * for taking over a team. A grace period doesn't count: it keeps existing usage
+ * working, it doesn't unlock new teams.
  */
 export async function userHasUltraPlan(userId: string, dbClient: DbClient = db): Promise<boolean> {
-  return (await getUserEffectivePlan(userId, dbClient)) === "ultra";
+  const sub = await dbClient.query.subscription.findFirst({
+    where: (table, { eq }) => eq(table.userId, userId),
+  });
+  return paidPlan(sub ?? null) === "ultra";
 }
 
 /** A team's entitlements, from its owner's live plan and the team grace period. */

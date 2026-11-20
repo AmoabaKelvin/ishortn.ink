@@ -11,6 +11,7 @@ import {
   GRACE_PERIOD_MS,
   graceChangeAfterBillingEvent,
   higherPlan,
+  NO_GRACE,
   overPlanFeatures,
   paidPlan,
   PLAN_NAMES,
@@ -19,15 +20,16 @@ import {
 } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, team, user } from "@/server/db/schema";
 import { resend } from "@/server/lib/notifications/resend-client";
 
 import { getPlanUsageByUser } from "./usage";
 
-import type { GraceEmailKind, GraceReason } from "@/lib/billing/entitlements";
+import type { GraceEmailKind, GraceReason, PlanGrace, PlanUsage } from "@/lib/billing/entitlements";
 import type { Plan } from "@/lib/billing/plans";
-import type { Subscription } from "@/server/db/schema";
+import type { Subscription, User } from "@/server/db/schema";
 import type { DbClient } from "@/server/lib/user-plan";
 
 const log = logger.child({ component: "entitlements" });
@@ -82,6 +84,60 @@ const CLEARED_GRACE = {
   planGraceReason: null,
   planGraceEmailStage: GRACE_EMAIL_STAGE.none,
 };
+
+/** The grace an account using features above `plan` gets: the plan that covers it, for 7 days. */
+function overPlanGrace(usage: PlanUsage, plan: Plan, now: Date) {
+  const over = overPlanFeatures(usage, plan);
+  if (over.length === 0) return null;
+  return {
+    plan: over.reduce<Plan>((acc, item) => higherPlan(acc, item.requiredPlan), "free"),
+    endsAt: new Date(now.getTime() + GRACE_PERIOD_MS),
+    reason: "over_plan" as const,
+  };
+}
+
+/**
+ * Checks an account the daily reconcile hasn't seen yet (for example right
+ * after enforcement ships) on its first request, so an account already above
+ * its plan gets its grace period before any restriction applies to it. Runs at
+ * most once per account; returns the grace to use for this request. Called where
+ * a request's plan is first resolved (workspace context, API key), with the root
+ * client so it never runs inside a caller's transaction.
+ */
+export async function ensurePlanChecked(
+  account: Pick<User, "id" | "planCheckedAt" | "planGraceEndsAt" | "planGracePlan">,
+  sub: Subscription | null,
+  now = new Date(),
+): Promise<PlanGrace> {
+  if (account.planCheckedAt || account.planGraceEndsAt) return account;
+
+  const usage = await getPlanUsageByUser(db, [account.id], now);
+  // Base plan without any grace: a failed renewal is still covered until its
+  // lapse grace is recorded, so it isn't treated as over its plan here.
+  const grace = overPlanGrace(
+    usage.get(account.id) ?? EMPTY_USAGE,
+    effectivePlan(sub, NO_GRACE, now),
+    now,
+  );
+  if (!grace) {
+    await db.update(user).set({ planCheckedAt: now }).where(eq(user.id, account.id));
+    return account;
+  }
+
+  await db
+    .update(user)
+    .set({
+      planGracePlan: grace.plan,
+      planGraceEndsAt: grace.endsAt,
+      planGraceReason: grace.reason,
+      planGraceEmailStage: GRACE_EMAIL_STAGE.none,
+      planCheckedAt: now,
+    })
+    .where(and(eq(user.id, account.id), isNull(user.planGraceEndsAt)));
+  log.info({ userId: account.id, plan: grace.plan }, "started over-plan grace on first check");
+  await runBackgroundTask(sendDueGraceEmails({ userIds: [account.id], now }));
+  return { planGracePlan: grace.plan, planGraceEndsAt: grace.endsAt };
+}
 
 /** Keeps the grace period of teams owned by `ownerId` in step with the owner's paid plan. */
 async function syncOwnedTeams(dbClient: DbClient, ownerId: string, ownerPaid: Plan, now: Date) {
@@ -236,18 +292,18 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
       with: { subscriptions: true },
     });
     for (const account of accounts) {
-      const over = overPlanFeatures(
+      const grace = overPlanGrace(
         usage.get(account.id) ?? EMPTY_USAGE,
         paidPlan(account.subscriptions, now),
+        now,
       );
-      if (over.length === 0) continue;
-      const plan = over.reduce<Plan>((acc, item) => higherPlan(acc, item.requiredPlan), "free");
-      const endsAt = new Date(now.getTime() + GRACE_PERIOD_MS);
-      if (await startUserGrace(db, account.id, { plan, endsAt, reason: "over_plan" }, true, now)) {
+      if (grace && (await startUserGrace(db, account.id, grace, true, now))) {
         result.overPlanStarted++;
       }
     }
   }
+  // Every account has now been checked once (see ensurePlanChecked).
+  await db.update(user).set({ planCheckedAt: now }).where(isNull(user.planCheckedAt));
 
   // 4. Teams follow their owner's paid plan.
   const teams = await db

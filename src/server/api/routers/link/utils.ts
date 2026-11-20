@@ -208,12 +208,6 @@ export async function assertDomainAllowed(
   if (isPlatformDomain(normalized)) return;
 
   const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
-  const limit = getPlanCaps(ctx.workspace.plan).domainLimit;
-  if (limit !== undefined) {
-    const usable = await getUsableCustomDomains(ctx.db, scope, limit);
-    if (usable.includes(normalized)) return;
-  }
-
   const owned = await ctx.db.query.customDomain.findFirst({
     where: and(
       sql`lower(${customDomain.domain}) = ${normalized}`,
@@ -229,9 +223,7 @@ export async function assertDomainAllowed(
     });
   }
 
-  if (limit !== undefined) {
-    throw new TRPCError({ code: "FORBIDDEN", message: domainBeyondPlanMessage(normalized, limit) });
-  }
+  await assertDomainWithinPlan(ctx, normalized);
 }
 
 /**
@@ -257,9 +249,11 @@ export async function assertDomainWithinPlan(
 }
 
 /**
- * The custom domains (lowercased) that still take new and edited links: the
- * workspace's oldest `limit` verified domains. Domains past the plan allowance
- * (after a downgrade) keep redirecting their existing links but take no writes.
+ * The custom domains (lowercased) within the plan's allowance: the workspace's
+ * oldest `limit` domains, whatever their verification status, matching how the
+ * domain cap counts them. Domains past the allowance (after a downgrade) keep
+ * redirecting their existing links but take no new or edited ones. New links
+ * also need the domain to be verified (assertDomainAllowed).
  */
 export async function getUsableCustomDomains(
   dbClient: Pick<ProtectedTRPCContext, "db">["db"],
@@ -270,7 +264,7 @@ export async function getUsableCustomDomains(
   const rows = await dbClient
     .select({ domain: customDomain.domain })
     .from(customDomain)
-    .where(and(eq(customDomain.status, "active"), scope))
+    .where(scope)
     .orderBy(asc(customDomain.createdAt), asc(customDomain.id))
     .limit(limit);
   return rows.flatMap((row) => (row.domain ? [row.domain.toLowerCase()] : []));
