@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
@@ -99,15 +99,30 @@ export async function normalizeMonthlyLinkCount(
   const lastReset = ctx.userRecord.lastLinkCountReset ?? ctx.userRecord.createdAt ?? new Date();
 
   if (lastReset < monthStart) {
-    await dbClient
+    // `ctx` may come from a snapshot read, so re-check the reset date under the
+    // row lock: when a parallel request has already reset (and counted) this
+    // month, matching 0 rows here keeps its count instead of zeroing it again.
+    const [result] = await dbClient
       .update(user)
       .set({
         monthlyLinkCount: 0,
         lastLinkCountReset: new Date(),
       })
-      .where(eq(user.id, ctx.userRecord.id));
+      .where(
+        and(
+          eq(user.id, ctx.userRecord.id),
+          or(isNull(user.lastLinkCountReset), lt(user.lastLinkCountReset, monthStart)),
+        ),
+      );
 
-    return 0;
+    if (result.affectedRows > 0) return 0;
+
+    const [current] = await dbClient
+      .select({ monthlyLinkCount: user.monthlyLinkCount })
+      .from(user)
+      .where(eq(user.id, ctx.userRecord.id))
+      .for("update");
+    return current?.monthlyLinkCount ?? 0;
   }
 
   return ctx.userRecord.monthlyLinkCount ?? 0;

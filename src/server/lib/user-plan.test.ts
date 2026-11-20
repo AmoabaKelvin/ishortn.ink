@@ -26,8 +26,8 @@ describe("monthlyLinkLimitMessage", () => {
 });
 
 // The quota is enforced by a conditional UPDATE and row locks, which only a
-// real MySQL can exercise. Point TEST_DATABASE_URL at a disposable database
-// with the schema pushed (`DATABASE_URL=... bunx drizzle-kit push`) to run these.
+// real MySQL can exercise. Set TEST_DATABASE_URL to run them; see
+// CONTRIBUTING.md, "Database tests".
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
 describe.skipIf(!testDatabaseUrl)("reserveMonthlyLinkSlot (MySQL)", () => {
@@ -126,6 +126,18 @@ describe.skipIf(!testDatabaseUrl)("reserveMonthlyLinkSlot (MySQL)", () => {
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(await linkCount()).toBe(1);
     expect(await storedCount()).toBe(30);
+  });
+
+  test("concurrent first requests of a new month reset the count only once", async () => {
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    await seedUser("free", 30, lastMonth);
+
+    const results = await Promise.allSettled(Array.from({ length: 8 }, () => createLink()));
+
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(8);
+    expect(await linkCount()).toBe(8);
+    expect(await storedCount()).toBe(8);
   });
 
   test("a failed insert rolls the count back", async () => {
