@@ -76,7 +76,7 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
       ) : !hasFolders ? (
         <EmptyStatePro onCreateClick={() => setCreateModalOpen(true)} />
       ) : (
-        <div className="divide-y divide-neutral-300/60">
+        <div className="divide-y divide-neutral-300/60 dark:divide-border">
           <AnimatePresence>
             {folders.map((folder, index) => (
               <FolderCard

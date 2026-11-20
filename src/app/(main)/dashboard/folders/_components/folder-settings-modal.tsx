@@ -1,6 +1,7 @@
 "use client";
 
 import { IconCheck, IconLoader2, IconX } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -42,6 +43,7 @@ type FolderSettingsModalProps = {
 
 export function FolderSettingsModal({ folder, open, onOpenChange }: FolderSettingsModalProps) {
   const utils = api.useUtils();
+  const router = useRouter();
 
   const teamMembers = api.team.listMembers.useQuery(undefined, {
     enabled: open,
@@ -56,6 +58,7 @@ export function FolderSettingsModal({ folder, open, onOpenChange }: FolderSettin
     onSuccess: async () => {
       toast.success("Folder access updated successfully");
       await utils.folder.list.invalidate();
+      router.refresh();
       onOpenChange(false);
     },
     onError: (error) => {

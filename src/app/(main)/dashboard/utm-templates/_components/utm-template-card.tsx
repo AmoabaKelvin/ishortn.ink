@@ -78,10 +78,11 @@ export function UtmTemplateCard({ template, index, onEdit }: UtmTemplateCardProp
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="flex shrink-0 items-center gap-0.5 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
               <button
                 type="button"
                 onClick={() => onEdit(template)}
+                aria-label={`Edit ${template.name}`}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
               >
                 <IconPencil size={14} stroke={1.5} />
@@ -89,6 +90,7 @@ export function UtmTemplateCard({ template, index, onEdit }: UtmTemplateCardProp
               <button
                 type="button"
                 onClick={() => setDeleteDialogOpen(true)}
+                aria-label={`Delete ${template.name}`}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600"
               >
                 <IconTrash size={14} stroke={1.5} />

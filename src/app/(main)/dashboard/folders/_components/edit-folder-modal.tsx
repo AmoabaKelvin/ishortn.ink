@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -38,11 +39,13 @@ export function EditFolderModal({ folder, open, onOpenChange }: EditFolderModalP
   } = useForm<UpdateFolderInput>();
 
   const utils = api.useUtils();
+  const router = useRouter();
 
   const updateFolderMutation = api.folder.update.useMutation({
     onSuccess: async () => {
       toast.success("Folder updated successfully");
       await utils.folder.list.invalidate();
+      router.refresh();
       onOpenChange(false);
     },
     onError: (error) => {
