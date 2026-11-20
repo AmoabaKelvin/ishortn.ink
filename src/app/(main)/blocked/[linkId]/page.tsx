@@ -4,9 +4,14 @@ import { Funnel_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 
 import { DELETION_CASCADE_REASON } from "@/lib/account-deletion/constants";
+import { noIndexMetadata } from "@/lib/seo/indexing";
 import { cn } from "@/lib/utils";
 import { db } from "@/server/db";
 import { geoRule, link } from "@/server/db/schema";
+
+import type { Metadata } from "next";
+
+export const metadata: Metadata = noIndexMetadata;
 
 const funnelSans = Funnel_Sans({
   subsets: ["latin"],

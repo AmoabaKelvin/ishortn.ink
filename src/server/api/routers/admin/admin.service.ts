@@ -1,4 +1,4 @@
-import { and, between, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, between, count, desc, eq, gte, inArray, like, or, sql } from "drizzle-orm";
 
 import { PAID_PLANS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/constants/plan-pricing";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
@@ -12,12 +12,15 @@ import {
   linkVisit,
   subscription,
   user,
+  userAttribution,
 } from "@/server/db/schema";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 
 /** Discriminator used to identify links auto-blocked by a user ban */
 const BAN_CASCADE_REASON = "Owner account banned" as const;
+import { buildSignupSeries, summarizeSignupGroups } from "./utils";
+
 import type {
   AddBlockedDomainInput,
   BanUserInput,
@@ -1100,4 +1103,76 @@ export async function getRecentSubscriptions(
     .limit(input.limit);
 
   return rows;
+}
+
+export const SIGNUP_WINDOW_DAYS = 90;
+const SIGNUP_BREAKDOWN_LIMIT = 50;
+// ponytail: distinct first-touch combinations in 90 days; raise if a breakdown
+// ever looks short.
+const SIGNUP_GROUP_LIMIT = 5000;
+
+/**
+ * Signups over the last 90 days (UTC days) by first-touch source, with paid
+ * conversions: signups that later started a subscription (a Subscription row
+ * exists, even if since cancelled).
+ */
+export async function getSignupAttribution(ctx: ProtectedTRPCContext, now: Date = new Date()) {
+  const until = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const since = new Date(until.getTime() - (SIGNUP_WINDOW_DAYS - 1) * 24 * 60 * 60 * 1000);
+
+  const dayExpr = sql<string>`DATE_FORMAT(${user.createdAt}, '%Y-%m-%d')`;
+  const hasClickId = sql<number>`${userAttribution.clickId} IS NOT NULL`;
+  const attributed = sql<number>`${userAttribution.userId} IS NOT NULL`;
+
+  const [dayRows, groupRows] = await Promise.all([
+    ctx.db
+      .select({ date: dayExpr, signups: count(), paid: count(subscription.id) })
+      .from(user)
+      .leftJoin(subscription, eq(subscription.userId, user.id))
+      .where(gte(user.createdAt, since))
+      .groupBy(dayExpr),
+    ctx.db
+      .select({
+        attributed,
+        utmSource: userAttribution.utmSource,
+        utmMedium: userAttribution.utmMedium,
+        utmCampaign: userAttribution.utmCampaign,
+        referrerHost: userAttribution.referrerHost,
+        landingPath: userAttribution.landingPath,
+        hasClickId,
+        signups: count(),
+        paid: count(subscription.id),
+      })
+      .from(user)
+      .leftJoin(userAttribution, eq(userAttribution.userId, user.id))
+      .leftJoin(subscription, eq(subscription.userId, user.id))
+      .where(gte(user.createdAt, since))
+      .groupBy(
+        attributed,
+        userAttribution.utmSource,
+        userAttribution.utmMedium,
+        userAttribution.utmCampaign,
+        userAttribution.referrerHost,
+        userAttribution.landingPath,
+        hasClickId,
+      )
+      .orderBy(desc(count()))
+      .limit(SIGNUP_GROUP_LIMIT),
+  ]);
+
+  const groups = groupRows.map((row) => ({
+    ...row,
+    attributed: Number(row.attributed) === 1,
+    hasClickId: Number(row.hasClickId) === 1,
+  }));
+
+  return {
+    since: since.toISOString().slice(0, 10),
+    ...buildSignupSeries(
+      dayRows.map((row) => ({ ...row, date: String(row.date) })),
+      since,
+      until,
+    ),
+    ...summarizeSignupGroups(groups, SIGNUP_BREAKDOWN_LIMIT),
+  };
 }

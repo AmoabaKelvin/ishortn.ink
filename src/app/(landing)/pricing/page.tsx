@@ -18,7 +18,7 @@ import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primit
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Pricing",
+  title: "Pricing: Free, Pro $8 and Ultra $15",
   description:
     "Start free forever. Upgrade when you're ready. Cancel in one click. Pro and Ultra plans for solo makers and growing teams.",
   keywords: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     "url shortener cost",
   ],
   openGraph: {
-    title: "Pricing — iShortn",
+    title: "Pricing: Free, Pro $8 and Ultra $15 — iShortn",
     description:
       "Start free forever. Upgrade when you're ready. Cancel in one click. Pro and Ultra plans for solo makers and growing teams.",
     type: "website",
@@ -50,11 +50,11 @@ const pricingFaqs = [
   },
   {
     q: "Do I get a custom domain on the free plan?",
-    a: "Custom domains are on Pro (up to 3) and Ultra (unlimited). Free uses ishortn.ink/your-slug.",
+    a: "Custom domains are on Pro (up to 3) and Ultra (unlimited). Free uses isht.app/your-slug.",
   },
   {
     q: "Is the API available on every plan?",
-    a: "The REST API is available on Pro and Ultra. Free is for interactive use through the dashboard.",
+    a: "The REST API is available on Pro and Ultra. Free is for interactive use through the dashboard and can't create API keys. If a paid plan ends, its API keys keep working on Free limits for 7 days, then requests return 403 until the account upgrades.",
   },
 ];
 
@@ -81,7 +81,7 @@ export default function PricingPage() {
         </div>
       </Section>
 
-      <Pricing />
+      <Pricing showHeading={false} />
 
       <Faq faqs={pricingFaqs} />
 

@@ -1,0 +1,65 @@
+---
+title: Analytics
+description: What iShortn records for each click, the dashboard views and date ranges, how long data is kept on each plan, and monthly event limits.
+---
+
+Every short link, QR code and bio page comes with its own analytics. There is nothing to install: each visit is recorded as the visitor is redirected.
+
+## What's recorded
+
+For each click, iShortn records:
+
+- **When**: the date and time of the click.
+- **Where**: country, city and continent, derived from the visitor's IP address.
+- **Device**: device type (mobile, tablet, desktop), device model, operating system and browser.
+- **Referrer**: where the click came from, such as `twitter`, `linkedin` or `direct` when there's no referrer.
+- **Targeting**: which [targeting rule](/docs/short-links#geo-and-device-targeting), if any, matched the visit.
+- **Verified**: whether the click was [verified](/docs/short-links#verified-clicks) as coming from a real browser.
+
+**Unique visitors** are counted with a one-way hash of the visitor's IP address; the IP address itself isn't stored. Clicks from known bots and crawlers aren't recorded.
+
+## Dashboard views
+
+Click a link in the dashboard to open its analytics:
+
+- Total, unique and verified clicks, each compared with the previous period.
+- Clicks over time.
+- Countries and cities. Pro and Ultra also see continents and a world map.
+- Browsers, devices, models and operating systems.
+- Referrers.
+- Clicks per targeting rule.
+
+The [analytics overview](/dashboard/analytics/overview) combines every link in the workspace.
+
+## Date ranges
+
+Pick from the last 24 hours, 7 days, 30 days or 90 days, this month, last month, this year, last year, or all time.
+
+| | Free | Pro | Ultra |
+| --- | --- | --- | --- |
+| Date range in the dashboard | <PlanValue plan="free" cap="analyticsRangeLimitDays" /> | All ranges | All ranges |
+
+## How long data is kept
+
+| | Free | Pro | Ultra |
+| --- | --- | --- | --- |
+| Detailed click data | 30 days | 365 days | Kept |
+| Daily click totals | Kept | Kept | Kept |
+
+When detailed click data passes its retention window, it's rolled up into a daily total of clicks and unique clicks per link, then removed. Your long-term trend (clicks over time) survives; the breakdowns by country, device and so on cover only the detailed data that's still kept. Links in a [team workspace](/docs/teams) follow the team owner's plan. Bio page views follow the same windows.
+
+## Tracked events
+
+Clicks and bio page views count as **events**. Each plan includes a monthly allowance:
+
+| | Free | Pro | Ultra |
+| --- | --- | --- | --- |
+| Events per month | <PlanValue plan="free" cap="eventsLimit" /> | <PlanValue plan="pro" cap="eventsLimit" /> | <PlanValue plan="ultra" cap="eventsLimit" /> |
+
+You get an email at 80%, 90% and 100% of the allowance. Past 100%, **links keep redirecting**, but new visits aren't recorded until the allowance resets on the first day of the next month. The analytics pages show a banner while tracking is paused.
+
+## Export
+
+- **Links**: export your link list as CSV or JSON from the dashboard's bulk actions menu. The file has each link's creation date, destination, alias, domain and note.
+- **Campaigns**: export a campaign's analytics as CSV from the campaign page.
+- **API**: fetch a link's full analytics as JSON with [Link analytics](/docs/api/link-analytics).

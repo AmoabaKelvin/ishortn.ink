@@ -17,7 +17,7 @@ export const PLAN_FEATURES = {
       "5 dynamic QR codes: edit anytime, never expire, no ads",
       `1 link-in-bio page (up to ${free.bioLinkBlocksPerPageLimit} link blocks)`,
       `${free.campaignLimit} campaign with aggregate analytics`,
-      "ishortn.ink links",
+      "Short links on isht.app",
     ],
   },
   pro: {
@@ -48,7 +48,7 @@ export const PLAN_FEATURES = {
       "UTM parameters & templates",
       "Unlimited bio pages with scheduled blocks",
       "Unlimited campaigns",
-      "Team workspaces & resource transfer",
+      "Team workspaces",
       "Priority support",
     ],
     comingSoon: ["Conversion tracking", "Customization of password-protected pages"],

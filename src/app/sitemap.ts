@@ -1,4 +1,5 @@
 import { getAllPosts } from "@/lib/blog";
+import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
 import { competitors } from "@/lib/seo/competitors";
 import { absoluteUrl } from "@/lib/utils";
 
@@ -79,5 +80,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...compareEntries, ...blogPostEntries];
+  const docsEntries: MetadataRoute.Sitemap = DOCS_PAGES.map((page) => ({
+    url: absoluteUrl(docsHref(page.slug)),
+    lastModified: new Date().toISOString(),
+    changeFrequency: "weekly",
+    priority: page.slug === "" || page.slug === "api" ? 0.8 : 0.6,
+  }));
+
+  return [...staticRoutes, ...compareEntries, ...docsEntries, ...blogPostEntries];
 }

@@ -150,8 +150,9 @@ export const updateLinkSchema = createLinkSchema.partial().extend({
 });
 
 export const verifyLinkPasswordSchema = z.object({
-  id: z.number(),
-  password: z.string(),
+  id: z.number().int().positive(),
+  // bcrypt only reads the first 72 bytes; the cap keeps oversized bodies cheap.
+  password: z.string().min(1).max(256),
 });
 
 export const rangeEnum = z.enum([
@@ -172,6 +173,7 @@ export type CreateLinkInput = z.infer<typeof createLinkSchema>;
 export type UpdateLinkInput = z.infer<typeof updateLinkSchema>;
 export type GetLinkInput = z.infer<typeof getLinkSchema>;
 export type RetrieveOriginalUrlInput = z.infer<typeof retrieveOriginalUrlSchema>;
+export type VerifyLinkPasswordInput = z.infer<typeof verifyLinkPasswordSchema>;
 
 export type QuickLinkShorteningInput = z.infer<typeof quickLinkShorteningSchema>;
 

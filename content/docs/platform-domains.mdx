@@ -1,0 +1,31 @@
+---
+title: Platform domains
+description: The three short-link domains every iShortn account can use, isht.app, isht.ink and ishortn.ink, and how to choose a default.
+---
+
+Every account can create links on three domains that iShortn runs. They're available on every plan and behave the same way. A link only exists on the domain it was created on.
+
+| Domain | Notes |
+| --- | --- |
+| `isht.app` | The default for new links. HTTPS only. |
+| `isht.ink` | The previous default. Four characters shorter than `ishortn.ink`. |
+| `ishortn.ink` | The original domain. The dashboard also lives here. |
+
+Links you've already shared keep working on the domain they were created on.
+
+## Choosing a domain for a link
+
+The domain menu on a new link, a QR code or a link edit lists all three platform domains, plus any active [custom domains](/docs/custom-domains) in your workspace. Aliases are unique per domain, so `spring-sale` can be taken on `isht.app` and still free on `isht.ink`.
+
+## Setting a default
+
+New links start on `isht.app`. To change that:
+
+1. Open [Settings → General](/dashboard/settings#general).
+2. Pick a domain under **Default Domain** and save.
+
+The default applies to the dashboard and to [API](/docs/api#domains) requests that don't name a domain.
+
+## Team subdomains
+
+Each team is also reachable on a subdomain of every platform domain. A team with the slug `acme` can open its workspace at `acme.isht.app`, `acme.isht.ink` or `acme.ishortn.ink`. See [Teams and workspaces](/docs/teams#team-subdomains).

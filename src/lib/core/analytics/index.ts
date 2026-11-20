@@ -1,3 +1,5 @@
+import { subDays } from "date-fns";
+
 import type { RouterOutputs } from "@/trpc/shared";
 
 function safeIncrement<T extends string>(record: Record<T, number>, key: T): void {
@@ -127,3 +129,13 @@ export const summarizeArchived = (
     },
     { clicks: 0, uniqueClicks: 0, clicksPerDate: {}, uniqueClicksPerDate: {} },
   );
+
+/**
+ * The analytics window a plan may see: the trailing `limitDays` days ending at
+ * `now`, or all time (`days`/`from` null) when the plan has no limit.
+ */
+export const analyticsWindow = (limitDays: number | undefined, now: Date) => ({
+  days: limitDays ?? null,
+  from: limitDays === undefined ? null : subDays(now, limitDays),
+  to: now,
+});

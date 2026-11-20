@@ -4,7 +4,6 @@ import { Funnel_Sans } from "next/font/google";
 
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { ChangelogToast } from "@/components/changelog/changelog-toast";
-import { ReleaseNotesScript } from "@/components/scripts/release-notes";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { ensureUser } from "@/server/lib/ensure-user";
@@ -147,8 +146,6 @@ export default async function DashboardLayout({ children }: Props) {
       <DomainMigrationGate />
 
       <AttributionRecorder />
-
-      <ReleaseNotesScript />
     </div>
   );
 }

@@ -51,19 +51,24 @@ const buildPlans = (annual: boolean) => [
   },
 ];
 
-export const Pricing = () => {
+// The /pricing page renders its own hero heading, so it hides this one.
+export const Pricing = ({ showHeading = true }: { showHeading?: boolean }) => {
   const [annual, setAnnual] = useState(false);
   const plans = buildPlans(annual);
 
   return (
     <Section id="pricing">
-      <SectionHeading
-        eyebrow={<Eyebrow icon={<IconTagFilled aria-hidden="true" />}>Pricing</Eyebrow>}
-        title="Simple pricing, no surprises"
-        subtitle="Start free. Upgrade when you're ready. Cancel anytime."
-      />
+      {showHeading && (
+        <SectionHeading
+          eyebrow={<Eyebrow icon={<IconTagFilled aria-hidden="true" />}>Pricing</Eyebrow>}
+          title="Simple pricing, no surprises"
+          subtitle="Start free. Upgrade when you're ready. Cancel anytime."
+        />
+      )}
 
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <div
+        className={cn("flex flex-wrap items-center justify-center gap-3", showHeading && "mt-8")}
+      >
         <div className="inline-flex rounded-[10px] bg-neutral-950/[0.06] p-0.5">
           {([false, true] as const).map((value) => (
             <button
