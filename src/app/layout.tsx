@@ -19,7 +19,10 @@ export const metadata: Metadata = {
   },
   description:
     "Free URL shortener with powerful analytics. Create custom short links, track clicks, locations, and devices. QR codes, custom domains, and API included.",
-  icons: [{ rel: "icon", url: "/icon.png" }],
+  icons: [
+    { rel: "icon", url: "/icon.png", type: "image/png", sizes: "512x512" },
+    { rel: "apple-touch-icon", url: "/apple-icon.png", sizes: "180x180" },
+  ],
   openGraph: {
     siteName: "iShortn",
     type: "website",
