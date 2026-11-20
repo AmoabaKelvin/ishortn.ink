@@ -11,7 +11,7 @@ import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primit
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service - iShortn",
+  title: "Terms of Service",
   description: "Read the terms and conditions for using iShortn URL shortener service.",
   openGraph: {
     title: "Terms of Service - iShortn",

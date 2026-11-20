@@ -1,5 +1,6 @@
 ---
 title: "How to Track QR Code Scans (Free and in Google Analytics)"
+seoTitle: "How to Track QR Code Scans for Free"
 description: "Three ways to track QR code scans: built-in scan analytics, UTM parameters in Google Analytics 4, or both. Includes a UTM naming scheme for print campaigns."
 date: "2026-11-20"
 author: "Kelvin Amoaba"

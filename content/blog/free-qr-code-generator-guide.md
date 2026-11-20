@@ -1,5 +1,6 @@
 ---
 title: "Free QR Code Generator: How to Create QR Codes for Your Business"
+seoTitle: "Free QR Code Generator: A Guide for Businesses"
 description: "Create free QR codes for your business with built-in analytics. Learn how to use QR codes for marketing, menus, events, and more."
 date: "2026-03-03"
 author: "Kelvin Amoaba"

@@ -9,7 +9,7 @@ import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { Paths } from "@/lib/constants/app";
-import { competitors, type Competitor } from "@/lib/seo/competitors";
+import { comparisonTitle, competitors, type Competitor } from "@/lib/seo/competitors";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
@@ -57,17 +57,18 @@ export async function generateMetadata({
   const competitor = getCompetitor(slug);
   if (!competitor) return {};
 
-  const title = `${competitor.name} vs iShortn — URL shortener comparison`;
-  const description = `Compare ${competitor.name} and iShortn side by side. See features, pricing, and why creators and small teams pick iShortn.`;
+  // Absolute so the root "| iShortn" template doesn't repeat the brand already in the title.
+  const title = comparisonTitle(competitor);
+  const description = `Compare ${competitor.name} and iShortn in a side-by-side ${competitor.category} comparison. See features, pricing, and why creators and small teams pick iShortn.`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     keywords: [
       `${competitor.name.toLowerCase()} alternative`,
       `${competitor.name.toLowerCase()} vs ishortn`,
       `${competitor.slug} alternative`,
-      "url shortener comparison",
+      `${competitor.category.toLowerCase()} comparison`,
       "best url shortener",
       "link shortener alternative",
     ],

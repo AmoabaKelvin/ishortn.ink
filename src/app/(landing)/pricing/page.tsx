@@ -18,7 +18,7 @@ import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primit
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Pricing",
+  title: "Pricing: Free, Pro $8 and Ultra $15",
   description:
     "Start free forever. Upgrade when you're ready. Cancel in one click. Pro and Ultra plans for solo makers and growing teams.",
   keywords: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     "url shortener cost",
   ],
   openGraph: {
-    title: "Pricing — iShortn",
+    title: "Pricing: Free, Pro $8 and Ultra $15 — iShortn",
     description:
       "Start free forever. Upgrade when you're ready. Cancel in one click. Pro and Ultra plans for solo makers and growing teams.",
     type: "website",

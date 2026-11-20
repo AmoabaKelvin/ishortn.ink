@@ -1,5 +1,6 @@
 ---
 title: "URL Shortener API: How to Shorten Links Programmatically"
+seoTitle: "URL Shortener API: Shorten Links in Code"
 description: "Learn how to use a URL shortener API to create short links programmatically. Complete developer guide with code examples and best practices."
 date: "2026-02-28"
 author: "Kelvin Amoaba"
