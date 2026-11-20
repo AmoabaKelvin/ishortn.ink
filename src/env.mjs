@@ -24,6 +24,8 @@ export const env = createEnv({
     DISCORD_WEBHOOK_URL: z.string().url().optional(),
     // Google Safe Browsing & Web Risk (same key, Web Risk requires billing enabled)
     GOOGLE_SAFE_BROWSING_API_KEY: z.string().optional(),
+    // abuse.ch Auth-Key for the URLhaus feed in the phishing rescan (skipped when unset)
+    URLHAUS_AUTH_KEY: z.string().optional(),
     // Cloudflare R2 Storage (S3-compatible)
     R2_ACCOUNT_ID: z.string().optional(),
     R2_ACCESS_KEY_ID: z.string().optional(),
@@ -95,6 +97,7 @@ export const env = createEnv({
     DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,
     // Google Safe Browsing & Web Risk
     GOOGLE_SAFE_BROWSING_API_KEY: process.env.GOOGLE_SAFE_BROWSING_API_KEY,
+    URLHAUS_AUTH_KEY: process.env.URLHAUS_AUTH_KEY,
     // Cloudflare R2 Storage
     R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
     R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
