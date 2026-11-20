@@ -11,6 +11,8 @@ if (process.env.NODE_ENV === "development") {
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // CLAUDE.md is maintained by hand; stop `next dev` injecting its agent block.
+  agentRules: false,
   experimental: {
     optimizePackageImports: ["@tabler/icons-react"],
   },
