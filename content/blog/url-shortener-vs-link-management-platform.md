@@ -122,7 +122,7 @@ With iShortn, you get:
 - **Password protection** to secure sensitive links without extra infrastructure.
 - **Geo-targeting** to deliver the right content to the right audience automatically.
 
-iShortn offers a generous free tier that goes well beyond what most basic shorteners provide, giving you room to grow before you ever need to upgrade. When you do, pricing stays transparent — no hidden limits, no surprise charges.
+iShortn offers a generous free tier that goes well beyond what most basic shorteners provide, giving you room to grow before you ever need to upgrade. When you do, [pricing](/pricing) stays transparent — no hidden limits, no surprise charges. If you are coming from another tool, see how [iShortn compares to Bitly](/compare/bitly) or browse our list of [Bitly alternatives](/blog/bitly-alternatives).
 
 ## Choosing the Right Tool
 

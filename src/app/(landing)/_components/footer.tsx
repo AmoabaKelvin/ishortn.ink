@@ -23,6 +23,9 @@ const columns = [
       { label: "vs Rebrandly", href: "/compare/rebrandly" },
       { label: "vs Short.io", href: "/compare/short-io" },
       { label: "vs Dub", href: "/compare/dub" },
+      { label: "vs Linktree", href: "/compare/linktree" },
+      { label: "vs Beacons", href: "/compare/beacons" },
+      { label: "vs Carrd", href: "/compare/carrd" },
     ],
   },
   {

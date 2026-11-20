@@ -38,11 +38,11 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   const post = await getPostBySlug(slug);
 
   if (!post) {
-    return { title: "Post Not Found - iShortn" };
+    return { title: "Post Not Found" };
   }
 
   return {
-    title: `${post.title} — iShortn Blog`,
+    title: post.title,
     description: post.description,
     keywords: post.tags,
     authors: [{ name: post.author }],

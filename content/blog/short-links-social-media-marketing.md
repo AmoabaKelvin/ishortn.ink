@@ -47,7 +47,7 @@ If you are running a thread, use distinct short links for each tweet so you can 
 
 ### Instagram
 
-Instagram does not allow clickable links in post captions, which makes your bio link the most valuable piece of real estate on the platform. A link-in-bio strategy using short links lets you rotate the destination URL as campaigns change without altering the link itself. Point your bio to a single short link, then update the destination behind it whenever you launch a new campaign, product, or piece of content.
+Instagram does not allow clickable links in post captions, which makes your bio link the most valuable piece of real estate on the platform. A link-in-bio strategy using short links lets you rotate the destination URL as campaigns change without altering the link itself. Point your bio to a single short link, then update the destination behind it whenever you launch a new campaign, product, or piece of content. If you need a full landing page with several links rather than a single redirect, see how [iShortn compares to Linktree](/compare/linktree).
 
 For Stories (available to accounts with sufficient reach), swipe-up or link sticker URLs benefit from short links as well. Each story can use a unique short link so you can compare performance across individual stories.
 
@@ -81,7 +81,7 @@ Create a separate short link for each combination of campaign and platform. For 
 - `ishortn.ink/launch-li`
 - `ishortn.ink/launch-ig`
 
-All three can point to the same destination, but each one gives you isolated click data. You will know exactly which platform is pulling its weight without needing to rely on third-party analytics alone.
+All three can point to the same destination, but each one gives you isolated click data. You will know exactly which platform is pulling its weight without needing to rely on third-party analytics alone. For a deeper walkthrough, read [how to track link clicks](/blog/how-to-track-link-clicks).
 
 ### UTM Parameters and Short Links for Attribution
 

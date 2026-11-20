@@ -26,7 +26,7 @@ Bitly's Core plan costs $10 per month and is billed annually only, and custom do
 
 ### Missing Features
 
-Depending on your needs, Bitly may lack features like geo-targeting, QR code customization, password-protected links, or advanced API access. The alternatives listed here fill those gaps.
+Depending on your needs, Bitly may lack features like geo-targeting, QR code customization, password-protected links, or advanced API access. The alternatives listed here fill those gaps. For a feature-by-feature breakdown, see [iShortn vs Bitly](/compare/bitly).
 
 ## The 7 Best Bitly Alternatives
 
@@ -43,7 +43,7 @@ Depending on your needs, Bitly may lack features like geo-targeting, QR code cus
 - RESTful API for programmatic link management
 - Sub-100ms global redirect speed
 
-**Pricing:** Free plan includes 30 links per month, 1,000 tracked events per month, 7 days of analytics, and 5 dynamic QR codes. Pro plan at $8/month adds 1,000 links, unlimited analytics history, 3 custom domains, geo-targeting, password protection, and API access. Ultra plan at $15/month unlocks unlimited everything, team workspaces, and priority support.
+**Pricing:** Free plan includes 30 links per month, 1,000 tracked events per month, 7 days of analytics, and 5 dynamic QR codes. Pro plan at $8/month adds 1,000 links, unlimited analytics history, 3 custom domains, geo-targeting, password protection, and API access. Ultra plan at $15/month unlocks unlimited everything, team workspaces, and priority support. See the [full plan comparison](/pricing).
 
 **Best for:** Individuals and small teams who want a generous free plan with real analytics, or anyone looking for an affordable paid plan that does not sacrifice features.
 
@@ -92,7 +92,7 @@ TinyURL is one of the oldest URL shorteners, launched in 2002. It remains a stra
 
 ### 3. Rebrandly
 
-Rebrandly positions itself as a branded link management platform. Its core strength is custom domain support, making it popular with marketing teams that want every short link to carry their brand.
+Rebrandly positions itself as a branded link management platform. Its core strength is custom domain support, making it popular with marketing teams that want every short link to carry their brand. See the [iShortn vs Rebrandly comparison](/compare/rebrandly) for a side-by-side view.
 
 **Key features:**
 
@@ -102,7 +102,7 @@ Rebrandly positions itself as a branded link management platform. Its core stren
 - UTM builder for campaign tracking
 - Traffic routing rules
 
-**Pricing:** Free plan includes 10 links, 10 QR codes, and 100 tracked clicks per month, with 1 custom domain. Essentials plan at $13/month. Professional plan at $32/month with advanced features and additional custom domains.
+**Pricing:** Free plan includes 10 links, 10 QR codes, and 100 tracked clicks per month, with 1 custom domain. Paid plans start with Essentials and add more links, tracked clicks, and custom domains.
 
 **Best for:** Marketing teams focused on brand consistency across all short links.
 
@@ -122,7 +122,7 @@ Rebrandly positions itself as a branded link management platform. Its core stren
 
 ### 4. Short.io
 
-Short.io is a link shortener built around custom domains. It requires you to bring your own domain from the start, which makes it a good fit for businesses that want full control over their link branding.
+Short.io is a link shortener built around custom domains. It requires you to bring your own domain from the start, which makes it a good fit for businesses that want full control over their link branding. See the [iShortn vs Short.io comparison](/compare/short-io).
 
 **Key features:**
 
@@ -152,7 +152,7 @@ Short.io is a link shortener built around custom domains. It requires you to bri
 
 ### 5. Dub.co
 
-Dub.co is an open-source link management platform aimed at modern development teams. It has a polished interface and strong API-first design, making it popular in the developer community.
+Dub.co is an open-source link management platform aimed at modern development teams. It has a polished interface and strong API-first design, making it popular in the developer community. See the [iShortn vs Dub comparison](/compare/dub).
 
 **Key features:**
 
@@ -250,11 +250,10 @@ T.ly is a lightweight URL shortener that focuses on simplicity and affordability
 | Click analytics | Yes | Basic | Yes | Yes | Yes | Yes | Basic |
 | Custom domains | Pro ($8/mo) | Paid only | 1 free | Required (5 free) | Business ($90/mo) | Yes | Paid only |
 | QR codes | 5 dynamic free | No | 10/mo free (watermarked) | Yes | Yes | Yes | Yes |
-| Password protection | Pro ($8/mo) | No | No | No | No | No | No |
 | API access | Pro ($8/mo) | Paid only | Paid only | Yes | Yes | Paid only | Paid only |
 | Geo-targeting | Pro ($8/mo) | No | Paid only | Yes | No | Yes | No |
 | Team collaboration | Ultra ($15/mo) | No | Yes | Yes | Yes | Yes | No |
-| Paid plan starting price | $8/mo | $9.99/mo | $13/mo | $5/mo | $90/mo | $48/mo | $12/mo |
+| Paid plan starting price | $8/mo | $9.99/mo | Essentials | $5/mo | $90/mo | $48/mo | $12/mo |
 
 ## How to Choose the Right Bitly Alternative
 

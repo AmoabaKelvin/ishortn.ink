@@ -78,7 +78,7 @@ Setting up link tracking with a URL shortener is straightforward. Here is a prac
 
 ### 1. Choose Your URL Shortener
 
-Pick a shortener that offers the analytics depth you need. At a minimum, look for click counts, geographic data, device breakdowns, and referrer tracking. Services like iShortn provide all of these out of the box.
+Pick a shortener that offers the analytics depth you need. At a minimum, look for click counts, geographic data, device breakdowns, and referrer tracking. Services like iShortn provide all of these out of the box. If you are weighing options, our [comparison of free URL shorteners](/blog/best-free-url-shorteners) breaks down what each one tracks.
 
 ### 2. Create Your Destination URL
 
@@ -154,6 +154,6 @@ iShortn is designed to make click tracking accessible without requiring any tech
 
 You can create custom-branded links that build trust with your audience, generate QR codes for offline use, and manage all of your links from a single workspace. If you work with a team, shared team workspaces on the Ultra plan let everyone see link performance and collaborate on campaigns without needing separate accounts.
 
-For developers and teams with automated workflows, the iShortn API (on Pro and Ultra) lets you create tracked links programmatically, making it easy to embed link analytics into your existing tools and processes.
+For developers and teams with automated workflows, the iShortn API (on Pro and Ultra) lets you create tracked links programmatically, making it easy to embed link analytics into your existing tools and processes. The [URL shortener API guide](/blog/url-shortener-api-guide) walks through an example integration, and the [pricing page](/pricing) shows the analytics history on each plan.
 
 Getting started takes less than a minute. Sign up at [ishortn.ink](https://ishortn.ink), create your first short link, share it, and watch the data flow in. Every click tells you something about your audience. The question is whether you are listening.

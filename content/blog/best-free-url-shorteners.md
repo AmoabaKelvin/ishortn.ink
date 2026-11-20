@@ -20,7 +20,7 @@ Bitly is the most recognized name in link shortening. It has been around since 2
 
 On the free tier, Bitly gives you just 5 shortened links per month and 2 QR codes per month. Analytics are limited to basic click counts with no analytics history and no geographic or device breakdowns. Custom back-halves (the slug after the domain) are available, but custom branded domains start on the Growth plan at $29 per month. The entry-level Core plan is $10 per month and is billed annually only.
 
-Bitly's dashboard is polished and intuitive, though the free plan feels increasingly restrictive. Free links may also show interstitial ad pages before redirecting users to the destination. For anyone doing regular marketing or content distribution, the 5-link cap and lack of analytics depth are significant constraints.
+Bitly's dashboard is polished and intuitive, though the free plan feels increasingly restrictive. Free links may also show interstitial ad pages before redirecting users to the destination. For anyone doing regular marketing or content distribution, the 5-link cap and lack of analytics depth are significant constraints. See [iShortn vs Bitly](/compare/bitly) for a direct comparison.
 
 ### TinyURL
 
@@ -28,7 +28,7 @@ TinyURL is one of the oldest URL shorteners, dating back to 2002. Its greatest s
 
 The free tier allows unlimited link creation, which is a clear advantage. However, TinyURL's analytics are minimal on the free plan. You can create a custom alias for your link, but custom domains are only available on paid plans. There is no built-in QR code generator on the free tier.
 
-TinyURL is best suited for quick, one-off link shortening where you do not need to track performance or manage links over time. If all you need is a short link with no strings attached, TinyURL delivers.
+TinyURL is best suited for quick, one-off link shortening where you do not need to track performance or manage links over time. If all you need is a short link with no strings attached, TinyURL delivers. For a closer look, see [iShortn vs TinyURL](/compare/tinyurl).
 
 ### Rebrandly
 
@@ -36,7 +36,7 @@ Rebrandly positions itself as a branded link management platform. It places a st
 
 The free plan includes 10 links per month, 10 QR codes per month, and 100 tracked clicks per month. You can connect 1 custom domain on the free tier, which is a notable advantage for small businesses and personal brands that want branded short links without paying immediately. QR codes are watermarked on the free plan.
 
-Rebrandly's interface is clean and well-organized. The main limitation is the 100 tracked clicks per month, which a single popular link can use up quickly. More advanced analytics and team features require the Essentials plan at $13 per month.
+Rebrandly's interface is clean and well-organized. The main limitation is the 100 tracked clicks per month, which a single popular link can use up quickly. More advanced analytics and team features require a paid plan, starting with Essentials.
 
 ### iShortn
 
@@ -101,6 +101,6 @@ The best link shortener depends on your specific needs, but here is a general gu
 - **For quick, disposable links** where you do not need tracking, TinyURL's no-account-required approach is hard to beat.
 - **For branded links on a budget**, Rebrandly and Short.io both offer a free custom domain, though their analytics are limited.
 - **For enterprise teams** already embedded in Bitly's ecosystem, its integrations and brand recognition may justify the cost, even if the free tier feels thin.
-- **For marketers, creators, and developers who want real analytics without paying**, iShortn offers the most complete free tier. Detailed geographic and device analytics, 5 dynamic QR codes with styling, and link expiration are all available without upgrading, and custom domains, geo-targeting, and API access start on Pro at $8 per month. If you have been looking for a Bitly alternative that does not paywall the features you actually need, iShortn is worth trying.
+- **For marketers, creators, and developers who want real analytics without paying**, iShortn offers the most complete free tier. Detailed geographic and device analytics, 5 dynamic QR codes with styling, and link expiration are all available without upgrading, and custom domains, geo-targeting, and API access start on Pro at $8 per month. If you have been looking for a Bitly alternative that does not paywall the features you actually need, iShortn is worth trying. Our roundup of [Bitly alternatives](/blog/bitly-alternatives) covers paid options too, and the [pricing page](/pricing) lists every plan limit.
 
 Getting started takes less than a minute. Sign up at [ishortn.ink](https://ishortn.ink), shorten your first link, and see your analytics populate in real time. No credit card and no trial period.
