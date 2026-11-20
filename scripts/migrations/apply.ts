@@ -37,7 +37,11 @@ if (!response) throw new Error("no response from the migrator");
 
 const text = await response.text();
 // Only the migrator's JSON is worth printing; anything else is an error page.
-console.log(text.trim().startsWith("{") ? text : `HTTP ${response.status} (${text.length} bytes, not from the migrator)`);
+console.log(
+  text.trim().startsWith("{")
+    ? text
+    : `HTTP ${response.status} (${text.length} bytes, not from the migrator)`,
+);
 const parsed = reply.safeParse(JSON.parse(text.trim().startsWith("{") ? text : "null"));
 if (!response.ok || !parsed.success || !parsed.data.ok) {
   const reason = parsed.success
