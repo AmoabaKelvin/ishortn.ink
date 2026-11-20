@@ -1,9 +1,9 @@
-import { createTRPCRouter, workspaceProcedure } from "../../trpc";
+import { createTRPCRouter, contentWriteProcedure, workspaceProcedure } from "../../trpc";
 import * as inputs from "./qrcode.input";
 import * as services from "./qrcode.service";
 
 export const qrCodeRouter = createTRPCRouter({
-  create: workspaceProcedure.input(inputs.qrcodeInput).mutation(async ({ ctx, input }) => {
+  create: contentWriteProcedure.input(inputs.qrcodeInput).mutation(async ({ ctx, input }) => {
     return services.createQrCode(ctx, input);
   }),
   get: workspaceProcedure.input(inputs.qrcodeIdInput).query(async ({ ctx, input }) => {
@@ -15,13 +15,13 @@ export const qrCodeRouter = createTRPCRouter({
   delete: workspaceProcedure.input(inputs.qrcodeIdInput).mutation(async ({ ctx, input }) => {
     return services.deleteQrCode(ctx, input.id);
   }),
-  saveImage: workspaceProcedure
+  saveImage: contentWriteProcedure
     .input(inputs.qrcodeSaveImageInput)
     .mutation(async ({ ctx, input }) => {
       return services.saveQrCodeImage(ctx, input);
     }),
 
-  update: workspaceProcedure.input(inputs.qrcodeUpdateInput).mutation(async ({ ctx, input }) => {
+  update: contentWriteProcedure.input(inputs.qrcodeUpdateInput).mutation(async ({ ctx, input }) => {
     return services.updateQrCode(ctx, input);
   }),
   resetStatistics: workspaceProcedure
@@ -29,9 +29,11 @@ export const qrCodeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return services.resetQrCodeStatistics(ctx, input.id);
     }),
-  toggleStatus: workspaceProcedure.input(inputs.qrcodeIdInput).mutation(async ({ ctx, input }) => {
-    return services.toggleQrCodeStatus(ctx, input.id);
-  }),
+  toggleStatus: contentWriteProcedure
+    .input(inputs.qrcodeIdInput)
+    .mutation(async ({ ctx, input }) => {
+      return services.toggleQrCodeStatus(ctx, input.id);
+    }),
 
   // QR Preset procedures
   createPreset: workspaceProcedure

@@ -1,4 +1,4 @@
-import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, contentWriteProcedure, workspaceProcedure } from "@/server/api/trpc";
 
 import {
   createGeoRuleSchema,
@@ -22,22 +22,22 @@ export const geoRulesRouter = createTRPCRouter({
   }),
 
   // Create a new geo rule
-  create: workspaceProcedure.input(createGeoRuleSchema).mutation(async ({ ctx, input }) => {
+  create: contentWriteProcedure.input(createGeoRuleSchema).mutation(async ({ ctx, input }) => {
     return createGeoRule(ctx, input);
   }),
 
   // Update an existing geo rule
-  update: workspaceProcedure.input(updateGeoRuleSchema).mutation(async ({ ctx, input }) => {
+  update: contentWriteProcedure.input(updateGeoRuleSchema).mutation(async ({ ctx, input }) => {
     return updateGeoRule(ctx, input);
   }),
 
   // Delete a geo rule
-  delete: workspaceProcedure.input(deleteGeoRuleSchema).mutation(async ({ ctx, input }) => {
+  delete: contentWriteProcedure.input(deleteGeoRuleSchema).mutation(async ({ ctx, input }) => {
     return deleteGeoRule(ctx, input);
   }),
 
   // Reorder geo rules
-  reorder: workspaceProcedure.input(reorderGeoRulesSchema).mutation(async ({ ctx, input }) => {
+  reorder: contentWriteProcedure.input(reorderGeoRulesSchema).mutation(async ({ ctx, input }) => {
     return reorderGeoRules(ctx, input);
   }),
 });

@@ -2,12 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, ne, sum } from "drizzle-orm";
 
 import { isSubscriptionEntitled, PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import {
   customDomain,
   link,
   linkVisit,
   linkVisitDailySummary,
   teamMember,
+  user,
 } from "@/server/db/schema";
 import { requirePermission, workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
@@ -112,10 +114,21 @@ export async function addDomainToUserAccount(
   // and land as "active" here with no DNS challenge of our own. Domain sharing is
   // only meant to span workspaces the same person controls, so require an
   // existing claim in one of the caller's workspaces before inheriting state.
-  const existingClaims = await ctx.db.query.customDomain.findMany({
-    where: eq(customDomain.domain, domain),
-    columns: { userId: true, teamId: true },
-  });
+  const existingClaims = await ctx.db
+    .select({
+      userId: customDomain.userId,
+      teamId: customDomain.teamId,
+      ownerRestrictedAt: user.restrictedAt,
+    })
+    .from(customDomain)
+    .leftJoin(user, eq(user.id, customDomain.userId))
+    .where(eq(customDomain.domain, domain));
+
+  // Restricting an account released its hostnames; another workspace (e.g. a
+  // teammate it invited) must not put them back on Cloudflare.
+  if (existingClaims.some((claim) => claim.ownerRestrictedAt)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: ACCOUNT_RESTRICTED_MESSAGE });
+  }
 
   if (existingClaims.length > 0 && !(await callerControlsAClaim(ctx, existingClaims))) {
     throw new TRPCError({

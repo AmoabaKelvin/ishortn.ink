@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { IconBan, IconTrash } from "@tabler/icons-react";
+import { IconAlertTriangle, IconBan, IconTrash } from "@tabler/icons-react";
 import { Funnel_Sans } from "next/font/google";
 
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
@@ -29,11 +29,13 @@ export default async function DashboardLayout({ children }: Props) {
   // Check ban/admin status directly via DB, bypassing tRPC (which blocks banned users)
   const session = await auth();
   let isAdmin = false;
+  let isRestricted = false;
 
   if (session?.userId) {
     const currentUser = await ensureUser(session.userId);
 
     isAdmin = currentUser?.isAdmin ?? false;
+    isRestricted = !!currentUser?.restrictedAt;
 
     if (currentUser?.banned) {
       return (
@@ -136,6 +138,20 @@ export default async function DashboardLayout({ children }: Props) {
       <div className="lg:pl-[280px]">
         <div className="mx-auto max-w-[1180px] px-4 pt-16 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
           <DashboardNav />
+          {isRestricted && (
+            <div className="mt-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+              <IconAlertTriangle size={16} stroke={1.5} className="mt-0.5 shrink-0" />
+              <p className="min-w-0">
+                Your account is restricted. Contact{" "}
+                <a
+                  href="mailto:safety@ishortn.ink"
+                  className="font-medium underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300"
+                >
+                  safety@ishortn.ink
+                </a>
+              </p>
+            </div>
+          )}
           <div className="mt-7 py-4">{children}</div>
         </div>
       </div>

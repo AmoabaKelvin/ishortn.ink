@@ -11,6 +11,7 @@ import { assertUrlSafe } from "@/server/lib/phishing";
 import {
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
+  restrictedAccountResponse,
   withApiKey,
 } from "../../utils";
 
@@ -68,6 +69,9 @@ export const GET = withApiKey(
 
 export const PATCH = withApiKey(
   async (request: NextRequest, token, props: { params: Promise<{ alias: string }> }) => {
+    const restricted = restrictedAccountResponse(token);
+    if (restricted) return restricted;
+
     const params = await props.params;
     const alias = params.alias;
 

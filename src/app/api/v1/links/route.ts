@@ -6,18 +6,21 @@ import { z } from "zod";
 
 import { resolvePlan } from "@/lib/billing/plans";
 import { generateShortLink } from "@/lib/core/links";
-import { validateAlias } from "@/server/api/routers/link/utils";
+import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
-import { resolveApiDomainForUser, withApiKey } from "../utils";
+import { resolveApiDomainForUser, restrictedAccountResponse, withApiKey } from "../utils";
 
 import type { LinkCreationAttempt } from "@/server/lib/link-creation/failures";
 
 export const POST = withApiKey(async (request: Request, token) => {
+  const restricted = restrictedAccountResponse(token);
+  if (restricted) return restricted;
+
   const input = shortenLinkSchema.safeParse(await request.json());
 
   if (!input.success) {
@@ -148,8 +151,10 @@ async function createNewLink(
   // Count the link and insert it together so a failed insert doesn't consume
   // quota and parallel requests can't exceed the monthly limit.
   const newLinkId = await db.transaction(async (tx) => {
-    await reserveMonthlyLinkSlot(userId, tx);
-    const newLink = await tx.insert(link).values(newLinkData);
+    const { userRecord } = await reserveMonthlyLinkSlot(userId, tx);
+    const newLink = await tx
+      .insert(link)
+      .values({ ...newLinkData, ...restrictedLinkValues(userRecord.restrictedAt) });
     return newLink[0].insertId;
   });
 

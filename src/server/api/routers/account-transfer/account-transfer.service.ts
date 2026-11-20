@@ -6,6 +6,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
 import { getAppBaseDomain } from "@/lib/constants/domains";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
   accountTransfer,
@@ -167,6 +168,11 @@ export async function validateAccountTransfer(
       code: "NOT_FOUND",
       message: "Source account not found",
     });
+  }
+
+  // Moving links and domains to another account would sidestep the restriction.
+  if (sourceUser.restrictedAt) {
+    throw new TRPCError({ code: "FORBIDDEN", message: ACCOUNT_RESTRICTED_MESSAGE });
   }
 
   // Check not transferring to self
@@ -616,6 +622,18 @@ export async function acceptAccountTransfer(
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "This transfer has expired",
+    });
+  }
+
+  // Covers transfers initiated before the source account was restricted.
+  const sourceAccount = await ctx.db.query.user.findFirst({
+    where: eq(user.id, transfer.fromUserId),
+    columns: { restrictedAt: true },
+  });
+  if (sourceAccount?.restrictedAt) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "The sending account is restricted, so this transfer can't be completed.",
     });
   }
 

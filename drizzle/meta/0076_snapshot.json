@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "9a7eb1ac-d9eb-4012-959c-adfc6aaeb93e",
+  "id": "3d51cdd5-f2b7-4e0c-894d-1def62c61cc6",
   "prevId": "fc432bab-1dd1-4877-992e-3db57c732625",
   "tables": {
     "AccountDeletion": {
@@ -1289,6 +1289,14 @@
           "notNull": false,
           "autoincrement": false
         },
+        "wwwHostnameReleased": {
+          "name": "wwwHostnameReleased",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
         "teamIdForUnique": {
           "name": "teamIdForUnique",
           "type": "int",
@@ -2078,74 +2086,6 @@
           ]
         }
       },
-      "checkConstraint": {}
-    },
-    "LinkCreationFailure": {
-      "name": "LinkCreationFailure",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "source": {
-          "name": "source",
-          "type": "enum('dashboard','bulk','api')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "step": {
-          "name": "step",
-          "type": "enum('validation','safety','metadata','db')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "code": {
-          "name": "code",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "serverError": {
-          "name": "serverError",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "createdAt_idx": {
-          "name": "createdAt_idx",
-          "columns": [
-            "createdAt"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "LinkCreationFailure_id": {
-          "name": "LinkCreationFailure_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "LinkMilestone": {
@@ -3781,6 +3721,20 @@
         "apiSunsetReminderSentAt": {
           "name": "apiSunsetReminderSentAt",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "restrictedAt": {
+          "name": "restrictedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "restrictedReason": {
+          "name": "restrictedReason",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

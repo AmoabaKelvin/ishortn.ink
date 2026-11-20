@@ -92,6 +92,7 @@ import {
   PASSWORD_ATTEMPTS_PER_LINK,
   readAttemptWindow,
   recordFailedAttempt,
+  restrictedLinkValues,
   toPublicLink,
   validateAlias,
 } from "./utils";
@@ -559,6 +560,7 @@ const createLinkSteps = async (
     },
     cloaking: input.cloaking ?? false,
     verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
+    ...restrictedLinkValues(ctx.restrictedAt),
   });
 
   // Associate tags with the link
@@ -1085,6 +1087,7 @@ const shortenLinkSteps = async (
       description: fetchedMetadata?.description,
       image: fetchedMetadata?.image,
     },
+    ...restrictedLinkValues(ctx.restrictedAt),
   });
 
   // Associate tags with the link
@@ -1812,6 +1815,7 @@ const bulkCreateLinkRows = async (
         createdByUserId: ctx.auth.userId, // Track the actual user who created the link
         domain: record.domain,
         note: record.note,
+        ...restrictedLinkValues(ctx.restrictedAt),
       });
     }),
   );

@@ -5,16 +5,23 @@ import { TRPCError } from "@trpc/server";
 import { link, linkCreationFailure } from "@/server/db/schema";
 
 import { bulkCreateLinks } from "./link.service";
+import { RESTRICTED_LINK_REASON } from "./utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
 
-type InsertedLink = { url: string; alias: string; domain: string };
+type InsertedLink = {
+  url: string;
+  alias: string;
+  domain: string;
+  blocked?: boolean;
+  blockedReason?: string;
+};
 
 // In-memory stand-in for the queries bulkCreateLinks makes: the plan lookup,
 // custom-domain ownership (the workspace owns none), alias availability (all
 // free), link inserts, failure records and the monthly count update.
-function fakeContext(monthlyLinkCount: number) {
+function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null) {
   const inserted: InsertedLink[] = [];
   const recordedFailures: LinkCreationFailure[] = [];
   const countUpdates: Array<{ monthlyLinkCount: number }> = [];
@@ -54,6 +61,7 @@ function fakeContext(monthlyLinkCount: number) {
   const ctx = {
     db,
     auth: { userId: "user_1" },
+    restrictedAt,
     workspace: {
       type: "personal",
       userId: "user_1",
@@ -206,5 +214,16 @@ describe("bulkCreateLinks", () => {
     expect(recordedFailures).toEqual([
       { source: "bulk", step: "validation", code: "FORBIDDEN", serverError: false },
     ]);
+  });
+
+  test("inserts links already blocked if the account is restricted", async () => {
+    const { ctx, inserted } = fakeContext(0, new Date());
+    const result = await bulkCreateLinks(ctx, csv("https://a.example,,,"), allowUrl);
+
+    expect(result.created).toBe(1);
+    expect(inserted[0]).toMatchObject({
+      blocked: true,
+      blockedReason: RESTRICTED_LINK_REASON,
+    });
   });
 });

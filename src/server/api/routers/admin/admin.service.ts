@@ -1,11 +1,26 @@
-import { and, between, count, desc, eq, gte, inArray, like, or, sql } from "drizzle-orm";
+import {
+  and,
+  between,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  like,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { PAID_PLANS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/constants/plan-pricing";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
+import { logger } from "@/lib/logger";
 import {
   bioPage,
   blockedDomain,
   campaign,
+  customDomain,
   feedback,
   flaggedLink,
   link,
@@ -14,6 +29,16 @@ import {
   user,
   userAttribution,
 } from "@/server/db/schema";
+
+import {
+  addCustomHostname,
+  buildVerificationChallenges,
+  deleteCustomHostname,
+  getCustomHostname,
+  getLiveCustomHostname,
+  mapStatus,
+} from "../domains/cloudflare";
+import { RESTRICTED_LINK_REASON } from "../link/utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 
@@ -37,11 +62,15 @@ import type {
   GetUserBaseSummaryInput,
   RemoveBlockedDomainInput,
   ResolveFlaggedLinkInput,
+  RestrictUserInput,
   SearchLinksInput,
   SearchUsersInput,
   UnbanUserInput,
   UnblockLinkInput,
+  UnrestrictUserInput,
 } from "./admin.input";
+
+const log = logger.child({ component: "admin.service" });
 
 export async function getStats(ctx: ProtectedTRPCContext) {
   const today = new Date();
@@ -305,6 +334,8 @@ export async function searchUsers(ctx: ProtectedTRPCContext, input: SearchUsersI
         banned: user.banned,
         bannedReason: user.bannedReason,
         bannedAt: user.bannedAt,
+        restrictedAt: user.restrictedAt,
+        restrictedReason: user.restrictedReason,
         linkCount: sql<number>`(SELECT COUNT(*) FROM Link WHERE Link.userId = ${user.id})`,
       })
       .from(user)
@@ -357,7 +388,14 @@ export async function banUser(ctx: ProtectedTRPCContext, input: BanUserInput) {
           blockedAt: new Date(),
           blockedReason: BAN_CASCADE_REASON,
         })
-        .where(eq(link.userId, input.userId));
+        // Restriction-blocked links keep their reason so unbanning a still
+        // restricted account leaves them blocked.
+        .where(
+          and(
+            eq(link.userId, input.userId),
+            or(isNull(link.blockedReason), ne(link.blockedReason, RESTRICTED_LINK_REASON)),
+          ),
+        );
     }
   });
 
@@ -401,6 +439,149 @@ export async function unbanUser(ctx: ProtectedTRPCContext, input: UnbanUserInput
   if (bannedLinks.length > 0) {
     await Promise.all(bannedLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))));
   }
+}
+
+/**
+ * Restricts an account: it keeps sign-in and billing, but every content write
+ * path refuses it (contentWriteProcedure, the v1 API). Its custom hostnames are
+ * released from Cloudflare so its branded domains stop serving; the domain rows
+ * and their links stay so lifting the restriction can bring them back.
+ */
+export async function restrictUser(ctx: ProtectedTRPCContext, input: RestrictUserInput) {
+  if (input.userId === ctx.auth.userId) {
+    throw new Error("Cannot restrict yourself");
+  }
+
+  await ctx.db
+    .update(user)
+    .set({ restrictedAt: new Date(), restrictedReason: input.reason })
+    .where(eq(user.id, input.userId));
+
+  const domains = await ctx.db
+    .select({ domain: customDomain.domain })
+    .from(customDomain)
+    .where(eq(customDomain.userId, input.userId));
+  const hostnames = [...new Set(domains.flatMap((d) => (d.domain ? [d.domain] : [])))];
+  if (hostnames.length === 0) return { domainsReleased: 0, domainFailures: [] };
+
+  // A hostname another account also claims (a shared team domain) stays live for them.
+  const shared = await ctx.db
+    .select({ domain: customDomain.domain })
+    .from(customDomain)
+    .where(and(inArray(customDomain.domain, hostnames), ne(customDomain.userId, input.userId)));
+  const sharedSet = new Set(shared.map((d) => d.domain));
+  const toRelease = hostnames.filter((hostname) => !sharedSet.has(hostname));
+
+  // "pending", not "invalid": the cleanup cron deletes old invalid domains.
+  await ctx.db
+    .update(customDomain)
+    .set({ status: "pending" })
+    .where(eq(customDomain.userId, input.userId));
+
+  const results = await Promise.allSettled(
+    toRelease.map(async (hostname) => {
+      await deleteCustomHostname(hostname);
+
+      // An apex on the www fallback serves through www.<apex>; release that too
+      // and remember it so unrestricting re-adds only what existed.
+      if (hostname.split(".").length !== 2) return;
+      const www = `www.${hostname}`;
+      if (!(await getCustomHostname(www))) return;
+      await deleteCustomHostname(www);
+      await ctx.db
+        .update(customDomain)
+        .set({ wwwHostnameReleased: true })
+        .where(and(eq(customDomain.userId, input.userId), eq(customDomain.domain, hostname)));
+    }),
+  );
+  const domainFailures = toRelease.filter((_, i) => results[i]?.status === "rejected");
+  if (domainFailures.length > 0) {
+    log.error(
+      { userId: input.userId, domains: domainFailures },
+      "failed to release custom hostnames for restricted user",
+    );
+  }
+
+  return { domainsReleased: toRelease.length - domainFailures.length, domainFailures };
+}
+
+export async function unrestrictUser(ctx: ProtectedTRPCContext, input: UnrestrictUserInput) {
+  const [restrictedLinks, target] = await Promise.all([
+    ctx.db
+      .select({ alias: link.alias, domain: link.domain })
+      .from(link)
+      .where(and(eq(link.userId, input.userId), eq(link.blockedReason, RESTRICTED_LINK_REASON))),
+    ctx.db.query.user.findFirst({ where: eq(user.id, input.userId), columns: { banned: true } }),
+  ]);
+
+  await ctx.db.transaction(async (tx) => {
+    await tx
+      .update(user)
+      .set({ restrictedAt: null, restrictedReason: null })
+      .where(eq(user.id, input.userId));
+
+    if (restrictedLinks.length > 0) {
+      // A banned account's links stay blocked, handed over to the ban so unbanning restores them.
+      await tx
+        .update(link)
+        .set(
+          target?.banned
+            ? { blockedReason: BAN_CASCADE_REASON }
+            : { blocked: false, blockedAt: null, blockedReason: null },
+        )
+        .where(and(eq(link.userId, input.userId), eq(link.blockedReason, RESTRICTED_LINK_REASON)));
+    }
+  });
+
+  if (restrictedLinks.length > 0) {
+    await Promise.all(
+      restrictedLinks.map((l) => deleteFromCache(buildCacheKey(l.domain, l.alias!))),
+    );
+  }
+
+  // Re-add the hostnames restricting released. Cloudflare re-validates them and
+  // the domains page picks up the new status as it does for a new domain.
+  const domains = await ctx.db
+    .select({ domain: customDomain.domain, wwwReleased: customDomain.wwwHostnameReleased })
+    .from(customDomain)
+    .where(and(eq(customDomain.userId, input.userId), eq(customDomain.status, "pending")));
+  const hostnames = [...new Set(domains.flatMap((d) => (d.domain ? [d.domain] : [])))];
+  const wwwReleased = new Set(domains.filter((d) => d.wwwReleased).map((d) => d.domain));
+
+  const results = await Promise.allSettled(
+    hostnames.map(async (hostname) => {
+      if (wwwReleased.has(hostname)) {
+        await addCustomHostname(`www.${hostname}`);
+        await ctx.db
+          .update(customDomain)
+          .set({ wwwHostnameReleased: false })
+          .where(and(eq(customDomain.userId, input.userId), eq(customDomain.domain, hostname)));
+      }
+
+      const response = await addCustomHostname(hostname);
+      const live = response.alreadyExists
+        ? await getLiveCustomHostname(hostname)
+        : response.hostname;
+      if (!live) throw new Error(`No custom hostname for ${hostname}`);
+
+      await ctx.db
+        .update(customDomain)
+        .set({
+          status: mapStatus(live),
+          verificationDetails: buildVerificationChallenges(hostname, live),
+        })
+        .where(and(eq(customDomain.userId, input.userId), eq(customDomain.domain, hostname)));
+    }),
+  );
+  const domainFailures = hostnames.filter((_, i) => results[i]?.status === "rejected");
+  if (domainFailures.length > 0) {
+    log.error(
+      { userId: input.userId, domains: domainFailures },
+      "failed to restore custom hostnames for unrestricted user",
+    );
+  }
+
+  return { domainsRestored: hostnames.length - domainFailures.length, domainFailures };
 }
 
 export async function getBlockedDomains(ctx: ProtectedTRPCContext) {
