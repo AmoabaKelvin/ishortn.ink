@@ -1,12 +1,15 @@
 import { Link } from "next-view-transitions";
 
+import { getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/server";
 
 import { SettingsNav } from "./_components/settings-nav";
 import Billing from "./billing/billing";
 import { DeleteAccountSection } from "./delete-account/delete-account-section";
 import { SettingsForm } from "./general/settings-form";
+import { NotificationSettings } from "./notifications/notification-settings";
 import { ProfileForm } from "./profile/profile-form";
+import { ApiKeySunsetNotice, ApiProGate } from "./tokens/_components/api-access-notice";
 import GenerateTokenTrigger from "./tokens/_components/create-token";
 import TokenCard from "./tokens/_components/token-card";
 import { AccountTransferSection } from "./transfer/account-transfer-section";
@@ -14,13 +17,15 @@ import { AccountTransferSection } from "./transfer/account-transfer-section";
 export const dynamic = "force-dynamic";
 
 async function SettingsPage() {
-  const [userSettings, userDomains, subscriptions, tokens, userProfile] = await Promise.all([
-    api.siteSettings.get.query(),
-    api.customDomain.list.query(),
-    api.subscriptions.get.query(),
-    api.token.list.query(),
-    api.user.getProfile.query(),
-  ]);
+  const [userSettings, userDomains, subscriptions, tokens, apiAccess, userProfile] =
+    await Promise.all([
+      api.siteSettings.get.query(),
+      api.customDomain.list.query(),
+      api.subscriptions.get.query(),
+      api.token.list.query(),
+      api.token.access.query(),
+      api.user.getProfile.query(),
+    ]);
 
   return (
     <div>
@@ -63,6 +68,19 @@ async function SettingsPage() {
             </div>
           </section>
 
+          {/* Notifications */}
+          <section id="notifications" className="scroll-mt-24">
+            <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+              Notifications
+            </h2>
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+              Emails we send about your links and domains
+            </p>
+            <div className="mt-4">
+              <NotificationSettings productEmailsEnabled={userProfile.productEmailsEnabled} />
+            </div>
+          </section>
+
           {/* Billing */}
           <section id="billing" className="scroll-mt-24">
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
@@ -83,7 +101,8 @@ async function SettingsPage() {
                 API Keys
               </h2>
               <Link
-                href="https://ishortn.mintlify.app/introduction"
+                // Absolute: docs are served on the app host only, not on team subdomains.
+                href={`https://${getAppBaseDomain()}/docs/api`}
                 target="_blank"
                 className="text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700"
               >
@@ -95,9 +114,19 @@ async function SettingsPage() {
             </p>
             <div className="mt-4">
               {tokens.length > 0 && tokens[0] ? (
-                <TokenCard start="******" createdAt={tokens[0].createdAt} keyID={tokens[0].id} />
-              ) : (
+                <>
+                  <TokenCard
+                    start="******"
+                    createdAt={tokens[0].createdAt}
+                    keyID={tokens[0].id}
+                    active={apiAccess.access.status !== "revoked"}
+                  />
+                  {!apiAccess.canCreateKeys && <ApiKeySunsetNotice access={apiAccess.access} />}
+                </>
+              ) : apiAccess.canCreateKeys ? (
                 <GenerateTokenTrigger />
+              ) : (
+                <ApiProGate />
               )}
             </div>
           </section>

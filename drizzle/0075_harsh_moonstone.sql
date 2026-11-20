@@ -1,0 +1,1 @@
+ALTER TABLE `User` ADD `productEmailsEnabled` boolean DEFAULT true NOT NULL;

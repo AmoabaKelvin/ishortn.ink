@@ -163,6 +163,8 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
+    // Milestone, usage-alert and domain-reminder emails. Account, billing and team emails ignore it.
+    productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
     // Account transfer deletion tracking
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period
     // Platform admin
@@ -171,6 +173,10 @@ export const user = mysqlTable(
     banned: boolean("banned").default(false),
     bannedAt: timestamp("bannedAt"),
     bannedReason: varchar("bannedReason", { length: 255 }),
+    // API access sunset emails (see src/server/lib/api-access.ts): set once the
+    // email went out, or once the account's keys were already past their cutoff.
+    apiSunsetNoticeSentAt: timestamp("apiSunsetNoticeSentAt"),
+    apiSunsetReminderSentAt: timestamp("apiSunsetReminderSentAt"),
     // Restriction: can sign in and pay, but can't create or edit links, domains, bio pages or QR codes
     restrictedAt: timestamp("restrictedAt"),
     restrictedReason: varchar("restrictedReason", { length: 255 }),
@@ -527,6 +533,15 @@ export const siteSettings = mysqlTable(
   }),
 );
 
+// When API keys on accounts without Pro/Ultra stop working (see
+// src/server/lib/api-access.ts). A single row (id 1), inserted by the first
+// api-access-sunset cron run after deploy and never moved afterwards.
+export const apiAccessSunset = mysqlTable("ApiAccessSunset", {
+  id: int("id").primaryKey(),
+  sunsetAt: timestamp("sunsetAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // Tag model for storing unique tags
 // Uniqueness strategy:
 // - Team workspaces: unique(name, teamId) enforced at DB level
@@ -698,6 +713,9 @@ export const customDomain = mysqlTable(
     status: mysqlEnum("status", ["pending", "active", "invalid"]).default("pending"),
     verificationDetails: json("verificationDetails"),
     lastReminderSentAt: timestamp("lastReminderSentAt"),
+    // Set when an account restriction released this apex's www fallback hostname,
+    // so lifting the restriction re-adds it (and only then)
+    wwwHostnameReleased: boolean("wwwHostnameReleased").default(false),
     // Generated column to handle NULL teamId in unique constraint
     // MySQL treats NULLs as distinct, so we coalesce to 0 for personal workspaces
     teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(sql`COALESCE(\`teamId\`, 0)`, {

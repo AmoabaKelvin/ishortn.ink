@@ -23,8 +23,10 @@ export const RESTRICTED_LINK_REASON = "Owner account restricted" as const;
 
 /**
  * Backstop for restricted accounts: contentWriteProcedure and the v1 API refuse
- * them, but a link one still manages to create (a path that skips the gate, or
- * a restriction landing mid-request) is inserted already blocked.
+ * them, but a link one still manages to create through a path that skips the
+ * gate is inserted already blocked. tRPC callers pass the request's
+ * ctx.restrictedAt, so a restriction landing mid-request is not caught there;
+ * the v1 API passes the value it re-reads while reserving the link slot.
  */
 export function restrictedLinkValues(restrictedAt: Date | null | undefined) {
   if (!restrictedAt) return {};

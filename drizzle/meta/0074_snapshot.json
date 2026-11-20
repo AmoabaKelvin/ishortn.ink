@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "31f8531d-0dc2-44af-86c2-b4bb8ca2104b",
+  "id": "c26699a5-5f1f-4043-9031-ff20a5bfe84b",
   "prevId": "a69476df-be39-40d1-a07f-c9eddeae7495",
   "tables": {
     "AccountDeletion": {
@@ -272,6 +272,45 @@
           ]
         }
       },
+      "checkConstraint": {}
+    },
+    "ApiAccessSunset": {
+      "name": "ApiAccessSunset",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sunsetAt": {
+          "name": "sunsetAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "ApiAccessSunset_id": {
+          "name": "ApiAccessSunset_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "AudienceFeedback": {
@@ -3656,16 +3695,16 @@
           "notNull": false,
           "autoincrement": false
         },
-        "restrictedAt": {
-          "name": "restrictedAt",
+        "apiSunsetNoticeSentAt": {
+          "name": "apiSunsetNoticeSentAt",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "restrictedReason": {
-          "name": "restrictedReason",
-          "type": "varchar(255)",
+        "apiSunsetReminderSentAt": {
+          "name": "apiSunsetReminderSentAt",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

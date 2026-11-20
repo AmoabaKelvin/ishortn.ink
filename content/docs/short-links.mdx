@@ -1,0 +1,89 @@
+---
+title: Short links
+description: Aliases, editing destinations, expiry, passwords, scheduling, UTM parameters, targeting and the other options on a short link, with the plan each one needs.
+---
+
+A short link is a domain plus an alias, such as `isht.app/spring-sale`, that redirects visitors to a destination URL. Create links from the [dashboard](/dashboard) with **New Link**, from a [CSV file](/docs/bulk-import) or through the [API](/docs/api/create-link).
+
+| Option | Free | Pro | Ultra |
+| --- | --- | --- | --- |
+| Custom aliases | 6+ characters | Any length | Any length |
+| Edit the destination later | Yes | Yes | Yes |
+| Expiry by date or click count | Yes | Yes | Yes |
+| Password protection | No | Yes | Yes |
+| Scheduled activation | No | Yes | Yes |
+| Custom social previews | No | Yes | Yes |
+| Verified clicks | No | Yes | Yes |
+| Geo and device targeting rules per link | No | <PlanValue plan="pro" cap="geoRulesLimit" /> | <PlanValue plan="ultra" cap="geoRulesLimit" /> |
+| Click milestone alerts per link | No | <PlanValue plan="pro" cap="milestonesPerLinkLimit" /> | <PlanValue plan="ultra" cap="milestonesPerLinkLimit" /> |
+| UTM parameters and templates | No | No | Yes |
+| Link cloaking | No | No | Yes |
+
+Links in a [team workspace](/docs/teams) get every Ultra option.
+
+## Aliases
+
+The alias is the part after the domain. Leave it empty and iShortn generates a random 9-character alias from letters and numbers.
+
+A custom alias:
+
+- Uses only letters, numbers, dashes (`-`) and underscores (`_`). Periods and spaces aren't allowed.
+- Is at most 20 characters long.
+- Is at least 6 characters long on the Free plan. Pro and Ultra can use aliases of any length, even one character.
+- Must be unique on its domain, ignoring case: if `isht.app/Launch` exists, `isht.app/launch` is taken. The same alias can exist on different domains.
+
+## Editing a link
+
+You can change everything about a link after it's shared: the destination, the alias, the domain and every option below. Open the link's menu in the dashboard and choose **Edit link**.
+
+- **Destination**: visitors go to the new URL straight away. The new URL goes through the [link safety check](/docs/abuse#link-safety-checks) again.
+- **Alias or domain**: the old short URL stops working, so only do this before a link is shared. A link can move to any platform domain or to a custom domain that is active in the same workspace.
+
+Links can also be turned off and on again, archived, given a name, a note and tags, or put in a folder (folders need Pro or Ultra). To start counting from zero, reset a link's statistics.
+
+## Expiry
+
+A link can stop working after a date, after a number of clicks, or whichever comes first. Visitors to an expired link see an "expired" page instead of the destination. Expiry is available on every plan.
+
+## Password protection
+
+**Pro and Ultra.** Visitors must enter the password before they're redirected. Passwords are stored as a bcrypt hash, so iShortn can't show you a password later; set a new one if you forget it. Expiry, scheduling and targeting rules still apply after the password is accepted.
+
+## Scheduled activation
+
+**Pro and Ultra.** Set a go-live time and the link shows a "not live yet" page until then. Use it to share a link ahead of a launch, or to print it before a campaign starts.
+
+## UTM parameters
+
+**Ultra.** Add `utm_source`, `utm_medium`, `utm_campaign`, `utm_term` and `utm_content` to a link and iShortn appends them to the destination on every visit, so analytics tools such as Google Analytics attribute the traffic. Each value can be up to 255 characters. Save sets you use often as UTM templates.
+
+[Campaigns](/dashboard/campaigns) on Pro and Ultra can also stamp default UTM values onto the links you add to them.
+
+## Geo and device targeting
+
+**Pro (<PlanValue plan="pro" cap="geoRulesLimit" /> rules per link) and Ultra (unlimited).** Targeting rules send different visitors to different places, or block them. Each rule has:
+
+- **A condition** on one of: country, continent, device type (mobile, tablet, desktop) or operating system (iOS, Android, Windows, macOS, Linux, ChromeOS), matching visitors that are **in** or **not in** the values you pick.
+- **An action**: redirect to another URL, or block the visit with an optional message of up to 500 characters.
+
+Rules are checked in order and the first one that matches wins. Visitors that match no rule go to the link's main destination. A blocked visitor sees "This link is not available in your region." unless you wrote your own message.
+
+## Link cloaking
+
+**Ultra.** The destination opens inside a frame under your short URL, so the address bar keeps showing the short link. Some sites refuse to be framed; the editor checks the destination and tells you when cloaking won't work.
+
+## Custom social previews
+
+**Pro and Ultra.** Set your own title, description and image for the preview card that social networks and chat apps show when the link is shared. Images can be PNG, JPEG or GIF up to 2 MB.
+
+## Verified clicks
+
+**Pro and Ultra.** With verified clicks on, iShortn checks whether each click came from a real browser that loaded the page. Bots and link scanners still appear in your total but not in the verified count, and the link's analytics show the verified number and rate. You can turn it on for new or existing links; counting starts from the moment it's on.
+
+## Click milestones
+
+**Pro (<PlanValue plan="pro" cap="milestonesPerLinkLimit" /> per link) and Ultra (unlimited).** Get an email when a link reaches a number of clicks you choose, such as 1,000.
+
+## Monthly link limit
+
+Each new link counts toward your plan's monthly limit: <PlanValue plan="free" cap="linksLimit" /> on Free, <PlanValue plan="pro" cap="linksLimit" /> on Pro and unlimited on Ultra. Links from the dashboard, the API, CSV import and QR codes all count. The count resets on the first day of each calendar month. Editing or deleting a link doesn't give a slot back.

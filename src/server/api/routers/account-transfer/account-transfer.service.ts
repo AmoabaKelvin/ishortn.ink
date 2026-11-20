@@ -5,6 +5,8 @@ import { addDays } from "date-fns";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
+import { getAppBaseDomain } from "@/lib/constants/domains";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
   accountTransfer,
@@ -166,6 +168,11 @@ export async function validateAccountTransfer(
       code: "NOT_FOUND",
       message: "Source account not found",
     });
+  }
+
+  // Moving links and domains to another account would sidestep the restriction.
+  if (sourceUser.restrictedAt) {
+    throw new TRPCError({ code: "FORBIDDEN", message: ACCOUNT_RESTRICTED_MESSAGE });
   }
 
   // Check not transferring to self
@@ -466,21 +473,24 @@ export async function initiateAccountTransfer(
     columns: { name: true },
   });
 
-  // Send email to target account
-  void runBackgroundTask(
-    sendAccountTransferEmail({
-      toEmail: input.targetEmail,
-      toName: targetUser?.name,
-      fromEmail: sourceUser?.email ?? "unknown",
-      fromName: sourceUser?.name ?? "A user",
-      token,
-      resourceCounts: validation.resourceCounts,
-    }),
-  );
+  const acceptUrl = `https://${getAppBaseDomain()}/account/accept-transfer?token=${encodeURIComponent(token)}`;
+
+  // Awaited so a failed send can be shown to the sender, who can then share the link by hand.
+  const emailSent = await sendAccountTransferEmail({
+    toEmail: input.targetEmail,
+    toUserId: validation.targetUserId!,
+    toName: targetUser?.name,
+    fromEmail: sourceUser?.email ?? "unknown",
+    fromName: sourceUser?.name ?? "A user",
+    acceptUrl,
+    resourceCounts: validation.resourceCounts,
+  });
 
   return {
     transferId: Number(result.insertId),
     token,
+    acceptUrl,
+    emailSent,
     expiresAt,
     resourceCounts: validation.resourceCounts,
   };
@@ -615,6 +625,18 @@ export async function acceptAccountTransfer(
     });
   }
 
+  // Covers transfers initiated before the source account was restricted.
+  const sourceAccount = await ctx.db.query.user.findFirst({
+    where: eq(user.id, transfer.fromUserId),
+    columns: { restrictedAt: true },
+  });
+  if (sourceAccount?.restrictedAt) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "The sending account is restricted, so this transfer can't be completed.",
+    });
+  }
+
   // Re-validate (plan caps may have changed)
   // Create a temporary context with the source user to validate
   const sourceUserContext: ProtectedTRPCContext = {
@@ -657,6 +679,7 @@ export async function acceptAccountTransfer(
     void runBackgroundTask(
       sendTransferCompletedEmail({
         toEmail: sourceUser.email,
+        toUserId: transfer.fromUserId,
         toName: sourceUser.name,
         recipientName: currentUser?.name ?? "the recipient",
         recipientEmail: currentUser?.email ?? transfer.toEmail,
@@ -1080,6 +1103,7 @@ export async function declineAccountTransfer(ctx: ProtectedTRPCContext, input: {
     void runBackgroundTask(
       sendTransferDeclinedEmail({
         toEmail: sourceUser.email,
+        toUserId: transfer.fromUserId,
         toName: sourceUser.name,
         recipientName: currentUser?.name ?? "the recipient",
         recipientEmail: currentUser?.email ?? transfer.toEmail,

@@ -1,0 +1,70 @@
+---
+title: Custom domains
+description: Serve short links from your own domain, such as go.yourbrand.com. DNS setup step by step, verification and troubleshooting.
+---
+
+With a custom domain, your short links read `go.yourbrand.com/spring-sale` instead of `isht.app/spring-sale`. iShortn issues and renews the SSL certificate for you.
+
+| | Free | Pro | Ultra |
+| --- | --- | --- | --- |
+| Custom domains | Not available | <PlanValue plan="pro" cap="domainLimit" /> | Unlimited |
+
+In a [team workspace](/docs/teams), only the team owner can add or remove domains.
+
+## Pick a domain
+
+Use a **subdomain** of a domain you own, such as `go.yourbrand.com` or `links.yourbrand.com`. Subdomains work with every DNS provider and leave your main website untouched.
+
+You can also use a bare (apex) domain such as `yourbrand.link`, but only if nothing else is served from it and your DNS provider supports ALIAS, ANAME or flattened CNAME records. Cloudflare, Namecheap, Porkbun and Route 53 all do.
+
+## Add the domain
+
+1. Open [Domains](/dashboard/domains) in the dashboard and click **Add Domain**.
+2. Enter the domain, for example `links.example.com`. Leave out `https://` and `www.`; iShortn strips them anyway.
+3. Confirm. The domain appears in the list as **Pending**, with the DNS records to create.
+
+## Create the DNS records
+
+Sign in to the company that runs DNS for your domain (often where you bought it) and add the records shown on the domain card. They follow this pattern:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| `CNAME` | The subdomain part, such as `links` for `links.example.com`. `@` for an apex domain. | `cname.ishortn.ink` |
+| `TXT` | `_cf-custom-hostname`, or `_cf-custom-hostname.links` for `links.example.com` | The value shown on the domain card |
+
+The `TXT` record proves you own the domain and only appears when it's needed. Always copy the exact names and values from the domain card: they're generated for your domain.
+
+For an apex domain, create the `CNAME` as an **ALIAS** or **ANAME** record (or a CNAME at the root, if your provider flattens it) pointing to the same value.
+
+If your domain uses Cloudflare DNS, set the record's proxy status to **DNS only** (grey cloud) and set **SSL/TLS** to **Full**.
+
+## Verification
+
+iShortn checks the records automatically every 30 seconds while the Domains page is open, and you can click **Check Now** at any time. The domain becomes **Active** once both the DNS record and the SSL certificate are in place. DNS changes usually show up within minutes but can take up to 48 hours.
+
+Once a domain is active, it appears in the domain menu when you create or edit links in that workspace. You can also make it your [default domain](/docs/platform-domains#setting-a-default).
+
+| Status | Meaning |
+| --- | --- |
+| Pending | Waiting for the DNS records or the certificate. |
+| Active | Ready. Links on the domain redirect. |
+| Invalid | Verification failed. Check the records against the domain card. |
+
+If a domain stays misconfigured, iShortn emails a reminder at most once a week. A domain left **Invalid** for 30 days is removed.
+
+## Troubleshooting
+
+- **Still pending after an hour.** Compare each record with the domain card character by character. A common mistake is entering the full domain as the name (`links.example.com.example.com`); most providers add your domain automatically, so enter only `links`.
+- **Cloudflare DNS.** Turn the proxy off (DNS only) on the CNAME record and set SSL/TLS to Full.
+- **An apex domain won't verify.** Your DNS provider may not support CNAME-style records at the root. Use a subdomain such as `links.example.com` instead.
+- **"This domain is already added to this workspace".** It's already in your list.
+- **"This domain is already connected to another account".** Remove it from the other account first, or contact [support@ishortn.ink](mailto:support@ishortn.ink) if you own it.
+- **Plan limit.** Pro accounts can add <PlanValue plan="pro" cap="domainLimit" /> domains. Remove one or upgrade to Ultra for more.
+
+## Link-in-bio pages on your domain
+
+On Pro and Ultra, an active custom domain can also serve a [link-in-bio page](/docs/bio-pages) at its root: `yourbrand.com` shows the page and `yourbrand.com/<alias>` keeps redirecting short links.
+
+## Removing a domain
+
+Deleting a domain also **deletes every link on that domain in the workspace, with its analytics**. This can't be undone. Move links you want to keep to another domain first by editing them.

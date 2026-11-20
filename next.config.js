@@ -9,6 +9,17 @@ if (process.env.NODE_ENV === "development") {
   initOpenNextCloudflareForDev();
 }
 
+const createMDX = require("@next/mdx");
+
+// Docs pages (content/docs) are MDX compiled at build time. Plugins are named
+// by string so the options stay serializable for Turbopack.
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [["remark-frontmatter"], ["remark-gfm"]],
+    rehypePlugins: [["rehype-slug"], [require.resolve("./src/lib/docs/rehype-code.mjs")]],
+  },
+});
+
 /** @type {import("next").NextConfig} */
 const config = {
   // CLAUDE.md is maintained by hand; stop `next dev` injecting its agent block.
@@ -58,4 +69,4 @@ const config = {
   },
 };
 
-module.exports = config;
+module.exports = withMDX(config);

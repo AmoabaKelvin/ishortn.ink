@@ -1,210 +1,95 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Hr,
-  Html,
-  Link,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import { Link, Section, Text } from "@react-email/components";
 
-import type { Plan } from "@/lib/billing/plans";
+import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
+import { SUPPORT_EMAIL } from "@/lib/constants/app";
+import { getAppUrl } from "@/lib/constants/domains";
+
+import {
+  EmailButton,
+  EmailLayout,
+  headingText,
+  link,
+  panel,
+  panelItem,
+  text,
+} from "./_components/layout";
+
+type PaidPlan = Exclude<Plan, "free">;
 
 interface WelcomeEmailProps {
   userName?: string;
-  plan?: Exclude<Plan, "free">;
-  supportEmail?: string;
-  senderName?: string;
+  plan?: PaidPlan;
 }
 
 const planDisplayNames = {
   pro: "Pro",
   ultra: "Ultra",
-} satisfies Record<Exclude<Plan, "free">, string>;
+} satisfies Record<PaidPlan, string>;
 
+const pro = PLAN_CAPS.pro;
+
+// Keep in step with PLAN_FEATURES (src/lib/billing/plan-features.ts), which the pricing page shows.
 const planBenefits = {
   pro: [
-    "10,000 monthly link events",
-    "Up to 1,000 short links",
-    "5 custom folders for organization",
-    "3 custom domains",
-    "Extended analytics history",
+    `${(pro.linksLimit ?? 0).toLocaleString()} short links per month`,
+    `${(pro.eventsLimit ?? 0).toLocaleString()} tracked events per month`,
+    "Unlimited analytics history",
+    `${pro.domainLimit} custom domains`,
+    `${pro.folderLimit} folders`,
+    "Geo & device targeting, password protection and REST API access",
   ],
   ultra: [
-    "Unlimited link events",
-    "Unlimited short links",
-    "Unlimited folders",
-    "Unlimited custom domains",
-    "Full analytics history",
+    "Team workspaces to share links, domains and analytics with your team",
+    "Unlimited links & tracked events",
+    "Unlimited analytics history",
+    "Unlimited custom domains and folders",
+    "Unlimited targeting rules, milestones, bio pages and campaigns",
     "Priority support",
   ],
-} satisfies Record<Exclude<Plan, "free">, string[]>;
+} satisfies Record<PaidPlan, string[]>;
 
-export const WelcomeEmail = ({
-  userName = "there",
-  plan = "pro",
-  supportEmail = "support@ishortn.ink",
-  senderName = "Kelvin",
-}: WelcomeEmailProps) => {
+export const WelcomeEmail = ({ userName = "there", plan = "pro" }: WelcomeEmailProps) => {
   const displayName = planDisplayNames[plan];
-  const benefits = planBenefits[plan];
 
   return (
-    <Html>
-      <Head />
-      <Preview>Welcome to iShortn {displayName}!</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={section}>
-            <Text style={heading}>Welcome to iShortn {displayName}! 🎉</Text>
+    <EmailLayout preview={`Welcome to iShortn ${displayName}`}>
+      <Text style={text}>Hi {userName},</Text>
 
-            <Text style={text}>Hi {userName},</Text>
+      <Text style={text}>
+        Thank you for upgrading to iShortn {displayName}! Your account is upgraded and every{" "}
+        {displayName} feature is ready to use.
+      </Text>
 
-            <Text style={text}>
-              Thank you for upgrading to iShortn {displayName}! Your account has been successfully
-              upgraded, and you now have access to all {displayName} features.
-            </Text>
+      <Text style={headingText}>What&apos;s included in your plan</Text>
+      <Section style={panel}>
+        {planBenefits[plan].map((benefit) => (
+          <Text key={benefit} style={panelItem}>
+            ✓ {benefit}
+          </Text>
+        ))}
+      </Section>
 
-            <Text style={subheading}>What's included in your plan:</Text>
+      <EmailButton href={getAppUrl(plan === "ultra" ? "/dashboard/teams/new" : "/dashboard")}>
+        {plan === "ultra" ? "Create your team" : "Go to your dashboard"}
+      </EmailButton>
 
-            <Section style={benefitsList}>
-              {benefits.map((benefit, index) => (
-                <Text key={index} style={benefitItem}>
-                  ✓ {benefit}
-                </Text>
-              ))}
-            </Section>
+      <Text style={text}>
+        If you have any questions or need help getting started, reply to this email or reach out at{" "}
+        <Link href={`mailto:${SUPPORT_EMAIL}`} style={link}>
+          {SUPPORT_EMAIL}
+        </Link>
+        .
+      </Text>
 
-            <Section style={ctaContainer}>
-              <Button style={button} href="https://ishortn.ink/dashboard">
-                Go to Dashboard
-              </Button>
-            </Section>
-
-            <Hr style={hr} />
-
-            <Text style={text}>
-              If you have any questions or need help getting started, feel free to reply to this
-              email or reach out at{" "}
-              <Link href={`mailto:${supportEmail}`} style={link}>
-                {supportEmail}
-              </Link>
-              .
-            </Text>
-
-            <Text style={text}>Thanks for choosing iShortn!</Text>
-
-            <Text style={signature}>
-              {senderName}
-              <br />
-              <span style={signatureRole}>iShortn Team</span>
-            </Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+      <Text style={text}>Thanks for choosing iShortn!</Text>
+      <Text style={{ ...text, fontWeight: 500 }}>Kelvin &amp; the iShortn team</Text>
+    </EmailLayout>
   );
 };
 
-const main = {
-  backgroundColor: "#f6f9fc",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-};
-
-const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  maxWidth: "560px",
-};
-
-const section = {
-  backgroundColor: "#ffffff",
-  borderRadius: "8px",
-  padding: "32px",
-  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-};
-
-const heading = {
-  color: "#1a1a1a",
-  fontSize: "24px",
-  fontWeight: "600" as const,
-  lineHeight: "32px",
-  marginBottom: "24px",
-  textAlign: "center" as const,
-};
-
-const subheading = {
-  color: "#1a1a1a",
-  fontSize: "16px",
-  fontWeight: "600" as const,
-  lineHeight: "24px",
-  marginTop: "24px",
-  marginBottom: "12px",
-};
-
-const text = {
-  color: "#4a4a4a",
-  fontSize: "16px",
-  lineHeight: "26px",
-  marginBottom: "16px",
-};
-
-const benefitsList = {
-  backgroundColor: "#f8fafc",
-  borderRadius: "6px",
-  padding: "16px 20px",
-  marginBottom: "24px",
-};
-
-const benefitItem = {
-  color: "#2d3748",
-  fontSize: "15px",
-  lineHeight: "28px",
-  margin: "0",
-};
-
-const ctaContainer = {
-  textAlign: "center" as const,
-  marginTop: "24px",
-  marginBottom: "24px",
-};
-
-const button = {
-  backgroundColor: "#5F51E8",
-  borderRadius: "6px",
-  color: "#ffffff",
-  fontSize: "16px",
-  fontWeight: "600" as const,
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "inline-block",
-  padding: "14px 28px",
-};
-
-const hr = {
-  borderColor: "#e5e7eb",
-  margin: "24px 0",
-};
-
-const link = {
-  color: "#5F51E8",
-  textDecoration: "underline",
-};
-
-const signature = {
-  color: "#4a4a4a",
-  fontSize: "16px",
-  lineHeight: "24px",
-  marginTop: "24px",
-};
-
-const signatureRole = {
-  color: "#6b7280",
-  fontSize: "14px",
-};
+WelcomeEmail.PreviewProps = {
+  userName: "Ama",
+  plan: "ultra",
+} satisfies WelcomeEmailProps;
 
 export default WelcomeEmail;

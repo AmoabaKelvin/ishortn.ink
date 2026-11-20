@@ -1,0 +1,134 @@
+---
+title: Create a link
+description: Shorten a URL, optionally with your own alias, domain, expiry, password, schedule or UTM parameters.
+endpoint:
+  method: POST
+  path: /api/v1/links
+---
+
+Creates a short link in your personal workspace and counts it toward your monthly link limit.
+
+## Request
+
+Send a JSON body with `Content-Type: application/json` and your key in `x-api-key`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `url` | string | Yes | The destination. Must be a valid absolute URL, such as `https://example.com/page`. |
+| `alias` | string | No | The path after the domain. Letters, numbers, `-` and `_`, up to 20 characters, and at least 6 characters on the Free plan. Must not already exist on the domain (checked case-insensitively). Defaults to a random 9-character alias. |
+| `domain` | string | No | The domain for the link. Defaults to your default domain, or `isht.app`. See [Domains](/docs/api#domains). |
+| `expiresAt` | string | No | Date and time after which the link stops redirecting, as an ISO 8601 string such as `2026-12-31T23:59:59Z`. |
+| `expiresAfter` | number | No | Number of clicks after which the link stops redirecting. |
+| `activatesAt` | string | No | Date and time the link starts redirecting, as an ISO 8601 string with a time zone (`Z` or an offset such as `+01:00`). Pro and Ultra only. |
+| `password` | string | No | Visitors must enter this password before they're redirected. Requires an active Pro or Ultra subscription. Stored as a bcrypt hash. |
+| `utmParams` | object | No | UTM parameters added to the destination when the link is visited. Ultra only. See below. |
+
+`utmParams` accepts these optional string fields, each up to 255 characters: `utm_source`, `utm_medium`, `utm_campaign`, `utm_term` and `utm_content`.
+
+Fields not in this table are ignored. Folders, tags, notes, targeting rules and the other dashboard settings can't be set through the API yet.
+
+<CodeGroup>
+
+```bash title="cURL"
+curl https://ishortn.ink/api/v1/links \
+  -X POST \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/blog/launch-day",
+    "alias": "launch-day",
+    "expiresAfter": 1000
+  }'
+```
+
+```javascript title="JavaScript"
+const response = await fetch("https://ishortn.ink/api/v1/links", {
+  method: "POST",
+  headers: {
+    "x-api-key": process.env.ISHORTN_API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    url: "https://example.com/blog/launch-day",
+    alias: "launch-day",
+    expiresAfter: 1000,
+  }),
+});
+
+if (!response.ok) {
+  throw new Error(`${response.status}: ${await response.text()}`);
+}
+
+const link = await response.json();
+console.log(link.shortLink);
+```
+
+```python title="Python"
+import os
+
+import requests
+
+response = requests.post(
+    "https://ishortn.ink/api/v1/links",
+    headers={"x-api-key": os.environ["ISHORTN_API_KEY"]},
+    json={
+        "url": "https://example.com/blog/launch-day",
+        "alias": "launch-day",
+        "expiresAfter": 1000,
+    },
+)
+
+if not response.ok:
+    raise RuntimeError(f"{response.status_code}: {response.text}")
+
+print(response.json()["shortLink"])
+```
+
+</CodeGroup>
+
+## Response
+
+`201 Created` with the new link.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `shortLink` | string | The full short URL, `https://<domain>/<alias>`. |
+| `url` | string | The destination URL. |
+| `alias` | string | The alias, either yours or the generated one. |
+| `expiresAt` | string \| null | When the link expires, or `null`. |
+| `activatesAt` | string \| null | When the link starts redirecting, or `null`. |
+| `expiresAfter` | number \| null | Click limit, or `null`. |
+| `isProtected` | boolean | `true` when the link has a password. |
+
+```json
+{
+  "shortLink": "https://isht.app/launch-day",
+  "url": "https://example.com/blog/launch-day",
+  "alias": "launch-day",
+  "expiresAt": null,
+  "activatesAt": null,
+  "expiresAfter": 1000,
+  "isProtected": false
+}
+```
+
+## Errors
+
+Error bodies are plain text.
+
+| Status | Body | Cause |
+| --- | --- | --- |
+| `400` | JSON list of validation issues | A field has the wrong type, or `url` isn't a valid URL, or `activatesAt` isn't an ISO 8601 date with a time zone. |
+| `400` | `Alias can only contain alphanumeric characters, dashes, and underscores` | The alias has other characters. |
+| `400` | `Custom aliases must be at least 6 characters on the free plan. Upgrade to Pro for shorter aliases.` | Free plan with a short alias. |
+| `400` | `Alias already exists` | The alias is taken on that domain. |
+| `400` | A database error message | The alias is longer than 20 characters. |
+| `400` | `You need to upgrade to a pro plan to use password protection` | `password` without an active Pro or Ultra subscription. |
+| `400` | `UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.` | `utmParams` on Free or Pro. |
+| `400` | A [link safety](/docs/abuse#link-safety-checks) message | The destination failed the safety check. |
+| `401` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
+| `403` | `Scheduled links are only available on Pro and Ultra plans` | `activatesAt` on the Free plan. |
+| `403` | `You've reached your monthly limit of 30 links. Upgrade to Pro for more.` | Free plan monthly limit. On Pro the message names the 1,000-link limit and suggests Ultra. |
+| `500` | | The body wasn't valid JSON, or an unexpected server error. |
+| `429` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

@@ -304,13 +304,17 @@ export default function AdminUsersPage() {
                           Banned
                         </span>
                       ) : u.restrictedAt ? (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
-                          title={u.restrictedReason ?? undefined}
-                        >
-                          <IconAlertTriangle size={11} />
-                          Restricted
-                        </span>
+                        <>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                            <IconAlertTriangle size={11} />
+                            Restricted
+                          </span>
+                          {u.restrictedReason && (
+                            <p className="mt-1 line-clamp-2 max-w-48 break-words text-[11px] text-neutral-500 dark:text-neutral-400">
+                              {u.restrictedReason}
+                            </p>
+                          )}
+                        </>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
                           <IconCheck size={11} />

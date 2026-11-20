@@ -16,6 +16,8 @@ export default function robots(): MetadataRoute.Robots {
         "/api",
         "/account",
         "/teams/accept-invite",
+        // Internal path of /docs (see src/lib/docs/routing.ts); only /docs is canonical.
+        "/docs-site",
       ],
     },
     sitemap: absoluteUrl("/sitemap.xml"),
