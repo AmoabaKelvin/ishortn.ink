@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 
+import { getBioLinkBlockLimit } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
 import { normalizeAlias } from "@/lib/utils";
@@ -9,6 +10,7 @@ import { getUserPlanContext, normalizeMonthlyLinkCount } from "@/server/lib/user
 import { requireFolderAccess, workspaceFilter } from "@/server/lib/workspace";
 
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
+import type { Plan } from "@/lib/billing/plans";
 
 /**
  * Loads a link that belongs to the caller's workspace, and — when the link
@@ -37,12 +39,16 @@ export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: num
 }
 
 /**
- * Bio link blocks are hidden links capped per bio page instead
- * (`checkBioLinkBlockLimit`), so they neither consume nor are blocked by the
- * monthly link quota.
+ * On plans that cap link blocks per bio page (free), bio link blocks are
+ * limited by that cap (`lockBioLinkBlockCapacity`) instead, so they neither
+ * consume nor are blocked by the monthly link quota. Uncapped plans count them
+ * like any other link, or they would escape the monthly quota entirely.
  */
-export function countsTowardMonthlyLinkQuota(values: { isBioLink?: boolean | null }): boolean {
-  return values.isBioLink !== true;
+export function countsTowardMonthlyLinkQuota(
+  plan: Plan,
+  values: { isBioLink?: boolean | null },
+): boolean {
+  return values.isBioLink !== true || getBioLinkBlockLimit(plan) === undefined;
 }
 
 export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {

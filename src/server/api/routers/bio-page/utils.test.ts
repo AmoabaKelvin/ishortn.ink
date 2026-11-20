@@ -1,6 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import { assertBioLinkBlockCapacity, assertSlugAllowed, RESERVED_BIO_SLUGS } from "./utils";
+import { bioBlock, bioPage } from "@/server/db/schema";
+
+import {
+  assertBioLinkBlockCapacity,
+  assertSlugAllowed,
+  lockBioLinkBlockCapacity,
+  RESERVED_BIO_SLUGS,
+} from "./utils";
+
+import type { db } from "@/server/db";
+
+type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 describe("reserved bio slugs", () => {
   test("excludes the /p route prefix and core app routes", () => {
@@ -36,5 +47,87 @@ describe("bio link block cap", () => {
   test("paid plans have no link block cap", () => {
     expect(() => assertBioLinkBlockCapacity("pro", 500)).not.toThrow();
     expect(() => assertBioLinkBlockCapacity("ultra", 500)).not.toThrow();
+  });
+});
+
+// An in-memory bio page with InnoDB's row-lock behaviour: `SELECT ... FOR
+// UPDATE` on the page waits until the transaction holding the lock ends, and
+// inserted blocks become visible to other transactions only on commit.
+function fakePageStore(initialLinkBlocks: number) {
+  let committedLinkBlocks = initialLinkBlocks;
+  let lockQueue: Promise<void> = Promise.resolve();
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 1));
+
+  async function transaction(
+    run: (tx: TransactionClient, insertLinkBlock: () => Promise<void>) => Promise<void>,
+  ): Promise<void> {
+    let release = () => {};
+    let pendingInserts = 0;
+
+    const tx = {
+      select: () => ({
+        from: (table: typeof bioPage | typeof bioBlock) => ({
+          where: () => {
+            const rows = tick().then(() =>
+              table === bioBlock ? [{ count: committedLinkBlocks + pendingInserts }] : [],
+            );
+            return Object.assign(rows, {
+              for: async (mode: "update") => {
+                expect(table).toBe(bioPage);
+                expect(mode).toBe("update");
+                const previous = lockQueue;
+                lockQueue = new Promise((resolve) => {
+                  release = resolve;
+                });
+                await previous;
+                return [];
+              },
+            });
+          },
+        }),
+      }),
+    };
+    const insertLinkBlock = async () => {
+      await tick();
+      pendingInserts += 1;
+    };
+
+    try {
+      // SAFETY: lockBioLinkBlockCapacity only calls tx.select().from().where(),
+      // awaited directly or through .for("update"), which the fake implements.
+      await run(tx as TransactionClient, insertLinkBlock);
+      committedLinkBlocks += pendingInserts;
+    } finally {
+      release();
+    }
+  }
+
+  return { transaction, linkBlocks: () => committedLinkBlocks };
+}
+
+describe("bio link block cap under concurrent adds", () => {
+  test("concurrent adds to a free page with 2 link blocks stop at 3", async () => {
+    const store = fakePageStore(2);
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, () =>
+        store.transaction(async (tx, insertLinkBlock) => {
+          await lockBioLinkBlockCapacity(tx, "free", 1);
+          await insertLinkBlock();
+        }),
+      ),
+    );
+
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((r) => r.status === "rejected")).toHaveLength(4);
+    expect(store.linkBlocks()).toBe(3);
+  });
+
+  test("paid pages have no cap", async () => {
+    const store = fakePageStore(500);
+    await store.transaction(async (tx, insertLinkBlock) => {
+      await lockBioLinkBlockCapacity(tx, "pro", 1);
+      await insertLinkBlock();
+    });
+    expect(store.linkBlocks()).toBe(501);
   });
 });

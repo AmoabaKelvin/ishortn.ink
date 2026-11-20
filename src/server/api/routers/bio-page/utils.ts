@@ -7,7 +7,10 @@ import { workspaceFilter } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { Plan } from "@/lib/billing/plans";
+import type { db } from "@/server/db";
 import type { BioPage } from "@/server/db/schema";
+
+type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Handles live at /p/<slug>, but we still exclude every top-level app route name
 // defensively (in case bio pages are ever lifted to the root namespace) plus
@@ -105,19 +108,28 @@ export function assertBioLinkBlockCapacity(plan: Plan, currentLinkBlocks: number
   });
 }
 
-/** Enforce the per-plan link-block cap for one bio page. */
-export async function checkBioLinkBlockLimit(
-  ctx: WorkspaceTRPCContext,
+/**
+ * Enforce the per-plan link-block cap for one bio page, inside the transaction
+ * that inserts the block. Locking the page row first serializes concurrent
+ * adds to the same page, and because the lock is the transaction's first read,
+ * the count's snapshot is taken after it and sees every block committed by the
+ * add that held the lock before us. Uncapped plans skip both queries.
+ */
+export async function lockBioLinkBlockCapacity(
+  tx: TransactionClient,
+  plan: Plan,
   bioPageId: number,
 ): Promise<void> {
-  if (getBioLinkBlockLimit(ctx.workspace.plan) === undefined) return;
+  if (getBioLinkBlockLimit(plan) === undefined) return;
 
-  const [row] = await ctx.db
+  await tx.select({ id: bioPage.id }).from(bioPage).where(eq(bioPage.id, bioPageId)).for("update");
+
+  const [row] = await tx
     .select({ count: count() })
     .from(bioBlock)
     .where(and(eq(bioBlock.bioPageId, bioPageId), eq(bioBlock.type, "link")));
 
-  assertBioLinkBlockCapacity(ctx.workspace.plan, Number(row?.count ?? 0));
+  assertBioLinkBlockCapacity(plan, Number(row?.count ?? 0));
 }
 
 /** In-memory ownership check mirroring workspaceFilter (for already-loaded rows). */
