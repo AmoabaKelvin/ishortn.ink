@@ -578,7 +578,6 @@ export type PublicBioPage = {
   seoDescription: string | null;
   socialImageUrl: string | null;
   customDomain: string | null;
-  ownerId: string;
   blocks: PublicBioBlock[];
 };
 
@@ -637,7 +636,6 @@ async function assemblePublicBioPage(
     seoDescription: page.seoDescription,
     socialImageUrl: page.socialImageUrl,
     customDomain: page.customDomain,
-    ownerId: page.userId,
     blocks: publicBlocks,
   };
 }

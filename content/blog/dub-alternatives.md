@@ -1,5 +1,6 @@
 ---
 title: "Dub.co Alternatives in 2026: Free and Cheaper Options"
+seoTitle: "Dub.co Alternatives in 2026: Free and Cheaper"
 description: "Dub no longer lists a free plan and custom domains start at $90/month. Compare cheaper Dub alternatives for small teams, and how to move your links."
 date: "2026-11-20"
 author: "Kelvin Amoaba"

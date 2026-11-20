@@ -1,5 +1,6 @@
 // @ts-ignore `.open-next/worker.js` is generated at build time
 import { default as handler } from "./.open-next/worker.js";
+import { getWwwRedirectUrl } from "./src/lib/routing/www-redirect";
 
 import type { ClickEvent } from "./src/lib/core/analytics/click-event";
 
@@ -14,6 +15,7 @@ const CRON_ROUTES = new Map([
   ["0 2 * * SUN", "/api/cron/cleanup-analytics"],
   ["0 4 * * *", "/api/cron/cleanup-expired"],
   ["30 */6 * * *", "/api/cron/phishing-rescan"],
+  ["5,20,35,50 * * * *", "/api/cron/phishing-rescan?backlog=1"],
 ]);
 
 // The queue consumer lives in a Next.js route so it shares the app's DB setup.
@@ -36,7 +38,11 @@ function callApp(env: Env, path: string, body?: ClickEvent[]): Promise<Response>
 }
 
 export default {
-  fetch: handler.fetch,
+  fetch(request, env, ctx) {
+    const wwwRedirect = getWwwRedirectUrl(request.url);
+    if (wwwRedirect) return Response.redirect(wwwRedirect, 301);
+    return handler.fetch(request, env, ctx);
+  },
 
   async scheduled(controller, env) {
     const path = CRON_ROUTES.get(controller.cron);

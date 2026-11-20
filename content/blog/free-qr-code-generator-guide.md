@@ -1,5 +1,6 @@
 ---
 title: "Free QR Code Generator: How to Create QR Codes for Your Business"
+seoTitle: "Free QR Code Generator: A Guide for Businesses"
 description: "Create free QR codes for your business with built-in analytics. Learn how to use QR codes for marketing, menus, events, and more."
 date: "2026-03-03"
 author: "Kelvin Amoaba"
@@ -64,7 +65,7 @@ Creating a QR code is straightforward. Here is the process from start to finish.
 1. **Choose a QR code generator.** Look for a tool that supports dynamic codes with built-in analytics. A free QR code generator like iShortn lets you create codes without upfront costs.
 2. **Enter your destination URL.** This is the page, menu, form, or file you want the code to link to.
 3. **Customize the design.** Adjust colors, add a logo, or change the shape of the pattern. Keep scannability as your top priority.
-4. **Download the QR code.** Export in a high-resolution format such as PNG or SVG. SVG is ideal for print because it scales without losing quality.
+4. **Download the QR code.** Export a high-resolution PNG; iShortn exports codes as print-resolution PNG files. For large-format print, test a proof at the final size before the full run.
 5. **Test before publishing.** Scan with at least two different devices to verify it works. Check that the destination loads properly on mobile.
 6. **Place and distribute.** Add the QR code to menus, packaging, signage, flyers, or digital channels.
 

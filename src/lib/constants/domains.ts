@@ -2,7 +2,7 @@
 // links and the preferred host for short-link previews. All
 // entries must be wired at the infrastructure layer (DNS + SSL + host) and
 // resolve to this Next.js app.
-export const PLATFORM_DOMAINS = ["isht.ink", "ishortn.ink"] as const;
+export const PLATFORM_DOMAINS = ["isht.app", "isht.ink", "ishortn.ink"] as const;
 
 export type PlatformDomain = (typeof PLATFORM_DOMAINS)[number];
 
@@ -27,7 +27,8 @@ export function getAppBaseDomain(): string {
 }
 
 // Returns the leading label when `host` is a team subdomain of a platform
-// domain (e.g. "acme.isht.ink" -> "acme"). Returns null for bare platform
+// domain (e.g. "acme.isht.app" -> "acme"). Every platform domain needs wildcard
+// DNS and a `*.<domain>/*` worker route for this. Returns null for bare platform
 // hosts and anything outside the catalogue. Host matching is case-insensitive
 // to match DNS semantics, and a trailing dot (FQDN form) is tolerated.
 export function extractPlatformSubdomain(host: string): string | null {

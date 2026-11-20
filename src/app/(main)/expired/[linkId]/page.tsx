@@ -3,10 +3,15 @@ import { eq } from "drizzle-orm";
 import { Funnel_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 
+import { noIndexMetadata } from "@/lib/seo/indexing";
 import { cn } from "@/lib/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { getTotalClicks } from "@/server/lib/total-clicks";
+
+import type { Metadata } from "next";
+
+export const metadata: Metadata = noIndexMetadata;
 
 const funnelSans = Funnel_Sans({
   subsets: ["latin"],

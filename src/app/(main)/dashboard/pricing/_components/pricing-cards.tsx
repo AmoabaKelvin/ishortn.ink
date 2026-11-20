@@ -13,14 +13,17 @@ import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pr
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
+import { ResumeSubscriptionButton } from "../../settings/billing/resume-subscription-button";
 import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
 import { buildPlanChangeCopy, PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
 
-import type { BillingInterval, Plan } from "@/lib/billing/plans";
+import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 
 type PricingCardsProps = {
   currentPlan: Plan;
   currentInterval: BillingInterval;
+  subscriptionMode: SubscriptionMode;
+  renewsAt: Date | null;
 };
 
 type PricingPlanSpec = {
@@ -71,7 +74,12 @@ type PendingChange = { plan: PaidPricingPlan; kind: "switch" | "upgrade" };
 
 const PLAN_ORDER = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
-export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps) {
+export function PricingCards({
+  currentPlan,
+  currentInterval,
+  subscriptionMode,
+  renewsAt,
+}: PricingCardsProps) {
   const searchParams = useSearchParams();
   const [interval, setIntervalState] = useState<BillingInterval>(
     searchParams?.get("interval") === "annual" ? "annual" : "monthly",
@@ -80,10 +88,17 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
   // right away: hosted checkout for free users, the confirm dialog otherwise.
   const [autoUpgrade] = useState(() => {
     const plan = plans.find((p) => p.id === searchParams?.get("plan"));
-    if (!plan || plan.id === "free" || PLAN_ORDER[plan.id] <= PLAN_ORDER[currentPlan]) return null;
+    if (
+      !plan ||
+      plan.id === "free" ||
+      subscriptionMode === "resume" ||
+      PLAN_ORDER[plan.id] <= PLAN_ORDER[currentPlan]
+    ) {
+      return null;
+    }
     return plan;
   });
-  const autoCheckout = autoUpgrade && currentPlan === "free" ? autoUpgrade : null;
+  const autoCheckout = autoUpgrade && subscriptionMode === "checkout" ? autoUpgrade : null;
   const autoCheckoutFired = useRef(false);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(autoCheckout?.id ?? null);
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
@@ -97,7 +112,7 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
 
   const createCheckoutOrUpdateMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
     onSuccess: (data) => {
-      if (data.status === "redirect" && data.url) {
+      if (data.status === "redirect") {
         window.location.href = data.url;
       } else if (data.status === "updated") {
         trackEvent(POSTHOG_EVENTS.SUBSCRIPTION_UPGRADED, {
@@ -140,7 +155,7 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
     // Free → paid goes through the Lemon Squeezy hosted checkout (its own
     // confirmation). In-place changes for an existing paid subscriber charge
     // the card immediately, so confirm those first.
-    if (currentPlan === "free") {
+    if (subscriptionMode === "checkout") {
       runUpgrade(plan);
       return;
     }
@@ -210,12 +225,16 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
       <div className="grid gap-6 lg:grid-cols-3">
         {plans.map((plan) => {
           const isCurrentPlan = plan.id === currentPlan;
-          const canUpgrade = PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan];
-          const canDowngrade = PLAN_ORDER[plan.id] < PLAN_ORDER[currentPlan];
+          // A cancelled subscription still in its paid period is resumed, not
+          // replaced or changed, so it only offers Resume on the current plan.
+          const isResumable = subscriptionMode === "resume";
+          const canChangeInPlace = subscriptionMode === "update";
+          const canUpgrade = !isResumable && PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan];
+          const canDowngrade = canChangeInPlace && PLAN_ORDER[plan.id] < PLAN_ORDER[currentPlan];
           // Same tier, but the toggle points at the other billing interval —
           // offer a switch instead of "Manage Subscription".
           const canSwitchInterval =
-            isCurrentPlan && plan.id !== "free" && interval !== currentInterval;
+            canChangeInPlace && isCurrentPlan && plan.id !== "free" && interval !== currentInterval;
 
           return (
             <div
@@ -274,7 +293,9 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
 
               {/* CTA Button */}
               <div className="mb-6">
-                {canSwitchInterval ? (
+                {isCurrentPlan && isResumable ? (
+                  <ResumeSubscriptionButton className="w-full" />
+                ) : canSwitchInterval ? (
                   <Button
                     className="w-full"
                     onClick={() => requestUpgrade(plan, "switch")}
@@ -393,6 +414,7 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
           targetPlanName={
             plans.find((p) => p.id === targetDowngradePlan)?.name ?? targetDowngradePlan
           }
+          renewsAt={renewsAt}
         />
       )}
 

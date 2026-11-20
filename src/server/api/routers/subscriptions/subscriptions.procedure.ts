@@ -1,6 +1,6 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 
-import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
+import { getPlanCaps, getSubscriptionMode, resolvePlan } from "@/lib/billing/plans";
 import { folder } from "@/server/db/schema";
 import { getEventTrackingPause } from "@/server/lib/event-usage";
 import {
@@ -112,6 +112,8 @@ export const subscriptionsRouter = createTRPCRouter({
       monthlyLinkCount,
       // Include workspace type for UI components that need to know
       isTeamWorkspace,
+      // Billing actions always act on the personal subscription.
+      subscriptionMode: getSubscriptionMode(userRecord.subscriptions ?? null),
       // Whether the user can create teams (based on personal subscription, not workspace)
       canCreateTeam: personalPlan === "ultra",
     };

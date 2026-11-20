@@ -5,21 +5,104 @@ import {
   getSubscription,
   updateSubscription,
 } from "@lemonsqueezy/lemonsqueezy.js";
-import { eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "@/env.mjs";
-import { getIntervalFromVariantId, getVariantId, resolvePlan } from "@/lib/billing/plans";
+import {
+  getIntervalFromVariantId,
+  getPlanFromIds,
+  getSubscriptionMode,
+  getVariantId,
+  resolvePlan,
+} from "@/lib/billing/plans";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { subscription } from "@/server/db/schema";
 import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 
-const log = logger.child({ component: "billing.lemonsqueezy" });
-
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
 import { downgradeWithFeedbackInput, downgradeReasonLabels } from "./lemonsqueezy.input";
+import { parseProviderUpdatedAt, providerErrorToClient } from "./utils";
+
+import type { ProtectedTRPCContext } from "../../trpc";
+import type { Subscription as ProviderSubscription } from "@lemonsqueezy/lemonsqueezy.js";
+
+const log = logger.child({ component: "billing.lemonsqueezy" });
+
+const RESUME_FIRST_MESSAGE = "Your subscription is cancelled. Resume it before changing plans.";
+
+type ProviderErrorContext = {
+  userId: string;
+  subscriptionId?: number;
+  variantId?: number;
+};
+
+function providerError(
+  action: string,
+  result: { error: Error; statusCode: number | null },
+  context: ProviderErrorContext,
+): TRPCError {
+  log.error(
+    { err: result.error, statusCode: result.statusCode, ...context },
+    `lemon squeezy ${action} failed`,
+  );
+  return new TRPCError(providerErrorToClient(result.statusCode));
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * Mirrors the provider's state onto the local row right after a change. The
+ * provider's `updated_at` becomes the ordering marker, so the webhook for this
+ * same change, or an older one delivered late, is dropped instead of reverting
+ * it; a newer webhook that already landed is not overwritten.
+ */
+async function applyProviderState(
+  ctx: ProtectedTRPCContext,
+  subscriptionId: number,
+  attributes: ProviderSubscription["data"]["attributes"],
+  extra: Partial<typeof subscription.$inferInsert> = {},
+) {
+  const providerUpdatedAt = parseProviderUpdatedAt(attributes.updated_at);
+
+  await ctx.db
+    .update(subscription)
+    .set({
+      ...extra,
+      status: attributes.status,
+      endsAt: attributes.ends_at ? new Date(attributes.ends_at) : null,
+      renewsAt: attributes.renews_at ? new Date(attributes.renews_at) : null,
+      ...(providerUpdatedAt && { providerUpdatedAt }),
+    })
+    .where(
+      and(
+        eq(subscription.userId, ctx.auth.userId),
+        eq(subscription.subscriptionId, subscriptionId),
+        providerUpdatedAt
+          ? or(
+              isNull(subscription.providerUpdatedAt),
+              lt(subscription.providerUpdatedAt, providerUpdatedAt),
+            )
+          : undefined,
+      ),
+    );
+}
+
+async function getUserSubscription(ctx: ProtectedTRPCContext) {
+  return ctx.db.query.subscription.findFirst({
+    where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+  });
+}
 
 export const lemonsqueezyRouter = createTRPCRouter({
   createCheckoutOrUpdate: protectedProcedure
@@ -35,73 +118,62 @@ export const lemonsqueezyRouter = createTRPCRouter({
       const userId = ctx.auth.userId;
       const variantId = getVariantId(input.plan, input.interval);
 
-      const user = await ctx.db.query.user.findFirst({
-        where: (table, { eq }) => eq(table.id, userId),
-      });
+      const [user, userSubscription] = await Promise.all([
+        ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
+        getUserSubscription(ctx),
+      ]);
 
-      const userSubscription = await ctx.db.query.subscription.findFirst({
-        where: (table, { eq }) => eq(table.userId, userId),
-      });
+      // Any subscription that still grants access is changed or resumed, never
+      // replaced: a second checkout would create a second subscription that
+      // keeps billing after the webhook overwrites the single local row.
+      const mode = getSubscriptionMode(userSubscription);
 
-      // Check if user has an active subscription
-      if (
-        userSubscription &&
-        userSubscription.status === "active" &&
-        userSubscription.subscriptionId
-      ) {
-        // If the user is already on the requested plan, do nothing
+      if (mode === "resume") {
+        throw new TRPCError({ code: "CONFLICT", message: RESUME_FIRST_MESSAGE });
+      }
+
+      if (mode === "update" && userSubscription?.subscriptionId) {
+        const subscriptionId = userSubscription.subscriptionId;
+
         if (userSubscription.variantId === variantId) {
-          return {
-            status: "updated",
-            message: "You are already on this plan.",
-          };
+          return { status: "updated" as const, message: "You are already on this plan." };
         }
 
-        // Update existing subscription
-        const updatedSub = await updateSubscription(userSubscription.subscriptionId, {
-          variantId: variantId,
+        const updatedSub = await updateSubscription(subscriptionId, {
+          variantId,
           invoiceImmediately: true,
         });
 
         if (updatedSub.error) {
-          throw new Error(updatedSub.error.message);
+          throw providerError("plan change", updatedSub, { userId, subscriptionId, variantId });
         }
 
-        // Update local DB to reflect the change immediately (optional but good for UI)
+        const attributes = updatedSub.data.data.attributes;
         try {
-          await ctx.db
-            .update(subscription)
-            .set({
-              plan: input.plan,
-              billingInterval: input.interval,
-              variantId: variantId,
-              status: updatedSub.data.data.attributes.status,
-              endsAt: updatedSub.data.data.attributes.ends_at
-                ? new Date(updatedSub.data.data.attributes.ends_at)
-                : null,
-              renewsAt: updatedSub.data.data.attributes.renews_at
-                ? new Date(updatedSub.data.data.attributes.renews_at)
-                : null,
-            })
-            .where(eq(subscription.userId, userId));
+          await applyProviderState(ctx, subscriptionId, attributes, {
+            plan: getPlanFromIds(attributes.variant_id, attributes.product_id) ?? input.plan,
+            billingInterval: getIntervalFromVariantId(attributes.variant_id),
+            variantId: attributes.variant_id,
+            productId: attributes.product_id,
+          });
         } catch (e) {
+          // The provider already applied the change; the webhook will sync it.
           log.error(
-            { err: e, userId, subscriptionId: userSubscription.subscriptionId },
+            { err: e, userId, subscriptionId },
             "failed to update local subscription state",
           );
         }
 
-        return { status: "updated", message: "Plan updated successfully!" };
+        return { status: "updated" as const, message: "Plan updated successfully!" };
       }
 
-      // No active subscription, create a new checkout
       const checkout = await createCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
         checkoutOptions: {
           embed: true,
           media: false,
         },
         checkoutData: {
-          email: user!.email ?? undefined,
+          email: user?.email ?? undefined,
           custom: {
             user_id: userId,
           },
@@ -116,55 +188,76 @@ export const lemonsqueezyRouter = createTRPCRouter({
         },
       });
 
-      return { status: "redirect", url: checkout.data?.data.attributes.url };
+      if (checkout.error) {
+        throw providerError("checkout", checkout, { userId, variantId });
+      }
+
+      const url = checkout.data.data.attributes.url;
+      if (!url) {
+        log.error({ userId, variantId }, "lemon squeezy checkout returned no url");
+        throw new TRPCError(providerErrorToClient(null));
+      }
+
+      return { status: "redirect" as const, url };
     }),
 
   cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
     configureLemonSqueezy();
 
     const userId = ctx.auth.userId;
+    const userSubscription = await getUserSubscription(ctx);
+    const mode = getSubscriptionMode(userSubscription);
 
-    const userSubscription = await ctx.db.query.subscription.findFirst({
-      where: (table, { eq }) => eq(table.userId, userId),
-    });
-
-    if (!userSubscription) {
-      throw new Error("No active subscription found");
+    if (mode === "resume") {
+      throw new TRPCError({ code: "CONFLICT", message: "Your subscription is already cancelled." });
+    }
+    if (mode !== "update" || !userSubscription?.subscriptionId) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "No active subscription found" });
     }
 
-    const cancelledSub = await cancelSubscription(userSubscription.subscriptionId!);
+    const subscriptionId = userSubscription.subscriptionId;
+    const cancelledSub = await cancelSubscription(subscriptionId);
 
     if (cancelledSub.error) {
-      throw new Error(cancelledSub.error.message);
+      throw providerError("cancel", cancelledSub, { userId, subscriptionId });
     }
 
-    try {
-      await ctx.db
-        .update(subscription)
-        .set({
-          // Keep plan/variant — access is retained until endsAt; resolvePlan()
-          // drops the user to free once that date passes.
-          status: cancelledSub.data?.data.attributes.status,
-          endsAt: cancelledSub.data?.data.attributes.ends_at
-            ? new Date(cancelledSub.data?.data.attributes.ends_at)
-            : null,
-        })
-        .where(eq(subscription.userId, userId));
-    } catch {
-      throw new Error("Failed to update subscription status");
-    }
+    // Keep plan/variant: access is retained until endsAt, and resolvePlan()
+    // drops the user to free once that date passes.
+    await applyProviderState(ctx, subscriptionId, cancelledSub.data.data.attributes);
 
     return cancelledSub;
+  }),
+
+  resumeSubscription: protectedProcedure.mutation(async ({ ctx }) => {
+    configureLemonSqueezy();
+
+    const userId = ctx.auth.userId;
+    const userSubscription = await getUserSubscription(ctx);
+
+    if (getSubscriptionMode(userSubscription) !== "resume" || !userSubscription?.subscriptionId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "There is no cancelled subscription to resume.",
+      });
+    }
+
+    const subscriptionId = userSubscription.subscriptionId;
+    const resumedSub = await updateSubscription(subscriptionId, { cancelled: false });
+
+    if (resumedSub.error) {
+      throw providerError("resume", resumedSub, { userId, subscriptionId });
+    }
+
+    await applyProviderState(ctx, subscriptionId, resumedSub.data.data.attributes);
+
+    return { message: "Your subscription has been resumed." };
   }),
 
   subscriptionDetails: protectedProcedure.mutation(async ({ ctx }) => {
     configureLemonSqueezy();
 
-    const userId = ctx.auth.userId;
-
-    const userSubscription = await ctx.db.query.subscription.findFirst({
-      where: (table, { eq }) => eq(table.userId, userId),
-    });
+    const userSubscription = await getUserSubscription(ctx);
 
     if (!userSubscription) {
       throw new Error("No active subscription found");
@@ -202,26 +295,36 @@ export const lemonsqueezyRouter = createTRPCRouter({
       const userId = ctx.auth.userId;
       const { targetPlan, reason, additionalFeedback } = input;
 
-      // Get user info for notification
-      const userRecord = await ctx.db.query.user.findFirst({
-        where: (table, { eq }) => eq(table.id, userId),
-      });
+      const [userRecord, userSubscription] = await Promise.all([
+        ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
+        getUserSubscription(ctx),
+      ]);
 
-      // Get current subscription
-      const userSubscription = await ctx.db.query.subscription.findFirst({
-        where: (table, { eq }) => eq(table.userId, userId),
-      });
+      const mode = getSubscriptionMode(userSubscription);
 
-      if (!userSubscription || userSubscription.status !== "active") {
-        throw new Error("No active subscription found");
+      if (mode === "resume") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            targetPlan === "free"
+              ? "Your subscription is already cancelled."
+              : RESUME_FIRST_MESSAGE,
+        });
+      }
+      if (mode !== "update" || !userSubscription?.subscriptionId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No active subscription found" });
       }
 
+      const subscriptionId = userSubscription.subscriptionId;
       const currentPlan = resolvePlan(userSubscription);
 
       // Validate this is actually a downgrade
       const planOrder = { free: 0, pro: 1, ultra: 2 };
       if (planOrder[targetPlan] >= planOrder[currentPlan]) {
-        throw new Error("Invalid downgrade request - target plan is not lower than current plan");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid downgrade request - target plan is not lower than current plan",
+        });
       }
 
       // Send feedback notification (fire and forget — waitUntil keeps the
@@ -239,63 +342,51 @@ export const lemonsqueezyRouter = createTRPCRouter({
 
       // Handle downgrade to free (cancellation)
       if (targetPlan === "free") {
-        const cancelledSub = await cancelSubscription(userSubscription.subscriptionId!);
+        const cancelledSub = await cancelSubscription(subscriptionId);
 
         if (cancelledSub.error) {
-          throw new Error(cancelledSub.error.message);
+          throw providerError("cancel", cancelledSub, { userId, subscriptionId });
         }
 
-        await ctx.db
-          .update(subscription)
-          .set({
-            // Keep plan/variant — access is retained until endsAt, matching the
-            // message below; resolvePlan() drops to free once that date passes.
-            status: cancelledSub.data?.data.attributes.status,
-            endsAt: cancelledSub.data?.data.attributes.ends_at
-              ? new Date(cancelledSub.data?.data.attributes.ends_at)
-              : null,
-          })
-          .where(eq(subscription.userId, userId));
+        const attributes = cancelledSub.data.data.attributes;
+        // Keep plan/variant: access is retained until endsAt, and
+        // resolvePlan() drops the user to free once that date passes.
+        await applyProviderState(ctx, subscriptionId, attributes);
 
         return {
           status: "cancelled" as const,
-          message:
-            "Your subscription has been cancelled. You'll retain access until the end of your billing period.",
+          message: attributes.ends_at
+            ? `Your subscription has been cancelled. You'll keep access until ${formatDate(new Date(attributes.ends_at))}.`
+            : "Your subscription has been cancelled. You'll keep access until the end of your billing period.",
         };
       }
 
-      // Handle downgrade to pro (from ultra) — preserve the current interval.
+      // Downgrade to Pro (from Ultra), keeping the current interval. Lemon
+      // Squeezy switches the variant now and credits the unused time on the
+      // next invoice (invoiceImmediately: false), so the plan changes now.
       const interval = getIntervalFromVariantId(userSubscription.variantId);
       const variantId = getVariantId(targetPlan, interval);
 
-      const updatedSub = await updateSubscription(userSubscription.subscriptionId!, {
-        variantId: variantId,
+      const updatedSub = await updateSubscription(subscriptionId, {
+        variantId,
         invoiceImmediately: false,
       });
 
       if (updatedSub.error) {
-        throw new Error(updatedSub.error.message);
+        throw providerError("downgrade", updatedSub, { userId, subscriptionId, variantId });
       }
 
-      await ctx.db
-        .update(subscription)
-        .set({
-          plan: targetPlan,
-          billingInterval: interval,
-          variantId: variantId,
-          status: updatedSub.data.data.attributes.status,
-          endsAt: updatedSub.data.data.attributes.ends_at
-            ? new Date(updatedSub.data.data.attributes.ends_at)
-            : null,
-          renewsAt: updatedSub.data.data.attributes.renews_at
-            ? new Date(updatedSub.data.data.attributes.renews_at)
-            : null,
-        })
-        .where(eq(subscription.userId, userId));
+      const attributes = updatedSub.data.data.attributes;
+      await applyProviderState(ctx, subscriptionId, attributes, {
+        plan: targetPlan,
+        billingInterval: interval,
+        variantId: attributes.variant_id,
+        productId: attributes.product_id,
+      });
 
       return {
         status: "downgraded" as const,
-        message: "Your plan has been downgraded successfully!",
+        message: "You're now on Pro. Credit for unused Ultra time goes toward your next invoice.",
       };
     }),
 });

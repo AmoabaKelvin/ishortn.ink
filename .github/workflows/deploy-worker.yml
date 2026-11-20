@@ -48,12 +48,22 @@ jobs:
           MIGRATOR_URL: https://ishortn-migrator.kel-amoaba.workers.dev
           ALLOW_DANGEROUS_MIGRATIONS: ${{ inputs.allow_dangerous_migrations == true }}
 
+  # Repo variable DEPLOY_FREEZE=true holds a pause or rollback through later merges.
+  freeze:
+    if: vars.DEPLOY_FREEZE == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "::notice::DEPLOY_FREEZE is true, so ${GITHUB_SHA} was not deployed. Unset the repo variable and re-run this workflow to deploy it."
+
   deploy:
     needs: migrate
+    if: vars.DEPLOY_FREEZE != 'true'
     runs-on: ubuntu-latest
+    # Never cancel a running deploy: stopping it between deploy and verify would
+    # skip the rollback. A newer push waits for the current one to finish.
     concurrency:
       group: deploy-worker
-      cancel-in-progress: true
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -65,15 +75,50 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      # The migrate job can refuse a dangerous migration, so refuse to ship code
+      # whose migrations production hasn't applied yet.
+      - name: Check production has applied this commit's migrations
+        run: bun scripts/ci/deploy-health.ts gate
+        env:
+          HEALTHCHECK_TOKEN: ${{ secrets.HEALTHCHECK_TOKEN }}
+
       - name: Write build env
         run: printf '%s\n' "$BUILD_ENV" > .env.production.local
         env:
           BUILD_ENV: ${{ secrets.BUILD_ENV }}
 
-      - name: Build and deploy
-        run: bun run deploy
+      - name: Build
+        run: bunx opennextjs-cloudflare build
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: e1c30154a387214494e77fad7672e39e
           # Never dialed during deploy; wrangler only insists the value exists.
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder
+
+      - name: Record the live version for rollback
+        id: previous
+        run: bun scripts/ci/deploy-health.ts previous-version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: e1c30154a387214494e77fad7672e39e
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder
+
+      - name: Deploy
+        id: deploy
+        run: bunx opennextjs-cloudflare deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: e1c30154a387214494e77fad7672e39e
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder
+
+      # Also runs when the deploy step fails: wrangler can fail after the new
+      # version is already live (e.g. while updating cron triggers).
+      - name: Verify the deploy, roll back if unhealthy
+        if: ${{ !cancelled() && (steps.deploy.outcome == 'success' || steps.deploy.outcome == 'failure') }}
+        run: bun scripts/ci/deploy-health.ts verify --rollback-to "$PREVIOUS_VERSION_ID"
+        env:
+          PREVIOUS_VERSION_ID: ${{ steps.previous.outputs.version_id }}
+          HEALTHCHECK_TOKEN: ${{ secrets.HEALTHCHECK_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: e1c30154a387214494e77fad7672e39e
           CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@localhost:3306/placeholder

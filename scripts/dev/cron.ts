@@ -1,6 +1,7 @@
 import "dotenv/config";
 
-// bun run cron <name> [--url <base>] [--dry-run]: calls /api/cron/<name> like custom-worker.ts does.
+// bun run cron <name> [--url <base>] [--dry-run] [--backlog]: calls /api/cron/<name> like
+// custom-worker.ts does.
 
 // Keep in sync with CRON_ROUTES in custom-worker.ts.
 const CRON_ROUTES = [
@@ -32,6 +33,7 @@ async function main() {
     "http://localhost:3000";
   const url = new URL(`/api/cron/${name}`, base);
   if (argv.includes("--dry-run")) url.searchParams.set("dryRun", "1");
+  if (argv.includes("--backlog")) url.searchParams.set("backlog", "1");
 
   console.log(`GET ${url}`);
   const response = await fetch(url, {

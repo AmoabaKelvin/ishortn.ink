@@ -50,6 +50,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: absoluteUrl("/qr-code-generator"),
+      lastModified: new Date("2026-11-20").toISOString(),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
       url: absoluteUrl("/blog"),
       lastModified: latestPostDate,
       changeFrequency: "daily",

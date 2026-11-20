@@ -71,7 +71,7 @@ describe("bulkCreateLinks", () => {
 
     expect(result).toMatchObject({ created: 2, failed: 0, failures: [] });
     const byUrl = new Map(inserted.map((row) => [row.url, row]));
-    expect(byUrl.get("https://a.example")).toMatchObject({ domain: "isht.ink" });
+    expect(byUrl.get("https://a.example")).toMatchObject({ domain: "isht.app" });
     expect(byUrl.get("https://a.example")?.alias).toHaveLength(9);
     expect(byUrl.get("https://b.example")).toMatchObject({
       alias: "my-alias",
