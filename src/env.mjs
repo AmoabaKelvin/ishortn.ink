@@ -50,6 +50,9 @@ export const env = createEnv({
     // beacons. Optional: when unset, tokens are not issued and no verification
     // events are accepted — the feature is effectively disabled.
     VERIFIED_CLICKS_SECRET: z.string().min(32).optional(),
+    // Public status API (OpenStatus, Better Stack or Statuspage-compatible) for the footer badge.
+    // Unset: the footer shows a plain "Status" link with no uptime claim.
+    STATUS_PAGE_API_URL: z.string().url().optional(),
   },
 
   /**
@@ -105,6 +108,7 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
+    STATUS_PAGE_API_URL: process.env.STATUS_PAGE_API_URL,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
