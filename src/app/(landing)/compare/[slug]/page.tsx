@@ -227,7 +227,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                   <dt className="inline font-medium text-neutral-900">Ultra $15/mo: </dt>
                   <dd className={cn(bodyClass, "inline")}>
                     Everything in Pro plus unlimited links and events, unlimited custom domains,
-                    team workspaces, resource transfer.
+                    team workspaces, link cloaking, priority support.
                   </dd>
                 </div>
               </dl>

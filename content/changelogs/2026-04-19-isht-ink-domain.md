@@ -6,7 +6,7 @@ shortDesc: A shorter default domain for your short links — ishortn.ink still w
 category: new
 ---
 
-Your short links can now use **isht.ink** — four characters shorter than `ishortn.ink`, for links that need to fit tight spaces like SMS, print, and bios. It's the new default for new links, and the old domain continues to work exactly as before.
+Your short links can now use **isht.ink** — three characters shorter than `ishortn.ink`, for links that need to fit tight spaces like SMS, print, and bios. It's the new default for new links, and the old domain continues to work exactly as before.
 
 ## What's new
 

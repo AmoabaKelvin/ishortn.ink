@@ -1,6 +1,6 @@
 ---
 date: 2026-04-17T12:00:00
-version: 2.3.0
+version: 2.3.1
 title: Verified Clicks
 shortDesc: See how many of your clicks came from real visitors, not automated traffic
 category: new

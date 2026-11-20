@@ -81,7 +81,7 @@ export default function PricingPage() {
         </div>
       </Section>
 
-      <Pricing />
+      <Pricing showHeading={false} />
 
       <Faq faqs={pricingFaqs} />
 
