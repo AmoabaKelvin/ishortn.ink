@@ -11,15 +11,9 @@ import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
-import { resolveApiDomainForUser, validateAndGetToken } from "../utils";
+import { resolveApiDomainForUser, withApiKey } from "../utils";
 
-export async function POST(request: Request) {
-  const apiKey = request.headers.get("x-api-key");
-  const token = await validateAndGetToken(apiKey);
-  if (!token) {
-    return new Response("Invalid or missing API key", { status: 401 });
-  }
-
+export const POST = withApiKey(async (request: Request, token) => {
   const input = shortenLinkSchema.safeParse(await request.json());
 
   if (!input.success) {
@@ -62,7 +56,7 @@ export async function POST(request: Request) {
     }
     return new Response("An error occurred", { status: 400 });
   }
-}
+});
 
 const shortenLinkSchema = z.object({
   url: z.string().url(),
