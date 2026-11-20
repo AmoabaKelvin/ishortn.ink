@@ -38,20 +38,35 @@ export type PreparedTrackingLink = {
 };
 
 /**
+ * Monthly link quota check for a new tracking link: throws when the quota is
+ * reached and reports whether the insert should bump the monthly count.
+ */
+export async function checkTrackingLinkQuota(
+  ctx: WorkspaceTRPCContext,
+  kind: TrackingLinkKind,
+): Promise<Pick<PreparedTrackingLink, "currentCount" | "shouldIncrementCount">> {
+  if (!countsTowardMonthlyLinkQuota(ctx.workspace.plan, { isBioLink: kind === "bio" })) {
+    return { currentCount: 0, shouldIncrementCount: false };
+  }
+  const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
+  return {
+    currentCount,
+    shouldIncrementCount: ctx.workspace.type !== "team" && limit !== undefined,
+  };
+}
+
+/**
  * Validate + resolve everything needed to create a hidden tracking link before
  * a transaction is opened: the link-quota check, URL safety scan, domain
  * authorization, and alias generation. Throws TRPCError("FORBIDDEN") when the
- * workspace's monthly link quota is reached. Bio links skip the quota; callers
- * enforce the per-page block cap instead.
+ * workspace's monthly link quota is reached. Bio links skip the quota on plans
+ * with a per-page block cap, which callers enforce instead.
  */
 export async function prepareHiddenTrackingLink(
   ctx: WorkspaceTRPCContext,
   opts: { url: string; name: string; domain?: string; kind: TrackingLinkKind },
 ): Promise<PreparedTrackingLink> {
-  const countsTowardQuota = countsTowardMonthlyLinkQuota({ isBioLink: opts.kind === "bio" });
-  const { currentCount, limit } = countsTowardQuota
-    ? await checkWorkspaceLinkLimit(ctx)
-    : { currentCount: 0, limit: undefined };
+  const { currentCount, shouldIncrementCount } = await checkTrackingLinkQuota(ctx, opts.kind);
 
   await assertUrlSafe(opts.url);
 
@@ -66,7 +81,6 @@ export async function prepareHiddenTrackingLink(
   ]);
 
   const ownership = workspaceOwnership(ctx.workspace);
-  const shouldIncrementCount = ctx.workspace.type !== "team" && limit !== undefined;
 
   return {
     values: {
