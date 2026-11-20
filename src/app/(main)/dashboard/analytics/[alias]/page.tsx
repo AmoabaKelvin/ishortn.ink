@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { rangeEnum } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
 
+import { TrackingPausedBanner } from "../../_components/tracking-paused-banner";
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
 import { BarChart } from "./_components/bar-chart";
@@ -43,12 +44,18 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
   const params = await props.params;
   const { range, domain } = analyticsSearchParamsSchema.parse(searchParams);
 
-  const { totalVisits, uniqueVisits, referers, isProPlan, geoRules, previous, archived } =
-    await api.link.linkVisits.query({
+  const [
+    { totalVisits, uniqueVisits, referers, isProPlan, geoRules, previous, archived },
+    subscription,
+  ] = await Promise.all([
+    api.link.linkVisits.query({
       id: params.alias,
       domain,
       range,
-    });
+    }),
+    api.subscriptions.get.query().catch(() => null),
+  ]);
+  const trackingPause = subscription?.usage.events.paused ?? null;
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
   const series = mergeArchivedClicks(aggregatedVisits, archived);
@@ -85,6 +92,14 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
           alias={params.alias}
         />
       </div>
+
+      {trackingPause && (
+        <TrackingPausedBanner
+          pause={trackingPause}
+          source="link_analytics_tracking_paused"
+          className="mt-6 md:mt-8"
+        />
+      )}
 
       {/* quick info cards */}
       <div

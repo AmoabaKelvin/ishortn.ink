@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 const pricingFaqs = [
   {
     q: "What counts as a tracked event?",
-    a: "A single click or QR scan on one of your short links. Pro includes 10,000 events per month; Ultra is unlimited.",
+    a: "A single click or QR scan on one of your short links, or a view of one of your bio pages. Free includes 1,000 events per month, Pro 10,000, and Ultra is unlimited. Over the limit your links keep redirecting, but new events aren't recorded until the next month.",
   },
   {
     q: "Can I cancel anytime?",

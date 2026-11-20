@@ -2,6 +2,7 @@ import { IconBrandGithub, IconBrandX, IconMail } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
 import { Section, Wordmark } from "./site-primitives";
+import { StatusBadge } from "./status-badge";
 
 const columns = [
   {
@@ -65,15 +66,7 @@ export const Footer = () => {
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <a
-                href="https://status.ishortn.ink"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 font-mono text-xs font-medium text-neutral-800 shadow-site-btn hover:bg-neutral-50"
-              >
-                All systems operational
-                <span aria-hidden="true" className="size-1.5 rounded-full bg-emerald-500" />
-              </a>
+              <StatusBadge />
               <ul className="flex items-center gap-1">
                 {socials.map((social) => (
                   <li key={social.label}>

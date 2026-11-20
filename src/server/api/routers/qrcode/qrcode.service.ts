@@ -12,7 +12,6 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
-import { assertUrlSafe } from "@/server/lib/phishing";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import { insertHiddenTrackingLink, prepareHiddenTrackingLink } from "@/server/lib/tracking-link";
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
@@ -325,18 +324,13 @@ export const updateQrCode = userFacing(
   async (ctx: WorkspaceTRPCContext, input: QRCodeUpdateInput) => {
     const qrCode = await fetchQrCodeWithLink(ctx, input.id);
 
-    // Phishing check on new destination URL
-    if (input.url) {
-      await assertUrlSafe(input.url);
-    }
-
     const qrUpdates: Partial<Pick<typeof qrcode.$inferInsert, "title" | "content">> = {};
     if (input.title !== undefined) qrUpdates.title = input.title;
     if (input.url !== undefined) qrUpdates.content = input.url;
 
     // Apply the link update first so a failure there leaves both the live
-    // redirect target and the QR metadata at their prior values. assertUrlSafe
-    // has already validated the new URL, so there's no safety window to close.
+    // redirect target and the QR metadata at their prior values. updateLink
+    // runs the phishing check on a changed URL before it writes anything.
     const { id: _qrId, title, url, ...linkFields } = input;
     await updateLink(ctx, {
       id: qrCode.linkId,

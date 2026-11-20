@@ -14,7 +14,7 @@ export const PLAN_FEATURES = {
       `${fmt(free.linksLimit ?? 0)} links per month`,
       `${fmt(free.eventsLimit ?? 0)} tracked events`,
       `${free.analyticsRangeLimitDays}-day analytics window`,
-      "Standard QR codes",
+      "5 dynamic QR codes: edit anytime, never expire, no ads",
       `1 link-in-bio page (up to ${free.bioLinkBlocksPerPageLimit} link blocks)`,
       `${free.campaignLimit} campaign with aggregate analytics`,
       "ishortn.ink links",
