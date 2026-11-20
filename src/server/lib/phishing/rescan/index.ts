@@ -1,6 +1,7 @@
-import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, countDistinct, eq, gt, inArray, isNull, like, or, sql } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { resolvePlan } from "@/lib/billing/plans";
 import { PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import {
   buildCacheKey,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
-import { blockedDomain, flaggedLink, geoRule, link } from "@/server/db/schema";
+import { blockedDomain, flaggedLink, geoRule, link, subscription } from "@/server/db/schema";
 
 import { checkGoogleSafeBrowsingBatch, SAFE_BROWSING_BATCH_SIZE } from "../google-safe-browsing";
 import { getFeeds, scanFeed } from "./feeds";
@@ -18,15 +19,21 @@ import {
   addDestinationToIndex,
   addLinkToIndex,
   addSafeBrowsingCandidate,
+  type BacklogFlag,
+  backlogDecisions,
+  CAP_NOTE_LIKE,
   capBlocks,
   createLinkIndex,
   createSafeBrowsingWindow,
   decideMatch,
   type ExistingFlag,
+  flagPayingAccounts,
   type LinkIndex,
   mergeDecisions,
   type RescanDecision,
   type RescanMatch,
+  remainingBacklog,
+  RESCAN_REASON_PREFIX,
   type RescanSource,
   type SafeBrowsingWindow,
   selectSafeBrowsingUrls,
@@ -44,6 +51,8 @@ const SAFE_BROWSING_MAX_URLS_PER_RUN = 50_000;
 const SAFE_BROWSING_CONCURRENCY = 4;
 const SAFE_BROWSING_CURSOR_KEY = "phishing-rescan:safe-browsing-cursor";
 const SAFE_BROWSING_CURSOR_TTL = 60 * 60 * 24 * 30;
+// Blocks over the cap wait in the backlog, which every run (and the backlog-only run every 15
+// minutes, see custom-worker.ts) blocks first, so confirmed matches drain at up to ~1,000 an hour.
 const MAX_AUTO_BLOCKS_PER_RUN = 250;
 
 type SourceSummary = {
@@ -56,6 +65,8 @@ type SourceSummary = {
 
 export type RescanSummary = {
   dryRun: boolean;
+  /** Only the backlog was processed; no feeds or Safe Browsing lookups. */
+  backlogOnly: boolean;
   linksScanned: number;
   matched: number;
   blocked: number;
@@ -63,6 +74,8 @@ export type RescanSummary = {
   /** Matches skipped because an admin already reviewed the link or it is already flagged. */
   skipped: number;
   domainsBlocked: number;
+  /** Links with a confirmed block still waiting for a later run because of the cap. */
+  backlog: number;
   sources: Partial<Record<RescanSource, SourceSummary>>;
   /** Present in dry runs so the decisions can be reviewed before anything is written. */
   decisions?: RescanDecision[];
@@ -80,9 +93,79 @@ const isHttpUrl = (url: string) => /^https?:\/\//i.test(url);
  * Re-checks every live link (not blocked, not past its expiry date, on any domain, including the
  * hidden links behind bio-page blocks) and its geo rule destinations against the public phishing
  * feeds and Safe Browsing, then blocks or flags the matches. See `decideMatch` for which evidence
- * blocks and which only flags.
+ * blocks and which only flags. The backlog of blocks held back by the per-run cap goes first;
+ * `backlogOnly` processes just that.
  */
-export async function runPhishingRescan({ dryRun }: { dryRun: boolean }): Promise<RescanSummary> {
+export async function runPhishingRescan({
+  dryRun,
+  backlogOnly = false,
+}: {
+  dryRun: boolean;
+  backlogOnly?: boolean;
+}): Promise<RescanSummary> {
+  const now = new Date();
+  const scan = backlogOnly
+    ? { linksScanned: 0, sources: {}, matches: [], ownHosts: new Set<string>() }
+    : await scanLinks(dryRun, now);
+  const { linksScanned, sources, matches } = scan;
+  // Read after the scan, which takes minutes, so a backlog-only run in between isn't repeated.
+  const backlog = await loadBacklog(MAX_AUTO_BLOCKS_PER_RUN, now);
+
+  // Earlier rulings are applied per decision before merging, so evidence an admin already
+  // dismissed can't hide a different source's match on the same link.
+  const existing = await loadExistingFlags([...new Set(matches.map((m) => m.linkId))]);
+  const candidates = matches.map((m) => decideMatch(m, scan.ownHosts));
+  const merged = mergeDecisions(candidates);
+  const fresh = mergeDecisions(withoutResolvedLinks(candidates, existing));
+  const held = mergeDecisions([...backlogDecisions(backlog.flags), ...fresh]);
+  const paying = await loadPayingLinkIds(
+    held.filter((d) => d.action === "block").map((d) => d.linkId),
+  );
+  const decisions = capBlocks(flagPayingAccounts(held, paying), MAX_AUTO_BLOCKS_PER_RUN);
+
+  const blocks = decisions.filter((d) => d.action === "block");
+  const flags = decisions.filter((d) => d.action === "flag");
+  const domains = [...new Set(blocks.flatMap((d) => (d.blockDomain ? [d.blockDomain] : [])))];
+
+  for (const [source, ids] of matchedBySource(matches)) {
+    const summary = sources[source];
+    if (summary) summary.matched = ids.size;
+  }
+  for (const decision of decisions) {
+    const summary = sources[decision.source];
+    if (summary) summary[decision.action === "block" ? "blocked" : "flagged"]++;
+  }
+
+  if (!dryRun) {
+    await applyDecisions(blocks, flags, domains);
+  }
+
+  const summary: RescanSummary = {
+    dryRun,
+    backlogOnly,
+    linksScanned,
+    matched: new Set(matches.map((m) => m.linkId)).size,
+    blocked: blocks.length,
+    flagged: flags.length,
+    skipped: merged.length - fresh.length,
+    domainsBlocked: domains.length,
+    backlog: remainingBacklog(backlog.total, decisions),
+    sources,
+    decisions: dryRun ? decisions : undefined,
+  };
+  log.info({ ...summary, decisions: undefined }, "phishing rescan complete");
+  return summary;
+}
+
+async function scanLinks(
+  dryRun: boolean,
+  now: Date,
+): Promise<{
+  linksScanned: number;
+  sources: RescanSummary["sources"];
+  matches: RescanMatch[];
+  ownHosts: Set<string>;
+}> {
   const index = createLinkIndex(PLATFORM_DOMAINS);
   const safeBrowsingEnabled = Boolean(env.GOOGLE_SAFE_BROWSING_API_KEY);
   const safeBrowsingWindow = createSafeBrowsingWindow(
@@ -93,7 +176,6 @@ export async function runPhishingRescan({ dryRun }: { dryRun: boolean }): Promis
 
   // Keyset pagination keeps each query bounded on the Link table.
   let lastId = 0;
-  const now = new Date();
   for (;;) {
     const page = await db
       .select({ id: link.id, url: link.url, domain: link.domain, alias: link.alias })
@@ -178,46 +260,7 @@ export async function runPhishingRescan({ dryRun }: { dryRun: boolean }): Promis
   };
   matches.push(...safeBrowsing.matches);
 
-  // Earlier rulings are applied per decision before merging, so evidence an admin already
-  // dismissed can't hide a different source's match on the same link.
-  const existing = await loadExistingFlags([...new Set(matches.map((m) => m.linkId))]);
-  const candidates = matches.map((m) => decideMatch(m, index.ownHosts));
-  const merged = mergeDecisions(candidates);
-  const decisions = capBlocks(
-    mergeDecisions(withoutResolvedLinks(candidates, existing)),
-    MAX_AUTO_BLOCKS_PER_RUN,
-  );
-
-  const blocks = decisions.filter((d) => d.action === "block");
-  const flags = decisions.filter((d) => d.action === "flag");
-  const domains = [...new Set(blocks.flatMap((d) => (d.blockDomain ? [d.blockDomain] : [])))];
-
-  for (const [source, ids] of matchedBySource(matches)) {
-    const summary = sources[source];
-    if (summary) summary.matched = ids.size;
-  }
-  for (const decision of decisions) {
-    const summary = sources[decision.source];
-    if (summary) summary[decision.action === "block" ? "blocked" : "flagged"]++;
-  }
-
-  if (!dryRun) {
-    await applyDecisions(blocks, flags, domains);
-  }
-
-  const summary: RescanSummary = {
-    dryRun,
-    linksScanned,
-    matched: new Set(matches.map((m) => m.linkId)).size,
-    blocked: blocks.length,
-    flagged: flags.length,
-    skipped: merged.length - decisions.length,
-    domainsBlocked: domains.length,
-    sources,
-    decisions: dryRun ? decisions : undefined,
-  };
-  log.info({ ...summary, decisions: undefined }, "phishing rescan complete");
-  return summary;
+  return { linksScanned, sources, matches, ownHosts: index.ownHosts };
 }
 
 function matchedBySource(matches: RescanMatch[]): Map<RescanSource, Set<number>> {
@@ -299,6 +342,65 @@ async function scanSafeBrowsing(
     matches,
     error: failed > 0 ? `${failed} of ${batches.length} lookups failed` : undefined,
   };
+}
+
+/**
+ * The oldest over-the-cap flags on live links, up to `limit`, and how many links wait in total.
+ * Flags on links blocked, deleted or expired since are left out rather than resolved.
+ */
+async function loadBacklog(
+  limit: number,
+  now: Date,
+): Promise<{ flags: BacklogFlag[]; total: number }> {
+  const where = and(
+    eq(flaggedLink.status, "pending"),
+    like(flaggedLink.reason, `${RESCAN_REASON_PREFIX}%`),
+    like(flaggedLink.details, CAP_NOTE_LIKE),
+    or(eq(link.blocked, false), isNull(link.blocked)),
+    or(isNull(link.disableLinkAfterDate), gt(link.disableLinkAfterDate, now)),
+  );
+  const flags = await db
+    .select({
+      id: flaggedLink.id,
+      linkId: flaggedLink.linkId,
+      reason: flaggedLink.reason,
+      details: flaggedLink.details,
+    })
+    .from(flaggedLink)
+    .innerJoin(link, eq(link.id, flaggedLink.linkId))
+    .where(where)
+    .orderBy(asc(flaggedLink.id))
+    .limit(limit);
+  if (flags.length < limit) return { flags, total: new Set(flags.map((f) => f.linkId)).size };
+
+  const [row] = await db
+    .select({ total: countDistinct(flaggedLink.linkId) })
+    .from(flaggedLink)
+    .innerJoin(link, eq(link.id, flaggedLink.linkId))
+    .where(where);
+  return { flags, total: row?.total ?? flags.length };
+}
+
+/** Links owned by a team (always Ultra) or by a user with an entitled subscription. */
+async function loadPayingLinkIds(linkIds: number[]): Promise<Set<number>> {
+  const paying = new Set<number>();
+  for (const ids of chunk(linkIds, WRITE_CHUNK_SIZE)) {
+    const owners = await db
+      .select({ id: link.id, userId: link.userId, teamId: link.teamId })
+      .from(link)
+      .where(inArray(link.id, ids));
+    const personal = owners.filter((o) => o.teamId === null);
+    for (const o of owners) if (o.teamId !== null) paying.add(o.id);
+    if (personal.length === 0) continue;
+
+    const subs = await db
+      .select()
+      .from(subscription)
+      .where(inArray(subscription.userId, [...new Set(personal.map((o) => o.userId))]));
+    const paid = new Set(subs.filter((sub) => resolvePlan(sub) !== "free").map((s) => s.userId));
+    for (const o of personal) if (paid.has(o.userId)) paying.add(o.id);
+  }
+  return paying;
 }
 
 async function loadExistingFlags(linkIds: number[]): Promise<ExistingFlag[]> {
@@ -390,12 +492,20 @@ async function applyDecisions(
     });
   }
 
-  // A capped block on a link with a pending rescan flag leaves that flag as its queue entry.
+  // A held-back block on a link with a pending rescan flag reuses that flag as its queue entry.
   const newFlags = flags.filter((d) => !d.resolvesFlagIds);
   for (const group of chunk(newFlags, WRITE_CHUNK_SIZE)) {
     await db
       .insert(flaggedLink)
       .values(group.map((d) => ({ linkId: d.linkId, reason: d.reason, details: d.details })));
+  }
+  // Only links that already had a pending flag, and at most one update per link.
+  for (const d of flags) {
+    if (!d.relabel || !d.resolvesFlagIds) continue;
+    await db
+      .update(flaggedLink)
+      .set({ reason: d.reason, details: d.details })
+      .where(and(inArray(flaggedLink.id, d.resolvesFlagIds), eq(flaggedLink.status, "pending")));
   }
 
   if (domains.length > 0) {
