@@ -24,5 +24,12 @@ export default async function BioPageBuilderPage(props: Props) {
 
   const sub = await api.subscriptions.get.query();
 
-  return <BioPageBuilder pageId={id} initialData={page} plan={sub.plan} />;
+  return (
+    <BioPageBuilder
+      pageId={id}
+      initialData={page}
+      plan={sub.plan}
+      trackingPause={sub.usage.events.paused}
+    />
+  );
 }

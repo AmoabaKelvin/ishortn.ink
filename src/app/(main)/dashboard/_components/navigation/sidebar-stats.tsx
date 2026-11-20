@@ -6,11 +6,45 @@ import { Link } from "next-view-transitions";
 import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
 import { cn } from "@/lib/utils";
 
+type EventUsage = { count: number; limit: number | null };
+
+function EventMeter({ eventUsage }: { eventUsage: EventUsage }) {
+  const { count, limit } = eventUsage;
+  if (limit == null) return null;
+  const percentage = Math.min((count / (limit || 1)) * 100, 100);
+  const atLimit = count >= limit;
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
+        <span>Events</span>
+        <span className="tabular-nums">
+          {count.toLocaleString()} / {limit.toLocaleString()}
+        </span>
+      </div>
+      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-muted">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            atLimit ? "bg-red-500" : "bg-blue-600",
+          )}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      {atLimit && (
+        <p className="mt-1.5 text-[11px] text-red-600 dark:text-red-400">
+          Analytics paused until next reset.
+        </p>
+      )}
+    </div>
+  );
+}
+
 type SidebarStatsProps = {
   monthlyLinkCount: number;
   userHasPaidPlan: boolean;
   linkLimit: number | null;
-  eventUsage?: { count: number; limit: number | null };
+  eventUsage?: EventUsage;
   folderUsage?: { count: number; limit: number | null };
   plan: "free" | "pro" | "ultra";
 };
@@ -29,12 +63,6 @@ export function SidebarStats({
   const isNearLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue * 0.83 : false;
   const isAtLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue : false;
 
-  const eventLimit = eventUsage?.limit ?? undefined;
-  const eventCount = eventUsage?.count ?? 0;
-  const eventPercentage =
-    eventLimit != null ? Math.min((eventCount / (eventLimit || 1)) * 100, 100) : 0;
-  const eventAtLimit = eventLimit != null ? eventCount >= eventLimit : false;
-
   if (userHasPaidPlan) {
     return (
       <div className="space-y-3">
@@ -49,30 +77,7 @@ export function SidebarStats({
           </div>
 
           {/* Event usage — only show if limit exists */}
-          {eventLimit != null && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-                <span>Events</span>
-                <span className="tabular-nums">
-                  {eventCount.toLocaleString()} / {eventLimit.toLocaleString()}
-                </span>
-              </div>
-              <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-muted">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all",
-                    eventAtLimit ? "bg-red-500" : "bg-blue-600",
-                  )}
-                  style={{ width: `${eventPercentage}%` }}
-                />
-              </div>
-              {eventAtLimit && (
-                <p className="mt-1.5 text-[11px] text-red-600 dark:text-red-400">
-                  Analytics paused until next reset.
-                </p>
-              )}
-            </div>
-          )}
+          {eventUsage && <EventMeter eventUsage={eventUsage} />}
         </div>
 
         {plan === "pro" && (
@@ -125,6 +130,8 @@ export function SidebarStats({
         {isNearLimit && !isAtLimit && (
           <p className="mt-2 text-[11px] text-amber-600">Almost at limit. Consider upgrading.</p>
         )}
+
+        {eventUsage && <EventMeter eventUsage={eventUsage} />}
       </div>
 
       <Link
