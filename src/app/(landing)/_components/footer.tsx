@@ -9,6 +9,7 @@ const columns = [
     title: "Product",
     links: [
       { label: "Features", href: "/features" },
+      { label: "QR code generator", href: "/qr-code-generator" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },
       { label: "API docs", href: "https://docs.ishortn.ink/api" },
