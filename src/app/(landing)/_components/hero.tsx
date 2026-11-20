@@ -56,7 +56,7 @@ const LinkCardMock = () => (
           <IconLink className="size-3" />
         </span>
         <span className="truncate font-mono text-sm font-medium text-neutral-900">
-          ishortn.ink/launch
+          isht.app/launch
         </span>
         <IconCopy className="size-4 shrink-0 text-neutral-400" />
       </div>

@@ -17,7 +17,7 @@ export const PLAN_FEATURES = {
       "5 dynamic QR codes: edit anytime, never expire, no ads",
       `1 link-in-bio page (up to ${free.bioLinkBlocksPerPageLimit} link blocks)`,
       `${free.campaignLimit} campaign with aggregate analytics`,
-      "ishortn.ink links",
+      "Short links on isht.app",
     ],
   },
   pro: {

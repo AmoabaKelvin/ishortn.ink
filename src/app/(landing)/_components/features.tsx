@@ -94,7 +94,7 @@ const Breakdown = ({ title, rows }: { title: string; rows: { name: string; pct: 
 const AnalyticsMock = () => (
   <div className={cn(mockClass, "p-4 sm:p-5")}>
     <div className="flex items-center justify-between gap-3">
-      <span className="truncate font-mono text-xs text-neutral-600">ishortn.ink/launch</span>
+      <span className="truncate font-mono text-xs text-neutral-600">isht.app/launch</span>
       <div className="flex shrink-0 rounded-lg bg-neutral-100 p-0.5 text-xs font-medium text-neutral-600">
         <span className="px-2 py-0.5">7d</span>
         <span className="rounded-md bg-white px-2 py-0.5 text-neutral-900 shadow-site-btn">
@@ -266,7 +266,7 @@ const benefits: { title: string; body: string; mock: ReactNode }[] = [
   },
   {
     title: "Stand out with a branded link",
-    body: "Swap ishortn.ink for your own domain and pick an alias people remember. Pro includes 3 custom domains. Ultra is unlimited.",
+    body: "Swap isht.app for your own domain and pick an alias people remember. Pro includes 3 custom domains. Ultra is unlimited.",
     mock: <BrandedLinkMock />,
   },
   {
