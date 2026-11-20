@@ -12,7 +12,7 @@ const columns = [
       { label: "QR code generator", href: "/qr-code-generator" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },
-      { label: "API docs", href: "https://docs.ishortn.ink/api" },
+      { label: "API docs", href: "/docs/api" },
       { label: "Open dashboard", href: "/dashboard" },
     ],
   },
@@ -33,7 +33,7 @@ const columns = [
     title: "Resources",
     links: [
       { label: "Blog", href: "/blog" },
-      { label: "Documentation", href: "https://ishortn.ink/docs" },
+      { label: "Docs", href: "/docs" },
       { label: "Support", href: "mailto:support@ishortn.ink" },
       { label: "Status", href: "https://status.ishortn.ink" },
     ],

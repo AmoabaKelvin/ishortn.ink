@@ -1,5 +1,6 @@
 import { Link } from "next-view-transitions";
 
+import { getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/server";
 
 import { SettingsNav } from "./_components/settings-nav";
@@ -83,7 +84,8 @@ async function SettingsPage() {
                 API Keys
               </h2>
               <Link
-                href="https://ishortn.mintlify.app/introduction"
+                // Absolute: docs are served on the app host only, not on team subdomains.
+                href={`https://${getAppBaseDomain()}/docs/api`}
                 target="_blank"
                 className="text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700"
               >

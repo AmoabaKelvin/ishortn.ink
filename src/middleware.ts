@@ -5,25 +5,48 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import { extractPlatformSubdomain, isPlatformDomain } from "@/lib/constants/domains";
+import {
+  extractPlatformSubdomain,
+  getAppBaseDomain,
+  isPlatformDomain,
+} from "@/lib/constants/domains";
+import { isDocsPath, legacyDocsRedirectPath, toInternalDocsPath } from "@/lib/docs/routing";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
+  const { pathname, search, host: urlHost } = new URL(req.url);
+  // Same precedence as the [linkAlias] page: a proxy may forward the custom
+  // domain in x-forwarded-host while the URL holds the platform host.
+  const host = req.headers.get("x-forwarded-host") ?? urlHost;
+  const bareHost = host.split(":")[0] ?? host;
+  const hostname = bareHost.toLowerCase();
+  const appHost = getAppBaseDomain();
+
+  // The retired external docs site: send every old URL to its /docs page.
+  if (hostname === `docs.${appHost}`) {
+    return NextResponse.redirect(`https://${appHost}${legacyDocsRedirectPath(pathname)}`, 308);
+  }
+
   if (isProtectedRoute(req)) {
     await auth.protect();
     return;
   }
 
-  const { pathname, host: urlHost } = new URL(req.url);
-  // Same precedence as the [linkAlias] page: a proxy may forward the custom
-  // domain in x-forwarded-host while the URL holds the platform host.
-  const host = req.headers.get("x-forwarded-host") ?? urlHost;
+  // Docs live on the app host only; elsewhere /docs stays a short-link alias.
+  if (
+    isDocsPath(pathname) &&
+    (hostname === appHost ||
+      hostname === `www.${appHost}` ||
+      hostname.includes("localhost") ||
+      hostname.endsWith(".workers.dev"))
+  ) {
+    return NextResponse.rewrite(new URL(`${toInternalDocsPath(pathname)}${search}`, req.url));
+  }
 
   // A verified custom domain serves its owner's bio page at the domain root.
   // Short links on the same domain are deeper paths and resolve via the
   // [linkAlias] page.
-  const bareHost = host.split(":")[0] ?? host;
   if (
     pathname === "/" &&
     bareHost &&
