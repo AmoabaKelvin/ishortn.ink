@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-  workspaceProcedure,
-} from "../../trpc";
+import { createTRPCRouter, publicProcedure, workspaceProcedure } from "../../trpc";
 import * as inputs from "./link.input";
 import * as services from "./link.service";
 import * as transferServices from "./transfer.service";
@@ -89,7 +84,8 @@ export const linkRouter = createTRPCRouter({
     return services.resetLinkStatistics(ctx, input);
   }),
 
-  verifyLinkPassword: protectedProcedure
+  // Public: visitors unlocking a link are usually signed out. Rate limited in the service.
+  verifyLinkPassword: publicProcedure
     .input(inputs.verifyLinkPasswordSchema)
     .mutation(({ ctx, input }) => {
       return services.verifyLinkPassword(ctx, input);
