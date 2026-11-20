@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { useState } from "react";
 
+import { withProductUtm } from "@/lib/attribution/referral";
 import { api } from "@/trpc/react";
 
 export function ChangelogBanner() {
@@ -48,7 +49,7 @@ export function ChangelogBanner() {
 
               <div className="flex items-center gap-3">
                 <Link
-                  href="/changelog"
+                  href={withProductUtm("/changelog", "app", "changelog_banner")}
                   className="text-[13px] font-medium text-neutral-900 underline underline-offset-4 transition-colors hover:text-neutral-600"
                 >
                   View changelog

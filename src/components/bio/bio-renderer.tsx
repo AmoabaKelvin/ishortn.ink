@@ -1,3 +1,4 @@
+import { getBioReferralUrl } from "@/lib/attribution/referral";
 import { cn } from "@/lib/utils";
 
 import { getInitials } from "./initials";
@@ -20,6 +21,7 @@ export type BioRenderBlock =
   | { id: number | string; type: "divider" };
 
 export type BioRenderModel = {
+  slug: string;
   title: string | null;
   description: string | null;
   avatarUrl: string | null;
@@ -111,13 +113,14 @@ export function BioRenderer({
 
         {!model.removeBranding && (
           <a
-            href="https://ishortn.ink"
+            href={getBioReferralUrl(model.slug)}
             target="_blank"
-            rel="noreferrer"
+            // No noreferrer: the referrer host is part of the visit's attribution.
+            rel="noopener"
             className="mt-10 text-xs opacity-60 transition-opacity hover:opacity-100"
             style={{ color: t.mutedColor }}
           >
-            Made with iShortn
+            Made with iShortn · Create your own
           </a>
         )}
       </div>

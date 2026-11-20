@@ -1,6 +1,7 @@
 import { IconArrowDown, IconExternalLink } from "@tabler/icons-react";
 import { Funnel_Sans } from "next/font/google";
 
+import { ShortLinkAttribution } from "@/components/link-status/short-link-attribution";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,11 +14,13 @@ type LinkPreviewProps = {
   domain: string;
   alias: string | null;
   url: string | null;
+  // Platform domain and not a cloaked link.
+  branded: boolean;
 };
 
 // Server component: only reached for links that are not password protected,
 // blocked, disabled or scheduled, so showing the destination is intended.
-function LinkPreview({ domain, alias, url }: LinkPreviewProps) {
+function LinkPreview({ domain, alias, url, branded }: LinkPreviewProps) {
   const shortUrl = `${domain}/${alias}`;
 
   return (
@@ -61,6 +64,8 @@ function LinkPreview({ domain, alias, url }: LinkPreviewProps) {
             <IconExternalLink size={16} stroke={2} aria-hidden="true" />
           </a>
         </Button>
+
+        {branded && <ShortLinkAttribution campaign="preview" />}
       </div>
     </main>
   );

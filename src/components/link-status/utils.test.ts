@@ -62,6 +62,9 @@ describe("isPlatformHost", () => {
 
 describe("getSignupUrl", () => {
   it("tags the homepage link with the campaign", () => {
+    expect(getSignupUrl("password")).toBe(
+      "https://ishortn.ink/?utm_source=short_link&utm_medium=referral&utm_campaign=password",
+    );
     expect(getSignupUrl("expired")).toBe(
       "https://ishortn.ink/?utm_source=short_link&utm_medium=referral&utm_campaign=expired",
     );

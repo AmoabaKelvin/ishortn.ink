@@ -153,6 +153,7 @@ export function BioPageBuilder({
   }
 
   const previewModel: BioRenderModel = {
+    slug: page.slug,
     title: settings.title || null,
     description: settings.description || null,
     avatarUrl: settings.avatarUrl,
