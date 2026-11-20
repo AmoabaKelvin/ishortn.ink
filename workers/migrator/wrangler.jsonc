@@ -1,0 +1,13 @@
+// Applies drizzle migrations to production through the app's Hyperdrive config,
+// so CI never holds the database password. Deployed by deploy-worker.yml before
+// the app. Every request without a valid MIGRATE_KEY signature gets a 404.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ishortn-migrator",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "ac816bc62707444ab259acdc494f14dc" }],
+}

@@ -64,3 +64,18 @@ jobs:
           fi
         env:
           CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: mysql://placeholder:placeholder@127.0.0.1:3306/placeholder
+
+  # Lists the migrations a PR adds and fails on dangerous ones (drops, renames,
+  # type changes, deletes, rewrites). Additive ones apply automatically on deploy.
+  migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Check migrations are additive
+        run: bun scripts/migrations/check.ts origin/${{ github.base_ref }}
