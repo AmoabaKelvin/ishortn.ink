@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis } from "recharts";
 
 import { Card } from "@/components/ui/card";
@@ -11,9 +10,12 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { formatChartDate } from "@/lib/utils";
+import { formatChartBucket, formatChartBucketLabel } from "@/lib/utils";
+
+import { ChartEmptyState } from "../../[alias]/_components/chart-empty-state";
 
 import type { ChartConfig } from "@/components/ui/chart";
+import type { ClickSeriesPoint } from "@/lib/core/analytics";
 
 const chartConfig = {
   clicks: {
@@ -27,39 +29,12 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 type OverallClicksChartProps = {
-  clicksPerDate: Record<string, number>;
-  uniqueClicksPerDate: Record<string, number>;
+  /** Zero-filled buckets from `fillClickSeries`. */
+  series: ClickSeriesPoint[];
 };
 
-export function OverallClicksChart({
-  clicksPerDate,
-  uniqueClicksPerDate,
-}: OverallClicksChartProps) {
-  const chartData = useMemo(
-    () =>
-      Object.entries(clicksPerDate).map(([date, clicks]) => ({
-        date,
-        clicks,
-        uniqueClicks: uniqueClicksPerDate[date] ?? 0,
-      })),
-    [clicksPerDate, uniqueClicksPerDate],
-  );
-
-  const paddedChartData = useMemo(() => {
-    if (chartData.length === 1 && chartData[0]) {
-      return [
-        {
-          date: new Date(new Date(chartData[0].date).getTime() - 86400000)
-            .toISOString()
-            .split("T")[0],
-          clicks: 0,
-          uniqueClicks: 0,
-        },
-        ...chartData,
-      ];
-    }
-    return chartData;
-  }, [chartData]);
+export function OverallClicksChart({ series }: OverallClicksChartProps) {
+  const hasClicks = series.some((point) => point.clicks > 0);
 
   return (
     <Card className="overflow-hidden rounded-xl border-neutral-200 dark:border-border shadow-none">
@@ -69,37 +44,41 @@ export function OverallClicksChart({
             Click Analytics
           </h2>
           <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-            Aggregated click performance across all your links
+            Aggregated click performance across all your links (UTC)
           </p>
         </div>
       </div>
 
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
-        <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
-          <RechartsBarChart data={paddedChartData}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              tickFormatter={formatChartDate}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value) => formatChartDate(String(value))}
-                  indicator="dashed"
-                />
-              }
-            />
-            <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
-            <Bar dataKey="uniqueClicks" fill="var(--color-uniqueClicks)" radius={4} />
-            <ChartLegend content={<ChartLegendContent />} />
-          </RechartsBarChart>
-        </ChartContainer>
+        {!hasClicks ? (
+          <ChartEmptyState description="Share your links to start seeing data here." />
+        ) : (
+          <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
+            <RechartsBarChart data={series}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={32}
+                tickFormatter={formatChartBucket}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(value) => formatChartBucketLabel(String(value))}
+                    indicator="dashed"
+                  />
+                }
+              />
+              <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
+              <Bar dataKey="uniqueClicks" fill="var(--color-uniqueClicks)" radius={4} />
+              <ChartLegend content={<ChartLegendContent />} />
+            </RechartsBarChart>
+          </ChartContainer>
+        )}
       </div>
     </Card>
   );

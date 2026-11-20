@@ -5,7 +5,6 @@ import { api } from "@/trpc/server";
 
 import { QRCodeEmptyState } from "./_components/empty-state-new";
 import { QRCodeList } from "./_components/qrcode-list";
-import UpgradeText from "./_components/upgrade-text";
 import { checkIfUserCanCreateMoreQRCodes } from "./utils";
 
 import type { Metadata } from "next";
@@ -61,7 +60,12 @@ async function QRCodePage() {
               Upgrade to create unlimited QR codes
             </p>
           </div>
-          <UpgradeText text="Upgrade" />
+          <Link
+            href="/dashboard/pricing"
+            className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            Upgrade
+          </Link>
         </div>
       )}
 

@@ -1,8 +1,9 @@
 import { IconClick, IconShieldCheck, IconShieldHalf, IconUsers } from "@tabler/icons-react";
+import { TRPCError } from "@trpc/server";
+import { notFound } from "next/navigation";
 import { z } from "zod";
 
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { aggregateVisits, mergeArchivedClicks } from "@/lib/core/analytics";
+import { aggregateVisits, fillClickSeries, mergeArchivedClicks } from "@/lib/core/analytics";
 import { cn } from "@/lib/utils";
 import { rangeEnum } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
@@ -10,6 +11,7 @@ import { api } from "@/trpc/server";
 import { TrackingPausedBanner } from "../../_components/tracking-paused-banner";
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
+import { RangePendingContent, RangeTransitionProvider } from "../_components/range-transition";
 import { BarChart } from "./_components/bar-chart";
 import { CountriesAndCitiesStats } from "./_components/countries-and-cities-stats";
 import { GeoRulesStats } from "./_components/geo-rules-stats";
@@ -19,6 +21,7 @@ import { ReferrerStats } from "./_components/referrers";
 import { UserAgentStats } from "./_components/user-agent-stats";
 import WorldMapHeatmap from "./_components/world-map-heatmap";
 
+import type { RouterOutputs } from "@/trpc/shared";
 import type { Metadata } from "next";
 
 export async function generateMetadata(props: {
@@ -36,9 +39,10 @@ type LinksAnalyticsPageProps = {
 };
 
 // Search params are user-controlled: fall back to defaults rather than error.
+// A missing domain resolves to the workspace's default domain on the server.
 const analyticsSearchParamsSchema = z.object({
   range: rangeEnum.catch("7d"),
-  domain: z.string().catch(DEFAULT_PLATFORM_DOMAIN),
+  domain: z.string().min(1).optional().catch(undefined),
 });
 
 // Null when prior is 0 — a 0→N change has no meaningful ratio, so hide the pill
@@ -51,23 +55,41 @@ const percentGrowth = (current: number, prior: number | undefined | null) => {
 export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const { range, domain } = analyticsSearchParamsSchema.parse(searchParams);
+  const { range: requestedRange, domain: requestedDomain } =
+    analyticsSearchParamsSchema.parse(searchParams);
 
-  const [
-    { totalVisits, uniqueVisits, referers, isProPlan, geoRules, previous, archived },
-    subscription,
-  ] = await Promise.all([
-    api.link.linkVisits.query({
-      id: params.alias,
-      domain,
-      range,
-    }),
-    api.subscriptions.get.query().catch(() => null),
-  ]);
+  let visits: RouterOutputs["link"]["linkVisits"];
+  let subscription: RouterOutputs["subscriptions"]["get"] | null;
+  try {
+    [visits, subscription] = await Promise.all([
+      api.link.linkVisits.query({
+        id: params.alias,
+        domain: requestedDomain,
+        range: requestedRange,
+      }),
+      api.subscriptions.get.query().catch(() => null),
+    ]);
+  } catch (error) {
+    // Only a missing link becomes a 404; auth/server errors must surface.
+    if (error instanceof TRPCError && error.code === "NOT_FOUND") notFound();
+    throw error;
+  }
+  const {
+    totalVisits,
+    uniqueVisits,
+    referers,
+    isProPlan,
+    geoRules,
+    previous,
+    archived,
+    domain,
+    range,
+    window,
+  } = visits;
   const trackingPause = subscription?.usage.events.paused ?? null;
 
-  const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
-  const series = mergeArchivedClicks(aggregatedVisits, archived);
+  const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits, window.granularity);
+  const series = fillClickSeries(mergeArchivedClicks(aggregatedVisits, archived), window);
   const totalClicks = totalVisits.length + archived.clicks;
   const uniqueClicks = uniqueVisits.length + archived.uniqueClicks;
   const countryData = aggregatedVisits.clicksPerCountry;
@@ -79,124 +101,120 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
   const verifiedRate = totalVisits.length > 0 ? (verifiedVisits / totalVisits.length) * 100 : 0;
 
   return (
-    <div>
+    <RangeTransitionProvider range={range}>
       <AnalyticsTracker alias={params.alias} domain={domain} />
       <div className="flex flex-col items-center justify-between md:flex-row">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold leading-tight tracking-tight text-neutral-900 dark:text-foreground md:text-2xl">
-            {searchParams?.domain}/{params.alias}
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="break-all text-xl font-semibold leading-tight tracking-tight text-neutral-900 dark:text-foreground md:text-2xl">
+            {domain}/{params.alias}
           </h1>
           {!isProPlan && (
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              Viewing limited analytics (last 7 days). <UpgradeText text="Upgrade to Pro" /> for
-              full data.
+              Viewing limited analytics (last 7 days).{" "}
+              <UpgradeText text="Upgrade to Pro" source="link_analytics" /> for full data.
             </p>
           )}
         </div>
 
-        <RangeSelectorWrapper
-          initialRange={range}
-          isProPlan={isProPlan!}
-          domain={domain}
-          alias={params.alias}
-        />
+        <RangeSelectorWrapper isProPlan={isProPlan} />
       </div>
 
-      {trackingPause && (
-        <TrackingPausedBanner
-          pause={trackingPause}
-          source="link_analytics_tracking_paused"
-          className="mt-6 md:mt-8"
-        />
-      )}
-
-      {/* quick info cards */}
-      <div
-        className={cn(
-          "mt-6 grid grid-cols-2 gap-3 md:mt-8 md:gap-4",
-          verifiedVisits > 0 ? "md:grid-cols-4" : "md:grid-cols-2",
+      <RangePendingContent>
+        {trackingPause && (
+          <TrackingPausedBanner
+            pause={trackingPause}
+            source="link_analytics_tracking_paused"
+            className="mt-6 md:mt-8"
+          />
         )}
-      >
-        <QuickInfoCard
-          title="Total Visits"
-          value={totalClicks.toLocaleString()}
-          icon={<IconClick size={14} stroke={1.5} />}
-          growth={totalGrowth}
-        />
-        <QuickInfoCard
-          title="Unique Visits"
-          value={uniqueClicks.toLocaleString()}
-          icon={<IconUsers size={14} stroke={1.5} />}
-          growth={uniqueGrowth}
-        />
-        {verifiedVisits > 0 && (
-          <>
-            <QuickInfoCard
-              title="Verified Visits"
-              value={verifiedVisits.toLocaleString()}
-              icon={<IconShieldCheck size={14} stroke={1.5} />}
-              growth={verifiedGrowth}
-            />
-            <QuickInfoCard
-              title="Verified Rate"
-              value={`${verifiedRate.toFixed(verifiedRate >= 10 ? 0 : 1)}%`}
-              icon={<IconShieldHalf size={14} stroke={1.5} />}
-              hint={`${verifiedVisits} of ${totalVisits.length}`}
-            />
-          </>
-        )}
-      </div>
 
-      <div className="mt-8 md:mt-10">
-        <BarChart
-          clicksPerDate={series.clicksPerDate}
-          uniqueClicksPerDate={series.uniqueClicksPerDate}
-          isProPlan={isProPlan}
-          geoRules={geoRules}
-          totalVisits={totalVisits.map((v) => ({
-            matchedGeoRuleId: v.matchedGeoRuleId,
-          }))}
-        />
-      </div>
+        {/* quick info cards */}
+        <div
+          className={cn(
+            "mt-6 grid grid-cols-2 gap-3 md:mt-8 md:gap-4",
+            verifiedVisits > 0 ? "md:grid-cols-4" : "md:grid-cols-2",
+          )}
+        >
+          <QuickInfoCard
+            title="Total Visits"
+            value={totalClicks.toLocaleString()}
+            icon={<IconClick size={14} stroke={1.5} />}
+            growth={totalGrowth}
+          />
+          <QuickInfoCard
+            title="Unique Visits"
+            value={uniqueClicks.toLocaleString()}
+            icon={<IconUsers size={14} stroke={1.5} />}
+            growth={uniqueGrowth}
+          />
+          {verifiedVisits > 0 && (
+            <>
+              <QuickInfoCard
+                title="Verified Visits"
+                value={verifiedVisits.toLocaleString()}
+                icon={<IconShieldCheck size={14} stroke={1.5} />}
+                growth={verifiedGrowth}
+              />
+              <QuickInfoCard
+                title="Verified Rate"
+                value={`${verifiedRate.toFixed(verifiedRate >= 10 ? 0 : 1)}%`}
+                icon={<IconShieldHalf size={14} stroke={1.5} />}
+                hint={`${verifiedVisits} of ${totalVisits.length}`}
+              />
+            </>
+          )}
+        </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-10">
-        <CountriesAndCitiesStats
-          citiesRecords={aggregatedVisits.clicksPerCity}
-          countriesRecords={aggregatedVisits.clicksPerCountry}
-          continentsRecords={aggregatedVisits.clicksPerContinent}
-          totalClicks={totalVisits.length}
-          proUser={!!isProPlan}
-        />
-
-        <UserAgentStats
-          clicksPerBrowser={aggregatedVisits.clicksPerBrowser}
-          clicksPerDevice={aggregatedVisits.clicksPerDevice}
-          clicksPerModel={aggregatedVisits.clicksPerModel}
-          clicksPerOS={aggregatedVisits.clicksPerOS}
-          totalClicks={totalVisits.length}
-        />
-
-        <ReferrerStats referers={referers} totalClicks={totalVisits.length} />
-
-        {geoRules.length > 0 && (
-          <GeoRulesStats
+        <div className="mt-8 md:mt-10">
+          <BarChart
+            series={series}
+            isProPlan={isProPlan}
+            geoRules={geoRules}
             totalVisits={totalVisits.map((v) => ({
               matchedGeoRuleId: v.matchedGeoRuleId,
             }))}
-            geoRules={geoRules}
+          />
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-10">
+          <CountriesAndCitiesStats
+            citiesRecords={aggregatedVisits.clicksPerCity}
+            countriesRecords={aggregatedVisits.clicksPerCountry}
+            continentsRecords={aggregatedVisits.clicksPerContinent}
+            totalClicks={totalVisits.length}
+            proUser={!!isProPlan}
+          />
+
+          <UserAgentStats
+            clicksPerBrowser={aggregatedVisits.clicksPerBrowser}
+            clicksPerDevice={aggregatedVisits.clicksPerDevice}
+            clicksPerModel={aggregatedVisits.clicksPerModel}
+            clicksPerOS={aggregatedVisits.clicksPerOS}
             totalClicks={totalVisits.length}
           />
-        )}
-      </div>
 
-      {isProPlan && (
-        <div className="mt-8 md:mt-10">
-          <h2 className="mb-6 text-base font-semibold tracking-tight text-neutral-900 dark:text-foreground">
-            Global Link Clicks Distribution
-          </h2>
-          <WorldMapHeatmap data={countryData} />
+          <ReferrerStats referers={referers} totalClicks={totalVisits.length} />
+
+          {geoRules.length > 0 && (
+            <GeoRulesStats
+              totalVisits={totalVisits.map((v) => ({
+                matchedGeoRuleId: v.matchedGeoRuleId,
+              }))}
+              geoRules={geoRules}
+              totalClicks={totalVisits.length}
+            />
+          )}
         </div>
-      )}
-    </div>
+
+        {isProPlan && (
+          <div className="mt-8 md:mt-10">
+            <h2 className="mb-6 text-base font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+              Global Link Clicks Distribution
+            </h2>
+            <WorldMapHeatmap data={countryData} />
+          </div>
+        )}
+      </RangePendingContent>
+    </RangeTransitionProvider>
   );
 }

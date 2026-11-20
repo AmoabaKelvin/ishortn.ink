@@ -1,7 +1,7 @@
 import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-react";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { aggregateVisits, mergeArchivedClicks } from "@/lib/core/analytics";
+import { aggregateVisits, fillClickSeries, mergeArchivedClicks } from "@/lib/core/analytics";
 import { rangeEnum } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
 
@@ -13,6 +13,10 @@ import { RangeSelectorWrapper } from "../../analytics/[alias]/_components/range-
 import { ReferrerStats } from "../../analytics/[alias]/_components/referrers";
 import { UserAgentStats } from "../../analytics/[alias]/_components/user-agent-stats";
 import WorldMapHeatmap from "../../analytics/[alias]/_components/world-map-heatmap";
+import {
+  RangePendingContent,
+  RangeTransitionProvider,
+} from "../../analytics/_components/range-transition";
 import UpgradeText from "../_components/upgrade-text";
 
 import type { Metadata } from "next";
@@ -27,7 +31,7 @@ type QRCodeAnalyticsPageProps = {
 export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProps) {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const range = rangeEnum.catch("7d").parse(searchParams.range);
+  const requestedRange = rangeEnum.catch("7d").parse(searchParams.range);
 
   const qrCode = await api.qrCode.get.query({ id: Number(params.id) });
 
@@ -51,18 +55,20 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
     isProPlan,
     geoRules,
     archived,
+    range,
+    window,
   } = await api.link.linkVisits.query({
     id: alias,
     domain,
-    range,
+    range: requestedRange,
   });
 
-  const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
-  const series = mergeArchivedClicks(aggregatedVisits, archived);
+  const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits, window.granularity);
+  const series = fillClickSeries(mergeArchivedClicks(aggregatedVisits, archived), window);
   const countryData = aggregatedVisits.clicksPerCountry;
 
   return (
-    <div>
+    <RangeTransitionProvider range={range}>
       {/* QR Code Header */}
       <div className="flex flex-col items-center justify-between md:flex-row">
         <div className="flex items-center gap-4">
@@ -79,96 +85,91 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
             <p className="text-[13px] text-neutral-400">{qrCode.link.url}</p>
             {!isProPlan && (
               <p className="text-[13px] text-neutral-400">
-                Viewing limited analytics (last 7 days). <UpgradeText text="Upgrade to Pro" /> for
-                full data.
+                Viewing limited analytics (last 7 days).{" "}
+                <UpgradeText text="Upgrade to Pro" source="qr_analytics" /> for full data.
               </p>
             )}
           </div>
         </div>
 
-        <RangeSelectorWrapper
-          initialRange={range}
-          isProPlan={isProPlan!}
-          domain={domain}
-          alias={alias}
-          basePath={`/dashboard/qrcodes/${params.id}`}
-        />
+        <RangeSelectorWrapper isProPlan={isProPlan} />
       </div>
 
-      {/* Quick info cards */}
-      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-4">
-        <QuickInfoCard
-          title="Total Scans"
-          value={totalVisits.length + archived.clicks}
-          icon={<IconClick size={16} stroke={1.5} className="text-blue-600" />}
-        />
-        <QuickInfoCard
-          title="Unique Scans"
-          value={uniqueVisits.length + archived.uniqueClicks}
-          icon={<IconUsers size={16} stroke={1.5} className="text-blue-600" />}
-        />
-        <QuickInfoCard
-          title="Top Country"
-          value={topCountry}
-          icon={<IconWorld size={16} stroke={1.5} className="text-blue-600" />}
-        />
-        <QuickInfoCard
-          title="Top Referrer"
-          value={topReferrer}
-          icon={<IconTrendingUp size={16} stroke={1.5} className="text-blue-600" />}
-        />
-      </div>
+      <RangePendingContent>
+        {/* Quick info cards */}
+        <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-4">
+          <QuickInfoCard
+            title="Total Scans"
+            value={totalVisits.length + archived.clicks}
+            icon={<IconClick size={16} stroke={1.5} className="text-blue-600" />}
+          />
+          <QuickInfoCard
+            title="Unique Scans"
+            value={uniqueVisits.length + archived.uniqueClicks}
+            icon={<IconUsers size={16} stroke={1.5} className="text-blue-600" />}
+          />
+          <QuickInfoCard
+            title="Top Country"
+            value={topCountry}
+            icon={<IconWorld size={16} stroke={1.5} className="text-blue-600" />}
+          />
+          <QuickInfoCard
+            title="Top Referrer"
+            value={topReferrer}
+            icon={<IconTrendingUp size={16} stroke={1.5} className="text-blue-600" />}
+          />
+        </div>
 
-      <div className="mt-8 md:mt-10">
-        <BarChart
-          clicksPerDate={series.clicksPerDate}
-          uniqueClicksPerDate={series.uniqueClicksPerDate}
-          isProPlan={isProPlan}
-          geoRules={geoRules}
-          totalVisits={totalVisits.map((v) => ({
-            matchedGeoRuleId: v.matchedGeoRuleId,
-          }))}
-        />
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-10">
-        <CountriesAndCitiesStats
-          citiesRecords={aggregatedVisits.clicksPerCity}
-          countriesRecords={aggregatedVisits.clicksPerCountry}
-          continentsRecords={aggregatedVisits.clicksPerContinent}
-          totalClicks={totalVisits.length}
-          proUser={!!isProPlan}
-        />
-
-        <UserAgentStats
-          clicksPerBrowser={aggregatedVisits.clicksPerBrowser}
-          clicksPerDevice={aggregatedVisits.clicksPerDevice}
-          clicksPerModel={aggregatedVisits.clicksPerModel}
-          clicksPerOS={aggregatedVisits.clicksPerOS}
-          totalClicks={totalVisits.length}
-        />
-
-        <ReferrerStats referers={referers} totalClicks={totalVisits.length} />
-
-        {geoRules.length > 0 && (
-          <GeoRulesStats
+        <div className="mt-8 md:mt-10">
+          <BarChart
+            series={series}
+            isProPlan={isProPlan}
+            geoRules={geoRules}
             totalVisits={totalVisits.map((v) => ({
               matchedGeoRuleId: v.matchedGeoRuleId,
             }))}
-            geoRules={geoRules}
+          />
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-10">
+          <CountriesAndCitiesStats
+            citiesRecords={aggregatedVisits.clicksPerCity}
+            countriesRecords={aggregatedVisits.clicksPerCountry}
+            continentsRecords={aggregatedVisits.clicksPerContinent}
+            totalClicks={totalVisits.length}
+            proUser={!!isProPlan}
+          />
+
+          <UserAgentStats
+            clicksPerBrowser={aggregatedVisits.clicksPerBrowser}
+            clicksPerDevice={aggregatedVisits.clicksPerDevice}
+            clicksPerModel={aggregatedVisits.clicksPerModel}
+            clicksPerOS={aggregatedVisits.clicksPerOS}
             totalClicks={totalVisits.length}
           />
-        )}
-      </div>
 
-      {isProPlan && (
-        <div className="mt-8 md:mt-10">
-          <h2 className="mb-6 text-base font-semibold tracking-tight text-neutral-900">
-            Global QR Code Scans Distribution
-          </h2>
-          <WorldMapHeatmap data={countryData} />
+          <ReferrerStats referers={referers} totalClicks={totalVisits.length} />
+
+          {geoRules.length > 0 && (
+            <GeoRulesStats
+              totalVisits={totalVisits.map((v) => ({
+                matchedGeoRuleId: v.matchedGeoRuleId,
+              }))}
+              geoRules={geoRules}
+              totalClicks={totalVisits.length}
+            />
+          )}
         </div>
-      )}
-    </div>
+
+        {isProPlan && (
+          <div className="mt-8 md:mt-10">
+            <h2 className="mb-6 text-base font-semibold tracking-tight text-neutral-900">
+              Global QR Code Scans Distribution
+            </h2>
+            <WorldMapHeatmap data={countryData} />
+          </div>
+        )}
+      </RangePendingContent>
+    </RangeTransitionProvider>
   );
 }

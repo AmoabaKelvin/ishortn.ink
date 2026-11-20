@@ -1,7 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { parse } from "csv-parse/sync";
-import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import {
   and,
   asc,
@@ -14,6 +13,7 @@ import {
   isNull,
   like,
   lt,
+  lte,
   or,
   sql,
   sum,
@@ -27,7 +27,8 @@ import {
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { summarizeArchived } from "@/lib/core/analytics";
+import { bucketKey, resolveRangeWindow, summarizeArchived } from "@/lib/core/analytics";
+import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import {
   buildCacheKey,
@@ -1106,37 +1107,27 @@ const shortenLinkSteps = async (
 
 export const getLinkVisits = async (
   ctx: WorkspaceTRPCContext,
-  input: { id: string; domain: string; range: string },
+  input: { id: string; domain?: string; range: string },
 ) => {
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
 
+  const domain = input.domain ?? (await getWorkspaceDefaultDomain(ctx));
+
   // Use workspace filtering to ensure the link belongs to the current workspace
   const foundLink = await ctx.db.query.link.findFirst({
     where: and(
       eq(link.alias, input.id),
-      eq(link.domain, input.domain),
+      eq(link.domain, domain),
       workspaceFilter(ctx.workspace, link.userId, link.teamId),
     ),
   });
 
   if (!foundLink) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      geoRules: [],
-      previous: null,
-      archived: summarizeArchived([]),
-    };
+    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
   }
 
-  let now = new Date();
-  let startDate: Date;
   let range = input.range;
 
   // Enforce 7-day limit for free users
@@ -1144,39 +1135,9 @@ export const getLinkVisits = async (
     range = "7d";
   }
 
-  switch (range) {
-    case "24h":
-      startDate = subDays(now, 1);
-      break;
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "this_month":
-      startDate = startOfMonth(now);
-      break;
-    case "last_month":
-      startDate = startOfMonth(subDays(now, 30));
-      now.setDate(0); // Set to last day of previous month
-      break;
-    case "this_year":
-      startDate = startOfYear(now);
-      break;
-    case "last_year":
-      startDate = startOfYear(subDays(now, 365));
-      now = endOfYear(subDays(now, 365));
-      break;
-    case "all":
-      startDate = new Date(0); // Beginning of time
-      break;
-    default:
-      startDate = subDays(now, 7); // Default to last 7 days
-  }
+  const window = resolveRangeWindow(range, new Date());
+  const startDate = window.from ?? new Date(0);
+  const now = window.to;
 
   // Previous-period window for % delta: same duration immediately before
   // the current window. Skip for "all" and for inverted windows that can
@@ -1185,8 +1146,6 @@ export const getLinkVisits = async (
   const hasPreviousPeriod = range !== "all" && windowMs > 0;
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
-
-  const toDateKey = (d: Date) => d.toISOString().split("T")[0]!;
 
   const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
     await Promise.all([
@@ -1244,8 +1203,8 @@ export const getLinkVisits = async (
         where: (s, { eq, and, gte, lte }) =>
           and(
             eq(s.linkId, foundLink.id),
-            gte(s.date, toDateKey(startDate)),
-            lte(s.date, toDateKey(now)),
+            gte(s.date, bucketKey(startDate)),
+            lte(s.date, bucketKey(now)),
           ),
       }),
       hasPreviousPeriod
@@ -1258,8 +1217,8 @@ export const getLinkVisits = async (
             .where(
               and(
                 eq(linkVisitDailySummary.linkId, foundLink.id),
-                gte(linkVisitDailySummary.date, toDateKey(prevStart)),
-                lt(linkVisitDailySummary.date, toDateKey(prevEnd)),
+                gte(linkVisitDailySummary.date, bucketKey(prevStart)),
+                lt(linkVisitDailySummary.date, bucketKey(prevEnd)),
               ),
             )
         : Promise.resolve(null),
@@ -1286,6 +1245,9 @@ export const getLinkVisits = async (
       geoRules: linkGeoRules,
       previous,
       archived,
+      domain,
+      range,
+      window,
     };
   }
 
@@ -1318,11 +1280,14 @@ export const getLinkVisits = async (
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
+    topReferrer: formatReferrerLabel(topReferrer),
     isProPlan: userHasPaidPlan,
     geoRules: linkGeoRules,
     previous,
     archived,
+    domain,
+    range,
+    window,
   };
 };
 
@@ -1337,6 +1302,24 @@ export const getAllUserAnalytics = async (
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
+
+  const range = !userHasPaidPlan && !["24h", "7d"].includes(input.range) ? "7d" : input.range;
+  const window = resolveRangeWindow(range, new Date());
+  const startDate = window.from ?? new Date(0);
+  const now = window.to;
+  const empty = {
+    totalVisits: [],
+    uniqueVisits: [],
+    topCountry: "N/A",
+    referers: {},
+    topReferrer: "N/A",
+    isProPlan: userHasPaidPlan,
+    clicksByLink: {},
+    clicksByDestination: {},
+    archived: summarizeArchived([]),
+    range,
+    window,
+  };
 
   // Fetch workspace links with optional filtering
   const userLinks = await ctx.db.query.link.findMany({
@@ -1367,65 +1350,14 @@ export const getAllUserAnalytics = async (
   });
 
   if (userLinks.length === 0) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      clicksByLink: {},
-      clicksByDestination: {},
-    };
-  }
-
-  let now = new Date();
-  let startDate: Date;
-  let range = input.range;
-
-  // Enforce 7-day limit for free users
-  if (!userHasPaidPlan && !["24h", "7d"].includes(range)) {
-    range = "7d";
-  }
-
-  switch (range) {
-    case "24h":
-      startDate = subDays(now, 1);
-      break;
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "this_month":
-      startDate = startOfMonth(now);
-      break;
-    case "last_month":
-      startDate = startOfMonth(subDays(now, 30));
-      now.setDate(0);
-      break;
-    case "this_year":
-      startDate = startOfYear(now);
-      break;
-    case "last_year":
-      startDate = startOfYear(subDays(now, 365));
-      now = endOfYear(subDays(now, 365));
-      break;
-    case "all":
-      startDate = new Date(0);
-      break;
-    default:
-      startDate = subDays(now, 7);
+    return empty;
   }
 
   const linkIds = userLinks.map((link) => link.id);
 
-  // Fetch all visits for all links
-  const [totalVisits, uniqueVisits] = await Promise.all([
+  // Fetch all visits for all links, plus the per-day counts archived from
+  // visits past the retention window (summed in SQL, so one row per day).
+  const [totalVisits, uniqueVisits, summaries] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { inArray, and, gte, lte }) =>
         and(
@@ -1442,19 +1374,27 @@ export const getAllUserAnalytics = async (
           lte(visit.createdAt, now),
         ),
     }),
+    ctx.db
+      .select({
+        date: linkVisitDailySummary.date,
+        clicks: sum(linkVisitDailySummary.clicks).mapWith(Number),
+        uniqueClicks: sum(linkVisitDailySummary.uniqueClicks).mapWith(Number),
+      })
+      .from(linkVisitDailySummary)
+      .where(
+        and(
+          inArray(linkVisitDailySummary.linkId, linkIds),
+          gte(linkVisitDailySummary.date, bucketKey(startDate)),
+          lte(linkVisitDailySummary.date, bucketKey(now)),
+        ),
+      )
+      .groupBy(linkVisitDailySummary.date),
   ]);
 
+  const archived = summarizeArchived(summaries);
+
   if (totalVisits.length === 0) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      clicksByLink: {},
-      clicksByDestination: {},
-    };
+    return { ...empty, archived };
   }
 
   // Aggregate clicks by link
@@ -1506,10 +1446,13 @@ export const getAllUserAnalytics = async (
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
+    topReferrer: formatReferrerLabel(topReferrer),
     isProPlan: userHasPaidPlan,
     clicksByLink,
     clicksByDestination,
+    archived,
+    range,
+    window,
   };
 };
 

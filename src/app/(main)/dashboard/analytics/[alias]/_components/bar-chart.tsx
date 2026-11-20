@@ -24,11 +24,13 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { cn, formatChartDate } from "@/lib/utils";
+import { cn, formatChartBucket, formatChartBucketLabel } from "@/lib/utils";
 
 import UpgradeText from "../../../qrcodes/_components/upgrade-text";
+import { ChartEmptyState } from "./chart-empty-state";
 
 import type { ChartConfig } from "@/components/ui/chart";
+import type { ClickSeriesPoint } from "@/lib/core/analytics";
 
 const chartConfig = {
   clicks: {
@@ -47,8 +49,8 @@ type GeoRuleData = {
 };
 
 type BarChartProps = {
-  clicksPerDate: Record<string, number>;
-  uniqueClicksPerDate: Record<string, number>;
+  /** Zero-filled buckets from `fillClickSeries`. */
+  series: ClickSeriesPoint[];
   isProPlan?: boolean;
   geoRules?: GeoRuleData[];
   totalVisits?: { matchedGeoRuleId: number | null }[];
@@ -83,43 +85,11 @@ function GeoChartTooltip({
   return null;
 }
 
-export function BarChart({
-  clicksPerDate,
-  uniqueClicksPerDate,
-  isProPlan,
-  geoRules = [],
-  totalVisits = [],
-}: BarChartProps) {
+export function BarChart({ series, isProPlan, geoRules = [], totalVisits = [] }: BarChartProps) {
   const [chartView, setChartView] = useState<ChartView>("clicks");
   const [chartType, setChartType] = useState<ChartType>("area");
 
-  // Memoize chart data transformation
-  const chartData = useMemo(
-    () =>
-      Object.entries(clicksPerDate).map(([date, clicks]) => ({
-        date,
-        clicks,
-        uniqueClicks: uniqueClicksPerDate[date] ?? 0,
-      })),
-    [clicksPerDate, uniqueClicksPerDate],
-  );
-
-  // Memoize padded chart data
-  const paddedChartData = useMemo(() => {
-    if (chartData.length === 1 && chartData[0]) {
-      return [
-        {
-          date: new Date(new Date(chartData[0].date).getTime() - 86400000)
-            .toISOString()
-            .split("T")[0],
-          clicks: 0,
-          uniqueClicks: 0,
-        },
-        ...chartData,
-      ];
-    }
-    return chartData;
-  }, [chartData]);
+  const hasClicks = series.some((point) => point.clicks > 0);
 
   // Memoize geo stats calculation
   const geoStats = useMemo(() => {
@@ -191,14 +161,14 @@ export function BarChart({
             </h2>
             <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
               {chartView === "clicks"
-                ? "Track your link performance over time"
+                ? "Track your link performance over time (UTC)"
                 : "See how targeting rules affect your traffic"}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Chart Type Switcher */}
-            {chartView === "clicks" && (
+            {chartView === "clicks" && hasClicks && (
               <div className="flex items-center gap-1 rounded-lg bg-neutral-100 dark:bg-muted p-1">
                 <button
                   onClick={() => setChartType("area")}
@@ -256,10 +226,12 @@ export function BarChart({
 
       {/* Charts */}
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
-        {chartView === "clicks" ? (
+        {chartView === "clicks" && !hasClicks ? (
+          <ChartEmptyState description="Share your link to start seeing data here." />
+        ) : chartView === "clicks" ? (
           <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
             {chartType === "area" ? (
-              <AreaChart data={paddedChartData}>
+              <AreaChart data={series}>
                 <defs>
                   <linearGradient id="fillClicks" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--color-clicks)" stopOpacity={0.8} />
@@ -277,35 +249,35 @@ export function BarChart({
                   axisLine={false}
                   tickMargin={8}
                   minTickGap={32}
-                  tickFormatter={formatChartDate}
+                  tickFormatter={formatChartBucket}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(value) => formatChartDate(String(value))}
+                      labelFormatter={(value) => formatChartBucketLabel(String(value))}
                       indicator="dot"
                     />
                   }
                 />
-                <Area
-                  dataKey="uniqueClicks"
-                  type="natural"
-                  fill="url(#fillUniqueClicks)"
-                  stroke="var(--color-uniqueClicks)"
-                  stackId="a"
-                />
+                {/* Overlapping, not stacked: unique clicks are a subset of clicks, so
+                    they draw on top. Monotone keeps zero days from dipping below 0. */}
                 <Area
                   dataKey="clicks"
-                  type="natural"
+                  type="monotone"
                   fill="url(#fillClicks)"
                   stroke="var(--color-clicks)"
-                  stackId="a"
+                />
+                <Area
+                  dataKey="uniqueClicks"
+                  type="monotone"
+                  fill="url(#fillUniqueClicks)"
+                  stroke="var(--color-uniqueClicks)"
                 />
                 <ChartLegend content={<ChartLegendContent />} />
               </AreaChart>
             ) : (
-              <RechartsBarChart data={paddedChartData}>
+              <RechartsBarChart data={series}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -313,13 +285,13 @@ export function BarChart({
                   axisLine={false}
                   tickMargin={8}
                   minTickGap={32}
-                  tickFormatter={formatChartDate}
+                  tickFormatter={formatChartBucket}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(value) => formatChartDate(String(value))}
+                      labelFormatter={(value) => formatChartBucketLabel(String(value))}
                       indicator="dashed"
                     />
                   }
@@ -394,8 +366,8 @@ export function BarChart({
 
       {isProPlan === false && (
         <div className="px-5 pb-4 text-center text-[12px] text-neutral-400 dark:text-neutral-500">
-          Showing data for the last 7 days. <UpgradeText text="Upgrade to Pro" /> for full
-          analytics.
+          Showing data for the last 7 days.{" "}
+          <UpgradeText text="Upgrade to Pro" source="analytics_chart" /> for full analytics.
         </div>
       )}
     </Card>
