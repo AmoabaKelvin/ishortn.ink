@@ -177,6 +177,9 @@ export const user = mysqlTable(
     // email went out, or once the account's keys were already past their cutoff.
     apiSunsetNoticeSentAt: timestamp("apiSunsetNoticeSentAt"),
     apiSunsetReminderSentAt: timestamp("apiSunsetReminderSentAt"),
+    // Restriction: can sign in and pay, but can't create or edit links, domains, bio pages or QR codes
+    restrictedAt: timestamp("restrictedAt"),
+    restrictedReason: varchar("restrictedReason", { length: 255 }),
   },
   (table) => ({
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),
@@ -710,6 +713,9 @@ export const customDomain = mysqlTable(
     status: mysqlEnum("status", ["pending", "active", "invalid"]).default("pending"),
     verificationDetails: json("verificationDetails"),
     lastReminderSentAt: timestamp("lastReminderSentAt"),
+    // Set when an account restriction released this apex's www fallback hostname,
+    // so lifting the restriction re-adds it (and only then)
+    wwwHostnameReleased: boolean("wwwHostnameReleased").default(false),
     // Generated column to handle NULL teamId in unique constraint
     // MySQL treats NULLs as distinct, so we coalesce to 0 for personal workspaces
     teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(sql`COALESCE(\`teamId\`, 0)`, {

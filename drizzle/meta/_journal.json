@@ -533,6 +533,13 @@
       "when": 1795213124724,
       "tag": "0075_harsh_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "5",
+      "when": 1795214016517,
+      "tag": "0076_glamorous_loa",
+      "breakpoints": true
     }
   ]
 }

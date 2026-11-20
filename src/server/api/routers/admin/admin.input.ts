@@ -42,6 +42,14 @@ export const unbanUserSchema = z.object({
 
 export type UnbanUserInput = z.infer<typeof unbanUserSchema>;
 
+export const restrictUserSchema = banUserSchema;
+
+export type RestrictUserInput = z.infer<typeof restrictUserSchema>;
+
+export const unrestrictUserSchema = unbanUserSchema;
+
+export type UnrestrictUserInput = z.infer<typeof unrestrictUserSchema>;
+
 export const addBlockedDomainSchema = z.object({
   domain: z.string().min(1).max(255),
   reason: z.string().max(255).optional(),
