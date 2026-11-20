@@ -9,8 +9,9 @@ export type { SystemStatus } from "./parse";
 
 const log = logger.child({ component: "system-status" });
 
-// Pages that render the badge regenerate in the background (ISR), so this timeout only bounds
-// how long a regeneration waits, never a visitor's request.
+// Pages that render the badge regenerate in the background (ISR via the memory queue in
+// open-next.config.ts), so this timeout only bounds how long a regeneration waits, never a
+// visitor's request.
 const FETCH_TIMEOUT_MS = 2000;
 
 export const getSystemStatus = async (): Promise<SystemStatus | null> => {
