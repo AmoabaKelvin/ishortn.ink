@@ -5,6 +5,7 @@ import { z } from "zod";
 import { socialMediaAgents } from "@/lib/constants/app";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
+import { noIndexMetadata } from "@/lib/seo/indexing";
 import { isLinkScheduled, resolveShortLink } from "@/middlewares/resolve-link";
 import { api } from "@/trpc/server";
 
@@ -49,7 +50,7 @@ export async function generateMetadata(props: LinkRedirectionPageProps): Promise
   const domain = getDomain(incomingDomain);
 
   if (params.linkAlias.toLowerCase().endsWith(".png")) {
-    return {};
+    return noIndexMetadata;
   }
 
   const link = await api.link.retrieveOriginalUrl.query({
@@ -61,6 +62,7 @@ export async function generateMetadata(props: LinkRedirectionPageProps): Promise
   const linkMetadata = linkMetadataSchema.safeParse(link?.metadata).data;
 
   return {
+    ...noIndexMetadata,
     title: { absolute: linkMetadata?.title ?? "" },
     description: linkMetadata?.description ?? "",
     openGraph: { images: [linkMetadata?.image ?? ""] },

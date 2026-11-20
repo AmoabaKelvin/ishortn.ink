@@ -6,6 +6,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 import { extractPlatformSubdomain, isPlatformDomain } from "@/lib/constants/domains";
+import { NO_INDEX_HEADER, getMarketingRedirectUrl, isShortLinkPath } from "@/lib/seo/indexing";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
@@ -15,10 +16,21 @@ export default clerkMiddleware(async (auth, req) => {
     return;
   }
 
-  const { pathname, host: urlHost } = new URL(req.url);
+  const { pathname, search, host: urlHost } = new URL(req.url);
   // Same precedence as the [linkAlias] page: a proxy may forward the custom
   // domain in x-forwarded-host while the URL holds the platform host.
   const host = req.headers.get("x-forwarded-host") ?? urlHost;
+
+  const marketingRedirect = getMarketingRedirectUrl(host, pathname, search);
+  if (marketingRedirect) return NextResponse.redirect(marketingRedirect, 301);
+
+  // Short-link responses carry the destination's title; keep them out of
+  // search indexes. A header (unlike a meta tag) also covers the bodiless 307.
+  if (isShortLinkPath(pathname)) {
+    const response = NextResponse.next();
+    response.headers.set("X-Robots-Tag", NO_INDEX_HEADER);
+    return response;
+  }
 
   // A verified custom domain serves its owner's bio page at the domain root.
   // Short links on the same domain are deeper paths and resolve via the
