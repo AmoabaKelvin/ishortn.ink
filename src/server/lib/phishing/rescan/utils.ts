@@ -1,9 +1,12 @@
-export type RescanSource =
-  | "phishing-database-links"
-  | "phishing-database-domains"
-  | "openphish"
-  | "urlhaus"
-  | "safe-browsing";
+const RESCAN_SOURCES = [
+  "phishing-database-links",
+  "phishing-database-domains",
+  "openphish",
+  "urlhaus",
+  "safe-browsing",
+] as const;
+
+export type RescanSource = (typeof RESCAN_SOURCES)[number];
 
 export type FeedKind = "url" | "domain";
 
@@ -28,8 +31,20 @@ export type RescanDecision = {
   details: string;
   /** Host to add to BlockedDomain alongside the block. */
   blockDomain?: string;
-  /** Pending rescan flags on the link that this block resolves instead of adding a new row. */
+  /** Pending rescan flags on the link that this decision acts on instead of adding a new row. */
   resolvesFlagIds?: number[];
+  /** The link already waits in the backlog: one of its pending flags is an over-the-cap block. */
+  queued?: boolean;
+  /** Rewrite the pending flags in `resolvesFlagIds` with this decision's reason and details. */
+  relabel?: boolean;
+};
+
+/** A pending over-the-cap rescan flag, i.e. a confirmed block that is still waiting. */
+export type BacklogFlag = {
+  id: number;
+  linkId: number;
+  reason: string | null;
+  details: string | null;
 };
 
 export type ExistingFlag = {
@@ -41,6 +56,9 @@ export type ExistingFlag = {
 };
 
 export const RESCAN_REASON_PREFIX = "phishing-rescan:";
+
+const DOMAIN_BLOCK_DETAILS = "Destination host listed in feed: ";
+const PAYING_NOTE = " (paying account, review before blocking)";
 
 // Multi-tenant hosting, link-in-bio, shortener, file-sharing and IPFS platforms: a subdomain or
 // path belongs to one customer, so a domain-level feed hit never justifies blocking the platform.
@@ -466,7 +484,7 @@ export function decideMatch(match: RescanMatch, ownHosts: ReadonlySet<string>): 
       return {
         ...base,
         action: "block",
-        details: `Destination host listed in feed: ${match.entry}`,
+        details: `${DOMAIN_BLOCK_DETAILS}${match.entry}`,
         blockDomain: match.host,
       };
   }
@@ -485,11 +503,16 @@ export function mergeDecisions(decisions: RescanDecision[]): RescanDecision[] {
 }
 
 const CAP_NOTE = / \(over the \d+ auto-block limit for one run\)$/;
+/** SQL `LIKE` pattern for the details of an over-the-cap flag; keep in sync with `capBlocks`. */
+export const CAP_NOTE_LIKE = "% auto-block limit for one run)";
+// Notes the rescan appends to a block it holds back; they don't change the evidence.
+const HELD_NOTE =
+  / \((over the \d+ auto-block limit for one run|paying account, review before blocking)\)$/;
 
 // Feeds re-list the same URL with cosmetic differences (trailing slash, `www.`, scheme).
 function evidenceKey(linkId: number, reason: string, details: string): string {
   const evidence = details
-    .replace(CAP_NOTE, "")
+    .replace(HELD_NOTE, "")
     .replace(/\bhttps?:\/\/\S+/gi, (url) => normalizeUrl(url) ?? url);
   return `${linkId}\n${reason}\n${evidence}`;
 }
@@ -507,22 +530,92 @@ export function withoutResolvedLinks(
 ): RescanDecision[] {
   const ruled = new Set<string>();
   const pending = new Map<number, number[]>();
+  const queued = new Set<number>();
   for (const flag of existing) {
     if (!flag.reason?.startsWith(RESCAN_REASON_PREFIX)) continue;
-    if (flag.status === "pending") push(pending, flag.linkId, flag.id);
-    else ruled.add(evidenceKey(flag.linkId, flag.reason, flag.details ?? ""));
+    if (flag.status === "pending") {
+      push(pending, flag.linkId, flag.id);
+      if (CAP_NOTE.test(flag.details ?? "")) queued.add(flag.linkId);
+    } else ruled.add(evidenceKey(flag.linkId, flag.reason, flag.details ?? ""));
   }
   return decisions.flatMap((d) => {
     if (ruled.has(evidenceKey(d.linkId, d.reason, d.details))) return [];
     const pendingIds = pending.get(d.linkId);
     if (!pendingIds) return [d];
-    return d.action === "block" ? [{ ...d, resolvesFlagIds: pendingIds }] : [];
+    if (d.action !== "block") return [];
+    return [{ ...d, resolvesFlagIds: pendingIds, ...(queued.has(d.linkId) && { queued: true }) }];
   });
 }
 
 /**
- * Caps automatic blocks per run so a bad feed update can't take down a large share of links;
- * blocks over the cap are raised as pending flags for an admin instead.
+ * Turns the backlog of over-the-cap flags back into the blocks they stood for, one per link, so
+ * they are applied ahead of this run's new matches. The domain is re-derived from the details,
+ * as `capBlocks` drops it.
+ */
+export function backlogDecisions(flags: BacklogFlag[]): RescanDecision[] {
+  const byLink = new Map<number, RescanDecision>();
+  for (const flag of flags) {
+    const current = byLink.get(flag.linkId);
+    if (current) {
+      current.resolvesFlagIds?.push(flag.id);
+      continue;
+    }
+    const reason = flag.reason ?? "";
+    const raw = reason.slice(RESCAN_REASON_PREFIX.length).trim();
+    const source = RESCAN_SOURCES.find((s) => s === raw);
+    if (!reason.startsWith(RESCAN_REASON_PREFIX) || !source) continue;
+    const details = (flag.details ?? "").replace(CAP_NOTE, "");
+    const blockDomain = details.startsWith(DOMAIN_BLOCK_DETAILS)
+      ? normalizeHost(details.slice(DOMAIN_BLOCK_DETAILS.length))
+      : null;
+    byLink.set(flag.linkId, {
+      linkId: flag.linkId,
+      action: "block",
+      source,
+      reason,
+      details,
+      ...(blockDomain && { blockDomain }),
+      resolvesFlagIds: [flag.id],
+      queued: true,
+    });
+  }
+  return [...byLink.values()];
+}
+
+/**
+ * Links owned by paying accounts are never blocked automatically: their blocks become flags for
+ * an admin to review, and leave the backlog.
+ */
+export function flagPayingAccounts(
+  decisions: RescanDecision[],
+  payingLinkIds: ReadonlySet<number>,
+): RescanDecision[] {
+  return decisions.map((decision) => {
+    if (decision.action !== "block" || !payingLinkIds.has(decision.linkId)) return decision;
+    const { blockDomain: _, ...rest } = decision;
+    return {
+      ...rest,
+      action: "flag",
+      details: `${decision.details}${PAYING_NOTE}`,
+      ...(decision.resolvesFlagIds && { relabel: true }),
+    };
+  });
+}
+
+/** Distinct links waiting in the backlog once `decisions` are applied, given `total` before. */
+export function remainingBacklog(total: number, decisions: RescanDecision[]): number {
+  let remaining = total;
+  for (const d of decisions) {
+    const waits = d.action === "flag" && CAP_NOTE.test(d.details);
+    remaining += Number(waits) - Number(Boolean(d.queued));
+  }
+  return remaining;
+}
+
+/**
+ * Caps automatic blocks per run so a bad feed update can't take down a large share of links.
+ * Blocks over the cap are kept as pending flags, the backlog that later runs block first; a link
+ * whose pending flag isn't yet in the backlog has it relabelled to join it.
  */
 export function capBlocks(decisions: RescanDecision[], maxBlocks: number): RescanDecision[] {
   let blocks = 0;
@@ -535,6 +628,7 @@ export function capBlocks(decisions: RescanDecision[], maxBlocks: number): Resca
       ...rest,
       action: "flag",
       details: `${decision.details} (over the ${maxBlocks} auto-block limit for one run)`,
+      ...(decision.resolvesFlagIds && !decision.queued && { relabel: true }),
     };
   });
 }
