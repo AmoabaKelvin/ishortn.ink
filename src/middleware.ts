@@ -11,6 +11,7 @@ import {
   isPlatformDomain,
 } from "@/lib/constants/domains";
 import { isDocsPath, legacyDocsRedirectPath, toInternalDocsPath } from "@/lib/docs/routing";
+import { NO_INDEX_HEADER, getMarketingRedirectUrl, isShortLinkPath } from "@/lib/seo/indexing";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
@@ -34,14 +35,28 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   // Docs live on the app host only; elsewhere /docs stays a short-link alias.
-  if (
-    isDocsPath(pathname) &&
-    (hostname === appHost ||
-      hostname === `www.${appHost}` ||
+  if (isDocsPath(pathname)) {
+    if (hostname === `www.${appHost}`) {
+      return NextResponse.redirect(`https://${appHost}${pathname}${search}`, 301);
+    }
+    if (
+      hostname === appHost ||
       hostname.includes("localhost") ||
-      hostname.endsWith(".workers.dev"))
-  ) {
-    return NextResponse.rewrite(new URL(`${toInternalDocsPath(pathname)}${search}`, req.url));
+      hostname.endsWith(".workers.dev")
+    ) {
+      return NextResponse.rewrite(new URL(`${toInternalDocsPath(pathname)}${search}`, req.url));
+    }
+  }
+
+  const marketingRedirect = getMarketingRedirectUrl(host, pathname, search);
+  if (marketingRedirect) return NextResponse.redirect(marketingRedirect, 301);
+
+  // Short-link responses carry the destination's title; keep them out of
+  // search indexes. A header (unlike a meta tag) also covers the bodiless 307.
+  if (isShortLinkPath(pathname)) {
+    const response = NextResponse.next();
+    response.headers.set("X-Robots-Tag", NO_INDEX_HEADER);
+    return response;
   }
 
   // A verified custom domain serves its owner's bio page at the domain root.

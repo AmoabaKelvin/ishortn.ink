@@ -127,7 +127,9 @@ Error bodies are plain text.
 | `400` | `UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.` | `utmParams` on Free or Pro. |
 | `400` | A [link safety](/docs/abuse#link-safety-checks) message | The destination failed the safety check. |
 | `401` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | `{"error":"API access requires Pro","upgrade_url":"https://ishortn.ink/pricing"}` | The account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
 | `403` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
 | `403` | `Scheduled links are only available on Pro and Ultra plans` | `activatesAt` on the Free plan. |
 | `403` | `You've reached your monthly limit of 30 links. Upgrade to Pro for more.` | Free plan monthly limit. On Pro the message names the 1,000-link limit and suggests Ultra. |
 | `500` | | The body wasn't valid JSON, or an unexpected server error. |
+| `429` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

@@ -1,0 +1,50 @@
+import { describe, expect, it } from "bun:test";
+import fs from "fs";
+import path from "path";
+
+import matter from "gray-matter";
+
+import { APP_TITLE } from "@/lib/constants/app";
+
+import { comparisonTitle, competitors } from "./competitors";
+
+// Search results cut titles off at about 60 characters.
+const MAX_TITLE_LENGTH = 60;
+// Mirrors the root layout's `%s | iShortn` title template.
+const templated = (title: string) => `${title} | ${APP_TITLE}`;
+const brandCount = (title: string) => title.split(APP_TITLE).length - 1;
+
+describe("page titles", () => {
+  it("keeps comparison titles short with the brand once", () => {
+    const titles = Object.values(competitors).map(comparisonTitle);
+    for (const title of titles) {
+      expect(title.length).toBeLessThanOrEqual(MAX_TITLE_LENGTH);
+      expect(brandCount(title)).toBe(1);
+    }
+    expect(new Set(titles).size).toBe(titles.length);
+  });
+
+  it("frames link-in-bio competitors as a link in bio comparison", () => {
+    expect(comparisonTitle(competitors.linktree)).toBe(
+      "Linktree vs iShortn: link in bio comparison",
+    );
+    expect(comparisonTitle(competitors.bitly)).toBe("Bitly vs iShortn: URL shortener comparison");
+  });
+
+  it("keeps blog post titles short with the brand once", () => {
+    // Reads frontmatter only: getAllPosts renders every post's markdown, which is too slow here.
+    const blogDirectory = path.join(process.cwd(), "content/blog");
+    const posts = fs
+      .readdirSync(blogDirectory)
+      .filter((name) => /\.mdx?$/.test(name))
+      .map((name) => matter(fs.readFileSync(path.join(blogDirectory, name), "utf8")).data)
+      .filter((data) => data.published !== false);
+    expect(posts.length).toBeGreaterThan(0);
+    const titles = posts.map((data) => templated(String(data.seoTitle ?? data.title)));
+    for (const title of titles) {
+      expect(title.length).toBeLessThanOrEqual(MAX_TITLE_LENGTH);
+      expect(brandCount(title)).toBe(1);
+    }
+    expect(new Set(titles).size).toBe(titles.length);
+  });
+});

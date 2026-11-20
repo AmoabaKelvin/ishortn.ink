@@ -116,6 +116,18 @@ async function getStringFromCache(key: string): Promise<string | null> {
   }
 }
 
+// One KV round trip for up to 100 keys; missing keys (or no KV) read as null.
+async function getStringsFromCache(keys: string[]): Promise<Map<string, string | null>> {
+  try {
+    const kv = await getKV();
+    if (!kv) return new Map();
+
+    return await kv.get(keys, "text");
+  } catch {
+    return new Map();
+  }
+}
+
 async function setStringInCache(key: string, value: string, ttlSeconds: number): Promise<boolean> {
   try {
     const kv = await getKV();
@@ -228,6 +240,7 @@ export {
   getFromCache,
   getGeoRulesFromCache,
   getStringFromCache,
+  getStringsFromCache,
   setGeoRulesInCache,
   setInCache,
   setStringIfAbsent,

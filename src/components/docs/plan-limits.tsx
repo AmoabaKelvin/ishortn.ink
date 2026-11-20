@@ -1,4 +1,5 @@
 import {
+  API_RATE_LIMITS,
   canRemoveBioBranding,
   canScheduleBioBlocks,
   canUseBioCustomDomain,
@@ -84,6 +85,36 @@ export function PlanLimits() {
               {PLANS.map((plan) => (
                 <td key={plan.id} className="whitespace-nowrap">
                   {row.allowed(plan.id) ? "Yes" : "No"}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** The /api/v1 request limits, rendered from API_RATE_LIMITS in src/lib/billing/plans.ts. */
+export function ApiRateLimits() {
+  return (
+    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <table>
+        <thead>
+          <tr>
+            <th>Window</th>
+            {PLANS.map((plan) => (
+              <th key={plan.id}>{plan.name}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {(["perMinute", "perDay"] as const).map((window) => (
+            <tr key={window}>
+              <td>{window === "perMinute" ? "Requests per minute" : "Requests per day"}</td>
+              {PLANS.map((plan) => (
+                <td key={plan.id} className="whitespace-nowrap tabular-nums">
+                  {API_RATE_LIMITS[plan.id][window].toLocaleString("en-US")}
                 </td>
               ))}
             </tr>

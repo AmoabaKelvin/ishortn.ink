@@ -80,6 +80,23 @@ export const PLAN_CAPS: PlanCapsByPlan = {
   },
 };
 
+export type ApiRateLimits = {
+  perMinute: number;
+  perDay: number;
+};
+
+// Requests to the key-authenticated /api/v1 endpoints, shared by all of an
+// account's API keys (keys are free to mint, so a per-key budget would be no limit).
+export const API_RATE_LIMITS = {
+  free: { perMinute: 60, perDay: 1000 },
+  pro: { perMinute: 300, perDay: 10000 },
+  ultra: { perMinute: 1200, perDay: 100000 },
+} satisfies Record<Plan, ApiRateLimits>;
+
+export function getApiRateLimits(plan: Plan): ApiRateLimits {
+  return API_RATE_LIMITS[plan];
+}
+
 export function getPlanFromIds(variantId?: number | null, productId?: number | null): Plan | null {
   if (variantId && ULTRA_VARIANT_IDS.has(variantId)) return "ultra";
   if (productId && ULTRA_PRODUCT_IDS.has(productId)) return "ultra";
@@ -122,7 +139,30 @@ export function resolvePlan(subscription?: Subscription | null): Plan {
     return mappedPlan;
   }
 
-  return "pro"; // entitled subscription without recognized plan defaults to pro
+  // Rows with no recognised variant and no stored paid plan (e.g. `plan: "free"`
+  // with zeroed ids) carry no evidence of a paid subscription.
+  return "free";
+}
+
+/**
+ * How a plan change applies to a user's subscription:
+ * - `checkout`: no paid subscription, so start a new hosted checkout.
+ * - `update`: a live paid subscription, changed in place on Lemon Squeezy.
+ * - `resume`: cancelled but still inside the paid period; it must be resumed
+ *   rather than replaced, or the user would end up with two subscriptions.
+ */
+export type SubscriptionMode = "checkout" | "update" | "resume";
+
+export function getSubscriptionMode(subscription?: Subscription | null): SubscriptionMode {
+  if (
+    !subscription?.subscriptionId ||
+    subscription.subscriptionId <= 0 ||
+    resolvePlan(subscription) === "free"
+  ) {
+    return "checkout";
+  }
+
+  return subscription.status === "cancelled" ? "resume" : "update";
 }
 
 export function getPlanCaps(plan: Plan): PlanCaps {

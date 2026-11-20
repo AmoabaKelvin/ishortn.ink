@@ -1,5 +1,6 @@
 ---
 title: "Best Free URL Shorteners in 2026: Complete Comparison Guide"
+seoTitle: "Best Free URL Shorteners in 2026"
 description: "Compare the top free URL shorteners including Bitly, TinyURL, Rebrandly, and iShortn. Find the best link shortener for your needs with our detailed comparison."
 date: "2026-03-06"
 updated: "2026-11-20"
@@ -26,7 +27,7 @@ Bitly's dashboard is polished and intuitive, though the free plan feels increasi
 
 TinyURL is one of the oldest URL shorteners, dating back to 2002. Its greatest strength is simplicity: paste a URL, get a short link, no account required.
 
-The free tier allows unlimited link creation, which is a clear advantage. However, TinyURL's analytics are minimal on the free plan. You can create a custom alias for your link, but custom domains are only available on paid plans. There is no built-in QR code generator on the free tier.
+Without an account there is no monthly cap on new links, which is a clear advantage; a free account allows 30 links per month. The free plan has no analytics: click, geographic and device data start on Pro at $9 per month (billed annually). You can create a custom alias for your link, but custom domains are only available on paid plans. Every link gets a basic QR code, and a free account can use the API.
 
 TinyURL is best suited for quick, one-off link shortening where you do not need to track performance or manage links over time. If all you need is a short link with no strings attached, TinyURL delivers. For a closer look, see [iShortn vs TinyURL](/compare/tinyurl).
 
@@ -60,15 +61,15 @@ Short.io's API is well-documented, making it a reasonable choice for developers.
 
 | Feature | Bitly | TinyURL | Rebrandly | iShortn | Short.io |
 |---|---|---|---|---|---|
-| **Free links/month** | 5 | Unlimited | 10 | 30 | 1,000 total |
-| **Click analytics** | Basic | Minimal | Basic | Detailed | Basic |
-| **Geographic data** | Paid | No | Paid | Free (7 days) | Paid |
-| **Device/browser data** | Paid | No | Paid | Free (7 days) | Paid |
+| **Free links/month** | 5 | 30 (no cap without an account) | 10 | 30 | 1,000 total |
+| **Click analytics** | Basic | Paid | Basic | Detailed | Basic |
+| **Geographic data** | Paid | Paid | Paid | Free (7 days) | Paid |
+| **Device/browser data** | Paid | Paid | Paid | Free (7 days) | Paid |
 | **Custom aliases** | Yes | Yes | Yes | Yes | Yes |
 | **Custom domains** | Growth ($29/mo) | Paid | 1 free | Pro ($8/mo) | 5 free |
-| **QR code generation** | 2/month free | Paid | 10/month, watermarked | 5 dynamic free, with styling | Basic |
-| **Geo-targeting** | Paid | No | Paid | Pro | Paid |
-| **API access** | Limited | No | Limited | Pro | Yes |
+| **QR code generation** | 2/month free | Yes (static) | 10/month, watermarked | 5 dynamic free, with styling | Basic |
+| **Geo-targeting** | Paid | No | Paid | Pro | Paid ($5/mo+) |
+| **API access** | Limited | Yes (free account) | Limited | Pro | Yes |
 | **Link expiration** | Paid | No | No | Free | Paid |
 | **Team collaboration** | Paid | No | Paid | Ultra | Paid |
 

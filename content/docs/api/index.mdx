@@ -1,6 +1,6 @@
 ---
 title: API reference
-description: Create, read and update short links and read their analytics over HTTPS with an API key.
+description: Create, read and update short links and read their analytics over HTTPS with an API key on the Pro and Ultra plans.
 ---
 
 The iShortn REST API lets you create short links from your own code, change where they point and pull their click analytics. Every endpoint lives under one base URL and speaks JSON.
@@ -28,15 +28,45 @@ curl https://ishortn.ink/api/v1/links/launch-day \
   -H "x-api-key: YOUR_API_KEY"
 ```
 
-To create a key:
+API access is part of the Pro and Ultra plans. To create a key:
 
-1. Open [Settings](/dashboard/settings#api-keys) in the dashboard and scroll to **API Keys**.
-2. Click **Create API Key**.
-3. Copy the key from the dialog and store it somewhere safe, such as your secret manager or an environment variable.
+1. Upgrade to Pro or Ultra in [Settings → Billing](/dashboard/settings#billing) if you're on Free. Free accounts can't create API keys.
+2. Open [Settings](/dashboard/settings#api-keys) in the dashboard and scroll to **API Keys**.
+3. Click **Create API Key**.
+4. Copy the key from the dialog and store it somewhere safe, such as your secret manager or an environment variable.
 
 The key is shown once. iShortn stores only a SHA-256 hash of it, so a lost key can't be recovered: delete it in Settings and create a new one. Treat the key like a password. Anyone who has it can create and change links on your account, so never put it in client-side code or a public repository.
 
 A missing, unknown or revoked key returns `401` with the body `Invalid or missing API key`. Keys on accounts that are suspended or deleted stop working the same way.
+
+## API access by plan
+
+| Account | API keys |
+| --- | --- |
+| Pro or Ultra | Create keys and use them with your plan's limits. |
+| Free, with a key created before API access moved to Pro | The key keeps working on Free limits until the sunset date, then stops. |
+| Paid plan that lapsed (cancelled past the end of the paid period, expired or unpaid) | Keys keep working on Free limits for 7 days from the lapse, then stop. |
+
+While a key is in its notice period, every response carries these headers, and JSON object responses gain a `warning` field that names the date:
+
+```text
+Deprecation: @1795219200
+Sunset: Sat, 28 Nov 2026 00:00:00 GMT
+Link: <https://ishortn.ink/pricing>; rel="sunset"
+```
+
+`Deprecation` is a Unix timestamp ([RFC 9745](https://www.rfc-editor.org/rfc/rfc9745)) and `Sunset` is the moment the key stops working ([RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)). Settings → API Keys shows the same date. Plain-text error responses carry the headers only.
+
+After the sunset date, every request with the key returns `403` with a JSON body, before any rate limit is counted:
+
+```json
+{
+  "error": "API access requires Pro",
+  "upgrade_url": "https://ishortn.ink/pricing"
+}
+```
+
+Upgrading to Pro or Ultra restores the existing keys; you don't need to create new ones.
 
 ## Which links the API can reach
 
@@ -57,7 +87,7 @@ Domains are matched case-insensitively and a trailing dot is ignored.
 
 ## Plans and limits
 
-Any account can create an API key. Requests are checked against the plan of the key's owner, exactly as in the dashboard:
+Requests are checked against the plan of the key's owner, exactly as in the dashboard. The Free column applies only to keys in their notice period (see [API access by plan](#api-access-by-plan)):
 
 | Rule | Free | Pro | Ultra |
 | --- | --- | --- | --- |
@@ -71,13 +101,25 @@ The monthly link count resets on the first day of each calendar month. See [Plan
 
 ## Rate limits
 
-The API doesn't enforce a request rate limit. Keep requests to a reasonable pace and retry failed requests with a backoff.
+Requests are limited per account, not per key: all of your API keys share one budget. Both windows apply, and each is a sliding window.
+
+<ApiRateLimits />
+
+Every response carries the current state of the window closest to its limit:
+
+| Header | Meaning |
+| --- | --- |
+| `X-RateLimit-Limit` | Requests allowed in that window. |
+| `X-RateLimit-Remaining` | Requests left in that window. |
+| `X-RateLimit-Reset` | Unix time (seconds) when that window rolls over. |
+
+A request over the limit returns `429` with a `Retry-After` header (seconds) and the body `Rate limit exceeded. Retry in N seconds.` Rejected requests don't count against the limit. Wait for `Retry-After` before retrying, and retry other failures with a backoff.
 
 ## Responses and errors
 
 Successful responses are JSON with `Content-Type: application/json`. Dates are ISO 8601 strings in UTC, or `null` when unset.
 
-Error responses are **plain text** with an HTTP status code. The body is a human-readable message you can show to your users, for example `Link not found`. When a request body fails validation, the `400` body is a JSON-formatted list of the problems:
+Error responses are **plain text** with an HTTP status code, except the `403` for ended API access, which is JSON. The body is a human-readable message you can show to your users, for example `Link not found`. When a request body fails validation, the `400` body is a JSON-formatted list of the problems:
 
 ```json
 [
@@ -97,9 +139,10 @@ Error responses are **plain text** with an HTTP status code. The body is a human
 | `202` | Accepted (Verify a click) |
 | `400` | The request is invalid or a plan rule blocked it. The body says why. |
 | `401` | Missing or invalid API key |
-| `403` | Domain not available, a plan-only feature, or the monthly link limit |
+| `403` | Domain not available, a plan-only feature, the monthly link limit, or API access ended for the account (JSON body, see [API access by plan](#api-access-by-plan)) |
 | `404` | No link with that alias on that domain in your personal workspace |
 | `409` | The new alias is already taken on that domain |
+| `429` | Rate limit exceeded. See [Rate limits](#rate-limits). |
 | `500` | Something went wrong on our side. Retry later. |
 
 ## Link safety

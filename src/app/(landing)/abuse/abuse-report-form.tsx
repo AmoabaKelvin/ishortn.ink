@@ -75,7 +75,7 @@ export function AbuseReportForm() {
           id="shortUrl"
           type="text"
           required
-          placeholder="ishortn.ink/abc"
+          placeholder="isht.app/abc"
           value={shortUrl}
           onChange={(e) => setShortUrl(e.target.value)}
           className={fieldClass}

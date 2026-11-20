@@ -11,7 +11,7 @@ import { assertUrlSafe } from "@/server/lib/phishing";
 import {
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
-  validateAndGetToken,
+  withApiKey,
 } from "../../utils";
 
 import type { NextRequest } from "next/server";
@@ -44,155 +44,147 @@ type LinkUpdate = {
   disableLinkAfterClicks?: number | null;
 };
 
-export async function GET(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
-  const params = await props.params;
-  const alias = params.alias;
-  const apiKey = request.headers.get("x-api-key");
+export const GET = withApiKey(
+  async (request: NextRequest, token, props: { params: Promise<{ alias: string }> }) => {
+    const params = await props.params;
+    const alias = params.alias;
 
-  const token = await validateAndGetToken(apiKey);
-  if (!token) {
-    return new Response("Invalid or missing API key", { status: 401 });
-  }
-
-  const domain = await resolveApiDomainForUser(
-    token.userId,
-    getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
-  );
-  if (!domain) {
-    return new Response("Domain not available for this API key", { status: 403 });
-  }
-
-  const retrievedLink = await getOwnedLinkByAlias(alias, domain, token.userId);
-  if (!retrievedLink) {
-    return new Response("Link not found", { status: 404 });
-  }
-
-  return Response.json(toApiLink(retrievedLink));
-}
-
-export async function PATCH(request: NextRequest, props: { params: Promise<{ alias: string }> }) {
-  const params = await props.params;
-  const alias = params.alias;
-  const apiKey = request.headers.get("x-api-key");
-
-  const token = await validateAndGetToken(apiKey);
-  if (!token) {
-    return new Response("Invalid or missing API key", { status: 401 });
-  }
-
-  const domain = await resolveApiDomainForUser(
-    token.userId,
-    getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
-  );
-  if (!domain) {
-    return new Response("Domain not available for this API key", { status: 403 });
-  }
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response("Invalid request body", { status: 400 });
-  }
-
-  // The request body is untrusted, so parse it against a strict allowlist. A
-  // plain cast plus `.set(body)` would let any Link column (userId, blocked,
-  // passwordHash, cloaking, ...) be mass-assigned.
-  const parsed = updateLinkSchema.safeParse(body);
-  if (!parsed.success) {
-    return new Response(parsed.error.message, { status: 400 });
-  }
-
-  // Authorize before doing any work. assertUrlSafe below reaches an external
-  // reputation service and an LLM, so running it first would let any API key
-  // burn those on aliases the caller doesn't own.
-  const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
-  if (!existingLink) {
-    return new Response("Link not found", { status: 404 });
-  }
-
-  const filteredUpdateData: LinkUpdate = {};
-
-  if (parsed.data.url !== undefined) {
-    // assertUrlSafe throws a TRPCError; surface it as the 400 the create route
-    // already returns for the same rejection rather than a generic 500.
-    try {
-      await assertUrlSafe(parsed.data.url);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "URL is not allowed";
-      return new Response(message, { status: 400 });
+    const domain = await resolveApiDomainForUser(
+      token.userId,
+      getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
+    );
+    if (!domain) {
+      return new Response("Domain not available for this API key", { status: 403 });
     }
-    filteredUpdateData.url = parsed.data.url;
-  }
-  if (parsed.data.alias !== undefined) filteredUpdateData.alias = parsed.data.alias;
-  if (parsed.data.expiresAt !== undefined) {
-    filteredUpdateData.disableLinkAfterDate = parsed.data.expiresAt
-      ? new Date(parsed.data.expiresAt)
-      : null;
-  }
-  if (parsed.data.activatesAt !== undefined) {
-    if (parsed.data.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
-      return new Response("Scheduled links are only available on Pro and Ultra plans", {
-        status: 403,
+
+    const retrievedLink = await getOwnedLinkByAlias(alias, domain, token.userId);
+    if (!retrievedLink) {
+      return new Response("Link not found", { status: 404 });
+    }
+
+    return Response.json(toApiLink(retrievedLink));
+  },
+);
+
+export const PATCH = withApiKey(
+  async (request: NextRequest, token, props: { params: Promise<{ alias: string }> }) => {
+    const params = await props.params;
+    const alias = params.alias;
+
+    const domain = await resolveApiDomainForUser(
+      token.userId,
+      getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
+    );
+    if (!domain) {
+      return new Response("Domain not available for this API key", { status: 403 });
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return new Response("Invalid request body", { status: 400 });
+    }
+
+    // The request body is untrusted, so parse it against a strict allowlist. A
+    // plain cast plus `.set(body)` would let any Link column (userId, blocked,
+    // passwordHash, cloaking, ...) be mass-assigned.
+    const parsed = updateLinkSchema.safeParse(body);
+    if (!parsed.success) {
+      return new Response(parsed.error.message, { status: 400 });
+    }
+
+    // Authorize before doing any work. assertUrlSafe below reaches an external
+    // reputation service and an LLM, so running it first would let any API key
+    // burn those on aliases the caller doesn't own.
+    const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
+    if (!existingLink) {
+      return new Response("Link not found", { status: 404 });
+    }
+
+    const filteredUpdateData: LinkUpdate = {};
+
+    if (parsed.data.url !== undefined) {
+      // assertUrlSafe throws a TRPCError; surface it as the 400 the create route
+      // already returns for the same rejection rather than a generic 500.
+      try {
+        await assertUrlSafe(parsed.data.url);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "URL is not allowed";
+        return new Response(message, { status: 400 });
+      }
+      filteredUpdateData.url = parsed.data.url;
+    }
+    if (parsed.data.alias !== undefined) filteredUpdateData.alias = parsed.data.alias;
+    if (parsed.data.expiresAt !== undefined) {
+      filteredUpdateData.disableLinkAfterDate = parsed.data.expiresAt
+        ? new Date(parsed.data.expiresAt)
+        : null;
+    }
+    if (parsed.data.activatesAt !== undefined) {
+      if (parsed.data.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
+        return new Response("Scheduled links are only available on Pro and Ultra plans", {
+          status: 403,
+        });
+      }
+      filteredUpdateData.activateAt = parsed.data.activatesAt
+        ? new Date(parsed.data.activatesAt)
+        : null;
+    }
+    if (parsed.data.expiresAfter !== undefined) {
+      filteredUpdateData.disableLinkAfterClicks = parsed.data.expiresAfter;
+    }
+
+    if (Object.keys(filteredUpdateData).length === 0) {
+      return new Response("No update fields provided", { status: 400 });
+    }
+
+    try {
+      await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+
+      // Refetch by id: ownership is already settled, and the alias may have just
+      // changed, so looking it up by alias again would race a concurrent rename.
+      const updatedLink = await db.query.link.findFirst({ where: eq(link.id, existingLink.id) });
+
+      if (!updatedLink) {
+        return new Response("Failed to retrieve updated link", { status: 500 });
+      }
+
+      // The redirect path serves from KV for 24h; drop the stale entry (and the
+      // old alias key if it was renamed) so the change takes effect now.
+      await deleteFromCache(buildCacheKey(existingLink.domain, existingLink.alias ?? ""));
+      if (updatedLink.alias !== existingLink.alias) {
+        await deleteFromCache(buildCacheKey(updatedLink.domain, updatedLink.alias ?? ""));
+      }
+
+      return Response.json(toApiLink(updatedLink));
+    } catch (error) {
+      log.error({ err: error, alias, domain }, "failed to update link");
+
+      // Check for unique constraint violation. drizzle-orm >= 0.44 wraps driver
+      // errors in DrizzleQueryError, so the original mysql2 error lives at error.cause.
+      const failures = [error, error instanceof Error ? error.cause : undefined];
+      const isDuplicateKey = failures.some(
+        (failure) =>
+          failure instanceof Error &&
+          (failure.message.includes("Duplicate entry") ||
+            failure.message.includes("ER_DUP_ENTRY") ||
+            ("code" in failure && failure.code === "ER_DUP_ENTRY")),
+      );
+
+      if (isDuplicateKey && filteredUpdateData.alias) {
+        return new Response("Alias already exists for this domain", {
+          status: 409,
+        }); // 409 Conflict
+      }
+
+      // Generic error for other database issues or unexpected errors
+      return new Response("Failed to update link due to a server error", {
+        status: 500,
       });
     }
-    filteredUpdateData.activateAt = parsed.data.activatesAt
-      ? new Date(parsed.data.activatesAt)
-      : null;
-  }
-  if (parsed.data.expiresAfter !== undefined) {
-    filteredUpdateData.disableLinkAfterClicks = parsed.data.expiresAfter;
-  }
-
-  if (Object.keys(filteredUpdateData).length === 0) {
-    return new Response("No update fields provided", { status: 400 });
-  }
-
-  try {
-    await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
-
-    // Refetch by id: ownership is already settled, and the alias may have just
-    // changed, so looking it up by alias again would race a concurrent rename.
-    const updatedLink = await db.query.link.findFirst({ where: eq(link.id, existingLink.id) });
-
-    if (!updatedLink) {
-      return new Response("Failed to retrieve updated link", { status: 500 });
-    }
-
-    // The redirect path serves from KV for 24h; drop the stale entry (and the
-    // old alias key if it was renamed) so the change takes effect now.
-    await deleteFromCache(buildCacheKey(existingLink.domain, existingLink.alias ?? ""));
-    if (updatedLink.alias !== existingLink.alias) {
-      await deleteFromCache(buildCacheKey(updatedLink.domain, updatedLink.alias ?? ""));
-    }
-
-    return Response.json(toApiLink(updatedLink));
-  } catch (error) {
-    log.error({ err: error, alias, domain }, "failed to update link");
-
-    // Check for unique constraint violation. drizzle-orm >= 0.44 wraps driver
-    // errors in DrizzleQueryError, so the original mysql2 error lives at error.cause.
-    const failures = [error, error instanceof Error ? error.cause : undefined];
-    const isDuplicateKey = failures.some(
-      (failure) =>
-        failure instanceof Error &&
-        (failure.message.includes("Duplicate entry") ||
-          failure.message.includes("ER_DUP_ENTRY") ||
-          ("code" in failure && failure.code === "ER_DUP_ENTRY")),
-    );
-
-    if (isDuplicateKey && filteredUpdateData.alias) {
-      return new Response("Alias already exists for this domain", {
-        status: 409,
-      }); // 409 Conflict
-    }
-
-    // Generic error for other database issues or unexpected errors
-    return new Response("Failed to update link due to a server error", {
-      status: 500,
-    });
-  }
-}
+  },
+);
 
 /**
  * Loads a link by (alias, domain) but only when it belongs to the API token

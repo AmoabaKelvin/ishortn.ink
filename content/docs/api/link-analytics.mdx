@@ -6,7 +6,7 @@ endpoint:
   path: /api/v1/analytics/{alias}
 ---
 
-Returns the click analytics for one short link in your personal workspace, over its whole history.
+Returns the click analytics for one short link in your personal workspace, over the date range the dashboard allows for your plan: the link's whole history on Pro and Ultra, and <PlanValue plan="free" cap="analyticsRangeLimitDays" /> on Free (keys in their [notice period](/docs/api#api-access-by-plan) only).
 
 ## Request
 
@@ -60,7 +60,7 @@ print(f"{stats['totalClicks']} clicks")
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `totalClicks` | number | All clicks on the link, including clicks older than raw-data retention. |
+| `totalClicks` | number | All clicks in `window`, including clicks older than raw-data retention. |
 | `verifiedClicks` | number | Clicks confirmed to come from a real browser. Counted only while [verified clicks](/docs/short-links#verified-clicks) are on. |
 | `clicksPerDate` | object | Clicks per UTC day, keyed `YYYY-MM-DD`, oldest first. |
 | `uniqueClicksPerDate` | object | New unique visitors per UTC day, keyed `YYYY-MM-DD`, oldest first. |
@@ -72,8 +72,9 @@ print(f"{stats['totalClicks']} clicks")
 | `clicksPerOS` | object | Clicks per operating system. |
 | `clicksPerBrowser` | object | Clicks per browser. |
 | `clicksPerModel` | object | Clicks per device model, such as `iPhone`. |
+| `window` | object | The date range the numbers cover. `days` is the plan's range in days, or `null` for all time. `from` is the start (ISO 8601), or `null` for all time. `to` is the time of the request. |
 
-Raw click data is kept for a limited time on Free and Pro (see [Analytics](/docs/analytics#how-long-data-is-kept)). After that, each day is kept as a daily total. `totalClicks`, `clicksPerDate` and `uniqueClicksPerDate` include those daily totals. The breakdowns and the verified counts cover only the clicks whose raw data is still kept.
+Every number covers only clicks inside `window`. Raw click data is kept for a limited time on Free and Pro (see [Analytics](/docs/analytics#how-long-data-is-kept)). After that, each day is kept as a daily total. `totalClicks`, `clicksPerDate` and `uniqueClicksPerDate` include those daily totals. The breakdowns and the verified counts cover only the clicks whose raw data is still kept.
 
 ```json
 {
@@ -100,7 +101,8 @@ Raw click data is kept for a limited time on Free and Pro (see [Analytics](/docs
   "clicksPerDevice": { "mobile": 902, "desktop": 361, "tablet": 21 },
   "clicksPerOS": { "Android": 611, "iOS": 291, "Windows": 247, "macOS": 135 },
   "clicksPerBrowser": { "Chrome": 803, "Mobile Safari": 288, "Edge": 193 },
-  "clicksPerModel": { "Unknown": 853, "iPhone": 291, "SM-A546E": 140 }
+  "clicksPerModel": { "Unknown": 853, "iPhone": 291, "SM-A546E": 140 },
+  "window": { "days": null, "from": null, "to": "2026-11-20T18:04:11.512Z" }
 }
 ```
 
@@ -109,5 +111,7 @@ Raw click data is kept for a limited time on Free and Pro (see [Analytics](/docs
 | Status | Body | Cause |
 | --- | --- | --- |
 | `401` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | `{"error":"API access requires Pro","upgrade_url":"https://ishortn.ink/pricing"}` | The account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
 | `403` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
 | `404` | `Link not found` | No link with that alias on that domain in your personal workspace. |
+| `429` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

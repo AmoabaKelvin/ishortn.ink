@@ -11,15 +11,15 @@ const stats = [
 ];
 
 const topLinks = [
-  { alias: "ishortn.ink/launch", destination: "yourbrand.com/launch", clicks: "8,412" },
+  { alias: "isht.app/launch", destination: "yourbrand.com/launch", clicks: "8,412" },
   {
-    alias: "ishortn.ink/sale",
+    alias: "isht.app/sale",
     destination: "yourbrand.com/collections/summer-sale",
     clicks: "5,120",
   },
-  { alias: "ishortn.ink/news", destination: "yourbrand.com/newsletter", clicks: "3,876" },
-  { alias: "ishortn.ink/docs", destination: "docs.yourbrand.com/start", clicks: "2,045" },
-  { alias: "ishortn.ink/demo", destination: "yourbrand.com/book-a-demo", clicks: "1,394" },
+  { alias: "isht.app/news", destination: "yourbrand.com/newsletter", clicks: "3,876" },
+  { alias: "isht.app/docs", destination: "docs.yourbrand.com/start", clicks: "2,045" },
+  { alias: "isht.app/demo", destination: "yourbrand.com/book-a-demo", clicks: "1,394" },
 ];
 
 // Clicks over time, y in a 0-100 box (0 = top)

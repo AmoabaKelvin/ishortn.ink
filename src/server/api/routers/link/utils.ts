@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { getBioLinkBlockLimit } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
@@ -15,6 +16,7 @@ import { requireFolderAccess, workspaceFilter } from "@/server/lib/workspace";
 
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type { Plan } from "@/lib/billing/plans";
+import type { Link } from "@/server/db/schema";
 
 /**
  * Loads a link that belongs to the caller's workspace, and — when the link
@@ -262,3 +264,67 @@ export const checkAliasAvailability = async (
     throw new Error("Alias already exists");
   }
 };
+
+const publicLinkMetadataSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  image: z.string().optional(),
+});
+
+/**
+ * The only link fields an unauthenticated caller may see: enough to render
+ * social previews and route to the right interstitial. The destination,
+ * password hash, owner, note and UTM params stay on the server.
+ */
+export type PublicLink = {
+  id: number;
+  alias: string | null;
+  domain: string;
+  metadata: z.infer<typeof publicLinkMetadataSchema>;
+  blocked: boolean;
+  disabled: boolean;
+  disableLinkAfterDate: Date | null;
+  activateAt: Date | null;
+  hasPassword: boolean;
+};
+
+export function toPublicLink(row: Link): PublicLink {
+  const metadata = publicLinkMetadataSchema.safeParse(row.metadata).data;
+  return {
+    id: row.id,
+    alias: row.alias,
+    domain: row.domain,
+    metadata: {
+      title: metadata?.title,
+      description: metadata?.description,
+      image: metadata?.image,
+    },
+    blocked: !!row.blocked,
+    disabled: !!row.disabled,
+    disableLinkAfterDate: row.disableLinkAfterDate,
+    activateAt: row.activateAt,
+    hasPassword: !!row.passwordHash,
+  };
+}
+
+export const PASSWORD_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
+// Per visitor IP, across links: the bound on guessing from one machine.
+export const PASSWORD_ATTEMPTS_PER_IP = 10;
+// Per link, across IPs: bounds distributed guessing. Higher than the per-IP
+// limit so one visitor can't lock everyone else out of a link.
+export const PASSWORD_ATTEMPTS_PER_LINK = 100;
+
+/** Failed-attempt counter for a fixed window, stored in KV as `count:resetAtMs`. */
+export type AttemptWindow = { count: number; resetAt: number };
+
+export function readAttemptWindow(raw: string | null, now: number): AttemptWindow {
+  const [count, resetAt] = (raw ?? "").split(":").map(Number);
+  if (!count || !resetAt || resetAt <= now) {
+    return { count: 0, resetAt: now + PASSWORD_ATTEMPT_WINDOW_MS };
+  }
+  return { count, resetAt };
+}
+
+export function recordFailedAttempt(window: AttemptWindow): string {
+  return `${window.count + 1}:${window.resetAt}`;
+}

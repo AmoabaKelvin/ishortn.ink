@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Callout } from "@/components/docs/callout";
 import { CodeBlock } from "@/components/docs/code-block";
 import { CodeGroup } from "@/components/docs/code-group";
-import { PlanLimits, PlanValue } from "@/components/docs/plan-limits";
+import { ApiRateLimits, PlanLimits, PlanValue } from "@/components/docs/plan-limits";
 
 import type { MDXComponents } from "mdx/types";
 import type { ComponentProps } from "react";
@@ -43,6 +43,7 @@ const components: MDXComponents = {
   table: DocsTable,
   Callout,
   CodeGroup,
+  ApiRateLimits,
   PlanLimits,
   PlanValue,
 };

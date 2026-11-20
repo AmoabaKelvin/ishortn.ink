@@ -2,9 +2,12 @@ import crypto from "node:crypto";
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 
+import { resolvePlan } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
+
+import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
 
 export async function validateAndGetToken(apiKey: string | null) {
   if (!apiKey) return null;
@@ -29,6 +32,36 @@ export async function validateAndGetToken(apiKey: string | null) {
   }
 
   return { ...existingToken[0]!, subscription: userSubscription[0] };
+}
+
+export type ApiToken = NonNullable<Awaited<ReturnType<typeof validateAndGetToken>>>;
+
+/**
+ * Wraps a v1 route handler with API key auth and the plan's rate limit. The
+ * limit is checked after auth (it needs the plan) and every response carries
+ * the X-RateLimit-* headers.
+ */
+export function withApiKey<Req extends Request, Args extends unknown[]>(
+  handler: (request: Req, token: ApiToken, ...args: Args) => Promise<Response>,
+) {
+  return async (request: Req, ...args: Args): Promise<Response> => {
+    const token = await validateAndGetToken(request.headers.get("x-api-key"));
+    if (!token) {
+      return new Response("Invalid or missing API key", { status: 401 });
+    }
+
+    const decision = await consumeApiRateLimit(
+      token.userId,
+      resolvePlan(token.subscription ?? null),
+    );
+    if (!decision.allowed) return rateLimitedResponse(decision);
+
+    const response = await handler(request, token, ...args);
+    for (const [name, value] of Object.entries(rateLimitHeaders(decision))) {
+      response.headers.set(name, value);
+    }
+    return response;
+  };
 }
 
 function normalizeApiDomain(domain: string | null | undefined) {

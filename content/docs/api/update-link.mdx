@@ -110,8 +110,10 @@ link = response.json()
 | `400` | `No update fields provided` | The body is an empty object. |
 | `400` | A [link safety](/docs/abuse#link-safety-checks) message | The new destination failed the safety check. |
 | `401` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | `{"error":"API access requires Pro","upgrade_url":"https://ishortn.ink/pricing"}` | The account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
 | `403` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
 | `403` | `Scheduled links are only available on Pro and Ultra plans` | Setting `activatesAt` on the Free plan. |
 | `404` | `Link not found` | No link with that alias on that domain in your personal workspace. |
 | `409` | `Alias already exists for this domain` | The new alias is taken on that domain. |
 | `500` | `Failed to update link due to a server error` | An unexpected server error. Retry later. |
+| `429` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

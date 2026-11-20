@@ -29,7 +29,7 @@ function apiEndpoints(): string[] {
       .join("/");
     const source = fs.readFileSync(file, "utf8");
     const methods = [
-      ...source.matchAll(/export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE)\b/g),
+      ...source.matchAll(/export\s+(?:(?:async\s+)?function|const)\s+(GET|POST|PUT|PATCH|DELETE)\b/g),
     ].map((match) => match[1]);
     return methods.map((method) => `${method} /${routePath}`);
   });

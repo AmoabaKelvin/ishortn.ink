@@ -220,6 +220,10 @@ export function DeleteAccountSection() {
                     <li>• API keys stop working immediately.</li>
                     <li>• Any paid subscription is cancelled.</li>
                     <li>
+                      • You leave every team you belong to. Restoring the account doesn&apos;t
+                      rejoin them.
+                    </li>
+                    <li>
                       • Everything is permanently deleted after {DELETION_GRACE_PERIOD_DAYS} days.
                       Sign back in before then to restore it.
                     </li>
