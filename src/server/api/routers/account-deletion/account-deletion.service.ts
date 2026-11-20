@@ -14,6 +14,7 @@ import {
   link,
   subscription,
   team,
+  teamMember,
   user,
 } from "@/server/db/schema";
 import { sendAccountDeletionEmail } from "@/server/lib/notifications/account-deletion";
@@ -169,6 +170,10 @@ export async function requestAccountDeletion(
 
   await ctx.db.transaction(async (tx) => {
     await tx.update(user).set({ deletedAt }).where(eq(user.id, userId));
+
+    // Owned teams were refused above, so these are admin/member seats only.
+    // Restoring the account does not bring them back; a team admin re-invites.
+    await tx.delete(teamMember).where(eq(teamMember.userId, userId));
 
     if (linksToBlock.length > 0) {
       await tx

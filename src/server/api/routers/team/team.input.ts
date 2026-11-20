@@ -37,13 +37,15 @@ export const updateTeamSlugSchema = z.object({
 });
 
 export const inviteMemberSchema = z.object({
-  email: z.string().email().optional(),
+  email: z.string().trim().email().optional(),
   role: z.enum(["admin", "member"]).default("member"),
 });
 
 export const acceptInviteSchema = z.object({
   token: z.string().min(1, "Invite token is required"),
 });
+
+export const declineInviteSchema = acceptInviteSchema;
 
 export const updateMemberRoleSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
@@ -72,6 +74,7 @@ export type UpdateTeamInput = z.infer<typeof updateTeamSchema>;
 export type UpdateTeamSlugInput = z.infer<typeof updateTeamSlugSchema>;
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
+export type DeclineInviteInput = z.infer<typeof declineInviteSchema>;
 export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
 export type RemoveMemberInput = z.infer<typeof removeMemberSchema>;
 export type RevokeInviteInput = z.infer<typeof revokeInviteSchema>;
