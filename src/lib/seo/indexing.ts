@@ -73,6 +73,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "changelog",
   "compare",
   "dashboard",
+  "docs-site",
   "favicon.ico",
   "features",
   "icon.png",
