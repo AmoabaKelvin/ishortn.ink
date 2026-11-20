@@ -2,12 +2,16 @@ import crypto from "node:crypto";
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 
-import { resolvePlan } from "@/lib/billing/plans";
+import { effectivePlan } from "@/lib/billing/entitlements";
+import { getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
+import { domainBeyondPlanMessage, getUsableCustomDomains } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
 
 import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
+
+import type { Plan } from "@/lib/billing/plans";
 
 export async function validateAndGetToken(apiKey: string | null) {
   if (!apiKey) return null;
@@ -22,16 +26,19 @@ export async function validateAndGetToken(apiKey: string | null) {
   const [userRecord, userSubscription] = await Promise.all([
     db.query.user.findFirst({
       where: eq(user.id, userId),
-      columns: { banned: true, deletedAt: true },
+      columns: { banned: true, deletedAt: true, planGracePlan: true, planGraceEndsAt: true },
     }),
     db.select().from(subscription).where(eq(subscription.userId, userId)),
   ]);
 
-  if (userRecord?.banned || userRecord?.deletedAt) {
+  if (!userRecord || userRecord.banned || userRecord.deletedAt) {
     return null;
   }
 
-  return { ...existingToken[0]!, subscription: userSubscription[0] };
+  const userSub = userSubscription[0];
+  // The same entitlement the dashboard uses: API links live in the personal workspace.
+  const plan = effectivePlan(userSub ?? null, userRecord);
+  return { ...existingToken[0]!, subscription: userSub, plan };
 }
 
 export type ApiToken = NonNullable<Awaited<ReturnType<typeof validateAndGetToken>>>;
@@ -50,10 +57,7 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
       return new Response("Invalid or missing API key", { status: 401 });
     }
 
-    const decision = await consumeApiRateLimit(
-      token.userId,
-      resolvePlan(token.subscription ?? null),
-    );
+    const decision = await consumeApiRateLimit(token.userId, token.plan);
     if (!decision.allowed) return rateLimitedResponse(decision);
 
     const response = await handler(request, token, ...args);
@@ -115,6 +119,28 @@ export async function resolveApiDomainForUser(
   }
 
   return getUserDefaultDomain(userId);
+}
+
+/**
+ * Write-path counterpart of resolveApiDomainForUser: custom domains past the
+ * plan's allowance (oldest first, see getUsableCustomDomains) keep serving their
+ * links but take no new or edited ones. Returns the refusal message, or null.
+ */
+export async function apiDomainWriteError(
+  userId: string,
+  plan: Plan,
+  domain: string,
+): Promise<string | null> {
+  if (isPlatformDomain(domain)) return null;
+  const limit = getPlanCaps(plan).domainLimit;
+  if (limit === undefined) return null;
+
+  const usable = await getUsableCustomDomains(
+    db,
+    and(eq(customDomain.userId, userId), isNull(customDomain.teamId)),
+    limit,
+  );
+  return usable.includes(domain.toLowerCase()) ? null : domainBeyondPlanMessage(domain, limit);
 }
 
 export function getApiDomainParamsFromSearchParams(searchParams: URLSearchParams) {

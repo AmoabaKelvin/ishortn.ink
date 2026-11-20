@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { TEAM_READ_ONLY_MESSAGE } from "@/lib/billing/entitlements";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import { ensureUser, type UserAccess } from "@/server/lib/ensure-user";
@@ -120,13 +121,33 @@ export type WorkspaceTRPCContext = ProtectedTRPCContext & {
  * Workspace-aware procedure that resolves the current workspace from the hostname.
  * This should be used for all operations that need workspace context.
  */
-export const workspaceProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+export const workspaceProcedure = protectedProcedure.use(async ({ ctx, next, type, path }) => {
   const hostname = ctx.headers.get("host") ?? DEFAULT_PLATFORM_DOMAIN;
 
   const workspace = await resolveWorkspaceContext(ctx.auth.userId, hostname, ctx.db);
 
+  // A team whose owner is not on Ultra (past the grace period) is read-only for
+  // every member. Every workspace mutation goes through here, so this is the one
+  // gate; only the ways out of the team stay open.
+  if (
+    workspace.type === "team" &&
+    workspace.readOnly &&
+    type === "mutation" &&
+    !READ_ONLY_TEAM_MUTATIONS.has(path)
+  ) {
+    throw new TRPCError({ code: "FORBIDDEN", message: TEAM_READ_ONLY_MESSAGE });
+  }
+
   return next({ ctx: { ...ctx, workspace } });
 });
+
+const READ_ONLY_TEAM_MUTATIONS = new Set([
+  "team.leave",
+  "team.delete",
+  "team.transferOwnership",
+  "team.removeMember",
+  "team.revokeInvite",
+]);
 
 /**
  * Context type for team-only procedures

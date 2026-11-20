@@ -1,9 +1,13 @@
+import { getEntitlementOverview } from "@/server/lib/entitlements/overview";
+
 import { createTRPCRouter, adminProcedure } from "../../trpc";
 import * as inputs from "./admin.input";
 import * as services from "./admin.service";
 
 export const adminRouter = createTRPCRouter({
   getStats: adminProcedure.query(({ ctx }) => services.getStats(ctx)),
+
+  getEntitlements: adminProcedure.query(({ ctx }) => getEntitlementOverview(ctx.db)),
 
   getRecentActivity: adminProcedure.query(({ ctx }) => services.getRecentActivity(ctx)),
 

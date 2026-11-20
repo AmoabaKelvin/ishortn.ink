@@ -12,6 +12,7 @@ import { AttributionRecorder } from "./_components/attribution-recorder";
 import { DomainMigrationGate } from "./_components/domain-migration-gate";
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
+import { PlanGraceBanner } from "./_components/plan-grace-banner";
 import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
 
@@ -136,7 +137,10 @@ export default async function DashboardLayout({ children }: Props) {
       <div className="lg:pl-[280px]">
         <div className="mx-auto max-w-[1180px] px-4 pt-16 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
           <DashboardNav />
-          <div className="mt-7 py-4">{children}</div>
+          <div className="mt-7 py-4">
+            <PlanGraceBanner />
+            {children}
+          </div>
         </div>
       </div>
 

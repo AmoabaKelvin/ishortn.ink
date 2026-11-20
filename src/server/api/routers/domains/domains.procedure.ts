@@ -1,7 +1,6 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { getPlanCaps, isUnlimitedDomains, resolvePlan } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
 import { createTRPCRouter, workspaceProcedure } from "@/server/api/trpc";
 import { customDomain } from "@/server/db/schema";
@@ -32,28 +31,6 @@ export const customDomainRouter = createTRPCRouter({
   create: workspaceProcedure
     .input(input.createCustomDomainSchema)
     .mutation(async ({ ctx, input }) => {
-      const user = await ctx.db.query.user.findFirst({
-        where: (table, { eq }) => eq(table.id, ctx.auth.userId),
-        with: { subscriptions: true },
-      });
-
-      const plan = resolvePlan(user?.subscriptions);
-
-      if (!isUnlimitedDomains(plan)) {
-        const caps = getPlanCaps(plan);
-        const domainCount = await ctx.db
-          .select({ count: count() })
-          .from(customDomain)
-          .where(workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId))
-          .then((res) => res[0]?.count ?? 0);
-
-        if (domainCount >= (caps.domainLimit ?? 0)) {
-          throw new Error(
-            `You have reached the limit of ${caps.domainLimit} custom domains for your plan. Please upgrade to add more.`,
-          );
-        }
-      }
-
       return services.addDomainToUserAccount(ctx, input);
     }),
 

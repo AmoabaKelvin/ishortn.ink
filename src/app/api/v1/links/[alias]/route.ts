@@ -1,14 +1,15 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { resolvePlan } from "@/lib/billing/plans";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { MINIMUM_ALIAS_LENGTH_FREE } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
 
 import {
+  apiDomainWriteError,
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
   withApiKey,
@@ -102,6 +103,13 @@ export const PATCH = withApiKey(
       return new Response("Link not found", { status: 404 });
     }
 
+    // Links on a custom domain past the plan's allowance keep redirecting but
+    // can't be edited.
+    const domainError = await apiDomainWriteError(token.userId, token.plan, domain);
+    if (domainError) {
+      return new Response(domainError, { status: 403 });
+    }
+
     const filteredUpdateData: LinkUpdate = {};
 
     if (parsed.data.url !== undefined) {
@@ -115,14 +123,26 @@ export const PATCH = withApiKey(
       }
       filteredUpdateData.url = parsed.data.url;
     }
-    if (parsed.data.alias !== undefined) filteredUpdateData.alias = parsed.data.alias;
+    if (parsed.data.alias !== undefined && parsed.data.alias !== existingLink.alias) {
+      if (token.plan === "free" && parsed.data.alias.length < MINIMUM_ALIAS_LENGTH_FREE) {
+        return new Response(
+          `Custom aliases must be at least ${MINIMUM_ALIAS_LENGTH_FREE} characters on the free plan. Upgrade to Pro for shorter aliases.`,
+          { status: 403 },
+        );
+      }
+      filteredUpdateData.alias = parsed.data.alias;
+    }
     if (parsed.data.expiresAt !== undefined) {
       filteredUpdateData.disableLinkAfterDate = parsed.data.expiresAt
         ? new Date(parsed.data.expiresAt)
         : null;
     }
     if (parsed.data.activatesAt !== undefined) {
-      if (parsed.data.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
+      if (
+        parsed.data.activatesAt &&
+        token.plan === "free" &&
+        new Date(parsed.data.activatesAt).getTime() !== existingLink.activateAt?.getTime()
+      ) {
         return new Response("Scheduled links are only available on Pro and Ultra plans", {
           status: 403,
         });

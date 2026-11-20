@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { resolvePlan } from "@/lib/billing/plans";
 import { generateShortLink } from "@/lib/core/links";
 import { validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
@@ -11,7 +10,9 @@ import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
-import { resolveApiDomainForUser, withApiKey } from "../utils";
+import { apiDomainWriteError, resolveApiDomainForUser, withApiKey } from "../utils";
+
+import type { Plan } from "@/lib/billing/plans";
 
 export const POST = withApiKey(async (request: Request, token) => {
   const input = shortenLinkSchema.safeParse(await request.json());
@@ -25,7 +26,11 @@ export const POST = withApiKey(async (request: Request, token) => {
   if (!requestedDomain) {
     return new Response("Domain not available for this API key", { status: 403 });
   }
-  const plan = resolvePlan(token.subscription ?? null);
+  const plan = token.plan;
+  const domainError = await apiDomainWriteError(token.userId, plan, requestedDomain);
+  if (domainError) {
+    return new Response(domainError, { status: 403 });
+  }
   if (parsedData.activatesAt && plan === "free") {
     return new Response("Scheduled links are only available on Pro and Ultra plans", {
       status: 403,
@@ -36,13 +41,7 @@ export const POST = withApiKey(async (request: Request, token) => {
     if (parsedData.alias) {
       await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
     }
-    const newLink = await createNewLink(
-      parsedData,
-      token.userId,
-      token.subscription?.status,
-      token.subscription?.plan,
-      requestedDomain,
-    );
+    const newLink = await createNewLink(parsedData, token.userId, plan, requestedDomain);
     return new Response(JSON.stringify(newLink), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -79,15 +78,9 @@ const shortenLinkSchema = z.object({
 
 type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 
-async function createNewLink(
-  data: ShortenLinkInput,
-  userId: string,
-  subStatus: string | undefined | null,
-  plan: string | undefined | null,
-  domain: string,
-) {
+async function createNewLink(data: ShortenLinkInput, userId: string, plan: Plan, domain: string) {
   if (data.password) {
-    if (subStatus !== "active" || subStatus === undefined) {
+    if (plan === "free") {
       throw new Error("You need to upgrade to a pro plan to use password protection");
     }
 

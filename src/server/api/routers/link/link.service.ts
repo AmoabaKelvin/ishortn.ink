@@ -80,13 +80,17 @@ import { mergeCampaignUtm } from "../campaign/utils";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 import {
   assertDomainAllowed,
+  assertDomainWithinPlan,
   checkWorkspaceLinkLimit,
   getWorkspaceDefaultDomain,
+  hasUtmValues,
   incrementWorkspaceLinkCount,
   PASSWORD_ATTEMPTS_PER_IP,
   PASSWORD_ATTEMPTS_PER_LINK,
   readAttemptWindow,
   recordFailedAttempt,
+  sameGeoRules,
+  sameUtmParams,
   toPublicLink,
   validateAlias,
 } from "./utils";
@@ -568,7 +572,7 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     await requireFolderAccess(ctx.db, ctx.workspace, existingLink.folderId);
   }
 
-  // Use workspace plan - team workspaces have Ultra features
+  // The workspace's live plan (a team's comes from its owner).
   const workspacePlan = ctx.workspace.plan;
   const isPaidUser = workspacePlan !== "free";
 
@@ -579,9 +583,12 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   }
 
   // If domain is being changed, it must be platform-owned or a verified
-  // custom domain for this workspace.
+  // custom domain for this workspace. Either way it must be within the plan's
+  // custom-domain allowance: domains past it take no new or edited links.
   if (input.domain !== undefined && input.domain !== existingLink.domain) {
     await assertDomainAllowed(ctx, input.domain);
+  } else {
+    await assertDomainWithinPlan(ctx, existingLink.domain);
   }
 
   // If alias is being changed, validate it
@@ -590,39 +597,69 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     await validateAlias(ctx, input.alias, domain, isPaidUser);
   }
 
-  if (input.activateAt && !isPaidUser) {
+  // Paid-only settings can't be added or changed without the plan, but forms
+  // resend every field, so a value that is unchanged (or being removed) passes:
+  // after a downgrade, links keep their settings and other fields stay editable.
+  if (
+    input.activateAt &&
+    !isPaidUser &&
+    input.activateAt.getTime() !== existingLink.activateAt?.getTime()
+  ) {
     throw new Error(
       "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
     );
   }
 
   // Check for UTM params - Ultra plan only
-  if (input.utmParams) {
-    const utmParamsValues = Object.values(input.utmParams);
-    const hasUtmParams = utmParamsValues.some(
-      (value) => value !== undefined && value !== null && value !== "",
+  if (
+    workspacePlan !== "ultra" &&
+    hasUtmValues(input.utmParams) &&
+    !sameUtmParams(input.utmParams, existingLink.utmParams)
+  ) {
+    throw new Error(
+      "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
     );
-    if (hasUtmParams) {
-      if (workspacePlan !== "ultra") {
-        throw new Error(
-          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-        );
-      }
-    }
   }
 
   // Check for link cloaking - Ultra plan only
-  if (input.cloaking) {
-    if (workspacePlan !== "ultra") {
-      throw new Error(
-        "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
-      );
-    }
+  if (input.cloaking && !existingLink.cloaking && workspacePlan !== "ultra") {
+    throw new Error(
+      "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
+    );
   }
 
   // Downgrades are caught again at token-issuance time in resolveShortLink, so a
   // stale `verifiedClicksEnabled=true` doesn't produce tokens for free users.
-  if (input.verifiedClicksEnabled) assertCanEnableVerifiedClicks(workspacePlan);
+  if (input.verifiedClicksEnabled && !existingLink.verifiedClicksEnabled) {
+    assertCanEnableVerifiedClicks(workspacePlan);
+  }
+
+  // Targeting rules over the plan's allowance may only be resubmitted unchanged.
+  let geoRulesInput = input.geoRules;
+  if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
+    const geoLimit = getGeoRulesLimit(workspacePlan);
+    const withinPlan =
+      canUseGeoRules(workspacePlan) &&
+      (isUnlimitedGeoRules(workspacePlan) ||
+        geoLimit === undefined ||
+        geoRulesInput.length <= geoLimit);
+    if (!withinPlan) {
+      const existingRules = await ctx.db
+        .select()
+        .from(geoRule)
+        .where(eq(geoRule.linkId, input.id))
+        .orderBy(asc(geoRule.priority));
+      if (!sameGeoRules(geoRulesInput, existingRules)) {
+        throw new Error(
+          canUseGeoRules(workspacePlan)
+            ? `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`
+            : "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+        );
+      }
+      // Unchanged: leave the stored rules alone.
+      geoRulesInput = undefined;
+    }
+  }
 
   // If assigning to a campaign, it must belong to this workspace and be
   // active (null clears membership).
@@ -642,7 +679,7 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   }
 
   // Extract tags and geoRules from input
-  const { tags: tagNames, geoRules: geoRulesInput, ...linkData } = input;
+  const { tags: tagNames, geoRules: _geoRules, ...linkData } = input;
 
   // Upload OG image to R2 if it's base64
   if (linkData.metadata?.image) {
@@ -680,26 +717,6 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
 
   // Handle geo rules if provided
   if (geoRulesInput !== undefined) {
-    // Check plan limits for new rules
-    if (geoRulesInput.length > 0) {
-      if (!canUseGeoRules(workspacePlan)) {
-        throw new Error(
-          "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-        );
-      }
-
-      const geoLimit = getGeoRulesLimit(workspacePlan);
-      if (
-        !isUnlimitedGeoRules(workspacePlan) &&
-        geoLimit !== undefined &&
-        geoRulesInput.length > geoLimit
-      ) {
-        throw new Error(
-          `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
-        );
-      }
-    }
-
     // Delete existing geo rules for this link
     await ctx.db.delete(geoRule).where(eq(geoRule.linkId, input.id));
 
@@ -1603,6 +1620,22 @@ export const changeLinkPassword = async (
   ctx: WorkspaceTRPCContext,
   input: { id: number; password: string },
 ) => {
+  if (ctx.workspace.plan === "free") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You need to upgrade to a pro plan to use password protection",
+    });
+  }
+
+  const existing = await ctx.db.query.link.findFirst({
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
+    columns: { domain: true },
+  });
+  if (!existing) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
+  }
+  await assertDomainWithinPlan(ctx, existing.domain);
+
   const passwordHash = await bcrypt.hash(input.password, 10);
 
   await ctx.db

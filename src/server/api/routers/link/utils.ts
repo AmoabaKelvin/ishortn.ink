@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { getBioLinkBlockLimit } from "@/lib/billing/plans";
+import { getBioLinkBlockLimit, getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
 import { normalizeAlias } from "@/lib/utils";
@@ -17,6 +17,7 @@ import { requireFolderAccess, workspaceFilter } from "@/server/lib/workspace";
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
+import type { SQL } from "drizzle-orm";
 
 /**
  * Loads a link that belongs to the caller's workspace, and — when the link
@@ -92,10 +93,11 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
  * Personal workspaces check against the user's plan limits.
  */
 export async function checkWorkspaceLinkLimit(ctx: WorkspaceTRPCContext) {
-  // Team workspaces have unlimited links (Ultra plan)
+  // Team workspaces carry the owner's plan; a team below Ultra is read-only
+  // (refused in workspaceProcedure), so a writable team is never capped here.
   if (ctx.workspace.type === "team") {
     return {
-      plan: "ultra" as const,
+      plan: ctx.workspace.plan,
       currentCount: 0,
       limit: undefined,
       isProUser: true,
@@ -205,11 +207,18 @@ export async function assertDomainAllowed(
   const normalized = domain.trim().toLowerCase();
   if (isPlatformDomain(normalized)) return;
 
+  const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
+  const limit = getPlanCaps(ctx.workspace.plan).domainLimit;
+  if (limit !== undefined) {
+    const usable = await getUsableCustomDomains(ctx.db, scope, limit);
+    if (usable.includes(normalized)) return;
+  }
+
   const owned = await ctx.db.query.customDomain.findFirst({
     where: and(
       sql`lower(${customDomain.domain}) = ${normalized}`,
       eq(customDomain.status, "active"),
-      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
+      scope,
     ),
   });
 
@@ -219,9 +228,105 @@ export async function assertDomainAllowed(
       message: "Selected domain is not available for this workspace.",
     });
   }
+
+  if (limit !== undefined) {
+    throw new TRPCError({ code: "FORBIDDEN", message: domainBeyondPlanMessage(normalized, limit) });
+  }
 }
 
-const MINIMUM_ALIAS_LENGTH_FREE = 6;
+/**
+ * Like assertDomainAllowed for a link that already sits on `domain`: only the
+ * plan allowance is checked, so links on a domain whose verification later
+ * lapsed can still be edited.
+ */
+export async function assertDomainWithinPlan(
+  ctx: WorkspaceTRPCContext,
+  domain: string,
+): Promise<void> {
+  const normalized = domain.trim().toLowerCase();
+  if (isPlatformDomain(normalized)) return;
+
+  const limit = getPlanCaps(ctx.workspace.plan).domainLimit;
+  if (limit === undefined) return;
+
+  const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
+  const usable = await getUsableCustomDomains(ctx.db, scope, limit);
+  if (!usable.includes(normalized)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: domainBeyondPlanMessage(normalized, limit) });
+  }
+}
+
+/**
+ * The custom domains (lowercased) that still take new and edited links: the
+ * workspace's oldest `limit` verified domains. Domains past the plan allowance
+ * (after a downgrade) keep redirecting their existing links but take no writes.
+ */
+export async function getUsableCustomDomains(
+  dbClient: Pick<ProtectedTRPCContext, "db">["db"],
+  scope: SQL | undefined,
+  limit: number,
+): Promise<string[]> {
+  if (limit <= 0) return [];
+  const rows = await dbClient
+    .select({ domain: customDomain.domain })
+    .from(customDomain)
+    .where(and(eq(customDomain.status, "active"), scope))
+    .orderBy(asc(customDomain.createdAt), asc(customDomain.id))
+    .limit(limit);
+  return rows.flatMap((row) => (row.domain ? [row.domain.toLowerCase()] : []));
+}
+
+export function domainBeyondPlanMessage(domain: string, limit: number): string {
+  if (limit === 0) {
+    return `Custom domains are available on Pro and Ultra. Upgrade to create or edit links on ${domain}.`;
+  }
+  return `Your plan includes ${limit} custom ${limit === 1 ? "domain" : "domains"}, so ${domain} can't take new or edited links. Upgrade to Ultra to keep using it.`;
+}
+
+type UtmParams = Link["utmParams"];
+
+export function hasUtmValues(params: UtmParams | undefined): boolean {
+  return Object.values(params ?? {}).some((value) => value !== undefined && value !== "");
+}
+
+/** Same UTM values, ignoring empty fields. */
+export function sameUtmParams(a: UtmParams | undefined, b: UtmParams | undefined): boolean {
+  const filled = (params: UtmParams | undefined) =>
+    JSON.stringify(
+      Object.entries(params ?? {})
+        .filter(([, value]) => value !== undefined && value !== "")
+        .sort(([x], [y]) => x.localeCompare(y)),
+    );
+  return filled(a) === filled(b);
+}
+
+type TargetingRuleFields = {
+  type: string;
+  condition: string;
+  values: string[];
+  action: string;
+  destination?: string | null;
+  blockMessage?: string | null;
+};
+
+/** Same targeting rules in the same order (stored rules sorted by priority). */
+export function sameGeoRules(input: TargetingRuleFields[], stored: TargetingRuleFields[]): boolean {
+  const normalize = (rule: TargetingRuleFields) =>
+    JSON.stringify([
+      rule.type,
+      rule.condition,
+      rule.values,
+      rule.action,
+      rule.action === "redirect" ? rule.destination || null : null,
+      rule.action === "block" ? rule.blockMessage || null : null,
+    ]);
+  return (
+    input.length === stored.length &&
+    input.every((rule, index) => normalize(rule) === normalize(stored[index]!))
+  );
+}
+
+export const MINIMUM_ALIAS_LENGTH_FREE = 6;
 
 export const validateAlias = (
   ctx: Pick<ProtectedTRPCContext, "db">,

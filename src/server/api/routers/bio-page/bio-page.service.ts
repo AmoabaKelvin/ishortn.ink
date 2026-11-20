@@ -272,22 +272,35 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
   if (input.seoTitle !== undefined) updates.seoTitle = input.seoTitle;
   if (input.seoDescription !== undefined) updates.seoDescription = input.seoDescription;
 
+  // Paid options can't be added or changed below their plan; values the editor
+  // resends unchanged (or removes) still save, so a downgraded page stays editable.
   if (input.removeBranding !== undefined) {
-    if (input.removeBranding && !canRemoveBioBranding(plan)) {
+    if (input.removeBranding && !page.removeBranding && !canRemoveBioBranding(plan)) {
       throw forbidden("Removing iShortn branding is available on Pro and Ultra plans.");
     }
     updates.removeBranding = input.removeBranding;
   }
 
   if (input.theme !== undefined) {
-    if (input.theme && themeHasCustomization(input.theme) && !canUseBioCustomThemes(plan)) {
+    if (
+      input.theme &&
+      themeHasCustomization(input.theme) &&
+      JSON.stringify(input.theme) !== JSON.stringify(page.theme) &&
+      !canUseBioCustomThemes(plan)
+    ) {
       throw forbidden("Theme customization is available on Pro and Ultra plans.");
     }
     updates.theme = input.theme ?? null;
   }
 
   if (input.customDomain !== undefined) {
-    if (input.customDomain) {
+    const unchanged =
+      !!input.customDomain &&
+      input.customDomain
+        .trim()
+        .toLowerCase()
+        .replace(/^www\./, "") === page.customDomain;
+    if (input.customDomain && !unchanged) {
       if (!canUseBioCustomDomain(plan)) {
         throw forbidden("Custom domains for bio pages are available on Pro and Ultra plans.");
       }
@@ -305,7 +318,7 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
       }
       await assertDomainAllowed(ctx, normalized); // must be a verified domain in this workspace
       updates.customDomain = normalized;
-    } else {
+    } else if (!input.customDomain) {
       updates.customDomain = null;
     }
   }
@@ -470,7 +483,14 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
 export async function updateBlock(ctx: WorkspaceTRPCContext, input: UpdateBioBlockInput) {
   const block = await fetchBlockForWorkspace(ctx, input.id);
   requirePermission(ctx.workspace, "bio.edit", "edit bio pages");
-  assertSchedulingAllowed(ctx, input.scheduledAt, input.scheduledUntil);
+  // A schedule resent unchanged doesn't need the plan; setting or changing one does.
+  const sameTime = (a?: Date | null, b?: Date | null) =>
+    (a?.getTime() ?? null) === (b?.getTime() ?? null);
+  assertSchedulingAllowed(
+    ctx,
+    sameTime(input.scheduledAt, block.scheduledAt) ? null : input.scheduledAt,
+    sameTime(input.scheduledUntil, block.scheduledUntil) ? null : input.scheduledUntil,
+  );
 
   const updates: Partial<typeof bioBlock.$inferInsert> = {};
   if (input.title !== undefined) updates.title = input.title;

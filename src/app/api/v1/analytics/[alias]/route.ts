@@ -1,4 +1,4 @@
-import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
+import { getPlanCaps } from "@/lib/billing/plans";
 import {
   aggregateVisits,
   analyticsWindow,
@@ -29,10 +29,7 @@ export const GET = withApiKey(
     }
 
     // Same window the dashboard applies for the plan (all-time when uncapped).
-    const window = analyticsWindow(
-      getPlanCaps(resolvePlan(token.subscription ?? null)).analyticsRangeLimitDays,
-      new Date(),
-    );
+    const window = analyticsWindow(getPlanCaps(token.plan).analyticsRangeLimitDays, new Date());
     const from = window.from;
 
     const link = await db.query.link.findFirst({

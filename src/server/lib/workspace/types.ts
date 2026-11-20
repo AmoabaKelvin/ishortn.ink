@@ -144,7 +144,11 @@ export type TeamWorkspaceContext = {
   team: Team;
   membership: TeamMember;
   role: TeamRole;
-  plan: "ultra"; // Teams are always Ultra (since only Ultra users can create teams)
+  // From the owner's live plan (see teamAccess in src/lib/billing/entitlements.ts).
+  plan: Plan;
+  // Owner not on Ultra past the grace period: every write is refused.
+  readOnly: boolean;
+  ownerGraceEndsAt: Date | null;
 };
 
 /**

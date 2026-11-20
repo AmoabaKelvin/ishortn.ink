@@ -34,6 +34,11 @@ export const team = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for grace period cleanup
+    // Grace period for a team whose owner is not on Ultra (see src/lib/billing/entitlements.ts).
+    // Kept after it passes so the daily reconcile never grants a second one; cleared once the
+    // owner is on Ultra again.
+    ownerPlanGraceEndsAt: timestamp("ownerPlanGraceEndsAt"),
+    ownerPlanGraceEmailStage: int("ownerPlanGraceEmailStage").default(0),
   },
   (table) => ({
     ownerIdIdx: index("ownerId_idx").on(table.ownerId),
@@ -171,9 +176,17 @@ export const user = mysqlTable(
     banned: boolean("banned").default(false),
     bannedAt: timestamp("bannedAt"),
     bannedReason: varchar("bannedReason", { length: 255 }),
+    // Plan entitlement grace period (see src/lib/billing/entitlements.ts): the account keeps
+    // `planGracePlan` until `planGraceEndsAt`. Kept after it passes so the daily reconcile never
+    // grants a second one; cleared when the paid plan covers it again.
+    planGracePlan: mysqlEnum("planGracePlan", ["free", "pro", "ultra"]),
+    planGraceEndsAt: timestamp("planGraceEndsAt"),
+    planGraceReason: mysqlEnum("planGraceReason", ["lapsed", "over_plan"]),
+    planGraceEmailStage: int("planGraceEmailStage").default(0),
   },
   (table) => ({
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),
+    planGraceEndsAtIdx: index("planGraceEndsAt_idx").on(table.planGraceEndsAt),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
   }),
 );

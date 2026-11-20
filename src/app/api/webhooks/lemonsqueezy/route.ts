@@ -14,11 +14,13 @@ import {
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
+import { syncEntitlementsAfterBillingEvent } from "@/server/lib/entitlements/grace";
 import { resend } from "@/server/lib/notifications/resend-client";
 
 import { eventIsBehindProvider } from "./reconcile";
 
 import type { LemonsqueezySubscriptionEvent } from "@/lib/types/lemonsqueezy";
+import type { Subscription } from "@/server/db/schema";
 import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 
 const log = logger.child({ webhook: "lemonsqueezy" });
@@ -68,8 +70,17 @@ export async function POST(request: Request) {
 
   const subscriptionId = Number.parseInt(event.data.data.id);
   try {
-    const { result, userId } = await processWebhook(event.data);
+    const { result, userId, previous } = await processWebhook(event.data);
     log.info({ event: eventName, subscriptionId, userId, result }, "processed webhook");
+    if (result === "applied" && userId) {
+      // A retry would be dropped as stale, so a failure here is logged rather
+      // than returned; the daily entitlements reconcile catches it.
+      try {
+        await syncEntitlementsAfterBillingEvent(userId, previous ?? null);
+      } catch (err) {
+        log.error({ err, event: eventName, subscriptionId, userId }, "entitlement sync failed");
+      }
+    }
     if (result === "invalid_payload") {
       return new Response("Invalid updated_at", { status: 400 });
     }
@@ -121,10 +132,17 @@ async function resolveUserId({ meta, data }: LemonsqueezySubscriptionEvent) {
   return byEmail?.id ?? null;
 }
 
+type WebhookOutcome = {
+  result: WebhookResult;
+  userId: string | null;
+  /** The subscription row before this event, for the entitlement sync. */
+  previous?: Subscription | null;
+};
+
 /** Applies the event, throwing on any failure a retry could fix. */
 async function processWebhook(
   webhookEvent: LemonsqueezySubscriptionEvent,
-): Promise<{ result: WebhookResult; userId: string | null }> {
+): Promise<WebhookOutcome> {
   const { meta, data } = webhookEvent;
   const { event_name } = meta;
   const subscriptionId = Number.parseInt(data.id);
@@ -171,7 +189,6 @@ async function processWebhook(
   // can revoke the row a newer subscription now owns.
   const existing = await db.query.subscription.findFirst({
     where: eq(subscription.userId, userId),
-    columns: { subscriptionId: true, providerUpdatedAt: true },
   });
 
   let isStale = false;
@@ -307,7 +324,7 @@ async function processWebhook(
         }),
       );
     }
-    return { result: "applied", userId };
+    return { result: "applied", userId, previous: existing ?? null };
   }
 
   if (event_name === "subscription_updated") {
@@ -330,12 +347,13 @@ async function processWebhook(
           .where(currentSubscription),
       ),
       userId,
+      previous: existing ?? null,
     };
   }
 
   if (event_name === "subscription_cancelled") {
     // Keep the plan/variant intact — a cancelled subscription stays entitled
-    // until endsAt. resolvePlan() drops it to free once that date passes.
+    // until endsAt (see paidPlan in src/lib/billing/entitlements.ts).
     return {
       result: updateResult(
         await db
@@ -348,6 +366,7 @@ async function processWebhook(
           .where(currentSubscription),
       ),
       userId,
+      previous: existing ?? null,
     };
   }
 
@@ -366,5 +385,6 @@ async function processWebhook(
         .where(currentSubscription),
     ),
     userId,
+    previous: existing ?? null,
   };
 }

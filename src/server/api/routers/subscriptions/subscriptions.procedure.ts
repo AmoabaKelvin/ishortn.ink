@@ -1,6 +1,7 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 
-import { getPlanCaps, getSubscriptionMode, resolvePlan } from "@/lib/billing/plans";
+import { effectivePlan, isGraceActive, paidPlan, planAtLeast } from "@/lib/billing/entitlements";
+import { getPlanCaps, getSubscriptionMode } from "@/lib/billing/plans";
 import { folder } from "@/server/db/schema";
 import { getEventTrackingPause } from "@/server/lib/event-usage";
 import {
@@ -13,8 +14,42 @@ import { workspaceFilter } from "@/server/lib/workspace";
 import { createTRPCRouter, workspaceProcedure } from "../../trpc";
 
 export const subscriptionsRouter = createTRPCRouter({
+  // Grace-period notice for the dashboard banner (see src/lib/billing/entitlements.ts).
+  entitlementNotice: workspaceProcedure.query(async ({ ctx }) => {
+    if (ctx.workspace.type === "team") {
+      const { readOnly, ownerGraceEndsAt, role } = ctx.workspace;
+      if (!readOnly && !ownerGraceEndsAt) return null;
+      return {
+        type: "team" as const,
+        readOnly,
+        endsAt: ownerGraceEndsAt,
+        isOwner: role === "owner",
+      };
+    }
+
+    const userRecord = await ctx.db.query.user.findFirst({
+      where: (table, { eq }) => eq(table.id, ctx.auth.userId),
+      columns: { planGracePlan: true, planGraceEndsAt: true, planGraceReason: true },
+      with: { subscriptions: true },
+    });
+    const { planGracePlan, planGraceEndsAt, planGraceReason } = userRecord ?? {};
+    if (
+      !planGracePlan ||
+      !planGraceEndsAt ||
+      !isGraceActive(planGraceEndsAt) ||
+      planAtLeast(paidPlan(userRecord?.subscriptions ?? null), planGracePlan)
+    ) {
+      return null;
+    }
+    return {
+      type: "account" as const,
+      plan: planGracePlan,
+      endsAt: planGraceEndsAt,
+      reason: planGraceReason ?? "lapsed",
+    };
+  }),
+
   // Use workspaceProcedure to be workspace-aware
-  // Team workspaces always have Ultra features
   get: workspaceProcedure.query(async ({ ctx }) => {
     const userId = ctx.auth.userId;
 
@@ -29,16 +64,16 @@ export const subscriptionsRouter = createTRPCRouter({
       throw new Error("User not found");
     }
 
-    // If in a team workspace, always use Ultra plan
-    // Team workspaces inherit Ultra features from the team owner
+    // Team workspaces take their plan from the team owner (ctx.workspace.plan)
     const isTeamWorkspace = ctx.workspace.type === "team";
     const planCtx = await getUserPlanContext(userId, ctx.db);
 
     // Personal plan is needed for features like team creation
-    const personalPlan = planCtx?.plan ?? resolvePlan(userRecord.subscriptions ?? null);
+    const personalPlan =
+      planCtx?.plan ?? effectivePlan(userRecord.subscriptions ?? null, userRecord);
 
     // Effective plan considers workspace context
-    const plan = isTeamWorkspace ? "ultra" : personalPlan;
+    const plan = ctx.workspace.plan;
     const caps = getPlanCaps(plan);
     const eventLimit = isTeamWorkspace ? null : (caps.eventsLimit ?? null);
 
@@ -80,7 +115,7 @@ export const subscriptionsRouter = createTRPCRouter({
       ? {
           ...userRecord.subscriptions,
           status: "active",
-          plan: "ultra" as const,
+          plan,
         }
       : userRecord.subscriptions;
 
