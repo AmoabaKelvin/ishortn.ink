@@ -28,12 +28,16 @@ export type RescanDecision = {
   details: string;
   /** Host to add to BlockedDomain alongside the block. */
   blockDomain?: string;
+  /** Pending rescan flags on the link that this block resolves instead of adding a new row. */
+  resolvesFlagIds?: number[];
 };
 
 export type ExistingFlag = {
+  id: number;
   linkId: number;
   status: "pending" | "blocked" | "dismissed";
   reason: string | null;
+  details: string | null;
 };
 
 export const RESCAN_REASON_PREFIX = "phishing-rescan:";
@@ -303,42 +307,71 @@ function parseCsvLine(line: string): string[] {
   return fields;
 }
 
+/** Link ids under one key; a bare number for the common single-link case keeps the index small. */
+type IdList = number | number[];
+
+export type ListedShortLink = { source: RescanSource; entry: string; host: string; alias: string };
+
 export type LinkIndex = {
-  byUrl: Map<string, number[]>;
-  byHost: Map<string, number[]>;
-  /** `domain/alias` (alias lowercased, as aliases resolve case-insensitively) of each short link. */
-  byShortUrl: Map<string, number>;
+  byUrl: Map<string, IdList>;
+  byHost: Map<string, IdList>;
   /** Our short-link domains: never blocklisted, and feed URLs on them are matched to aliases. */
   ownHosts: Set<string>;
+  /**
+   * Feed URLs that point at one of our short links, keyed by `host/alias` (alias lowercased, as
+   * aliases resolve case-insensitively). Few in number, so they're resolved to links with one
+   * query after the scan instead of indexing every alias up front.
+   */
+  listedShortLinks: Map<string, ListedShortLink[]>;
 };
 
 export function createLinkIndex(platformDomains: readonly string[]): LinkIndex {
   return {
     byUrl: new Map(),
     byHost: new Map(),
-    byShortUrl: new Map(),
     ownHosts: new Set(platformDomains),
+    listedShortLinks: new Map(),
   };
 }
 
-function push(map: Map<string, number[]>, key: string, id: number) {
+function idsOf(ids: IdList | undefined): number[] {
+  if (ids === undefined) return [];
+  return Array.isArray(ids) ? ids : [ids];
+}
+
+/** Adds `id` under `key` unless it was the last id added there. */
+function pushId(map: Map<string, IdList>, key: string, id: number) {
+  const ids = map.get(key);
+  if (ids === undefined) map.set(key, id);
+  else if (Array.isArray(ids)) {
+    if (ids.at(-1) !== id) ids.push(id);
+  } else if (ids !== id) map.set(key, [ids, id]);
+}
+
+function push<K>(map: Map<K, number[]>, key: K, id: number) {
   const ids = map.get(key);
   if (ids) ids.push(id);
   else map.set(key, [id]);
 }
 
+const shortLinkKey = (host: string, alias: string) => `${host}/${alias.toLowerCase()}`;
+
 export function addLinkToIndex(index: LinkIndex, link: ScanLink): void {
   const ownHost = normalizeHost(link.domain);
-  if (ownHost) {
-    index.ownHosts.add(ownHost);
-    if (link.alias) index.byShortUrl.set(`${ownHost}/${link.alias.toLowerCase()}`, link.id);
-  }
+  if (ownHost) index.ownHosts.add(ownHost);
+  if (link.url) addDestinationToIndex(index, link.id, link.url);
+}
 
-  const key = link.url ? normalizeUrl(link.url) : null;
+/**
+ * Indexes a redirect target of a link: its URL, or a geo rule's destination. Links are added in id
+ * order, so a link repeating its URL in a geo rule is recorded once.
+ */
+export function addDestinationToIndex(index: LinkIndex, linkId: number, url: string): void {
+  const key = normalizeUrl(url);
   if (!key) return;
-  push(index.byUrl, key, link.id);
+  pushId(index.byUrl, key, linkId);
   const host = hostOfUrl(key);
-  if (host) push(index.byHost, host, link.id);
+  if (host) pushId(index.byHost, host, linkId);
 }
 
 export function matchFeedEntry(
@@ -349,8 +382,14 @@ export function matchFeedEntry(
 ): RescanMatch[] {
   if (kind === "domain") {
     const host = normalizeHost(entry);
-    const ids = host ? index.byHost.get(host) : undefined;
-    return ids ? ids.map((linkId) => ({ linkId, source, kind: "domain", entry, host: host! })) : [];
+    if (!host) return [];
+    return idsOf(index.byHost.get(host)).map((linkId) => ({
+      linkId,
+      source,
+      kind: "domain",
+      entry,
+      host,
+    }));
   }
 
   const host = hostOfUrl(entry);
@@ -358,26 +397,42 @@ export function matchFeedEntry(
   const key = normalizeUrl(entry);
   if (!key) return [];
 
-  const matches: RescanMatch[] = (index.byUrl.get(key) ?? []).map((linkId) => ({
+  // The feed lists one of our short links itself (e.g. ishortn.ink/qsoi5tx8i).
+  if (index.ownHosts.has(host) && key.startsWith(`${host}/`)) {
+    const alias = key.slice(host.length + 1);
+    if (alias && !alias.includes("/") && !alias.includes("?")) {
+      const listed = index.listedShortLinks.get(shortLinkKey(host, alias)) ?? [];
+      if (!listed.some((l) => l.source === source)) listed.push({ source, entry, host, alias });
+      index.listedShortLinks.set(shortLinkKey(host, alias), listed);
+    }
+  }
+
+  return idsOf(index.byUrl.get(key)).map((linkId) => ({
     linkId,
     source,
     kind: "url",
     entry,
     host,
   }));
+}
 
-  // The feed lists one of our short links itself (e.g. ishortn.ink/qsoi5tx8i).
-  if (index.ownHosts.has(host)) {
-    const alias = key.slice(host.length + 1);
-    const linkId = key.startsWith(`${host}/`)
-      ? index.byShortUrl.get(`${host}/${alias.toLowerCase()}`)
-      : undefined;
-    if (linkId !== undefined && !alias.includes("/") && !alias.includes("?")) {
-      matches.push({ linkId, source, kind: "short-link", entry, host });
-    }
-  }
-
-  return matches;
+/** Matches for the live short links among `rows` that a feed listed. */
+export function shortLinkMatches(
+  index: LinkIndex,
+  rows: { id: number; domain: string; alias: string | null }[],
+): RescanMatch[] {
+  return rows.flatMap((row) => {
+    const host = normalizeHost(row.domain);
+    const listed =
+      host && row.alias ? index.listedShortLinks.get(shortLinkKey(host, row.alias)) : [];
+    return (listed ?? []).map((l) => ({
+      linkId: row.id,
+      source: l.source,
+      kind: "short-link" as const,
+      entry: l.entry,
+      host: l.host,
+    }));
+  });
 }
 
 export function decideMatch(match: RescanMatch, ownHosts: ReadonlySet<string>): RescanDecision {
@@ -429,28 +484,40 @@ export function mergeDecisions(decisions: RescanDecision[]): RescanDecision[] {
   return [...byLink.values()];
 }
 
+const CAP_NOTE = / \(over the \d+ auto-block limit for one run\)$/;
+
+// Feeds re-list the same URL with cosmetic differences (trailing slash, `www.`, scheme).
+function evidenceKey(linkId: number, reason: string, details: string): string {
+  const evidence = details
+    .replace(CAP_NOTE, "")
+    .replace(/\bhttps?:\/\/\S+/gi, (url) => normalizeUrl(url) ?? url);
+  return `${linkId}\n${reason}\n${evidence}`;
+}
+
 /**
- * Drops decisions an admin has already ruled on: a dismissed flag means the link was reviewed and
- * kept, and an earlier rescan block on a link that is live again means an admin unblocked it.
- * A pending rescan flag isn't raised twice but can still be upgraded to a block.
+ * Drops decisions an admin has already ruled on. A rescan row that was dismissed, or blocked on a
+ * link that is live again (an admin unblocked it), covers only the same source and the same
+ * evidence: `details` names the matched feed entry or destination, so a new source, a stronger
+ * match or a changed destination is still acted on. Reports from other places never suppress a
+ * rescan decision. A pending rescan flag isn't raised twice, but a block resolves it.
  */
 export function withoutResolvedLinks(
   decisions: RescanDecision[],
   existing: ExistingFlag[],
 ): RescanDecision[] {
-  const skip = new Set<number>();
-  const pending = new Set<number>();
+  const ruled = new Set<string>();
+  const pending = new Map<number, number[]>();
   for (const flag of existing) {
-    const fromRescan = flag.reason?.startsWith(RESCAN_REASON_PREFIX) ?? false;
-    if (flag.status === "dismissed" || (fromRescan && flag.status === "blocked")) {
-      skip.add(flag.linkId);
-    } else if (fromRescan) {
-      pending.add(flag.linkId);
-    }
+    if (!flag.reason?.startsWith(RESCAN_REASON_PREFIX)) continue;
+    if (flag.status === "pending") push(pending, flag.linkId, flag.id);
+    else ruled.add(evidenceKey(flag.linkId, flag.reason, flag.details ?? ""));
   }
-  return decisions.filter(
-    (d) => !skip.has(d.linkId) && !(d.action === "flag" && pending.has(d.linkId)),
-  );
+  return decisions.flatMap((d) => {
+    if (ruled.has(evidenceKey(d.linkId, d.reason, d.details))) return [];
+    const pendingIds = pending.get(d.linkId);
+    if (!pendingIds) return [d];
+    return d.action === "block" ? [{ ...d, resolvesFlagIds: pendingIds }] : [];
+  });
 }
 
 /**
@@ -472,34 +539,62 @@ export function capBlocks(decisions: RescanDecision[], maxBlocks: number): Resca
   });
 }
 
-export type SafeBrowsingCandidate = { id: number; url: string };
+type WindowPart = { urls: Map<string, number[]>; lastId: number; full: boolean };
+
+/**
+ * The Safe Browsing URLs for one run: up to `max` distinct URLs starting after the link id where
+ * the previous run stopped, wrapping around, so links that went longest without a check go first.
+ * Links are added in id order while paging, and only URLs that can still fall inside the window
+ * are kept, so memory stays bounded by `max` rather than the link count.
+ */
+export type SafeBrowsingWindow = {
+  cursor: number;
+  max: number;
+  /** Links after the cursor, checked first. */
+  after: WindowPart;
+  /** Links up to the cursor, used to fill the window after wrapping around. */
+  before: WindowPart;
+};
 
 export type SafeBrowsingSelection = { urls: Map<string, number[]>; nextCursor: number };
 
-/**
- * Picks up to `max` distinct URLs starting after the link id where the previous run stopped,
- * wrapping around, so links that went longest without a check go first. `nextCursor` is 0 when
- * every candidate fit.
- */
-export function selectSafeBrowsingUrls(
-  candidates: SafeBrowsingCandidate[],
-  cursor: number,
-  max: number,
-): SafeBrowsingSelection {
-  const start = candidates.findIndex((c) => c.id > cursor);
-  const ordered =
-    start <= 0 ? candidates : [...candidates.slice(start), ...candidates.slice(0, start)];
+export function createSafeBrowsingWindow(cursor: number, max: number): SafeBrowsingWindow {
+  const part = (): WindowPart => ({ urls: new Map(), lastId: 0, full: false });
+  return { cursor, max, after: part(), before: part() };
+}
 
-  const urls = new Map<string, number[]>();
-  for (let i = 0; i < ordered.length; i++) {
-    const candidate = ordered[i]!;
-    const ids = urls.get(candidate.url);
-    if (ids) {
-      ids.push(candidate.id);
+export function addSafeBrowsingCandidate(window: SafeBrowsingWindow, id: number, url: string) {
+  const part = id > window.cursor ? window.after : window.before;
+  const ids = part.urls.get(url);
+  if (ids) {
+    if (ids.at(-1) !== id) ids.push(id);
+    return;
+  }
+  // A link's own URLs (main and geo rule destinations) are never split across runs.
+  if (part.urls.size >= window.max && id !== part.lastId) {
+    part.full = true;
+    return;
+  }
+  part.urls.set(url, [id]);
+  part.lastId = id;
+}
+
+/** `nextCursor` is 0 when every candidate fit. */
+export function selectSafeBrowsingUrls(window: SafeBrowsingWindow): SafeBrowsingSelection {
+  const { after, before, max } = window;
+  const urls = new Map(after.urls);
+  if (after.full) return { urls, nextCursor: after.lastId };
+
+  let lastId = 0;
+  for (const [url, ids] of before.urls) {
+    const existing = urls.get(url);
+    if (existing) {
+      existing.push(...ids);
       continue;
     }
-    if (urls.size === max) return { urls, nextCursor: ordered[i - 1]!.id };
-    urls.set(candidate.url, [candidate.id]);
+    if (urls.size >= max && ids[0] !== lastId) return { urls, nextCursor: lastId };
+    urls.set(url, ids);
+    lastId = ids[0]!;
   }
-  return { urls, nextCursor: 0 };
+  return { urls, nextCursor: before.full ? lastId : 0 };
 }

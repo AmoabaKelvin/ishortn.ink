@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 
 import { readLines } from "./feeds";
 import {
+  addDestinationToIndex,
   addLinkToIndex,
+  addSafeBrowsingCandidate,
   capBlocks,
   createLinkIndex,
+  createSafeBrowsingWindow,
   decideMatch,
   type FeedKind,
   hostOfUrl,
@@ -17,8 +20,10 @@ import {
   parseUrlhausCsvLine,
   type RescanDecision,
   type RescanSource,
+  type ExistingFlag,
   type ScanLink,
   selectSafeBrowsingUrls,
+  shortLinkMatches,
   withoutResolvedLinks,
 } from "./utils";
 
@@ -37,6 +42,7 @@ function scan(links: ScanLink[], source: RescanSource, kind: FeedKind, feed: str
     .split("\n")
     .map(parse)
     .flatMap((entry) => (entry ? matchFeedEntry(index, source, kind, entry) : []))
+    .concat(shortLinkMatches(index, links))
     .map((m) => decideMatch(m, index.ownHosts));
   return mergeDecisions(decisions);
 }
@@ -262,32 +268,121 @@ describe("block vs flag decisions", () => {
 });
 
 describe("withoutResolvedLinks", () => {
-  const decision = (linkId: number, action: "block" | "flag"): RescanDecision => ({
+  const decision = (
+    linkId: number,
+    action: "block" | "flag",
+    source: RescanSource = "openphish",
+    details = "Destination listed in feed: https://evil.example/login",
+  ): RescanDecision => ({
     linkId,
     action,
-    source: "openphish",
-    reason: "phishing-rescan: openphish",
-    details: "",
+    source,
+    reason: `phishing-rescan: ${source}`,
+    details,
+  });
+  const row = (
+    id: number,
+    d: RescanDecision,
+    status: ExistingFlag["status"],
+    overrides: Partial<ExistingFlag> = {},
+  ): ExistingFlag => ({
+    id,
+    linkId: d.linkId,
+    status,
+    reason: d.reason,
+    details: d.details,
+    ...overrides,
   });
 
-  test("skips dismissed links and links an admin unblocked after a rescan block", () => {
+  test("skips the same evidence an admin dismissed or unblocked", () => {
+    const dismissed = decision(1, "block");
+    const unblocked = decision(2, "block");
     const result = withoutResolvedLinks(
-      [decision(1, "block"), decision(2, "block"), decision(3, "block"), decision(4, "flag")],
-      [
-        { linkId: 1, status: "dismissed", reason: "user report" },
-        { linkId: 2, status: "blocked", reason: "phishing-rescan: openphish" },
-        { linkId: 3, status: "blocked", reason: "user report" },
-      ],
+      [dismissed, unblocked],
+      [row(10, dismissed, "dismissed"), row(11, unblocked, "blocked")],
     );
-    expect(result.map((d) => d.linkId)).toEqual([3, 4]);
+    expect(result).toEqual([]);
   });
 
-  test("doesn't re-flag a pending rescan flag but lets it upgrade to a block", () => {
+  test("a dismissed domain flag doesn't stop a later Safe Browsing threat from blocking", () => {
+    const domainFlag = decision(
+      1,
+      "flag",
+      "phishing-database-domains",
+      "Destination host listed in feed, on a shared host: foo.weebly.com",
+    );
+    const threat = decision(
+      1,
+      "block",
+      "safe-browsing",
+      "Safe Browsing threat: https://foo.weebly.com/page (SOCIAL_ENGINEERING)",
+    );
+    const existing = [row(10, domainFlag, "dismissed")];
+    expect(withoutResolvedLinks([domainFlag, threat], existing)).toEqual([threat]);
+  });
+
+  test("a feed re-listing the same URL with a trailing slash is the same evidence", () => {
+    const block = decision(
+      1,
+      "block",
+      "openphish",
+      "Destination listed in feed: https://evil.example",
+    );
+    const dismissed = { ...block, details: "Destination listed in feed: http://www.evil.example/" };
+    expect(withoutResolvedLinks([block], [row(10, dismissed, "dismissed")])).toEqual([]);
+  });
+
+  test("a changed destination is new evidence from the same source", () => {
+    const before = decision(
+      1,
+      "block",
+      "safe-browsing",
+      "Safe Browsing threat: https://a.example (MALWARE)",
+    );
+    const after = decision(
+      1,
+      "block",
+      "safe-browsing",
+      "Safe Browsing threat: https://b.example (MALWARE)",
+    );
+    expect(withoutResolvedLinks([after], [row(10, before, "dismissed")])).toEqual([after]);
+  });
+
+  test("dismissed reports from outside the rescan never suppress it", () => {
+    const block = decision(1, "block");
     const existing = [
-      { linkId: 1, status: "pending" as const, reason: "phishing-rescan: openphish" },
+      row(10, block, "dismissed", { reason: "user report", details: block.details }),
     ];
-    expect(withoutResolvedLinks([decision(1, "flag")], existing)).toEqual([]);
-    expect(withoutResolvedLinks([decision(1, "block")], existing)).toHaveLength(1);
+    expect(withoutResolvedLinks([block], existing)).toEqual([block]);
+  });
+
+  test("a dismissed over-the-cap flag covers the same block evidence", () => {
+    const block = decision(1, "block");
+    const capped = {
+      ...block,
+      details: `${block.details} (over the 250 auto-block limit for one run)`,
+    };
+    expect(withoutResolvedLinks([block], [row(10, capped, "dismissed")])).toEqual([]);
+  });
+
+  test("doesn't re-flag a pending rescan flag but resolves it with a block", () => {
+    const flag = decision(1, "flag", "phishing-database-domains", "on a shared host");
+    const existing = [row(10, flag, "pending")];
+    expect(withoutResolvedLinks([flag], existing)).toEqual([]);
+    const block = decision(1, "block");
+    expect(withoutResolvedLinks([block], existing)).toEqual([{ ...block, resolvesFlagIds: [10] }]);
+  });
+});
+
+describe("geo rule destinations", () => {
+  test("a feed match on a rule destination maps to the link", () => {
+    const index = indexOf([link(1, "https://safe.example/")]);
+    addDestinationToIndex(index, 1, "https://dfgjs.weebly.com/");
+    addDestinationToIndex(index, 1, "https://safe.example");
+    const matches = matchFeedEntry(index, "openphish", "url", "https://dfgjs.weebly.com/");
+    expect(matches.map((m) => [m.linkId, m.kind])).toEqual([[1, "url"]]);
+    expect(index.byUrl.get("safe.example")).toBe(1);
+    expect(decideMatch(matches[0]!, index.ownHosts).action).toBe("block");
   });
 });
 
@@ -313,15 +408,22 @@ describe("selectSafeBrowsingUrls", () => {
     { id: 2, url: "https://b.com" },
     { id: 3, url: "https://a.com" },
     { id: 4, url: "https://c.com" },
+    { id: 4, url: "https://e.com" },
     { id: 5, url: "https://d.com" },
   ];
+  const select = (cursor: number, max: number) => {
+    const window = createSafeBrowsingWindow(cursor, max);
+    for (const c of candidates) addSafeBrowsingCandidate(window, c.id, c.url);
+    return selectSafeBrowsingUrls(window);
+  };
 
   test("takes everything and resets the cursor when it fits", () => {
-    const { urls, nextCursor } = selectSafeBrowsingUrls(candidates, 0, 10);
+    const { urls, nextCursor } = select(0, 10);
     expect([...urls.keys()]).toEqual([
       "https://a.com",
       "https://b.com",
       "https://c.com",
+      "https://e.com",
       "https://d.com",
     ]);
     expect(urls.get("https://a.com")).toEqual([1, 3]);
@@ -329,11 +431,30 @@ describe("selectSafeBrowsingUrls", () => {
   });
 
   test("resumes after the cursor and wraps around", () => {
-    const first = selectSafeBrowsingUrls(candidates, 0, 2);
+    const first = select(0, 2);
     expect([...first.urls.keys()]).toEqual(["https://a.com", "https://b.com"]);
-    expect(first.nextCursor).toBe(3);
+    expect(first.nextCursor).toBe(2);
 
-    const second = selectSafeBrowsingUrls(candidates, first.nextCursor, 3);
-    expect([...second.urls.keys()]).toEqual(["https://c.com", "https://d.com", "https://a.com"]);
+    const second = select(first.nextCursor, 4);
+    expect([...second.urls.keys()]).toEqual([
+      "https://a.com",
+      "https://c.com",
+      "https://e.com",
+      "https://d.com",
+    ]);
+    expect(second.urls.get("https://a.com")).toEqual([3, 1]);
+    expect(second.nextCursor).toBe(0);
+  });
+
+  test("keeps all of a link's URLs in one run and stops at the next link", () => {
+    const { urls, nextCursor } = select(2, 2);
+    expect([...urls.keys()]).toEqual(["https://a.com", "https://c.com", "https://e.com"]);
+    expect(nextCursor).toBe(4);
+  });
+
+  test("wraps into the links before the cursor and stops there", () => {
+    const { urls, nextCursor } = select(4, 3);
+    expect([...urls.keys()]).toEqual(["https://d.com", "https://a.com", "https://b.com"]);
+    expect(nextCursor).toBe(2);
   });
 });
