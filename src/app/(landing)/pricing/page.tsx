@@ -50,7 +50,7 @@ const pricingFaqs = [
   },
   {
     q: "Do I get a custom domain on the free plan?",
-    a: "Custom domains are on Pro (up to 3) and Ultra (unlimited). Free uses ishortn.ink/your-slug.",
+    a: "Custom domains are on Pro (up to 3) and Ultra (unlimited). Free uses isht.app/your-slug.",
   },
   {
     q: "Is the API available on every plan?",

@@ -43,7 +43,7 @@ const PasteMock = () => (
           <IconLink className="size-3" />
         </span>
         <span className="min-w-0 truncate font-mono text-sm font-medium text-neutral-900">
-          ishortn.ink/launch
+          isht.app/launch
         </span>
         <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-md bg-neutral-100 px-1.5 py-1 text-xs font-medium text-neutral-700">
           <IconCopy className="size-3.5" />
@@ -93,12 +93,12 @@ const SettingsMock = () => (
       <div className="relative rounded-t-xl bg-white shadow-site-card">
         <SettingRow label="Custom alias" active>
           <span className="min-w-0 truncate rounded-md bg-white px-2 py-1 font-mono text-xs text-neutral-500 shadow-site-btn">
-            ishortn.ink/<span className="font-medium text-neutral-900">launch</span>
+            isht.app/<span className="font-medium text-neutral-900">launch</span>
           </span>
         </SettingRow>
         <SettingRow label="Domain">
           <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-white py-1 pl-2 pr-1 font-mono text-xs text-neutral-700 shadow-site-btn">
-            <span className="truncate">ishortn.ink</span>
+            <span className="truncate">isht.app</span>
             <IconSelector className="size-3.5 shrink-0" />
           </span>
         </SettingRow>
@@ -154,7 +154,7 @@ const OrbitMock = () => (
 const steps = [
   {
     title: "Paste your link",
-    body: "Drop in any long URL and get a short ishortn.ink link back in a second.",
+    body: "Drop in any long URL and get a short isht.app link back in a second.",
     mock: <PasteMock />,
   },
   {
