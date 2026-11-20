@@ -1,0 +1,39 @@
+name: PR Screenshots
+
+# UI changes must show desktop and mobile screenshots in a collapsed
+# <details><summary>Screenshots</summary> section of the PR description.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require screenshots when UI changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          ui=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' \
+            | grep -E '^src/(app|components)/.+\.(tsx|css)$|^src/styles/|^tailwind\.config\.' \
+            | grep -vE '\.test\.tsx?$|/route\.ts$' || true)
+          if [ -z "$ui" ]; then
+            echo "No UI files changed."
+            exit 0
+          fi
+          echo "UI files changed:"
+          printf '  %s\n' $ui
+          section=$(printf '%s' "$BODY" | tr '\n' ' ' | grep -oE '<summary>Screenshots</summary>.*</details>' || true)
+          if printf '%s' "$section" | grep -qE '<img |!\[[^]]*\]\(https://'; then
+            echo "Screenshots found."
+            exit 0
+          fi
+          echo "::error::This PR changes UI. Add desktop and mobile screenshots in a collapsed <details><summary>Screenshots</summary> section of the PR description."
+          exit 1
