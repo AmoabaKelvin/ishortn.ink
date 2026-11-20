@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { getBioLinkBlockLimit } from "@/lib/billing/plans";
 import { api } from "@/trpc/react";
 
 import { AnalyticsPanel } from "./analytics-panel";
@@ -99,6 +101,10 @@ export function BioPageBuilder({
     socialImageUrl: page.socialImageUrl ?? null,
   }));
   const [adding, setAdding] = useState<BioBlockType | null>(null);
+
+  const linkBlockLimit = getBioLinkBlockLimit(plan);
+  const linkBlockCount = page.blocks.filter((b) => b.type === "link").length;
+  const atLinkBlockLimit = linkBlockLimit !== undefined && linkBlockCount >= linkBlockLimit;
 
   const refresh = () => utils.bioPage.get.invalidate({ id: pageId });
 
@@ -233,13 +239,38 @@ export function BioPageBuilder({
                   className="w-[var(--radix-dropdown-menu-trigger-width)]"
                 >
                   {ADD_OPTIONS.map((opt) => (
-                    <DropdownMenuItem key={opt.type} onSelect={() => handleAdd(opt.type)}>
+                    <DropdownMenuItem
+                      key={opt.type}
+                      disabled={opt.type === "link" && atLinkBlockLimit}
+                      onSelect={() => handleAdd(opt.type)}
+                    >
                       <opt.icon size={16} className="mr-2 text-neutral-500" />
                       {opt.label}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {atLinkBlockLimit && (
+                <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-500/10">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium text-amber-700 dark:text-amber-400">
+                      Link block limit reached
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-amber-700 dark:text-amber-400">
+                      Free bio pages can have up to {linkBlockLimit} link blocks. Upgrade to Pro for
+                      unlimited link blocks.
+                    </p>
+                  </div>
+                  <Link
+                    href="/dashboard/pricing"
+                    onClick={() => trackUpgradeClick("bio_link_block_limit")}
+                    className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
+                  >
+                    Upgrade
+                  </Link>
+                </div>
+              )}
 
               <BlockList
                 pageId={pageId}

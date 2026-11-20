@@ -36,6 +36,15 @@ export async function verifyLinkOwnership(ctx: WorkspaceTRPCContext, linkId: num
   return linkRecord;
 }
 
+/**
+ * Bio link blocks are hidden links capped per bio page instead
+ * (`checkBioLinkBlockLimit`), so they neither consume nor are blocked by the
+ * monthly link quota.
+ */
+export function countsTowardMonthlyLinkQuota(values: { isBioLink?: boolean | null }): boolean {
+  return values.isBioLink !== true;
+}
+
 export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
   const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
 

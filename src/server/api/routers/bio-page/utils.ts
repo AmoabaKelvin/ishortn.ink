@@ -1,11 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { count } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 
-import { getBioPageLimit } from "@/lib/billing/plans";
-import { bioPage } from "@/server/db/schema";
+import { getBioLinkBlockLimit, getBioPageLimit } from "@/lib/billing/plans";
+import { bioBlock, bioPage } from "@/server/db/schema";
 import { workspaceFilter } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
+import type { Plan } from "@/lib/billing/plans";
 import type { BioPage } from "@/server/db/schema";
 
 // Handles live at /p/<slug>, but we still exclude every top-level app route name
@@ -88,6 +89,35 @@ export async function checkBioPageLimit(ctx: WorkspaceTRPCContext): Promise<void
           : `You've reached your plan's limit of ${limit} bio pages. Upgrade to Ultra for unlimited pages.`,
     });
   }
+}
+
+/**
+ * Throws when a bio page already holds its plan's maximum number of link
+ * blocks. Only link blocks are capped: they're the ones backed by a link row.
+ */
+export function assertBioLinkBlockCapacity(plan: Plan, currentLinkBlocks: number): void {
+  const limit = getBioLinkBlockLimit(plan);
+  if (limit === undefined || currentLinkBlocks < limit) return;
+
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: `The free plan allows ${limit} link blocks per bio page. Upgrade to Pro for unlimited link blocks.`,
+  });
+}
+
+/** Enforce the per-plan link-block cap for one bio page. */
+export async function checkBioLinkBlockLimit(
+  ctx: WorkspaceTRPCContext,
+  bioPageId: number,
+): Promise<void> {
+  if (getBioLinkBlockLimit(ctx.workspace.plan) === undefined) return;
+
+  const [row] = await ctx.db
+    .select({ count: count() })
+    .from(bioBlock)
+    .where(and(eq(bioBlock.bioPageId, bioPageId), eq(bioBlock.type, "link")));
+
+  assertBioLinkBlockCapacity(ctx.workspace.plan, Number(row?.count ?? 0));
 }
 
 /** In-memory ownership check mirroring workspaceFilter (for already-loaded rows). */

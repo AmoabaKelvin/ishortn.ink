@@ -7,6 +7,7 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import {
   assertDomainAllowed,
   checkWorkspaceLinkLimit,
+  countsTowardMonthlyLinkQuota,
   getWorkspaceDefaultDomain,
 } from "@/server/api/routers/link/utils";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
@@ -40,13 +41,17 @@ export type PreparedTrackingLink = {
  * Validate + resolve everything needed to create a hidden tracking link before
  * a transaction is opened: the link-quota check, URL safety scan, domain
  * authorization, and alias generation. Throws TRPCError("FORBIDDEN") when the
- * workspace's monthly link quota is reached.
+ * workspace's monthly link quota is reached. Bio links skip the quota; callers
+ * enforce the per-page block cap instead.
  */
 export async function prepareHiddenTrackingLink(
   ctx: WorkspaceTRPCContext,
   opts: { url: string; name: string; domain?: string; kind: TrackingLinkKind },
 ): Promise<PreparedTrackingLink> {
-  const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
+  const countsTowardQuota = countsTowardMonthlyLinkQuota({ isBioLink: opts.kind === "bio" });
+  const { currentCount, limit } = countsTowardQuota
+    ? await checkWorkspaceLinkLimit(ctx)
+    : { currentCount: 0, limit: undefined };
 
   await assertUrlSafe(opts.url);
 
