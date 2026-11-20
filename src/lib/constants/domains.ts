@@ -6,13 +6,6 @@ export const PLATFORM_DOMAINS = ["isht.app", "isht.ink", "ishortn.ink"] as const
 
 export type PlatformDomain = (typeof PLATFORM_DOMAINS)[number];
 
-// Platform domains that serve team workspaces at `<slug>.<domain>`. isht.app has
-// no wildcard DNS, so `acme.isht.app` must never be generated or accepted.
-export const TEAM_SUBDOMAIN_DOMAINS = [
-  "isht.ink",
-  "ishortn.ink",
-] as const satisfies readonly PlatformDomain[];
-
 export const DEFAULT_PLATFORM_DOMAIN: PlatformDomain = PLATFORM_DOMAINS[0];
 
 // Clerk is configured on the full iShortn domain, so authenticated app/team
@@ -33,13 +26,14 @@ export function getAppBaseDomain(): string {
   return configured || APP_BASE_DOMAIN;
 }
 
-// Returns the leading label when `host` is a team subdomain of a team-capable
-// platform domain (e.g. "acme.isht.ink" -> "acme"). Returns null for bare platform
+// Returns the leading label when `host` is a team subdomain of a platform
+// domain (e.g. "acme.isht.app" -> "acme"). Every platform domain needs wildcard
+// DNS and a `*.<domain>/*` worker route for this. Returns null for bare platform
 // hosts and anything outside the catalogue. Host matching is case-insensitive
 // to match DNS semantics, and a trailing dot (FQDN form) is tolerated.
 export function extractPlatformSubdomain(host: string): string | null {
   const normalized = host.trim().replace(/\.$/, "").toLowerCase();
-  for (const platformDomain of TEAM_SUBDOMAIN_DOMAINS) {
+  for (const platformDomain of PLATFORM_DOMAINS) {
     if (!normalized.endsWith(`.${platformDomain}`)) continue;
     const parts = normalized.split(".");
     if (parts.length !== platformDomain.split(".").length + 1) continue;

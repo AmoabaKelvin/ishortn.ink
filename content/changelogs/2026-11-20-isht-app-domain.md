@@ -18,7 +18,7 @@ Nothing changes. Every link you've made on `isht.ink` or `ishortn.ink` still ope
 
 ## Teams
 
-Team workspaces stay where they are: a team with slug `acme` is still at `acme.isht.ink` and `acme.ishortn.ink`. Team links can use `isht.app` like any other link.
+Team subdomains work on `isht.app` too: a team with slug `acme` is now reachable at `acme.isht.app`, as well as `acme.isht.ink` and `acme.ishortn.ink`. Team links can use `isht.app` like any other link.
 
 ## Picking a default
 

@@ -18,13 +18,11 @@ describe("platform domains", () => {
 });
 
 describe("extractPlatformSubdomain", () => {
-  test("reads team subdomains on isht.ink and ishortn.ink", () => {
+  test("reads team subdomains on every platform domain", () => {
+    expect(extractPlatformSubdomain("acme.isht.app")).toBe("acme");
+    expect(extractPlatformSubdomain("Acme.ISHT.app.")).toBe("acme");
     expect(extractPlatformSubdomain("acme.isht.ink")).toBe("acme");
     expect(extractPlatformSubdomain("ACME.ishortn.ink.")).toBe("acme");
-  });
-
-  test("never treats an isht.app host as a team subdomain", () => {
-    expect(extractPlatformSubdomain("acme.isht.app")).toBeNull();
   });
 
   test("ignores bare platform hosts and deeper or foreign hosts", () => {
@@ -33,6 +31,7 @@ describe("extractPlatformSubdomain", () => {
       "isht.ink",
       "ishortn.ink",
       "a.b.isht.ink",
+      "a.b.isht.app",
       "acme.example.com",
     ]) {
       expect(extractPlatformSubdomain(host)).toBeNull();
