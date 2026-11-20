@@ -2,7 +2,16 @@ import { z } from "zod";
 
 export const INVALID_URL_MESSAGE = "Enter a valid URL, e.g. https://example.com";
 
-const HAS_SCHEME = /^[a-z][a-z\d+.-]*:\/\//i;
+const SCHEME_PREFIX = /^([a-z][a-z\d+.-]*):(\d+(?:[/?#]|$))?/i;
+
+// A scheme is `name:` (https://, mailto:, tel:5551234), except a host followed by a port:
+// "example.org:8080/path" and "localhost:3000" are scheme-less.
+function hasScheme(value: string): boolean {
+  const match = SCHEME_PREFIX.exec(value);
+  if (!match) return false;
+  const [, name = "", port] = match;
+  return !port || !(name.includes(".") || name.toLowerCase() === "localhost");
+}
 
 /**
  * Turns what a user typed as a link destination into a URL: trims it and adds
@@ -15,8 +24,8 @@ export function normalizeDestinationUrl(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
-  const hasScheme = HAS_SCHEME.test(trimmed);
-  const candidate = hasScheme ? trimmed : `https://${trimmed.replace(/^\/\//, "")}`;
+  const schemed = hasScheme(trimmed);
+  const candidate = schemed ? trimmed : `https://${trimmed.replace(/^\/\//, "")}`;
 
   let parsed: URL;
   try {
@@ -25,7 +34,7 @@ export function normalizeDestinationUrl(input: string): string | null {
     return null;
   }
 
-  if (!hasScheme && !parsed.hostname.includes(".")) return null;
+  if (!schemed && !parsed.hostname.includes(".")) return null;
   return candidate;
 }
 

@@ -222,11 +222,24 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     const thresholds = milestones.map((m) => m.threshold);
     const wasEnabled = link.verifiedClicksEnabled ?? false;
     const isEnabled = values.verifiedClicksEnabled ?? false;
-    // In order: milestones are only saved once the link itself saved.
+    const savedThresholds = (existingMilestones ?? []).map((m) => m.threshold);
+    const milestonesChanged =
+      thresholds.length !== savedThresholds.length ||
+      thresholds.some((threshold) => !savedThresholds.includes(threshold));
+    // Milestones are optional and plan-gated, so they are only saved when they changed, and
+    // only after the link saved; the list refreshes either way.
     const save = async () => {
       await formUpdateMutation.mutateAsync(values);
-      await milestoneUpsertMutation.mutateAsync({ linkId: link.id, thresholds });
-      await revalidateHomepage();
+      try {
+        if (milestonesChanged) {
+          await milestoneUpsertMutation.mutateAsync({ linkId: link.id, thresholds });
+        }
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "";
+        throw new Error(`Link saved, but milestones were not updated. ${reason}`.trim());
+      } finally {
+        await revalidateHomepage();
+      }
     };
     toast.promise(
       save().then(() => {

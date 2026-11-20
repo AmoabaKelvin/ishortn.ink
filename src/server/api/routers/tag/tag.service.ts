@@ -59,10 +59,15 @@ export const createTag = async (ctx: TagWriteContext, tagName: string) => {
         (isDuplicateKey(error) || (error.cause instanceof Error && isDuplicateKey(error.cause)));
 
       if (isDuplicateKeyError) {
-        // Another request created the tag concurrently, fetch and return it
-        const createdTag = await ctx.db.query.tag.findFirst({
-          where: and(eq(tag.name, normalizedName), eq(tag.teamId, ctx.workspace.teamId)),
-        });
+        // Another request created the tag concurrently, fetch and return it. A locking read
+        // sees the latest committed row; a plain read inside the caller's transaction would
+        // use its REPEATABLE READ snapshot and miss it.
+        const [createdTag] = await ctx.db
+          .select()
+          .from(tag)
+          .where(and(eq(tag.name, normalizedName), eq(tag.teamId, ctx.workspace.teamId)))
+          .limit(1)
+          .for("share");
 
         if (createdTag) {
           return createdTag;

@@ -30,6 +30,21 @@ describe("normalizeDestinationUrl", () => {
     expect(normalizeDestinationUrl("ftp://files.example.org")).toBe("ftp://files.example.org");
   });
 
+  test("keeps schemes without //, such as mailto, tel and sms", () => {
+    expect(normalizeDestinationUrl("mailto:hi@example.com")).toBe("mailto:hi@example.com");
+    expect(normalizeDestinationUrl("tel:+15551234")).toBe("tel:+15551234");
+    expect(normalizeDestinationUrl("tel:5551234")).toBe("tel:5551234");
+    expect(normalizeDestinationUrl("sms:+15551234?body=hi")).toBe("sms:+15551234?body=hi");
+  });
+
+  test("reads host:port as a host, not a scheme", () => {
+    expect(normalizeDestinationUrl("example.org:8080")).toBe("https://example.org:8080");
+    expect(normalizeDestinationUrl("www.example.org:443?x=1")).toBe(
+      "https://www.example.org:443?x=1",
+    );
+    expect(normalizeDestinationUrl("localhost:3000")).toBeNull();
+  });
+
   test("rejects input that is not a URL", () => {
     expect(normalizeDestinationUrl("")).toBeNull();
     expect(normalizeDestinationUrl("   ")).toBeNull();
