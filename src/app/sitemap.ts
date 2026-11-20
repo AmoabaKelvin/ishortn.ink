@@ -1,19 +1,20 @@
 import { getAllPosts } from "@/lib/blog";
+import { getChangelogEntries } from "@/lib/changelog";
 import { competitors } from "@/lib/seo/competitors";
 import { absoluteUrl } from "@/lib/utils";
 
 import type { MetadataRoute } from "next";
 
 // lastModified must only change when a page's content does: fixed dates for static routes (bump
-// them when you edit the page), data dates for compare and blog. new Date() here would change on
-// every build and teach crawlers to ignore lastmod.
+// them when you edit the page), data dates for compare, blog and changelog. new Date() here would
+// change on every build and teach crawlers to ignore lastmod.
 // Floor for the derived dates below, so an empty post list still yields a valid date.
 const SITE_LASTMOD_FLOOR = "2026-09-19";
 const compareList = Object.values(competitors);
 const maxDate = (a: string, b: string) => (a > b ? a : b);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const posts = await getAllPosts();
+  const [posts, changelogEntries] = await Promise.all([getAllPosts(), getChangelogEntries()]);
 
   const blogPostEntries: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `https://ishortn.ink/blog/${post.slug}`,
@@ -25,6 +26,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // ISO dates sort lexically, so the max string is the newest.
   const latestPostDate = posts
     .map((post) => post.updated ?? post.date)
+    .reduce(maxDate, SITE_LASTMOD_FLOOR);
+  // Changelog dates are datetimes; keep the day so the comparison and output match the others.
+  const latestChangelogDate = changelogEntries
+    .map((entry) => entry.date.slice(0, 10))
     .reduce(maxDate, SITE_LASTMOD_FLOOR);
   const latestCompareDate = compareList
     .map((c) => c.pricesCheckedOn)
@@ -63,7 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: absoluteUrl("/changelog"),
-      lastModified: "2026-09-19",
+      lastModified: latestChangelogDate,
       changeFrequency: "weekly",
       priority: 0.7,
     },
