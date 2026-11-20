@@ -10,6 +10,7 @@ the rules. Every rule below points at the code it was taken from; when in doubt,
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | Dashboard pages          | `src/app/(main)/dashboard/<feature>/page.tsx`, private components in `_components/`                                            |
 | Marketing and auth       | `src/app/(landing)`, `src/app/(auth)`; separate design language in `docs/design-language.md`                                   |
+| Docs (`/docs`)           | MDX in `content/docs/`, nav in `src/lib/docs/navigation.ts`, pages in `src/app/(docs)/docs-site` (middleware rewrites `/docs`) |
 | Redirect path            | `src/app/(links)/[linkAlias]/page.tsx` and `src/middlewares/` (`resolve-link.ts`, `record-click.ts`)                           |
 | Short-link surfaces      | `src/app/(links)` (redirect, state pages, previews, bio pages): no Clerk or analytics; app routes get them from `AppProviders` |
 | Edge middleware          | `src/middleware.ts` (Clerk + custom-domain bio rewrite; must stay edge-safe, no db/pino imports)                               |

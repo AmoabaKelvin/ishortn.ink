@@ -17,6 +17,7 @@ const CRON_ROUTES = new Map([
   ["0 4 * * *", "/api/cron/cleanup-expired"],
   ["30 */6 * * *", "/api/cron/phishing-rescan"],
   ["5,20,35,50 * * * *", "/api/cron/phishing-rescan?backlog=1"],
+  ["10 * * * *", "/api/cron/api-access-sunset"],
 ]);
 
 // The queue consumer lives in a Next.js route so it shares the app's DB setup.

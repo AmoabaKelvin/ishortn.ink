@@ -1,0 +1,120 @@
+---
+title: API reference
+description: Create, read and update short links and read their analytics over HTTPS with an API key.
+---
+
+The iShortn REST API lets you create short links from your own code, change where they point and pull their click analytics. Every endpoint lives under one base URL and speaks JSON.
+
+```text
+https://ishortn.ink/api/v1
+```
+
+| Endpoint | What it does |
+| --- | --- |
+| [`POST /api/v1/links`](/docs/api/create-link) | Create a short link |
+| [`GET /api/v1/links/{alias}`](/docs/api/get-link) | Get a short link |
+| [`PATCH /api/v1/links/{alias}`](/docs/api/update-link) | Change a link's destination, alias, expiry or schedule |
+| [`GET /api/v1/analytics/{alias}`](/docs/api/link-analytics) | Get click analytics for a link |
+| [`POST /api/v1/clicks/verify`](/docs/api/verify-click) | Confirm a verified click (called by iShortn's redirect page) |
+
+These are the only endpoints. Listing and deleting links isn't available through the API yet; use the [dashboard](/dashboard) for those.
+
+## Authentication
+
+Every request except [Verify a click](/docs/api/verify-click) needs an API key in the `x-api-key` header.
+
+```bash
+curl https://ishortn.ink/api/v1/links/launch-day \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+To create a key:
+
+1. Open [Settings](/dashboard/settings#api-keys) in the dashboard and scroll to **API Keys**.
+2. Click **Create API Key**.
+3. Copy the key from the dialog and store it somewhere safe, such as your secret manager or an environment variable.
+
+The key is shown once. iShortn stores only a SHA-256 hash of it, so a lost key can't be recovered: delete it in Settings and create a new one. Treat the key like a password. Anyone who has it can create and change links on your account, so never put it in client-side code or a public repository.
+
+A missing, unknown or revoked key returns `401` with the body `Invalid or missing API key`. Keys on accounts that are suspended or deleted stop working the same way.
+
+## Which links the API can reach
+
+An API key belongs to you, not to a team, so it works in your **personal workspace**:
+
+- Links created through the API are added to your personal workspace.
+- `GET`, `PATCH` and analytics requests only find links in your personal workspace. Links in a [team workspace](/docs/teams) return `404`.
+
+## Domains
+
+A short link is identified by its alias **and** its domain: `isht.app/launch-day` and `isht.ink/launch-day` are different links. Each endpoint that takes an alias also accepts a `domain`:
+
+- When you leave `domain` out, the API uses the **default domain** from [Settings → General](/dashboard/settings#general). If you haven't picked one, it uses `isht.app`.
+- You can pass any [platform domain](/docs/platform-domains) (`isht.app`, `isht.ink`, `ishortn.ink`) or a [custom domain](/docs/custom-domains) that is **active** in your personal workspace.
+- Any other domain returns `403` with `Domain not available for this API key`.
+
+Domains are matched case-insensitively and a trailing dot is ignored.
+
+## Plans and limits
+
+Requests are checked against the plan of the key's owner, exactly as in the dashboard:
+
+| Rule | Free | Pro | Ultra |
+| --- | --- | --- | --- |
+| New links per month (API and dashboard combined) | <PlanValue plan="free" cap="linksLimit" /> | <PlanValue plan="pro" cap="linksLimit" /> | <PlanValue plan="ultra" cap="linksLimit" /> |
+| Shortest custom alias | 6 characters | 1 character | 1 character |
+| Password protection | No | Yes | Yes |
+| Scheduled activation (`activatesAt`) | No | Yes | Yes |
+| UTM parameters (`utmParams`) | No | No | Yes |
+
+The monthly link count resets on the first day of each calendar month. See [Plans and limits](/docs/plans) for everything else.
+
+## Rate limits
+
+Requests are limited per account, not per key: all of your API keys share one budget. Both windows apply, and each is a sliding window.
+
+<ApiRateLimits />
+
+Every response carries the current state of the window closest to its limit:
+
+| Header | Meaning |
+| --- | --- |
+| `X-RateLimit-Limit` | Requests allowed in that window. |
+| `X-RateLimit-Remaining` | Requests left in that window. |
+| `X-RateLimit-Reset` | Unix time (seconds) when that window rolls over. |
+
+A request over the limit returns `429` with a `Retry-After` header (seconds) and the body `Rate limit exceeded. Retry in N seconds.` Rejected requests don't count against the limit. Wait for `Retry-After` before retrying, and retry other failures with a backoff.
+
+## Responses and errors
+
+Successful responses are JSON with `Content-Type: application/json`. Dates are ISO 8601 strings in UTC, or `null` when unset.
+
+Error responses are **plain text** with an HTTP status code. The body is a human-readable message you can show to your users, for example `Link not found`. When a request body fails validation, the `400` body is a JSON-formatted list of the problems:
+
+```json
+[
+  {
+    "code": "invalid_format",
+    "format": "url",
+    "path": ["url"],
+    "message": "Invalid URL"
+  }
+]
+```
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success |
+| `201` | Link created |
+| `202` | Accepted (Verify a click) |
+| `400` | The request is invalid or a plan rule blocked it. The body says why. |
+| `401` | Missing or invalid API key |
+| `403` | Domain not available, a plan-only feature, or the monthly link limit |
+| `404` | No link with that alias on that domain in your personal workspace |
+| `409` | The new alias is already taken on that domain |
+| `429` | Rate limit exceeded. See [Rate limits](#rate-limits). |
+| `500` | Something went wrong on our side. Retry later. |
+
+## Link safety
+
+Every destination URL is checked before a link is created or its destination changes. A URL that fails the check is rejected with `400` and one of the messages listed in [Abuse and acceptable use](/docs/abuse#link-safety-checks).

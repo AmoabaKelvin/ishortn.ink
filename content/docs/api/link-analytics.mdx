@@ -1,0 +1,116 @@
+---
+title: Link analytics
+description: Get click totals, a daily series and breakdowns by country, city, device, browser and OS for one short link.
+endpoint:
+  method: GET
+  path: /api/v1/analytics/{alias}
+---
+
+Returns the click analytics for one short link in your personal workspace, over the date range the dashboard allows for your plan: the link's whole history on Pro and Ultra, and <PlanValue plan="free" cap="analyticsRangeLimitDays" /> on Free.
+
+## Request
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `alias` | path | string | Yes | The link's alias. |
+| `domain` | query | string | No | The link's domain. Defaults to your default domain, or `isht.app`. See [Domains](/docs/api#domains). |
+
+<CodeGroup>
+
+```bash title="cURL"
+curl "https://ishortn.ink/api/v1/analytics/launch-day?domain=isht.app" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript title="JavaScript"
+const response = await fetch(
+  "https://ishortn.ink/api/v1/analytics/launch-day?domain=isht.app",
+  { headers: { "x-api-key": process.env.ISHORTN_API_KEY } },
+);
+
+if (!response.ok) {
+  throw new Error(`${response.status}: ${await response.text()}`);
+}
+
+const stats = await response.json();
+console.log(`${stats.totalClicks} clicks`);
+```
+
+```python title="Python"
+import os
+
+import requests
+
+response = requests.get(
+    "https://ishortn.ink/api/v1/analytics/launch-day",
+    params={"domain": "isht.app"},
+    headers={"x-api-key": os.environ["ISHORTN_API_KEY"]},
+)
+response.raise_for_status()
+
+stats = response.json()
+print(f"{stats['totalClicks']} clicks")
+```
+
+</CodeGroup>
+
+## Response
+
+`200 OK`. Every `clicksPer…` field is an object that maps a value to its click count. Values with no clicks are left out, so an object can be empty. When a value can't be detected, its clicks are counted under `Unknown`. Clicks from known bots aren't recorded.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `totalClicks` | number | All clicks in `window`, including clicks older than raw-data retention. |
+| `verifiedClicks` | number | Clicks confirmed to come from a real browser. Counted only while [verified clicks](/docs/short-links#verified-clicks) are on. |
+| `clicksPerDate` | object | Clicks per UTC day, keyed `YYYY-MM-DD`, oldest first. |
+| `uniqueClicksPerDate` | object | New unique visitors per UTC day, keyed `YYYY-MM-DD`, oldest first. |
+| `verifiedClicksPerDate` | object | Verified clicks per UTC day. |
+| `clicksPerCountry` | object | Clicks per country name, such as `Ghana`. |
+| `clicksPerCity` | object | Clicks per city name. |
+| `clicksPerContinent` | object | Clicks per continent name, such as `Africa`. |
+| `clicksPerDevice` | object | Clicks per device type, such as `mobile`, `tablet` or `desktop`. |
+| `clicksPerOS` | object | Clicks per operating system. |
+| `clicksPerBrowser` | object | Clicks per browser. |
+| `clicksPerModel` | object | Clicks per device model, such as `iPhone`. |
+| `window` | object | The date range the numbers cover. `days` is the plan's range in days, or `null` for all time. `from` is the start (ISO 8601), or `null` for all time. `to` is the time of the request. |
+
+Every number covers only clicks inside `window`. Raw click data is kept for a limited time on Free and Pro (see [Analytics](/docs/analytics#how-long-data-is-kept)). After that, each day is kept as a daily total. `totalClicks`, `clicksPerDate` and `uniqueClicksPerDate` include those daily totals. The breakdowns and the verified counts cover only the clicks whose raw data is still kept.
+
+```json
+{
+  "totalClicks": 1284,
+  "verifiedClicks": 1102,
+  "clicksPerDate": {
+    "2026-11-18": 402,
+    "2026-11-19": 517,
+    "2026-11-20": 365
+  },
+  "uniqueClicksPerDate": {
+    "2026-11-18": 311,
+    "2026-11-19": 389,
+    "2026-11-20": 254
+  },
+  "verifiedClicksPerDate": {
+    "2026-11-18": 351,
+    "2026-11-19": 438,
+    "2026-11-20": 313
+  },
+  "clicksPerCountry": { "Ghana": 640, "Nigeria": 391, "United States": 253 },
+  "clicksPerCity": { "Accra": 512, "Lagos": 318, "Kumasi": 128 },
+  "clicksPerContinent": { "Africa": 1031, "North America": 253 },
+  "clicksPerDevice": { "mobile": 902, "desktop": 361, "tablet": 21 },
+  "clicksPerOS": { "Android": 611, "iOS": 291, "Windows": 247, "macOS": 135 },
+  "clicksPerBrowser": { "Chrome": 803, "Mobile Safari": 288, "Edge": 193 },
+  "clicksPerModel": { "Unknown": 853, "iPhone": 291, "SM-A546E": 140 },
+  "window": { "days": null, "from": null, "to": "2026-11-20T18:04:11.512Z" }
+}
+```
+
+## Errors
+
+| Status | Body | Cause |
+| --- | --- | --- |
+| `401` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
+| `404` | `Link not found` | No link with that alias on that domain in your personal workspace. |
+| `429` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |
