@@ -387,6 +387,27 @@ export function requiredPlanForUsage(usage: PlanUsage): Plan {
 
 export type GraceReason = "lapsed" | "over_plan";
 
+/**
+ * What a grace notice asks the customer to do. A lapse caused by a failed
+ * payment (Lemon Squeezy `past_due` or `unpaid`) is fixed by updating the card
+ * on the existing subscription; sending it to pricing invites a second
+ * subscription. Cancellations and plan changes go to pricing.
+ */
+export function graceAction(
+  reason: GraceReason,
+  status: string | null | undefined,
+): "update_payment" | "upgrade" {
+  return reason === "lapsed" && (status === "past_due" || status === "unpaid")
+    ? "update_payment"
+    : "upgrade";
+}
+
+export type PaymentUpdateSource = "banner" | "email";
+
+/** The page that fetches a fresh signed update-payment-method URL and redirects to it. */
+export const updatePaymentPath = (source: PaymentUpdateSource) =>
+  `/dashboard/settings/billing/update-payment?source=${source}`;
+
 /** Email stages, stored as the last stage sent. */
 export const GRACE_EMAIL_STAGE = { none: 0, started: 1, reminder: 2, ended: 3 } as const;
 export type GraceEmailKind = "started" | "reminder" | "ended";

@@ -1,6 +1,12 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 
-import { effectivePlan, isGraceActive, paidPlan, planAtLeast } from "@/lib/billing/entitlements";
+import {
+  effectivePlan,
+  graceAction,
+  isGraceActive,
+  paidPlan,
+  planAtLeast,
+} from "@/lib/billing/entitlements";
 import { getPlanCaps, getSubscriptionMode } from "@/lib/billing/plans";
 import { folder } from "@/server/db/schema";
 import { getEventTrackingPause } from "@/server/lib/event-usage";
@@ -47,11 +53,13 @@ export const subscriptionsRouter = createTRPCRouter({
     ) {
       return null;
     }
+    const reason = planGraceReason ?? "lapsed";
     return {
       type: "account" as const,
       plan: planGracePlan,
       endsAt: planGraceEndsAt,
-      reason: planGraceReason ?? "lapsed",
+      reason,
+      action: graceAction(reason, userRecord?.subscriptions?.status),
     };
   }),
 

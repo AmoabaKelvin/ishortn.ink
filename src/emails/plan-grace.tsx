@@ -24,9 +24,15 @@ export type PlanGraceEmailProps = {
   /** What stops being available (already phrased). */
   items: string[];
   upgradeUrl: string;
+  /**
+   * Set when the lapse is a failed payment: the button links here (a page that
+   * opens the subscription's update-payment-method form) instead of pricing.
+   */
+  updatePaymentUrl?: string;
 };
 
-function intro({ kind, reason, planName, endsOn, timeLeft, teamName }: PlanGraceEmailProps) {
+function intro(props: PlanGraceEmailProps) {
+  const { kind, reason, planName, endsOn, timeLeft, teamName, updatePaymentUrl } = props;
   if (reason === "team") {
     return kind === "started"
       ? `Team workspaces are part of the Ultra plan, and the owner of ${teamName} isn't on Ultra right now. The team keeps working as usual until ${endsOn}. After that it becomes read-only for every member: no new links, domains, edits or invites.`
@@ -34,7 +40,12 @@ function intro({ kind, reason, planName, endsOn, timeLeft, teamName }: PlanGrace
   }
   if (reason === "lapsed") {
     if (kind === "ended") {
-      return `Your ${planName} access has ended and your account is on the Free plan now. These features can't be added or changed any more:`;
+      return updatePaymentUrl
+        ? `Your ${planName} access has ended because the last payment didn't go through, and your account is on the Free plan now. These features can't be added or changed any more:`
+        : `Your ${planName} access has ended and your account is on the Free plan now. These features can't be added or changed any more:`;
+    }
+    if (updatePaymentUrl && kind === "started") {
+      return `The last payment for your iShortn ${planName} subscription didn't go through. You keep ${planName} until ${endsOn}. After that, Free plan limits apply:`;
     }
     return kind === "started"
       ? `Your iShortn ${planName} subscription has ended or its last payment didn't go through. You keep ${planName} until ${endsOn}. After that, Free plan limits apply:`
@@ -46,7 +57,21 @@ function intro({ kind, reason, planName, endsOn, timeLeft, teamName }: PlanGrace
 }
 
 export const PlanGraceEmail = (props: PlanGraceEmailProps) => {
-  const { recipientName, kind, reason, planName, items, upgradeUrl } = props;
+  const { recipientName, kind, reason, planName, items, upgradeUrl, updatePaymentUrl } = props;
+  const actionUrl = updatePaymentUrl ?? upgradeUrl;
+
+  let closing: string;
+  if (updatePaymentUrl) {
+    closing =
+      kind === "ended"
+        ? `Update your payment method to restore ${planName}.`
+        : "Update your payment method to keep everything as it is.";
+  } else {
+    closing =
+      kind === "ended"
+        ? `Upgrading to ${planName} restores everything straight away.`
+        : `Upgrade to ${planName} to keep everything as it is. Upgrading later restores it straight away.`;
+  }
 
   return (
     <EmailLayout
@@ -55,7 +80,9 @@ export const PlanGraceEmail = (props: PlanGraceEmailProps) => {
           ? `${props.teamName} needs its owner on Ultra`
           : kind === "ended"
             ? "Your account is on the Free plan now"
-            : `Keep your ${planName} features after ${props.endsOn}`
+            : updatePaymentUrl
+              ? `Update your payment method to keep ${planName}`
+              : `Keep your ${planName} features after ${props.endsOn}`
       }
     >
       <Text style={text}>Hi {recipientName || "there"},</Text>
@@ -73,16 +100,15 @@ export const PlanGraceEmail = (props: PlanGraceEmailProps) => {
       )}
 
       <Text style={text}>
-        Your links keep redirecting with their current settings, and nothing is deleted.{" "}
-        {kind === "ended"
-          ? `Upgrading to ${planName} restores everything straight away.`
-          : `Upgrade to ${planName} to keep everything as it is. Upgrading later restores it straight away.`}
+        Your links keep redirecting with their current settings, and nothing is deleted. {closing}
       </Text>
 
-      <EmailButton href={upgradeUrl}>Upgrade to {planName}</EmailButton>
+      <EmailButton href={actionUrl}>
+        {updatePaymentUrl ? "Update payment method" : `Upgrade to ${planName}`}
+      </EmailButton>
 
       <Text style={smallText}>Or copy and paste this URL into your browser:</Text>
-      <CodeBlock>{upgradeUrl}</CodeBlock>
+      <CodeBlock>{actionUrl}</CodeBlock>
 
       <Text style={text}>Questions? Reply to this email and we&apos;ll help.</Text>
 

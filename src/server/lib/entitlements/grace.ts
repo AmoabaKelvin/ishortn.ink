@@ -8,6 +8,7 @@ import {
   EMPTY_USAGE,
   GRACE_EMAIL_STAGE,
   GRACE_PERIOD_MS,
+  graceAction,
   graceChangeAfterBillingEvent,
   higherPlan,
   lapseEndedByPayment,
@@ -18,6 +19,7 @@ import {
   planAtLeast,
   planBeforeBillingEvent,
   subscribedPlan,
+  updatePaymentPath,
 } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { getAppUrl } from "@/lib/constants/domains";
@@ -418,8 +420,12 @@ function accountSubject(
   reason: GraceReason,
   planName: string,
   endsOn: string,
+  paymentFailed: boolean,
 ) {
   if (kind === "ended") return "Your iShortn account is on the Free plan now";
+  if (paymentFailed && kind === "started") {
+    return `Your iShortn ${planName} payment didn't go through`;
+  }
   if (reason === "lapsed") {
     return kind === "started"
       ? `Your iShortn ${planName} access continues until ${endsOn}`
@@ -482,10 +488,12 @@ export async function sendDueGraceEmails(options: {
     const planName = PLAN_NAMES[gracePlan];
     const endsOn = formatDay(endsAt);
     const stage = GRACE_EMAIL_STAGE[kind];
+    // A failed payment is fixed on the existing subscription, not with a new checkout.
+    const paymentFailed = graceAction(reason, account.subscriptions?.status) === "update_payment";
 
     pending.push({
       to: email,
-      subject: accountSubject(kind, reason, planName, endsOn),
+      subject: accountSubject(kind, reason, planName, endsOn, paymentFailed),
       react: PlanGraceEmail({
         recipientName: account.name,
         kind,
@@ -495,6 +503,7 @@ export async function sendDueGraceEmails(options: {
         timeLeft: timeLeft(endsAt, now),
         items: items.length > 0 || reason !== "lapsed" ? items : freePlanSummary(),
         upgradeUrl: upgradeUrl(gracePlan),
+        updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
       }),
       claim: async () => {
         const [result] = await db

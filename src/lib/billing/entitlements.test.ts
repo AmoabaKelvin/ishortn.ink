@@ -8,6 +8,7 @@ import {
   EMPTY_USAGE,
   GRACE_EMAIL_STAGE,
   GRACE_PERIOD_MS,
+  graceAction,
   graceChangeAfterBillingEvent,
   NO_GRACE,
   overPlanFeatures,
@@ -392,5 +393,23 @@ describe("usage above a plan", () => {
     expect(describeOverPlanFeature(passwords!, "Free")).toBe(
       "Password-protected links: 1 (not included in Free)",
     );
+  });
+});
+
+describe("graceAction", () => {
+  test("a failed payment links to the update-payment-method page", () => {
+    expect(graceAction("lapsed", "past_due")).toBe("update_payment");
+    expect(graceAction("lapsed", "unpaid")).toBe("update_payment");
+  });
+
+  test("cancellations and expiries link to pricing", () => {
+    expect(graceAction("lapsed", "cancelled")).toBe("upgrade");
+    expect(graceAction("lapsed", "expired")).toBe("upgrade");
+    expect(graceAction("lapsed", null)).toBe("upgrade");
+  });
+
+  test("an over-plan grace links to pricing even while a payment is failing", () => {
+    expect(graceAction("over_plan", "active")).toBe("upgrade");
+    expect(graceAction("over_plan", "past_due")).toBe("upgrade");
   });
 });
