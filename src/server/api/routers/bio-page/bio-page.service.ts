@@ -435,7 +435,7 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
       kind: "bio",
     });
     const id = await ctx.db.transaction(async (tx) => {
-      await lockBioLinkBlockCapacity(tx, ctx.workspace.plan, page.id);
+      await lockBioLinkBlockCapacity(tx, ctx.workspace.plan, page.id, ctx.auth.userId);
       const linkId = await insertHiddenTrackingLink(tx, ctx, prepared);
       const [res] = await tx.insert(bioBlock).values({
         bioPageId: page.id,

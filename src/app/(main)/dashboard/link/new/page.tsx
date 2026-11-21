@@ -37,8 +37,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
+import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import {
   DEFAULT_PLATFORM_DOMAIN,
   isPlatformDomain,
@@ -213,7 +215,11 @@ export default function CreateLinkPage() {
     },
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN" || /upgrade/i.test(error.message)) {
-        notifyPlanLimit(error.message, "link_create");
+        notifyPlanLimit(
+          error.message,
+          "link_create",
+          requiredPlanForLimit(error.message, userSubscription.data?.plan),
+        );
       } else {
         toast.error(error.message);
       }
@@ -980,7 +986,15 @@ export default function CreateLinkPage() {
                     </FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
                       <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                        You need to be on a <b>pro plan</b> to schedule links
+                        You need to be on a{" "}
+                        <UpgradeCta
+                          requiredPlan="pro"
+                          source="link_schedule"
+                          className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                        >
+                          Pro plan
+                        </UpgradeCta>{" "}
+                        to schedule links
                       </FormDescription>
                     )}
                     <FormControl>
@@ -1054,7 +1068,15 @@ export default function CreateLinkPage() {
                     </FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
                       <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                        You need to be on a <b>pro plan</b> to create password protected links
+                        You need to be on a{" "}
+                        <UpgradeCta
+                          requiredPlan="pro"
+                          source="link_password"
+                          className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                        >
+                          Pro plan
+                        </UpgradeCta>{" "}
+                        to create password protected links
                       </FormDescription>
                     )}
                     <FormControl>

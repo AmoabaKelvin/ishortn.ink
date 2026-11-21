@@ -111,7 +111,7 @@ describe("bio link block cap under concurrent adds", () => {
     const results = await Promise.allSettled(
       Array.from({ length: 5 }, () =>
         store.transaction(async (tx, insertLinkBlock) => {
-          await lockBioLinkBlockCapacity(tx, "free", 1);
+          await lockBioLinkBlockCapacity(tx, "free", 1, "user_bio_block_cap_test");
           await insertLinkBlock();
         }),
       ),
@@ -125,7 +125,7 @@ describe("bio link block cap under concurrent adds", () => {
   test("paid pages have no cap", async () => {
     const store = fakePageStore(500);
     await store.transaction(async (tx, insertLinkBlock) => {
-      await lockBioLinkBlockCapacity(tx, "pro", 1);
+      await lockBioLinkBlockCapacity(tx, "pro", 1, "user_bio_block_cap_test");
       await insertLinkBlock();
     });
     expect(store.linkBlocks()).toBe(501);

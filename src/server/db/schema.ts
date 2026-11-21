@@ -1467,3 +1467,32 @@ export type NewBioBlock = typeof bioBlock.$inferInsert;
 export type BioBlockType = BioBlock["type"];
 export type BioPageView = typeof bioPageView.$inferSelect;
 export type NewBioPageView = typeof bioPageView.$inferInsert;
+
+// ============================================================================
+// PLAN LIMIT HITS
+// ============================================================================
+
+// One row per user, limit and UTC day when an action is rejected for plan
+// reasons (or a gated screen is shown to a free user), so conversion from each
+// limit can be measured. The unique key on `day` is what dedupes repeat hits.
+export const planLimitHit = mysqlTable(
+  "PlanLimitHit",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    limitKey: varchar("limitKey", { length: 64 }).notNull(),
+    plan: mysqlEnum("plan", ["free", "pro", "ultra"]).notNull(),
+    day: date("day", { mode: "string" }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    limitKeyCreatedAtIdx: index("limitKey_createdAt_idx").on(table.limitKey, table.createdAt),
+    userLimitDayUnique: unique("userId_limitKey_day_unique").on(
+      table.userId,
+      table.limitKey,
+      table.day,
+    ),
+  }),
+);
+
+export type PlanLimitHit = typeof planLimitHit.$inferSelect;

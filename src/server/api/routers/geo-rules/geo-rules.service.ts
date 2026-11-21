@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { canUseGeoRules, getGeoRulesLimit, isUnlimitedGeoRules } from "@/lib/billing/plans";
 import { deleteGeoRulesFromCache } from "@/lib/core/cache";
 import { geoRule } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 
 import { checkWorkspaceLinkLimit, verifyLinkOwnership } from "../link/utils";
 
@@ -27,6 +28,7 @@ async function checkGeoRulesLimit(
   const { plan } = await checkWorkspaceLinkLimit(ctx);
 
   if (!canUseGeoRules(plan)) {
+    await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "geo_rules", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
@@ -47,6 +49,7 @@ async function checkGeoRulesLimit(
   const limit = getGeoRulesLimit(plan);
 
   if (!isUnlimitedGeoRules(plan) && limit !== undefined && currentCount >= limit) {
+    await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "geo_rules", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `Your plan allows a maximum of ${limit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,

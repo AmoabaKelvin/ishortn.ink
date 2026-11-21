@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { cn } from "@/lib/utils";
 import { qrcodeUpdateInput } from "@/server/api/routers/qrcode/qrcode.input";
 import { normalizeTagName } from "@/server/api/routers/tag/utils";
@@ -355,7 +356,15 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                     </FormLabel>
                     {!userSubscription.isLoading && !isProOrUltraUser && (
                       <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                        You need to be on a <b>pro plan</b> to schedule QR codes
+                        You need to be on a{" "}
+                        <UpgradeCta
+                          requiredPlan="pro"
+                          source="link_schedule"
+                          className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                        >
+                          Pro plan
+                        </UpgradeCta>{" "}
+                        to schedule QR codes
                       </FormDescription>
                     )}
                     <FormControl>

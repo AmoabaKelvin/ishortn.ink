@@ -8,6 +8,7 @@ import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domai
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
 import { normalizeAlias } from "@/lib/utils";
 import { customDomain, link, team, user } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { isAliasReserved } from "@/server/lib/reserved-alias";
 import {
   getUserPlanContext,
@@ -89,6 +90,7 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
   const limit = caps.linksLimit;
 
   if (limit !== undefined && currentCount >= limit) {
+    await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "monthly_links", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
       message: monthlyLinkLimitMessage(plan, limit),

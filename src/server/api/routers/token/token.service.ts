@@ -8,6 +8,7 @@ import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
 import { resolvePlan } from "@/lib/billing/plans";
 import { subscription, token } from "@/server/db/schema";
 import { getApiSunset } from "@/server/lib/api-access";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 import type { CreateTokenInput, DeleteTokenInput } from "./token.input";
@@ -45,7 +46,9 @@ export const getApiAccessStatus = async (ctx: ProtectedTRPCContext) => {
 };
 
 export const createToken = async (ctx: ProtectedTRPCContext, input: CreateTokenInput) => {
-  if (!canUseApi(resolvePlan(await getSubscription(ctx)))) {
+  const plan = resolvePlan(await getSubscription(ctx));
+  if (!canUseApi(plan)) {
+    await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "api_keys", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "API access is a Pro feature. Upgrade to Pro to create API keys.",

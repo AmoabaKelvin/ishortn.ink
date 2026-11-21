@@ -18,7 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { useRecordPlanLimitView } from "@/lib/hooks/use-record-plan-limit-view";
 import { createCustomDomainSchema } from "@/server/api/routers/domains/domains.input";
 import { api } from "@/trpc/react";
 
@@ -44,25 +46,10 @@ export function AddCustomDomainModal() {
       toast.error(error.message);
     },
   });
-  const createCheckoutMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
-    onSuccess: async (data) => {
-      if (data.status === "redirect" && data.url) {
-        window.location.href = data.url;
-      }
-    },
-  });
 
   const handleDomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDomain(e.target.value);
     setDomainError(null);
-  };
-
-  const handleUpgrade = async () => {
-    toast.promise(createCheckoutMutation.mutateAsync({ plan: "pro" }), {
-      loading: "Creating checkout session...",
-      success: "Checkout session created successfully",
-      error: "Failed to create checkout session",
-    });
   };
 
   const handleCreateDomain = (event: React.FormEvent<HTMLFormElement>) => {
@@ -82,6 +69,10 @@ export function AddCustomDomainModal() {
   };
 
   const isProUser = (userSubscription?.plan ?? "free") !== "free";
+  useRecordPlanLimitView(
+    "domains_page_view",
+    userSubscription !== undefined && !isProUser && workspace?.type === "personal",
+  );
 
   // Only team owners hold domains.create
   if (workspace?.type === "team" && workspace.role !== "owner") {
@@ -183,12 +174,10 @@ export function AddCustomDomainModal() {
                 {createCustomDomainMutation.isLoading ? "Adding..." : "Add Domain"}
               </Button>
             ) : (
-              <Button
-                type="button"
-                onClick={handleUpgrade}
-                className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
-              >
-                Upgrade to Pro
+              <Button asChild className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700">
+                <UpgradeCta requiredPlan="pro" source="custom_domain">
+                  Upgrade to Pro
+                </UpgradeCta>
               </Button>
             )}
           </DialogFooter>

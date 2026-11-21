@@ -36,6 +36,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
+import { requiredPlanForLimit } from "@/lib/billing/required-plan";
+import { nextPlanFor } from "@/lib/billing/upgrade";
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
 import { cn } from "@/lib/utils";
@@ -338,11 +341,28 @@ function QRCodeCreationPage() {
       setIsSaving(false);
     });
 
-    toast.promise(promise, {
-      loading: "Creating QR Code...",
-      success: "QR Code created successfully",
-      error: (err: Error) => createErrorMessage(err),
-    });
+    const toastId = toast.loading("Creating QR Code...");
+    promise.then(
+      () => toast.success("QR Code created successfully", { id: toastId }),
+      (err: Error) => {
+        // The QR cap and the monthly link cap (each QR code needs a tracking link) are plan
+        // limits: offer the upgrade instead of a dead-end error.
+        if (
+          err instanceof TRPCClientError &&
+          err.data?.code === "FORBIDDEN" &&
+          /upgrade/i.test(err.message)
+        ) {
+          toast.dismiss(toastId);
+          notifyPlanLimit(
+            err.message,
+            "qr_create_limit",
+            requiredPlanForLimit(err.message, userSubDetails?.plan),
+          );
+          return;
+        }
+        toast.error(createErrorMessage(err), { id: toastId });
+      },
+    );
   };
 
   return (
@@ -361,7 +381,12 @@ function QRCodeCreationPage() {
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-500/10">
               <p className="text-[13px] text-amber-700 dark:text-amber-400">
                 You've reached your plan's QR code limit.{" "}
-                <UpgradeText text="Upgrade" source="qr_create_limit" /> to create more.
+                <UpgradeText
+                  text="Upgrade"
+                  source="qr_create_limit"
+                  requiredPlan={nextPlanFor(userSubDetails?.plan ?? "free")}
+                />{" "}
+                to create more.
               </p>
             </div>
           )}

@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
+import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { normalizeCampaignSlug as normalizeSlug } from "@/lib/campaigns/slug";
 import { api } from "@/trpc/react";
 
@@ -40,7 +41,7 @@ export function CreateCampaignDialog({ trigger }: { trigger: React.ReactNode }) 
     },
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN") {
-        notifyPlanLimit(error.message, "campaign_create");
+        notifyPlanLimit(error.message, "campaign_create", requiredPlanForLimit(error.message));
       } else {
         toast.error(error.message);
       }

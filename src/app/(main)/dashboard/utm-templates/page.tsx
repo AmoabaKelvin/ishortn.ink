@@ -4,6 +4,7 @@ import { IconDiamond, IconLoader2, IconPlus, IconTarget } from "@tabler/icons-re
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { api } from "@/trpc/react";
 
 import { UtmTemplateCard } from "./_components/utm-template-card";
@@ -95,14 +96,19 @@ export default function UtmTemplatesPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.35 }}
         >
-          <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400">
+          <UpgradeCta
+            requiredPlan="ultra"
+            source="utm_templates"
+            aria-label="Available on Ultra plan. Upgrade to Ultra"
+            className="mt-6 inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent"
+          >
             <IconDiamond
               size={14}
               stroke={1.5}
               className="text-neutral-400 dark:text-neutral-500"
             />
             Available on Ultra plan
-          </span>
+          </UpgradeCta>
         </motion.div>
       </motion.div>
     );

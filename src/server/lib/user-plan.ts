@@ -4,6 +4,7 @@ import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 
 import type { PLAN_CAPS } from "@/lib/billing/plans";
 import type { Subscription, User } from "@/server/db/schema";
@@ -164,6 +165,8 @@ export async function reserveMonthlyLinkSlot(
     .where(and(eq(user.id, userId), lt(sql`coalesce(${user.monthlyLinkCount}, 0)`, limit)));
 
   if (result.affectedRows === 0) {
+    // Root db, not dbClient: the caller's transaction rolls back on this throw.
+    await recordPlanLimitHit({ userId, limitKey: "monthly_links", plan: planCtx.plan });
     throw new TRPCError({
       code: "FORBIDDEN",
       message: monthlyLinkLimitMessage(planCtx.plan, limit),

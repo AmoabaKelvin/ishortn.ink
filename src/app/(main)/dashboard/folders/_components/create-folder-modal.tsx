@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { toastMutationError } from "@/lib/analytics/plan-limit-toast";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -59,9 +60,7 @@ export function CreateFolderModal({
       reset();
       setOpen(false);
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (error) => toastMutationError(error, "folder_create"),
   });
 
   const onSubmit = (data: CreateFolderInput) => {

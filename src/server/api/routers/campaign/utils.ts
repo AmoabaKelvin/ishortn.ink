@@ -4,6 +4,7 @@ import { and, count, eq } from "drizzle-orm";
 
 import { getCampaignLimit } from "@/lib/billing/plans";
 import { campaign } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { workspaceFilter } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
@@ -112,6 +113,11 @@ export async function checkCampaignLimit(ctx: WorkspaceTRPCContext): Promise<voi
 
   const current = Number(row?.count ?? 0);
   if (current >= limit) {
+    await recordPlanLimitHit({
+      userId: ctx.auth.userId,
+      limitKey: "campaigns",
+      plan: ctx.workspace.plan,
+    });
     throw new TRPCError({
       code: "FORBIDDEN",
       message:

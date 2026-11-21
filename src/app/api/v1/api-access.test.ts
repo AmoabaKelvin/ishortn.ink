@@ -7,6 +7,7 @@ import { env } from "@/env.mjs";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { clearApiSunsetCache } from "@/server/lib/api-access";
+import { clearPlanLimitHitMemo } from "@/server/lib/plan-limit-hits";
 
 import { apiAccessRevokedResponse, apiSunsetHeaders, withApiSunsetNotice } from "./api-access";
 import { POST } from "./links/route";
@@ -95,6 +96,8 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
   async function cleanup() {
     await db.delete(schema.apiAccessSunset);
     clearApiSunsetCache();
+    clearPlanLimitHitMemo();
+    await db.delete(schema.planLimitHit).where(eq(schema.planLimitHit.userId, USER_ID));
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
@@ -199,6 +202,11 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
     const response = await createLink();
 
     expect(response.status).toBe(403);
+    const hits = await db
+      .select()
+      .from(schema.planLimitHit)
+      .where(eq(schema.planLimitHit.userId, USER_ID));
+    expect(hits.map((hit) => [hit.limitKey, hit.plan])).toEqual([["api_v1", "free"]]);
     expect(await response.json()).toEqual({
       error: "API access requires Pro",
       upgrade_url: "https://ishortn.ink/pricing",

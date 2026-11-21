@@ -9,6 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
+import {
+  getUpgradeReason,
+  resolveAutoUpgradePlan,
+  resolveHighlightPlan,
+} from "@/lib/billing/upgrade";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -74,6 +79,8 @@ type PendingChange = { plan: PaidPricingPlan; kind: "switch" | "upgrade" };
 
 const PLAN_ORDER = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
+const paidPlans = plans.filter((plan): plan is PaidPricingPlan => plan.id !== "free");
+
 export function PricingCards({
   currentPlan,
   currentInterval,
@@ -87,17 +94,15 @@ export function PricingCards({
   // Arriving with ?plan=pro|ultra (e.g. right after signup) starts that upgrade
   // right away: hosted checkout for free users, the confirm dialog otherwise.
   const [autoUpgrade] = useState(() => {
-    const plan = plans.find((p) => p.id === searchParams?.get("plan"));
-    if (
-      !plan ||
-      plan.id === "free" ||
-      subscriptionMode === "resume" ||
-      PLAN_ORDER[plan.id] <= PLAN_ORDER[currentPlan]
-    ) {
-      return null;
-    }
-    return plan;
+    const planId = resolveAutoUpgradePlan(searchParams, currentPlan, subscriptionMode);
+    return paidPlans.find((p) => p.id === planId) ?? null;
   });
+  // Arriving from an in-app upgrade prompt (?highlight=pro|ultra&source=…)
+  // only preselects the plan that removes the limit; it never starts checkout.
+  const highlightPlan = resolveHighlightPlan(searchParams?.get("highlight"), currentPlan);
+  const highlightReason = highlightPlan
+    ? getUpgradeReason(searchParams?.get("source"), highlightPlan)
+    : null;
   const autoCheckout = autoUpgrade && subscriptionMode === "checkout" ? autoUpgrade : null;
   const autoCheckoutFired = useRef(false);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(autoCheckout?.id ?? null);
@@ -195,6 +200,11 @@ export function PricingCards({
         <p className="mt-3 text-gray-500 dark:text-neutral-400">
           Choose the plan that fits your needs. Upgrade or downgrade at any time.
         </p>
+        {highlightReason && (
+          <p className="mt-3 text-sm font-medium text-blue-600 dark:text-blue-400">
+            {highlightReason}
+          </p>
+        )}
       </div>
 
       {/* Billing interval toggle */}
@@ -235,24 +245,29 @@ export function PricingCards({
           // offer a switch instead of "Manage Subscription".
           const canSwitchInterval =
             canChangeInPlace && isCurrentPlan && plan.id !== "free" && interval !== currentInterval;
+          // The highlighted plan takes over the "Popular" treatment so only one card stands out.
+          const isHighlighted = plan.id === highlightPlan;
+          const isEmphasized = highlightPlan
+            ? isHighlighted
+            : "popular" in plan && plan.popular && currentPlan === "free";
 
           return (
             <div
               key={plan.id}
               className={cn(
                 "relative flex flex-col rounded-2xl border bg-white dark:bg-card p-6 shadow-sm transition-shadow hover:shadow-md",
-                plan.popular &&
-                  currentPlan === "free" &&
+                isEmphasized &&
+                  !isCurrentPlan &&
                   "border-gray-900 dark:border-border ring-1 ring-gray-900 dark:ring-border",
                 isCurrentPlan && "border-blue-500 ring-1 ring-blue-500",
               )}
             >
-              {/* Popular Badge */}
-              {plan.popular && !isCurrentPlan && currentPlan === "free" && (
+              {/* Popular / highlighted Badge */}
+              {isEmphasized && !isCurrentPlan && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-gray-900 text-white dark:bg-muted dark:text-foreground px-3 py-1">
+                  <Badge className="whitespace-nowrap bg-gray-900 text-white dark:bg-muted dark:text-foreground px-3 py-1">
                     <Sparkles className="h-3 w-3 mr-1" />
-                    Popular
+                    {isHighlighted ? "Removes this limit" : "Popular"}
                   </Badge>
                 </div>
               )}
@@ -318,7 +333,7 @@ export function PricingCards({
                   <Button
                     className={cn(
                       "w-full",
-                      plan.popular
+                      isEmphasized
                         ? "bg-gray-900 hover:bg-gray-800 dark:bg-muted dark:hover:bg-accent dark:text-foreground"
                         : "",
                     )}

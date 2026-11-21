@@ -1,0 +1,30 @@
+import { nextPlanFor } from "./upgrade";
+
+import type { Plan } from "./plans";
+import type { UpgradePlan } from "./upgrade";
+
+/**
+ * The plan that lifts a server plan-limit rejection. Messages that name only
+ * Ultra ("…on the Ultra plan", "Upgrade to Ultra for unlimited…") need Ultra;
+ * everything else is lifted by the next plan above the user's current one.
+ */
+export function requiredPlanForLimit(message: string, currentPlan: Plan = "free"): UpgradePlan {
+  if (/\bultra\b/i.test(message) && !/\bpro\b/i.test(message)) return "ultra";
+  return nextPlanFor(currentPlan);
+}
+
+type MaybePlanLimitError = { message: string; data?: { code?: string } | null };
+
+/** A FORBIDDEN error whose message is a plan gate ("…Upgrade…", "…available on Pro…"). */
+export function isPlanLimitError(error: MaybePlanLimitError): boolean {
+  return error.data?.code === "FORBIDDEN" && /upgrade|available on/i.test(error.message);
+}
+
+/** Upgrade source for a plan rejection on link edit, from the gate named in the message. */
+export function linkEditLimitSource(message: string): string {
+  if (/targeting rule/i.test(message)) return "geo_rules";
+  if (/milestone/i.test(message)) return "milestones";
+  if (/password/i.test(message)) return "link_password";
+  if (/schedul/i.test(message)) return "link_schedule";
+  return "link_edit";
+}

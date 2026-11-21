@@ -1,25 +1,26 @@
 "use client";
 
-import Link from "next/link";
+import { UpgradeCta } from "@/components/upgrade-cta";
 
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import type { UpgradePlan } from "@/lib/billing/upgrade";
 
 type UpgradeTextProps = {
   text?: string;
   /** Where the prompt sits, for upgrade-click analytics. */
   source: string;
+  requiredPlan?: UpgradePlan;
 };
 
 /** Inline upgrade link for use inside a sentence. */
-function UpgradeText({ text, source }: UpgradeTextProps) {
+function UpgradeText({ text, source, requiredPlan = "pro" }: UpgradeTextProps) {
   return (
-    <Link
-      href="/dashboard/pricing"
-      onClick={() => trackUpgradeClick(source)}
+    <UpgradeCta
+      requiredPlan={requiredPlan}
+      source={source}
       className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
     >
       {text ?? "Upgrade your subscription"}
-    </Link>
+    </UpgradeCta>
   );
 }
 
