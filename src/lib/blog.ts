@@ -1,13 +1,14 @@
-import fs from "fs";
-import path from "path";
-
 import matter from "gray-matter";
 import { remark } from "remark";
 import gfm from "remark-gfm";
 import html from "remark-html";
 import { z } from "zod";
 
-const blogDirectory = path.join(process.cwd(), "content/blog");
+import { loadMarkdownSources } from "./markdown-sources";
+
+const blogSources = loadMarkdownSources("content/blog", () =>
+  import.meta.glob("/content/blog/*.md", { eager: true, query: "?raw" }),
+);
 
 // YAML yields a Date for unquoted dates and a string for quoted ones; keep only the date part.
 function dateOnly(value: Date | string): string {
@@ -57,51 +58,42 @@ function estimateReadingTime(content: string): number {
   return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
 }
 
+// Scheduled posts merge ahead of their `date` and go live on that UTC day. `now` is a parameter so
+// tests can pin the clock.
+export function isPostVisible(
+  post: Pick<BlogPostFrontmatter, "date" | "published">,
+  now: Date = new Date(),
+): boolean {
+  // Both sides are YYYY-MM-DD, so string order is date order.
+  return post.published && post.date <= now.toISOString().slice(0, 10);
+}
+
 export async function getAllPosts(): Promise<BlogPost[]> {
-  if (!fs.existsSync(blogDirectory)) {
-    return [];
-  }
-
-  const fileNames = fs.readdirSync(blogDirectory);
-  const markdownFiles = fileNames.filter((name) => name.endsWith(".md") || name.endsWith(".mdx"));
-
-  const posts = await Promise.all(
-    markdownFiles.map(async (fileName) => {
-      const slug = fileName.replace(/\.mdx?$/, "");
-      return getPostBySlug(slug);
-    }),
-  );
+  const posts = await Promise.all([...blogSources.keys()].map(getPostBySlug));
 
   return posts
-    .filter((post): post is BlogPost => post !== null && post.published)
+    .filter((post): post is BlogPost => post !== null)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
+// Returns null for unpublished and not-yet-dated posts, so their URLs 404.
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
-  // Try both .md and .mdx extensions
-  const extensions = [".md", ".mdx"];
-  let fullPath: string | null = null;
-
-  for (const ext of extensions) {
-    const candidatePath = path.join(blogDirectory, `${slug}${ext}`);
-    if (fs.existsSync(candidatePath)) {
-      fullPath = candidatePath;
-      break;
-    }
-  }
-
-  if (!fullPath) {
+  const source = blogSources.get(slug);
+  if (source === undefined) {
     return null;
   }
 
-  const fileContents = fs.readFileSync(fullPath, "utf8");
-  const { data, content } = matter(fileContents);
+  const { data, content } = matter(source);
+  const frontmatter = blogPostFrontmatterSchema.parse(data);
+  if (!isPostVisible(frontmatter)) {
+    return null;
+  }
 
   const processedContent = await remark().use(gfm).use(html).process(content);
   const htmlContent = processedContent.toString();
 
   return {
-    ...blogPostFrontmatterSchema.parse(data),
+    ...frontmatter,
     slug,
     content,
     htmlContent,

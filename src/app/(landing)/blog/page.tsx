@@ -20,6 +20,9 @@ import {
 
 import type { Metadata } from "next";
 
+// Rebuild hourly so posts scheduled with a future `date` appear on that day without a deploy.
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Blog",
   description:
