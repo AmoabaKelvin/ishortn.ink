@@ -97,9 +97,9 @@ export function gateOutcome(tags: string[], probe: DeepProbe): GateOutcome {
       };
     case "not-configured":
       return {
-        level: "warn",
+        level: "fail",
         message:
-          "The Worker has no HEALTHCHECK_TOKEN secret, so the migration gate was skipped. Set it with `wrangler secret put HEALTHCHECK_TOKEN`.",
+          "The Worker has no HEALTHCHECK_TOKEN secret, so production's migration state can't be checked. Not deploying. Set it with `wrangler secret put HEALTHCHECK_TOKEN` to the same value as the repository secret.",
       };
     case "unauthorized":
       return {
@@ -225,8 +225,11 @@ async function gate(): Promise<number> {
   const tags = journalTags(readFileSync(JOURNAL_PATH, "utf8"));
   const token = process.env.HEALTHCHECK_TOKEN;
   if (!token) {
-    annotate("warning", "HEALTHCHECK_TOKEN is not set, so the migration gate was skipped.");
-    return 0;
+    annotate(
+      "error",
+      "HEALTHCHECK_TOKEN is not set, so production's migration state can't be checked. Not deploying. Add it as a repository secret.",
+    );
+    return 1;
   }
   for (let attempt = 1; ; attempt++) {
     const outcome = gateOutcome(tags, await probeDeep(token));

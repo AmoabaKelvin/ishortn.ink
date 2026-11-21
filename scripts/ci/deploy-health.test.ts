@@ -124,9 +124,12 @@ describe("gateOutcome", () => {
     expect(gateOutcome(tags, healthy(3)).level).toBe("pass");
   });
 
-  test("warns and continues while the endpoint or its secret isn't deployed", () => {
+  test("warns and continues while the endpoint isn't deployed", () => {
     expect(gateOutcome(tags, { kind: "missing" }).level).toBe("warn");
-    expect(gateOutcome(tags, { kind: "not-configured" }).level).toBe("warn");
+  });
+
+  test("fails when the Worker has no HEALTHCHECK_TOKEN secret", () => {
+    expect(gateOutcome(tags, { kind: "not-configured" }).level).toBe("fail");
   });
 
   test("fails on a bad token", () => {
