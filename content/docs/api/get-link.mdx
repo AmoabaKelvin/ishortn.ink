@@ -84,6 +84,7 @@ print(response.json()["url"])
 | Status | Body | Cause |
 | --- | --- | --- |
 | `401` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (JSON) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
 | `403` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
 | `404` | `Link not found` | No link with that alias on that domain in your personal workspace. |
 | `429` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

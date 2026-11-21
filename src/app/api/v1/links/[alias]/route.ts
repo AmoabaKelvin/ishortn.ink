@@ -3,11 +3,13 @@ import { z } from "zod";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { normalizeAlias } from "@/lib/utils";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { MINIMUM_ALIAS_LENGTH_FREE } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { isAliasReserved, reserveLinkAliases } from "@/server/lib/reserved-alias";
 
 import {
   apiDomainWriteError,
@@ -128,15 +130,22 @@ export const PATCH = withApiKey(
       }
       filteredUpdateData.url = parsed.data.url;
     }
-    if (parsed.data.alias !== undefined && parsed.data.alias !== existingLink.alias) {
-      if (token.plan === "free" && parsed.data.alias.length < MINIMUM_ALIAS_LENGTH_FREE) {
+    const newAlias = parsed.data.alias;
+    const renamed =
+      newAlias !== undefined &&
+      normalizeAlias(newAlias) !== normalizeAlias(existingLink.alias ?? "");
+    if (renamed) {
+      if (token.plan === "free" && newAlias.length < MINIMUM_ALIAS_LENGTH_FREE) {
         return new Response(
           `Custom aliases must be at least ${MINIMUM_ALIAS_LENGTH_FREE} characters on the free plan. Upgrade to Pro for shorter aliases.`,
           { status: 403 },
         );
       }
-      filteredUpdateData.alias = parsed.data.alias;
+      if (await isAliasReserved(db, newAlias, existingLink.domain)) {
+        return new Response("Alias already exists for this domain", { status: 409 });
+      }
     }
+    if (newAlias !== undefined) filteredUpdateData.alias = newAlias;
     if (parsed.data.expiresAt !== undefined) {
       filteredUpdateData.disableLinkAfterDate = parsed.data.expiresAt
         ? new Date(parsed.data.expiresAt)
@@ -165,7 +174,15 @@ export const PATCH = withApiKey(
     }
 
     try {
-      await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+      if (renamed) {
+        // A rename frees the old alias just like a delete does.
+        await db.transaction(async (tx) => {
+          await reserveLinkAliases(tx, eq(link.id, existingLink.id), "deleted");
+          await tx.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+        });
+      } else {
+        await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+      }
 
       // Refetch by id: ownership is already settled, and the alias may have just
       // changed, so looking it up by alias again would race a concurrent rename.

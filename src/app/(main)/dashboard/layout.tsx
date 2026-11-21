@@ -6,14 +6,19 @@ import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { ensureUser } from "@/server/lib/ensure-user";
+import { hasBouncedEmail } from "@/server/lib/notifications/suppression";
 
 import { AttributionRecorder } from "./_components/attribution-recorder";
+import { BouncedEmailBanner } from "./_components/bounced-email-banner";
 import { DomainMigrationGate } from "./_components/domain-migration-gate";
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
 import { PlanGraceBanner } from "./_components/plan-grace-banner";
 import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
+import { trackingPausedBannerState } from "./_components/tracking-paused";
+import { TrackingPausedBanner } from "./_components/tracking-paused-banner";
+import { getDashboardSubscription } from "./_lib/get-subscription";
 
 interface Props {
   children: React.ReactNode;
@@ -31,9 +36,15 @@ export default async function DashboardLayout({ children }: Props) {
   let isAdmin = false;
   let isRestricted = false;
   let userName: string | null = null;
+  let emailBounced = false;
 
   if (session?.userId) {
-    const currentUser = await ensureUser(session.userId);
+    // Parallel so the banner check adds no round trip; it only hides the banner if it fails.
+    const [currentUser, bounced] = await Promise.all([
+      ensureUser(session.userId),
+      hasBouncedEmail(session.userId).catch(() => false),
+    ]);
+    emailBounced = bounced;
 
     isAdmin = currentUser?.isAdmin ?? false;
     isRestricted = !!currentUser?.restrictedAt;
@@ -127,6 +138,11 @@ export default async function DashboardLayout({ children }: Props) {
     }
   }
 
+  // Fetched after ensureUser so a just-provisioned user has a row. The sidebar reads the same
+  // cache() entry, so the paused-tracking banner adds no query.
+  const subscription = session?.userId ? await getDashboardSubscription() : null;
+  const trackingPaused = trackingPausedBannerState(subscription);
+
   return (
     <div className={cn("min-h-screen bg-neutral-50 dark:bg-accent/50", funnelSans.className)}>
       <SidebarWrapper isAdmin={isAdmin} userName={userName} />
@@ -150,6 +166,8 @@ export default async function DashboardLayout({ children }: Props) {
               </p>
             </div>
           )}
+          {emailBounced && <BouncedEmailBanner />}
+          {trackingPaused && <TrackingPausedBanner {...trackingPaused} />}
           <div className="mt-7 py-4">
             <PlanGraceBanner />
             {children}

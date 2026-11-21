@@ -1,0 +1,92 @@
+// Template for self-hosted instances; see content/docs/self-hosting.mdx.
+// Copy it over wrangler.jsonc (which holds the hosted service's resource IDs)
+// and replace every <placeholder> with the IDs wrangler prints when you
+// create each resource. Keep the bindings, queue settings and cron
+// expressions in sync with wrangler.jsonc.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Rename freely; WORKER_SELF_REFERENCE below must name the same Worker.
+  "name": "ishortn",
+  "main": "custom-worker.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  // Serves the app and its short links on your domain. The zone must be on
+  // this Cloudflare account; wrangler creates the DNS record and certificate.
+  "routes": [
+    {
+      "pattern": "links.example.com",
+      "custom_domain": true,
+    },
+  ],
+  // Cron jobs, the click queue consumer and ISR revalidation call the app
+  // through this binding.
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "ishortn",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      // wrangler kv namespace create LINK_CACHE_KV
+      "binding": "LINK_CACHE_KV",
+      "id": "<link-cache-kv-namespace-id>",
+    },
+    {
+      // wrangler kv namespace create NEXT_INC_CACHE_KV
+      "binding": "NEXT_INC_CACHE_KV",
+      "id": "<next-incremental-cache-kv-namespace-id>",
+    },
+  ],
+  "hyperdrive": [
+    {
+      // wrangler hyperdrive create ishortn-db --connection-string="mysql://..." --caching-disabled
+      "binding": "HYPERDRIVE",
+      "id": "<hyperdrive-config-id>",
+    },
+  ],
+  // wrangler queues create ishortn-clicks && wrangler queues create ishortn-clicks-dlq
+  "queues": {
+    "producers": [
+      {
+        "binding": "CLICK_QUEUE",
+        "queue": "ishortn-clicks",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "ishortn-clicks",
+        "max_batch_size": 100,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "max_concurrency": 1,
+        "dead_letter_queue": "ishortn-clicks-dlq",
+      },
+    ],
+  },
+  // Each expression maps to a route in CRON_ROUTES (custom-worker.ts). Remove
+  // the ones you don't need; an expression missing from CRON_ROUTES only logs.
+  "triggers": {
+    "crons": [
+      "0 9 * * *",
+      "0 0 * * *",
+      "0 2 * * SUN",
+      "0 4 * * *",
+      "30 */6 * * *",
+      "5,20,35,50 * * * *",
+      "10 * * * *",
+      "40 * * * *",
+    ],
+  },
+  // Needs the Workers Paid plan; only the phishing rescan comes close to it.
+  "limits": {
+    "cpu_ms": 300000,
+  },
+  "observability": {
+    "enabled": true,
+  },
+}

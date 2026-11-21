@@ -319,6 +319,23 @@ export const link = mysqlTable(
   }),
 );
 
+// Aliases on platform domains that may never be claimed again once their link is
+// gone, so old printed codes and shared URLs can't start pointing somewhere new.
+// Custom-domain aliases are not recorded: only the domain's owner can use them.
+export const reservedAlias = mysqlTable(
+  "ReservedAlias",
+  {
+    id: serial("id").primaryKey(),
+    domain: varchar("domain", { length: 255 }).notNull(),
+    alias: varchar("alias", { length: 20 }).notNull(), // normalizeAlias()d
+    reason: mysqlEnum("reason", ["deleted", "purged", "blocked"]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    domainAliasIdx: unique("reservedAlias_domain_alias").on(table.domain, table.alias),
+  }),
+);
+
 // Targeting rules for links: route or block by visitor location or device
 export const geoRule = mysqlTable(
   "GeoRule",
@@ -663,6 +680,27 @@ export const blockedDomain = mysqlTable("BlockedDomain", {
   createdAt: timestamp("createdAt").defaultNow(),
   createdByUserId: varchar("createdByUserId", { length: 32 }),
 });
+
+// Addresses Resend reported as hard-bounced or complained (src/app/api/webhooks/resend).
+// Non-essential email skips active rows; a later delivery clears a bounce by setting clearedAt.
+export const emailSuppression = mysqlTable(
+  "EmailSuppression",
+  {
+    id: serial("id").primaryKey(),
+    email: varchar("email", { length: 255 }).notNull(),
+    type: mysqlEnum("suppressionType", ["bounced", "complained"]).notNull(),
+    // The account with this address when the event arrived, if any.
+    userId: varchar("userId", { length: 32 }),
+    detail: varchar("detail", { length: 255 }),
+    lastEventAt: timestamp("lastEventAt").notNull(),
+    clearedAt: timestamp("clearedAt"),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    emailTypeIdx: unique("emailSuppression_email_type_idx").on(table.email, table.type),
+    lastEventAtIdx: index("emailSuppression_lastEventAt_idx").on(table.lastEventAt),
+  }),
+);
 
 export const flaggedLink = mysqlTable(
   "FlaggedLink",

@@ -551,8 +551,22 @@
     {
       "idx": 78,
       "version": "5",
-      "when": 1795217167871,
-      "tag": "0078_complete_jackpot",
+      "when": 1795221725509,
+      "tag": "0078_lean_wong",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "5",
+      "when": 1795227448529,
+      "tag": "0079_dark_retro_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "5",
+      "when": 1795232074382,
+      "tag": "0080_numerous_dark_beast",
       "breakpoints": true
     }
   ]

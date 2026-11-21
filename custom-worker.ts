@@ -1,5 +1,6 @@
 // @ts-ignore `.open-next/worker.js` is generated at build time
 import { default as handler } from "./.open-next/worker.js";
+import { APP_BASE_DOMAIN } from "./src/lib/constants/domains";
 import { applyLinkStateStatus } from "./src/lib/routing/link-state";
 import { getWwwRedirectUrl } from "./src/lib/routing/www-redirect";
 
@@ -32,10 +33,10 @@ function callApp(env: Env, path: string, body?: ClickEvent[]): Promise<Response>
   if (!self) throw new Error("WORKER_SELF_REFERENCE binding missing");
   const headers = new Headers({ Authorization: `Bearer ${env.CRON_SECRET}` });
   if (body === undefined) {
-    return self.fetch(`https://ishortn.ink${path}`, { method: "GET", headers });
+    return self.fetch(`https://${APP_BASE_DOMAIN}${path}`, { method: "GET", headers });
   }
   headers.set("content-type", "application/json");
-  return self.fetch(`https://ishortn.ink${path}`, {
+  return self.fetch(`https://${APP_BASE_DOMAIN}${path}`, {
     method: "POST",
     headers,
     body: JSON.stringify(body),

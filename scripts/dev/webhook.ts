@@ -6,17 +6,18 @@ import { fileURLToPath } from "node:url";
 
 import { Webhook } from "svix";
 
-// bun run webhook <clerk|lemonsqueezy> <event> [--user <clerkUserId>] [--email <email>]
+// bun run webhook <clerk|resend|lemonsqueezy> <event> [--user <clerkUserId>] [--email <email>]
 // Signs scripts/dev/fixtures/<provider>/<event>.json and POSTs it to the local app.
 
 const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const DEFAULT_USER_ID = "user_local_dev_00000000000000000";
 const DEFAULT_EMAIL = "dev+clerk_test@example.com";
 
-type Provider = "clerk" | "lemonsqueezy";
+type Provider = "clerk" | "resend" | "lemonsqueezy";
 
 const ROUTES = {
   clerk: "/api/webhooks/clerk",
+  resend: "/api/webhooks/resend",
   lemonsqueezy: "/api/webhooks/lemonsqueezy",
 } as const;
 
@@ -29,7 +30,7 @@ function usage(message?: string): never {
   if (message) console.error(`error: ${message}\n`);
   console.error(
     [
-      "usage: bun run webhook <clerk|lemonsqueezy> <event> [--user <id>] [--email <email>] [--url <base>]",
+      "usage: bun run webhook <clerk|resend|lemonsqueezy> <event> [--user <id>] [--email <email>] [--url <base>]",
       "",
       "  --user   Clerk user id substituted for __USER_ID__ (default: the seed dev user)",
       "  --email  email substituted for __EMAIL__ (default: dev+clerk_test@example.com)",
@@ -55,8 +56,8 @@ function requireSecret(name: string): string {
 
 function sign(provider: Provider, body: string): Headers {
   const headers = new Headers({ "content-type": "application/json" });
-  if (provider === "clerk") {
-    const secret = requireSecret("WEBHOOK_SECRET");
+  if (provider === "clerk" || provider === "resend") {
+    const secret = requireSecret(provider === "clerk" ? "WEBHOOK_SECRET" : "RESEND_WEBHOOK_SECRET");
     const msgId = `msg_${crypto.randomBytes(12).toString("hex")}`;
     const timestamp = new Date();
     headers.set("svix-id", msgId);
@@ -72,7 +73,7 @@ function sign(provider: Provider, body: string): Headers {
 async function main() {
   const argv = process.argv.slice(2);
   const [provider, event] = argv;
-  if (provider !== "clerk" && provider !== "lemonsqueezy") {
+  if (provider !== "clerk" && provider !== "resend" && provider !== "lemonsqueezy") {
     usage(`unknown provider "${provider ?? ""}"`);
   }
   if (!event) {

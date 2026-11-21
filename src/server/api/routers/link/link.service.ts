@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import {
   and,
   asc,
@@ -13,6 +12,7 @@ import {
   isNull,
   like,
   lt,
+  lte,
   or,
   sql,
   sum,
@@ -26,7 +26,8 @@ import {
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { summarizeArchived } from "@/lib/core/analytics";
+import { bucketKey, resolveRangeWindow, summarizeArchived } from "@/lib/core/analytics";
+import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import {
   buildCacheKey,
@@ -38,7 +39,6 @@ import {
   setStringInCache,
 } from "@/lib/core/cache";
 import { matchTargetingRules } from "@/lib/core/geo-rules/matcher";
-import { generateShortLink } from "@/lib/core/links";
 import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { normalizeAlias } from "@/lib/utils";
@@ -68,6 +68,11 @@ import {
 } from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import {
+  generateUnreservedAlias,
+  isAliasReserved,
+  reserveLinkAliases,
+} from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   assertCanEnableVerifiedClicks,
@@ -104,6 +109,7 @@ import {
   sameUtmParams,
   settleWithConcurrency,
   toPublicLink,
+  checkAliasAvailability as assertAliasAvailable,
   validateAlias,
 } from "./utils";
 
@@ -424,7 +430,8 @@ const createLinkSteps = async (
 
   const domain = input.domain?.trim() || DEFAULT_PLATFORM_DOMAIN;
   await assertDomainAllowed(ctx, domain);
-  const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
+  const alias =
+    input.alias && input.alias !== "" ? input.alias : await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
   await checkUrl(input.url);
@@ -677,6 +684,9 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   if (input.alias && input.alias !== existingLink.alias) {
     const domain = input.domain ?? existingLink.domain;
     await validateAlias(ctx, input.alias, domain, isPaidUser);
+  } else if (input.domain && input.domain !== existingLink.domain && existingLink.alias) {
+    // Moving the alias to another domain claims it there.
+    await assertAliasAvailable(ctx, existingLink.alias, input.domain);
   }
 
   // Paid-only settings can't be added or changed without the plan, but forms
@@ -813,13 +823,22 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     }
   }
 
+  const linkWhere = and(
+    eq(link.id, input.id),
+    workspaceFilter(ctx.workspace, link.userId, link.teamId),
+  );
+  const freesOldAlias =
+    (!!input.alias && normalizeAlias(input.alias) !== normalizeAlias(existingLink.alias ?? "")) ||
+    (!!input.domain && input.domain.toLowerCase() !== existingLink.domain.toLowerCase());
+
   // One transaction: tags are replaced by delete-then-insert, so a failure
   // part-way must not leave the link without its previous tags.
   await ctx.db.transaction(async (tx) => {
-    await tx
-      .update(link)
-      .set(linkData)
-      .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+    // A rename frees the old alias just like a delete does.
+    if (freesOldAlias) {
+      await reserveLinkAliases(tx, linkWhere, "deleted");
+    }
+    await tx.update(link).set(linkData).where(linkWhere);
 
     if (tagNames) {
       await associateTagsWithLink({ ...ctx, db: tx }, input.id, tagNames);
@@ -898,11 +917,16 @@ export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput)
 
   await ctx.db.delete(linkMilestone).where(eq(linkMilestone.linkId, input.id));
 
+  const where = and(
+    eq(link.id, input.id),
+    workspaceFilter(ctx.workspace, link.userId, link.teamId),
+  );
   await Promise.all([
     deleteFromCache(buildCacheKey(linkToDelete.domain, linkToDelete.alias!)),
-    ctx.db
-      .delete(link)
-      .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId))),
+    ctx.db.transaction(async (tx) => {
+      await reserveLinkAliases(tx, where, "deleted");
+      await tx.delete(link).where(where);
+    }),
   ]);
 };
 
@@ -967,7 +991,8 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     // 5. Delete milestone notifications
     await tx.delete(linkMilestone).where(inArray(linkMilestone.linkId, validLinkIds));
 
-    // 6. Finally delete the links themselves
+    // 6. Finally delete the links themselves, tombstoning their aliases
+    await reserveLinkAliases(tx, inArray(link.id, validLinkIds), "deleted");
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
 
@@ -1121,11 +1146,11 @@ const shortenLinkSteps = async (
 ) => {
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
-  const alias = await generateShortLink();
   const savedDomain = await getWorkspaceDefaultDomain(ctx);
   // The saved default can outlive the domain (deleted, or never verified)
   await assertDomainOwned(ctx, savedDomain);
   const domain = await toPlanAllowedDomain(ctx, savedDomain);
+  const alias = await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
   await assertUrlSafe(input.url);
@@ -1172,37 +1197,27 @@ const shortenLinkSteps = async (
 
 export const getLinkVisits = async (
   ctx: WorkspaceTRPCContext,
-  input: { id: string; domain: string; range: string },
+  input: { id: string; domain?: string; range: string },
 ) => {
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
 
+  const domain = input.domain ?? (await getWorkspaceDefaultDomain(ctx));
+
   // Use workspace filtering to ensure the link belongs to the current workspace
   const foundLink = await ctx.db.query.link.findFirst({
     where: and(
       eq(link.alias, input.id),
-      eq(link.domain, input.domain),
+      eq(link.domain, domain),
       workspaceFilter(ctx.workspace, link.userId, link.teamId),
     ),
   });
 
   if (!foundLink) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      geoRules: [],
-      previous: null,
-      archived: summarizeArchived([]),
-    };
+    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
   }
 
-  let now = new Date();
-  let startDate: Date;
   let range = input.range;
 
   // Enforce 7-day limit for free users
@@ -1210,39 +1225,9 @@ export const getLinkVisits = async (
     range = "7d";
   }
 
-  switch (range) {
-    case "24h":
-      startDate = subDays(now, 1);
-      break;
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "this_month":
-      startDate = startOfMonth(now);
-      break;
-    case "last_month":
-      startDate = startOfMonth(subDays(now, 30));
-      now.setDate(0); // Set to last day of previous month
-      break;
-    case "this_year":
-      startDate = startOfYear(now);
-      break;
-    case "last_year":
-      startDate = startOfYear(subDays(now, 365));
-      now = endOfYear(subDays(now, 365));
-      break;
-    case "all":
-      startDate = new Date(0); // Beginning of time
-      break;
-    default:
-      startDate = subDays(now, 7); // Default to last 7 days
-  }
+  const window = resolveRangeWindow(range, new Date());
+  const startDate = window.from ?? new Date(0);
+  const now = window.to;
 
   // Previous-period window for % delta: same duration immediately before
   // the current window. Skip for "all" and for inverted windows that can
@@ -1251,8 +1236,6 @@ export const getLinkVisits = async (
   const hasPreviousPeriod = range !== "all" && windowMs > 0;
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
-
-  const toDateKey = (d: Date) => d.toISOString().split("T")[0]!;
 
   const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
     await Promise.all([
@@ -1310,8 +1293,8 @@ export const getLinkVisits = async (
         where: (s, { eq, and, gte, lte }) =>
           and(
             eq(s.linkId, foundLink.id),
-            gte(s.date, toDateKey(startDate)),
-            lte(s.date, toDateKey(now)),
+            gte(s.date, bucketKey(startDate)),
+            lte(s.date, bucketKey(now)),
           ),
       }),
       hasPreviousPeriod
@@ -1324,8 +1307,8 @@ export const getLinkVisits = async (
             .where(
               and(
                 eq(linkVisitDailySummary.linkId, foundLink.id),
-                gte(linkVisitDailySummary.date, toDateKey(prevStart)),
-                lt(linkVisitDailySummary.date, toDateKey(prevEnd)),
+                gte(linkVisitDailySummary.date, bucketKey(prevStart)),
+                lt(linkVisitDailySummary.date, bucketKey(prevEnd)),
               ),
             )
         : Promise.resolve(null),
@@ -1352,6 +1335,9 @@ export const getLinkVisits = async (
       geoRules: linkGeoRules,
       previous,
       archived,
+      domain,
+      range,
+      window,
     };
   }
 
@@ -1384,11 +1370,14 @@ export const getLinkVisits = async (
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
+    topReferrer: formatReferrerLabel(topReferrer),
     isProPlan: userHasPaidPlan,
     geoRules: linkGeoRules,
     previous,
     archived,
+    domain,
+    range,
+    window,
   };
 };
 
@@ -1403,6 +1392,24 @@ export const getAllUserAnalytics = async (
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
+
+  const range = !userHasPaidPlan && !["24h", "7d"].includes(input.range) ? "7d" : input.range;
+  const window = resolveRangeWindow(range, new Date());
+  const startDate = window.from ?? new Date(0);
+  const now = window.to;
+  const empty = {
+    totalVisits: [],
+    uniqueVisits: [],
+    topCountry: "N/A",
+    referers: {},
+    topReferrer: "N/A",
+    isProPlan: userHasPaidPlan,
+    clicksByLink: {},
+    clicksByDestination: {},
+    archived: summarizeArchived([]),
+    range,
+    window,
+  };
 
   // Fetch workspace links with optional filtering
   const userLinks = await ctx.db.query.link.findMany({
@@ -1433,65 +1440,14 @@ export const getAllUserAnalytics = async (
   });
 
   if (userLinks.length === 0) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      clicksByLink: {},
-      clicksByDestination: {},
-    };
-  }
-
-  let now = new Date();
-  let startDate: Date;
-  let range = input.range;
-
-  // Enforce 7-day limit for free users
-  if (!userHasPaidPlan && !["24h", "7d"].includes(range)) {
-    range = "7d";
-  }
-
-  switch (range) {
-    case "24h":
-      startDate = subDays(now, 1);
-      break;
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "this_month":
-      startDate = startOfMonth(now);
-      break;
-    case "last_month":
-      startDate = startOfMonth(subDays(now, 30));
-      now.setDate(0);
-      break;
-    case "this_year":
-      startDate = startOfYear(now);
-      break;
-    case "last_year":
-      startDate = startOfYear(subDays(now, 365));
-      now = endOfYear(subDays(now, 365));
-      break;
-    case "all":
-      startDate = new Date(0);
-      break;
-    default:
-      startDate = subDays(now, 7);
+    return empty;
   }
 
   const linkIds = userLinks.map((link) => link.id);
 
-  // Fetch all visits for all links
-  const [totalVisits, uniqueVisits] = await Promise.all([
+  // Fetch all visits for all links, plus the per-day counts archived from
+  // visits past the retention window (summed in SQL, so one row per day).
+  const [totalVisits, uniqueVisits, summaries] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { inArray, and, gte, lte }) =>
         and(
@@ -1508,19 +1464,27 @@ export const getAllUserAnalytics = async (
           lte(visit.createdAt, now),
         ),
     }),
+    ctx.db
+      .select({
+        date: linkVisitDailySummary.date,
+        clicks: sum(linkVisitDailySummary.clicks).mapWith(Number),
+        uniqueClicks: sum(linkVisitDailySummary.uniqueClicks).mapWith(Number),
+      })
+      .from(linkVisitDailySummary)
+      .where(
+        and(
+          inArray(linkVisitDailySummary.linkId, linkIds),
+          gte(linkVisitDailySummary.date, bucketKey(startDate)),
+          lte(linkVisitDailySummary.date, bucketKey(now)),
+        ),
+      )
+      .groupBy(linkVisitDailySummary.date),
   ]);
 
+  const archived = summarizeArchived(summaries);
+
   if (totalVisits.length === 0) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      clicksByLink: {},
-      clicksByDestination: {},
-    };
+    return { ...empty, archived };
   }
 
   // Aggregate clicks by link
@@ -1572,10 +1536,13 @@ export const getAllUserAnalytics = async (
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
+    topReferrer: formatReferrerLabel(topReferrer),
     isProPlan: userHasPaidPlan,
     clicksByLink,
     clicksByDestination,
+    archived,
+    range,
+    window,
   };
 };
 
@@ -1786,12 +1753,16 @@ export const checkAliasAvailability = async (
   ctx: PublicTRPCContext,
   input: { alias: string; domain: string },
 ) => {
-  const existingLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
-  });
+  const [existingLink, reserved] = await Promise.all([
+    ctx.db.query.link.findFirst({
+      columns: { id: true },
+      where: (table, { eq, and }) =>
+        and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
+    }),
+    isAliasReserved(ctx.db, input.alias, input.domain),
+  ]);
 
-  return { isAvailable: !existingLink };
+  return { isAvailable: !existingLink && !reserved };
 };
 
 // Alias checks, URL scans and inserts each hold a db connection or an outbound
@@ -1891,7 +1862,7 @@ const bulkCreateLinkRows = async (
       const ownership = workspaceOwnership(ctx.workspace);
       await ctx.db.insert(link).values({
         url: record.url,
-        alias: record.alias ?? (await generateShortLink()),
+        alias: record.alias ?? (await generateUnreservedAlias(ctx.db, record.domain)),
         userId: ownership.userId,
         teamId: ownership.teamId,
         createdByUserId: ctx.auth.userId, // Track the actual user who created the link

@@ -184,6 +184,13 @@ automatically once `R2_ENDPOINT` is set.
 `bun run email:dev` opens the React Email preview for `src/emails` on port 3001. Sending needs
 `RESEND_API_KEY`; without it sends are skipped and logged.
 
+## Self-hosting
+
+To run your own instance on Cloudflare Workers with MySQL and Clerk, follow the
+[self-hosting guide](./docs/self-hosting.md). It starts from
+[`wrangler.example.jsonc`](./wrangler.example.jsonc); the committed `wrangler.jsonc` holds the
+hosted service's resource IDs.
+
 ## Scripts
 
 | Command                                 | Purpose                                                              |
@@ -201,6 +208,7 @@ automatically once `R2_ENDPOINT` is set.
 | `bun run db:push`                       | Push `schema.ts` to the database (what `setup` uses locally)         |
 | `bun run db:generate`                   | Generate a SQL migration for production                              |
 | `bun run db:migrate`                    | Apply migrations to a deployed database                              |
+| `bun run db:baseline`                   | Record `drizzle/` as applied on a new self-hosted database           |
 | `bun run db:studio`                     | Open Drizzle Studio                                                  |
 | `bun test`                              | Run the unit tests                                                   |
 | `bun run typecheck`                     | `tsc --noEmit`                                                       |

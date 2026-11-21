@@ -9,7 +9,7 @@ import {
 } from "@/lib/billing/entitlements";
 import { getPlanCaps, getSubscriptionMode } from "@/lib/billing/plans";
 import { folder } from "@/server/db/schema";
-import { getEventTrackingPause } from "@/server/lib/event-usage";
+import { getEventTrackingPause, nextEventCountReset } from "@/server/lib/event-usage";
 import {
   getUserPlanContext,
   normalizeMonthlyEventCount,
@@ -151,6 +151,7 @@ export const subscriptionsRouter = createTRPCRouter({
         events: {
           count: monthlyEventCount,
           limit: eventLimit,
+          resetsAt: nextEventCountReset(new Date()),
           paused: getEventTrackingPause({
             count: monthlyEventCount,
             limit: eventLimit,

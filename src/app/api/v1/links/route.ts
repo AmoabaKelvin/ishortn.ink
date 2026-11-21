@@ -4,13 +4,13 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { generateShortLink } from "@/lib/core/links";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
 import {
@@ -143,7 +143,7 @@ async function createNewLink(
 
   const newLinkData = {
     url: data.url,
-    alias: data.alias ?? (await generateShortLink()),
+    alias: data.alias ?? (await generateUnreservedAlias(db, domain)),
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     activateAt: data.activatesAt ? new Date(data.activatesAt) : null,

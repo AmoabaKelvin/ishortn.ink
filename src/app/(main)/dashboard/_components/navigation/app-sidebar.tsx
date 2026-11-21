@@ -14,6 +14,7 @@ import {
   IconLink,
   IconLogout,
   IconMenu2,
+  IconMailOff,
   IconMessageReport,
   IconMicrophone2,
   IconQrcode,
@@ -42,6 +43,8 @@ import { FeedbackModal } from "./feedback-modal";
 import { SidebarStats } from "./sidebar-stats";
 import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
+
+import type { EventUsage } from "./sidebar-stats";
 
 const navigationItems = [
   { name: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
@@ -77,6 +80,7 @@ const adminNavigationItems = [
   { name: "Blocked Domains", href: "/dashboard/admin/domains", icon: IconBan },
   { name: "Flagged Links", href: "/dashboard/admin/flagged", icon: IconFlag },
   { name: "Feedback", href: "/dashboard/admin/feedback", icon: IconMessageReport },
+  { name: "Email Health", href: "/dashboard/admin/email-health", icon: IconMailOff },
   {
     name: "Audience Feedback",
     href: "/dashboard/admin/audience-feedback",
@@ -107,7 +111,7 @@ type AppSidebarProps = {
   monthlyLinkCount?: number;
   totalLinks?: number;
   linkLimit?: number | null;
-  eventUsage?: { count: number; limit: number | null } | undefined;
+  eventUsage?: EventUsage | undefined;
   folderUsage?: { count: number; limit: number | null } | undefined;
   plan?: "free" | "pro" | "ultra";
   teams?: Team[];

@@ -1,3 +1,5 @@
+import { APP_BASE_DOMAIN } from "@/lib/constants/domains";
+
 import { effectivePlan } from "./entitlements";
 import { getPlanFromIds } from "./plans";
 
@@ -5,7 +7,7 @@ import type { PlanGrace } from "./entitlements";
 import type { Plan } from "./plans";
 import type { Subscription } from "@/server/db/schema";
 
-export const API_UPGRADE_URL = "https://ishortn.ink/pricing";
+export const API_UPGRADE_URL = `https://${APP_BASE_DOMAIN}/pricing`;
 
 /** How long keys keep working once their account is not on Pro or Ultra. */
 export const API_ACCESS_NOTICE_DAYS = 7;
