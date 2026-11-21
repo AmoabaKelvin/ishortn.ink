@@ -33,6 +33,30 @@ describe("extractShortenIntent", () => {
     expect(extractShortenIntent(new URL("https://ishortn.ink/auth/sign-up?next=/a"))).toBeNull();
   });
 
+  // The URLs Clerk itself loads on the auth pages: redirecting any of them
+  // would loop the handshake or break the sign-in widget.
+  test("leaves Clerk's own auth page requests alone", () => {
+    for (const url of [
+      "https://ishortn.ink/auth/sign-in",
+      "https://ishortn.ink/auth/sign-in?redirect_url=https%3A%2F%2Fishortn.ink%2Fdashboard%3Furl%3Dx",
+      "https://ishortn.ink/auth/sign-in?__clerk_handshake=eyJ&__clerk_db_jwt=dvb_1",
+      "https://ishortn.ink/auth/sign-in/SignIn_clerk_catchall_check_1795256975547",
+      "https://ishortn.ink/auth/sign-up/SignUp_clerk_catchall_check_1795256975547",
+      "https://ishortn.ink/auth/sign-in/factor-one?__clerk_status=verified",
+    ]) {
+      expect(extractShortenIntent(new URL(url))).toBeNull();
+    }
+  });
+
+  test("a cleaned URL is never redirected again", () => {
+    const first = extractShortenIntent(
+      new URL(`https://ishortn.ink/auth/sign-in?url=${encodeURIComponent(tagged)}&url=y`),
+    );
+    if (!first) throw new Error("expected a shorten intent");
+    expect(first.cleanUrl.searchParams.has("url")).toBe(false);
+    expect(extractShortenIntent(first.cleanUrl)).toBeNull();
+  });
+
   test("strips empty and oversized values without keeping them", () => {
     const empty = extractShortenIntent(new URL("https://ishortn.ink/auth/sign-up?url=&next=/a"));
     expect(empty?.intent).toBeNull();
