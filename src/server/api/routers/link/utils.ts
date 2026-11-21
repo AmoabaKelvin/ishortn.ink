@@ -77,7 +77,33 @@ export function countsTowardMonthlyLinkQuota(
   return values.isBioLink !== true || getBioLinkBlockLimit(plan) === undefined;
 }
 
-export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
+/**
+ * Lifetime number of CSV-imported links on the workspace's own active custom
+ * domain that skip the monthly link limit on capped paid plans. Moving a branded
+ * domain from another shortener is migration, not new link creation, and would
+ * otherwise take several months of allowance.
+ */
+export const CUSTOM_DOMAIN_IMPORT_ALLOWANCE = 5000;
+
+/** What's left of CUSTOM_DOMAIN_IMPORT_ALLOWANCE; 0 on free and on uncapped plans. */
+export function customDomainImportAllowanceLeft(
+  plan: Plan,
+  limit: number | undefined,
+  used: number,
+): number {
+  if (plan === "free" || limit === undefined) return 0;
+  return Math.max(0, CUSTOM_DOMAIN_IMPORT_ALLOWANCE - used);
+}
+
+type LinkLimitOptions = {
+  /** CSV import: a used-up monthly limit doesn't reject while the import allowance remains. */
+  customDomainImport?: boolean;
+};
+
+export async function checkAndUpdateLinkLimit(
+  ctx: ProtectedTRPCContext,
+  { customDomainImport = false }: LinkLimitOptions = {},
+) {
   const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
 
   if (!planCtx) {
@@ -89,8 +115,11 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
 
   const { plan, linksLimit: limit } = planCtx;
   const currentCount = await normalizeMonthlyLinkCount(planCtx, ctx.db);
+  const importAllowanceLeft = customDomainImport
+    ? customDomainImportAllowanceLeft(plan, limit, planCtx.userRecord.customDomainImportCount)
+    : 0;
 
-  if (limit !== undefined && currentCount >= limit) {
+  if (limit !== undefined && currentCount >= limit && importAllowanceLeft === 0) {
     await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "monthly_links", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -103,6 +132,7 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
     currentCount,
     limit,
     isProUser: plan !== "free",
+    importAllowanceLeft,
   };
 }
 
@@ -111,7 +141,10 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
  * Team workspaces bypass limits (they're Ultra with unlimited links).
  * Personal workspaces check against the user's plan limits.
  */
-export async function checkWorkspaceLinkLimit(ctx: WorkspaceTRPCContext) {
+export async function checkWorkspaceLinkLimit(
+  ctx: WorkspaceTRPCContext,
+  options: LinkLimitOptions = {},
+) {
   // Team workspaces carry the owner's plan; a team below Ultra is read-only
   // (refused in workspaceProcedure), so a writable team is never capped here.
   if (ctx.workspace.type === "team") {
@@ -120,11 +153,12 @@ export async function checkWorkspaceLinkLimit(ctx: WorkspaceTRPCContext) {
       currentCount: 0,
       limit: undefined,
       isProUser: true,
+      importAllowanceLeft: 0,
     };
   }
 
   // Personal workspace: check user's plan limits
-  return checkAndUpdateLinkLimit(ctx);
+  return checkAndUpdateLinkLimit(ctx, options);
 }
 
 export async function incrementLinkCount(
@@ -161,6 +195,16 @@ export async function incrementWorkspaceLinkCount(
   }
 
   return incrementLinkCount(ctx, currentCount, limit, created);
+}
+
+/** Counts created links against CUSTOM_DOMAIN_IMPORT_ALLOWANCE (personal workspaces only). */
+export async function incrementCustomDomainImportCount(ctx: WorkspaceTRPCContext, created: number) {
+  if (ctx.workspace.type === "team" || created === 0) return;
+
+  await ctx.db
+    .update(user)
+    .set({ customDomainImportCount: sql`${user.customDomainImportCount} + ${created}` })
+    .where(eq(user.id, ctx.auth.userId));
 }
 
 export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<string> {

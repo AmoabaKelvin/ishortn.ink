@@ -25,7 +25,7 @@ import {
   getGeoRulesLimit,
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { bucketKey, resolveRangeWindow, summarizeArchived } from "@/lib/core/analytics";
 import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
@@ -96,9 +96,11 @@ import {
   assertDomainWithinPlan,
   BITLY_DOMAINS,
   checkWorkspaceLinkLimit,
+  CUSTOM_DOMAIN_IMPORT_ALLOWANCE,
   escapeLikePattern,
   getWorkspaceDefaultDomain,
   hasUtmValues,
+  incrementCustomDomainImportCount,
   incrementWorkspaceLinkCount,
   parseLinkCsv,
   PASSWORD_ATTEMPTS_PER_IP,
@@ -1895,8 +1897,11 @@ const bulkCreateLinkRows = async (
   const rows = parsed.filter((row) => !row.bitly?.deleted);
   const skipped = parsed.length - rows.length;
 
-  // Throws when the monthly allowance is already used up, rejecting the whole import.
-  const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
+  // Throws when the monthly allowance and the custom-domain import allowance are
+  // both used up, rejecting the whole import.
+  const { plan, currentCount, limit, importAllowanceLeft } = await checkWorkspaceLinkLimit(ctx, {
+    customDomainImport: true,
+  });
   const isPaidPlan = plan !== "free";
   const remaining = limit === undefined ? Number.POSITIVE_INFINITY : limit - currentCount;
 
@@ -2028,10 +2033,12 @@ const bulkCreateLinkRows = async (
   // Allowance goes to valid links in file order, before the (slow) URL safety
   // scan, so links past the limit are never scanned.
   let allotted = 0;
+  let importAllotted = 0;
   // Rows often share a destination, and a Bitly code always shares its row's.
   const scans = new Map<string, Promise<void>>();
   const createLinks = async (checks: PromiseSettledResult<PreparedLink>[]) => {
     const steps = checks.map((): LinkCreationStep => "validation");
+    const usesImportAllowance = checks.map(() => false);
     const results = await settleWithConcurrency(
       checks,
       CSV_IMPORT_CONCURRENCY,
@@ -2039,13 +2046,22 @@ const bulkCreateLinkRows = async (
         if (check.status === "rejected") throw check.reason;
         const { record, alreadyImported } = check.value;
         if (alreadyImported) return check.value;
-        if (allotted >= remaining) {
+        // The domain passed assertDomainOwned and assertDomainWithinPlan, so a
+        // non-platform one is an active custom domain of this workspace.
+        if (
+          !isPlatformDomain(record.domain.toLowerCase()) &&
+          importAllotted < importAllowanceLeft
+        ) {
+          importAllotted++;
+          usesImportAllowance[index] = true;
+        } else if (allotted >= remaining) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: `Monthly limit of ${limit?.toLocaleString()} links reached. Upgrade your plan to create more.`,
           });
+        } else {
+          allotted++;
         }
-        allotted++;
 
         steps[index] = "safety";
         let scan = scans.get(record.url);
@@ -2072,7 +2088,10 @@ const bulkCreateLinkRows = async (
         return { record: { ...record, alias }, alreadyImported: false };
       },
     );
-    return { results, steps };
+    const importCreated = results.filter(
+      (result, index) => result.status === "fulfilled" && usesImportAllowance[index],
+    ).length;
+    return { results, steps, importCreated };
   };
 
   const primary = await createLinks(validated);
@@ -2121,6 +2140,7 @@ const bulkCreateLinkRows = async (
   );
   const alreadyImported = outcomes.filter((outcome) => outcome.alreadyImported).length;
   const created = outcomes.length - alreadyImported;
+  const importCreated = primary.importCreated + codes.importCreated;
 
   const notices = primary.results.flatMap((result) => {
     if (result.status === "rejected" || result.value.alreadyImported) return [];
@@ -2162,9 +2182,16 @@ const bulkCreateLinkRows = async (
     ),
   );
 
-  if (created > 0) {
-    await incrementWorkspaceLinkCount(ctx, currentCount, limit, created);
+  if (created > importCreated) {
+    await incrementWorkspaceLinkCount(ctx, currentCount, limit, created - importCreated);
   }
+  await incrementCustomDomainImportCount(ctx, importCreated);
+
+  const importAllowanceRemaining = importAllowanceLeft - importCreated;
+  const importNotice =
+    importCreated > 0
+      ? `. ${importCreated.toLocaleString()} on your custom domain used the one-time import allowance instead of your monthly limit (${importAllowanceRemaining.toLocaleString()} of ${CUSTOM_DOMAIN_IMPORT_ALLOWANCE.toLocaleString()} left)`
+      : "";
 
   const summary = [
     `${created} ${created === 1 ? "link" : "links"} created`,
@@ -2182,7 +2209,9 @@ const bulkCreateLinkRows = async (
     failures,
     notices,
     domainNotices,
-    message: summary.join(", "),
+    importAllowanceUsed: importCreated,
+    importAllowanceRemaining,
+    message: `${summary.join(", ")}${importNotice}`,
   };
 };
 
