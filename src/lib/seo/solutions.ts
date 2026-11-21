@@ -407,7 +407,7 @@ export const solutions = {
       },
       {
         title: "Make the codes",
-        body: "Style each code with the client's logo and colours and download a high-resolution PNG for the print file.",
+        body: "Style each code with the client's logo and colours and download a high-resolution PNG for the print file, or an SVG for large signs and engraving.",
       },
       {
         title: "Repoint and report",
@@ -443,7 +443,8 @@ export const solutions = {
       },
       {
         question: "What file format do the QR codes download in?",
-        answer: "A high-resolution PNG that works for print. There's no SVG or PDF export yet.",
+        answer:
+          "A high-resolution PNG, or an SVG for engraving, vinyl and large-format print. Effects such as crystalize and liquidify are PNG only. There's no PDF export.",
       },
       {
         question: "Do the codes expire if a trial or plan ends?",
@@ -680,7 +681,7 @@ export const solutions = {
       },
       {
         title: "Create the code",
-        body: "Paste the link, add your logo and brand colours, and download a high-resolution PNG for the sign maker.",
+        body: "Paste the link, add your logo and brand colours, and download a high-resolution PNG for the sign maker, or an SVG for large signs and engraving.",
       },
       {
         title: "Print and test",

@@ -54,7 +54,7 @@ A static code is fine when the link will never change, for example a page on you
 
 ### Option A: a static code (no account)
 
-Paste your link into our [free QR code generator](/qr-code-generator) and download the PNG. There's no sign-up, no watermark and no expiry. The download is 1024 pixels square, which prints sharply up to about 8.5 cm (3.4 inches) wide at 300 dpi. That covers handouts and most flyers. For a bigger code, print a test copy first.
+Paste your link into our [free QR code generator](/qr-code-generator) and download the PNG. There's no sign-up, no watermark and no expiry. The download is 1024 pixels square, which prints sharply up to about 8.5 cm (3.4 inches) wide at 300 dpi. That covers handouts and most flyers. For a bigger code, print a test copy first, or use Option B: codes made in a free account also download as SVG, which scales to any size.
 
 ### Option B: a dynamic code you can edit and track
 
@@ -64,7 +64,7 @@ In iShortn:
 2. Create a code and paste your page's link as the destination.
 3. Give it a name you'll recognise later, like "Spring market flyer - library".
 4. Style it if you want: colours, shapes, a logo in the middle. Keep it dark on a light background.
-5. Download the PNG.
+5. Download the PNG, or the SVG if the code will be printed large.
 
 The free plan includes 5 dynamic QR codes. They don't expire, they show no ads, and you can edit the destination whenever you like. Each code uses one of your 30 free links for that month. Free analytics show the last 7 days and count up to 1,000 events a month; codes keep working past that, but scans above the cap aren't recorded until the month resets. [Pro](/pricing) is $8 a month if you need more codes or the full history.
 
