@@ -11,6 +11,11 @@ import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
+import {
+  getUpgradeReason,
+  resolveAutoUpgradePlan,
+  resolveHighlightPlan,
+} from "@/lib/billing/upgrade";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -76,6 +81,8 @@ type PendingChange = { plan: PaidPricingPlan; kind: "switch" | "upgrade" };
 
 const PLAN_ORDER = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
+const paidPlans = plans.filter((plan): plan is PaidPricingPlan => plan.id !== "free");
+
 const PRO_EVENTS_LIMIT = getPlanCaps("pro").eventsLimit ?? 0;
 
 export function PricingCards({
@@ -92,26 +99,15 @@ export function PricingCards({
   // Arriving with ?plan=pro|ultra (e.g. right after signup) starts that upgrade
   // right away: hosted checkout for free users, the confirm dialog otherwise.
   const [autoUpgrade] = useState(() => {
-    const plan = plans.find((p) => p.id === searchParams?.get("plan"));
-    if (
-      !plan ||
-      plan.id === "free" ||
-      subscriptionMode === "resume" ||
-      PLAN_ORDER[plan.id] <= PLAN_ORDER[currentPlan]
-    ) {
-      return null;
-    }
-    return plan;
+    const planId = resolveAutoUpgradePlan(searchParams, currentPlan, subscriptionMode);
+    return paidPlans.find((p) => p.id === planId) ?? null;
   });
-  // ?highlight=pro|ultra (from in-app upgrade prompts) only preselects a plan; it never starts
-  // checkout on its own.
-  const highlightParam = plans.find((p) => p.id === searchParams?.get("highlight"));
-  const highlightedPlanId: Plan | null =
-    highlightParam && PLAN_ORDER[highlightParam.id] > PLAN_ORDER[currentPlan]
-      ? highlightParam.id
-      : currentPlan === "free"
-        ? "pro"
-        : null;
+  // Arriving from an in-app upgrade prompt (?highlight=pro|ultra&source=…)
+  // only preselects the plan that removes the limit; it never starts checkout.
+  const highlightPlan = resolveHighlightPlan(searchParams?.get("highlight"), currentPlan);
+  const highlightReason = highlightPlan
+    ? getUpgradeReason(searchParams?.get("source"), highlightPlan)
+    : null;
   const fromEventsCap = searchParams?.get("source")?.startsWith("events_") ?? false;
   const autoCheckout = autoUpgrade && subscriptionMode === "checkout" ? autoUpgrade : null;
   const autoCheckoutFired = useRef(false);
@@ -210,6 +206,11 @@ export function PricingCards({
         <p className="mt-3 text-gray-500 dark:text-neutral-400">
           Choose the plan that fits your needs. Upgrade or downgrade at any time.
         </p>
+        {highlightReason && (
+          <p className="mt-3 text-sm font-medium text-blue-600 dark:text-blue-400">
+            {highlightReason}
+          </p>
+        )}
       </div>
 
       {/* Billing interval toggle */}
@@ -261,6 +262,11 @@ export function PricingCards({
           // offer a switch instead of "Manage Subscription".
           const canSwitchInterval =
             canChangeInPlace && isCurrentPlan && plan.id !== "free" && interval !== currentInterval;
+          // The highlighted plan takes over the "Popular" treatment so only one card stands out.
+          const isHighlighted = plan.id === highlightPlan;
+          const isEmphasized = highlightPlan
+            ? isHighlighted
+            : "popular" in plan && plan.popular && currentPlan === "free";
           const price = planPriceDisplay(plan.id, interval);
 
           return (
@@ -268,17 +274,18 @@ export function PricingCards({
               key={plan.id}
               className={cn(
                 "relative flex flex-col rounded-2xl border bg-white dark:bg-card p-6 shadow-sm transition-shadow hover:shadow-md",
-                plan.id === highlightedPlanId &&
+                isEmphasized &&
+                  !isCurrentPlan &&
                   "border-gray-900 dark:border-border ring-1 ring-gray-900 dark:ring-border",
                 isCurrentPlan && "border-blue-500 ring-1 ring-blue-500",
               )}
             >
-              {/* Popular Badge */}
-              {plan.popular && !isCurrentPlan && currentPlan === "free" && (
+              {/* Popular / highlighted Badge */}
+              {isEmphasized && !isCurrentPlan && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-gray-900 text-white dark:bg-muted dark:text-foreground px-3 py-1">
+                  <Badge className="whitespace-nowrap bg-gray-900 text-white dark:bg-muted dark:text-foreground px-3 py-1">
                     <Sparkles className="h-3 w-3 mr-1" />
-                    Popular
+                    {isHighlighted ? "Removes this limit" : "Popular"}
                   </Badge>
                 </div>
               )}
@@ -354,7 +361,7 @@ export function PricingCards({
                   <Button
                     className={cn(
                       "w-full",
-                      plan.popular
+                      isEmphasized
                         ? "bg-gray-900 hover:bg-gray-800 dark:bg-muted dark:hover:bg-accent dark:text-foreground"
                         : "",
                     )}
@@ -374,7 +381,7 @@ export function PricingCards({
                     Downgrade
                   </Button>
                 ) : null}
-                {fromEventsCap && canUpgrade && plan.id === highlightedPlanId && (
+                {fromEventsCap && canUpgrade && isEmphasized && (
                   <p className="mt-2 text-center text-xs tabular-nums text-gray-500 dark:text-neutral-400">
                     ${plan.monthlyPrice}/month or ${plan.annualPrice}/year
                   </p>

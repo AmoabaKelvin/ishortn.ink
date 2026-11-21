@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { toastMutationError } from "@/lib/analytics/plan-limit-toast";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -81,9 +82,7 @@ export function MoveToFolderModal({
         moveLinkMutation.mutate({ linkId, folderId });
       }
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (error) => toastMutationError(error, "folder_create"),
   });
 
   const moveLinkMutation = api.folder.moveLink.useMutation({
@@ -99,9 +98,7 @@ export function MoveToFolderModal({
       onSuccess?.();
       onOpenChange(false);
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (error) => toastMutationError(error, "folder_move"),
   });
 
   const moveBulkLinksMutation = api.folder.moveBulkLinks.useMutation({
@@ -120,9 +117,7 @@ export function MoveToFolderModal({
       onSuccess?.();
       onOpenChange(false);
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (error) => toastMutationError(error, "folder_move"),
   });
 
   const handleMove = () => {

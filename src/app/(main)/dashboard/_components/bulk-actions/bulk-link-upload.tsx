@@ -1,5 +1,4 @@
 import { IconFileSpreadsheet, IconUpload } from "@tabler/icons-react";
-import { Link } from "next-view-transitions";
 import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
@@ -15,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -189,7 +189,9 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
             </Button>
           ) : (
             <Button asChild className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700">
-              <Link href="/dashboard/settings#billing">Upgrade</Link>
+              <UpgradeCta requiredPlan="pro" source="bulk_import">
+                Upgrade
+              </UpgradeCta>
             </Button>
           )}
         </DialogFooter>

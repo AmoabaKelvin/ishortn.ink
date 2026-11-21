@@ -37,8 +37,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
+import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import {
   DEFAULT_PLATFORM_DOMAIN,
   isPlatformDomain,
@@ -61,6 +63,7 @@ const GeoRulesForm = dynamic(
 import { DateTimePicker } from "../../_components/date-time-picker";
 import { checkIframeable } from "../../_components/links/check-iframeable";
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
+import { LinkReadyDialog } from "../../_components/links/link-ready-dialog";
 import { PlanBadge, SectionToggle } from "../../_components/section-toggle";
 import { UtmParamsForm } from "../../_components/utm-params-form";
 import { UtmTemplateSelector } from "../../_components/utm-template-selector";
@@ -69,12 +72,44 @@ import { LinkPreviewComponent } from "./_components/link-preview";
 import { OgImageUploader } from "./_components/og-image-uploader";
 import UpgradeToProAIButtonTooltip from "./_components/upgrade-to-pro-ai-tooltip";
 
+import type { CreatedLink } from "../../_components/links/link-ready-dialog";
 import type { z } from "zod";
 
 export default function CreateLinkPage() {
   const router = useTransitionRouter();
+  const [created, setCreated] = useState<{ link: CreatedLink; returnTo: string } | null>(null);
+  // Bumping the key remounts the form, clearing every field and section in one step.
+  const [formKey, setFormKey] = useState(0);
+
+  return (
+    <>
+      <CreateLinkForm
+        key={formKey}
+        ignoreUrlParam={formKey > 0}
+        onCreated={(link, returnTo) => setCreated({ link, returnTo })}
+      />
+      <LinkReadyDialog
+        link={created?.link ?? null}
+        onDone={() => {
+          if (created) router.push(created.returnTo);
+        }}
+        onCreateAnother={() => {
+          setCreated(null);
+          setFormKey((key) => key + 1);
+        }}
+      />
+    </>
+  );
+}
+
+type CreateLinkFormProps = {
+  ignoreUrlParam: boolean;
+  onCreated: (link: CreatedLink, returnTo: string) => void;
+};
+
+function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
   const searchParams = useSearchParams();
-  const initialUrl = searchParams.get("url") ?? undefined;
+  const initialUrl = ignoreUrlParam ? undefined : (searchParams.get("url") ?? undefined);
   const campaignIdParam = Number(searchParams.get("campaignId"));
   const initialCampaignId =
     Number.isInteger(campaignIdParam) && campaignIdParam > 0 ? campaignIdParam : undefined;
@@ -206,14 +241,20 @@ export default function CreateLinkPage() {
   };
 
   const formUpdateMutation = api.link.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       await revalidateHomepage();
-      toast.success("Link created");
-      router.push(originCampaign ? `/dashboard/campaigns/${originCampaign.slug}` : "/dashboard");
+      onCreated(
+        created,
+        originCampaign ? `/dashboard/campaigns/${originCampaign.slug}` : "/dashboard",
+      );
     },
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN" || /upgrade/i.test(error.message)) {
-        notifyPlanLimit(error.message, "link_create");
+        notifyPlanLimit(
+          error.message,
+          "link_create",
+          requiredPlanForLimit(error.message, userSubscription.data?.plan),
+        );
       } else {
         toast.error(error.message);
       }
@@ -993,7 +1034,15 @@ export default function CreateLinkPage() {
                     </FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
                       <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                        You need to be on a <b>pro plan</b> to schedule links
+                        You need to be on a{" "}
+                        <UpgradeCta
+                          requiredPlan="pro"
+                          source="link_schedule"
+                          className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                        >
+                          Pro plan
+                        </UpgradeCta>{" "}
+                        to schedule links
                       </FormDescription>
                     )}
                     <FormControl>
@@ -1067,7 +1116,15 @@ export default function CreateLinkPage() {
                     </FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
                       <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                        You need to be on a <b>pro plan</b> to create password protected links
+                        You need to be on a{" "}
+                        <UpgradeCta
+                          requiredPlan="pro"
+                          source="link_password"
+                          className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                        >
+                          Pro plan
+                        </UpgradeCta>{" "}
+                        to create password protected links
                       </FormDescription>
                     )}
                     <FormControl>

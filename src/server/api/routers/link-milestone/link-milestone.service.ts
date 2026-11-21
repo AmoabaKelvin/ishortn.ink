@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { canUseMilestones, getMilestonesPerLinkLimit } from "@/lib/billing/plans";
 import { linkMilestone } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 
 import { checkWorkspaceLinkLimit, verifyLinkOwnership } from "../link/utils";
 
@@ -19,6 +20,7 @@ export async function upsertMilestones(ctx: WorkspaceTRPCContext, input: UpsertM
   const { plan } = await checkWorkspaceLinkLimit(ctx);
 
   if (!canUseMilestones(plan)) {
+    await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "milestones", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
@@ -30,6 +32,7 @@ export async function upsertMilestones(ctx: WorkspaceTRPCContext, input: UpsertM
 
   const limit = getMilestonesPerLinkLimit(plan);
   if (limit !== undefined && input.thresholds.length > limit) {
+    await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "milestones", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `You can set up to ${limit} milestones per link on the ${plan.toUpperCase()} plan. Upgrade for more.`,

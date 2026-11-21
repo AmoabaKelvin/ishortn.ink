@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
+import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { api } from "@/trpc/react";
 
 import { CampaignStateBadge } from "../../_components/campaign-state-badge";
@@ -76,7 +77,11 @@ export function CampaignDetail({ campaignId, initialData, plan }: CampaignDetail
     },
     onError: (error, variables) => {
       if (error.data?.code === "FORBIDDEN" && variables.status === "active") {
-        notifyPlanLimit(error.message, "campaign_unarchive");
+        notifyPlanLimit(
+          error.message,
+          "campaign_unarchive",
+          requiredPlanForLimit(error.message, plan),
+        );
       } else {
         toast.error(error.message);
       }

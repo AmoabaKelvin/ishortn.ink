@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { IconCalendar, IconClick, IconLoader2, IconX } from "@tabler/icons-react";
+import { TRPCClientError } from "@trpc/client";
 import { format } from "date-fns";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -49,7 +50,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
+import {
+  isPlanLimitError,
+  linkEditLimitSource,
+  requiredPlanForLimit,
+} from "@/lib/billing/required-plan";
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { clientLogger } from "@/lib/logger/client";
 import { cn } from "@/lib/utils";
@@ -237,7 +245,11 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
         }
       } catch (error) {
         const reason = error instanceof Error ? error.message : "";
-        throw new Error(`Link saved, but milestones were not updated. ${reason}`.trim());
+        // Keep the tRPC error data so a plan rejection still gets the upgrade toast.
+        throw Object.assign(
+          new Error(`Link saved, but milestones were not updated. ${reason}`.trim()),
+          { data: error instanceof TRPCClientError ? error.data : undefined },
+        );
       } finally {
         // Reopening resets from these queries, so they must reflect what was just saved.
         await Promise.all([
@@ -247,8 +259,9 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
         ]);
       }
     };
-    toast.promise(
-      save().then(() => {
+    const toastId = toast.loading("Updating link...");
+    save().then(
+      () => {
         if (isEnabled !== wasEnabled) {
           trackEvent(
             isEnabled
@@ -262,11 +275,19 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
           );
         }
         onClose();
-      }),
-      {
-        loading: "Updating link...",
-        success: "Link updated successfully",
-        error: (error: Error) => error.message || "Failed to update link",
+        toast.success("Link updated successfully", { id: toastId });
+      },
+      (error: Error & { data?: { code?: string } | null }) => {
+        if (isPlanLimitError(error)) {
+          toast.dismiss(toastId);
+          notifyPlanLimit(
+            error.message,
+            linkEditLimitSource(error.message),
+            requiredPlanForLimit(error.message, userSubscription?.data?.plan),
+          );
+          return;
+        }
+        toast.error(error.message || "Failed to update link", { id: toastId });
       },
     );
   }
@@ -820,7 +841,14 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                         />
                         {!isProOrUltraUser && (
                           <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                            Click milestones are available on Pro and Ultra plans.
+                            Click milestones are available on Pro and Ultra plans.{" "}
+                            <UpgradeCta
+                              requiredPlan="pro"
+                              source="milestones"
+                              className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                            >
+                              Upgrade to Pro
+                            </UpgradeCta>
                           </p>
                         )}
                       </SectionToggle>
@@ -842,7 +870,15 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                               </FormLabel>
                               {!userSubscription.isLoading && !isProOrUltraUser && (
                                 <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
-                                  You need to be on a <b>pro plan</b> to schedule links
+                                  You need to be on a{" "}
+                                  <UpgradeCta
+                                    requiredPlan="pro"
+                                    source="link_schedule"
+                                    className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                                  >
+                                    Pro plan
+                                  </UpgradeCta>{" "}
+                                  to schedule links
                                 </FormDescription>
                               )}
                               <FormControl>

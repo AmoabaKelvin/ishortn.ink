@@ -13,6 +13,7 @@ import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
 import { getApiSunset } from "@/server/lib/api-access";
 import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 
 import { apiAccessRevokedResponse, withApiSunsetNotice } from "./api-access";
 import { apiError } from "./errors";
@@ -103,7 +104,10 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
     // Paid keys skip the sunset lookup; for the rest it's cached per isolate.
     const sunsetAt = canUseApi(token.plan) ? null : await getApiSunset();
     const access = getApiAccess(token.subscription, token.grace, sunsetAt, new Date());
-    if (access.status === "revoked") return apiAccessRevokedResponse();
+    if (access.status === "revoked") {
+      await recordPlanLimitHit({ userId: token.userId, limitKey: "api_v1", plan: token.plan });
+      return apiAccessRevokedResponse();
+    }
 
     const decision = await consumeApiRateLimit(token.userId, token.plan);
     if (!decision.allowed) return withApiSunsetNotice(rateLimitedResponse(decision), access);
