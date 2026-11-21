@@ -3,6 +3,7 @@ import { Link } from "next-view-transitions";
 import { notFound } from "next/navigation";
 
 import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog";
+import { socialImages } from "@/lib/seo/og-image";
 import { createArticleSchema, createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 import "@/styles/site-content.css";
@@ -57,13 +58,13 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       authors: [post.author],
       tags: post.tags,
       url: `https://ishortn.ink/blog/${slug}`,
-      ...(post.image && { images: [{ url: post.image }] }),
+      images: socialImages(post.image),
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.description,
-      ...(post.image && { images: [post.image] }),
+      images: socialImages(post.image),
     },
   };
 }

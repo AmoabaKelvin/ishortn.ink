@@ -3,6 +3,7 @@ import { Link } from "next-view-transitions";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { getAllPosts } from "@/lib/blog";
+import { socialImages } from "@/lib/seo/og-image";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ export const metadata: Metadata = {
       "Tips, guides, and updates on URL shortening, link management, QR codes, and digital marketing.",
     type: "website",
     url: "https://ishortn.ink/blog",
+    images: socialImages(),
   },
 };
 

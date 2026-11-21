@@ -1,6 +1,7 @@
 import { IconSparklesFilled } from "@tabler/icons-react";
 
 import { JsonLd } from "@/components/seo/json-ld";
+import { socialImages } from "@/lib/seo/og-image";
 import { createBreadcrumbSchema, softwareApplicationSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ export const metadata: Metadata = {
     description:
       "Everything inside iShortn: real-time analytics, custom domains, QR codes, password-protected links, bulk shorten, and a simple API.",
     type: "website",
+    images: socialImages(),
   },
 };
 

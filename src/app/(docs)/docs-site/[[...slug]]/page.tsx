@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getDocsPageContent } from "@/lib/docs/content";
 import { DOCS_PAGES, docsHref, findDocsPage, getDocsNeighbours } from "@/lib/docs/navigation";
 import { DOCS_PAGE_MODULES } from "@/lib/docs/pages";
+import { socialImages } from "@/lib/seo/og-image";
 
 import { DocsToc } from "../_components/docs-toc";
 
@@ -36,8 +37,19 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
     title,
     description: frontmatter.description,
     alternates: { canonical: url },
-    openGraph: { title, description: frontmatter.description, url, type: "article" },
-    twitter: { card: "summary_large_image", title, description: frontmatter.description },
+    openGraph: {
+      title,
+      description: frontmatter.description,
+      url,
+      type: "article",
+      images: socialImages(),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: frontmatter.description,
+      images: socialImages(),
+    },
   };
 }
 

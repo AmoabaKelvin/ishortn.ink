@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Paths } from "@/lib/constants/app";
 import { comparisonTitle, competitors, type Competitor } from "@/lib/seo/competitors";
+import { socialImages } from "@/lib/seo/og-image";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
@@ -72,7 +73,7 @@ export async function generateMetadata({
       "best url shortener",
       "link shortener alternative",
     ],
-    openGraph: { title, description, type: "website" },
+    openGraph: { title, description, type: "website", images: socialImages() },
   };
 }
 
