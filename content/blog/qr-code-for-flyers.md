@@ -142,7 +142,7 @@ Your flyers will keep getting scanned after the date has passed. They'll still b
 - Point it at the next date or a waitlist.
 - Point it at a "join our mailing list" page so late scanners still become contacts.
 
-It takes a minute, and people who find an old flyer land somewhere useful instead of on a page for an event that's over.
+It takes a minute, and people who find an old flyer land somewhere useful instead of on a page for an event that's over. Churches and charities that print every week can use the same code over and over; see [QR codes for churches and nonprofits](/solutions/churches-and-nonprofits).
 
 ## Quick answers
 

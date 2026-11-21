@@ -9,7 +9,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
-import { isPostSlugVisible } from "@/lib/blog";
+import { isPostLive } from "@/lib/blog";
 import { Paths } from "@/lib/constants/app";
 import { comparisonTitle, competitors, type Competitor } from "@/lib/seo/competitors";
 import { socialImages } from "@/lib/seo/og-image";
@@ -119,7 +119,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
   if (!competitor) return notFound();
 
   const guide =
-    "guide" in competitor && isPostSlugVisible(competitor.guide.slug) ? competitor.guide : null;
+    "guide" in competitor && isPostLive(competitor.guide.slug) ? competitor.guide : null;
 
   return (
     <main>

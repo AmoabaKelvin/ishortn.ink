@@ -74,9 +74,9 @@ export function isPostVisible(
   return previewScheduled || post.date <= now.toISOString().slice(0, 10);
 }
 
-// Frontmatter-only check for linking to a post from another page, so links never point at a
-// scheduled post's 404. Unknown slugs are not visible.
-export function isPostSlugVisible(slug: string, now: Date = new Date()): boolean {
+// Frontmatter-only check for pages that link to a post, so links never point at a scheduled
+// post's 404. Skips rendering the markdown; unknown slugs are not live.
+export function isPostLive(slug: string, now: Date = new Date()): boolean {
   const source = blogSources.get(slug);
   if (source === undefined) return false;
   return isPostVisible(blogPostFrontmatterSchema.parse(matter(source).data), now);
@@ -116,7 +116,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
   const processedContent = await remark()
     .use(gfm)
     .use(html)
-    .process(unlinkHiddenPosts(content, isPostSlugVisible));
+    .process(unlinkHiddenPosts(content, isPostLive));
   const htmlContent = processedContent.toString();
 
   return {

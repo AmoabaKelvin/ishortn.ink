@@ -4,7 +4,7 @@ import {
   getAllPosts,
   getPostBySlug,
   getRelatedPosts,
-  isPostSlugVisible,
+  isPostLive,
   isPostVisible,
   unlinkHiddenPosts,
 } from "./blog";
@@ -39,20 +39,16 @@ describe("isPostVisible", () => {
   });
 });
 
-describe("isPostSlugVisible", () => {
+describe("isPostLive", () => {
   // linktree-custom-domain is scheduled for 2026-11-23.
   it("hides a scheduled post until its UTC publish day", () => {
-    expect(isPostSlugVisible("linktree-custom-domain", new Date("2026-11-22T23:59:59Z"))).toBe(
-      false,
-    );
-    expect(isPostSlugVisible("linktree-custom-domain", new Date("2026-11-23T00:00:00Z"))).toBe(
-      true,
-    );
+    expect(isPostLive("linktree-custom-domain", new Date("2026-11-22T23:59:59Z"))).toBe(false);
+    expect(isPostLive("linktree-custom-domain", new Date("2026-11-23T00:00:00Z"))).toBe(true);
   });
 
   it("shows a published post and hides unknown slugs", () => {
-    expect(isPostSlugVisible("bitly-alternatives", now)).toBe(true);
-    expect(isPostSlugVisible("no-such-post", now)).toBe(false);
+    expect(isPostLive("bitly-alternatives", now)).toBe(true);
+    expect(isPostLive("no-such-post", now)).toBe(false);
   });
 });
 
@@ -90,7 +86,7 @@ describe("blog content", () => {
   it("never links a visible post to a hidden one", async () => {
     for (const post of await getAllPosts()) {
       for (const [, target] of post.htmlContent.matchAll(/href="\/blog\/([\w-]+)/g)) {
-        expect({ from: post.slug, to: target, visible: isPostSlugVisible(target!) }).toEqual({
+        expect({ from: post.slug, to: target, visible: isPostLive(target!) }).toEqual({
           from: post.slug,
           to: target,
           visible: true,

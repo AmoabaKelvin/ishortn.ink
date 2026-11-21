@@ -7,9 +7,12 @@ import { LinkStatusFooter } from "./link-status-footer";
 import type { MarketingCampaign } from "./utils";
 import type { ReactNode } from "react";
 
+// The root not-found page renders this component, so a preload here would put Funnel Sans on
+// every route, marketing and docs included.
 const funnelSans = Funnel_Sans({
   subsets: ["latin"],
   weight: ["400", "700"],
+  preload: false,
 });
 
 const TONES = {

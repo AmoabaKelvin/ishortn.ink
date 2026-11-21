@@ -22,7 +22,7 @@ The versatility of QR codes makes them valuable across nearly every industry. He
 
 ### Restaurant Menus
 
-QR codes on tables link directly to a digital menu. This eliminates printing costs, makes it easy to update prices or seasonal items, and provides a contactless experience customers prefer.
+QR codes on tables link directly to a digital menu. This eliminates printing costs, makes it easy to update prices or seasonal items, and provides a contactless experience customers prefer. See [QR codes for restaurants and bars](/solutions/restaurants) for a setup with one code per table or location.
 
 ### Product Packaging
 
@@ -30,7 +30,7 @@ A QR code on packaging can link to setup instructions, ingredient details, warra
 
 ### Event Tickets and Check-In
 
-Event organizers use QR codes as digital tickets. Attendees present their code at the door for a quick scan, speeding up entry. The same code can link to event schedules, maps, or exclusive content.
+Event organizers use QR codes as digital tickets. Attendees present their code at the door for a quick scan, speeding up entry. The same code can link to event schedules, maps, or exclusive content. For bulletins, giving pages and event posters, see [QR codes for churches and nonprofits](/solutions/churches-and-nonprofits).
 
 ### Business Cards
 

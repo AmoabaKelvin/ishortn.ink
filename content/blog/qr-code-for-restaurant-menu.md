@@ -127,6 +127,8 @@ Table cards have room for one more code, and the best use of it is reviews. Gues
 
 If your menu link will never change, grab a static code and you're done. If it might change, spend two minutes on a dynamic one now so you don't have to reprint 40 table cards later.
 
+Running more than one venue? [QR codes for restaurants and bars](/solutions/restaurants) covers a code per location, your own domain and which plan you need.
+
 **[Create a free dynamic QR code for your menu →](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=qr-code-for-restaurant-menu)**
 
 5 dynamic QR codes on the free plan, editable at any time, with scan analytics, no ads and no expiry date.
