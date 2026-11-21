@@ -20,9 +20,11 @@ curl https://ishortn.ink/api/v1/links \
 
 ```json
 {
+  "id": 4907,
   "shortLink": "https://isht.app/launch-day",
   "url": "https://example.com/blog/launch-day",
   "alias": "launch-day",
+  "createdAt": "2026-11-21T18:45:12.000Z",
   "expiresAt": null,
   "activatesAt": null,
   "expiresAfter": null,
@@ -164,17 +166,21 @@ curl "https://ishortn.ink/api/v1/links?limit=2" -H "x-api-key: $ISHORTN_API_KEY"
 {
   "data": [
     {
+      "id": 4907,
       "shortLink": "https://isht.app/launch-day",
       "url": "https://example.com/blog/launch-day",
       "alias": "launch-day",
+      "createdAt": "2026-11-21T18:45:12.000Z",
       "expiresAt": null,
       "activatesAt": null,
       "expiresAfter": null
     },
     {
+      "id": 4821,
       "shortLink": "https://go.example.com/pricing",
       "url": "https://example.com/pricing",
       "alias": "pricing",
+      "createdAt": "2026-11-21T17:00:00.000Z",
       "expiresAt": "2026-12-31T23:59:59.000Z",
       "activatesAt": null,
       "expiresAfter": 1000

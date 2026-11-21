@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import crypto from "node:crypto";
 
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -139,10 +139,13 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/links (MySQL)", () => {
       "list-b",
       "list-a",
     ]);
+    const stored = await db.query.link.findFirst({ where: eq(schema.link.alias, "list-e") });
     expect(body.data[0]).toEqual({
+      id: stored?.id,
       shortLink: "https://isht.app/list-e",
       url: "https://example.com",
       alias: "list-e",
+      createdAt: "2026-11-01T12:04:00.000Z",
       expiresAt: null,
       activatesAt: null,
       expiresAfter: null,

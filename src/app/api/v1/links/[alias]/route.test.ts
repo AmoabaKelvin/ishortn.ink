@@ -9,7 +9,7 @@ import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
-import { DELETE, PATCH } from "./route";
+import { DELETE, GET, PATCH } from "./route";
 
 // Runs against a disposable MySQL with the schema pushed (test/setup.ts points
 // the app's db client at it); see CONTRIBUTING.md, "Database tests".
@@ -21,6 +21,7 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
   const API_KEY = "api-link-alias-route-test-key";
   const ALIAS = "alias-route-test";
   const OTHER_ALIAS = "alias-route-other";
+  const CREATED_AT = new Date(Date.UTC(2026, 10, 1, 12, 30));
 
   beforeAll(() => {
     // Another test file replaces @/env.mjs with a partial object for the whole
@@ -49,6 +50,7 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
         alias: ALIAS,
         domain: DEFAULT_PLATFORM_DOMAIN,
         userId: USER_ID,
+        createdAt: CREATED_AT,
       },
       {
         url: "https://example.com",
@@ -72,10 +74,32 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
 
   const patch = (alias: string, body: string) =>
     PATCH(...request(alias, { method: "PATCH", body }));
+  const get = (alias: string) => GET(...request(alias, { method: "GET" }));
   const remove = (alias: string) => DELETE(...request(alias, { method: "DELETE" }));
 
   const findLink = (alias: string) =>
     db.query.link.findFirst({ where: eq(schema.link.alias, alias) });
+
+  test("GET returns the link with its id and creation time", async () => {
+    const response = await get(ALIAS);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      id: (await findLink(ALIAS))?.id,
+      shortLink: `https://${DEFAULT_PLATFORM_DOMAIN}/${ALIAS}`,
+      url: "https://example.com",
+      alias: ALIAS,
+      createdAt: CREATED_AT.toISOString(),
+      expiresAt: null,
+      activatesAt: null,
+      expiresAfter: null,
+    });
+  });
+
+  test("GET does not reach another account's link", async () => {
+    const response = await get(OTHER_ALIAS);
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.code).toBe("not_found");
+  });
 
   test("PATCH rejects an alias below the free-plan minimum length", async () => {
     const response = await patch(ALIAS, JSON.stringify({ alias: "abc" }));
@@ -95,10 +119,20 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
     });
   });
 
-  test("PATCH renames to a valid alias", async () => {
+  test("PATCH renames to a valid alias and keeps the id and creation time", async () => {
+    const id = (await findLink(ALIAS))?.id;
     const response = await patch(ALIAS, JSON.stringify({ alias: "alias-route-renamed" }));
     expect(response.status).toBe(200);
-    expect((await response.json()).alias).toBe("alias-route-renamed");
+    expect(await response.json()).toEqual({
+      id,
+      shortLink: `https://${DEFAULT_PLATFORM_DOMAIN}/alias-route-renamed`,
+      url: "https://example.com",
+      alias: "alias-route-renamed",
+      createdAt: CREATED_AT.toISOString(),
+      expiresAt: null,
+      activatesAt: null,
+      expiresAfter: null,
+    });
   });
 
   test("PATCH answers bad input with JSON errors", async () => {
