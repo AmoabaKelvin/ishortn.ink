@@ -22,11 +22,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatChartDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
-import { TrackingPausedBanner } from "../../../_components/tracking-paused-banner";
 import { QuickInfoCard } from "../../../analytics/[alias]/_components/quick-info-card";
 
 import type { Plan } from "@/lib/billing/plans";
-import type { EventTrackingPause } from "@/server/lib/event-usage";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type Analytics = RouterOutputs["bioPage"]["getAnalytics"];
@@ -44,15 +42,7 @@ const chartConfig = {
   views: { label: "Views", color: "#2563eb" },
 } satisfies ChartConfig;
 
-export function AnalyticsPanel({
-  pageId,
-  plan,
-  trackingPause,
-}: {
-  pageId: number;
-  plan: Plan;
-  trackingPause: EventTrackingPause | null;
-}) {
+export function AnalyticsPanel({ pageId, plan }: { pageId: number; plan: Plan }) {
   const [range, setRange] = useState<Range>("7d");
   const isFree = plan === "free";
 
@@ -100,10 +90,6 @@ export function AnalyticsPanel({
           </p>
         )}
       </div>
-
-      {trackingPause && (
-        <TrackingPausedBanner pause={trackingPause} source="bio_analytics_tracking_paused" />
-      )}
 
       {isError && (!data || isPreviousData) ? (
         <div
