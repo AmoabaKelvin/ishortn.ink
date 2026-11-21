@@ -15,6 +15,7 @@ import {
   uniqueLinkVisit,
   utmTemplate,
 } from "@/server/db/schema";
+import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 
 // Grace period in days before permanently deleting soft-deleted teams
 const GRACE_PERIOD_DAYS = 30;
@@ -116,6 +117,7 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
       }
 
       // 2. Delete all links
+      await reserveLinkAliases(tx, eq(link.teamId, teamId), "purged");
       const linksResult = await tx.delete(link).where(eq(link.teamId, teamId));
       result.linksDeleted += linksResult[0].affectedRows;
 

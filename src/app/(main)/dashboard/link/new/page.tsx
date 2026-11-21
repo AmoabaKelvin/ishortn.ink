@@ -39,7 +39,11 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
-import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
+import {
+  DEFAULT_PLATFORM_DOMAIN,
+  isPlatformDomain,
+  PLATFORM_DOMAINS,
+} from "@/lib/constants/domains";
 import { clientLogger } from "@/lib/logger/client";
 import { normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
@@ -224,7 +228,10 @@ export default function CreateLinkPage() {
         if (!data.isAvailable) {
           form.setError("alias", {
             type: "manual",
-            message: "Alias is already taken",
+            // Platform-domain aliases are never reissued once deleted or renamed.
+            message: isPlatformDomain(selectedDomain)
+              ? "This alias is taken. Aliases that were used before can't be reused."
+              : "Alias is already taken",
           });
         } else {
           form.clearErrors("alias");
