@@ -30,7 +30,7 @@ A QR code on packaging can link to setup instructions, ingredient details, warra
 
 ### Event Tickets and Check-In
 
-Event organizers use QR codes as digital tickets. Attendees present their code at the door for a quick scan, speeding up entry. The same code can link to event schedules, maps, or exclusive content.
+Event organizers use QR codes as digital tickets. Attendees present their code at the door for a quick scan, speeding up entry. The same code can link to event schedules, maps, or exclusive content. For bulletins, giving pages and event posters, see [QR codes for churches and nonprofits](/solutions/churches-and-nonprofits).
 
 ### Business Cards
 
