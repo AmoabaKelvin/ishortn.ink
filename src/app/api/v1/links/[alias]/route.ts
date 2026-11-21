@@ -18,6 +18,7 @@ import {
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
   restrictedAccountResponse,
+  toApiLink,
   withApiKey,
 } from "../../utils";
 
@@ -275,22 +276,4 @@ async function getOwnedLinkByAlias(alias: string, domain: string, userId: string
       isNull(link.teamId),
     ),
   });
-}
-
-function toApiLink(retrievedLink: {
-  domain: string;
-  alias: string | null;
-  url: string | null;
-  disableLinkAfterDate: Date | null;
-  activateAt: Date | null;
-  disableLinkAfterClicks: number | null;
-}) {
-  return {
-    shortLink: `https://${retrievedLink.domain}/${retrievedLink.alias}`,
-    url: retrievedLink.url,
-    alias: retrievedLink.alias,
-    expiresAt: retrievedLink.disableLinkAfterDate,
-    activatesAt: retrievedLink.activateAt,
-    expiresAfter: retrievedLink.disableLinkAfterClicks,
-  };
 }

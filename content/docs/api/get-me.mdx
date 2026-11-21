@@ -1,0 +1,82 @@
+---
+title: Get your account
+description: Return the account that owns an API key. Use it to check that a key works.
+endpoint:
+  method: GET
+  path: /api/v1/me
+---
+
+Returns the account that owns the API key: its ID, email, name, plan and default domain. Automation tools such as Zapier, Make and n8n call it to test a connection, and it's a cheap way to check a key in your own code.
+
+## Request
+
+No parameters.
+
+<CodeGroup>
+
+```bash title="cURL"
+curl "https://ishortn.ink/api/v1/me" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript title="JavaScript"
+const response = await fetch("https://ishortn.ink/api/v1/me", {
+  headers: { "x-api-key": process.env.ISHORTN_API_KEY },
+});
+
+if (!response.ok) {
+  const { error } = await response.json();
+  throw new Error(`${response.status}: ${error.message ?? error}`);
+}
+
+const account = await response.json();
+console.log(`Connected as ${account.email} on ${account.plan}`);
+```
+
+```python title="Python"
+import os
+
+import requests
+
+response = requests.get(
+    "https://ishortn.ink/api/v1/me",
+    headers={"x-api-key": os.environ["ISHORTN_API_KEY"]},
+)
+response.raise_for_status()
+
+print(response.json()["email"])
+```
+
+</CodeGroup>
+
+## Response
+
+`200 OK` with the account.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | The account ID. |
+| `email` | string \| null | The account's email address. |
+| `name` | string \| null | The account's name. |
+| `plan` | string | `free`, `pro` or `ultra`: the plan the API applies to this key's requests. A cancelled plan counts until the end of the paid period. |
+| `defaultDomain` | string | The domain new links use when a request leaves out `domain`. See [Domains](/docs/api#domains). |
+
+```json
+{
+  "id": "user_2abc123",
+  "email": "ada@example.com",
+  "name": "Ada Lovelace",
+  "plan": "pro",
+  "defaultDomain": "isht.app"
+}
+```
+
+## Errors
+
+Error bodies use the [standard error shape](/docs/api#responses-and-errors), except the plan-gated `403`.
+
+| Status | Code | Message | Cause |
+| --- | --- | --- | --- |
+| `401` | `unauthorized` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
+| `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

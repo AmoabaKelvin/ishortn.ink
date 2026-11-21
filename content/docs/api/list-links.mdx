@@ -1,0 +1,127 @@
+---
+title: List links
+description: List the short links in your personal workspace, newest first, one page at a time.
+endpoint:
+  method: GET
+  path: /api/v1/links
+---
+
+Returns the short links in your personal workspace, newest first. Each page holds up to `limit` links and a `nextCursor` to fetch the next one. Pages stay stable while you create links: a new link appears at the top of the first page and never shifts later pages, so you see each link once.
+
+The list covers the links that [Get a link](/docs/api/get-link) can find: links in your personal workspace on a [platform domain](/docs/platform-domains) or on a [custom domain](/docs/custom-domains) that is active in that workspace.
+
+## Request
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `limit` | query | integer | No | Links per page, from 1 to 100. Defaults to 25. |
+| `cursor` | query | string | No | The `nextCursor` from the previous page. Leave it out to get the first page. Treat it as opaque: don't build or change it. |
+| `domain` | query | string | No | Only list links on this domain. It must be a platform domain or an active custom domain in your personal workspace. See [Domains](/docs/api#domains). Leave it out to list links on all of them. |
+
+<CodeGroup>
+
+```bash title="cURL"
+curl "https://ishortn.ink/api/v1/links?limit=2" \
+  -H "x-api-key: YOUR_API_KEY"
+
+# Next page
+curl "https://ishortn.ink/api/v1/links?limit=2&cursor=MTc5NTI4MDQwMDAwMDo0ODIx" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```javascript title="JavaScript"
+const links = [];
+let cursor = null;
+
+do {
+  const params = new URLSearchParams({ limit: "100" });
+  if (cursor) params.set("cursor", cursor);
+
+  const response = await fetch(`https://ishortn.ink/api/v1/links?${params}`, {
+    headers: { "x-api-key": process.env.ISHORTN_API_KEY },
+  });
+  if (!response.ok) {
+    const { error } = await response.json();
+    throw new Error(`${response.status}: ${error.message ?? error}`);
+  }
+
+  const page = await response.json();
+  links.push(...page.data);
+  cursor = page.nextCursor;
+} while (cursor);
+
+console.log(`${links.length} links`);
+```
+
+```python title="Python"
+import os
+
+import requests
+
+links = []
+params = {"limit": 100}
+
+while True:
+    response = requests.get(
+        "https://ishortn.ink/api/v1/links",
+        params=params,
+        headers={"x-api-key": os.environ["ISHORTN_API_KEY"]},
+    )
+    response.raise_for_status()
+    page = response.json()
+    links.extend(page["data"])
+    if not page["nextCursor"]:
+        break
+    params["cursor"] = page["nextCursor"]
+
+print(len(links), "links")
+```
+
+</CodeGroup>
+
+To watch for new links, as a polling trigger in Zapier, Make or n8n does, request the first page and look for links you haven't seen yet.
+
+## Response
+
+`200 OK` with one page of links.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | array | The links on this page, newest first. Each has the same fields as [Get a link](/docs/api/get-link#response) returns. |
+| `nextCursor` | string \| null | Pass it as `cursor` to get the next page. `null` on the last page. |
+
+```json
+{
+  "data": [
+    {
+      "shortLink": "https://isht.app/launch-day",
+      "url": "https://example.com/blog/launch-day",
+      "alias": "launch-day",
+      "expiresAt": null,
+      "activatesAt": null,
+      "expiresAfter": null
+    },
+    {
+      "shortLink": "https://go.example.com/pricing",
+      "url": "https://example.com/pricing",
+      "alias": "pricing",
+      "expiresAt": "2026-12-31T23:59:59.000Z",
+      "activatesAt": null,
+      "expiresAfter": 1000
+    }
+  ],
+  "nextCursor": "MTc5NTI4MDQwMDAwMDo0ODIx"
+}
+```
+
+## Errors
+
+Error bodies use the [standard error shape](/docs/api#responses-and-errors), except the plan-gated `403`.
+
+| Status | Code | Message | Cause |
+| --- | --- | --- | --- |
+| `400` | `validation_failed` | `Query parameters are invalid` | `limit` isn't a whole number from 1 to 100, or `cursor` isn't a `nextCursor` from this endpoint. `details` names the parameter. |
+| `401` | `unauthorized` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
+| `403` | `forbidden` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
+| `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

@@ -325,6 +325,13 @@ export const link = mysqlTable(
     blockedAtIdx: index("blocked_blockedAt_idx").on(table.blocked, table.blockedAt),
     domainIdx: index("domain_idx").on(table.domain),
     listingIdx: index("listing_idx").on(table.userId, table.teamId, table.isQrCode, table.archived),
+    // GET /api/v1/links pages newest first; lets each page read only its own rows.
+    newestIdx: index("userId_teamId_createdAt_idx").on(
+      table.userId,
+      table.teamId,
+      table.createdAt,
+      table.id,
+    ),
   }),
 );
 
