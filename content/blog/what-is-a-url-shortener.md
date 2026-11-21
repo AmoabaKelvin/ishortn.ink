@@ -1,134 +1,181 @@
 ---
 title: "What Is a URL Shortener and How Does It Work?"
-description: "Learn what URL shorteners are, how they work, and why they're essential for marketing, social media, and tracking link performance."
+description: "A URL shortener maps a short code to a long URL and redirects visitors to it. How redirects work, 301 vs 302 vs 307, what gets tracked, custom domains, and the risks."
 date: "2026-03-08"
-updated: "2026-11-20"
-author: "Kelvin Amoaba"
-tags: ["url shortener", "link management", "guide"]
+updated: "2026-11-22"
+tags: ["url shortener", "link management", "guide", "redirects"]
 published: true
 ---
 
-Long, unwieldy URLs are everywhere. Whether you are sharing a product page, a campaign landing page, or an analytics report, a raw URL can look messy, break in emails, and provide zero insight into who is clicking. URL shorteners solve all three problems at once.
+A URL shortener is a service that gives a long web address a short alias, such as `isht.app/launch-day`, and sends anyone who opens the short version on to the original page. It doesn't compress the URL. It stores a pair (short code, long URL) in a database, and when someone requests the short code, its server answers with an HTTP redirect that points the browser at the long URL.
 
-## What Is a URL Shortener?
+Because every click passes through the shortener's server on the way, the service can count clicks, change where the link goes after you've shared it, and put the link on your own domain. That's why people use them, and it's also where the risks come from.
 
-A URL shortener is a tool that takes a long web address and converts it into a compact link that redirects to the original destination. Instead of sharing something like:
+This guide covers how a short link works step by step, which redirect codes shorteners use and why it matters, what a shortener can and can't track, custom domains, and the problems to watch for: dead links, phishing and spam filters.
 
+## A short link, before and after
+
+| | Example |
+| --- | --- |
+| Long URL | `https://example.com/products/winter-2026/limited-edition?utm_source=newsletter&utm_medium=email&utm_campaign=launch` |
+| Short link | `https://isht.app/winter26` |
+| Branded short link | `https://go.example.com/winter26` |
+
+All three open the same page. The short ones fit in a text message, read out loud on a podcast, and print cleanly on a flyer.
+
+## How a URL shortener works
+
+### Creating the link
+
+1. You paste a long URL into the shortener, or send it to the shortener's API.
+2. The service checks the destination. Responsible shorteners refuse known phishing and malware URLs at this step.
+3. It picks a short code, also called a slug, alias or back-half. That's either a random string, like a 9-character code, or one you choose, like `winter26`. The code has to be unique on that domain.
+4. It saves the pair in its database and gives you the short link.
+
+### When someone clicks it
+
+1. The visitor's browser looks up the shortener's domain in DNS and connects to its server.
+2. It requests the path, for example `GET /winter26`.
+3. The server finds `winter26` in its database. If the link is expired, disabled or blocked, it shows a page explaining that instead.
+4. It records the click: time, approximate location from the IP address, device and browser from the user agent, and the referring site if the browser sends one.
+5. It responds with a redirect status code and a `Location` header holding the long URL.
+6. The browser makes a second request, to the destination, and loads the page.
+
+You can watch this happen with `curl`. Here is the response for an iShortn link, with the destination cut short to fit:
+
+```bash
+$ curl -I https://isht.app/winter26
+HTTP/2 307
+location: https://example.com/products/winter-2026/limited-edition?...
+cache-control: private, no-cache, no-store, max-age=0, must-revalidate
 ```
-https://example.com/products/summer-2026/limited-edition?utm_source=newsletter&utm_medium=email&utm_campaign=launch
-```
 
-You share a clean, memorable link such as:
+The detour costs the visitor one extra request before the real page starts loading.
 
-```
-https://ishortn.ink/summer26
-```
+## 301 vs 302 vs 307: which redirect a shortener should use
 
-Both links lead to the same page, but the short version is easier to type, share, and remember.
+The status code tells the browser, and search engines, whether the move is permanent and whether to remember it.
 
-## A Brief History of URL Shortening
+| Code | Meaning | Browser caches it? | Keeps the request method? | Google treats target as canonical? |
+| --- | --- | --- | --- | --- |
+| `301` | Moved permanently | Yes, often indefinitely | Not guaranteed | Yes |
+| `308` | Permanent redirect | Yes | Yes | Yes |
+| `302` | Found (temporary) | No, unless told to | Not guaranteed | No |
+| `307` | Temporary redirect | No, unless told to | Yes | No |
 
-URL shortening traces its roots back to the early 2000s. TinyURL, launched in 2002, was one of the first services to offer shortened links to the public. As social media platforms like Twitter imposed strict character limits, the demand for shorter links exploded. Bit.ly arrived in 2008 and introduced link analytics, turning a simple convenience into a marketing tool.
+Two things follow for short links.
 
-Since then, the landscape has evolved significantly. Modern URL shorteners like iShortn go far beyond simple redirects, offering branded domains, detailed analytics dashboards, QR code generation, and team collaboration features.
+**A cached 301 breaks editing and counting.** Once a browser has cached a 301, it can skip the shortener on the next visit and go straight to the old destination. If you later change where the link points, that visitor never sees the change, and the click is never recorded. Temporary redirects (302 and 307) avoid both problems, which is why most link-tracking shorteners use them.
 
-## How URL Shorteners Work
+**For SEO it rarely matters.** Google's [redirect documentation](https://developers.google.com/search/docs/crawling-indexing/301-redirects) says permanent redirects (301, 308) are a signal that the target should be the canonical URL, while temporary ones (302, 303, 307) are not. A short link you share on social media or in an email isn't a page you want ranked, so a temporary redirect is the right choice. For moving your own website to a new address, use a 301 on your own server, not a short link.
 
-At a technical level, URL shortening is straightforward. Here is what happens behind the scenes when you create and use a short link.
+iShortn answers short links with a `307` and a `no-store` cache header, as the `curl` output above shows. Every click reaches the server and gets counted, and a changed destination applies to the next visitor.
 
-### Creating a Short Link
+## What a URL shortener can and can't track
 
-1. **You submit a long URL** to the shortening service.
-2. **The service generates a unique identifier** (often called a slug or alias), such as `summer26`.
-3. **A mapping is stored** in a database that links the short slug to the original long URL.
-4. **You receive the shortened URL**, for example `https://ishortn.ink/summer26`.
+Because the click passes through its server, a shortener can record:
 
-### When Someone Clicks the Short Link
+- **When**: the time of each click, which gives you clicks per day.
+- **Where**: country and city, estimated from the IP address. This is approximate, and VPNs move it.
+- **What device**: mobile, tablet or desktop, plus operating system and browser, read from the user agent.
+- **Where from**: the referring site, when the browser sends one. Many apps (WhatsApp, email clients, some social apps) send none, so those clicks show up as "Direct".
+- **Unique visitors**: an estimate of how many different people clicked, not just total clicks.
 
-1. **The browser sends a request** to `ishortn.ink/summer26`.
-2. **The server looks up `summer26`** in its database to find the corresponding long URL.
-3. **The server responds with an HTTP redirect**, typically a `301` (permanent) or `302` (temporary) status code.
-4. **The browser follows the redirect** and loads the original destination page.
+A good shortener also filters out known bots and link-preview crawlers, so the preview card Slack or iMessage fetches doesn't count as a click.
 
-### 301 vs. 302 Redirects
+It can't see who the person is, and it can't see what they do after they land: whether they bought anything, read the page or bounced. For that, add UTM parameters to the destination so your own analytics such as GA4 or Plausible can attribute the visit. The free [UTM builder](/utm-builder) builds the tagged URL, and [how to track link clicks](/blog/how-to-track-link-clicks) explains which numbers are worth watching.
 
-The type of redirect matters for SEO and caching:
+On iShortn, the Free plan shows a 7-day analytics window. Pro and Ultra show a link's whole history. See [Analytics](/docs/analytics) for what each chart counts.
 
-- **301 (Moved Permanently)** tells browsers and search engines that the redirect is permanent. Browsers may cache this redirect, and search engines transfer link equity to the destination URL.
-- **302 (Found / Temporary Redirect)** indicates the redirect is temporary. Browsers do not cache it, which is useful when you might change the destination later.
+## Custom domains: short links on your own brand
 
-Most URL shorteners use 302 redirects by default because they allow you to update the destination URL without worrying about cached redirects in browsers.
+By default, your links live on the shortener's domain (`isht.app/winter26`, `bit.ly/...`). With a custom domain they read `go.yourbrand.com/winter26`. Setting one up means adding a DNS record, usually a `CNAME`, that points a subdomain at the shortener. The shortener then issues an SSL certificate for it. The [custom domain docs](/docs/custom-domains) walk through it.
 
-## Benefits of Using a URL Shortener
+Why bother:
 
-### Click Tracking and Analytics
+- **People can see who sent the link.** A generic short link hides the destination. `go.yourbrand.com` tells the reader the link is yours before they click.
+- **You don't inherit other people's reputation.** A shared shortener domain carries links from every user, including spammers, so some email filters and security tools treat it with suspicion. Your own domain only carries your links.
+- **You can leave.** If you own the domain, you can move it to another provider and recreate the links. If your links live on the shortener's domain, they work only as long as that shortener does.
 
-Every time someone clicks a short link, the shortening service can record data such as the click timestamp, geographic location, device type, browser, and referral source. This gives you visibility into how your links are performing without requiring any additional tracking setup. Our guide on [how to track link clicks](/blog/how-to-track-link-clicks) covers this in depth.
+The cost is a domain you own and, on most services, a paid plan. On iShortn, Pro includes 3 custom domains and Ultra has no limit. The guide to [custom short links for your brand](/blog/custom-short-links-for-your-brand) covers naming and setup.
 
-### Branded Links Build Trust
+## Short links and QR codes
 
-Generic short links from unknown domains can look suspicious. Custom branded short links, like `links.yourcompany.com/sale`, reinforce your brand identity and increase click-through rates (see [how to create custom short links for your brand](/blog/custom-short-links-for-your-brand)). Studies have shown that branded short links can boost click-through rates by up to 34% compared to generic short URLs.
+A QR code stores a URL. If it stores your long destination directly, it can never change: reprint the code or live with it. If it stores a short link, you can change the destination later and the printed code keeps working. That's what "dynamic QR code" means in practice, and it also makes scans countable, because each scan is a click on the short link.
 
-### Cleaner Sharing Experience
+The catch is the same as above: the printed code depends on the shortener staying up and the link staying active. If a code on a menu or flyer stops working, [this troubleshooting guide](/blog/qr-code-stopped-working) lists the usual causes. You can make a code for any link with the free [QR code generator](/qr-code-generator).
 
-Short links look better in social media bios, email signatures, SMS messages, and printed materials. They eliminate the visual clutter of long URLs with multiple query parameters, making your communications look more polished and professional.
+## The risks and limits of short links
 
-### Easier to Remember and Type
+### Link rot when a service shuts down or changes its rules
 
-A concise link such as `ishortn.ink/docs` is far easier to recall and type than a long URL with a string of random characters. This is particularly valuable for offline channels like conference presentations, business cards, and podcasts where people need to type a URL manually.
+A short link has two points of failure: the destination page and the shortener. If the shortener closes, every link on its domain dies, no matter how healthy the destination is.
 
-## Common Use Cases for URL Shorteners
+Google ran goo.gl for years, then [announced in 2024](https://developers.googleblog.com/en/google-url-shortener-links-will-no-longer-be-available/) that all goo.gl links would stop working on August 25, 2025. It softened that in August 2025: links that showed no activity were switched off on that date, and actively used links were kept. Firebase Dynamic Links, Google's app-link product on `page.link`, shut down on the same day.
 
-### Social Media Marketing
+How to protect yourself:
 
-Short links keep posts tidy on platforms like X (formerly Twitter), LinkedIn, and Instagram bios. Combined with analytics, you can measure which platforms drive the most traffic and adjust your strategy accordingly.
+- Use a custom domain for anything printed or long-lived, so you can move providers.
+- Export your links now and then. A list of alias and destination pairs lets you rebuild them elsewhere.
+- Check what the provider does with inactive or free links. Some disable links with no recent clicks.
+- Don't reuse aliases for something new. On iShortn's own domains, a deleted link's alias can't be claimed again, so an old printed code never starts pointing somewhere unexpected.
 
-### Email Campaigns
+### Phishing: short links hide where they go
 
-Long URLs can trigger spam filters and look unappealing in email copy. Short links keep your emails clean while providing click-tracking data to measure campaign effectiveness.
+The thing that makes short links tidy also makes them useful to scammers: you can't read the destination before you click. Shorteners are a common way to dress up phishing pages, which is why some email filters and chat apps distrust links on shared shortener domains.
 
-### Print and Offline Materials
+As a reader, before you click a short link from someone you don't know:
 
-Brochures, business cards, posters, and packaging all benefit from short, human-readable links. Pair a short URL with a QR code and you cover both audiences: those who prefer to type and those who prefer to scan.
+- Preview it. Many shorteners show the destination if you change the URL slightly. On iShortn, add `!` to the end of the link (`isht.app/winter26!`) to see where it goes without being redirected or counted as a click. Unshortening sites such as [unshorten.it](https://unshorten.it) work across services.
+- Prefer links on a domain you recognise, which is another argument for branded links.
 
-### QR Codes
+As a shortener user, pick a service that scans destinations. iShortn checks every destination when a link is created or edited, including Google Safe Browsing and its own blocklists, and re-checks live links against threat feeds several times a day ([details](/docs/abuse#link-safety-checks)). No scanner catches everything. A brand-new phishing page can get through until a threat list picks it up.
 
-QR codes encode the URL they point to. Shorter URLs produce simpler QR codes that are easier to scan, especially at small sizes. Many URL shorteners, including iShortn, let you generate a QR code for any short link directly from the dashboard.
+### Destinations can change after you share
 
-### API and Developer Integrations
+A link you can edit is a link someone else can edit too, if they run it. For the reader, a short link that pointed somewhere harmless last week can point somewhere else today. For you, it means protecting the account that owns your links: use a strong password, and on a team give edit access only to people who need it.
 
-Developers can programmatically create short links through APIs, enabling automated workflows such as generating unique tracking links for each customer or embedding short links in transactional emails.
+### When not to use a short link
 
-## Features to Look for in a URL Shortener
+- **Links on your own website to your own pages.** Link directly. A redirect adds a hop and tells search engines nothing useful.
+- **Places that reject them.** Some ad networks, affiliate programs and forums ban or flag shortened links. Read the rules first.
+- **URLs that are already short.** `example.com/pricing` doesn't need shortening, though you may still want a short link to count clicks.
 
-Not all URL shorteners are equal. Here are the features that separate a basic tool from a professional-grade platform:
+## Free vs paid URL shorteners
 
-- **Detailed Analytics** — Look for click counts, geographic data, device breakdowns, referrer tracking, and time-series charts.
-- **Custom Domains** — The ability to use your own domain for branded short links.
-- **QR Code Generation** — Built-in QR code creation with customization options such as colors and logos.
-- **Link Expiration and Scheduling** — Set links to activate or expire at specific times.
-- **Password Protection** — Restrict access to links that contain sensitive content.
-- **Team Collaboration** — Shared workspaces for teams to manage links together.
-- **API Access** — Programmatic link creation and management for developer workflows.
-- **Geo-Targeting** — Redirect users to different destinations based on their location.
+Most shorteners have a free plan that covers basic shortening, with caps on links per month and on how far back analytics go. Paid plans usually add custom domains, editable links, longer analytics history, API access and team features.
 
-## How iShortn Helps You Manage Links Effectively
+For reference, iShortn's Free plan includes 30 new links a month, 1,000 tracked events (clicks and scans) a month, a 7-day analytics window and up to 5 QR codes. Pro is $8 a month (1,000 links and 10,000 tracked events a month, 3 custom domains, the [API](/docs/api) and password protection). Ultra is $15 a month, removes the link, event and domain caps, and adds team workspaces. Full limits are on the [plans page](/docs/plans) and [pricing](/pricing).
 
-iShortn is built around the idea that link management should be simple without sacrificing power. If you are not sure whether you need more than a shortener, see [URL shortener vs link management platform](/blog/url-shortener-vs-link-management-platform). With iShortn, you get a clean dashboard where you can create short links, attach custom domains, generate styled QR codes, and review analytics, all in one place.
+If you're choosing between services, the [comparison of free URL shorteners](/blog/best-free-url-shorteners) lines up the free plans, and the [compare pages](/compare) go through iShortn against [Bitly](/compare/bitly), [TinyURL](/compare/tinyurl), [Rebrandly](/compare/rebrandly) and [Dub](/compare/dub) one by one. If you're not sure you need more than a shortener, read [URL shortener vs link management platform](/blog/url-shortener-vs-link-management-platform).
 
-The analytics dashboard gives you real-time insights into click performance, including geographic breakdowns, device types, and referral sources. If you work with a team, shared team workspaces on the Ultra plan let everyone collaborate on link management without stepping on each other's toes.
+## Frequently asked questions
 
-For developers, iShortn's Pro and Ultra plans include a straightforward REST API to create and manage links programmatically, making it easy to integrate link shortening into your existing tools and workflows. The [pricing page](/pricing) compares what each plan includes. If you are still choosing a tool, our [comparison of free URL shorteners](/blog/best-free-url-shorteners) lines up six of them.
+### Are URL shorteners safe?
 
-## Getting Started
+The shortener itself is as safe as the page it sends you to. The risk is that you can't see that page before clicking. Preview unfamiliar short links, and treat a short link from a stranger the way you'd treat any unknown link.
 
-Creating your first short link takes less than a minute:
+### Do short links expire?
 
-1. **Sign up** for a free account at [ishortn.ink](https://ishortn.ink/?utm_source=blog&utm_medium=content&utm_campaign=what-is-a-url-shortener).
-2. **Paste your long URL** into the link creation form.
-3. **Customize the slug** if you want a branded, memorable link.
-4. **Share your short link** anywhere: social media, email, print, or messaging apps.
+Not usually. Most services keep links working indefinitely unless you set an expiry date or click limit, delete the link, or the service shuts down. Some free services disable links that go unused; check the provider's terms. On iShortn, links don't expire unless you set an expiry date or a click limit, and inactive links aren't switched off.
 
-Once clicks start coming in, head to your dashboard to see where your audience is, what devices they use, and which channels drive the most engagement.
+### Does a short link hurt SEO?
 
-Whether you are a marketer tracking campaign performance, a developer automating link generation, or someone who simply wants cleaner links, a URL shortener is a small tool that makes a big difference.
+Not for the ways people normally use them: social posts, email, print and chat. Google follows redirects. Don't use short links for internal links on your own site, and don't expect a short link to rank in search on its own.
+
+### Can I change where a short link goes after sharing it?
+
+On most link-management services, yes. That's the main reason to use a shortener that uses temporary redirects. On iShortn you can edit the destination of any link on every plan, from the dashboard or through the API on Pro and Ultra.
+
+### What happened to Google's URL shortener?
+
+Google stopped creating new goo.gl links in 2019. On August 25, 2025, it switched off goo.gl links that showed no activity in late 2024. Links that were still in use keep working.
+
+### How do I make a short link?
+
+Paste the long URL into a shortener, optionally choose your own alias, and copy the result. On iShortn:
+
+1. [Create a free account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=what-is-a-url-shortener).
+2. Paste the long URL and, if you like, type an alias such as `winter26`.
+3. Copy the short link, or download a QR code for it.
+4. Open the link's analytics to see clicks by day, country, device and referrer as they come in.
