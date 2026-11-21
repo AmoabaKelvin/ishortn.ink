@@ -77,7 +77,33 @@ export function countsTowardMonthlyLinkQuota(
   return values.isBioLink !== true || getBioLinkBlockLimit(plan) === undefined;
 }
 
-export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
+/**
+ * Lifetime number of CSV-imported links on the workspace's own active custom
+ * domain that skip the monthly link limit on capped paid plans. Moving a branded
+ * domain from another shortener is migration, not new link creation, and would
+ * otherwise take several months of allowance.
+ */
+export const CUSTOM_DOMAIN_IMPORT_ALLOWANCE = 5000;
+
+/** What's left of CUSTOM_DOMAIN_IMPORT_ALLOWANCE; 0 on free and on uncapped plans. */
+export function customDomainImportAllowanceLeft(
+  plan: Plan,
+  limit: number | undefined,
+  used: number,
+): number {
+  if (plan === "free" || limit === undefined) return 0;
+  return Math.max(0, CUSTOM_DOMAIN_IMPORT_ALLOWANCE - used);
+}
+
+type LinkLimitOptions = {
+  /** CSV import: a used-up monthly limit doesn't reject while the import allowance remains. */
+  customDomainImport?: boolean;
+};
+
+export async function checkAndUpdateLinkLimit(
+  ctx: ProtectedTRPCContext,
+  { customDomainImport = false }: LinkLimitOptions = {},
+) {
   const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
 
   if (!planCtx) {
@@ -89,8 +115,11 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
 
   const { plan, linksLimit: limit } = planCtx;
   const currentCount = await normalizeMonthlyLinkCount(planCtx, ctx.db);
+  const importAllowanceLeft = customDomainImport
+    ? customDomainImportAllowanceLeft(plan, limit, planCtx.userRecord.customDomainImportCount)
+    : 0;
 
-  if (limit !== undefined && currentCount >= limit) {
+  if (limit !== undefined && currentCount >= limit && importAllowanceLeft === 0) {
     await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "monthly_links", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -103,6 +132,7 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
     currentCount,
     limit,
     isProUser: plan !== "free",
+    importAllowanceLeft,
   };
 }
 
@@ -111,7 +141,10 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
  * Team workspaces bypass limits (they're Ultra with unlimited links).
  * Personal workspaces check against the user's plan limits.
  */
-export async function checkWorkspaceLinkLimit(ctx: WorkspaceTRPCContext) {
+export async function checkWorkspaceLinkLimit(
+  ctx: WorkspaceTRPCContext,
+  options: LinkLimitOptions = {},
+) {
   // Team workspaces carry the owner's plan; a team below Ultra is read-only
   // (refused in workspaceProcedure), so a writable team is never capped here.
   if (ctx.workspace.type === "team") {
@@ -120,11 +153,12 @@ export async function checkWorkspaceLinkLimit(ctx: WorkspaceTRPCContext) {
       currentCount: 0,
       limit: undefined,
       isProUser: true,
+      importAllowanceLeft: 0,
     };
   }
 
   // Personal workspace: check user's plan limits
-  return checkAndUpdateLinkLimit(ctx);
+  return checkAndUpdateLinkLimit(ctx, options);
 }
 
 export async function incrementLinkCount(
@@ -161,6 +195,16 @@ export async function incrementWorkspaceLinkCount(
   }
 
   return incrementLinkCount(ctx, currentCount, limit, created);
+}
+
+/** Counts created links against CUSTOM_DOMAIN_IMPORT_ALLOWANCE (personal workspaces only). */
+export async function incrementCustomDomainImportCount(ctx: WorkspaceTRPCContext, created: number) {
+  if (ctx.workspace.type === "team" || created === 0) return;
+
+  await ctx.db
+    .update(user)
+    .set({ customDomainImportCount: sql`${user.customDomainImportCount} + ${created}` })
+    .where(eq(user.id, ctx.auth.userId));
 }
 
 export async function getUserDefaultDomain(ctx: ProtectedTRPCContext): Promise<string> {
@@ -510,7 +554,88 @@ export type CsvLinkRow = {
   alias?: string;
   domain?: string;
   note?: string;
+  name?: string;
+  /** Set on rows read from a Bitly link export. */
+  bitly?: BitlyRow;
 };
+
+export type BitlyRow = {
+  /** The row's short link as exported: Custom Link when set, else Link. */
+  shortLink: string;
+  /** `alias` is a custom back-half rather than Bitly's random code. */
+  custom: boolean;
+  /** Bitly's random code when it differs from the custom back-half on the same domain. */
+  code?: string;
+  deleted: boolean;
+  /** Why the row can't be imported, found while reading it. */
+  error?: string;
+};
+
+/** Bitly's own short domains; links on them can't move to another service. */
+export const BITLY_DOMAINS: ReadonlySet<string> = new Set(["bit.ly", "j.mp", "bitly.is"]);
+
+const MAX_LINK_TEXT_LENGTH = 255;
+
+/** Splits an exported short link like `https://go.example.com/spring-menu` into domain and back-half. */
+export const parseShortLink = (value: string): { domain: string; alias: string } | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    const alias = url.pathname.replace(/^\/+|\/+$/g, "");
+    return alias ? { domain: url.hostname.replace(/\.$/, "").toLowerCase(), alias } : null;
+  } catch {
+    return null;
+  }
+};
+
+type CsvRecord = Record<string, string>;
+
+const isBitlyExport = (headers: string[]) =>
+  !headers.includes("url") &&
+  (headers.includes("destination url") || headers.includes("long url")) &&
+  (headers.includes("link") || headers.includes("bitlink"));
+
+// The current export names the columns Link/Custom Link/Destination URL; exports
+// from before 2023 use Bitlink/Custom Bitlink/Long URL.
+const readBitlyRecord = (record: CsvRecord, row: number): CsvLinkRow => {
+  const link = (record.link ?? record.bitlink ?? "").trim();
+  const customLink = (record["custom link"] ?? record["custom bitlink"] ?? "").trim();
+  const shortLink = customLink || link;
+  const primary = parseShortLink(shortLink);
+  const code = customLink ? parseShortLink(link) : null;
+  const title = record.title?.trim().slice(0, MAX_LINK_TEXT_LENGTH);
+
+  return {
+    row,
+    url: (record["destination url"] ?? record["long url"] ?? "").trim(),
+    alias: primary?.alias,
+    domain: primary?.domain,
+    note: `Imported from Bitly: ${link || shortLink}`.slice(0, MAX_LINK_TEXT_LENGTH),
+    name: title || undefined,
+    bitly: {
+      shortLink,
+      custom: !!customLink,
+      code:
+        primary &&
+        code &&
+        code.domain === primary.domain &&
+        normalizeAlias(code.alias) !== normalizeAlias(primary.alias)
+          ? code.alias
+          : undefined,
+      deleted: record.status?.trim().toLowerCase() === "deleted",
+      error: primary ? undefined : "This row has no valid Bitly link",
+    },
+  };
+};
+
+const readGenericRecord = (record: CsvRecord, row: number): CsvLinkRow => ({
+  row,
+  url: record.url?.trim() ?? "",
+  alias: record.alias?.trim() || undefined,
+  domain: record.domain?.trim() || undefined,
+  note: record.note || undefined,
+});
 
 const parsedCsvSchema = z.array(z.record(z.string(), z.string()));
 
@@ -530,8 +655,9 @@ const csvReadError = (error: CsvError) => {
 };
 
 /**
- * Parses a bulk-import CSV. Headers match case-insensitively and a UTF-8 BOM
- * is ignored, so Excel and Google Sheets exports work as-is. File-level
+ * Parses a bulk-import CSV: our own format (a `url` column) or a Bitly link
+ * export as downloaded. Headers match case-insensitively and a UTF-8 BOM is
+ * ignored, so Excel and Google Sheets exports work as-is. File-level
  * problems throw a user-facing TRPCError; row-level problems are left to the
  * caller so they can be reported per row.
  */
@@ -563,25 +689,22 @@ export const parseLinkCsv = (csv: string): CsvLinkRow[] => {
     throw error;
   }
 
-  if (!headers.includes("url")) {
+  const readRecord = headers.includes("url")
+    ? readGenericRecord
+    : isBitlyExport(headers)
+      ? readBitlyRecord
+      : null;
+  if (!readRecord) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        'The first row must be a header with a "url" column ("alias", "domain" and "note" are optional).',
+        'The first row must be a header with a "url" column, or a link export from Bitly ("Link" and "Destination URL" columns).',
     });
   }
 
   const rows = records.flatMap((record, index) =>
     Object.values(record).some((value) => value.trim() !== "")
-      ? [
-          {
-            row: index + 2,
-            url: record.url?.trim() ?? "",
-            alias: record.alias?.trim() || undefined,
-            domain: record.domain?.trim() || undefined,
-            note: record.note || undefined,
-          },
-        ]
+      ? [readRecord(record, index + 2)]
       : [],
   );
 

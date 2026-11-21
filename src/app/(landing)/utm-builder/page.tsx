@@ -140,7 +140,7 @@ const utmFaqs = [
   },
   {
     q: "Is anything I type stored?",
-    a: "No. The builder runs in your browser. Your URLs and tags are never sent to our servers, and you don't need an account.",
+    a: "No. The builder runs in your browser. Your URLs and tags stay there unless you choose to shorten a link, and you don't need an account.",
   },
   {
     q: "Do UTM tags still work if I shorten the link?",

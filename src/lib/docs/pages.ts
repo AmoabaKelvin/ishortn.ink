@@ -17,6 +17,7 @@ export const DOCS_PAGE_MODULES = {
   analytics: () => import("../../../content/docs/analytics.mdx"),
   teams: () => import("../../../content/docs/teams.mdx"),
   "bulk-import": () => import("../../../content/docs/bulk-import.mdx"),
+  "migrate-from-bitly": () => import("../../../content/docs/migrate-from-bitly.mdx"),
   abuse: () => import("../../../content/docs/abuse.mdx"),
   api: () => import("../../../content/docs/api/index.mdx"),
   "api/create-link": () => import("../../../content/docs/api/create-link.mdx"),

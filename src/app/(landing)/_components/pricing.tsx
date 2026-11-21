@@ -5,6 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { planPriceDisplay, planSignupHref, resolveBillingInterval } from "@/lib/billing/pricing";
+import { promoBannerText } from "@/lib/billing/promo";
 import { cn } from "@/lib/utils";
 
 import {
@@ -17,8 +18,9 @@ import {
 } from "./site-primitives";
 
 import type { BillingInterval } from "@/lib/billing/plans";
+import type { Promo } from "@/lib/billing/promo";
 
-const buildPlans = (interval: BillingInterval) => [
+const buildPlans = (interval: BillingInterval, promo: Promo | null) => [
   {
     name: "Free",
     price: planPriceDisplay("free", interval),
@@ -30,7 +32,7 @@ const buildPlans = (interval: BillingInterval) => [
   },
   {
     name: "Pro",
-    price: planPriceDisplay("pro", interval),
+    price: planPriceDisplay("pro", interval, promo),
     tagline: "For creators, makers, and growing teams.",
     cta: "Get Pro",
     href: planSignupHref("pro", interval),
@@ -39,7 +41,7 @@ const buildPlans = (interval: BillingInterval) => [
   },
   {
     name: "Ultra",
-    price: planPriceDisplay("ultra", interval),
+    price: planPriceDisplay("ultra", interval, promo),
     tagline: "For agencies and teams that want no limits.",
     cta: "Go Ultra",
     href: planSignupHref("ultra", interval),
@@ -51,8 +53,15 @@ const buildPlans = (interval: BillingInterval) => [
 const subscribeToNothing = () => () => {};
 const readIntervalParam = () => new URLSearchParams(window.location.search).get("interval");
 
-// The /pricing page renders its own hero heading, so it hides this one.
-export const Pricing = ({ showHeading = true }: { showHeading?: boolean }) => {
+// The /pricing page renders its own hero heading, so it hides this one. `promo` is resolved on the
+// server by the page so the offer is in the first paint.
+export const Pricing = ({
+  showHeading = true,
+  promo = null,
+}: {
+  showHeading?: boolean;
+  promo?: Promo | null;
+}) => {
   // The marketing pages are static, so `?interval=monthly` is read from the URL on the client
   // (the server snapshot is the annual default) rather than through useSearchParams, which would
   // need a Suspense boundary around the whole section.
@@ -60,7 +69,7 @@ export const Pricing = ({ showHeading = true }: { showHeading?: boolean }) => {
   const [selected, setBillingInterval] = useState<BillingInterval | null>(null);
   const [priceFade, setPriceFade] = useState(false);
   const interval = selected ?? resolveBillingInterval(intervalParam);
-  const plans = buildPlans(interval);
+  const plans = buildPlans(interval, promo);
 
   return (
     <Section id="pricing">
@@ -99,7 +108,19 @@ export const Pricing = ({ showHeading = true }: { showHeading?: boolean }) => {
         <span className="text-base font-medium text-neutral-600 sm:text-sm">2 months free</span>
       </div>
 
-      <div className="mt-12 grid gap-4 lg:grid-cols-3">
+      {promo && (
+        <p
+          className={cn(
+            cardClass,
+            "mt-8 flex items-start gap-2.5 px-5 py-4 text-pretty text-base text-neutral-900 sm:items-center sm:justify-center sm:text-sm",
+          )}
+        >
+          <IconTagFilled aria-hidden="true" className="mt-1 size-4 shrink-0 sm:mt-0" />
+          {promoBannerText(promo)}
+        </p>
+      )}
+
+      <div className={cn("grid gap-4 lg:grid-cols-3", promo ? "mt-8" : "mt-12")}>
         {plans.map((p) => (
           <div key={p.name} className={cn(cardClass, "flex flex-col justify-between p-6 sm:p-8")}>
             <div>

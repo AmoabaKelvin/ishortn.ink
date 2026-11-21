@@ -20,6 +20,7 @@ export const DOCS_SECTIONS = [
       { slug: "analytics", title: "Analytics" },
       { slug: "teams", title: "Teams and workspaces" },
       { slug: "bulk-import", title: "CSV bulk import" },
+      { slug: "migrate-from-bitly", title: "Move from Bitly" },
       { slug: "abuse", title: "Abuse and acceptable use" },
     ],
   },

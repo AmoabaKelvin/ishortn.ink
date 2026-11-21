@@ -17,6 +17,7 @@ import {
   getVariantId,
   resolvePlan,
 } from "@/lib/billing/plans";
+import { checkoutDiscountCode } from "@/lib/billing/promo";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
@@ -174,6 +175,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
         },
         checkoutData: {
           email: user?.email ?? undefined,
+          discountCode: checkoutDiscountCode(),
           custom: {
             user_id: userId,
           },

@@ -1,0 +1,1 @@
+ALTER TABLE `User` ADD `customDomainImportCount` int DEFAULT 0 NOT NULL;

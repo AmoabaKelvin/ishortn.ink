@@ -582,6 +582,20 @@
       "when": 1795249067951,
       "tag": "0082_redundant_stryfe",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "5",
+      "when": 1795256482997,
+      "tag": "0083_absurd_oracle",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "5",
+      "when": 1795264605917,
+      "tag": "0084_robust_owl",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,11 @@ describe("isPostVisible", () => {
   it("hides unpublished posts regardless of date", () => {
     expect(isPostVisible({ date: "2025-01-01", published: false }, now)).toBe(false);
   });
+
+  it("shows scheduled posts when previewing, but never unpublished ones", () => {
+    expect(isPostVisible({ date: "2027-01-01", published: true }, now, true)).toBe(true);
+    expect(isPostVisible({ date: "2025-01-01", published: false }, now, true)).toBe(false);
+  });
 });
 
 describe("blog content", () => {

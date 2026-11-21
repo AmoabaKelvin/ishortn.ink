@@ -5,6 +5,7 @@ import {
   IconSparklesFilled,
   IconTagFilled,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
@@ -190,6 +191,16 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             </li>
           ))}
         </ul>
+        {"migrationGuide" in competitor && (
+          <p className={cn(bodyClass, "mt-8")}>
+            <Link
+              href={competitor.migrationGuide.href}
+              className="font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
+            >
+              {competitor.migrationGuide.label}
+            </Link>
+          </p>
+        )}
       </Section>
 
       <Section>
