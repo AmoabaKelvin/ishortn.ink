@@ -46,7 +46,7 @@ export type OverPlanTeam = {
 /**
  * Accounts using features above their live (paid) plan, and teams whose owner
  * isn't on Ultra, for the admin entitlements page. The account list is capped;
- * `totalAccounts` and `featureCounts` cover every account.
+ * `totalAccounts`, `accountsInGrace` and `featureCounts` cover every account.
  */
 export async function getEntitlementOverview(dbClient: DbClient, now = new Date()) {
   const usage = await getPlanUsageByUser(dbClient, undefined, now);
@@ -89,6 +89,7 @@ export async function getEntitlementOverview(dbClient: DbClient, now = new Date(
         deletedAt: true,
         planGracePlan: true,
         planGraceEndsAt: true,
+        planGraceReason: true,
       },
       with: { subscriptions: true },
     });
@@ -135,6 +136,7 @@ export async function getEntitlementOverview(dbClient: DbClient, now = new Date(
       ownerEmail: user.email,
       planGracePlan: user.planGracePlan,
       planGraceEndsAt: user.planGraceEndsAt,
+      planGraceReason: user.planGraceReason,
       sub: subscription,
     })
     .from(team)
@@ -174,6 +176,7 @@ export async function getEntitlementOverview(dbClient: DbClient, now = new Date(
 
   return {
     totalAccounts: accounts.length,
+    accountsInGrace: accounts.filter((account) => account.graceActive).length,
     accounts: accounts.slice(0, ACCOUNT_ROWS),
     featureCounts,
     teams,

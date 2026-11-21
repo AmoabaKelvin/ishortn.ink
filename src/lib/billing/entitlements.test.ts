@@ -8,6 +8,7 @@ import {
   GRACE_EMAIL_STAGE,
   GRACE_PERIOD_MS,
   graceChangeAfterBillingEvent,
+  newResourcePlan,
   NO_GRACE,
   overPlanFeatures,
   paidPlan,
@@ -17,7 +18,7 @@ import {
   teamAccess,
 } from "./entitlements";
 
-import type { PlanGrace } from "./entitlements";
+import type { GraceReason, PlanGrace } from "./entitlements";
 import type { Plan } from "./plans";
 
 const NOW = new Date("2026-11-20T12:00:00Z");
@@ -37,9 +38,10 @@ function sub(status: string, plan: Exclude<Plan, "free">, endsAt: Date | null = 
   };
 }
 
-const grace = (plan: Plan, endsAt: Date): PlanGrace => ({
+const grace = (plan: Plan, endsAt: Date, reason: GraceReason = "lapsed"): PlanGrace => ({
   planGracePlan: plan,
   planGraceEndsAt: endsAt,
+  planGraceReason: reason,
 });
 
 describe("paidPlan", () => {
@@ -82,6 +84,22 @@ describe("effectivePlan", () => {
 
   test("a grace plan never lowers a higher paid plan", () => {
     expect(effectivePlan(sub("active", "ultra"), grace("pro", at(5)), NOW)).toBe("ultra");
+  });
+
+  test("a passed over-plan grace doesn't stand in for a failed payment's lapse grace", () => {
+    const pastDue = sub("past_due", "pro");
+    expect(effectivePlan(pastDue, grace("ultra", at(-10), "over_plan"), NOW)).toBe("pro");
+    expect(effectivePlan(pastDue, grace("ultra", at(2), "over_plan"), NOW)).toBe("ultra");
+  });
+});
+
+describe("newResourcePlan", () => {
+  test("an over-plan grace keeps existing usage only; a lapse grace keeps the whole plan", () => {
+    expect(newResourcePlan(null, grace("pro", at(3), "over_plan"), NOW)).toBe("free");
+    expect(newResourcePlan(sub("active", "pro"), grace("ultra", at(3), "over_plan"), NOW)).toBe(
+      "pro",
+    );
+    expect(newResourcePlan(sub("expired", "pro"), grace("pro", at(3)), NOW)).toBe("pro");
   });
 });
 
@@ -185,6 +203,24 @@ describe("graceChangeAfterBillingEvent", () => {
       });
       expect(change.type).toBe("clear");
     }
+  });
+
+  test("paying again on a lower plan clears a passed lapse grace, so a later lapse gets one", () => {
+    const change = graceChangeAfterBillingEvent({
+      before: "free",
+      subscription: sub("active", "pro"),
+      grace: grace("ultra", at(-30)),
+      now: NOW,
+    });
+    expect(change.type).toBe("clear");
+
+    const overPlan = graceChangeAfterBillingEvent({
+      before: "pro",
+      subscription: sub("active", "pro"),
+      grace: grace("ultra", at(-30), "over_plan"),
+      now: NOW,
+    });
+    expect(overPlan.type).toBe("none");
   });
 
   test("resubscribing to a lower plan keeps the grace for the higher one", () => {

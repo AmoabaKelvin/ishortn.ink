@@ -10,6 +10,7 @@ import {
   GRACE_PERIOD_MS,
   graceChangeAfterBillingEvent,
   higherPlan,
+  lapseEndedByPayment,
   NO_GRACE,
   overPlanFeatures,
   paidPlan,
@@ -107,7 +108,10 @@ function overPlanGrace(usage: PlanUsage, plan: Plan, now: Date) {
  * client so it never runs inside a caller's transaction.
  */
 export async function ensurePlanChecked(
-  account: Pick<User, "id" | "planCheckedAt" | "planGraceEndsAt" | "planGracePlan">,
+  account: Pick<
+    User,
+    "id" | "planCheckedAt" | "planGraceEndsAt" | "planGracePlan" | "planGraceReason"
+  >,
   sub: Subscription | null,
   now = new Date(),
 ): Promise<PlanGrace> {
@@ -142,7 +146,11 @@ export async function ensurePlanChecked(
     log.info({ userId: account.id, plan: grace.plan }, "started over-plan grace on first check");
     await runBackgroundTask(sendDueGraceEmails({ userIds: [account.id], now }));
   }
-  return { planGracePlan: grace.plan, planGraceEndsAt: grace.endsAt };
+  return {
+    planGracePlan: grace.plan,
+    planGraceEndsAt: grace.endsAt,
+    planGraceReason: grace.reason,
+  };
 }
 
 /** Keeps the grace period of teams owned by `ownerId` in step with the owner's paid plan. */
@@ -249,8 +257,15 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
   };
 
   // 1. Grace periods the paid plan covers again (resubscribed; webhook missed).
+  //    A passed lapse grace on a subscription that is paid again is cleared too.
   const gracedPayers = await db
-    .select({ userId: user.id, gracePlan: user.planGracePlan, sub: subscription })
+    .select({
+      userId: user.id,
+      planGracePlan: user.planGracePlan,
+      planGraceEndsAt: user.planGraceEndsAt,
+      planGraceReason: user.planGraceReason,
+      sub: subscription,
+    })
     .from(user)
     .innerJoin(subscription, eq(subscription.userId, user.id))
     .where(
@@ -260,22 +275,30 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
       ),
     );
   const toClear = gracedPayers
-    .filter((row) => planAtLeast(paidPlan(row.sub, now), row.gracePlan ?? "free"))
+    .filter(
+      (row) =>
+        planAtLeast(paidPlan(row.sub, now), row.planGracePlan ?? "free") ||
+        lapseEndedByPayment(row.sub, row, now),
+    )
     .map((row) => row.userId);
   for (const ids of chunk(toClear, LOOKUP_CHUNK)) {
     await db.update(user).set(CLEARED_GRACE).where(inArray(user.id, ids));
   }
   result.gracesCleared = toClear.length;
 
-  // 2. Lapses the webhook missed: a failed payment with no grace yet, or a
+  // 2. Lapses the webhook missed: a failed payment with no lapse grace yet, or a
   //    cancelled subscription whose paid period ended in the last grace window.
+  //    A passed over-plan grace doesn't cover the lapse, so it is replaced.
   const lapsed = await db
     .select({ userId: user.id, sub: subscription })
     .from(user)
     .innerJoin(subscription, eq(subscription.userId, user.id))
     .where(
       and(
-        isNull(user.planGraceEndsAt),
+        or(
+          isNull(user.planGraceEndsAt),
+          and(eq(user.planGraceReason, "over_plan"), lte(user.planGraceEndsAt, now)),
+        ),
         isNull(user.deletedAt),
         or(
           eq(subscription.status, "past_due"),
@@ -292,7 +315,7 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
     if (plan === "free") continue;
     const from = row.sub.status === "cancelled" && row.sub.endsAt ? row.sub.endsAt : now;
     const endsAt = new Date(from.getTime() + GRACE_PERIOD_MS);
-    if (await startUserGrace(db, row.userId, { plan, endsAt, reason: "lapsed" }, true, now)) {
+    if (await startUserGrace(db, row.userId, { plan, endsAt, reason: "lapsed" }, false, now)) {
       result.lapsesStarted++;
     }
   }
@@ -387,7 +410,8 @@ function timeLeft(endsAt: Date, now: Date): string {
   return days === 1 ? "24 hours" : `${days} days`;
 }
 
-const upgradeUrl = () => getAppUrl("/dashboard/pricing");
+// pricing-cards.tsx opens on the plan named in `?plan=`.
+const upgradeUrl = (plan: Plan) => getAppUrl(`/dashboard/pricing?plan=${plan}`);
 
 function accountSubject(
   kind: GraceEmailKind,
@@ -470,7 +494,7 @@ export async function sendDueGraceEmails(options: {
         endsOn,
         timeLeft: timeLeft(endsAt, now),
         items: items.length > 0 || reason !== "lapsed" ? items : freePlanSummary(),
-        upgradeUrl: upgradeUrl(),
+        upgradeUrl: upgradeUrl(gracePlan),
       }),
       claim: async () => {
         const [result] = await db
@@ -534,7 +558,7 @@ export async function sendDueGraceEmails(options: {
           timeLeft: timeLeft(row.endsAt, now),
           teamName: row.name,
           items: [],
-          upgradeUrl: upgradeUrl(),
+          upgradeUrl: upgradeUrl("ultra"),
         }),
         claim: async () => {
           const [result] = await db

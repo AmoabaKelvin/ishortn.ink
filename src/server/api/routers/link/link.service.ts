@@ -87,7 +87,7 @@ import {
   assertDomainAllowed,
   assertDomainWithinPlan,
   checkWorkspaceLinkLimit,
-  getWorkspaceDefaultDomain,
+  getPlanAllowedDefaultDomain,
   hasUtmValues,
   incrementWorkspaceLinkCount,
   PASSWORD_ATTEMPTS_PER_IP,
@@ -1077,7 +1077,7 @@ const shortenLinkSteps = async (
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
   const alias = await generateShortLink();
-  const domain = await getWorkspaceDefaultDomain(ctx);
+  const domain = await getPlanAllowedDefaultDomain(ctx);
 
   attempt.step = "safety";
   await assertUrlSafe(input.url);

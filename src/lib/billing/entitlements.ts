@@ -62,6 +62,7 @@ export function paidPlan(subscription?: SubscriptionState, now = new Date()): Pl
 export type PlanGrace = {
   planGracePlan: Plan | null;
   planGraceEndsAt: Date | null;
+  planGraceReason?: GraceReason | null;
 };
 
 export const NO_GRACE: PlanGrace = { planGracePlan: null, planGraceEndsAt: null };
@@ -77,16 +78,35 @@ export function effectivePlan(
   now = new Date(),
 ): Plan {
   let plan = paidPlan(subscription, now);
-  // A failed renewal keeps the subscribed plan until its grace period is recorded
+  // A failed renewal keeps the subscribed plan until its lapse grace is recorded
   // (by the webhook, or the daily reconcile if that was missed); from then on the
-  // grace period decides.
-  if (subscription?.status === "past_due" && !grace.planGraceEndsAt) {
+  // grace period decides. An over-plan grace is about feature usage, not this
+  // lapse, so it doesn't count.
+  if (subscription?.status === "past_due" && !lapseRecorded(grace)) {
     plan = higherPlan(plan, subscribedPlan(subscription));
   }
   if (grace.planGracePlan && isGraceActive(grace.planGraceEndsAt, now)) {
     plan = higherPlan(plan, grace.planGracePlan);
   }
   return plan;
+}
+
+// Rows written before the reason existed were all lapses.
+function lapseRecorded(grace: PlanGrace): boolean {
+  return !!grace.planGraceEndsAt && grace.planGraceReason !== "over_plan";
+}
+
+/**
+ * The plan for growing an account: the monthly link quota, adding custom
+ * domains, creating API keys. An over-plan grace only keeps what the account
+ * already uses working until it ends, so it doesn't raise these.
+ */
+export function newResourcePlan(
+  subscription: SubscriptionState | undefined,
+  grace: PlanGrace,
+  now = new Date(),
+): Plan {
+  return effectivePlan(subscription, grace.planGraceReason === "over_plan" ? NO_GRACE : grace, now);
 }
 
 /** Subscription statuses where access ended without the customer choosing another plan. */
@@ -140,6 +160,9 @@ export function graceChangeAfterBillingEvent(input: {
   const { planGracePlan, planGraceEndsAt } = input.grace;
 
   if (planGraceEndsAt && planAtLeast(after, planGracePlan ?? "free")) return { type: "clear" };
+  // Paying again ends a lapse even on a lower plan; its passed grace is cleared
+  // so a later lapse gets a grace of its own.
+  if (lapseEndedByPayment(input.subscription, input.grace, now)) return { type: "clear" };
 
   const lapsed = isLapsedStatus(input.subscription?.status) && !planAtLeast(after, input.before);
   if (lapsed && !isGraceActive(planGraceEndsAt, now)) {
@@ -152,6 +175,19 @@ export function graceChangeAfterBillingEvent(input: {
   }
 
   return { type: "none" };
+}
+
+/** A passed lapse grace on a subscription that is paid again (active or on trial). */
+export function lapseEndedByPayment(
+  subscription: SubscriptionState,
+  grace: PlanGrace,
+  now = new Date(),
+): boolean {
+  return (
+    !isLapsedStatus(subscription?.status) &&
+    lapseRecorded(grace) &&
+    !isGraceActive(grace.planGraceEndsAt, now)
+  );
 }
 
 // ----------------------------------------------------------------------------

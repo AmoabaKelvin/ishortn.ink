@@ -50,8 +50,7 @@ function EmptyPanel({ title, description }: { title: string; description: string
 
 function SummaryStats({ data }: { data: Overview }) {
   const inGrace =
-    data.accounts.filter((account) => account.graceActive).length +
-    data.teams.filter((team) => !team.readOnly && team.graceEndsAt).length;
+    data.accountsInGrace + data.teams.filter((team) => !team.readOnly && team.graceEndsAt).length;
   const stats = [
     { label: "Accounts over plan", value: data.totalAccounts },
     { label: "Teams below Ultra", value: data.teams.length },
@@ -161,11 +160,17 @@ export default function AdminEntitlementsPage() {
                     {data.accounts.map((account) => (
                       <tr key={account.userId} className="align-top">
                         <td className="px-4 py-3">
-                          <p className="break-words text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
+                          <p className="break-words text-[13px] font-medium text-neutral-900 dark:text-foreground">
                             {account.name ?? "Unnamed"}
                           </p>
                           <p className="break-all text-[11px] text-neutral-400 dark:text-neutral-500">
                             {account.email ?? account.userId}
+                          </p>
+                          <p className="mt-1 text-[11px] lg:hidden">
+                            <GraceStatus
+                              endsAt={account.graceEndsAt}
+                              active={account.graceActive}
+                            />
                           </p>
                         </td>
                         <td className="hidden whitespace-nowrap px-4 py-3 md:table-cell">
@@ -238,7 +243,7 @@ export default function AdminEntitlementsPage() {
                     {data.teams.map((team) => (
                       <tr key={team.teamId}>
                         <td className="px-4 py-3">
-                          <p className="break-words text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
+                          <p className="break-words text-[13px] font-medium text-neutral-900 dark:text-foreground">
                             {team.name}
                           </p>
                           <p className="break-all text-[11px] text-neutral-400 dark:text-neutral-500">

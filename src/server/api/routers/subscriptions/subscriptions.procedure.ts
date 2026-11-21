@@ -17,12 +17,17 @@ export const subscriptionsRouter = createTRPCRouter({
   // Grace-period notice for the dashboard banner (see src/lib/billing/entitlements.ts).
   entitlementNotice: workspaceProcedure.query(async ({ ctx }) => {
     if (ctx.workspace.type === "team") {
-      const { readOnly, ownerGraceEndsAt, role } = ctx.workspace;
-      if (!readOnly && !ownerGraceEndsAt) return null;
+      const { readOnly, ownerGraceEndsAt, role, team } = ctx.workspace;
+      // While a lapsed owner is in their own grace the team still reads as Ultra,
+      // but its grace (started with the owner's) is already running.
+      const endsAt =
+        ownerGraceEndsAt ??
+        (isGraceActive(team.ownerPlanGraceEndsAt) ? team.ownerPlanGraceEndsAt : null);
+      if (!readOnly && !endsAt) return null;
       return {
         type: "team" as const,
         readOnly,
-        endsAt: ownerGraceEndsAt,
+        endsAt,
         isOwner: role === "owner",
       };
     }
@@ -127,7 +132,9 @@ export const subscriptionsRouter = createTRPCRouter({
         links: {
           count: monthlyLinkCount,
           // Team workspaces have no limits (null means unlimited)
-          limit: isTeamWorkspace ? null : (caps.linksLimit ?? null),
+          limit: isTeamWorkspace
+            ? null
+            : ((planCtx ? planCtx.linksLimit : caps.linksLimit) ?? null),
         },
         events: {
           count: monthlyEventCount,

@@ -83,14 +83,13 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
     });
   }
 
-  const { plan, caps } = planCtx;
+  const { plan, linksLimit: limit } = planCtx;
   const currentCount = await normalizeMonthlyLinkCount(planCtx, ctx.db);
-  const limit = caps.linksLimit;
 
   if (limit !== undefined && currentCount >= limit) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: monthlyLinkLimitMessage(plan, limit),
+      message: monthlyLinkLimitMessage(planCtx.newResourcePlan, limit),
     });
   }
 
@@ -207,6 +206,25 @@ export async function getWorkspaceDefaultDomain(ctx: WorkspaceTRPCContext): Prom
 
   // Personal workspace: use user's default domain
   return getUserDefaultDomain(ctx);
+}
+
+/**
+ * The workspace default domain when the plan still allows new links on it;
+ * otherwise the platform default. A lapsed account whose default is a custom
+ * domain past its allowance keeps creating links instead of hitting an error
+ * on flows without a domain picker (quick shorten, bio blocks, QR codes).
+ */
+export async function getPlanAllowedDefaultDomain(ctx: WorkspaceTRPCContext): Promise<string> {
+  const domain = await getWorkspaceDefaultDomain(ctx);
+  const normalized = domain.trim().toLowerCase();
+  if (isPlatformDomain(normalized)) return domain;
+
+  const limit = getPlanCaps(ctx.workspace.plan).domainLimit;
+  if (limit === undefined) return domain;
+
+  const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
+  const usable = await getUsableCustomDomains(ctx.db, scope, limit);
+  return usable.includes(normalized) ? domain : DEFAULT_PLATFORM_DOMAIN;
 }
 
 /**

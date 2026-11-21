@@ -8,7 +8,7 @@ import {
   assertDomainAllowed,
   checkWorkspaceLinkLimit,
   countsTowardMonthlyLinkQuota,
-  getWorkspaceDefaultDomain,
+  getPlanAllowedDefaultDomain,
   restrictedLinkValues,
 } from "@/server/api/routers/link/utils";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
@@ -78,7 +78,7 @@ export async function prepareHiddenTrackingLink(
 
   const [alias, domain] = await Promise.all([
     generateShortLink(),
-    requestedDomain ? Promise.resolve(requestedDomain) : getWorkspaceDefaultDomain(ctx),
+    requestedDomain ? Promise.resolve(requestedDomain) : getPlanAllowedDefaultDomain(ctx),
   ]);
 
   const ownership = workspaceOwnership(ctx.workspace);

@@ -11,6 +11,7 @@ import {
   teamMember,
   user,
 } from "@/server/db/schema";
+import { getUserPlanContext } from "@/server/lib/user-plan";
 import { requirePermission, workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import {
@@ -63,8 +64,13 @@ export async function addDomainToUserAccount(
     "add custom domains. Only team owners can manage domains",
   );
 
-  // Enforce the per-plan custom-domain cap (workspace-scoped; a team's plan is its owner's)
-  const domainLimit = getPlanCaps(ctx.workspace.plan).domainLimit;
+  // Enforce the per-plan custom-domain cap (workspace-scoped; a team's plan is its owner's).
+  // A personal over-plan grace keeps existing domains working but adds none.
+  const plan =
+    ctx.workspace.type === "personal"
+      ? ((await getUserPlanContext(ctx.auth.userId, ctx.db))?.newResourcePlan ?? "free")
+      : ctx.workspace.plan;
+  const domainLimit = getPlanCaps(plan).domainLimit;
 
   if (domainLimit === 0) {
     throw new Error("You need to have an active subscription to add a custom domain");

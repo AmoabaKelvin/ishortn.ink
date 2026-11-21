@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import crypto from "node:crypto";
 
 import { eq, inArray } from "drizzle-orm";
@@ -6,13 +6,25 @@ import { eq, inArray } from "drizzle-orm";
 import { POST as createApiLink } from "@/app/api/v1/links/route";
 import { env } from "@/env.mjs";
 import { planAtLeast } from "@/lib/billing/entitlements";
+import { getPlanCaps } from "@/lib/billing/plans";
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { appRouter } from "@/server/api/root";
 import { createBioPage } from "@/server/api/routers/bio-page/bio-page.service";
+import { addDomainToUserAccount } from "@/server/api/routers/domains/domains.service";
 import { createFolder } from "@/server/api/routers/folder/folder.service";
+import { reorderGeoRules, updateGeoRule } from "@/server/api/routers/geo-rules/geo-rules.service";
 import { linkRouter } from "@/server/api/routers/link/link.procedure";
-import { bulkCreateLinks, createLink, updateLink } from "@/server/api/routers/link/link.service";
+import {
+  bulkCreateLinks,
+  createLink,
+  shortenLinkWithAutoAlias,
+  updateLink,
+} from "@/server/api/routers/link/link.service";
+import { createToken } from "@/server/api/routers/token/token.service";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
+import { prepareHiddenTrackingLink } from "@/server/lib/tracking-link";
+import { getUserPlanContext } from "@/server/lib/user-plan";
 import { resolveWorkspaceContext } from "@/server/lib/workspace";
 import { userHasUltraPlan } from "@/server/lib/workspace/workspace.service";
 
@@ -26,6 +38,9 @@ import type { TRPCContext, WorkspaceTRPCContext } from "@/server/api/trpc";
 // import) against a real MySQL. Set TEST_DATABASE_URL to run them; see
 // CONTRIBUTING.md, "Database tests".
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+
+// Each test runs real queries; some take several round trips.
+setDefaultTimeout(20_000);
 
 const DAY = 24 * 60 * 60 * 1000;
 const PRO_VARIANT = 1811616;
@@ -96,11 +111,13 @@ const ACCOUNT_PLAN = {
 const UNCHECKED_OVER_ID = "ent_test_unchecked_over";
 const UNCHECKED_FREE_ID = "ent_test_unchecked_free";
 const OVER_PLAN_GRACE_ID = "ent_test_over_plan_grace";
+const PAST_DUE_ID = "ent_test_past_due";
 const USER_IDS = [
   ...Object.values(ACCOUNTS).map((account) => account.id),
   UNCHECKED_OVER_ID,
   UNCHECKED_FREE_ID,
   OVER_PLAN_GRACE_ID,
+  PAST_DUE_ID,
 ];
 const TEAM_SLUGS = ["ent-test-pro-team", "ent-test-ultra-team"];
 
@@ -129,6 +146,7 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
       );
     await db.delete(schema.link).where(inArray(schema.link.userId, USER_IDS));
     await db.delete(schema.folder).where(inArray(schema.folder.userId, USER_IDS));
+    await db.delete(schema.siteSettings).where(inArray(schema.siteSettings.userId, USER_IDS));
     await db.delete(schema.bioPage).where(inArray(schema.bioPage.userId, USER_IDS));
     await db.delete(schema.customDomain).where(inArray(schema.customDomain.userId, USER_IDS));
     await db.delete(schema.token).where(inArray(schema.token.userId, USER_IDS));
@@ -400,6 +418,26 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     expect(await userHasUltraPlan(ACCOUNTS.ultra.id, db)).toBe(true);
   });
 
+  test("an over-plan grace keeps existing usage but grows nothing", async () => {
+    // Created by the test above: a free account in an over-plan grace at Ultra.
+    const workspace = await resolveWorkspaceContext(OVER_PLAN_GRACE_ID, "ishortn.ink", db);
+    expect(workspace.plan).toBe("ultra");
+    // SAFETY: these services read ctx.db, ctx.auth.userId and ctx.workspace.
+    const ctx = {
+      db,
+      auth: { userId: OVER_PLAN_GRACE_ID },
+      headers: new Headers({ host: "ishortn.ink" }),
+      workspace,
+    } as WorkspaceTRPCContext;
+
+    const planCtx = await getUserPlanContext(OVER_PLAN_GRACE_ID, db);
+    expect(planCtx?.linksLimit).toBe(getPlanCaps("free").linksLimit);
+    expect(createToken(ctx, { name: "key" })).rejects.toThrow(/API access is a Pro feature/);
+    expect(addDomainToUserAccount(ctx, { domain: "new.over-plan.test" })).rejects.toThrow(
+      /active subscription/,
+    );
+  });
+
   // ---------------------------------------------------------------------------
   // Paid per-link features
   // ---------------------------------------------------------------------------
@@ -508,6 +546,93 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     );
     // Removing one is allowed.
     await updateLink(ctx, { id, cloaking: false });
+  });
+
+  // Editing or reordering existing targeting rules through the standalone
+  // geo-rule endpoints follows the plan; deleting them is always allowed.
+  test.each(ACCOUNT_KEYS.map((key) => [key] as const))(
+    "dashboard: %s editing targeting rules follows the plan",
+    async (key) => {
+      const [inserted] = await db.insert(schema.link).values({
+        url: TARGET_URL,
+        alias: uniqueAlias(),
+        userId: ACCOUNTS[key].id,
+      });
+      const linkId = Number(inserted.insertId);
+      const rule = {
+        type: "country",
+        condition: "in",
+        values: ["GH"],
+        action: "block",
+        blockMessage: "no",
+      } as const;
+      const [first] = await db.insert(schema.geoRule).values({ linkId, ...rule, priority: 0 });
+      const [second] = await db.insert(schema.geoRule).values({ linkId, ...rule, priority: 1 });
+      const ruleIds = [Number(first.insertId), Number(second.insertId)];
+      const ctx = await workspaceCtx(key);
+      const paid = allowed(key, "pro");
+
+      const update = await updateGeoRule(ctx, {
+        ruleId: ruleIds[0]!,
+        rule: { ...rule, values: ["NG"], priority: 0 },
+      })
+        .then(() => "ok")
+        .catch((error: Error) => error.message);
+      expect(update === "ok").toBe(paid);
+
+      const reorder = await reorderGeoRules(ctx, { linkId, ruleIds: [...ruleIds].reverse() })
+        .then(() => "ok")
+        .catch((error: Error) => error.message);
+      expect(reorder === "ok").toBe(paid);
+
+      const stored = await db.query.geoRule.findFirst({
+        where: eq(schema.geoRule.id, ruleIds[0]!),
+      });
+      expect(stored?.values).toEqual(paid ? ["NG"] : ["GH"]);
+      expect(stored?.priority).toBe(paid ? 1 : 0);
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Flows without a domain picker use the default domain within the plan
+  // ---------------------------------------------------------------------------
+
+  describe("default custom domain", () => {
+    // Each account's default is its second-oldest custom domain.
+    beforeAll(async () => {
+      await db.insert(schema.siteSettings).values(
+        (["pro", "lapsedAfterGrace"] as const).map((key) => ({
+          userId: ACCOUNTS[key].id,
+          defaultDomain: domainOf(key, 2),
+        })),
+      );
+    });
+
+    const DEFAULT_CASES = [
+      ["pro", true],
+      ["lapsedAfterGrace", false],
+    ] as const;
+
+    test.each(DEFAULT_CASES)("quick shorten: %s keeps its default: %p", async (key, kept) => {
+      const ctx = await workspaceCtx(key);
+      const created = await shortenLinkWithAutoAlias(ctx, { url: TARGET_URL });
+      expect(created?.domain).toBe(kept ? domainOf(key, 2) : DEFAULT_PLATFORM_DOMAIN);
+    });
+
+    test.each(DEFAULT_CASES)(
+      "bio blocks and QR codes: %s keeps its default: %p",
+      async (key, kept) => {
+        const ctx = await workspaceCtx(key);
+        for (const kind of ["bio", "qr"] as const) {
+          const prepared = await prepareHiddenTrackingLink(ctx, {
+            url: TARGET_URL,
+            name: "Tracking",
+            kind,
+          });
+          expect(prepared.domain).toBe(kept ? domainOf(key, 2) : DEFAULT_PLATFORM_DOMAIN);
+        }
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -648,6 +773,39 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
   // ---------------------------------------------------------------------------
   // Reconcile
   // ---------------------------------------------------------------------------
+
+  test("the reconcile starts a lapse grace for a failed payment after a passed over-plan grace", async () => {
+    await db.insert(schema.user).values({
+      id: PAST_DUE_ID,
+      planCheckedAt: new Date(),
+      planGracePlan: "ultra",
+      planGraceEndsAt: new Date(Date.now() - 10 * DAY),
+      planGraceReason: "over_plan",
+      planGraceEmailStage: 2,
+    });
+    await db.insert(schema.subscription).values({
+      userId: PAST_DUE_ID,
+      subscriptionId: 2,
+      status: "past_due",
+      variantId: PRO_VARIANT,
+      plan: "pro",
+    });
+    // Covered by the subscribed plan until the lapse grace is recorded.
+    const before = await resolveWorkspaceContext(PAST_DUE_ID, "ishortn.ink", db);
+    expect(before.plan).toBe("pro");
+
+    await reconcileEntitlements();
+    const row = await db.query.user.findFirst({ where: eq(schema.user.id, PAST_DUE_ID) });
+    expect(row?.planGraceReason).toBe("lapsed");
+    expect(row?.planGracePlan).toBe("pro");
+    const endsAt = row?.planGraceEndsAt?.getTime() ?? 0;
+    expect(endsAt).toBeGreaterThan(Date.now() + 6.9 * DAY);
+
+    // Once recorded, the next run leaves it alone.
+    await reconcileEntitlements();
+    const again = await db.query.user.findFirst({ where: eq(schema.user.id, PAST_DUE_ID) });
+    expect(again?.planGraceEndsAt?.getTime()).toBe(endsAt);
+  });
 
   test("the reconcile starts a grace for over-plan accounts once, never again", async () => {
     await reconcileEntitlements();

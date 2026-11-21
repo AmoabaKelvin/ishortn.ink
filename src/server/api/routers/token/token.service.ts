@@ -31,7 +31,7 @@ export const getTokens = async (ctx: ProtectedTRPCContext) => {
 /** The account's API plan state for the settings page. */
 export const getApiAccessStatus = async (ctx: ProtectedTRPCContext) => {
   const planContext = await getUserPlanContext(ctx.auth.userId, ctx.db);
-  const canCreateKeys = canUseApi(planContext?.plan ?? "free");
+  const canCreateKeys = canUseApi(planContext?.newResourcePlan ?? "free");
   return {
     canCreateKeys,
     access: getApiAccess(
@@ -45,7 +45,7 @@ export const getApiAccessStatus = async (ctx: ProtectedTRPCContext) => {
 
 export const createToken = async (ctx: ProtectedTRPCContext, input: CreateTokenInput) => {
   const planContext = await getUserPlanContext(ctx.auth.userId, ctx.db);
-  if (!canUseApi(planContext?.plan ?? "free")) {
+  if (!canUseApi(planContext?.newResourcePlan ?? "free")) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "API access is a Pro feature. Upgrade to Pro to create API keys.",

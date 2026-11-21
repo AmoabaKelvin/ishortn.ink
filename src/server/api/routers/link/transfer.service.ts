@@ -87,7 +87,7 @@ export async function getAvailableWorkspaces(
 
   const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
   const personalPlan = planCtx?.plan ?? "free";
-  const personalLimit = planCtx?.caps.linksLimit;
+  const personalLimit = planCtx?.linksLimit;
 
   const isCurrentPersonal = ctx.workspace.type === "personal";
 
@@ -262,7 +262,7 @@ export async function validateTransfer(
   // Check target workspace link limits (only for personal workspace)
   if (targetWorkspace.type === "personal") {
     const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
-    const limit = planCtx?.caps.linksLimit;
+    const limit = planCtx?.linksLimit;
 
     if (limit !== undefined) {
       const currentCount = await ctx.db

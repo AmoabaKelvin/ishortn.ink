@@ -38,6 +38,7 @@ import {
   lockBioLinkBlockCapacity,
   pageBelongsToWorkspace,
   rethrowBioDuplicate,
+  sameBioTheme,
 } from "./utils";
 
 import type { PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
@@ -285,7 +286,7 @@ export async function updateBioPage(ctx: WorkspaceTRPCContext, input: UpdateBioP
     if (
       input.theme &&
       themeHasCustomization(input.theme) &&
-      JSON.stringify(input.theme) !== JSON.stringify(page.theme) &&
+      !sameBioTheme(input.theme, page.theme) &&
       !canUseBioCustomThemes(plan)
     ) {
       throw forbidden("Theme customization is available on Pro and Ultra plans.");

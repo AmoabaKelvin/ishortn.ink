@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 
-import { effectivePlan } from "@/lib/billing/entitlements";
+import { effectivePlan, newResourcePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
@@ -36,6 +36,9 @@ export type UserPlanContext = {
   subscription: Subscription | null;
   plan: Plan;
   caps: (typeof PLAN_CAPS)[Plan];
+  /** Plan for the monthly link quota, new domains and API keys (see newResourcePlan). */
+  newResourcePlan: Plan;
+  linksLimit: number | undefined;
 };
 
 const getMonthStart = () => {
@@ -58,12 +61,15 @@ export async function getUserPlanContext(
 
   const subscription = userRecord.subscriptions ?? null;
   const plan = effectivePlan(subscription, userRecord);
+  const growthPlan = newResourcePlan(subscription, userRecord);
 
   return {
     userRecord,
     subscription,
     plan,
     caps: getPlanCaps(plan),
+    newResourcePlan: growthPlan,
+    linksLimit: getPlanCaps(growthPlan).linksLimit,
   };
 }
 
@@ -154,7 +160,7 @@ export async function reserveMonthlyLinkSlot(
     throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
   }
 
-  const limit = planCtx.caps.linksLimit;
+  const limit = planCtx.linksLimit;
   if (limit === undefined) return planCtx;
 
   await normalizeMonthlyLinkCount(planCtx, dbClient);
@@ -167,7 +173,7 @@ export async function reserveMonthlyLinkSlot(
   if (result.affectedRows === 0) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: monthlyLinkLimitMessage(planCtx.plan, limit),
+      message: monthlyLinkLimitMessage(planCtx.newResourcePlan, limit),
     });
   }
 

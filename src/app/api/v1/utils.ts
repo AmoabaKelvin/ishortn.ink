@@ -38,6 +38,7 @@ export async function validateAndGetToken(apiKey: string | null) {
         restrictedAt: true,
         planGracePlan: true,
         planGraceEndsAt: true,
+        planGraceReason: true,
         planCheckedAt: true,
       },
     }),
