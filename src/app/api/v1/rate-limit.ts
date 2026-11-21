@@ -2,6 +2,8 @@ import { getApiRateLimits } from "@/lib/billing/plans";
 import { getStringsFromCache, setStringInCache } from "@/lib/core/cache";
 import { runBackgroundTask } from "@/lib/utils/background";
 
+import { apiError } from "./errors";
+
 import type { Plan } from "@/lib/billing/plans";
 
 export type RateLimitWindow = { limit: number; windowSeconds: number };
@@ -153,8 +155,10 @@ export function rateLimitHeaders(decision: RateLimitDecision) {
 }
 
 export function rateLimitedResponse(decision: RateLimitDecision): Response {
-  return new Response(`Rate limit exceeded. Retry in ${decision.retryAfter} seconds.`, {
-    status: 429,
-    headers: { ...rateLimitHeaders(decision), "Retry-After": String(decision.retryAfter) },
-  });
+  return apiError(
+    429,
+    "rate_limited",
+    `Rate limit exceeded. Retry in ${decision.retryAfter} seconds.`,
+    { headers: { ...rateLimitHeaders(decision), "Retry-After": String(decision.retryAfter) } },
+  );
 }

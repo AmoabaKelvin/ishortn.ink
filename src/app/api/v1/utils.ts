@@ -7,6 +7,7 @@ import { effectivePlan, graceUsagePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { domainBeyondPlanMessage, getUsableCustomDomains } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
@@ -14,9 +15,13 @@ import { getApiSunset } from "@/server/lib/api-access";
 import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
 
 import { apiAccessRevokedResponse, withApiSunsetNotice } from "./api-access";
+import { apiError } from "./errors";
 import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
 
 import type { Plan } from "@/lib/billing/plans";
+
+// Bounds the write load from busy keys: lastUsedAt is only for display.
+const LAST_USED_RESOLUTION_MS = 60 * 60 * 1000;
 
 export async function validateAndGetToken(apiKey: string | null) {
   if (!apiKey) return null;
@@ -49,8 +54,18 @@ export async function validateAndGetToken(apiKey: string | null) {
     return null;
   }
 
+  const now = new Date();
+  const { id, lastUsedAt } = existingToken[0]!;
+  if (!lastUsedAt || now.getTime() - lastUsedAt.getTime() >= LAST_USED_RESOLUTION_MS) {
+    void runBackgroundTask(db.update(token).set({ lastUsedAt: now }).where(eq(token.id, id))).catch(
+      () => undefined,
+    );
+  }
+
   const userSub = userSubscription[0] ?? null;
   // The same entitlement the dashboard uses: API links live in the personal workspace.
+  // Every paid-feature check in v1 reads this plan, so a trialing, past-due or
+  // cancelled-but-paid-up subscriber gets the same access as in the dashboard.
   const grace = await ensurePlanChecked(userRecord, userSub);
   return {
     ...existingToken[0]!,
@@ -67,7 +82,7 @@ export type ApiToken = NonNullable<Awaited<ReturnType<typeof validateAndGetToken
 
 /** 403 for write routes when the token owner's account is restricted, else null. */
 export function restrictedAccountResponse(token: ApiToken): Response | null {
-  return token.restrictedAt ? new Response(ACCOUNT_RESTRICTED_MESSAGE, { status: 403 }) : null;
+  return token.restrictedAt ? apiError(403, "forbidden", ACCOUNT_RESTRICTED_MESSAGE) : null;
 }
 
 /**
@@ -82,7 +97,7 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
   return async (request: Req, ...args: Args): Promise<Response> => {
     const token = await validateAndGetToken(request.headers.get("x-api-key"));
     if (!token) {
-      return new Response("Invalid or missing API key", { status: 401 });
+      return apiError(401, "unauthorized", "Invalid or missing API key");
     }
 
     // Paid keys skip the sunset lookup; for the rest it's cached per isolate.

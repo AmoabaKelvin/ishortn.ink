@@ -20,12 +20,12 @@ The JSON body takes at least one of these fields:
 | Field | Type | Description |
 | --- | --- | --- |
 | `url` | string | New destination. Must be a valid absolute URL. It goes through the [link safety check](/docs/abuse#link-safety-checks) again. |
-| `alias` | string | New alias, 1 to 20 characters: letters, numbers, `-` and `_`. The old alias stops working. |
+| `alias` | string | New alias, 1 to 20 characters: letters, numbers, `-` and `_`, and at least 6 characters on the Free plan. Must not already exist on the link's domain (checked case-insensitively), the same rules as [Create a link](/docs/api/create-link). Changing only the letter case of the current alias skips these checks. The old alias stops working. |
 | `expiresAt` | string \| null | Expiry date as ISO 8601 with a time zone, such as `2026-12-31T23:59:59Z`. `null` removes it. |
 | `activatesAt` | string \| null | Activation time as ISO 8601 with a time zone. Setting a time requires Pro or Ultra; `null` removes it on any plan. |
 | `expiresAfter` | integer \| null | Click limit, a whole number above 0. `null` removes it. |
 
-Any other field, such as `password` or `domain`, is rejected with `400`. To change those, edit the link in the dashboard.
+Any other field, such as `password` or `domain`, is rejected with `400` `validation_failed`. To change those, edit the link in the dashboard.
 
 <CodeGroup>
 
@@ -57,7 +57,8 @@ const response = await fetch(
 );
 
 if (!response.ok) {
-  throw new Error(`${response.status}: ${await response.text()}`);
+  const { error } = await response.json();
+  throw new Error(`${response.status}: ${error.message ?? error}`);
 }
 
 const link = await response.json();
@@ -79,7 +80,9 @@ response = requests.patch(
 )
 
 if not response.ok:
-    raise RuntimeError(f"{response.status_code}: {response.text}")
+    error = response.json()["error"]
+    message = error["message"] if isinstance(error, dict) else error
+    raise RuntimeError(f"{response.status_code}: {message}")
 
 link = response.json()
 ```
@@ -103,17 +106,24 @@ link = response.json()
 
 ## Errors
 
-| Status | Body | Cause |
-| --- | --- | --- |
-| `400` | `Invalid request body` | The body isn't valid JSON. |
-| `400` | JSON list of validation issues | A field has the wrong type or format, or the body has a field that isn't listed above. |
-| `400` | `No update fields provided` | The body is an empty object. |
-| `400` | A [link safety](/docs/abuse#link-safety-checks) message | The new destination failed the safety check. |
-| `401` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
-| `403` | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (JSON) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
-| `403` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
-| `403` | `Scheduled links are only available on Pro and Ultra plans` | Setting `activatesAt` on the Free plan. |
-| `404` | `Link not found` | No link with that alias on that domain in your personal workspace. |
-| `409` | `Alias already exists for this domain` | The new alias is taken on that domain. |
-| `500` | `Failed to update link due to a server error` | An unexpected server error. Retry later. |
-| `429` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |
+Error bodies use the [standard error shape](/docs/api#responses-and-errors), except the plan-gated `403`.
+
+| Status | Code | Message | Cause |
+| --- | --- | --- | --- |
+| `400` | `invalid_json` | `Request body must be valid JSON` | The body isn't valid JSON. |
+| `400` | `validation_failed` | `Request body is invalid` | A field has the wrong type or format, such as an alias with other characters or over 20 characters, or the body has a field that isn't listed above. `details` lists the fields. |
+| `400` | `bad_request` | `No update fields provided` | The body is an empty object. |
+| `400` | `bad_request` | `This alias is reserved. Choose another one.` | The new alias matches an iShortn app route on that domain. |
+| `400` | `bad_request` | `Custom aliases must be at least 6 characters on the free plan. Upgrade to Pro for shorter aliases.` | Free plan with a short new alias. |
+| `400` | `bad_request` | A [link safety](/docs/abuse#link-safety-checks) message | The new destination failed the safety check. |
+| `401` | `unauthorized` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
+| `403` | `forbidden` | `Your account is restricted. Contact safety@ishortn.ink` | Your account has been restricted. |
+| `403` | `forbidden` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
+| `403` | `forbidden` | `Your plan includes 3 custom domains, so links.example.com can't take new or edited links. Upgrade to Ultra to keep using it.` | The link is on a custom domain beyond your plan's allowance, for example after a downgrade. Without custom domains on your plan the message is `Custom domains are available on Pro and Ultra. Upgrade to create or edit links on links.example.com.` |
+| `403` | `forbidden` | `Scheduled links are only available on Pro and Ultra plans` | Setting `activatesAt` on the Free plan. |
+| `404` | `not_found` | `Link not found` | No link with that alias on that domain in your personal workspace. |
+| `409` | `conflict` | `Alias already exists` | The new alias is taken on that domain, compared case-insensitively. Aliases of deleted or renamed links on platform domains stay taken. |
+| `409` | `conflict` | `Alias already exists for this domain` | Another request took the new alias at the same moment. |
+| `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |
+| `500` | `internal_error` | `Failed to update link due to a server error` | An unexpected server error. Retry later. |

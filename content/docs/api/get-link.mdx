@@ -31,7 +31,8 @@ const response = await fetch(
 if (response.status === 404) {
   console.log("No such link");
 } else if (!response.ok) {
-  throw new Error(`${response.status}: ${await response.text()}`);
+  const { error } = await response.json();
+  throw new Error(`${response.status}: ${error.message ?? error}`);
 } else {
   const link = await response.json();
   console.log(link.url);
@@ -81,10 +82,12 @@ print(response.json()["url"])
 
 ## Errors
 
-| Status | Body | Cause |
-| --- | --- | --- |
-| `401` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
-| `403` | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (JSON) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
-| `403` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
-| `404` | `Link not found` | No link with that alias on that domain in your personal workspace. |
-| `429` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |
+Error bodies use the [standard error shape](/docs/api#responses-and-errors), except the plan-gated `403`.
+
+| Status | Code | Message | Cause |
+| --- | --- | --- | --- |
+| `401` | `unauthorized` | `Invalid or missing API key` | See [Authentication](/docs/api#authentication). |
+| `403` | | `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}` (whole body) | The key's account isn't on Pro or Ultra and its notice period has ended. See [API access by plan](/docs/api#api-access-by-plan). |
+| `403` | `forbidden` | `Domain not available for this API key` | `domain` isn't a platform domain or an active custom domain in your personal workspace. |
+| `404` | `not_found` | `Link not found` | No link with that alias on that domain in your personal workspace. |
+| `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

@@ -103,7 +103,7 @@ async function createShortLink(url: string, alias?: string): Promise<ShortLink> 
   });
 
   if (!response.ok) {
-    // Errors come back as plain text with a 4xx status.
+    // Errors come back as JSON: { "error": { "code", "message", "details" } }.
     throw new Error(`Failed to create short link (${response.status}): ${await response.text()}`);
   }
 
@@ -118,7 +118,7 @@ const link = await createShortLink(
 console.log(link.shortLink); // https://isht.app/summer26 (your default domain)
 ```
 
-To look up or change a link later, use `GET` or `PATCH` on `/links/{alias}`. A `PATCH` body can update `url`, `alias`, `expiresAt`, `activatesAt` or `expiresAfter`.
+To look up, change or delete a link later, use `GET`, `PATCH` or `DELETE` on `/links/{alias}`. A `PATCH` body can update `url`, `alias`, `expiresAt`, `activatesAt` or `expiresAfter`.
 
 ```typescript
 await fetch(`${API_BASE}/links/${link.alias}`, {
@@ -218,10 +218,10 @@ iShortn provides a REST API for creating and updating short links and reading th
 The endpoints:
 
 - **`POST /api/v1/links`** creates a short link and returns its `shortLink`, `url` and `alias`.
-- **`GET /api/v1/links/{alias}`** returns a link; **`PATCH /api/v1/links/{alias}`** updates its destination, alias or expiration.
+- **`GET /api/v1/links/{alias}`** returns a link; **`PATCH /api/v1/links/{alias}`** updates its destination, alias or expiration; **`DELETE /api/v1/links/{alias}`** deletes it.
 - **`GET /api/v1/analytics/{alias}`** returns click counts by date, country, city, device, OS and browser for your plan's analytics window.
 
-Requests authenticate with an API key in the `x-api-key` header; keys are managed from your dashboard. Errors return a 4xx or 5xx status with a plain-text message, and every response carries `X-RateLimit-*` headers for your plan's per-minute and per-day limits. A key on an account without Pro or Ultra gets `403` with a JSON body `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}`; during the 7-day notice period before that, its responses carry `Deprecation` and `Sunset` headers and JSON bodies include a `warning` field with the cutoff date.
+Requests authenticate with an API key in the `x-api-key` header; keys are managed from your dashboard. Errors return a 4xx or 5xx status with a JSON body `{"error": {"code": "...", "message": "...", "details": [...]}}`, and every response carries `X-RateLimit-*` headers for your plan's per-minute and per-day limits. A key on an account without Pro or Ultra gets `403` with a JSON body `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}`; during the 7-day notice period before that, its responses carry `Deprecation` and `Sunset` headers and JSON bodies include a `warning` field with the cutoff date.
 
 Whether you are building a SaaS product that needs shareable links, an internal tool that generates tracking URLs, or a marketing platform that creates campaign links at scale, the iShortn API gives you the building blocks to integrate programmatic URL shortening into your stack. To decide which metrics to pull from the analytics endpoints, see [how to track link clicks](/blog/how-to-track-link-clicks).
 

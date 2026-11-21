@@ -452,6 +452,10 @@ export const token = mysqlTable(
   {
     id: serial("id").primaryKey(),
     token: varchar("token", { length: 255 }),
+    name: varchar("name", { length: 64 }),
+    // First characters of the plaintext key, shown in settings so keys can be told apart.
+    prefix: varchar("prefix", { length: 8 }),
+    lastUsedAt: timestamp("lastUsedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
     userId: varchar("userId", { length: 32 }).notNull(),
   },

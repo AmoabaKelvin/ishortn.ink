@@ -30,6 +30,7 @@ export const DOCS_SECTIONS = [
       { slug: "api/create-link", title: "Create a link" },
       { slug: "api/get-link", title: "Get a link" },
       { slug: "api/update-link", title: "Update a link" },
+      { slug: "api/delete-link", title: "Delete a link" },
       { slug: "api/link-analytics", title: "Link analytics" },
       { slug: "api/verify-click", title: "Verify a click" },
     ],

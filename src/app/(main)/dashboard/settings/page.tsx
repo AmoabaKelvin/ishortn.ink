@@ -10,9 +10,7 @@ import { DeleteAccountSection } from "./delete-account/delete-account-section";
 import { SettingsForm } from "./general/settings-form";
 import { NotificationSettings } from "./notifications/notification-settings";
 import { ProfileForm } from "./profile/profile-form";
-import { ApiKeySunsetNotice, ApiProGate } from "./tokens/_components/api-access-notice";
-import GenerateTokenTrigger from "./tokens/_components/create-token";
-import TokenCard from "./tokens/_components/token-card";
+import { ApiKeys } from "./tokens/_components/api-keys";
 import { AccountTransferSection } from "./transfer/account-transfer-section";
 
 import type { Metadata } from "next";
@@ -136,21 +134,7 @@ async function SettingsPage() {
               Programmatic access to your account
             </p>
             <div className="mt-4">
-              {tokens.length > 0 && tokens[0] ? (
-                <>
-                  <TokenCard
-                    start="******"
-                    createdAt={tokens[0].createdAt}
-                    keyID={tokens[0].id}
-                    active={apiAccess.access.status !== "revoked"}
-                  />
-                  {!apiAccess.canCreateKeys && <ApiKeySunsetNotice access={apiAccess.access} />}
-                </>
-              ) : apiAccess.canCreateKeys ? (
-                <GenerateTokenTrigger />
-              ) : (
-                <ApiProGate />
-              )}
+              <ApiKeys tokens={tokens} apiAccess={apiAccess} />
             </div>
           </section>
 

@@ -77,9 +77,10 @@ describe.skipIf(!testDatabaseUrl)("token service (MySQL)", () => {
       variantId: 1811616,
     });
 
-    const [created] = await createToken(ctx, { name: "key" });
+    const created = await createToken(ctx, { name: "key" });
 
-    expect(created?.token).toHaveLength(29);
+    expect(created.token).toHaveLength(29);
+    expect(created.name).toBe("key");
     expect(await tokenCount()).toBe(1);
     expect(await getApiAccessStatus(ctx)).toEqual({
       canCreateKeys: true,

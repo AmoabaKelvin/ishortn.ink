@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import { getHTTPStatusCodeFromError } from "@trpc/server/http";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -13,6 +12,7 @@ import { assertUrlSafe } from "@/server/lib/phishing";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
+import { errorResponse, readJsonBody, validationError } from "../errors";
 import {
   apiDomainWriteError,
   resolveApiDomainForUser,
@@ -27,11 +27,11 @@ export const POST = withApiKey(async (request: Request, token) => {
   const restricted = restrictedAccountResponse(token);
   if (restricted) return restricted;
 
-  const input = shortenLinkSchema.safeParse(await request.json());
+  const body = await readJsonBody(request);
+  if (!body.ok) return body.response;
 
-  if (!input.success) {
-    return new Response(input.error.message, { status: 400 });
-  }
+  const input = shortenLinkSchema.safeParse(body.body);
+  if (!input.success) return validationError(input.error);
 
   const parsedData = input.data;
 
@@ -64,20 +64,9 @@ export const POST = withApiKey(async (request: Request, token) => {
       }
       return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt);
     });
-    return new Response(JSON.stringify(newLink), {
-      status: 201,
-      headers: { "Content-Type": "application/json" },
-    });
+    return Response.json(newLink, { status: 201 });
   } catch (error) {
-    if (error instanceof TRPCError && error.code === "FORBIDDEN") {
-      return new Response(error.message, { status: 403 });
-    }
-    if (error instanceof TRPCError && getHTTPStatusCodeFromError(error) < 500) {
-      return new Response(error.message, { status: 400 });
-    }
-    // Server-side failures (database, timeouts) are not the caller's fault and
-    // their messages are internal.
-    return new Response("An error occurred", { status: 500 });
+    return errorResponse(error);
   }
 });
 
@@ -112,7 +101,7 @@ async function createNewLink(
   if (data.password) {
     if (plan === "free") {
       throw new TRPCError({
-        code: "BAD_REQUEST",
+        code: "FORBIDDEN",
         message: "You need to upgrade to a pro plan to use password protection",
       });
     }
@@ -129,7 +118,7 @@ async function createNewLink(
     );
     if (hasUtmParams && plan !== "ultra") {
       throw new TRPCError({
-        code: "BAD_REQUEST",
+        code: "FORBIDDEN",
         message:
           "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
       });

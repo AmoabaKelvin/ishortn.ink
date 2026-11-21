@@ -130,6 +130,7 @@ import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
 import type { ScrapedMetadata } from "@/server/lib/metadata";
+import type { WorkspaceContext } from "@/server/lib/workspace";
 
 const log = logger.child({ component: "link.service" });
 
@@ -905,25 +906,37 @@ export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput)
     await requireFolderAccess(ctx.db, ctx.workspace, linkToDelete.folderId);
   }
 
+  await removeLink(ctx.db, ctx.workspace, linkToDelete);
+};
+
+/**
+ * Deletes a link the caller has already been authorized for, with its OG image,
+ * milestones and the redirect cache entry. Shared by the dashboard and the v1 API.
+ */
+export const removeLink = async (
+  db: WorkspaceTRPCContext["db"],
+  workspace: WorkspaceContext,
+  linkToDelete: Link,
+) => {
   // Delete OG image from R2 if present
   const ogImage = storedOgImage(linkToDelete.metadata);
   if (ogImage) {
     try {
-      await deleteImage(ctx.workspace, ogImage);
+      await deleteImage(workspace, ogImage);
     } catch (error) {
-      log.error({ err: error, linkId: input.id }, "failed to delete OG image from R2");
+      log.error({ err: error, linkId: linkToDelete.id }, "failed to delete OG image from R2");
     }
   }
 
-  await ctx.db.delete(linkMilestone).where(eq(linkMilestone.linkId, input.id));
+  await db.delete(linkMilestone).where(eq(linkMilestone.linkId, linkToDelete.id));
 
   const where = and(
-    eq(link.id, input.id),
-    workspaceFilter(ctx.workspace, link.userId, link.teamId),
+    eq(link.id, linkToDelete.id),
+    workspaceFilter(workspace, link.userId, link.teamId),
   );
   await Promise.all([
     deleteFromCache(buildCacheKey(linkToDelete.domain, linkToDelete.alias!)),
-    ctx.db.transaction(async (tx) => {
+    db.transaction(async (tx) => {
       await reserveLinkAliases(tx, where, "deleted");
       await tx.delete(link).where(where);
     }),

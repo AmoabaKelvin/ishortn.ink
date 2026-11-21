@@ -568,6 +568,13 @@
       "when": 1795232074382,
       "tag": "0080_numerous_dark_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "5",
+      "when": 1795241886654,
+      "tag": "0081_burly_red_hulk",
+      "breakpoints": true
     }
   ]
 }
