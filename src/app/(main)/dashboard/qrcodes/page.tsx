@@ -15,8 +15,10 @@ export const metadata: Metadata = { title: "QR Codes" };
 export const dynamic = "force-dynamic";
 
 async function QRCodePage() {
-  const userCodes = await api.qrCode.list.query();
-  const subDetails = await api.subscriptions.get.query();
+  const [userCodes, subDetails] = await Promise.all([
+    api.qrCode.list.query(),
+    api.subscriptions.get.query(),
+  ]);
   const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(subDetails);
 
   return (
@@ -54,10 +56,12 @@ async function QRCodePage() {
 
       {/* Upgrade Banner */}
       {!canCreateMoreQRCodes && userCodes.length > 0 && (
-        <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border border-amber-200/80 bg-amber-50/50 px-4 py-3">
+        <div className="mb-6 flex flex-col items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-500/10 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[13px] font-medium text-amber-900">QR code limit reached</p>
-            <p className="mt-0.5 text-[12px] text-amber-700/80">
+            <p className="text-[13px] font-medium text-amber-700 dark:text-amber-400">
+              QR code limit reached
+            </p>
+            <p className="mt-0.5 text-[12px] text-amber-700 dark:text-amber-400">
               Upgrade to create unlimited QR codes
             </p>
           </div>

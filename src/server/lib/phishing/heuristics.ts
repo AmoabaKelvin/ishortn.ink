@@ -1,5 +1,7 @@
 type HeuristicResult = { blocked: boolean; reason: string };
 
+export const INVALID_URL_REASON = "Invalid URL format";
+
 const SUSPICIOUS_TLDS = [".tk", ".ml", ".ga", ".cf", ".gq"];
 
 const BRAND_NAMES = [
@@ -93,7 +95,7 @@ export function runHeuristicChecks(url: string): HeuristicResult {
   try {
     parsed = new URL(url);
   } catch {
-    return { blocked: true, reason: "Invalid URL format" };
+    return { blocked: true, reason: INVALID_URL_REASON };
   }
 
   const hostname = parsed.hostname;

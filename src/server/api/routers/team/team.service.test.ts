@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import crypto from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
@@ -9,6 +9,7 @@ import mysql from "mysql2/promise";
 
 import * as schema from "@/server/db/schema";
 
+import { stubCloudflareContext } from "../../../../../test/cloudflare-context";
 import {
   acceptInvite,
   createInvite,
@@ -71,7 +72,14 @@ describe.skipIf(!testDatabaseUrl)("team service (MySQL)", () => {
     ]);
   }, HOOK_TIMEOUT_MS);
 
+  // Invites email through runBackgroundTask, which needs the Cloudflare context.
+  let restoreContext = () => {};
+  beforeAll(() => {
+    restoreContext = stubCloudflareContext();
+  });
+
   afterAll(async () => {
+    restoreContext();
     await cleanup();
     await pool.end();
   });

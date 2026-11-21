@@ -7,6 +7,7 @@ import { env } from "@/env.mjs";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
+import { stubCloudflareContext } from "../../../../../test/cloudflare-context";
 import { POST } from "./route";
 
 const SECRET = "lemonsqueezy-route-test-secret";
@@ -85,10 +86,14 @@ describe("POST /api/webhooks/lemonsqueezy signature", () => {
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
 describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/lemonsqueezy (MySQL)", () => {
+  let restoreContext = () => {};
+
   beforeAll(() => {
     // Another test file replaces @/env.mjs with a partial object for the whole
     // run, dropping DATABASE_URL; the app's db client reads it on first use.
     if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
+    // Emails go out through runBackgroundTask, which needs the Cloudflare context.
+    restoreContext = stubCloudflareContext();
   });
 
   async function reset() {
@@ -117,6 +122,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/lemonsqueezy (MySQL)", () 
   beforeEach(reset);
 
   afterAll(async () => {
+    restoreContext();
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
   });

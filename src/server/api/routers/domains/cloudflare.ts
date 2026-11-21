@@ -1,3 +1,4 @@
+import { parse } from "tldts";
 import { z } from "zod";
 
 import { env } from "@/env.mjs";
@@ -38,11 +39,19 @@ const customHostnameListResponseSchema = apiResponseSchema(z.array(customHostnam
 
 export type CustomHostnameChallenge = {
   type: "TXT" | "A" | "CNAME";
+  // Record name relative to the customer's DNS zone ("@" at the apex)
   domain: string;
+  // Fully qualified record name, for DNS hosts that want the whole name
+  fqdn: string;
   value: string;
 };
 
 const CLOUDFLARE_API_TIMEOUT_MS = 10_000;
+
+// A failure whose message is written for the customer. Anything else thrown
+// from here (missing config, API payloads) is internal and gets a generic
+// message before it reaches the client.
+export class DomainServiceError extends Error {}
 
 function saasCredentials() {
   const token = env.CLOUDFLARE_API_TOKEN;
@@ -71,7 +80,9 @@ async function cloudflareFetch(url: string, init: RequestInit) {
     return await fetch(url, { ...init, signal: AbortSignal.timeout(CLOUDFLARE_API_TIMEOUT_MS) });
   } catch (error) {
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
-      throw new Error("The domain service took too long to respond. Please try again.");
+      throw new DomainServiceError(
+        "The domain service took too long to respond. Please try again.",
+      );
     }
     throw error;
   }
@@ -90,7 +101,9 @@ export async function addCustomHostname(domain: string) {
     if (data.errors?.some((error) => error.code === DUPLICATE_HOSTNAME_ERROR_CODE)) {
       return { alreadyExists: true as const };
     }
-    throw new Error("Failed to add domain. Please check the domain name and try again.");
+    throw new DomainServiceError(
+      "Failed to add domain. Please check the domain name and try again.",
+    );
   }
 
   return {
@@ -135,7 +148,7 @@ export async function deleteCustomHostname(domain: string) {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to remove the domain. Please try again.");
+    throw new DomainServiceError("Failed to remove the domain. Please try again.");
   }
 }
 
@@ -174,11 +187,23 @@ export function mapStatus(hostname: CloudflareCustomHostname): "active" | "pendi
   return hostname.status === "active" && hostname.ssl?.status === "active" ? "active" : "pending";
 }
 
+// Splits a hostname into the zone the customer manages DNS in and the record
+// name inside it. Uses the Public Suffix List, so `links.acme.co.uk` is the
+// `links` record in the `acme.co.uk` zone, not `links.acme` in `co.uk`.
+export function splitHostname(domain: string) {
+  const parsed = parse(domain);
+  return { zone: parsed.domain ?? domain, subdomain: parsed.subdomain ?? "" };
+}
+
+export function isApexHostname(domain: string): boolean {
+  return splitHostname(domain).subdomain === "";
+}
+
 // An apex customer whose DNS host cannot ALIAS at the root serves through a
 // www custom hostname plus an apex redirect instead; an active www hostname
 // counts as the apex being migrated.
 export async function wwwFallbackActive(domain: string): Promise<boolean> {
-  if (domain.split(".").length !== 2) return false;
+  if (!isApexHostname(domain)) return false;
   try {
     const hostname = await getCustomHostname(`www.${domain}`);
     return hostname !== null && mapStatus(hostname) === "active";
@@ -191,28 +216,28 @@ export function buildVerificationChallenges(
   domain: string,
   hostname?: CloudflareCustomHostname | null,
 ): CustomHostnameChallenge[] {
-  const isApex = domain.split(".").length === 2;
-  const target = env.CUSTOM_DOMAIN_CNAME_TARGET;
+  const { zone, subdomain } = splitHostname(domain);
 
   const challenges: CustomHostnameChallenge[] = [
     {
       type: "CNAME",
-      domain: isApex ? "@" : domain.split(".").slice(0, -2).join("."),
-      value: target,
+      domain: subdomain || "@",
+      fqdn: domain,
+      value: env.CUSTOM_DOMAIN_CNAME_TARGET,
     },
   ];
 
   const ownership = hostname?.ownership_verification;
   if (ownership?.type === "txt" && ownership.name && ownership.value) {
-    // Relative to the registered domain (like the CNAME row), so a subdomain
-    // customer creates _cf-custom-hostname.<sub> in their zone, not
+    // Relative to the zone (like the CNAME row), so a subdomain customer
+    // creates _cf-custom-hostname.<sub> in their zone, not
     // _cf-custom-hostname at the apex.
-    const registered = domain.split(".").slice(-2).join(".");
     challenges.push({
       type: "TXT",
-      domain: ownership.name.endsWith(`.${registered}`)
-        ? ownership.name.slice(0, -(registered.length + 1))
+      domain: ownership.name.endsWith(`.${zone}`)
+        ? ownership.name.slice(0, -(zone.length + 1))
         : ownership.name,
+      fqdn: ownership.name,
       value: ownership.value,
     });
   }

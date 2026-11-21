@@ -29,12 +29,14 @@ import type { RouterOutputs } from "@/trpc/shared";
 type DomainCardProps = {
   domain: RouterOutputs["customDomain"]["list"][0];
   index: number;
+  canManageDomains: boolean;
 };
 
 const verificationChallengesSchema = z.array(
   z.object({
     type: z.enum(["TXT", "A", "CNAME"]),
     domain: z.string(),
+    fqdn: z.string().optional(),
     value: z.string(),
   }),
 );
@@ -64,12 +66,17 @@ const STATUS_CONFIG = {
   invalid: { color: "bg-red-500", label: "Invalid" },
 } satisfies Record<DomainStatus, { color: string; label: string }>;
 
-export function DomainCardNew({ domain, index }: DomainCardProps) {
+export function DomainCardNew({ domain, index, canManageDomains }: DomainCardProps) {
   const [status, setStatus] = useState(domain.status);
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  // Records from the latest status check replace the stored copy, which can be stale
+  const [liveChallenges, setLiveChallenges] = useState<z.infer<
+    typeof verificationChallengesSchema
+  > | null>(null);
 
-  const verificationChallenges = storedChallengesSchema.parse(domain.verificationDetails);
+  const verificationChallenges =
+    liveChallenges ?? storedChallengesSchema.parse(domain.verificationDetails);
 
   const { data: stats } = api.customDomain.getStats.useQuery(
     { domain: domain.domain! },
@@ -89,16 +96,25 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
     },
   });
 
-  const handleStatusChange = async (newStatus: DomainStatus) => {
-    setStatus(newStatus);
-    if (newStatus === "active" || newStatus === "invalid") {
+  const handleStatusResult = async (result: RouterOutputs["customDomain"]["checkStatus"]) => {
+    if (result.status === "active") {
+      setStatus("active");
       await revalidateRoute("/dashboard/domains");
+      return;
     }
+    setStatus("pending");
+    setLiveChallenges(result.verificationChallenges);
   };
 
   const daysSinceCreation = daysSinceDate(new Date(domain.createdAt!));
   const canExpand = status === "pending" || status === "invalid";
   const linkCount = stats?.linkCount ?? 0;
+  const linkCountLabel = `${linkCount.toLocaleString()} ${linkCount === 1 ? "link" : "links"}`;
+  const deleteSummary = !stats
+    ? `${domain.domain} and all of its links`
+    : linkCount > 0
+      ? `${domain.domain} and its ${linkCountLabel}`
+      : domain.domain;
 
   const currentStatus = STATUS_CONFIG[status ?? "pending"];
 
@@ -127,10 +143,10 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
               <span className="text-neutral-400 dark:text-neutral-500">
                 {daysSinceCreation === 0 ? "Today" : `${daysSinceCreation}d`}
               </span>
-              <span className="text-neutral-300">&middot;</span>
-              <span className="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-400">
+              <span className="text-neutral-300 dark:text-neutral-500">&middot;</span>
+              <span className="inline-flex items-center gap-1 tabular-nums text-neutral-500 dark:text-neutral-400">
                 <IconLink size={12} stroke={1.5} />
-                {linkCount} {linkCount === 1 ? "link" : "links"}
+                {linkCountLabel}
               </span>
             </div>
           </div>
@@ -141,7 +157,7 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
               <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-700"
+                className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-accent dark:hover:text-neutral-300"
               >
                 <span>DNS</span>
                 <motion.div
@@ -153,14 +169,18 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => setDeleteDialogOpen(true)}
-              disabled={deleteMutation.isLoading}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 opacity-0 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100"
-            >
-              <IconTrash size={14} stroke={1.5} />
-            </button>
+            {canManageDomains && (
+              // Hover-revealed only where hover exists; always shown on touch screens
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={deleteMutation.isLoading}
+                aria-label={`Delete ${domain.domain}`}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-focus-within:opacity-100 group-hover:opacity-100 dark:text-neutral-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 [@media(hover:none)]:opacity-100"
+              >
+                <IconTrash size={14} stroke={1.5} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -175,15 +195,11 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
               className="overflow-hidden"
             >
               <div className="mt-4 rounded-lg border border-neutral-200 dark:border-border p-4">
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex items-start justify-between gap-3">
                   <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                     DNS Configuration
                   </span>
-                  <DomainStatusChecker
-                    domain={domain.domain!}
-                    initialStatus={status}
-                    onStatusChange={handleStatusChange}
-                  />
+                  <DomainStatusChecker domain={domain.domain!} onResult={handleStatusResult} />
                 </div>
                 <DNSRecordsSection verificationChallenges={verificationChallenges} />
               </div>
@@ -196,9 +212,11 @@ export function DomainCardNew({ domain, index }: DomainCardProps) {
         <AlertDialogContent className="max-w-md rounded-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-[14px]">Delete domain</AlertDialogTitle>
-            <AlertDialogDescription className="text-[12px]">
-              This will permanently delete {domain.domain} and all associated links. This action
-              cannot be undone.
+            <AlertDialogDescription className="break-words text-[12px]">
+              This will permanently delete {deleteSummary}.
+              {stats?.bioPage &&
+                ` The bio page "${stats.bioPage.title || stats.bioPage.slug}" will stop being served on this domain but stays available at its default address.`}{" "}
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

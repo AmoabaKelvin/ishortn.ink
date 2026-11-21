@@ -200,7 +200,10 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     }
   }, 60_000);
 
-  afterAll(cleanup);
+  afterAll(async () => {
+    Reflect.deleteProperty(globalThis, CLOUDFLARE_CONTEXT);
+    await cleanup();
+  });
 
   const apiKey = (key: AccountKey) => `entitlements-test-${key}`;
 
@@ -878,10 +881,13 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
 });
 
 // OpenNext reads the request context (and the KV binding behind the cache
-// helpers) from this global.
+// helpers) from this global. Removed in afterAll so later test files don't
+// read this file's cached entries.
+const CLOUDFLARE_CONTEXT = Symbol.for("__cloudflare-context__");
+
 function stubCloudflareContext() {
   const store = new Map<string, string>();
-  Reflect.set(globalThis, Symbol.for("__cloudflare-context__"), {
+  Reflect.set(globalThis, CLOUDFLARE_CONTEXT, {
     env: {
       LINK_CACHE_KV: {
         get: async (key: string | string[]) =>

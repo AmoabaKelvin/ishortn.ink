@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
 async function SettingsPage() {
-  const [userSettings, userDomains, subscriptions, tokens, apiAccess, userProfile] =
+  const [userSettings, userDomains, subscriptions, tokens, apiAccess, userProfile, workspace] =
     await Promise.all([
       api.siteSettings.get.query(),
       api.customDomain.list.query(),
@@ -30,6 +30,7 @@ async function SettingsPage() {
       api.token.list.query(),
       api.token.access.query(),
       api.user.getProfile.query(),
+      api.team.currentWorkspace.query(),
     ]);
 
   return (
@@ -69,7 +70,20 @@ async function SettingsPage() {
               Default settings and preferences
             </p>
             <div className="mt-4">
-              <SettingsForm userSettings={userSettings} availableDomains={userDomains} />
+              {/* The default domain is a personal-workspace setting; team domains can't be picked here */}
+              {workspace.type === "personal" ? (
+                <SettingsForm userSettings={userSettings} availableDomains={userDomains} />
+              ) : (
+                <div className="rounded-xl border border-neutral-200 p-5 dark:border-border">
+                  <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                    Default Domain
+                  </p>
+                  <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
+                    Your default domain applies to your personal workspace. Switch to your personal
+                    workspace to change it.
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 

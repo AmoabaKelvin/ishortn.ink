@@ -43,6 +43,7 @@ import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { normalizeAlias } from "@/lib/utils";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
@@ -85,10 +86,11 @@ import { mergeCampaignUtm } from "../campaign/utils";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 import {
   assertDomainAllowed,
+  assertDomainOwned,
   assertDomainWithinPlan,
   checkWorkspaceLinkLimit,
   escapeLikePattern,
-  getPlanAllowedDefaultDomain,
+  getWorkspaceDefaultDomain,
   hasUtmValues,
   incrementWorkspaceLinkCount,
   parseLinkCsv,
@@ -97,6 +99,7 @@ import {
   readAttemptWindow,
   recordFailedAttempt,
   restrictedLinkValues,
+  toPlanAllowedDomain,
   sameGeoRules,
   sameUtmParams,
   settleWithConcurrency,
@@ -555,44 +558,50 @@ const createLinkSteps = async (
   // Create link without tags field
   const { tags: _tags, ...linkData } = input;
   const ownership = workspaceOwnership(ctx.workspace);
-  const [result] = await ctx.db.insert(link).values({
-    ...linkData,
-    name,
-    alias,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-    passwordHash: input.password,
-    domain,
-    note: input.note,
-    metadata: {
-      ...input.metadata,
-    },
-    cloaking: input.cloaking ?? false,
-    verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
-    ...restrictedLinkValues(ctx.restrictedAt),
+
+  // One transaction, so a failed tag or rule write doesn't leave a half-made link.
+  const result = await ctx.db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(link).values({
+      ...linkData,
+      name,
+      alias,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      passwordHash: input.password,
+      domain,
+      note: input.note,
+      metadata: {
+        ...input.metadata,
+      },
+      cloaking: input.cloaking ?? false,
+      verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
+      ...restrictedLinkValues(ctx.restrictedAt),
+    });
+    const insertedId = Number(inserted.insertId);
+
+    if (tagNames.length > 0) {
+      await associateTagsWithLink({ ...ctx, db: tx }, insertedId, tagNames);
+    }
+
+    if (geoRulesInput && geoRulesInput.length > 0) {
+      await tx.insert(geoRule).values(
+        geoRulesInput.map((rule, index) => ({
+          linkId: insertedId,
+          type: rule.type,
+          condition: rule.condition,
+          values: rule.values,
+          action: rule.action,
+          destination: rule.action === "redirect" ? rule.destination : null,
+          blockMessage: rule.action === "block" ? rule.blockMessage : null,
+          priority: index,
+        })),
+      );
+    }
+
+    return inserted;
   });
-
-  // Associate tags with the link
   const linkId = Number(result.insertId);
-  if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, linkId, tagNames);
-  }
-
-  if (geoRulesInput && geoRulesInput.length > 0) {
-    await ctx.db.insert(geoRule).values(
-      geoRulesInput.map((rule, index) => ({
-        linkId,
-        type: rule.type,
-        condition: rule.condition,
-        values: rule.values,
-        action: rule.action,
-        destination: rule.action === "redirect" ? rule.destination : null,
-        blockMessage: rule.action === "block" ? rule.blockMessage : null,
-        priority: index,
-      })),
-    );
-  }
 
   // Upload OG image to R2 if it's base64
   if (input.metadata?.image) {
@@ -762,6 +771,25 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   // Extract tags and geoRules from input
   const { tags: tagNames, geoRules: _geoRules, ...linkData } = input;
 
+  if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
+    if (!canUseGeoRules(workspacePlan)) {
+      throw new Error(
+        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+      );
+    }
+
+    const geoLimit = getGeoRulesLimit(workspacePlan);
+    if (
+      !isUnlimitedGeoRules(workspacePlan) &&
+      geoLimit !== undefined &&
+      geoRulesInput.length > geoLimit
+    ) {
+      throw new Error(
+        `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
+      );
+    }
+  }
+
   // Upload OG image to R2 if it's base64
   if (linkData.metadata?.image) {
     try {
@@ -785,39 +813,39 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     }
   }
 
-  // Update link data - use workspace filtering
-  await ctx.db
-    .update(link)
-    .set(linkData)
-    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+  // One transaction: tags are replaced by delete-then-insert, so a failure
+  // part-way must not leave the link without its previous tags.
+  await ctx.db.transaction(async (tx) => {
+    await tx
+      .update(link)
+      .set(linkData)
+      .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
 
-  // Update tags if provided
-  if (tagNames) {
-    await associateTagsWithLink(ctx, input.id, tagNames);
-  }
-
-  // Handle geo rules if provided
-  if (geoRulesInput !== undefined) {
-    // Delete existing geo rules for this link
-    await ctx.db.delete(geoRule).where(eq(geoRule.linkId, input.id));
-
-    // Insert new geo rules if any
-    if (geoRulesInput.length > 0) {
-      await ctx.db.insert(geoRule).values(
-        geoRulesInput.map((rule, index) => ({
-          linkId: input.id,
-          type: rule.type,
-          condition: rule.condition,
-          values: rule.values,
-          action: rule.action,
-          destination: rule.action === "redirect" ? rule.destination : null,
-          blockMessage: rule.action === "block" ? rule.blockMessage : null,
-          priority: index,
-        })),
-      );
+    if (tagNames) {
+      await associateTagsWithLink({ ...ctx, db: tx }, input.id, tagNames);
     }
 
-    // Invalidate geo rules cache
+    if (geoRulesInput !== undefined) {
+      await tx.delete(geoRule).where(eq(geoRule.linkId, input.id));
+
+      if (geoRulesInput.length > 0) {
+        await tx.insert(geoRule).values(
+          geoRulesInput.map((rule, index) => ({
+            linkId: input.id,
+            type: rule.type,
+            condition: rule.condition,
+            values: rule.values,
+            action: rule.action,
+            destination: rule.action === "redirect" ? rule.destination : null,
+            blockMessage: rule.action === "block" ? rule.blockMessage : null,
+            priority: index,
+          })),
+        );
+      }
+    }
+  });
+
+  if (geoRulesInput !== undefined) {
     await deleteGeoRulesFromCache(input.id);
   }
 
@@ -1094,7 +1122,10 @@ const shortenLinkSteps = async (
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
   const alias = await generateShortLink();
-  const domain = await getPlanAllowedDefaultDomain(ctx);
+  const savedDomain = await getWorkspaceDefaultDomain(ctx);
+  // The saved default can outlive the domain (deleted, or never verified)
+  await assertDomainOwned(ctx, savedDomain);
+  const domain = await toPlanAllowedDomain(ctx, savedDomain);
 
   attempt.step = "safety";
   await assertUrlSafe(input.url);
@@ -1106,28 +1137,29 @@ const shortenLinkSteps = async (
   const ownership = workspaceOwnership(ctx.workspace);
 
   attempt.step = "db";
+  const result = await ctx.db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(link).values({
+      url: input.url,
+      alias,
+      domain,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      name,
+      metadata: {
+        title: fetchedMetadata?.title,
+        description: fetchedMetadata?.description,
+        image: fetchedMetadata?.image,
+      },
+      ...restrictedLinkValues(ctx.restrictedAt),
+    });
 
-  // Create link without tags field
-  const [result] = await ctx.db.insert(link).values({
-    url: input.url,
-    alias,
-    domain,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-    name,
-    metadata: {
-      title: fetchedMetadata?.title,
-      description: fetchedMetadata?.description,
-      image: fetchedMetadata?.image,
-    },
-    ...restrictedLinkValues(ctx.restrictedAt),
+    if (tagNames.length > 0) {
+      await associateTagsWithLink({ ...ctx, db: tx }, Number(inserted.insertId), tagNames);
+    }
+
+    return inserted;
   });
-
-  // Associate tags with the link
-  if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, Number(result.insertId), tagNames);
-  }
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
 
@@ -1812,8 +1844,11 @@ const bulkCreateLinkRows = async (
   // Two rows claiming the same alias on the same domain would otherwise race on
   // the unique index; the first one in the file wins.
   const seenAliases = new Set<string>();
-  const validated = await settleWithConcurrency(records, CSV_IMPORT_CONCURRENCY, async (record) => {
-    if (!record.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
+  const validated = await settleWithConcurrency(records, CSV_IMPORT_CONCURRENCY, async (row) => {
+    if (!row.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
+    const url = normalizeDestinationUrl(row.url);
+    if (!url) throw new TRPCError({ code: "BAD_REQUEST", message: INVALID_URL_MESSAGE });
+    const record = { ...row, url };
     const domainError = domainErrors.get(record.domain);
     if (domainError) throw domainError;
     if (!record.alias) return record;

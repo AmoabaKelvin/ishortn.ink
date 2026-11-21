@@ -31,9 +31,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { clientLogger } from "@/lib/logger/client";
 import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../../revalidate-homepage";
+import { qrCodeFileName, saveBlob } from "../utils";
 import { EditQRCodeDrawer } from "./edit-qrcode-drawer";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -49,6 +51,8 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
   const [deleteDialog, setDeleteDialog] = useState(false);
 
   const isActive = !qr.link?.disabled;
+  // Legacy QR codes without a tracking link can only be downloaded or deleted.
+  const hasLink = Boolean(qr.link);
 
   const toggleStatusMutation = api.qrCode.toggleStatus.useMutation({
     onSuccess: async () => {
@@ -75,18 +79,25 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
     setOpenEditDrawer(true);
   };
 
-  const handleDownload = () => {
-    if (!qr.qrCode) {
+  const handleDownload = async () => {
+    const image = qr.qrCode;
+    if (!image) {
       toast.error("QR code image is not available for download.");
       return;
     }
-    const a = document.createElement("a");
-    a.href = qr.qrCode;
-    a.download = qr.title ?? "qr-code";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
     trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED);
+    // `download` is ignored on cross-origin URLs (the stored R2 image), so fetch it as a blob.
+    try {
+      const response = await fetch(image);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      saveBlob(await response.blob(), qrCodeFileName(qr.title));
+    } catch (error) {
+      clientLogger.warn(
+        { err: error instanceof Error ? error : String(error), qrCodeId: qr.id },
+        "QR code download fell back to opening",
+      );
+      window.open(image, "_blank", "noopener,noreferrer");
+    }
   };
 
   const handleToggleStatus = () => {
@@ -103,6 +114,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
+            aria-label={`Actions for ${qr.title || "QR code"}`}
             className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
           >
             <IconDots size={16} stroke={1.5} />
@@ -116,17 +128,19 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
             Edit & Manage
           </DropdownMenuLabel>
-          <DropdownMenuItem
-            onClick={handleOpenEditDrawer}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
-          >
-            <IconPencil
-              size={15}
-              stroke={1.5}
-              className="mr-2 text-neutral-400 dark:text-neutral-500"
-            />
-            Edit QR code
-          </DropdownMenuItem>
+          {hasLink && (
+            <DropdownMenuItem
+              onClick={handleOpenEditDrawer}
+              className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
+            >
+              <IconPencil
+                size={15}
+                stroke={1.5}
+                className="mr-2 text-neutral-400 dark:text-neutral-500"
+              />
+              Edit QR code
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={handleDownload}
             className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
@@ -139,45 +153,51 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
             Download
           </DropdownMenuItem>
 
+          {hasLink && (
+            <>
+              <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-muted" />
+
+              <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                Settings
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={handleToggleStatus}
+                className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
+              >
+                {isActive ? (
+                  <>
+                    <IconLinkOff
+                      size={15}
+                      stroke={1.5}
+                      className="mr-2 text-neutral-400 dark:text-neutral-500"
+                    />
+                    Deactivate QR code
+                  </>
+                ) : (
+                  <>
+                    <IconLink
+                      size={15}
+                      stroke={1.5}
+                      className="mr-2 text-neutral-400 dark:text-neutral-500"
+                    />
+                    Activate QR code
+                  </>
+                )}
+              </DropdownMenuItem>
+            </>
+          )}
+
           <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-muted" />
 
-          <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-            Settings
-          </DropdownMenuLabel>
-          <DropdownMenuItem
-            onClick={handleToggleStatus}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
-          >
-            {isActive ? (
-              <>
-                <IconLinkOff
-                  size={15}
-                  stroke={1.5}
-                  className="mr-2 text-neutral-400 dark:text-neutral-500"
-                />
-                Deactivate QR code
-              </>
-            ) : (
-              <>
-                <IconLink
-                  size={15}
-                  stroke={1.5}
-                  className="mr-2 text-neutral-400 dark:text-neutral-500"
-                />
-                Activate QR code
-              </>
-            )}
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-muted" />
-
-          <DropdownMenuItem
-            onClick={() => setResetStatsDialog(true)}
-            className="rounded-md px-2 py-1.5 text-[13px] text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10 focus:text-red-600"
-          >
-            <IconRefresh size={15} stroke={1.5} className="mr-2" />
-            Reset statistics
-          </DropdownMenuItem>
+          {hasLink && (
+            <DropdownMenuItem
+              onClick={() => setResetStatsDialog(true)}
+              className="rounded-md px-2 py-1.5 text-[13px] text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10 focus:text-red-600"
+            >
+              <IconRefresh size={15} stroke={1.5} className="mr-2" />
+              Reset statistics
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             className="rounded-md px-2 py-1.5 text-[13px] text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10 focus:text-red-600"

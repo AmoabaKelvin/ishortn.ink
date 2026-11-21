@@ -216,7 +216,14 @@ export async function getWorkspaceDefaultDomain(ctx: WorkspaceTRPCContext): Prom
  * on flows without a domain picker (quick shorten, bio blocks, QR codes).
  */
 export async function getPlanAllowedDefaultDomain(ctx: WorkspaceTRPCContext): Promise<string> {
-  const domain = await getWorkspaceDefaultDomain(ctx);
+  return toPlanAllowedDomain(ctx, await getWorkspaceDefaultDomain(ctx));
+}
+
+/** `domain` when the plan still allows new links on it, else the platform default. */
+export async function toPlanAllowedDomain(
+  ctx: WorkspaceTRPCContext,
+  domain: string,
+): Promise<string> {
   const normalized = domain.trim().toLowerCase();
   if (isPlatformDomain(normalized)) return domain;
 
@@ -238,6 +245,12 @@ export async function assertDomainAllowed(
   ctx: WorkspaceTRPCContext,
   domain: string,
 ): Promise<void> {
+  await assertDomainOwned(ctx, domain);
+  await assertDomainWithinPlan(ctx, domain);
+}
+
+/** The ownership half of assertDomainAllowed: platform, or verified and in this workspace. */
+export async function assertDomainOwned(ctx: WorkspaceTRPCContext, domain: string): Promise<void> {
   const normalized = domain.trim().toLowerCase();
   if (isPlatformDomain(normalized)) return;
 
@@ -256,8 +269,6 @@ export async function assertDomainAllowed(
       message: "Selected domain is not available for this workspace.",
     });
   }
-
-  await assertDomainWithinPlan(ctx, normalized);
 }
 
 /**

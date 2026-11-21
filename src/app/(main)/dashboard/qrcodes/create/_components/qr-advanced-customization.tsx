@@ -285,6 +285,7 @@ export function QRAdvancedCustomization({
                 />
                 <button
                   type="button"
+                  aria-label="Remove logo"
                   className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white transition-colors hover:bg-red-600"
                   onClick={() => setLogoImage(undefined)}
                 >

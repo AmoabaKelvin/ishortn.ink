@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { createCustomDomainSchema } from "@/server/api/routers/domains/domains.input";
 import { api } from "@/trpc/react";
 
 export function AddCustomDomainModal() {
@@ -26,17 +27,21 @@ export function AddCustomDomainModal() {
   const { data: workspace } = api.team.currentWorkspace.useQuery();
 
   const [domain, setDomain] = useState("");
+  const [domainError, setDomainError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const createCustomDomainMutation = api.customDomain.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       toast.success("Domain added successfully");
       trackEvent(POSTHOG_EVENTS.CUSTOM_DOMAIN_ADDED, {
-        domain,
+        domain: variables.domain,
       });
       setDomain("");
       setIsOpen(false);
       await revalidateRoute("/dashboard/domains");
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
   const createCheckoutMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
@@ -49,6 +54,7 @@ export function AddCustomDomainModal() {
 
   const handleDomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDomain(e.target.value);
+    setDomainError(null);
   };
 
   const handleUpgrade = async () => {
@@ -59,25 +65,26 @@ export function AddCustomDomainModal() {
     });
   };
 
-  const handleCreateDomain = () => {
-    if (!domain) {
+  const handleCreateDomain = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!domain || createCustomDomainMutation.isLoading) {
       return;
     }
 
-    toast.promise(createCustomDomainMutation.mutateAsync({ domain }), {
-      loading: "Adding domain...",
-      success: "Domain added successfully",
-      error: (err) => err?.message ?? "Failed to add domain",
-    });
+    // Same schema the server applies, so typos are caught before the request
+    const parsed = createCustomDomainSchema.safeParse({ domain });
+    if (!parsed.success) {
+      setDomainError(parsed.error.issues[0]?.message ?? "Enter a valid domain");
+      return;
+    }
+
+    createCustomDomainMutation.mutate(parsed.data);
   };
 
   const isProUser = (userSubscription?.plan ?? "free") !== "free";
 
-  const canAddDomains =
-    workspace?.type === "personal" ||
-    (workspace?.type === "team" && (workspace.role === "owner" || workspace.role === "admin"));
-
-  if (workspace?.type === "team" && !canAddDomains) {
+  // Only team owners hold domains.create
+  if (workspace?.type === "team" && workspace.role !== "owner") {
     return null;
   }
 
@@ -93,88 +100,99 @@ export function AddCustomDomainModal() {
         </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[440px]">
-        <DialogHeader>
-          <DialogTitle>Add Domain</DialogTitle>
-          <DialogDescription>Add a custom domain for your short links</DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handleCreateDomain} noValidate className="contents">
+          <DialogHeader>
+            <DialogTitle>Add Domain</DialogTitle>
+            <DialogDescription>Add a custom domain for your short links</DialogDescription>
+          </DialogHeader>
 
-        {isProUser ? (
-          <DialogBody className="space-y-4">
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="domain"
-                className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
-              >
-                Domain
-              </Label>
-              <div className="relative">
-                <IconWorld
-                  size={16}
-                  stroke={1.5}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500"
-                />
-                <Input
-                  id="domain"
-                  className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card pl-9 text-[13px] placeholder:text-neutral-400"
-                  placeholder="links.example.com"
-                  value={domain}
-                  onChange={handleDomainChange}
-                />
-              </div>
-            </div>
-            <div className="flex items-start gap-2.5 rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-2.5">
-              <IconInfoCircle
-                size={14}
-                stroke={1.5}
-                className="mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500"
-              />
-              <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
-                Use a subdomain like{" "}
-                <span className="font-medium text-neutral-700 dark:text-neutral-300">
-                  links.example.com
-                </span>{" "}
-                if your main domain already has content.
-              </p>
-            </div>
-          </DialogBody>
-        ) : (
-          <DialogBody>
-            <div className="rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-4 py-3 text-center">
-              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Custom domains are available on the Pro plan.
-              </p>
-            </div>
-          </DialogBody>
-        )}
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setIsOpen(false)}
-            className="h-9 text-[13px]"
-          >
-            Cancel
-          </Button>
           {isProUser ? (
-            <Button
-              type="submit"
-              onClick={handleCreateDomain}
-              disabled={!domain || createCustomDomainMutation.isLoading}
-              className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
-            >
-              {createCustomDomainMutation.isLoading ? "Adding..." : "Add Domain"}
-            </Button>
+            <DialogBody className="space-y-4">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="domain"
+                  className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
+                >
+                  Domain
+                </Label>
+                <div className="relative">
+                  <IconWorld
+                    size={16}
+                    stroke={1.5}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500"
+                  />
+                  <Input
+                    id="domain"
+                    className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card pl-9 text-[13px] placeholder:text-neutral-400"
+                    placeholder="links.example.com"
+                    value={domain}
+                    onChange={handleDomainChange}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    aria-invalid={domainError !== null}
+                    aria-describedby={domainError ? "domain-error" : undefined}
+                  />
+                </div>
+                {domainError && (
+                  <p id="domain-error" className="text-[12px] text-red-500">
+                    {domainError}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-start gap-2.5 rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-2.5">
+                <IconInfoCircle
+                  size={14}
+                  stroke={1.5}
+                  className="mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+                />
+                <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
+                  Use a subdomain like{" "}
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                    links.example.com
+                  </span>{" "}
+                  if your main domain already has content.
+                </p>
+              </div>
+            </DialogBody>
           ) : (
+            <DialogBody>
+              <div className="rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-4 py-3 text-center">
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+                  Custom domains are available on the Pro plan.
+                </p>
+              </div>
+            </DialogBody>
+          )}
+
+          <DialogFooter>
             <Button
               type="button"
-              onClick={handleUpgrade}
-              className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
+              variant="ghost"
+              onClick={() => setIsOpen(false)}
+              className="h-9 text-[13px]"
             >
-              Upgrade to Pro
+              Cancel
             </Button>
-          )}
-        </DialogFooter>
+            {isProUser ? (
+              <Button
+                type="submit"
+                disabled={!domain || createCustomDomainMutation.isLoading}
+                className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
+              >
+                {createCustomDomainMutation.isLoading ? "Adding..." : "Add Domain"}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleUpgrade}
+                className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
+              >
+                Upgrade to Pro
+              </Button>
+            )}
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

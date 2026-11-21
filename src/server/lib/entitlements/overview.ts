@@ -37,6 +37,7 @@ export type OverPlanTeam = {
   name: string;
   slug: string;
   ownerEmail: string | null;
+  /** What the owner pays for now; the team's access also counts their lapse grace. */
   ownerPlan: Plan;
   members: number;
   graceEndsAt: Date | null;
@@ -161,16 +162,15 @@ export async function getEntitlementOverview(dbClient: DbClient, now = new Date(
   const membersByTeam = new Map(memberCounts.map((row) => [row.teamId, row.total]));
 
   const teams: OverPlanTeam[] = belowUltra.map((row) => {
-    const ownerPlan = effectivePlan(row.sub, row, now);
     return {
       teamId: row.teamId,
       name: row.name,
       slug: row.slug,
       ownerEmail: row.ownerEmail,
-      ownerPlan,
+      ownerPlan: paidPlan(row.sub, now),
       members: membersByTeam.get(row.teamId) ?? 0,
       graceEndsAt: row.graceEndsAt,
-      readOnly: teamAccess(ownerPlan, row.graceEndsAt, now).readOnly,
+      readOnly: teamAccess(effectivePlan(row.sub, row, now), row.graceEndsAt, now).readOnly,
     };
   });
 

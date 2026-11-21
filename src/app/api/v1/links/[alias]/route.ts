@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { MINIMUM_ALIAS_LENGTH_FREE } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
@@ -22,7 +23,7 @@ const log = logger.child({ component: "api.v1.links" });
 
 const updateLinkSchema = z
   .object({
-    url: z.string().url().optional(),
+    url: destinationUrlSchema.optional(),
     alias: z
       .string()
       .min(1)

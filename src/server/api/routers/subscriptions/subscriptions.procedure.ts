@@ -12,6 +12,7 @@ import {
 import { workspaceFilter } from "@/server/lib/workspace";
 
 import { createTRPCRouter, workspaceProcedure } from "../../trpc";
+import { countWorkspaceQrCodes } from "../qrcode/qrcode.service";
 
 export const subscriptionsRouter = createTRPCRouter({
   // Grace-period notice for the dashboard banner (see src/lib/billing/entitlements.ts).
@@ -87,22 +88,25 @@ export const subscriptionsRouter = createTRPCRouter({
     let monthlyLinkCount = 0;
     let monthlyEventCount = 0;
     let folderCount = 0;
+    let qrCodeCount = 0;
 
     if (!isTeamWorkspace && planCtx) {
       // Personal workspace: get user's personal usage
       // Filter out team folders from personal counts
-      const [linkCount, eventCount, folderCountResult] = await Promise.all([
+      const [linkCount, eventCount, folderCountResult, qrCodeCountResult] = await Promise.all([
         normalizeMonthlyLinkCount(planCtx, ctx.db),
         normalizeMonthlyEventCount(planCtx, ctx.db),
         ctx.db
           .select({ count: count() })
           .from(folder)
           .where(and(eq(folder.userId, userId), isNull(folder.teamId))),
+        countWorkspaceQrCodes(ctx),
       ]);
 
       monthlyLinkCount = linkCount;
       monthlyEventCount = eventCount;
       folderCount = Number(folderCountResult?.[0]?.count ?? 0);
+      qrCodeCount = qrCodeCountResult;
     } else if (isTeamWorkspace) {
       // Team workspace: get workspace folder count (for display purposes)
       const folderCountResult = await ctx.db
@@ -149,6 +153,10 @@ export const subscriptionsRouter = createTRPCRouter({
         folders: {
           count: folderCount,
           limit: isTeamWorkspace ? null : (caps.folderLimit ?? null),
+        },
+        qrCodes: {
+          count: qrCodeCount,
+          limit: isTeamWorkspace ? null : (caps.qrCodeLimit ?? null),
         },
       },
       monthlyLinkCount,

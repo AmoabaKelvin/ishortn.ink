@@ -36,6 +36,7 @@ import {
   deleteCustomHostname,
   getCustomHostname,
   getLiveCustomHostname,
+  isApexHostname,
   mapStatus,
 } from "../domains/cloudflare";
 import { RESTRICTED_LINK_REASON } from "../link/utils";
@@ -484,7 +485,7 @@ export async function restrictUser(ctx: ProtectedTRPCContext, input: RestrictUse
 
       // An apex on the www fallback serves through www.<apex>; release that too
       // and remember it so unrestricting re-adds only what existed.
-      if (hostname.split(".").length !== 2) return;
+      if (!isApexHostname(hostname)) return;
       const www = `www.${hostname}`;
       if (!(await getCustomHostname(www))) return;
       await deleteCustomHostname(www);
