@@ -110,7 +110,7 @@ Bitly is a good product, and for some people it's the right one:
 - **You need a big company's extras.** Bitly's higher tiers add mobile deep linking, SSO and an uptime SLA, and iShortn doesn't offer those.
 - **Your organisation already standardises on Bitly.** Switching costs time, and links on bit.ly can't move with you.
 
-That last point is worth thinking about before you switch. Links on `bit.ly` belong to Bitly's domain, so you can't move them anywhere. They'll keep working, but new links will live elsewhere. If you switch, it's also a good moment to put future links on your own domain, so you never get stuck like this again.
+That last point is worth thinking about before you switch. Links on `bit.ly` belong to Bitly's domain, so you can't move them anywhere. They'll keep working, but new links will live elsewhere. If you switch, it's also a good moment to put future links on your own domain, so you never get stuck like this again. Links on your own branded domain are different. They can move with their exact addresses, so printed QR codes keep working, and [Move your links from Bitly](/docs/migrate-from-bitly) shows how.
 
 For a side-by-side of every feature, see [Bitly vs iShortn](/compare/bitly).
 

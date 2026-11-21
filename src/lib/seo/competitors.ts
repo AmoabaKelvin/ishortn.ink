@@ -25,6 +25,11 @@ export const competitors = {
       "iShortn Free includes 5 dynamic QR codes: edit the destination anytime, they never expire, and there are no ads",
       "iShortn adds password protection on Pro and Ultra",
     ],
+    migrationGuide: {
+      href: "/docs/migrate-from-bitly",
+      label:
+        "Moving from Bitly? Import your Bitly export and keep the addresses on your own domain.",
+    },
   },
   tinyurl: {
     name: "TinyURL",
