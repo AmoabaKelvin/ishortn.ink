@@ -22,7 +22,7 @@ The versatility of QR codes makes them valuable across nearly every industry. He
 
 ### Restaurant Menus
 
-QR codes on tables link directly to a digital menu. This eliminates printing costs, makes it easy to update prices or seasonal items, and provides a contactless experience customers prefer.
+QR codes on tables link directly to a digital menu. This eliminates printing costs, makes it easy to update prices or seasonal items, and provides a contactless experience customers prefer. See [QR codes for restaurants and bars](/solutions/restaurants) for a setup with one code per table or location.
 
 ### Product Packaging
 

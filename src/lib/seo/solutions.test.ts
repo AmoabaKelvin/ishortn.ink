@@ -1,0 +1,72 @@
+import { describe, expect, it } from "bun:test";
+
+import { PLAN_CAPS } from "@/lib/billing/plans";
+import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+
+import { getSolution, solutionList, solutions, usd } from "./solutions";
+
+import type { Solution } from "./solutions";
+
+// Every string a solution page renders.
+const copyOf = (s: Solution): string[] => [
+  s.name,
+  s.footerLabel,
+  s.hubBlurb,
+  s.metaTitle,
+  s.metaDescription,
+  s.eyebrow,
+  s.h1,
+  s.subhead,
+  ...s.heroPoints,
+  s.heroCta,
+  s.benefitsTitle,
+  ...s.benefits.flatMap((b) => [b.title, b.body]),
+  s.howToTitle,
+  ...s.howTo.flatMap((step) => [step.title, step.body]),
+  ...s.plans.flatMap((plan) => [plan.title, plan.body]),
+  s.plansNote ?? "",
+  ...s.faqs.flatMap((faq) => [faq.question, faq.answer]),
+  ...s.related.map((link) => link.label),
+  s.ctaTitle,
+  s.ctaBody,
+  s.ctaButton,
+];
+
+const allCopy = solutionList.flatMap(copyOf).join("\n");
+const matches = (pattern: RegExp) => [...allCopy.matchAll(pattern)].map((m) => m[1]);
+
+describe("solution copy", () => {
+  it("only quotes current plan prices", () => {
+    const prices = new Set([
+      ...Object.values(PLAN_PRICES_USD).map(usd),
+      ...Object.values(PLAN_PRICES_ANNUAL_USD).flatMap((annual) => [usd(annual), usd(annual / 12)]),
+    ]);
+    const quoted = matches(/(\$\d+(?:\.\d+)?)/g);
+    expect(quoted.length).toBeGreaterThan(0);
+    for (const price of quoted) expect(prices).toContain(price);
+
+    const restaurants = copyOf(solutions.restaurants).join("\n");
+    expect(restaurants).toContain(`Pro is ${usd(PLAN_PRICES_USD.pro)} a month`);
+    expect(restaurants).toContain(`Ultra, ${usd(PLAN_PRICES_USD.ultra)} a month`);
+  });
+
+  it("only quotes current free plan limits", () => {
+    const qrCodes = matches(/(\d+) dynamic (?:QR )?codes/g);
+    expect(qrCodes.length).toBeGreaterThan(0);
+    for (const n of qrCodes) expect(Number(n)).toBe(PLAN_CAPS.free.qrCodeLimit);
+
+    const links = matches(/(\d+) (?:free links|on Free)/g);
+    expect(links.length).toBeGreaterThan(0);
+    for (const n of links) expect(Number(n)).toBe(PLAN_CAPS.free.linksLimit);
+
+    for (const n of matches(/last (\d+) days/g)) {
+      expect(Number(n)).toBe(PLAN_CAPS.free.analyticsRangeLimitDays);
+    }
+  });
+
+  it("keys each solution by its slug", () => {
+    for (const [key, solution] of Object.entries(solutions)) expect(solution.slug).toBe(key);
+    expect(getSolution("restaurants")).toBe(solutions.restaurants);
+    expect(getSolution("unknown")).toBeUndefined();
+  });
+});
