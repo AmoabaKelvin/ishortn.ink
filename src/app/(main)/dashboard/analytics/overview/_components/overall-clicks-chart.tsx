@@ -13,6 +13,7 @@ import {
 import { formatChartBucket, formatChartBucketLabel } from "@/lib/utils";
 
 import { ChartEmptyState } from "../../[alias]/_components/chart-empty-state";
+import { useChartAnimation } from "../../_components/use-chart-animation";
 
 import type { ChartConfig } from "@/components/ui/chart";
 import type { ClickSeriesPoint } from "@/lib/core/analytics";
@@ -35,6 +36,7 @@ type OverallClicksChartProps = {
 
 export function OverallClicksChart({ series }: OverallClicksChartProps) {
   const hasClicks = series.some((point) => point.clicks > 0);
+  const animate = useChartAnimation();
 
   return (
     <Card className="overflow-hidden rounded-xl border-neutral-200 dark:border-border shadow-none">
@@ -73,8 +75,18 @@ export function OverallClicksChart({ series }: OverallClicksChartProps) {
                   />
                 }
               />
-              <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
-              <Bar dataKey="uniqueClicks" fill="var(--color-uniqueClicks)" radius={4} />
+              <Bar
+                dataKey="clicks"
+                fill="var(--color-clicks)"
+                radius={4}
+                isAnimationActive={animate}
+              />
+              <Bar
+                dataKey="uniqueClicks"
+                fill="var(--color-uniqueClicks)"
+                radius={4}
+                isAnimationActive={animate}
+              />
               <ChartLegend content={<ChartLegendContent />} />
             </RechartsBarChart>
           </ChartContainer>

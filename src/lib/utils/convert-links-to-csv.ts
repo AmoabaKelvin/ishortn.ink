@@ -1,26 +1,21 @@
 import type { RouterOutputs } from "@/trpc/shared";
 type LinkExportData = RouterOutputs["link"]["exportUserLinks"][number];
 
+const CSV_HEADERS = ["createdAt", "url", "alias", "domain", "note"] as const;
+
+// RFC 4180: quote any field holding a delimiter, quote or line break, and double inner quotes.
+const escapeCsvField = (value: string) =>
+  /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+
 export const convertDataToCSV = (data: LinkExportData[]) => {
-  let csvContent = "data:text/csv;charset=utf-8,";
-  const headers = ["createdAt", "url", "alias", "domain", "note"] as const;
-
-  csvContent += `${headers.join(",")}\n`;
-
-  data.forEach((row: LinkExportData) => {
-    const values = headers.map((header) => {
+  const lines = data.map((row) =>
+    CSV_HEADERS.map((header) => {
       const value = row[header];
-      if (value instanceof Date) {
-        return value.toISOString();
-      }
-      if (value === null) {
-        return "";
-      }
-      // Escape quotes and wrap in quotes if the value contains a comma
-      return value.includes(",") ? `"${value.replace(/"/g, '""')}"` : value;
-    });
-    csvContent += `${values.join(",")}\n`;
-  });
+      if (value instanceof Date) return value.toISOString();
+      if (value === null) return "";
+      return escapeCsvField(value);
+    }).join(","),
+  );
 
-  return csvContent;
+  return [CSV_HEADERS.join(","), ...lines].join("\r\n") + "\r\n";
 };

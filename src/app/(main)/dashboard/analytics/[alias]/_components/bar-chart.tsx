@@ -27,6 +27,7 @@ import {
 import { cn, formatChartBucket, formatChartBucketLabel } from "@/lib/utils";
 
 import UpgradeText from "../../../qrcodes/_components/upgrade-text";
+import { useChartAnimation } from "../../_components/use-chart-animation";
 import { ChartEmptyState } from "./chart-empty-state";
 
 import type { ChartConfig } from "@/components/ui/chart";
@@ -88,6 +89,7 @@ function GeoChartTooltip({
 export function BarChart({ series, isProPlan, geoRules = [], totalVisits = [] }: BarChartProps) {
   const [chartView, setChartView] = useState<ChartView>("clicks");
   const [chartType, setChartType] = useState<ChartType>("area");
+  const animate = useChartAnimation();
 
   const hasClicks = series.some((point) => point.clicks > 0);
 
@@ -267,12 +269,14 @@ export function BarChart({ series, isProPlan, geoRules = [], totalVisits = [] }:
                   type="monotone"
                   fill="url(#fillClicks)"
                   stroke="var(--color-clicks)"
+                  isAnimationActive={animate}
                 />
                 <Area
                   dataKey="uniqueClicks"
                   type="monotone"
                   fill="url(#fillUniqueClicks)"
                   stroke="var(--color-uniqueClicks)"
+                  isAnimationActive={animate}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
               </AreaChart>
@@ -296,8 +300,18 @@ export function BarChart({ series, isProPlan, geoRules = [], totalVisits = [] }:
                     />
                   }
                 />
-                <Bar dataKey="clicks" fill="var(--color-clicks)" radius={4} />
-                <Bar dataKey="uniqueClicks" fill="var(--color-uniqueClicks)" radius={4} />
+                <Bar
+                  dataKey="clicks"
+                  fill="var(--color-clicks)"
+                  radius={4}
+                  isAnimationActive={animate}
+                />
+                <Bar
+                  dataKey="uniqueClicks"
+                  fill="var(--color-uniqueClicks)"
+                  radius={4}
+                  isAnimationActive={animate}
+                />
                 <ChartLegend content={<ChartLegendContent />} />
               </RechartsBarChart>
             )}

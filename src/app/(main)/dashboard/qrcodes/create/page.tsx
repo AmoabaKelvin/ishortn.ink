@@ -7,6 +7,7 @@ import {
   IconRefresh,
   IconTrash,
 } from "@tabler/icons-react";
+import { TRPCClientError } from "@trpc/client";
 import { useTransitionRouter } from "next-view-transitions";
 import posthog from "posthog-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -38,9 +39,11 @@ import {
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
 import { cn } from "@/lib/utils";
+import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { api } from "@/trpc/react";
 
-import { checkIfUserCanCreateMoreQRCodes } from "../utils";
+import UpgradeText from "../_components/upgrade-text";
+import { checkIfUserCanCreateMoreQRCodes, qrCodeFileName, saveBlob } from "../utils";
 import QRAdvancedCustomization from "./_components/qr-advanced-customization";
 
 import type { QRCodeGeneratorState } from "@/lib/qr-generator";
@@ -50,6 +53,19 @@ import type {
   QRMarkerFrame,
   QRPixelStyle,
 } from "@/lib/qr-generator/types";
+import type { AppRouter } from "@/server/api/root";
+
+function createErrorMessage(err: Error): string {
+  if (err instanceof TRPCClientError) {
+    // SAFETY: every error from this router carries the zodError field added by errorFormatter
+    // in server/api/trpc.ts; for input errors `message` is the raw issue JSON.
+    const zodError = (err as TRPCClientError<AppRouter>).data?.zodError;
+    const fieldErrors: Record<string, string[] | undefined> = zodError?.fieldErrors ?? {};
+    const issue = zodError?.formErrors[0] ?? Object.values(fieldErrors).flat()[0];
+    if (issue) return issue;
+  }
+  return err.message || "Failed to create QR Code";
+}
 
 function QRCodeCreationPage() {
   const router = useTransitionRouter();
@@ -69,16 +85,15 @@ function QRCodeCreationPage() {
   const customDomainsQuery = api.customDomain.list.useQuery();
   const userDomains = customDomainsQuery.data ?? [];
 
-  const destinationLooksValid = useMemo(() => {
-    const value = destinationUrl.trim();
-    if (!value || !value.includes(".")) return false;
-    try {
-      const url = new URL(value.includes("://") ? value : `https://${value}`);
-      return url.hostname.includes(".");
-    } catch {
-      return false;
-    }
-  }, [destinationUrl]);
+  const normalizedDestination = useMemo(
+    () => normalizeDestinationUrl(destinationUrl),
+    [destinationUrl],
+  );
+  const destinationLooksValid = normalizedDestination !== null;
+
+  // The ref blocks a second click before the disabled state has rendered.
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
 
   // Advanced QR state using the new generator
   const [qrState, setQrState] = useState<QRCodeGeneratorState>(() => ({
@@ -252,20 +267,28 @@ function QRCodeCreationPage() {
   }, [debouncedQrState, destinationUrl, regenerateQRCode]);
 
   const handleSaveQRCode = async () => {
-    posthog.capture("qr_code_created");
+    if (savingRef.current) return;
 
-    if (!destinationUrl) {
+    if (!destinationUrl.trim()) {
       toast.error("Please enter a destination URL");
       return;
     }
+    if (!normalizedDestination) {
+      toast.error(INVALID_URL_MESSAGE);
+      return;
+    }
 
-    const finalTitle = qrCodeTitle || "QR Code";
+    posthog.capture("qr_code_created");
+    savingRef.current = true;
+    setIsSaving(true);
+
+    const finalTitle = qrCodeTitle.trim() || "QR Code";
 
     const promise = (async () => {
       // Step 1: Create the hidden short link and QR record on the server
       const { trackingUrl, id } = await qrCodeCreateMutation.mutateAsync({
         title: finalTitle,
-        content: destinationUrl,
+        content: normalizedDestination,
         patternStyle: qrState.pixelStyle,
         cornerStyle: qrState.markerFrame,
         selectedColor: qrState.darkColor,
@@ -291,16 +314,14 @@ function QRCodeCreationPage() {
         const qrCodeBase64 = finalCanvas.toDataURL("image/png", 1.0);
 
         // Step 4: Upload the correctly-encoded image
-        const imageUrl = await qrCodeSaveImageMutation.mutateAsync({
-          id,
-          qrCodeBase64,
-        });
+        await qrCodeSaveImageMutation.mutateAsync({ id, qrCodeBase64 });
 
-        // Trigger download
-        const link = document.createElement("a");
-        link.href = imageUrl!;
-        link.download = "qrcode.png";
-        link.click();
+        // Save from the in-memory canvas: the stored image is cross-origin, where `download` is
+        // ignored and the browser would open it instead.
+        const blob = await new Promise<Blob | null>((resolve) =>
+          finalCanvas.toBlob(resolve, "image/png"),
+        );
+        if (blob) saveBlob(blob, qrCodeFileName(finalTitle));
       } catch (err) {
         // Roll back the server record created in step 1 to avoid orphaned data
         await qrCodeDeleteMutation.mutateAsync({ id }).catch(() => {});
@@ -311,11 +332,16 @@ function QRCodeCreationPage() {
       router.push("/dashboard/qrcodes");
     })();
 
+    // Stay disabled after success: the page is navigating away.
+    promise.catch(() => {
+      savingRef.current = false;
+      setIsSaving(false);
+    });
+
     toast.promise(promise, {
       loading: "Creating QR Code...",
       success: "QR Code created successfully",
-      error: (err) =>
-        err instanceof Error && err.message ? err.message : "Failed to create QR Code",
+      error: (err: Error) => createErrorMessage(err),
     });
   };
 
@@ -331,6 +357,15 @@ function QRCodeCreationPage() {
         </p>
 
         <div className="mt-5 space-y-5">
+          {!canCreateMoreQRCodes && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-500/10">
+              <p className="text-[13px] text-amber-700 dark:text-amber-400">
+                You've reached your plan's QR code limit.{" "}
+                <UpgradeText text="Upgrade" source="qr_create_limit" /> to create more.
+              </p>
+            </div>
+          )}
+
           {/* Setup Section */}
           <div className="space-y-4 rounded-lg border border-neutral-200 dark:border-border p-4">
             <div className="space-y-1.5">
@@ -609,17 +644,15 @@ function QRCodeCreationPage() {
           <Button
             className="w-full bg-blue-600 text-[13px] hover:bg-blue-700"
             onClick={handleSaveQRCode}
-            disabled={!canCreateMoreQRCodes}
+            disabled={!canCreateMoreQRCodes || isSaving}
           >
-            <IconDownload size={16} stroke={1.5} className="mr-2" />
-            Generate & Download
+            {isSaving ? (
+              <IconLoader2 size={16} stroke={2} className="mr-2 animate-spin" />
+            ) : (
+              <IconDownload size={16} stroke={2} className="mr-2" />
+            )}
+            {isSaving ? "Generating..." : "Generate & Download"}
           </Button>
-
-          {!canCreateMoreQRCodes && (
-            <p className="text-center text-[12px] text-neutral-400 dark:text-neutral-500">
-              You've reached your QR code limit. Upgrade to create more.
-            </p>
-          )}
         </div>
       </div>
     </section>

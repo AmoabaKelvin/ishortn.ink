@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { parse } from "csv-parse/sync";
 import {
   and,
   asc,
@@ -87,13 +86,16 @@ import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 import {
   assertDomainAllowed,
   checkWorkspaceLinkLimit,
+  escapeLikePattern,
   getWorkspaceDefaultDomain,
   incrementWorkspaceLinkCount,
+  parseLinkCsv,
   PASSWORD_ATTEMPTS_PER_IP,
   PASSWORD_ATTEMPTS_PER_LINK,
   readAttemptWindow,
   recordFailedAttempt,
   restrictedLinkValues,
+  settleWithConcurrency,
   toPublicLink,
   validateAlias,
 } from "./utils";
@@ -124,13 +126,6 @@ function storedOgImage(metadata: Link["metadata"]): string | undefined {
   const parsed = storedLinkMetadataSchema.safeParse(metadata);
   return parsed.success ? parsed.data?.image : undefined;
 }
-
-const csvLinkRowSchema = z.object({
-  url: z.string(),
-  alias: z.string().optional(),
-  domain: z.string().optional(),
-  note: z.string().optional(),
-});
 
 export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput) => {
   const {
@@ -185,6 +180,8 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
       totalClicks: 0,
       currentPage: page,
       totalPages: 0,
+      // Only read when no filter is active; a tag filter is.
+      workspaceHasLinks: true,
     };
   }
 
@@ -203,7 +200,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
 
   // Add search filtering
   if (search && search.trim() !== "") {
-    const searchLower = `%${search.trim().toLowerCase()}%`;
+    const searchLower = `%${escapeLikePattern(search.trim().toLowerCase())}%`;
     baseCondition = and(
       baseCondition,
       or(like(link.name, searchLower), like(link.alias, searchLower), like(link.url, searchLower)),
@@ -346,6 +343,12 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
   );
 
   const totalLinks = totalLinksResult?.[0]?.count ?? 0;
+  // Tells a brand-new workspace (first-link prompt) apart from a filter that
+  // matched nothing; only queried when this page came back empty.
+  const workspaceHasLinks =
+    totalLinks > 0 ||
+    (await ctx.db.select({ id: link.id }).from(link).where(workspaceLinkCondition).limit(1))
+      .length > 0;
   const totalClicks =
     (totalClicksResult?.[0]?.totalClicks ?? 0) +
     (Number(archivedClicksResult?.[0]?.archivedClicks) || 0);
@@ -356,6 +359,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     totalClicks,
     currentPage: page,
     totalPages: Math.ceil(totalLinks / pageSize),
+    workspaceHasLinks,
   };
 };
 
@@ -1654,6 +1658,10 @@ export const checkAliasAvailability = async (
   return { isAvailable: !existingLink };
 };
 
+// Alias checks, URL scans and inserts each hold a db connection or an outbound
+// request; cap them so a 1,000-row file doesn't fan out all at once.
+const CSV_IMPORT_CONCURRENCY = 8;
+
 // `checkUrl` is a seam for tests; callers use the default.
 export const bulkCreateLinks = (
   ctx: WorkspaceTRPCContext,
@@ -1670,47 +1678,38 @@ const bulkCreateLinkRows = async (
   csvContent: string,
   checkUrl: (url: string) => Promise<void>,
 ) => {
-  const rows: unknown[] = parse(csvContent, {
-    columns: true,
-    skip_empty_lines: true,
-  });
+  const rows = parseLinkCsv(csvContent);
 
   // Throws when the monthly allowance is already used up, rejecting the whole import.
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
   const remaining = limit === undefined ? Number.POSITIVE_INFINITY : limit - currentCount;
 
-  const records = rows.map((row) => {
-    const parsed = csvLinkRowSchema.safeParse(row);
-    if (!parsed.success || parsed.data.url.trim() === "") return null;
-    return {
-      url: parsed.data.url.trim(),
-      alias: parsed.data.alias?.trim() || undefined,
-      domain: parsed.data.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
-      note: parsed.data.note,
-    };
-  });
+  const records = rows.map((row) => ({
+    ...row,
+    domain: row.domain ?? DEFAULT_PLATFORM_DOMAIN,
+  }));
 
   // One ownership lookup per distinct domain, not per row.
   const domainErrors = new Map<string, unknown>();
-  await Promise.all(
-    [...new Set(records.flatMap((record) => (record ? [record.domain] : [])))].map(
-      async (domain) => {
-        try {
-          await assertDomainAllowed(ctx, domain);
-          domainErrors.set(domain, null);
-        } catch (error) {
-          domainErrors.set(domain, error);
-        }
-      },
-    ),
+  await settleWithConcurrency(
+    [...new Set(records.map((record) => record.domain))],
+    CSV_IMPORT_CONCURRENCY,
+    async (domain) => {
+      try {
+        await assertDomainAllowed(ctx, domain);
+        domainErrors.set(domain, null);
+      } catch (error) {
+        domainErrors.set(domain, error);
+      }
+    },
   );
 
   // Two rows claiming the same alias on the same domain would otherwise race on
   // the unique index; the first one in the file wins.
   const seenAliases = new Set<string>();
-  const aliasChecks = records.map(async (record) => {
-    if (!record) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing or invalid url" });
+  const validated = await settleWithConcurrency(records, CSV_IMPORT_CONCURRENCY, async (record) => {
+    if (!record.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
     const domainError = domainErrors.get(record.domain);
     if (domainError) throw domainError;
     if (!record.alias) return record;
@@ -1727,14 +1726,15 @@ const bulkCreateLinkRows = async (
     await validateAlias(ctx, record.alias, record.domain, isPaidPlan);
     return record;
   });
-  const validated = await Promise.allSettled(aliasChecks);
 
   // Allowance goes to valid rows in file order, before the (slow) URL safety
   // scan, so rows past the limit are never scanned.
   let allotted = 0;
   const rowSteps = validated.map((): LinkCreationStep => "validation");
-  const results = await Promise.allSettled(
-    validated.map(async (check, index) => {
+  const results = await settleWithConcurrency(
+    validated,
+    CSV_IMPORT_CONCURRENCY,
+    async (check, index) => {
       if (check.status === "rejected") throw check.reason;
       if (allotted >= remaining) {
         throw new TRPCError({
@@ -1760,14 +1760,14 @@ const bulkCreateLinkRows = async (
         note: record.note,
         ...restrictedLinkValues(ctx.restrictedAt),
       });
-    }),
+    },
   );
 
   const failures = results.flatMap((result, index) =>
     result.status === "rejected"
       ? [
           {
-            row: index + 1,
+            row: records[index]!.row,
             reason:
               result.reason instanceof Error ? result.reason.message : "Could not create this link",
           },

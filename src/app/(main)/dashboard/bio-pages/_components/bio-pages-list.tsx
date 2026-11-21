@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
 import { api } from "@/trpc/react";
 
 import { CreateBioPageDialog } from "./create-bio-page-dialog";
@@ -45,8 +46,8 @@ export function BioPagesList({ pages, bioPageLimit }: BioPagesListProps) {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Bio Pages
           </h2>
@@ -57,13 +58,19 @@ export function BioPagesList({ pages, bioPageLimit }: BioPagesListProps) {
 
         {pages.length > 0 &&
           (atLimit ? (
-            <span
-              className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-[13px] font-medium text-neutral-400 dark:bg-muted dark:text-neutral-500"
-              title="You've reached your plan's bio page limit."
-            >
-              <IconPlus size={16} stroke={2} />
-              New page
-            </span>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className="text-[12px] text-neutral-500 tabular-nums dark:text-neutral-400">
+                {pages.length.toLocaleString()} of {bioPageLimit.toLocaleString()}{" "}
+                {bioPageLimit === 1 ? "page" : "pages"} used
+              </span>
+              <Link
+                href="/dashboard/pricing"
+                onClick={() => trackUpgradeClick("bio_page_limit")}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-[background-color,transform] hover:bg-blue-700 active:scale-[0.97]"
+              >
+                Upgrade for more
+              </Link>
+            </div>
           ) : (
             <CreateBioPageDialog
               trigger={

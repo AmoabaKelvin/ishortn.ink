@@ -1,14 +1,16 @@
 import { z } from "zod";
 
 import { MarkerFrames, PixelStyles, QREffects, QRMarkerCenters } from "@/lib/qr-generator/types";
+import { destinationUrlSchema } from "@/lib/utils/destination-url";
 
 import { geoRuleInputSchema } from "../link/link.input";
 
 export const qrcodeInput = z.object({
-  title: z.string().optional(),
-  content: z.string().url("Please enter a valid URL"),
-  patternStyle: z.string(),
-  cornerStyle: z.string(),
+  title: z.string().max(255, "Title must be 255 characters or fewer").optional(),
+  content: destinationUrlSchema,
+  // The generator's pixelStyle and markerFrame; stored as legacy enum values (see utils.ts).
+  patternStyle: z.enum(PixelStyles),
+  cornerStyle: z.enum(MarkerFrames),
   selectedColor: z.string(),
   domain: z.string().optional(),
 });

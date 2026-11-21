@@ -32,14 +32,16 @@ export function BulkLinkActions() {
     },
   });
 
-  const triggerDownload = (content: string, fileName: string): void => {
-    const encodedUri = encodeURI(content);
+  const triggerDownload = (content: string, fileName: string, type: string): void => {
+    const url = URL.createObjectURL(new Blob([content], { type }));
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", fileName);
+    link.href = url;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    // Revoke on the next task: some browsers start reading the blob after click() returns.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const handleExport = (format: "csv" | "json") => {
@@ -48,7 +50,11 @@ export function BulkLinkActions() {
         onSuccess: (data) => {
           const content = format === "csv" ? convertDataToCSV(data) : convertDataToJSON(data);
           const fileName = `ishortn_links.${format}`;
-          triggerDownload(content, fileName);
+          triggerDownload(
+            content,
+            fileName,
+            format === "csv" ? "text/csv;charset=utf-8" : "application/json;charset=utf-8",
+          );
           trackEvent(POSTHOG_EVENTS.LINKS_EXPORTED, {
             format,
             link_count: data.length,
