@@ -9,19 +9,19 @@ import type { ClickEvent } from "./src/lib/core/analytics/click-event";
 type Env = CloudflareEnv & { CRON_SECRET: string };
 
 // Maps each cron expression (see triggers.crons in wrangler.jsonc) to the
-// Next.js route that Vercel Cron used to call. The routes authenticate with
-// the same CRON_SECRET bearer token as before.
+// Next.js routes it runs. Hourly jobs share a slot rather than adding cron
+// expressions. The routes authenticate with the CRON_SECRET bearer token.
 const CRON_ROUTES = new Map([
-  ["0 9 * * *", "/api/cron/domain-reminders"],
-  ["0 0 * * *", "/api/cron/cleanup-teams"],
-  ["0 2 * * SUN", "/api/cron/cleanup-analytics"],
-  ["0 4 * * *", "/api/cron/cleanup-expired"],
-  ["0 5 * * *", "/api/cron/entitlements"],
-  ["25 * * * *", "/api/cron/entitlements?emails=1"],
-  ["30 */6 * * *", "/api/cron/phishing-rescan"],
-  ["5,20,35,50 * * * *", "/api/cron/phishing-rescan?backlog=1"],
-  ["10 * * * *", "/api/cron/api-access-sunset"],
-  ["40 * * * *", "/api/cron/link-creation-health"],
+  ["0 9 * * *", ["/api/cron/domain-reminders"]],
+  ["0 0 * * *", ["/api/cron/cleanup-teams"]],
+  ["0 2 * * SUN", ["/api/cron/cleanup-analytics"]],
+  ["0 4 * * *", ["/api/cron/cleanup-expired"]],
+  ["0 5 * * *", ["/api/cron/entitlements"]],
+  ["25 * * * *", ["/api/cron/entitlements?emails=1"]],
+  ["30 */6 * * *", ["/api/cron/phishing-rescan"]],
+  ["5,20,35,50 * * * *", ["/api/cron/phishing-rescan?backlog=1"]],
+  ["10 * * * *", ["/api/cron/api-access-sunset", "/api/cron/first-link-nudge"]],
+  ["40 * * * *", ["/api/cron/link-creation-health"]],
 ]);
 
 // The queue consumer lives in a Next.js route so it shares the app's DB setup.
@@ -52,15 +52,19 @@ export default {
   },
 
   async scheduled(controller, env) {
-    const path = CRON_ROUTES.get(controller.cron);
-    if (!path) {
+    const paths = CRON_ROUTES.get(controller.cron);
+    if (!paths) {
       console.error(`No cron route mapped for schedule "${controller.cron}"`);
       return;
     }
-    const response = await callApp(env, path);
-    if (!response.ok) {
-      console.error(`Cron ${path} failed: ${response.status} ${await response.text()}`);
-    }
+    await Promise.all(
+      paths.map(async (path) => {
+        const response = await callApp(env, path);
+        if (!response.ok) {
+          console.error(`Cron ${path} failed: ${response.status} ${await response.text()}`);
+        }
+      }),
+    );
   },
 
   async queue(batch, env) {
