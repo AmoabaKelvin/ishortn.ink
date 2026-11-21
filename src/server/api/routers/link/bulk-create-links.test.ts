@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { TRPCError } from "@trpc/server";
 
+import { INVALID_URL_MESSAGE } from "@/lib/utils/destination-url";
 import { link, linkCreationFailure } from "@/server/db/schema";
 
 import { bulkCreateLinks } from "./link.service";
@@ -169,7 +170,7 @@ describe("bulkCreateLinks", () => {
     const { ctx, inserted, countUpdates } = fakeContext(0);
     const result = await bulkCreateLinks(
       ctx,
-      csv(",,,no url", "https://bad.example,,,"),
+      csv(",,,no url", "not a url,,,", "https://bad.example,,,"),
       async () => {
         throw new Error("This URL looks suspicious");
       },
@@ -177,7 +178,8 @@ describe("bulkCreateLinks", () => {
 
     expect(result.failures).toEqual([
       { row: 2, reason: "Missing url" },
-      { row: 3, reason: "This URL looks suspicious" },
+      { row: 3, reason: INVALID_URL_MESSAGE },
+      { row: 4, reason: "This URL looks suspicious" },
     ]);
     expect(inserted).toEqual([]);
     expect(countUpdates).toEqual([]);

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isValidTargetingValue } from "@/lib/constants/targeting";
+import { destinationUrlSchema } from "@/lib/utils/destination-url";
 
 // OG image validator: accepts either a URL or a base64 data URI (PNG/JPEG/GIF) under 2MB
 const MAX_OG_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
@@ -102,7 +103,7 @@ export const geoRuleInputSchema = z
   );
 
 export const createLinkSchema = z.object({
-  url: z.string(),
+  url: destinationUrlSchema,
   name: z.string().optional(),
   alias: z.string().optional(),
   disableLinkAfterClicks: z.number().optional(),
@@ -111,7 +112,8 @@ export const createLinkSchema = z.object({
   password: z.string().optional(),
   domain: z.string().optional(),
   note: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  // Tag.name is varchar(50).
+  tags: z.array(z.string().max(50, "Tags can be at most 50 characters")).optional(),
   metadata: z
     .object({
       title: z.string().optional(),
@@ -135,8 +137,8 @@ export const createLinkSchema = z.object({
 });
 
 export const quickLinkShorteningSchema = z.object({
-  url: z.string().url(),
-  tags: z.array(z.string()).optional(),
+  url: destinationUrlSchema,
+  tags: z.array(z.string().max(50, "Tags can be at most 50 characters")).optional(),
 });
 
 export const updateLinkSchema = createLinkSchema.partial().extend({

@@ -44,7 +44,9 @@ export const tagRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       await verifyLinkOwnership(ctx, input.linkId);
-      await associateTagsWithLink(ctx, input.linkId, input.tagNames);
+      await ctx.db.transaction((tx) =>
+        associateTagsWithLink({ ...ctx, db: tx }, input.linkId, input.tagNames),
+      );
       return { success: true };
     }),
 

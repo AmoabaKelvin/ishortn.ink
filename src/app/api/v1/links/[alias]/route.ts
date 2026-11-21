@@ -4,6 +4,7 @@ import { z } from "zod";
 import { resolvePlan } from "@/lib/billing/plans";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
@@ -21,7 +22,7 @@ const log = logger.child({ component: "api.v1.links" });
 
 const updateLinkSchema = z
   .object({
-    url: z.string().url().optional(),
+    url: destinationUrlSchema.optional(),
     alias: z
       .string()
       .min(1)
