@@ -1,4 +1,4 @@
-import type { Appearance } from "@clerk/types";
+import type { NextClerkProviderProps } from "@clerk/nextjs/types";
 
 // Site theme for Clerk (docs/design-language.md). Static styles only:
 // hover/focus/first-child states live in src/styles/site-auth.css under the
@@ -15,8 +15,11 @@ const shadowCard =
   "0 0 0 1px rgb(10 10 10 / 0.06), 0 1px 2px rgb(10 10 10 / 0.04), 0 6px 16px -6px rgb(10 10 10 / 0.05)";
 const shadowField = "0 0 0 1px rgb(10 10 10 / 0.1), 0 1px 2px rgb(10 10 10 / 0.06)";
 
+// v7 no longer exports the Appearance type, so take it from the provider props.
+type Appearance = NonNullable<NextClerkProviderProps["appearance"]>;
+
 export const siteClerkAppearance: Appearance = {
-  layout: {
+  options: {
     // The auth layout renders our Wordmark above the tray
     logoPlacement: "none",
     socialButtonsPlacement: "top",
@@ -27,11 +30,11 @@ export const siteClerkAppearance: Appearance = {
   },
   variables: {
     colorPrimary: ink,
-    colorText: ink,
-    colorTextSecondary: body,
+    colorForeground: ink,
+    colorMutedForeground: body,
     colorBackground: "#ffffff",
-    colorInputBackground: "#ffffff",
-    colorInputText: ink,
+    colorInput: "#ffffff",
+    colorInputForeground: ink,
     colorNeutral: ink,
     colorDanger: "#dc2626",
     fontFamily: fontBody,
