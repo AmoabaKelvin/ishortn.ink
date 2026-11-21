@@ -110,9 +110,11 @@ export const linkRouter = createTRPCRouter({
     }),
 
   bulkUpload: contentWriteProcedure
-    .input(z.object({ csv: z.string() }))
+    .input(inputs.bulkUploadSchema)
     .mutation(async ({ ctx, input }) => {
-      return services.bulkCreateLinks(ctx, input.csv);
+      return services.bulkCreateLinks(ctx, input.csv, undefined, {
+        keepBitlyCodes: input.keepBitlyCodes,
+      });
     }),
 
   exportUserLinks: workspaceProcedure.mutation(async ({ ctx }) => {

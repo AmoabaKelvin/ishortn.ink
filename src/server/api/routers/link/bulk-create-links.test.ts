@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 
 import { TRPCError } from "@trpc/server";
+import { MySqlDialect } from "drizzle-orm/mysql-core";
 
 import { INVALID_URL_MESSAGE } from "@/lib/utils/destination-url";
 import { link, linkCreationFailure } from "@/server/db/schema";
@@ -10,19 +12,35 @@ import { RESTRICTED_LINK_REASON } from "./utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
+import type { Column, SQL } from "drizzle-orm";
 
 type InsertedLink = {
   url: string;
   alias: string;
   domain: string;
+  name?: string;
+  note?: string;
   blocked?: boolean;
   blockedReason?: string;
 };
 
+type FakeOptions = {
+  plan?: "free" | "pro";
+  /** Active custom domains of the workspace, oldest first. */
+  customDomains?: string[];
+};
+
+const dialect = new MySqlDialect();
+
 // In-memory stand-in for the queries bulkCreateLinks makes: the plan lookup,
-// custom-domain ownership (the workspace owns none), alias availability (all
-// free, none reserved), link inserts, failure records and the monthly count update.
-function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null) {
+// custom-domain ownership (`customDomains`, none by default), alias availability
+// (all free, none reserved), earlier imports (the links this context inserted),
+// link inserts, failure records and the monthly count update.
+function fakeContext(
+  monthlyLinkCount: number,
+  restrictedAt: Date | null = null,
+  { plan = "free", customDomains = [] }: FakeOptions = {},
+) {
   const inserted: InsertedLink[] = [];
   const recordedFailures: LinkCreationFailure[] = [];
   const countUpdates: Array<{ monthlyLinkCount: number }> = [];
@@ -31,15 +49,38 @@ function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null)
       user: {
         findFirst: async () => ({
           id: "user_1",
-          monthlyLinkCount,
+          monthlyLinkCount: countUpdates.at(-1)?.monthlyLinkCount ?? monthlyLinkCount,
           lastLinkCountReset: new Date(),
           createdAt: new Date(),
-          subscriptions: null,
+          subscriptions:
+            plan === "free"
+              ? null
+              : { status: "active", plan, variantId: null, productId: null, endsAt: null },
         }),
       },
-      customDomain: { findFirst: async () => undefined },
+      customDomain: {
+        // The ownership lookup filters by the domain it checks; read it back from the query.
+        findFirst: async ({ where }: { where: SQL }) => {
+          const { params } = dialect.sqlToQuery(where);
+          const domain = customDomains.find((name) => params.includes(name));
+          return domain ? { domain, status: "active" } : undefined;
+        },
+      },
     },
-    select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
+    // Queries are told apart by the columns they select.
+    select: (fields: { url?: Column; domain?: Column }) => ({
+      from: () => ({
+        where: () => {
+          if ("url" in fields) return Promise.resolve(inserted);
+          if ("domain" in fields) {
+            return {
+              orderBy: () => ({ limit: async () => customDomains.map((domain) => ({ domain })) }),
+            };
+          }
+          return { limit: async () => [] };
+        },
+      }),
+    }),
     insert: (table: typeof link | typeof linkCreationFailure) => ({
       values: async (values: InsertedLink | LinkCreationFailure[]) => {
         if (table === linkCreationFailure && Array.isArray(values)) {
@@ -69,7 +110,7 @@ function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null)
       teamId: null,
       teamSlug: null,
       role: "owner",
-      plan: "free",
+      plan,
     },
   } as WorkspaceTRPCContext;
   return { ctx, inserted, countUpdates, recordedFailures };
@@ -264,5 +305,143 @@ describe("bulkCreateLinks", () => {
       blocked: true,
       blockedReason: RESTRICTED_LINK_REASON,
     });
+  });
+});
+
+const fixture = (name: string) =>
+  readFileSync(new URL(`./__fixtures__/${name}`, import.meta.url), "utf8");
+
+// Pro workspace with go.example.com connected; the default domain is isht.app.
+const bitlyContext = (monthlyLinkCount = 0) =>
+  fakeContext(monthlyLinkCount, null, { plan: "pro", customDomains: ["go.example.com"] });
+
+const UNCONNECTED =
+  "links.other-brand.test isn't connected to this workspace. Add it in Domains, wait until it shows Active, then import this file again.";
+
+describe("bulkCreateLinks with a Bitly export", () => {
+  test("imports the current export, keeping Bitly's original codes", async () => {
+    const { ctx, inserted, countUpdates } = bitlyContext(10);
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl);
+
+    expect(result).toMatchObject({ created: 5, failed: 2, skipped: 1, alreadyImported: 0 });
+    expect(result.message).toBe("5 links created, 2 failed, 1 skipped (deleted in Bitly)");
+    expect(result.failures).toEqual([
+      { row: 7, reason: UNCONNECTED },
+      { row: 8, reason: "Alias is used by an earlier row in this file" },
+    ]);
+    expect(result.domainNotices).toEqual([UNCONNECTED]);
+    expect(countUpdates).toEqual([{ monthlyLinkCount: 15 }]);
+
+    const byAlias = new Map(inserted.map((row) => [`${row.domain}/${row.alias}`, row]));
+    expect(byAlias.get("go.example.com/spring-menu")).toMatchObject({
+      url: "https://example.com/menu/spring?utm_source=print",
+      name: "Spring menu, dinner",
+      note: "Imported from Bitly: https://go.example.com/3XCetqn",
+    });
+    expect(byAlias.get("go.example.com/3XCetqn")).toMatchObject({
+      url: "https://example.com/menu/spring?utm_source=print",
+      name: "Spring menu, dinner",
+      note: "Bitly code for https://go.example.com/spring-menu",
+    });
+    expect(byAlias.get("go.example.com/3XABUQI")).toMatchObject({
+      url: "https://example.com/book",
+      name: "Booking page",
+    });
+    expect(byAlias.get("isht.app/example-reviews")).toMatchObject({
+      url: "https://g.page/r/example/review",
+    });
+    const contact = inserted.find((row) => row.url === "https://example.com/contact");
+    expect(contact).toMatchObject({
+      domain: "isht.app",
+      note: "Imported from Bitly: https://bit.ly/4zZyYxX",
+    });
+    expect(contact?.alias).toHaveLength(9);
+    expect(contact?.name).toBeUndefined();
+    expect(byAlias.has("go.example.com/4Dupe01")).toBe(false);
+    expect(inserted.some((row) => row.url === "https://example.com/promo-2025")).toBe(false);
+
+    expect(result.notices).toEqual([
+      { row: 4, message: "bit.ly links stay on Bitly. Created isht.app/example-reviews." },
+      { row: 5, message: `bit.ly links stay on Bitly. Created isht.app/${contact?.alias}.` },
+    ]);
+  });
+
+  test("creates only the primary links when original codes are off", async () => {
+    const { ctx, inserted } = bitlyContext();
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl, {
+      keepBitlyCodes: false,
+    });
+
+    expect(result).toMatchObject({ created: 4, failed: 2, skipped: 1 });
+    expect(inserted.some((row) => row.alias === "3XCetqn")).toBe(false);
+  });
+
+  test("counts links from an earlier run of the same file as already imported", async () => {
+    const { ctx, inserted, countUpdates } = bitlyContext();
+    await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl);
+    const again = await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl);
+
+    expect(again).toMatchObject({ created: 0, alreadyImported: 5, failed: 2, skipped: 1 });
+    expect(again.failures.map((failure) => failure.row)).toEqual([7, 8]);
+    expect(again.notices).toEqual([]);
+    expect(inserted).toHaveLength(5);
+    expect(countUpdates).toEqual([{ monthlyLinkCount: 5 }]);
+  });
+
+  test("imports the legacy export format", async () => {
+    const { ctx, inserted } = bitlyContext();
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-legacy.csv"), allowUrl);
+
+    expect(result).toMatchObject({ created: 3, failed: 0, skipped: 0 });
+    expect(inserted.map((row) => `${row.domain}/${row.alias}`).sort()).toEqual([
+      "go.example.com/3GexGSC",
+      "go.example.com/3vLl4Ax",
+      "go.example.com/FAQ",
+    ]);
+  });
+
+  test("allots the monthly allowance to rows before original codes", async () => {
+    // Pro allows 1,000 links a month; two are left.
+    const { ctx, inserted } = bitlyContext(998);
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-legacy.csv"), allowUrl);
+
+    expect(result.created).toBe(2);
+    expect(result.failures).toEqual([
+      {
+        row: 2,
+        reason: expect.stringContaining(
+          "go.example.com/3vLl4Ax not kept: Monthly limit of 1,000 links reached",
+        ),
+      },
+    ]);
+    expect(inserted.map((row) => row.alias).sort()).toEqual(["3GexGSC", "FAQ"]);
+  });
+
+  test("moves a bit.ly back-half that is invalid here to a generated alias", async () => {
+    const { ctx, inserted } = bitlyContext();
+    const result = await bulkCreateLinks(
+      ctx,
+      [
+        "Link,Custom Link,Title,Destination URL,Status",
+        "https://bit.ly/abc,https://bit.ly/menu.pdf,,https://example.com/a,Active",
+        "https://go.example.com/xyz,https://go.example.com/a/b,,https://example.com/b,Active",
+        ",,,https://example.com/c,Active",
+      ].join("\n"),
+      allowUrl,
+    );
+
+    expect(result.notices).toEqual([
+      {
+        row: 2,
+        message: expect.stringMatching(
+          /^bit\.ly links stay on Bitly, and the back-half menu\.pdf isn't available here\. Created isht\.app\/\w{9}\.$/,
+        ),
+      },
+    ]);
+    expect(result.failures).toEqual([
+      { row: 3, reason: expect.stringContaining("alphanumeric") },
+      { row: 4, reason: "This row has no valid Bitly link" },
+    ]);
+    expect(inserted.map((row) => row.domain)).toEqual(["isht.app"]);
   });
 });

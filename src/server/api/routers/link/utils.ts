@@ -510,7 +510,88 @@ export type CsvLinkRow = {
   alias?: string;
   domain?: string;
   note?: string;
+  name?: string;
+  /** Set on rows read from a Bitly link export. */
+  bitly?: BitlyRow;
 };
+
+export type BitlyRow = {
+  /** The row's short link as exported: Custom Link when set, else Link. */
+  shortLink: string;
+  /** `alias` is a custom back-half rather than Bitly's random code. */
+  custom: boolean;
+  /** Bitly's random code when it differs from the custom back-half on the same domain. */
+  code?: string;
+  deleted: boolean;
+  /** Why the row can't be imported, found while reading it. */
+  error?: string;
+};
+
+/** Bitly's own short domains; links on them can't move to another service. */
+export const BITLY_DOMAINS: ReadonlySet<string> = new Set(["bit.ly", "j.mp", "bitly.is"]);
+
+const MAX_LINK_TEXT_LENGTH = 255;
+
+/** Splits an exported short link like `https://go.example.com/spring-menu` into domain and back-half. */
+export const parseShortLink = (value: string): { domain: string; alias: string } | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    const alias = url.pathname.replace(/^\/+|\/+$/g, "");
+    return alias ? { domain: url.hostname.replace(/\.$/, "").toLowerCase(), alias } : null;
+  } catch {
+    return null;
+  }
+};
+
+type CsvRecord = Record<string, string>;
+
+const isBitlyExport = (headers: string[]) =>
+  !headers.includes("url") &&
+  (headers.includes("destination url") || headers.includes("long url")) &&
+  (headers.includes("link") || headers.includes("bitlink"));
+
+// The current export names the columns Link/Custom Link/Destination URL; exports
+// from before 2023 use Bitlink/Custom Bitlink/Long URL.
+const readBitlyRecord = (record: CsvRecord, row: number): CsvLinkRow => {
+  const link = (record.link ?? record.bitlink ?? "").trim();
+  const customLink = (record["custom link"] ?? record["custom bitlink"] ?? "").trim();
+  const shortLink = customLink || link;
+  const primary = parseShortLink(shortLink);
+  const code = customLink ? parseShortLink(link) : null;
+  const title = record.title?.trim().slice(0, MAX_LINK_TEXT_LENGTH);
+
+  return {
+    row,
+    url: (record["destination url"] ?? record["long url"] ?? "").trim(),
+    alias: primary?.alias,
+    domain: primary?.domain,
+    note: `Imported from Bitly: ${link || shortLink}`.slice(0, MAX_LINK_TEXT_LENGTH),
+    name: title || undefined,
+    bitly: {
+      shortLink,
+      custom: !!customLink,
+      code:
+        primary &&
+        code &&
+        code.domain === primary.domain &&
+        normalizeAlias(code.alias) !== normalizeAlias(primary.alias)
+          ? code.alias
+          : undefined,
+      deleted: record.status?.trim().toLowerCase() === "deleted",
+      error: primary ? undefined : "This row has no valid Bitly link",
+    },
+  };
+};
+
+const readGenericRecord = (record: CsvRecord, row: number): CsvLinkRow => ({
+  row,
+  url: record.url?.trim() ?? "",
+  alias: record.alias?.trim() || undefined,
+  domain: record.domain?.trim() || undefined,
+  note: record.note || undefined,
+});
 
 const parsedCsvSchema = z.array(z.record(z.string(), z.string()));
 
@@ -530,8 +611,9 @@ const csvReadError = (error: CsvError) => {
 };
 
 /**
- * Parses a bulk-import CSV. Headers match case-insensitively and a UTF-8 BOM
- * is ignored, so Excel and Google Sheets exports work as-is. File-level
+ * Parses a bulk-import CSV: our own format (a `url` column) or a Bitly link
+ * export as downloaded. Headers match case-insensitively and a UTF-8 BOM is
+ * ignored, so Excel and Google Sheets exports work as-is. File-level
  * problems throw a user-facing TRPCError; row-level problems are left to the
  * caller so they can be reported per row.
  */
@@ -563,25 +645,22 @@ export const parseLinkCsv = (csv: string): CsvLinkRow[] => {
     throw error;
   }
 
-  if (!headers.includes("url")) {
+  const readRecord = headers.includes("url")
+    ? readGenericRecord
+    : isBitlyExport(headers)
+      ? readBitlyRecord
+      : null;
+  if (!readRecord) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        'The first row must be a header with a "url" column ("alias", "domain" and "note" are optional).',
+        'The first row must be a header with a "url" column, or a link export from Bitly ("Link" and "Destination URL" columns).',
     });
   }
 
   const rows = records.flatMap((record, index) =>
     Object.values(record).some((value) => value.trim() !== "")
-      ? [
-          {
-            row: index + 2,
-            url: record.url?.trim() ?? "",
-            alias: record.alias?.trim() || undefined,
-            domain: record.domain?.trim() || undefined,
-            note: record.note || undefined,
-          },
-        ]
+      ? [readRecord(record, index + 2)]
       : [],
   );
 
