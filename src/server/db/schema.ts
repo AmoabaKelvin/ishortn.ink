@@ -161,6 +161,9 @@ export const user = mysqlTable(
     qrCodeCount: int("qrCodeCount").default(0),
     monthlyLinkCount: int("monthlyLinkCount").default(0),
     lastLinkCountReset: timestamp("lastLinkCountReset").defaultNow(),
+    // Lifetime count of CSV-imported links that used the custom-domain import allowance instead
+    // of the monthly link limit (CUSTOM_DOMAIN_IMPORT_ALLOWANCE in routers/link/utils.ts).
+    customDomainImportCount: int("customDomainImportCount").notNull().default(0),
     monthlyEventCount: int("monthlyEventCount").default(0),
     lastEventCountReset: timestamp("lastEventCountReset").defaultNow(),
     eventUsageAlertLevel: int("eventUsageAlertLevel").default(0),

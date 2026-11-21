@@ -32,7 +32,8 @@ https://example.com/pricing,pricing-2026,,Newsletter footer
 
 ## Limits
 
-- Each created row counts toward your [monthly link limit](/docs/short-links#monthly-link-limit). If you've already reached it, the whole upload is rejected. Otherwise rows are created in file order until the limit is reached, and the remaining rows fail with `Monthly limit of {limit} links reached. Upgrade your plan to create more.`
+- Each created row counts toward your [monthly link limit](/docs/short-links#monthly-link-limit), except rows that use the custom-domain import allowance below. If you've already reached it (and have no import allowance left), the whole upload is rejected. Otherwise rows are created in file order until the limit is reached, and the remaining rows fail with `Monthly limit of {limit} links reached. Upgrade your plan to create more.`
+- On Pro, rows on one of the workspace's active [custom domains](/docs/custom-domains) use a one-time import allowance of 5,000 links instead of the monthly limit, so you can move a branded domain from another shortener in one go. The allowance doesn't reset; once it's used up, those rows count toward the monthly limit like any other. The summary says how many rows used it and how many are left. Rows on platform domains always count toward the monthly limit.
 - Every destination goes through the [link safety check](/docs/abuse#link-safety-checks).
 
 ## Row errors

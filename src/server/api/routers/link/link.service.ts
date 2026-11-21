@@ -25,7 +25,7 @@ import {
   getGeoRulesLimit,
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { bucketKey, resolveRangeWindow, summarizeArchived } from "@/lib/core/analytics";
 import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
@@ -95,9 +95,11 @@ import {
   assertDomainOwned,
   assertDomainWithinPlan,
   checkWorkspaceLinkLimit,
+  CUSTOM_DOMAIN_IMPORT_ALLOWANCE,
   escapeLikePattern,
   getWorkspaceDefaultDomain,
   hasUtmValues,
+  incrementCustomDomainImportCount,
   incrementWorkspaceLinkCount,
   parseLinkCsv,
   PASSWORD_ATTEMPTS_PER_IP,
@@ -1822,8 +1824,11 @@ const bulkCreateLinkRows = async (
 ) => {
   const rows = parseLinkCsv(csvContent);
 
-  // Throws when the monthly allowance is already used up, rejecting the whole import.
-  const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
+  // Throws when the monthly allowance and the custom-domain import allowance are
+  // both used up, rejecting the whole import.
+  const { plan, currentCount, limit, importAllowanceLeft } = await checkWorkspaceLinkLimit(ctx, {
+    customDomainImport: true,
+  });
   const isPaidPlan = plan !== "free";
   const remaining = limit === undefined ? Number.POSITIVE_INFINITY : limit - currentCount;
 
@@ -1875,21 +1880,29 @@ const bulkCreateLinkRows = async (
   // Allowance goes to valid rows in file order, before the (slow) URL safety
   // scan, so rows past the limit are never scanned.
   let allotted = 0;
+  let importAllotted = 0;
+  const usesImportAllowance = validated.map(() => false);
   const rowSteps = validated.map((): LinkCreationStep => "validation");
   const results = await settleWithConcurrency(
     validated,
     CSV_IMPORT_CONCURRENCY,
     async (check, index) => {
       if (check.status === "rejected") throw check.reason;
-      if (allotted >= remaining) {
+      const record = check.value;
+      // The domain passed assertDomainAllowed, so a non-platform one is an
+      // active custom domain of this workspace.
+      if (!isPlatformDomain(record.domain.toLowerCase()) && importAllotted < importAllowanceLeft) {
+        importAllotted++;
+        usesImportAllowance[index] = true;
+      } else if (allotted >= remaining) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: `Monthly limit of ${limit?.toLocaleString()} links reached. Upgrade your plan to create more.`,
         });
+      } else {
+        allotted++;
       }
-      allotted++;
 
-      const record = check.value;
       rowSteps[index] = "safety";
       await checkUrl(record.url);
 
@@ -1920,6 +1933,9 @@ const bulkCreateLinkRows = async (
       : [],
   );
   const created = results.length - failures.length;
+  const importCreated = results.filter(
+    (result, index) => result.status === "fulfilled" && usesImportAllowance[index],
+  ).length;
 
   await recordLinkCreationFailures(
     ctx.db,
@@ -1932,16 +1948,25 @@ const bulkCreateLinkRows = async (
     ),
   );
 
-  if (created > 0) {
-    await incrementWorkspaceLinkCount(ctx, currentCount, limit, created);
+  if (created > importCreated) {
+    await incrementWorkspaceLinkCount(ctx, currentCount, limit, created - importCreated);
   }
+  await incrementCustomDomainImportCount(ctx, importCreated);
+
+  const importAllowanceRemaining = importAllowanceLeft - importCreated;
+  const importNotice =
+    importCreated > 0
+      ? `. ${importCreated.toLocaleString()} on your custom domain used the one-time import allowance instead of your monthly limit (${importAllowanceRemaining.toLocaleString()} of ${CUSTOM_DOMAIN_IMPORT_ALLOWANCE.toLocaleString()} left)`
+      : "";
 
   return {
     success: true,
     created,
     failed: failures.length,
     failures,
-    message: `${created} ${created === 1 ? "link" : "links"} created, ${failures.length} failed`,
+    importAllowanceUsed: importCreated,
+    importAllowanceRemaining,
+    message: `${created} ${created === 1 ? "link" : "links"} created, ${failures.length} failed${importNotice}`,
   };
 };
 
