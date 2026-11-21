@@ -74,6 +74,13 @@ export function isPostVisible(
   return previewScheduled || post.date <= now.toISOString().slice(0, 10);
 }
 
+// Frontmatter-only check for pages that link to a post: skips rendering the markdown.
+export function isPostLive(slug: string, now: Date = new Date()): boolean {
+  const source = blogSources.get(slug);
+  if (source === undefined) return false;
+  return isPostVisible(blogPostFrontmatterSchema.parse(matter(source).data), now);
+}
+
 export async function getAllPosts(): Promise<BlogPost[]> {
   const posts = await Promise.all([...blogSources.keys()].map(getPostBySlug));
 

@@ -1,4 +1,4 @@
-import { IconSparklesFilled } from "@tabler/icons-react";
+import { IconSparklesFilled, IconStackFilled } from "@tabler/icons-react";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { socialImages } from "@/lib/seo/og-image";
@@ -11,7 +11,14 @@ import { Features } from "../_components/features";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { QRSection } from "../_components/qr-section";
-import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
+import {
+  Eyebrow,
+  h1Class,
+  leadClass,
+  Section,
+  SectionHeading,
+} from "../_components/site-primitives";
+import { SolutionCards } from "../_components/solution-cards";
 
 import type { Metadata } from "next";
 
@@ -62,6 +69,18 @@ export default function FeaturesPage() {
       <Features />
       <DashboardPreview />
       <QRSection />
+
+      <Section>
+        <SectionHeading
+          align="left"
+          eyebrow={<Eyebrow icon={<IconStackFilled aria-hidden="true" />}>Solutions</Eyebrow>}
+          title="Built for your line of work"
+        />
+        <div className="mt-14">
+          <SolutionCards headingLevel="h3" />
+        </div>
+      </Section>
+
       <CTA />
       <Footer />
     </main>

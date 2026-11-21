@@ -2,13 +2,14 @@ import { getAllPosts } from "@/lib/blog";
 import { getChangelogEntries } from "@/lib/changelog";
 import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
 import { competitors } from "@/lib/seo/competitors";
+import { solutionList } from "@/lib/seo/solutions";
 import { absoluteUrl } from "@/lib/utils";
 
 import type { MetadataRoute } from "next";
 
 // lastModified must only change when a page's content does: fixed dates for static routes (bump
-// them when you edit the page), data dates for compare, blog and changelog. new Date() here would
-// change on every build and teach crawlers to ignore lastmod.
+// them when you edit the page), data dates for compare, solutions, blog and changelog. new Date()
+// here would change on every build and teach crawlers to ignore lastmod.
 // Floor for the derived dates below, so an empty post list still yields a valid date.
 const SITE_LASTMOD_FLOOR = "2026-09-19";
 // Bump when the docs pages change.
@@ -40,6 +41,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const latestCompareDate = compareList
     .map((c) => c.pricesCheckedOn)
     .reduce(maxDate, SITE_LASTMOD_FLOOR);
+  const latestSolutionDate = solutionList
+    .map((s) => s.updatedOn)
+    .reduce(maxDate, SITE_LASTMOD_FLOOR);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -56,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: absoluteUrl("/features"),
-      lastModified: "2026-09-19",
+      lastModified: "2026-11-21",
       changeFrequency: "weekly",
       priority: 0.9,
     },
@@ -91,6 +95,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: absoluteUrl("/solutions"),
+      lastModified: latestSolutionDate,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: absoluteUrl("/abuse"),
       lastModified: "2026-09-19",
       changeFrequency: "yearly",
@@ -118,6 +128,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  // Use-case landing pages (src/lib/seo/solutions.ts).
+  const solutionEntries: MetadataRoute.Sitemap = solutionList.map((s) => ({
+    url: absoluteUrl(`/solutions/${s.slug}`),
+    lastModified: s.updatedOn,
+    changeFrequency: "monthly",
+    priority: 0.8,
+  }));
+
   const docsEntries: MetadataRoute.Sitemap = DOCS_PAGES.map((page) => ({
     url: absoluteUrl(docsHref(page.slug)),
     lastModified: DOCS_LASTMOD,
@@ -125,5 +143,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: page.slug === "" || page.slug === "api" ? 0.8 : 0.6,
   }));
 
-  return [...staticRoutes, ...compareEntries, ...docsEntries, ...blogPostEntries];
+  return [
+    ...staticRoutes,
+    ...compareEntries,
+    ...solutionEntries,
+    ...docsEntries,
+    ...blogPostEntries,
+  ];
 }
