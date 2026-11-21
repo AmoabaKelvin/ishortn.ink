@@ -1,6 +1,6 @@
 ---
 title: Link analytics
-description: Get click totals, a daily series and breakdowns by country, city, device, browser and OS for one short link.
+description: Get click totals, a daily series and breakdowns by country, city, device, browser, OS and referrer for one short link.
 endpoint:
   method: GET
   path: /api/v1/analytics/{alias}
@@ -73,6 +73,7 @@ print(f"{stats['totalClicks']} clicks")
 | `clicksPerOS` | object | Clicks per operating system. |
 | `clicksPerBrowser` | object | Clicks per browser. |
 | `clicksPerModel` | object | Clicks per device model, such as `iPhone`. |
+| `clicksPerReferrer` | object | Clicks per source, such as `Direct`, `Twitter` or `instagram.com`. Visits without a referrer count as `Direct`. |
 | `window` | object | The date range the numbers cover. `days` is the plan's range in days, or `null` for all time. `from` is the start (ISO 8601), or `null` for all time. `to` is the time of the request. |
 
 Every number covers only clicks inside `window`. Raw click data is kept for a limited time on Free and Pro (see [Analytics](/docs/analytics#how-long-data-is-kept)). After that, each day is kept as a daily total. `totalClicks`, `clicksPerDate` and `uniqueClicksPerDate` include those daily totals. The breakdowns and the verified counts cover only the clicks whose raw data is still kept.
@@ -103,6 +104,7 @@ Every number covers only clicks inside `window`. Raw click data is kept for a li
   "clicksPerOS": { "Android": 611, "iOS": 291, "Windows": 247, "macOS": 135 },
   "clicksPerBrowser": { "Chrome": 803, "Mobile Safari": 288, "Edge": 193 },
   "clicksPerModel": { "Unknown": 853, "iPhone": 291, "SM-A546E": 140 },
+  "clicksPerReferrer": { "Direct": 702, "Twitter": 344, "instagram.com": 238 },
   "window": { "days": null, "from": null, "to": "2026-11-20T18:04:11.512Z" }
 }
 ```

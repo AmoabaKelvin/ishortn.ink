@@ -1,0 +1,46 @@
+---
+title: Raycast extension
+description: Shorten links and check their clicks from Raycast on macOS and Windows. Install the iShortn extension, add an API key and use its three commands.
+---
+
+The iShortn extension for [Raycast](https://www.raycast.com) shortens the URL you've selected or copied, and shows how a short link is doing, without opening the dashboard. It uses the [iShortn API](/docs/api), so it needs an API key, and API keys need a **Pro** or **Ultra** plan.
+
+## Install
+
+1. Open Raycast and run the **Store** command.
+2. Search for **iShortn** and choose **Install Extension**.
+3. Run any iShortn command. Raycast asks for your API key the first time.
+
+## Add your API key
+
+1. Open [Settings](/dashboard/settings#api-keys) in the dashboard and scroll to **API Keys**.
+2. Click **Create API Key** and copy the key from the dialog. It's shown once.
+3. Paste it into the **API Key** field Raycast shows, or later in Raycast's **Settings** → **Extensions** → **iShortn**.
+
+The key works in your personal workspace: links you create from Raycast are added there, and Link Analytics only finds links in it. See [Which links the API can reach](/docs/api#which-links-the-api-can-reach).
+
+| Preference | Required | Description |
+| --- | --- | --- |
+| API Key | Yes | The key from [Settings](/dashboard/settings#api-keys). |
+| Default Domain | No | The domain for new links, and for Link Analytics when you enter only an alias. A [platform domain](/docs/platform-domains) such as `isht.ink` or an active [custom domain](/docs/custom-domains). Leave it empty to use the default domain from [Settings → General](/dashboard/settings#general), or `isht.app`. |
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| **Shorten Link** | A form with the URL, an optional alias and an optional domain. The URL is filled in from the text you've selected, or from the clipboard, when it's an `http://` or `https://` link. The short link is copied to your clipboard, and the confirmation offers **Open in Browser** and **Copy**. |
+| **Shorten Clipboard URL** | Shortens the URL on your clipboard straight away, with a random alias and your default domain, and replaces the clipboard with the short link. Give it a [hotkey](https://manual.raycast.com/command-aliases-and-hotkeys) to shorten a copied link in one keystroke. |
+| **Link Analytics** | Enter an alias such as `launch-day`, or paste a short link such as `https://isht.app/launch-day`. Shows total clicks and the top countries, devices and referrers, with an action to open the link's analytics in the dashboard. |
+
+Link Analytics covers the same date range as the dashboard for your plan. Links you shorten from Raycast count toward your monthly link limit, like links created in the dashboard. See [Plans and limits](/docs/plans).
+
+## Errors
+
+| Message | What to do |
+| --- | --- |
+| **Invalid API key** | The key was mistyped or deleted. Create a new one in [Settings](/dashboard/settings#api-keys) and paste it into the extension preferences, which the error's action opens. |
+| **API access needs a Pro or Ultra plan** | The key's account isn't on a paid plan. The error's action opens [Pricing](/pricing). See [API access by plan](/docs/api#api-access-by-plan). |
+| **Rate limit reached** | Too many requests in a short time. The message says when to try again. See [Rate limits](/docs/api#rate-limits). |
+| **No URL in clipboard** | Shorten Clipboard URL only takes a single link that starts with `http://` or `https://`. |
+
+Other errors, such as an alias that's already taken or a domain that isn't available to your key, show the API's message. See [Responses and errors](/docs/api#responses-and-errors).
