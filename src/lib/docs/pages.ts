@@ -24,4 +24,5 @@ export const DOCS_PAGE_MODULES = {
   "api/update-link": () => import("../../../content/docs/api/update-link.mdx"),
   "api/link-analytics": () => import("../../../content/docs/api/link-analytics.mdx"),
   "api/verify-click": () => import("../../../content/docs/api/verify-click.mdx"),
+  "self-hosting": () => import("../../../content/docs/self-hosting.mdx"),
 } satisfies { [Slug in DocsSlug]: () => Promise<DocsModule> };

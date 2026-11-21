@@ -18,6 +18,8 @@ export const env = createEnv({
     CRON_SECRET: z.string().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     RESEND_API_KEY: z.string().optional(),
+    // Sender for transactional email; must be on a domain verified in Resend
+    EMAIL_FROM: z.string().optional(),
     WEBHOOK_SECRET: z.string().optional(),
     // Resend webhook signing secret (svix whsec_…) for /api/webhooks/resend
     RESEND_WEBHOOK_SECRET: z.string().optional(),
@@ -83,6 +85,10 @@ export const env = createEnv({
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
+    // Host of the dashboard and marketing site (read by src/lib/constants/domains.ts)
+    NEXT_PUBLIC_APP_DOMAIN: z.string().optional(),
+    // Comma-separated short-link domains, default first (read by src/lib/constants/domains.ts)
+    NEXT_PUBLIC_PLATFORM_DOMAINS: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
     // Optional ISO date shown in the custom-domain migration notice
@@ -105,6 +111,7 @@ export const env = createEnv({
     CRON_SECRET: process.env.CRON_SECRET,
     NODE_ENV: process.env.NODE_ENV,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
     RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,
@@ -137,6 +144,8 @@ export const env = createEnv({
     API_FREE_ACCESS_SUNSET_AT: process.env.API_FREE_ACCESS_SUNSET_AT,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_APP_DOMAIN: process.env.NEXT_PUBLIC_APP_DOMAIN,
+    NEXT_PUBLIC_PLATFORM_DOMAINS: process.env.NEXT_PUBLIC_PLATFORM_DOMAINS,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE: process.env.NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE,
