@@ -78,7 +78,7 @@ Free links use our `isht.app` short domain. Every QR code uses one of your 30 mo
 
 People often look at [Bitly](https://bitly.com/pages/pricing) next, so it's worth saying plainly that Bitly Free doesn't fix TinyURL Free's problems. It allows 5 links and 2 QR codes a month. It has no click or scan analytics and no destination editing, and it shows an ad page before each link opens. Paid analytics starts on Core at $10 a month billed annually, and a custom domain starts on Growth at $29 a month.
 
-We've covered Bitly and its alternatives in detail in [Bitly alternatives](/blog/bitly-alternatives).
+We've listed every limit on Bitly Free in [Bitly free plan limits](/blog/bitly-free-plan-limits), and covered other options in [Bitly alternatives](/blog/bitly-alternatives).
 
 **Best for:** teams that will pay for a paid Bitly plan and want a well-known vendor.
 

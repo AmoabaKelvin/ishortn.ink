@@ -6,7 +6,7 @@ export const competitors = {
     name: "Bitly",
     slug: "bitly",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-20",
+    pricesCheckedOn: "2026-11-21",
     tagline: "The most popular URL shortener",
     description:
       "Bitly is the most well-known URL shortener, but its free plan has become extremely restrictive. See how iShortn compares.",
@@ -14,7 +14,7 @@ export const competitors = {
     freeAnalytics: "No analytics history",
     customDomains: "Growth ($29/mo) and up",
     qrCodes: "2/month on free",
-    apiAccess: "Paid only",
+    apiAccess: "1,000 requests/month on free",
     teamFeatures: "Enterprise only",
     passwordProtection: "Paid only",
     pricing: "Free, Core $10/mo (billed annually only), Growth $29/mo",
@@ -24,7 +24,6 @@ export const competitors = {
       "Bitly Core is $10/month billed annually, and custom domains need Growth at $29/month — iShortn Pro is $8/month with 3 custom domains",
       "iShortn Free includes 5 dynamic QR codes: edit the destination anytime, they never expire, and there are no ads",
       "iShortn adds password protection on Pro and Ultra",
-      "No API access on Bitly free — iShortn Pro includes full API for $8/month",
     ],
   },
   tinyurl: {
