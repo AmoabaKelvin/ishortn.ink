@@ -1,8 +1,6 @@
 import { IconUpload } from "@tabler/icons-react";
 import { useCallback, useState } from "react";
 
-import { Input } from "@/components/ui/input";
-
 import type React from "react";
 
 interface LogoUploaderProps {
@@ -14,6 +12,11 @@ export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
 
   const loadLogoFile = useCallback(
     (file: File) => {
+      // `accept` only filters the picker; dropped files arrive unchecked.
+      if (!file.type.startsWith("image/")) {
+        setError("Please choose an image file");
+        return;
+      }
       if (file.size > 2 * 1024 * 1024) {
         setError("File size exceeds 2MB limit");
         return;
@@ -56,18 +59,19 @@ export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
 
   return (
     <div
-      className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-200 px-4 py-5 transition-colors hover:border-neutral-300 hover:bg-neutral-50/50"
+      className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-200 px-4 py-5 transition-colors hover:border-neutral-300 hover:bg-neutral-50/50 dark:border-border dark:hover:border-neutral-600 dark:hover:bg-accent/50"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <IconUpload size={20} stroke={1.5} className="text-neutral-400" />
+      <IconUpload size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
       <div className="flex items-center gap-1 text-[13px]">
         <label
           htmlFor="logo-image"
-          className="cursor-pointer font-medium text-blue-600 hover:text-blue-700"
+          className="cursor-pointer font-medium text-blue-600 hover:text-blue-700 focus-within:underline dark:text-blue-400"
         >
           Upload a file
-          <Input
+          {/* A plain input: the shadcn Input's w-full beats sr-only and widened the page. */}
+          <input
             id="logo-image"
             type="file"
             className="sr-only"
@@ -75,10 +79,10 @@ export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
             accept="image/*"
           />
         </label>
-        <span className="text-neutral-400">or drag and drop</span>
+        <span className="text-neutral-400 dark:text-neutral-500">or drag and drop</span>
       </div>
-      <p className="text-[11px] text-neutral-400">PNG, JPG, GIF up to 2MB</p>
-      {error && <p className="text-[11px] text-red-500">{error}</p>}
+      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">PNG, JPG, GIF up to 2MB</p>
+      {error && <p className="text-[12px] text-red-500">{error}</p>}
     </div>
   );
 }

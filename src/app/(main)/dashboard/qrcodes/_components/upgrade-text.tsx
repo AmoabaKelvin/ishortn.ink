@@ -28,6 +28,7 @@ function UpgradeText({ text }: UpgradeTextProps) {
 
   return (
     <button
+      type="button"
       className="whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
       onClick={handleUpgrade}
     >
