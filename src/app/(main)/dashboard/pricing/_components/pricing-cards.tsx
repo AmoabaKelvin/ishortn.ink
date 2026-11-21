@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { getPlanCaps } from "@/lib/billing/plans";
+import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -85,8 +86,9 @@ export function PricingCards({
 }: PricingCardsProps) {
   const searchParams = useSearchParams();
   const [interval, setIntervalState] = useState<BillingInterval>(
-    searchParams?.get("interval") === "annual" ? "annual" : "monthly",
+    resolveBillingInterval(searchParams?.get("interval"), currentPlan, currentInterval),
   );
+  const [priceFade, setPriceFade] = useState(false);
   // Arriving with ?plan=pro|ultra (e.g. right after signup) starts that upgrade
   // right away: hosted checkout for free users, the confirm dialog otherwise.
   const [autoUpgrade] = useState(() => {
@@ -217,7 +219,11 @@ export function PricingCards({
             <button
               key={value}
               type="button"
-              onClick={() => setIntervalState(value)}
+              aria-pressed={interval === value}
+              onClick={() => {
+                setIntervalState(value);
+                setPriceFade(true);
+              }}
               className={cn(
                 "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                 interval === value
@@ -230,7 +236,7 @@ export function PricingCards({
           ))}
         </div>
         <Badge className="bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 hover:bg-green-100">
-          Save 2 months
+          2 months free
         </Badge>
       </div>
 
@@ -255,6 +261,7 @@ export function PricingCards({
           // offer a switch instead of "Manage Subscription".
           const canSwitchInterval =
             canChangeInPlace && isCurrentPlan && plan.id !== "free" && interval !== currentInterval;
+          const price = planPriceDisplay(plan.id, interval);
 
           return (
             <div
@@ -294,19 +301,29 @@ export function PricingCards({
               </div>
 
               {/* Price */}
-              <div className="mb-6">
-                <div className="flex items-baseline">
-                  <span className="text-sm font-medium text-gray-500 dark:text-neutral-400">$</span>
-                  <span className="text-5xl font-bold tracking-tight text-gray-900 dark:text-foreground">
-                    {interval === "annual" ? plan.annualPrice : plan.monthlyPrice}
+              {/* Keyed on the figure so a toggle fades the new price in; always two lines so the
+                  buttons stay aligned across cards on both intervals. */}
+              <div
+                key={`${price.perMonth}-${price.note}`}
+                className={cn(
+                  "mb-6",
+                  priceFade &&
+                    "motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 motion-safe:ease-out",
+                )}
+              >
+                <div className="flex items-baseline gap-1 whitespace-nowrap">
+                  {price.compareAt && (
+                    <del className="mr-1 text-lg tabular-nums text-gray-400 dark:text-neutral-500">
+                      <span className="sr-only">Regular price </span>${price.compareAt}
+                    </del>
+                  )}
+                  <span className="text-5xl font-bold tabular-nums tracking-tight text-gray-900 dark:text-foreground">
+                    ${price.perMonth}
                   </span>
+                  <span className="text-sm text-gray-500 dark:text-neutral-400">/mo</span>
                 </div>
-                <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
-                  {plan.id === "free"
-                    ? "forever"
-                    : interval === "annual"
-                      ? "per year"
-                      : "per month"}
+                <p className="mt-1 text-sm tabular-nums text-gray-500 dark:text-neutral-400">
+                  {price.note}
                 </p>
               </div>
 

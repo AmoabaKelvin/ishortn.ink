@@ -1,9 +1,11 @@
 "use client";
 
 import { IconInfoCircle, IconPlus, IconWorld } from "@tabler/icons-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { pricingHighlightHref } from "@/app/(main)/dashboard/_components/tracking-paused";
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +23,8 @@ import { Label } from "@/components/ui/label";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { createCustomDomainSchema } from "@/server/api/routers/domains/domains.input";
 import { api } from "@/trpc/react";
+
+const DOMAIN_UPGRADE_HREF = pricingHighlightHref("pro", "domain_modal");
 
 export function AddCustomDomainModal() {
   const { data: userSubscription } = api.subscriptions.get.useQuery();
@@ -44,25 +48,9 @@ export function AddCustomDomainModal() {
       toast.error(error.message);
     },
   });
-  const createCheckoutMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
-    onSuccess: async (data) => {
-      if (data.status === "redirect" && data.url) {
-        window.location.href = data.url;
-      }
-    },
-  });
-
   const handleDomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDomain(e.target.value);
     setDomainError(null);
-  };
-
-  const handleUpgrade = async () => {
-    toast.promise(createCheckoutMutation.mutateAsync({ plan: "pro" }), {
-      loading: "Creating checkout session...",
-      success: "Checkout session created successfully",
-      error: "Failed to create checkout session",
-    });
   };
 
   const handleCreateDomain = (event: React.FormEvent<HTMLFormElement>) => {
@@ -183,12 +171,10 @@ export function AddCustomDomainModal() {
                 {createCustomDomainMutation.isLoading ? "Adding..." : "Add Domain"}
               </Button>
             ) : (
-              <Button
-                type="button"
-                onClick={handleUpgrade}
-                className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700"
-              >
-                Upgrade to Pro
+              // The pricing page owns the billing interval choice (annual by default), so the
+              // upgrade goes through it instead of starting a checkout from here.
+              <Button asChild className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700">
+                <Link href={DOMAIN_UPGRADE_HREF}>Upgrade to Pro</Link>
               </Button>
             )}
           </DialogFooter>
