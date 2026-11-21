@@ -142,7 +142,7 @@ This consistency compounds over time. People begin to associate your short link 
 
 iShortn makes it straightforward to set up and manage custom domains for your branded links. Custom domains are available on the Pro plan (3 domains) and the Ultra plan (unlimited); see the [pricing page](/pricing) for the full plan comparison. Here is how to get started:
 
-1. **Sign up or log in** at [ishortn.ink](https://ishortn.ink) and navigate to your dashboard.
+1. **Sign up or log in** at [ishortn.ink](https://ishortn.ink/?utm_source=blog&utm_medium=content&utm_campaign=custom-short-links-for-your-brand) and navigate to your dashboard.
 2. **Go to Dashboard → Domains** ([/dashboard/domains](/dashboard/domains)) and add the domain or subdomain you want to use.
 3. **Configure your DNS** by adding the CNAME record provided by iShortn to your domain's DNS settings.
 4. **Verify the domain** in your iShortn dashboard once DNS propagation is complete.

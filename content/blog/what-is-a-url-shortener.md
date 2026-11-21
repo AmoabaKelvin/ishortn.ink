@@ -124,7 +124,7 @@ For developers, iShortn's Pro and Ultra plans include a straightforward REST API
 
 Creating your first short link takes less than a minute:
 
-1. **Sign up** for a free account at [ishortn.ink](https://ishortn.ink).
+1. **Sign up** for a free account at [ishortn.ink](https://ishortn.ink/?utm_source=blog&utm_medium=content&utm_campaign=what-is-a-url-shortener).
 2. **Paste your long URL** into the link creation form.
 3. **Customize the slug** if you want a branded, memorable link.
 4. **Share your short link** anywhere: social media, email, print, or messaging apps.

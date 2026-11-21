@@ -202,4 +202,4 @@ After your first tagged links go out:
 
 ## Start tagging
 
-Copy the allowed-values table into a sheet, share it with whoever posts links for your business, and build the next batch of links in the [UTM builder](/utm-builder). When you want short, editable links on top, you can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=ishortn_blog&utm_medium=blog&utm_campaign=utm-naming-convention) and paste your tagged URLs in.
+Copy the allowed-values table into a sheet, share it with whoever posts links for your business, and build the next batch of links in the [UTM builder](/utm-builder). When you want short, editable links on top, you can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=utm-naming-convention) and paste your tagged URLs in.

@@ -114,4 +114,4 @@ It depends on what you need. If you want monthly links with click stats, editing
 
 ## Try iShortn
 
-You can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=ishortn_blog&utm_medium=blog&utm_campaign=tinyurl-alternatives) and see clicks on your first link within a minute. When you need your own domain, [Pro is $8 a month](/pricing).
+You can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=tinyurl-alternatives) and see clicks on your first link within a minute. When you need your own domain, [Pro is $8 a month](/pricing).

@@ -130,4 +130,4 @@ If your use is simpler (branded links, QR codes, honest click stats), you don't 
 
 ## Try iShortn
 
-You can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=ishortn_blog&utm_medium=blog&utm_campaign=dub-alternatives) in a minute and test it with a few of your real links before moving anything. When you're ready for your own domain, [Pro is $8 a month](/pricing) with 3 custom domains included.
+You can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=dub-alternatives) in a minute and test it with a few of your real links before moving anything. When you're ready for your own domain, [Pro is $8 a month](/pricing) with 3 custom domains included.

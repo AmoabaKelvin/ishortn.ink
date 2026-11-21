@@ -159,4 +159,4 @@ You can create custom-branded links that build trust with your audience, generat
 
 For developers and teams with automated workflows, the iShortn API (on Pro and Ultra) lets you create tracked links programmatically, making it easy to embed link analytics into your existing tools and processes. The [URL shortener API guide](/blog/url-shortener-api-guide) walks through an example integration, and the [pricing page](/pricing) shows the analytics history on each plan.
 
-Getting started takes less than a minute. Sign up at [ishortn.ink](https://ishortn.ink), create your first short link, share it, and watch the data flow in. Every click tells you something about your audience. The question is whether you are listening.
+Getting started takes less than a minute. Sign up at [ishortn.ink](https://ishortn.ink/?utm_source=blog&utm_medium=content&utm_campaign=how-to-track-link-clicks), create your first short link, share it, and watch the data flow in. Every click tells you something about your audience. The question is whether you are listening.

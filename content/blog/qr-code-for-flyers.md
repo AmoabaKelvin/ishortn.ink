@@ -162,6 +162,6 @@ It takes a minute, and people who find an old flyer land somewhere useful instea
 
 If your page will never move, grab a static code and get printing. If anything about the event or offer could change, or you want to know which flyers worked, spend two minutes on a dynamic code first.
 
-**[Create a free dynamic QR code for your flyer →](https://ishortn.ink/auth/sign-up?utm_source=ishortn_blog&utm_medium=blog&utm_campaign=qr-code-for-flyers)**
+**[Create a free dynamic QR code for your flyer →](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=qr-code-for-flyers)**
 
 5 dynamic QR codes on the free plan, editable at any time, with scan counts, no ads and no expiry date.

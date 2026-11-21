@@ -229,7 +229,7 @@ Whether you are building a SaaS product that needs shareable links, an internal 
 
 Setting up your first API integration takes just a few minutes:
 
-1. **Sign up** for an account at [ishortn.ink](https://ishortn.ink) and upgrade to the Pro plan.
+1. **Sign up** for an account at [ishortn.ink](https://ishortn.ink/?utm_source=blog&utm_medium=content&utm_campaign=url-shortener-api-guide) and upgrade to the Pro plan.
 2. **Generate an API key** from Dashboard → Settings → API Keys.
 3. **Make your first request** using the code examples above or your preferred HTTP client.
 4. **Read links back and pull analytics** with the `GET` endpoints once your links start collecting clicks.
