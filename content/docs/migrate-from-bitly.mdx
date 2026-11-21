@@ -20,7 +20,7 @@ A QR code keeps working after the move only if it opens an address on your own d
 
 ## Before you start
 
-- **An iShortn Pro or Ultra plan.** CSV import and custom domains are on paid plans. Pro includes 3 custom domains and 1,000 new links a month; Ultra has no link limit. See [Plans and limits](/docs/plans).
+- **An iShortn Pro or Ultra plan.** CSV import and custom domains are on paid plans. Pro includes 3 custom domains, 1,000 new links a month and a one-time allowance of 5,000 imported links on your own domains; Ultra has no link limit. See [Plans and limits](/docs/plans).
 - **A Bitly plan with data export.** Bitly lists data export on Growth and higher. Bitly Free and Core don't have custom domains, so their links all sit on `bit.ly` and can't keep their addresses anyway.
 - **Access to your domain's DNS**, at the company where you manage the domain.
 - **About 15 minutes**, at a quiet time for your links. Links on your domain stop redirecting from the moment you change the DNS until the import finishes. That's usually a few minutes.
@@ -91,4 +91,4 @@ Not from the CSV, because Bitly's export doesn't include them. Add tags to the l
 
 ### I have more links than my monthly limit
 
-Each imported link counts toward your [monthly link limit](/docs/short-links#monthly-link-limit). Pro allows 1,000 new links a month and Ultra has no limit. Rows past the limit are listed in the summary; import the same file again next month, or upgrade to Ultra.
+On Pro, links imported onto your own domain first use a one-time allowance of 5,000 links, so they don't count toward your [monthly link limit](/docs/short-links#monthly-link-limit). Links created for `bit.ly` rows, and any rows after the allowance is used up, count toward the monthly limit of 1,000. Ultra has no limit. Rows past the limit are listed in the summary; import the same file again next month, or upgrade to Ultra. See [CSV bulk import](/docs/bulk-import#limits) for details.
