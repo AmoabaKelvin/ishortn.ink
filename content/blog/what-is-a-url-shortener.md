@@ -118,7 +118,7 @@ iShortn is built around the idea that link management should be simple without s
 
 The analytics dashboard gives you real-time insights into click performance, including geographic breakdowns, device types, and referral sources. If you work with a team, shared team workspaces on the Ultra plan let everyone collaborate on link management without stepping on each other's toes.
 
-For developers, iShortn's Pro and Ultra plans include a straightforward REST API to create and manage links programmatically, making it easy to integrate link shortening into your existing tools and workflows. The [pricing page](/pricing) compares what each plan includes.
+For developers, iShortn's Pro and Ultra plans include a straightforward REST API to create and manage links programmatically, making it easy to integrate link shortening into your existing tools and workflows. The [pricing page](/pricing) compares what each plan includes. If you are still choosing a tool, our [comparison of free URL shorteners](/blog/best-free-url-shorteners) lines up six of them.
 
 ## Getting Started
 

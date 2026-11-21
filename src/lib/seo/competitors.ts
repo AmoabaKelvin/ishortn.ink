@@ -109,7 +109,7 @@ export const competitors = {
     apiAccess: "Yes",
     teamFeatures: "Paid only",
     passwordProtection: "Paid only",
-    pricing: "Free; Pro from $30/mo; Business $90/mo",
+    pricing: "Free; Pro from $30/mo ($27/mo yearly); Business $90/mo",
     whySwitch: [
       "Dub Free allows 25 new links a month; iShortn Free allows 30 and includes 5 dynamic QR codes",
       "Dub's paid plans start at $30/month; iShortn Pro is $8/month with 3 custom domains",

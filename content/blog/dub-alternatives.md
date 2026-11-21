@@ -9,7 +9,7 @@ tags: ["dub alternative", "url shortener", "comparison", "link management"]
 published: true
 ---
 
-Dub built a well-designed, open-source link shortener. Its free plan still exists but is small: 25 new links and 1,000 tracked events a month, 30 days of analytics history and 3 custom domains for one user. Paid Links plans start with Pro at $30 a month for 1,000 new links, and Business is $90 a month ([Dub Links pricing](https://dub.co/pricing/links), checked 21 November 2026). Dub's main [pricing page](https://dub.co/pricing) now leads with its Partners plans, which start at $90 a month.
+Dub built a well-designed, open-source link shortener. Its free plan still exists but is small: 25 new links and 1,000 tracked events a month, 30 days of analytics history and 3 custom domains for one user. Paid Links plans start with Pro at $30 a month ($27 a month billed yearly) for 1,000 new links, and Business is $90 a month ([Dub Links pricing](https://dub.co/pricing/links), checked 21 November 2026). Dub's main [pricing page](https://dub.co/pricing) now leads with its Partners plans, which start at $90 a month.
 
 For a company running an affiliate or partner program, that may still be good value. Dub's recent [changelog](https://dub.co/changelog) is mostly partner and affiliate features, and that's clearly where the product is heading. If you're a freelancer, creator or small business who just wants branded short links, QR codes and click stats, 25 links a month runs out fast, and $30 a month is a lot to pay for the next step.
 
