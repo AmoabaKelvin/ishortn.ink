@@ -9,8 +9,13 @@ export const formatResetDay = (date: Date) =>
   date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Pricing link that preselects a plan without starting checkout (`?plan=` does that). */
-export function pricingHighlightHref(plan: "pro" | "ultra", source: string) {
-  return `/dashboard/pricing?highlight=${plan}&source=${source}`;
+export function pricingHighlightHref(
+  plan: "pro" | "ultra",
+  source: string,
+  extraParams: Record<string, string> = {},
+) {
+  const params = new URLSearchParams({ highlight: plan, source, ...extraParams });
+  return `/dashboard/pricing?${params.toString()}`;
 }
 
 /** The next plan up for an account whose event tracking is paused; Ultra has no event cap. */

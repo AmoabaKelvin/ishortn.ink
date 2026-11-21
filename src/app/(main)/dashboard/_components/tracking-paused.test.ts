@@ -29,6 +29,12 @@ describe("pricingHighlightHref", () => {
     expect(href).toBe("/dashboard/pricing?highlight=pro&source=events_paused_banner");
     expect(new URL(href, "https://ishortn.ink").searchParams.has("plan")).toBe(false);
   });
+
+  test("appends extra params after highlight and source", () => {
+    expect(pricingHighlightHref("ultra", "events_email_80", { utm_medium: "email" })).toBe(
+      "/dashboard/pricing?highlight=ultra&source=events_email_80&utm_medium=email",
+    );
+  });
 });
 
 describe("isDismissalActive", () => {
