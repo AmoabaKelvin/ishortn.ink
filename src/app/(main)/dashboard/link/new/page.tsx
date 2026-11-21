@@ -431,7 +431,7 @@ export default function CreateLinkPage() {
           Create a new link to share with your audience.
         </p>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-5 space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-5 flex flex-col gap-5">
             <div className="space-y-4 rounded-lg border border-neutral-200 dark:border-border p-4">
               <FormField
                 control={form.control}
@@ -739,6 +739,19 @@ export default function CreateLinkPage() {
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* Submit: right after the essentials so it's reachable without opening the
+                advanced sections. It stays pinned to the bottom of the viewport while the
+                form is on screen; below md it sits last so it stays pinned all the way down. */}
+            <div className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 max-md:order-last">
+              <Button
+                type="submit"
+                className="w-full bg-blue-600 text-[13px] hover:bg-blue-700"
+                disabled={formUpdateMutation.isLoading}
+              >
+                {formUpdateMutation.isLoading ? "Creating..." : "Create Link"}
+              </Button>
             </div>
 
             {/* Custom Metadata Section */}
@@ -1072,15 +1085,6 @@ export default function CreateLinkPage() {
                 )}
               />
             </SectionToggle>
-
-            <Button
-              type="submit"
-              className="mt-10 w-full bg-blue-600 text-[13px] hover:bg-blue-700"
-              onClick={form.handleSubmit(onSubmit)}
-              disabled={formUpdateMutation.isLoading}
-            >
-              {formUpdateMutation.isLoading ? "Creating..." : "Create Link"}
-            </Button>
           </form>
         </Form>
       </div>

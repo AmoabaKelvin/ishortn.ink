@@ -7,8 +7,6 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconFilter,
-  IconLink,
-  IconPlus,
   IconSearch,
   IconSortAscending,
   IconSortDescending,
@@ -17,7 +15,6 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Link as TransitionLink } from "next-view-transitions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useEffectEvent, useOptimistic, useState, useTransition } from "react";
 
@@ -34,6 +31,7 @@ import { api } from "@/trpc/react";
 
 import { BulkActionBar } from "./bulk-action-bar";
 import Link from "./link-card/card";
+import { QuickCreateLink } from "./quick-create-link";
 import { SelectionProvider, useSelection } from "./selection-context";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -155,6 +153,12 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
     navigate({ search: null, tag: null, campaign: null, archivedFilter: null });
   };
 
+  // An empty workspace gets the quick-create panel instead of filters that
+  // filter nothing. The panel stays after the first link so its result
+  // survives the refresh that brings the new link into the list.
+  const [keepQuickCreate, setKeepQuickCreate] = useState(false);
+  const isNewWorkspace = !workspaceHasLinks && !hasFilters;
+
   const allSelected = links.length > 0 && links.every((link) => selectedLinkIds.includes(link.id));
 
   const handleSelectAllToggle = () => {
@@ -167,156 +171,170 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
 
   return (
     <>
+      {(isNewWorkspace || keepQuickCreate) && (
+        <QuickCreateLink onCreated={() => setKeepQuickCreate(true)} />
+      )}
+
       {/* Filter bar */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:flex-1">
-          <IconSearch
-            size={16}
-            stroke={1.5}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-          />
-          <Input
-            className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card pl-9 text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
-            placeholder="Search links..."
-            aria-label="Search links"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-        </div>
+      {workspaceHasLinks && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:flex-1">
+            <IconSearch
+              size={16}
+              stroke={1.5}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+            />
+            <Input
+              className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card pl-9 text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
+              placeholder="Search links..."
+              aria-label="Search links"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+          </div>
 
-        <Select onValueChange={handleArchivedFilterChange} value={archivedFilter}>
-          <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[130px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">
-              <IconArchive
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
-              Active
-            </SelectItem>
-            <SelectItem value="archived">
-              <IconArchiveOff
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
-              Archived
-            </SelectItem>
-            <SelectItem value="all">
-              <IconFilter size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
-              All
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          onValueChange={(value) => (value === "all" ? clearTag() : handleTagClick(value))}
-          value={tagFilter ?? "all"}
-        >
-          <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[130px]">
-            <SelectValue placeholder="Tags" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              <IconTag size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
-              All tags
-            </SelectItem>
-            {tagOptions.map((tag) => (
-              <SelectItem key={tag} value={tag}>
-                <IconTag size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
-                {tag}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {((campaigns?.length ?? 0) > 0 || campaignFilter !== "all") && (
-          <Select onValueChange={handleCampaignFilterChange} value={campaignFilter}>
-            <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[160px]">
-              <SelectValue placeholder="Campaign" />
+          <Select onValueChange={handleArchivedFilterChange} value={archivedFilter}>
+            <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[130px]">
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">
-                <IconSpeakerphone
+              <SelectItem value="active">
+                <IconArchive
                   size={14}
                   stroke={1.5}
                   className="mr-1.5 inline-block text-neutral-400"
                 />
-                All campaigns
+                Active
               </SelectItem>
-              {campaigns?.map((campaign) => (
-                <SelectItem key={campaign.id} value={campaign.id.toString()}>
+              <SelectItem value="archived">
+                <IconArchiveOff
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                Archived
+              </SelectItem>
+              <SelectItem value="all">
+                <IconFilter
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                All
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            onValueChange={(value) => (value === "all" ? clearTag() : handleTagClick(value))}
+            value={tagFilter ?? "all"}
+          >
+            <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[130px]">
+              <SelectValue placeholder="Tags" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                <IconTag size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
+                All tags
+              </SelectItem>
+              {tagOptions.map((tag) => (
+                <SelectItem key={tag} value={tag}>
+                  <IconTag
+                    size={14}
+                    stroke={1.5}
+                    className="mr-1.5 inline-block text-neutral-400"
+                  />
+                  {tag}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {((campaigns?.length ?? 0) > 0 || campaignFilter !== "all") && (
+            <Select onValueChange={handleCampaignFilterChange} value={campaignFilter}>
+              <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[160px]">
+                <SelectValue placeholder="Campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
                   <IconSpeakerphone
                     size={14}
                     stroke={1.5}
                     className="mr-1.5 inline-block text-neutral-400"
                   />
-                  {campaign.name}
+                  All campaigns
                 </SelectItem>
-              ))}
+                {campaigns?.map((campaign) => (
+                  <SelectItem key={campaign.id} value={campaign.id.toString()}>
+                    <IconSpeakerphone
+                      size={14}
+                      stroke={1.5}
+                      className="mr-1.5 inline-block text-neutral-400"
+                    />
+                    {campaign.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Select onValueChange={handleOrderChange} value={`${orderBy}-${orderDirection}`}>
+            <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[170px]">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="createdAt-desc">
+                <IconSortDescending
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                Newest first
+              </SelectItem>
+              <SelectItem value="createdAt-asc">
+                <IconSortAscending
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                Oldest first
+              </SelectItem>
+              <SelectItem value="lastClicked-desc">
+                <IconSortDescending
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                Recently clicked
+              </SelectItem>
+              <SelectItem value="lastClicked-asc">
+                <IconSortAscending
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                Least recently clicked
+              </SelectItem>
+              <SelectItem value="totalClicks-desc">
+                <IconSortDescending
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                Most clicks
+              </SelectItem>
+              <SelectItem value="totalClicks-asc">
+                <IconSortAscending
+                  size={14}
+                  stroke={1.5}
+                  className="mr-1.5 inline-block text-neutral-400"
+                />
+                Least clicks
+              </SelectItem>
             </SelectContent>
           </Select>
-        )}
-
-        <Select onValueChange={handleOrderChange} value={`${orderBy}-${orderDirection}`}>
-          <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[170px]">
-            <SelectValue placeholder="Sort" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="createdAt-desc">
-              <IconSortDescending
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
-              Newest first
-            </SelectItem>
-            <SelectItem value="createdAt-asc">
-              <IconSortAscending
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
-              Oldest first
-            </SelectItem>
-            <SelectItem value="lastClicked-desc">
-              <IconSortDescending
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
-              Recently clicked
-            </SelectItem>
-            <SelectItem value="lastClicked-asc">
-              <IconSortAscending
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
-              Least recently clicked
-            </SelectItem>
-            <SelectItem value="totalClicks-desc">
-              <IconSortDescending
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
-              Most clicks
-            </SelectItem>
-            <SelectItem value="totalClicks-asc">
-              <IconSortAscending
-                size={14}
-                stroke={1.5}
-                className="mr-1.5 inline-block text-neutral-400"
-              />
-              Least clicks
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+        </div>
+      )}
 
       {/* Active tag filter */}
       {tagFilter && (
@@ -401,7 +419,7 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
       </div>
 
       {/* Empty states */}
-      {links.length === 0 && (
+      {links.length === 0 && !isNewWorkspace && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
             {hasFilters ? (
@@ -410,25 +428,21 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
                 stroke={1.5}
                 className="text-neutral-400 dark:text-neutral-500"
               />
-            ) : workspaceHasLinks ? (
+            ) : (
               <IconArchive
                 size={24}
                 stroke={1.5}
                 className="text-neutral-400 dark:text-neutral-500"
               />
-            ) : (
-              <IconLink size={24} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
             )}
           </div>
           <p className="mt-6 text-[14px] font-medium text-neutral-900 dark:text-foreground">
-            {hasFilters ? "No links found" : workspaceHasLinks ? "No active links" : "No links yet"}
+            {hasFilters ? "No links found" : "No active links"}
           </p>
           <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
             {hasFilters
               ? "Try adjusting your search or filters."
-              : workspaceHasLinks
-                ? "Archived links are hidden from this view. They still redirect."
-                : "Shorten a long URL to get a link you can share and track."}
+              : "Archived links are hidden from this view. They still redirect."}
           </p>
           <div className="mt-6">
             {hasFilters ? (
@@ -440,7 +454,7 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
               >
                 Clear filters
               </Button>
-            ) : workspaceHasLinks ? (
+            ) : (
               <Button
                 type="button"
                 variant="outline"
@@ -449,14 +463,6 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
               >
                 Show archived links
               </Button>
-            ) : (
-              <TransitionLink
-                href="/dashboard/link/new"
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
-              >
-                <IconPlus size={16} stroke={2} />
-                Create your first link
-              </TransitionLink>
             )}
           </div>
         </div>
