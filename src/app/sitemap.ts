@@ -13,7 +13,7 @@ import type { MetadataRoute } from "next";
 // Floor for the derived dates below, so an empty post list still yields a valid date.
 const SITE_LASTMOD_FLOOR = "2026-09-19";
 // Bump when the docs pages change.
-const DOCS_LASTMOD = "2026-11-20";
+const DOCS_LASTMOD = "2026-11-21";
 const compareList = Object.values(competitors);
 const maxDate = (a: string, b: string) => (a > b ? a : b);
 

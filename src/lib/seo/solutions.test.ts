@@ -1,7 +1,10 @@
 import { describe, expect, it } from "bun:test";
 
 import { PLAN_CAPS } from "@/lib/billing/plans";
+import { isPostLive } from "@/lib/blog";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
+import { MAX_CSV_IMPORT_ROWS } from "@/server/api/routers/link/utils";
 
 import { getSolution, solutionList, solutions, usd } from "./solutions";
 
@@ -48,6 +51,20 @@ describe("solution copy", () => {
     const restaurants = copyOf(solutions.restaurants).join("\n");
     expect(restaurants).toContain(`Pro is ${usd(PLAN_PRICES_USD.pro)} a month`);
     expect(restaurants).toContain(`Ultra, ${usd(PLAN_PRICES_USD.ultra)} a month`);
+
+    const agencies = copyOf(solutions.agencies).join("\n");
+    expect(agencies).toContain(`Pro, ${usd(PLAN_PRICES_USD.pro)} a month`);
+    expect(agencies).toContain(`Ultra, ${usd(PLAN_PRICES_USD.ultra)} a month`);
+  });
+
+  it("only quotes the current paid plan and import limits", () => {
+    for (const n of matches(/(\d+) custom domains/g))
+      expect(Number(n)).toBe(PLAN_CAPS.pro.domainLimit);
+    for (const n of matches(/up to (\d+) of them/g))
+      expect(Number(n)).toBe(PLAN_CAPS.pro.folderLimit);
+    const csvRows = matches(/up to ([\d,]+) links per CSV file/g);
+    expect(csvRows.length).toBeGreaterThan(0);
+    for (const n of csvRows) expect(n).toBe(MAX_CSV_IMPORT_ROWS.toLocaleString("en-US"));
   });
 
   it("only quotes current free plan limits", () => {
@@ -67,7 +84,18 @@ describe("solution copy", () => {
   it("keys each solution by its slug", () => {
     for (const [key, solution] of Object.entries(solutions)) expect(solution.slug).toBe(key);
     expect(getSolution("restaurants")).toBe(solutions.restaurants);
+    expect(getSolution("agencies")).toBe(solutions.agencies);
     expect(getSolution("churches-and-nonprofits")).toBe(solutions["churches-and-nonprofits"]);
     expect(getSolution("unknown")).toBeUndefined();
+  });
+
+  // A mistyped blog slug would hide the link forever instead of failing.
+  it("links only to existing docs pages and blog posts", () => {
+    const docs = new Set(DOCS_PAGES.map((page) => docsHref(page.slug)));
+    const farFuture = new Date("2100-01-01");
+    for (const { href } of solutionList.flatMap((solution) => solution.related)) {
+      if (href.startsWith("/blog/")) expect(isPostLive(href.slice(6), farFuture)).toBe(true);
+      else expect(docs).toContain(href);
+    }
   });
 });
