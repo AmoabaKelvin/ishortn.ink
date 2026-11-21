@@ -16,26 +16,52 @@ interface WelcomeEmailProps {
   userFirstname: string;
 }
 
+const UTM = "utm_source=email&utm_medium=lifecycle&utm_campaign=welcome";
+
+export const CREATE_LINK_URL = `https://ishortn.ink/dashboard/link/new?${UTM}`;
+
+const nextSteps = [
+  { label: "Make a QR code for a link", href: `https://ishortn.ink/docs/qr-codes?${UTM}` },
+  {
+    label: "Use your own custom domain (Pro)",
+    href: `https://ishortn.ink/docs/custom-domains?${UTM}`,
+  },
+  { label: "Build a link-in-bio page", href: `https://ishortn.ink/docs/bio-pages?${UTM}` },
+];
+
 export const WelcomeEmail = ({ userFirstname }: WelcomeEmailProps) => (
   <Html>
     <Head />
-    <Preview>iShortn - Free and open-source URL shortener</Preview>
+    <Preview>Shorten your first link in under a minute</Preview>
     <Body style={main}>
       <Container style={container}>
         <Text style={paragraph}>Hi {userFirstname ? userFirstname : "there"},</Text>
-        <Text style={paragraph}>Welcome and signing up to iShortn!</Text>
+        <Text style={paragraph}>Welcome to iShortn!</Text>
         <Text style={paragraph}>
-          It&apos;s great to have you onboard our fleet of users. Just incase you have a concern or
-          a feature request you will want to share with us, feel free to reach out to me at{" "}
+          The best place to start is your first short link. Paste a long URL and you get a short
+          link you can share and track in under a minute.
+        </Text>
+        <Section style={btnContainer}>
+          <Button style={button} href={CREATE_LINK_URL}>
+            Shorten your first link
+          </Button>
+        </Section>
+        <Text style={paragraph}>Then try:</Text>
+        <ul style={list}>
+          {nextSteps.map((step) => (
+            <li key={step.href} style={listItem}>
+              <Link href={step.href} style={link}>
+                {step.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <Text style={paragraph}>
+          If you have a question or a feature request, feel free to reach out to me at{" "}
           <Link href="mailto:kelvin@ishortn.ink" style={link}>
             kelvin@ishortn.ink
           </Link>
         </Text>
-        <Section style={btnContainer}>
-          <Button style={button} href="https://ishortn.ink/dashboard">
-            Visit your Dashboard
-          </Button>
-        </Section>
         <Text style={paragraph}>
           Best,
           <br />
@@ -45,8 +71,8 @@ export const WelcomeEmail = ({ userFirstname }: WelcomeEmailProps) => (
         </Text>
         <Hr style={hr} />
         <Text style={footer}>
-          Incase you need an engineer on your team or a freelancer, I am available for hire. You can
-          check out my portfolio at{" "}
+          In case you need an engineer on your team or a freelancer, I am available for hire. You
+          can check out my portfolio at{" "}
           <Link href="https://kelvinamoaba.com" style={link}>
             kelvinamoaba.com
           </Link>
@@ -88,6 +114,18 @@ const paragraph = {
 const link = {
   color: "#000000",
   textDecoration: "underline",
+};
+
+const list = {
+  margin: "0 0 16px",
+  paddingLeft: "20px",
+};
+
+const listItem = {
+  color: "#000000",
+  fontSize: "16px",
+  lineHeight: "26px",
+  marginBottom: "4px",
 };
 
 const btnContainer = {
