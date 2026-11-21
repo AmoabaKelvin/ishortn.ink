@@ -6,6 +6,11 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 import {
+  SHORTEN_INTENT_COOKIE,
+  SHORTEN_INTENT_MAX_AGE_SECONDS,
+  extractShortenIntent,
+} from "@/lib/auth/shorten-intent";
+import {
   extractPlatformSubdomain,
   getAppBaseDomain,
   isPlatformDomain,
@@ -27,6 +32,23 @@ export default clerkMiddleware(async (auth, req) => {
   // The retired external docs site: send every old URL to its /docs page.
   if (hostname === `docs.${appHost}`) {
     return NextResponse.redirect(`https://${appHost}${legacyDocsRedirectPath(pathname)}`, 308);
+  }
+
+  // Keep the UTM builder's destination URL out of the auth page's address bar
+  // (and so out of analytics and Referer); the page reads it from the cookie.
+  const shortenIntent = extractShortenIntent(new URL(req.url));
+  if (shortenIntent) {
+    const response = NextResponse.redirect(shortenIntent.cleanUrl, 307);
+    if (shortenIntent.intent) {
+      response.cookies.set(SHORTEN_INTENT_COOKIE, shortenIntent.intent, {
+        path: "/auth",
+        maxAge: SHORTEN_INTENT_MAX_AGE_SECONDS,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: shortenIntent.cleanUrl.protocol === "https:",
+      });
+    }
+    return response;
   }
 
   if (isProtectedRoute(req)) {
