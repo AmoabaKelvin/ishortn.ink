@@ -30,9 +30,20 @@ import {
   IconTrash,
   IconWorld,
 } from "@tabler/icons-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/trpc/react";
 
@@ -187,10 +198,26 @@ function SortableRow({
     onSuccess: onChanged,
     onError: (e) => toast.error(e.message),
   });
+  // A ref, not isLoading: a fast double-click can land before the mutation's
+  // loading state re-renders, and the second delete would fail on a missing row.
+  // It stays set after success because the row unmounts once the list refetches.
+  const deleting = useRef(false);
   const remove = api.bioPage.deleteBlock.useMutation({
-    onSuccess: onChanged,
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => {
+      toast.success("Block deleted.");
+      onChanged();
+    },
+    onError: (e) => {
+      deleting.current = false;
+      toast.error(e.message);
+    },
   });
+
+  function confirmDelete() {
+    if (deleting.current) return;
+    deleting.current = true;
+    remove.mutate({ id: block.id });
+  }
 
   return (
     <div
@@ -226,9 +253,12 @@ function SortableRow({
 
       <div className="flex shrink-0 items-center gap-0.5">
         <button
+          type="button"
           onClick={() => update.mutate({ id: block.id, isVisible: !block.isVisible })}
-          className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
+          disabled={update.isLoading || remove.isLoading}
+          className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-muted"
           title={block.isVisible ? "Hide" : "Show"}
+          aria-label={block.isVisible ? "Hide block" : "Show block"}
         >
           {block.isVisible ? (
             <IconEye size={16} stroke={1.5} />
@@ -238,20 +268,48 @@ function SortableRow({
         </button>
         {block.type !== "divider" && (
           <button
+            type="button"
             onClick={onEdit}
             className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
             title="Edit"
+            aria-label="Edit block"
           >
             <IconPencil size={16} stroke={1.5} />
           </button>
         )}
-        <button
-          onClick={() => remove.mutate({ id: block.id })}
-          className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
-          title="Delete"
-        >
-          <IconTrash size={16} stroke={1.5} />
-        </button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              disabled={remove.isLoading}
+              className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+              title="Delete"
+              aria-label="Delete block"
+            >
+              <IconTrash size={16} stroke={1.5} />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {block.type === "link"
+                  ? "This removes the block, its tracking link, and that link's click history. This cannot be undone."
+                  : "This removes the block from your bio page. This cannot be undone."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700"
+                disabled={remove.isLoading}
+                onClick={confirmDelete}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
