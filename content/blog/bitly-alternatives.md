@@ -255,7 +255,7 @@ T.ly is a lightweight URL shortener that focuses on simplicity and affordability
 | Custom domains | Pro ($8/mo) | Paid only | 1 free | Required (5 free) | 3 free | Yes | Paid only |
 | QR codes | 5 dynamic free | Yes (static) | 10/mo free (watermarked) | Yes | Yes | Yes | Yes |
 | API access | Pro ($8/mo) | Yes (free account) | Paid only | Yes | Yes | Paid only | Paid only |
-| Geo-targeting | Pro ($8/mo) | No | Paid only | Paid ($5/mo+) | No | Yes | No |
+| Geo-targeting | Pro ($8/mo) | No | Paid only | Paid ($5/mo+) | Paid ($30/mo+) | Yes | No |
 | Team collaboration | Ultra ($15/mo) | No | Yes | Yes | Yes | Yes | No |
 | Paid plan starting price | $8/mo | $9/mo (annual) | Essentials | $5/mo | $30/mo (Pro) | $48/mo | $12/mo |
 

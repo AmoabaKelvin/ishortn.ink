@@ -117,7 +117,7 @@ If the QR code is going on something printed, pick a dynamic one so a changed UR
 
 ### Analytics Depth
 
-If you are using short links for marketing, analytics are non-negotiable. Knowing how many people clicked is useful, but knowing where they are, what device they used, and which channel referred them is what actually informs strategy. Many free URL shorteners show you a click count and nothing more. Look for a platform that gives you geographic, device, and referral data without requiring an upgrade.
+If you are using short links for marketing, analytics are non-negotiable. Knowing how many people clicked is useful, but knowing where they are, what device they used, and which channel referred them is what actually informs strategy. Many free URL shorteners show you a click count and nothing more. Look for a platform that gives you geographic, device, and referral data without requiring an upgrade. If analytics are the deciding factor, you may need a [link management platform rather than a basic shortener](/blog/url-shortener-vs-link-management-platform).
 
 ### Custom Domains
 

@@ -114,7 +114,7 @@ Not all URL shorteners are equal. Here are the features that separate a basic to
 
 ## How iShortn Helps You Manage Links Effectively
 
-iShortn is built around the idea that link management should be simple without sacrificing power. With iShortn, you get a clean dashboard where you can create short links, attach custom domains, generate styled QR codes, and review analytics, all in one place.
+iShortn is built around the idea that link management should be simple without sacrificing power. If you are not sure whether you need more than a shortener, see [URL shortener vs link management platform](/blog/url-shortener-vs-link-management-platform). With iShortn, you get a clean dashboard where you can create short links, attach custom domains, generate styled QR codes, and review analytics, all in one place.
 
 The analytics dashboard gives you real-time insights into click performance, including geographic breakdowns, device types, and referral sources. If you work with a team, shared team workspaces on the Ultra plan let everyone collaborate on link management without stepping on each other's toes.
 

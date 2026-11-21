@@ -26,7 +26,7 @@ https://go.yourcompany.com/spring-sale
 
 Both links redirect to the same destination, but the branded version immediately tells the person clicking it who the link belongs to and what they can expect on the other side.
 
-A branded URL shortener makes this possible by letting you connect your own domain and choose custom aliases for every link you create. The result is a short link that looks professional, reinforces your brand, and is far easier to remember.
+A branded URL shortener makes this possible by letting you connect your own domain and choose custom aliases for every link you create. The result is a short link that looks professional, reinforces your brand, and is far easier to remember. Custom domains are one of the features that separate a [link management platform from a basic URL shortener](/blog/url-shortener-vs-link-management-platform).
 
 ## Why Branded Links Matter: The Psychology of Trust
 
