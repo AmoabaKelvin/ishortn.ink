@@ -1,8 +1,10 @@
 import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-react";
+import { notFound } from "next/navigation";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { aggregateVisits, fillClickSeries, mergeArchivedClicks } from "@/lib/core/analytics";
 import { rangeEnum } from "@/server/api/routers/link/link.input";
+import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
 import { BarChart } from "../../analytics/[alias]/_components/bar-chart";
@@ -46,6 +48,13 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
   const alias = qrCode.link.alias!;
   const domain = qrCode.link.domain ?? DEFAULT_PLATFORM_DOMAIN;
 
+  // The QR code's link can be gone or outside this workspace; that is a 404, not a crash.
+  const visits = await api.link.linkVisits
+    .query({ id: alias, domain, range: requestedRange })
+    .catch((cause: unknown) => {
+      if (isNotFoundError(cause)) notFound();
+      throw cause;
+    });
   const {
     totalVisits,
     uniqueVisits,
@@ -57,11 +66,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
     archived,
     range,
     window,
-  } = await api.link.linkVisits.query({
-    id: alias,
-    domain,
-    range: requestedRange,
-  });
+  } = visits;
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits, window.granularity);
   const series = fillClickSeries(mergeArchivedClicks(aggregatedVisits, archived), window);

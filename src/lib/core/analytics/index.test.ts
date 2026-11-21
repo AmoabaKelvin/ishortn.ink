@@ -120,6 +120,69 @@ describe("fillClickSeries", () => {
   });
 });
 
+describe("summarizeArchived", () => {
+  test("overview totals over date-grouped rows equal the per-link pages added up", () => {
+    const now = new Date("2026-11-20T12:00:00Z");
+    const window = resolveRangeWindow("all", now);
+    const day = (n: number) => new Date(now.getTime() - n * 86_400_000);
+    // Two links with archived days that overlap (40, 41) and differ (60 / 90).
+    const links = [
+      {
+        live: [{ createdAt: day(0) }, { createdAt: day(3) }],
+        rows: [
+          { date: bucketKey(day(40)), clicks: 120, uniqueClicks: 30 },
+          { date: bucketKey(day(41)), clicks: 7, uniqueClicks: 7 },
+          { date: bucketKey(day(60)), clicks: 1, uniqueClicks: 1 },
+        ],
+      },
+      {
+        live: [{ createdAt: day(3) }],
+        rows: [
+          { date: bucketKey(day(40)), clicks: 5, uniqueClicks: 4 },
+          { date: bucketKey(day(41)), clicks: 2, uniqueClicks: 1 },
+          { date: bucketKey(day(90)), clicks: 9, uniqueClicks: 3 },
+        ],
+      },
+    ];
+
+    // Per-link page: its own live visits plus its own summary rows.
+    const perLink = links.map(({ live, rows }) => {
+      // SAFETY: aggregateVisits only reads createdAt for these assertions.
+      const aggregated = aggregateVisits(live as never, live as never);
+      return fillClickSeries(mergeArchivedClicks(aggregated, summarizeArchived(rows)), window);
+    });
+
+    // Overview: every link's live visits, and summary rows summed per date in SQL.
+    const grouped = new Map<string, { date: string; clicks: number; uniqueClicks: number }>();
+    for (const row of links.flatMap((l) => l.rows)) {
+      const acc = grouped.get(row.date) ?? { date: row.date, clicks: 0, uniqueClicks: 0 };
+      acc.clicks += row.clicks;
+      acc.uniqueClicks += row.uniqueClicks;
+      grouped.set(row.date, acc);
+    }
+    const allLive = links.flatMap((l) => l.live);
+    const archived = summarizeArchived([...grouped.values()]);
+    // SAFETY: as above, only createdAt is read.
+    const aggregated = aggregateVisits(allLive as never, allLive as never);
+    const overview = fillClickSeries(mergeArchivedClicks(aggregated, archived), window);
+
+    const total = (series: { clicks: number }[]) => series.reduce((n, p) => n + p.clicks, 0);
+    expect(archived.clicks).toBe(144);
+    expect(archived.uniqueClicks).toBe(46);
+    expect(total(overview)).toBe(perLink.reduce((n, s) => n + total(s), 0));
+    expect(allLive.length + archived.clicks).toBe(total(overview));
+    // Day by day the overview equals the sum of the per-link series.
+    for (const point of overview) {
+      const sum = perLink.reduce(
+        (n, s) => n + (s.find((p) => p.date === point.date)?.clicks ?? 0),
+        0,
+      );
+      expect(point.clicks).toBe(sum);
+    }
+    expect(overview.find((p) => p.date === bucketKey(day(40)))?.uniqueClicks).toBe(34);
+  });
+});
+
 describe("aggregateVisits", () => {
   test("buckets by hour and merges device casing", () => {
     const visits = [

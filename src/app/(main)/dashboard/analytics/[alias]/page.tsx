@@ -1,11 +1,11 @@
 import { IconClick, IconShieldCheck, IconShieldHalf, IconUsers } from "@tabler/icons-react";
-import { TRPCError } from "@trpc/server";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { aggregateVisits, fillClickSeries, mergeArchivedClicks } from "@/lib/core/analytics";
 import { cn } from "@/lib/utils";
 import { rangeEnum } from "@/server/api/routers/link/link.input";
+import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
 import { TrackingPausedBanner } from "../../_components/tracking-paused-banner";
@@ -71,7 +71,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     ]);
   } catch (error) {
     // Only a missing link becomes a 404; auth/server errors must surface.
-    if (error instanceof TRPCError && error.code === "NOT_FOUND") notFound();
+    if (isNotFoundError(error)) notFound();
     throw error;
   }
   const {
