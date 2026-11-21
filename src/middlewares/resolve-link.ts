@@ -15,7 +15,7 @@ import { generateVisitId, signVerifiedClickToken } from "@/lib/utils/verified-cl
 import { recordClick, resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import { geoRule, link as linkTable } from "@/server/db/schema";
-import { getTotalClicks } from "@/server/lib/total-clicks";
+import { getClicksTowardLimit } from "@/server/lib/total-clicks";
 import { isOwnerOnPaidPlan } from "@/server/lib/user-plan";
 
 const log = logger.child({ component: "link-resolver" });
@@ -45,7 +45,7 @@ export async function checkLinkExpiration(link: Link, cacheKey: string): Promise
   }
 
   if (link.disableLinkAfterClicks) {
-    const clickCount = await getTotalClicks(link.id);
+    const clickCount = await getClicksTowardLimit(link.id);
 
     if (clickCount >= link.disableLinkAfterClicks) {
       void runBackgroundTask(autoDisableLink(link.id, cacheKey));

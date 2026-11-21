@@ -280,6 +280,9 @@ export const link = mysqlTable(
     domain: varchar("domain", { length: 255 }).notNull().default("ishortn.ink"),
     createdAt: timestamp("createdAt").defaultNow(),
     disableLinkAfterClicks: int("disableLinkAfterClicks"),
+    // Visits counted toward disableLinkAfterClicks, including ones the monthly event cap kept out
+    // of analytics. Null until the first counted visit, which starts it from the recorded total.
+    clickLimitCount: int("clickLimitCount"),
     disableLinkAfterDate: datetime("disableLinkAfterDate"),
     activateAt: datetime("activateAt"), // link is not reachable before this instant
     disabled: boolean("disabled").default(false),

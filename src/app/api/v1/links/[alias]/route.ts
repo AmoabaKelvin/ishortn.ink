@@ -51,6 +51,7 @@ type LinkUpdate = {
   disableLinkAfterDate?: Date | null;
   activateAt?: Date | null;
   disableLinkAfterClicks?: number | null;
+  clickLimitCount?: null;
 };
 
 export const GET = withApiKey(
@@ -164,6 +165,9 @@ export const PATCH = withApiKey(
     }
     if (parsed.data.expiresAfter !== undefined) {
       filteredUpdateData.disableLinkAfterClicks = parsed.data.expiresAfter;
+      // Visits aren't counted while there is no limit, so a later limit restarts from the
+      // recorded total instead of a stale count.
+      if (parsed.data.expiresAfter === null) filteredUpdateData.clickLimitCount = null;
     }
 
     if (Object.keys(filteredUpdateData).length === 0) {
