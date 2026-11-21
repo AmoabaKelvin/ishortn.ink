@@ -69,7 +69,7 @@ export const subscriptionsRouter = createTRPCRouter({
       plan: planGracePlan,
       endsAt: planGraceEndsAt,
       reason,
-      action: graceAction(reason, userRecord?.subscriptions?.status),
+      action: graceAction(reason, userRecord?.subscriptions, planGracePlan),
     };
   }),
 
