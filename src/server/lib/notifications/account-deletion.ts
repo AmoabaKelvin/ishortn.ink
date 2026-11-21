@@ -22,6 +22,7 @@ export async function sendAccountDeletionEmail({
     template: "account-deletion",
     recipientId: userId,
     to: toEmail,
+    essential: true,
     subject: "Your iShortn account is scheduled for deletion",
     react: AccountDeletionEmail({
       userName: toName,

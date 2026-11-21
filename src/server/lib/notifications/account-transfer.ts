@@ -31,6 +31,7 @@ export function sendAccountTransferEmail({
     template: "account-transfer",
     recipientId: toUserId,
     to: toEmail,
+    essential: true,
     subject: `${fromName} wants to transfer their iShortn resources to you`,
     react: AccountTransferEmail({
       recipientName: toName,
@@ -63,6 +64,7 @@ export function sendTransferCompletedEmail({
     template: "transfer-completed",
     recipientId: toUserId,
     to: toEmail,
+    essential: true,
     subject: "Your iShortn resources have been transferred",
     react: TransferCompletedEmail({
       senderName: toName,
@@ -93,6 +95,7 @@ export function sendTransferDeclinedEmail({
     template: "transfer-declined",
     recipientId: toUserId,
     to: toEmail,
+    essential: true,
     subject: "Your iShortn transfer request was declined",
     react: TransferDeclinedEmail({
       senderName: toName,

@@ -6,8 +6,10 @@ import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { ensureUser } from "@/server/lib/ensure-user";
+import { hasBouncedEmail } from "@/server/lib/notifications/suppression";
 
 import { AttributionRecorder } from "./_components/attribution-recorder";
+import { BouncedEmailBanner } from "./_components/bounced-email-banner";
 import { DomainMigrationGate } from "./_components/domain-migration-gate";
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
@@ -30,9 +32,15 @@ export default async function DashboardLayout({ children }: Props) {
   let isAdmin = false;
   let isRestricted = false;
   let userName: string | null = null;
+  let emailBounced = false;
 
   if (session?.userId) {
-    const currentUser = await ensureUser(session.userId);
+    // Parallel so the banner check adds no round trip; it only hides the banner if it fails.
+    const [currentUser, bounced] = await Promise.all([
+      ensureUser(session.userId),
+      hasBouncedEmail(session.userId).catch(() => false),
+    ]);
+    emailBounced = bounced;
 
     isAdmin = currentUser?.isAdmin ?? false;
     isRestricted = !!currentUser?.restrictedAt;
@@ -149,6 +157,7 @@ export default async function DashboardLayout({ children }: Props) {
               </p>
             </div>
           )}
+          {emailBounced && <BouncedEmailBanner />}
           <div className="mt-7 py-4">{children}</div>
         </div>
       </div>

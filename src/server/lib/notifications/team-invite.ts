@@ -31,6 +31,7 @@ export function sendTeamInviteEmail({
     template: "team-invite",
     recipientId: recipientId ?? null,
     to: email,
+    essential: true,
     subject: `Join ${teamName} on iShortn`,
     react: TeamInviteEmail({ recipientName, teamName, inviterName, role, inviteUrl }),
     context: { teamSlug, role },
@@ -62,6 +63,7 @@ export function sendTeamInviteAcceptedEmail({
     template: "team-invite-accepted",
     recipientId: inviterId,
     to: inviterEmail,
+    essential: true,
     subject: `${memberName} joined ${teamName} on iShortn`,
     react: TeamInviteAcceptedEmail({
       inviterName,
@@ -94,6 +96,7 @@ export function sendTeamMemberRemovedEmail({
     template: "team-member-removed",
     recipientId: memberId,
     to: memberEmail,
+    essential: true,
     subject: `You were removed from ${teamName} on iShortn`,
     react: TeamMemberRemovedEmail({
       memberName,

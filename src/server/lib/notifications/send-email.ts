@@ -1,6 +1,7 @@
 import { logger } from "@/lib/logger";
 
 import { resend } from "./resend-client";
+import { isEmailSuppressed } from "./suppression";
 
 import type { UnsubscribeHeaders } from "./unsubscribe";
 import type { Context } from "@/lib/logger/shared";
@@ -13,7 +14,12 @@ type EmailClient = {
   emails: { send: (payload: CreateEmailOptions) => Promise<CreateEmailResponse> };
 };
 
-type ErrorLog = { error: (fields: Context, message: string) => void };
+type EmailLog = {
+  error: (fields: Context, message: string) => void;
+  info: (fields: Context, message: string) => void;
+};
+
+type SuppressionCheck = (email: string) => Promise<boolean>;
 
 export type SendEmailInput = {
   /** Template name, for logs. */
@@ -21,6 +27,11 @@ export type SendEmailInput = {
   /** User id of the recipient, when they have an account. */
   recipientId: string | null;
   to: string;
+  /**
+   * Security, billing and requested emails (invites, transfers) are always attempted. The rest
+   * (lifecycle, plan notices, recurring reports) skip addresses that hard-bounced or complained.
+   */
+  essential: boolean;
   subject: string;
   react: ReactElement;
   headers?: UnsubscribeHeaders;
@@ -34,10 +45,26 @@ export type SendEmailInput = {
  */
 export async function deliverEmail(
   client: EmailClient | null,
-  log: ErrorLog,
-  { template, recipientId, context, ...payload }: SendEmailInput,
+  log: EmailLog,
+  { template, recipientId, context, essential, ...payload }: SendEmailInput,
+  isSuppressed: SuppressionCheck,
 ): Promise<boolean> {
   if (!client) return false;
+
+  if (!essential) {
+    try {
+      if (await isSuppressed(payload.to)) {
+        log.info({ ...context, template, recipientId }, "email skipped: address suppressed");
+        return false;
+      }
+    } catch (err) {
+      // Fail open: a missed suppression costs one bounce, a dropped notice is silent.
+      log.error(
+        { ...context, template, recipientId, err: err instanceof Error ? err : String(err) },
+        "email suppression check failed",
+      );
+    }
+  }
 
   try {
     const { error } = await client.emails.send({ from: EMAIL_FROM, ...payload });
@@ -58,5 +85,5 @@ export async function deliverEmail(
 const log = logger.child({ component: "email" });
 
 export function sendEmail(input: SendEmailInput): Promise<boolean> {
-  return deliverEmail(resend, log, input);
+  return deliverEmail(resend, log, input, isEmailSuppressed);
 }

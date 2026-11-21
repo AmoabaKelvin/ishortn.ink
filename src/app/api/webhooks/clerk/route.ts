@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 import { resend } from "@/server/lib/notifications/resend-client";
+import { isEmailSuppressed } from "@/server/lib/notifications/suppression";
 
 const log = logger.child({ webhook: "clerk" });
 
@@ -92,10 +93,17 @@ export async function POST(req: Request) {
     .values({ id, ...values })
     .onDuplicateKeyUpdate({ set: values });
 
-  if (resend) {
+  // Only on sign-up: user.updated fires on every profile change, including email changes.
+  // A lifecycle email, so it skips addresses that hard-bounced or complained.
+  if (
+    resend &&
+    eventType === "user.created" &&
+    userInfo.email &&
+    !(await isEmailSuppressed(userInfo.email))
+  ) {
     const { error } = await resend.emails.send({
       from: "Kelvin <developer@ishortn.ink>",
-      to: userInfo.email!,
+      to: userInfo.email,
       subject: "Welcome to iShortn",
       react: WelcomeEmail({
         userFirstname: userInfo.name.split(" ")[0] ?? "there",
@@ -122,7 +130,8 @@ const clerkUserEventSchema = z.object({
     first_name: z.string().nullable(),
     last_name: z.string().nullable(),
     image_url: z.string(),
-    email_addresses: z.array(z.object({ email_address: z.string() })),
+    primary_email_address_id: z.string().nullish(),
+    email_addresses: z.array(z.object({ id: z.string().optional(), email_address: z.string() })),
   }),
 });
 
@@ -130,7 +139,10 @@ type ClerkUserEvent = z.infer<typeof clerkUserEventSchema>;
 
 function getUserInfo(payload: ClerkUserEvent) {
   const data = payload.data;
-  const emailData = data.email_addresses[0];
+  // The primary address, so a changed email (user.updated) replaces the stored one.
+  const emailData =
+    data.email_addresses.find((e) => e.id === data.primary_email_address_id) ??
+    data.email_addresses[0];
 
   const userInfo = {
     name: `${data.first_name} ${data.last_name}`,
