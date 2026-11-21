@@ -330,3 +330,37 @@ export async function toDataUri(src: string): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
+const MAX_LOGO_EDGE = 1024;
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Reads a logo into a PNG or JPEG data URI, the formats a code's saved style accepts. Other
+ * formats (GIF, WebP, SVG, …) are redrawn on a canvas and exported as PNG, at most 1024px on
+ * the long edge and halved until the file fits the 2MB style limit.
+ */
+export async function toLogoDataUri(src: string): Promise<string> {
+  const dataUri = await toDataUri(src);
+  if (/^data:image\/(png|jpe?g);base64,/.test(dataUri)) return dataUri;
+
+  const img = new Image();
+  img.src = dataUri;
+  await img.decode();
+  // SVGs without width/height report a natural size of 0.
+  const width = img.naturalWidth || 512;
+  const height = img.naturalHeight || 512;
+  let scale = Math.min(1, MAX_LOGO_EDGE / Math.max(width, height));
+  for (;;) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas 2D context unavailable");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const png = canvas.toDataURL("image/png");
+    // Base64 is 4/3 of the decoded size.
+    if (png.length * 0.75 <= MAX_LOGO_BYTES || Math.max(canvas.width, canvas.height) <= 64)
+      return png;
+    scale /= 2;
+  }
+}

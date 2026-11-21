@@ -1,4 +1,5 @@
 import { defaultGeneratorState } from "@/lib/qr-generator/state";
+import { logoImageSchema } from "@/server/api/routers/qrcode/qrcode.input";
 
 import type { QRCodeGeneratorState, QRCodeStyle } from "@/lib/qr-generator/types";
 import type { RouterOutputs } from "@/trpc/shared";
@@ -66,7 +67,11 @@ export function svgNoteFor(qr: Pick<SavedQrCode, "style">) {
   return qr.style.effect === "none" ? null : SVG_EFFECTS_NOTE;
 }
 
-/** The subset of the generator state saved with a code; `logoImage` must be a data URI. */
+/**
+ * The subset of the generator state saved with a code. `logoImage` should come from
+ * `toLogoDataUri`; a logo the save input would reject is left out so the code still saves, and its
+ * SVG is drawn without the logo.
+ */
 export function qrCodeStyleFrom(
   state: QRCodeGeneratorState,
   logoImage: string | undefined,
@@ -84,7 +89,7 @@ export function qrCodeStyleFrom(
     marginNoise: state.marginNoise,
     marginNoiseRate: state.marginNoiseRate,
     effect: state.effect,
-    logoImage: logoImage ?? null,
+    logoImage: logoImage && logoImageSchema.safeParse(logoImage).success ? logoImage : null,
     logoSize: state.logoSize,
     logoMargin: state.logoMargin,
     logoBorderRadius: state.logoBorderRadius,

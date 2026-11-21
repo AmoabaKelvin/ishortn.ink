@@ -78,6 +78,23 @@ describe("SVG download state", () => {
     expect(qrCodeStyleInput.safeParse(style).success).toBe(true);
   });
 
+  test("saved style keeps PNG/JPEG logos and drops formats the save input rejects", () => {
+    const state = { ...defaultGeneratorState(), logoImage: "blob:logo" };
+    const png = "data:image/png;base64,iVBORw0KGgo=";
+    expect(qrCodeStyleFrom(state, png).logoImage).toBe(png);
+    for (const logo of [
+      "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+      "data:image/webp;base64,UklGRhIAAABXRUJQ",
+      "data:image/svg+xml;base64,PHN2Zy8+",
+      `data:image/png;base64,${"A".repeat(3 * 1024 * 1024)}`,
+    ]) {
+      const saved = qrCodeStyleFrom(state, logo);
+      expect(saved.logoImage).toBeNull();
+      expect(saved.ecc).toBe("H");
+      expect(qrCodeStyleInput.safeParse(saved).success).toBe(true);
+    }
+  });
+
   test("redraws a saved code from its style and tracking link", () => {
     const state = savedQrCodeSvgState({ style, color: "#1d4ed8", link });
     expect(state).toMatchObject({

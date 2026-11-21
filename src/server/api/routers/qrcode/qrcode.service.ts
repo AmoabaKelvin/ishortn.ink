@@ -151,10 +151,15 @@ export const saveQrCodeImage = userFacing(
     const logo = input.style?.logoImage;
     if (logo) assertValidImageInput(logo);
 
-    // Persist base64 immediately so we have a fallback
+    // Persist base64 immediately so we have a fallback. The style only ever holds an uploaded logo
+    // URL: the list returns every row's style, and a data URI would add up to 2.7MB per code. If
+    // the logo upload fails, the code's SVG is drawn without it.
     await ctx.db
       .update(qrcode)
-      .set({ qrCode: input.qrCodeBase64, ...(input.style && { style: input.style }) })
+      .set({
+        qrCode: input.qrCodeBase64,
+        ...(input.style && { style: { ...input.style, logoImage: null } }),
+      })
       .where(eq(qrcode.id, input.id));
 
     // Upload to R2. The logo is kept so the SVG download can embed it.

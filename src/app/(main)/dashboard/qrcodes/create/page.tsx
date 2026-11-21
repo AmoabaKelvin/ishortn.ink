@@ -41,7 +41,7 @@ import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { nextPlanFor } from "@/lib/billing/upgrade";
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
-import { generateQRCodeSvg, hasRasterOnlyOptions, toDataUri } from "@/lib/qr-generator/svg";
+import { generateQRCodeSvg, hasRasterOnlyOptions, toLogoDataUri } from "@/lib/qr-generator/svg";
 import { cn } from "@/lib/utils";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { api } from "@/trpc/react";
@@ -325,10 +325,11 @@ function QRCodeCreationPage() {
         });
         const qrCodeBase64 = finalCanvas.toDataURL("image/png", 1.0);
 
-        // A logo picked from a preset is a stored URL; the saved style and the SVG need its
-        // bytes. If it can't be read, the PNG above couldn't draw it either.
+        // A logo picked from a preset is a stored URL, and uploads can be any image format; the
+        // saved style takes PNG/JPEG data URIs. If it can't be read, the PNG above couldn't draw
+        // it either.
         const logoImage = qrState.logoImage
-          ? await toDataUri(qrState.logoImage).catch(() => undefined)
+          ? await toLogoDataUri(qrState.logoImage).catch(() => undefined)
           : undefined;
         const style = qrCodeStyleFrom(qrState, logoImage);
 

@@ -56,7 +56,7 @@ const marginNoiseRateSchema = z.string().refine((val) => {
 
 // Logo image validator: must be a valid base64 data URI (PNG/JPEG) under 2MB
 const MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
-const logoImageSchema = z
+export const logoImageSchema = z
   .string()
   .regex(
     /^data:image\/(png|jpe?g);base64,[A-Za-z0-9+/]+=*$/,
