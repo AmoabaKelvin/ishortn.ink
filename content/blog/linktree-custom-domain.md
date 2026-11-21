@@ -120,6 +120,6 @@ If the custom domain is the thing you're after, Linktree can't do it, and iShort
 
 Start on the free plan to build the page and see how the editor works, then upgrade to Pro ($8/month) when you're ready to connect your domain.
 
-**[Create your free iShortn account →](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=organic&utm_campaign=linktree-custom-domain)**
+**[Create your free iShortn account →](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=linktree-custom-domain)**
 
 Every link on your page tracked, on your own domain, from $8/month.

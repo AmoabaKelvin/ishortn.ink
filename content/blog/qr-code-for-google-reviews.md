@@ -126,6 +126,6 @@ In iShortn, open the QR code, edit the destination URL and save. The next scan g
 
 Getting the link takes two minutes. Making the code takes two more. Then print it somewhere customers actually wait, and ask out loud.
 
-**[Create a free dynamic QR code for your Google reviews →](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=organic&utm_campaign=qr-code-for-google-reviews)**
+**[Create a free dynamic QR code for your Google reviews →](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=qr-code-for-google-reviews)**
 
 5 dynamic QR codes on the free plan, scan analytics included, no ads, no expiry date.

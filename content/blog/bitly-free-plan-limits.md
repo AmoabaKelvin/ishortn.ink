@@ -138,4 +138,4 @@ Core, at $10 a month billed annually. It keeps 30 days of click data.
 
 ## Try iShortn
 
-If Bitly's free plan has stopped fitting, you can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=ishortn_blog&utm_medium=blog&utm_campaign=bitly-free-plan-limits) and make your first links and QR codes in a couple of minutes. When you want your own domain, [Pro is $8 a month](/pricing).
+If Bitly's free plan has stopped fitting, you can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=bitly-free-plan-limits) and make your first links and QR codes in a couple of minutes. When you want your own domain, [Pro is $8 a month](/pricing).

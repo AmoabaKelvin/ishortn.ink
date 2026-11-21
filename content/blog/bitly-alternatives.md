@@ -35,7 +35,7 @@ Depending on your needs, Bitly may lack features like geo-targeting, QR code cus
 
 ### 1. iShortn
 
-[iShortn](https://ishortn.ink) is a modern URL shortener built for speed and simplicity. It offers deep analytics, custom domains, QR code generation, password-protected links, and a developer API, all within a clean, focused interface. Links resolve in under 100 milliseconds globally.
+[iShortn](https://ishortn.ink/?utm_source=blog&utm_medium=content&utm_campaign=bitly-alternatives) is a modern URL shortener built for speed and simplicity. It offers deep analytics, custom domains, QR code generation, password-protected links, and a developer API, all within a clean, focused interface. Links resolve in under 100 milliseconds globally.
 
 **Key features:**
 
@@ -294,4 +294,4 @@ Dub Enterprise or Rebrandly Enterprise, if you need SSO, audit logs or complianc
 
 Bitly remains a well-known name, but it is no longer the obvious default. The URL shortener landscape in 2026 offers real competition at every price point. Whether you need a free URL shortener with analytics for a personal blog or a full-featured link management platform for a growing team, one of these six Bitly alternatives will serve you better than sticking with a plan that keeps getting more expensive and less generous.
 
-If you are ready to try a modern alternative, [iShortn](https://ishortn.ink) lets you create your first short link in under a minute with no credit card required. Start free and see the difference a better link shortener makes.
+If you are ready to try a modern alternative, [iShortn](https://ishortn.ink/?utm_source=blog&utm_medium=content&utm_campaign=bitly-alternatives) lets you create your first short link in under a minute with no credit card required. Start free and see the difference a better link shortener makes.

@@ -142,4 +142,4 @@ Yes, several. Check the provider's own pricing page for whether its free dynamic
 
 When a QR code stops working, scan it and read the link. If you see your own URL, fix the page it points to. If you see a provider's short link and an "expired" page, the plan behind it lapsed. Next time, pick a dynamic code that's free to keep, or one on your own domain.
 
-If you'd like to try it, [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=ishortn_blog&utm_medium=blog&utm_campaign=qr-code-stopped-working) and make your first dynamic QR code. It takes about a minute, and you can change where it points whenever you need to. For more ideas on where to use QR codes, see our [guide to QR codes for business](/blog/free-qr-code-generator-guide).
+If you'd like to try it, [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=qr-code-stopped-working) and make your first dynamic QR code. It takes about a minute, and you can change where it points whenever you need to. For more ideas on where to use QR codes, see our [guide to QR codes for business](/blog/free-qr-code-generator-guide).

@@ -134,4 +134,4 @@ If your use is simpler (branded links, QR codes you can update, honest click sta
 
 ## Try iShortn
 
-You can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=ishortn_blog&utm_medium=blog&utm_campaign=rebrandly-alternatives) and test it with a few real links before you move anything. When you're ready for your own domain, [Pro is $8 a month](/pricing) with 3 custom domains.
+You can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=rebrandly-alternatives) and test it with a few real links before you move anything. When you're ready for your own domain, [Pro is $8 a month](/pricing) with 3 custom domains.
