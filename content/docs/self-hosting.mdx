@@ -251,6 +251,8 @@ curl -H "Authorization: Bearer $HEALTHCHECK_TOKEN" https://links.example.com/api
 
 A healthy instance answers `200` with `"ok": true` and an empty `migrations.pending` list. A `503` names the tables that failed or the migrations still to apply. Without `HEALTHCHECK_TOKEN` set, the endpoint answers `503` with `not configured`.
 
+For an uptime monitor, use `GET /api/health` instead. It needs no token, runs one `SELECT NOW()` with a 2 second timeout and answers only `200` with `{"ok":true}` or `503` with `{"ok":false}`.
+
 To check the rest end to end, sign in, create a link, open it in a private window and check that the click shows up in the link's analytics within a few seconds. That last step proves the queue and the `CRON_SECRET` Worker secret are set up.
 
 ## Upgrading
