@@ -1,6 +1,7 @@
 import { IconTagFilled } from "@tabler/icons-react";
 
 import { JsonLd } from "@/components/seo/json-ld";
+import { getActivePromo } from "@/lib/billing/promo";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
@@ -16,6 +17,10 @@ import { Pricing } from "../_components/pricing";
 import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
 
 import type { Metadata } from "next";
+
+// Static, but re-rendered every 5 minutes so a time-boxed promo appears and disappears within
+// minutes of its window without making the page render per request.
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing: Free, Pro $8 and Ultra $15",
@@ -85,7 +90,7 @@ export default function PricingPage() {
         </div>
       </Section>
 
-      <Pricing showHeading={false} />
+      <Pricing showHeading={false} promo={getActivePromo()} />
 
       <Faq faqs={pricingFaqs} />
 

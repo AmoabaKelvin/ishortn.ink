@@ -15,6 +15,8 @@ import { DomainMigrationGate } from "./_components/domain-migration-gate";
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
 import { PlanGraceBanner } from "./_components/plan-grace-banner";
+import { PromoBanner } from "./_components/promo-banner";
+import { promoBannerState } from "./_components/promo-banner-state";
 import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
 import { trackingPausedBannerState } from "./_components/tracking-paused";
@@ -149,6 +151,10 @@ export default async function DashboardLayout({ children }: Props) {
       ])
     : [null, undefined];
   const trackingPaused = trackingPausedBannerState(subscription);
+  const promo = promoBannerState({
+    subscription,
+    otherBannerShown: isRestricted || emailBounced || !!trackingPaused || !!graceNotice,
+  });
 
   return (
     <div className={cn("min-h-screen bg-neutral-50 dark:bg-accent/50", funnelSans.className)}>
@@ -175,6 +181,7 @@ export default async function DashboardLayout({ children }: Props) {
           )}
           {emailBounced && <BouncedEmailBanner />}
           {trackingPaused && <TrackingPausedBanner {...trackingPaused} />}
+          {promo && <PromoBanner promo={promo} />}
           <div className="mt-7 py-4">
             <PlanGraceBanner initialNotice={graceNotice} />
             {children}

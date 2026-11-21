@@ -1,5 +1,6 @@
 "use client";
 
+import { IconTag } from "@tabler/icons-react";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +12,7 @@ import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
+import { promoBannerText } from "@/lib/billing/promo";
 import {
   getUpgradeReason,
   resolveAutoUpgradePlan,
@@ -25,12 +27,15 @@ import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
 import { buildPlanChangeCopy, PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
+import type { Promo } from "@/lib/billing/promo";
 
 type PricingCardsProps = {
   currentPlan: Plan;
   currentInterval: BillingInterval;
   subscriptionMode: SubscriptionMode;
   renewsAt: Date | null;
+  /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
+  promo: Promo | null;
 };
 
 type PricingPlanSpec = {
@@ -90,6 +95,7 @@ export function PricingCards({
   currentInterval,
   subscriptionMode,
   renewsAt,
+  promo,
 }: PricingCardsProps) {
   const searchParams = useSearchParams();
   const [interval, setIntervalState] = useState<BillingInterval>(
@@ -248,6 +254,18 @@ export function PricingCards({
         </p>
       )}
 
+      {promo && (
+        <p className="mx-auto flex max-w-2xl items-start gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-[13px] text-neutral-700 dark:border-border dark:bg-card dark:text-neutral-300 sm:items-center sm:justify-center">
+          <IconTag
+            size={16}
+            stroke={1.5}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-400 sm:mt-0"
+          />
+          <span className="min-w-0">{promoBannerText(promo)}</span>
+        </p>
+      )}
+
       {/* Pricing Cards */}
       <div className="grid gap-6 lg:grid-cols-3">
         {plans.map((plan) => {
@@ -267,7 +285,7 @@ export function PricingCards({
           const isEmphasized = highlightPlan
             ? isHighlighted
             : "popular" in plan && plan.popular && currentPlan === "free";
-          const price = planPriceDisplay(plan.id, interval);
+          const price = planPriceDisplay(plan.id, interval, promo);
 
           return (
             <div

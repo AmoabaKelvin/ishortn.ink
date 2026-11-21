@@ -126,7 +126,7 @@ You don't need software for this. A shared Google Sheet with two tabs does the j
 
 | Date | Owner | Destination URL | utm_source | utm_medium | utm_campaign | utm_content | Tagged URL | Short link | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| 2026-12-01 | Ama | https://yourshop.com/sale | newsletter | email | black_friday_2026 | header_button | https://yourshop.com/sale?utm_source=newsletter&... | yourbrand.link/bf | Sent to full list |
+| 2026-12-01 | Ama | `https://yourshop.com/sale` | newsletter | email | black_friday_2026 | header_button | `https://yourshop.com/sale?utm_source=newsletter&...` | yourbrand.link/bf | Sent to full list |
 
 To build the tagged URL in the sheet, a formula like this works (assuming the destination is in column C and the tags are in D to G):
 
@@ -159,7 +159,7 @@ https://yourshop.com/?utm_source=instagram&utm_medium=social&utm_campaign=always
 https://yourshop.com/market?utm_source=qr&utm_medium=print&utm_campaign=spring_market_2026&utm_content=flyer_library
 ```
 
-For more on tagging print, see [how to track QR code scans](/blog/how-to-track-qr-code-scans) and our guide to [QR codes on flyers](/blog).
+For more on tagging print, see [how to track QR code scans](/blog/how-to-track-qr-code-scans) and our guide to [QR codes on flyers](/blog/qr-code-for-flyers).
 
 ## How to make the convention stick
 

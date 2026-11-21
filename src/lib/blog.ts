@@ -58,16 +58,20 @@ function estimateReadingTime(content: string): number {
   return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
 }
 
-// Scheduled posts merge ahead of their `date` and go live on that UTC day. `next dev` shows them
-// early so they can be previewed and screenshotted before merge; production builds never do.
-// `now` and `preview` are parameters so tests can pin them.
+// `next dev` also shows scheduled posts so they can be previewed (and screenshotted for their PR)
+// before their date. Production builds and tests keep the date gate.
+const previewScheduledPosts = process.env.NODE_ENV === "development";
+
+// Scheduled posts merge ahead of their `date` and go live on that UTC day. `now` is a parameter so
+// tests can pin the clock.
 export function isPostVisible(
   post: Pick<BlogPostFrontmatter, "date" | "published">,
   now: Date = new Date(),
-  preview: boolean = process.env.NODE_ENV === "development",
+  previewScheduled: boolean = previewScheduledPosts,
 ): boolean {
+  if (!post.published) return false;
   // Both sides are YYYY-MM-DD, so string order is date order.
-  return post.published && (preview || post.date <= now.toISOString().slice(0, 10));
+  return previewScheduled || post.date <= now.toISOString().slice(0, 10);
 }
 
 export async function getAllPosts(): Promise<BlogPost[]> {
@@ -78,7 +82,7 @@ export async function getAllPosts(): Promise<BlogPost[]> {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-// Returns null for unpublished and not-yet-dated posts, so their URLs 404.
+// Returns null for unpublished and (outside `next dev`) not-yet-dated posts, so their URLs 404.
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
   const source = blogSources.get(slug);
   if (source === undefined) {
