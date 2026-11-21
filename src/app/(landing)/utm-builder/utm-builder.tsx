@@ -604,8 +604,10 @@ export function UtmBuilder() {
                   country, device and referrer. Free accounts get {PLAN_CAPS.free.linksLimit} links
                   a month.
                 </p>
+                {/* No prefetch: the href carries the typed URL, and the tool promises nothing leaves the browser. */}
                 <ButtonLink
                   href={getShortenHref(output, signedIn)}
+                  prefetch={false}
                   className="mt-4 whitespace-normal"
                 >
                   {signedIn ? "Shorten this link" : "Shorten and track this link, free"}
@@ -620,7 +622,11 @@ export function UtmBuilder() {
                   You can also shorten links one at a time on the Free plan.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <ButtonLink href={getBulkSignupHref(signedIn)} className="whitespace-normal">
+                  <ButtonLink
+                    href={getBulkSignupHref(signedIn)}
+                    prefetch={false}
+                    className="whitespace-normal"
+                  >
                     {signedIn ? "Open your dashboard" : "Create a free account"}
                   </ButtonLink>
                   <ButtonLink variant="soft" href="/pricing">
