@@ -1,4 +1,16 @@
-import { and, asc, eq, gt, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  not,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import { API_ACCESS_NOTICE_DAYS, getApiAccess, parseApiSunset } from "@/lib/billing/api-access";
@@ -11,6 +23,7 @@ import {
   API_SUNSET_EMAIL_BATCH_SIZE,
   sendApiSunsetEmails,
 } from "./notifications/api-access-sunset";
+import { isSuppressedSql } from "./notifications/suppression";
 
 import type { ApiSunsetEmailKind, ApiSunsetRecipient } from "./notifications/api-access-sunset";
 
@@ -125,6 +138,8 @@ export async function sendApiSunsetEmailsDue(now = new Date()) {
           inArray(user.id, db.select({ userId: token.userId }).from(token)),
           or(isNull(user.apiSunsetNoticeSentAt), isNull(user.apiSunsetReminderSentAt)),
           isNotNull(user.email),
+          // A plan notice, so hard-bounced and complained addresses are skipped.
+          not(isSuppressedSql(user.email)),
           isNull(user.deletedAt),
           or(isNull(user.banned), eq(user.banned, false)),
           // Skip accounts that are plainly paid; the rest are checked below.

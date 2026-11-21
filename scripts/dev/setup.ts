@@ -20,8 +20,9 @@ const GENERATED_SECRETS = {
   VERIFIED_CLICKS_SECRET: () => crypto.randomBytes(32).toString("hex"),
   EMAIL_UNSUBSCRIBE_SECRET: () => crypto.randomBytes(32).toString("hex"),
   CRON_SECRET: () => crypto.randomBytes(32).toString("hex"),
-  // svix format, so `bun run webhook clerk` can sign with it
+  // svix format, so `bun run webhook clerk|resend` can sign with them
   WEBHOOK_SECRET: () => `whsec_${crypto.randomBytes(24).toString("base64")}`,
+  RESEND_WEBHOOK_SECRET: () => `whsec_${crypto.randomBytes(24).toString("base64")}`,
 };
 
 const CLERK_PLACEHOLDERS = ["", "pk_test_", "sk_test_"];

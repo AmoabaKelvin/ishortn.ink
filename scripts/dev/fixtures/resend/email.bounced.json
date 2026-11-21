@@ -1,0 +1,16 @@
+{
+  "type": "email.bounced",
+  "created_at": "__NOW_ISO__",
+  "data": {
+    "created_at": "__NOW_ISO__",
+    "email_id": "56761188-7520-42d8-8898-ff6fc54ce618",
+    "from": "Kelvin from iShortn <kelvin@ishortn.ink>",
+    "to": ["__EMAIL__"],
+    "subject": "Your link hit 1,000 clicks",
+    "bounce": {
+      "message": "The recipient's mail server permanently rejected the email.",
+      "subType": "General",
+      "type": "Permanent"
+    }
+  }
+}

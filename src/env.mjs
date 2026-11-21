@@ -19,6 +19,8 @@ export const env = createEnv({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     RESEND_API_KEY: z.string().optional(),
     WEBHOOK_SECRET: z.string().optional(),
+    // Resend webhook signing secret (svix whsec_…) for /api/webhooks/resend
+    RESEND_WEBHOOK_SECRET: z.string().optional(),
     UMAMI_TRACKING_ID: z.string().optional(),
     UMAMI_URL: z.string().url().optional(),
     DISCORD_WEBHOOK_URL: z.string().url().optional(),
@@ -104,6 +106,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+    RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,
     UMAMI_URL: process.env.UMAMI_URL,
     DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,

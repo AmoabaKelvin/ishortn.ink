@@ -17,6 +17,7 @@ export function sendWelcomeEmail({ userId, email, name }: BillingRecipient, plan
     template: "welcome-to-pro",
     recipientId: userId,
     to: email,
+    essential: true,
     subject: `Welcome to iShortn ${PLAN_NAMES[plan]}`,
     react: WelcomeEmail({ userName: name ?? "there", plan }),
     context: { plan },
@@ -32,6 +33,7 @@ export function sendSubscriptionCancelledEmail(
     template: "subscription-cancelled",
     recipientId: userId,
     to: email,
+    essential: true,
     subject: `Your iShortn ${PLAN_NAMES[plan]} subscription has been cancelled`,
     react: SubscriptionCancelledEmail({
       userName: name,
