@@ -1,5 +1,9 @@
 import {
+  IconChartPieFilled,
   IconEditFilled,
+  IconGiftFilled,
+  IconHeartFilled,
+  IconHourglassFilled,
   IconListDetailsFilled,
   IconMapPinFilled,
   IconShieldCheckFilled,
@@ -196,10 +200,147 @@ export const solutions = {
     ctaBody: `The free plan has ${freeQrCodes} dynamic QR codes with no ads and no expiry date. No credit card needed.`,
     ctaButton: "Create a free QR code",
   },
+  "churches-and-nonprofits": {
+    slug: "churches-and-nonprofits",
+    name: "Churches and nonprofits",
+    footerLabel: "Churches and nonprofits",
+    hubBlurb: "Bulletin, giving and sign-up codes on the free plan.",
+    metaTitle: "QR Codes for Churches and Nonprofits | iShortn",
+    metaDescription:
+      "Free dynamic QR codes for bulletins, giving pages, sign-up forms and event posters. Change the link any week without reprinting, and see how many people scanned.",
+    keywords: [
+      "qr code for church",
+      "qr code for church bulletin",
+      "qr code for church giving",
+      "qr code for nonprofits",
+      "free qr code generator for nonprofits",
+      "qr code for donations",
+    ],
+    updatedOn: "2026-11-21",
+    eyebrow: "Churches and nonprofits",
+    icon: IconHeartFilled,
+    h1: "QR codes for churches and nonprofits",
+    subhead:
+      "Put one code in the bulletin, on the welcome card and on event posters. Change where it points each week and see how many people scanned. The free plan has no expiry date.",
+    heroPoints: ["Free plan, no card", "New link any week", "No ads when people scan"],
+    heroCta: "Create a free code",
+    benefitsTitle: "Print once, update every week",
+    benefits: [
+      {
+        title: "One printed code, a new link every week",
+        body: "Point the bulletin code at this week's sign-up form, then at next week's. Codes on seat backs, the welcome desk and lobby signs work the same way, so you print them once and keep them.",
+        icon: IconEditFilled,
+      },
+      {
+        title: "Free for small teams",
+        body: `The free plan has ${freeQrCodes} dynamic QR codes, ${freeLinks} short links a month and a bio page, with no ads and no expiry date. That covers a weekly bulletin code, a giving code and a few event posters.`,
+        icon: IconGiftFilled,
+      },
+      {
+        title: "Giving, visits and prayer requests behind one code",
+        body: `Point a code at a bio page with your giving page, plan-a-visit form and prayer request form. The free page holds up to ${count(free.bioLinkBlocksPerPageLimit)} link blocks. Pro has no block limit, removes the iShortn badge and puts the page on your own domain.`,
+        icon: IconListDetailsFilled,
+      },
+      {
+        title: "Sign-ups that close on time",
+        body: "A link can stop working after a date or a number of clicks, so a full event stops taking sign-ups. Expiry works on every plan, including Free.",
+        icon: IconHourglassFilled,
+      },
+      {
+        title: "See what people respond to",
+        body: `Each scan records the day, city and device. Give the bulletin and the poster their own codes and compare them. Free shows the last ${freeDays} days, and Pro keeps the full history.`,
+        icon: IconChartPieFilled,
+      },
+    ],
+    howToTitle: "Put a QR code in your bulletin",
+    howTo: [
+      {
+        title: "Pick the page",
+        body: "Decide where the code goes this week: the giving page, a sign-up form, a visitor card or an event page.",
+      },
+      {
+        title: "Make the code",
+        body: "Paste the link, add your logo and download a high-resolution PNG.",
+      },
+      {
+        title: "Print and test",
+        body: "Put it in the bulletin or on the poster with a line saying what it opens. Scan a printed copy before you print the rest.",
+      },
+      {
+        title: "Change it next week",
+        body: "Edit the destination in the dashboard, and the printed code opens the new page.",
+      },
+    ],
+    plans: [
+      {
+        plan: "free",
+        title: "Free",
+        body: `Up to ${freeQrCodes} codes, ${freeLinks} links a month and ${count(free.bioPageLimit)} bio page. Fits most weekly bulletins.`,
+      },
+      {
+        plan: "pro",
+        title: `Pro, ${proMonthly} a month, or ${usd(PLAN_PRICES_ANNUAL_USD.pro)} a year`,
+        body: "Unlimited codes, your own domain such as give.yourchurch.org, the full scan history, scheduled links and password protection.",
+      },
+      {
+        plan: "ultra",
+        title: `Ultra, ${usd(PLAN_PRICES_USD.ultra)} a month`,
+        body: "A shared workspace where staff and volunteers manage links together. Volunteers join free.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Is iShortn free for churches and nonprofits?",
+        answer: `The free plan is open to everyone and doesn't expire. It includes ${freeQrCodes} dynamic QR codes, ${freeLinks} short links a month and a bio page. There's no separate nonprofit plan. If you need more, Pro is ${proMonthly} a month.`,
+      },
+      {
+        question: "How do I make a QR code for church giving?",
+        answer:
+          "Copy the link to your online giving page, paste it into a new QR code in iShortn and download the PNG. The code opens your giving page, whichever provider runs it. iShortn doesn't handle money. Payments happen on your giving provider's page.",
+      },
+      {
+        question: "Can we change the bulletin QR code every week?",
+        answer:
+          "Yes. The printed code holds a short link. Change where it points in the dashboard each week and the same code opens the new page.",
+      },
+      {
+        question: "Will our QR codes stop working if we don't pay?",
+        answer:
+          "No. Dynamic codes made on the free plan have no expiry date and keep working without a paid plan.",
+      },
+      {
+        question: "Can several staff members or volunteers manage the links?",
+        answer:
+          "Yes, on Ultra. The owner creates a team workspace and invites people as admins or members. Members don't need a paid plan.",
+      },
+      {
+        question: "How do people know a giving code is really ours?",
+        answer:
+          "Print the short link next to the code so people can check where it goes. On Pro, that link can use your own domain, like give.yourchurch.org. Check printed codes now and then for stickers placed over them.",
+      },
+      {
+        question: "Can we use our own domain, like give.ourchurch.org?",
+        answer:
+          "Yes, on Pro and Ultra. Add the subdomain in the dashboard and create the DNS records it shows. iShortn handles the SSL certificate.",
+      },
+    ],
+    related: [
+      { href: "/blog/qr-code-for-flyers", label: "Put a QR code on a flyer" },
+      { href: "/blog/how-to-track-qr-code-scans", label: "How to track QR code scans" },
+      { href: "/blog/qr-code-stopped-working", label: "Why QR codes stop working" },
+      { href: "/docs/bio-pages", label: "Bio pages in the docs" },
+    ],
+    ctaTitle: "Make your first bulletin code",
+    ctaBody: `The free plan has ${freeQrCodes} dynamic QR codes and a bio page, with no ads and no expiry date. No credit card needed.`,
+    ctaButton: "Create a free code",
+  },
 } satisfies Record<string, Solution>;
 
 // Display order for the hub, the footer and /features.
-export const solutionList: Solution[] = [solutions.restaurants];
+export const solutionList: Solution[] = [
+  solutions.restaurants,
+  solutions["churches-and-nonprofits"],
+];
 
 export const getSolution = (slug: string): Solution | undefined =>
   solutionList.find((solution) => solution.slug === slug);
