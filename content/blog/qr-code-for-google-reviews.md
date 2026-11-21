@@ -112,7 +112,7 @@ This is where a dynamic code earns its keep. Some situations we see:
 
 In iShortn, open the QR code, edit the destination URL and save. The next scan goes to the new address.
 
-If you're setting up menu and table codes at the same time, see [QR codes for restaurants and bars](/solutions/restaurants).
+If you're setting up menu and table codes at the same time, see [QR codes for restaurants and bars](/solutions/restaurants). For shops and market stalls that also want codes on packaging and receipts, see [QR codes for small businesses and shops](/solutions/small-business).
 
 ## Quick answers
 

@@ -15,7 +15,7 @@ import { SolutionCards } from "../_components/solution-cards";
 import type { Metadata } from "next";
 
 const description =
-  "How restaurants, agencies, print shops, churches and nonprofits can use iShortn for QR codes and short links they can change after printing.";
+  "How shops, creators, restaurants, agencies, churches, event organisers and real estate agents use iShortn for QR codes, short links and bio pages.";
 
 export const metadata: Metadata = {
   title: { absolute: solutionsHubTitle },

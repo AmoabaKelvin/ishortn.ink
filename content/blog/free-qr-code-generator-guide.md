@@ -42,7 +42,7 @@ A code on a yard sign or flyer can link to a virtual tour, photo gallery, or sch
 
 ### Retail and In-Store Promotions
 
-Retailers place QR codes on shelf tags, window displays, and receipts to link customers to product reviews, loyalty programs, or exclusive discounts.
+Retailers place QR codes on shelf tags, window displays, and receipts to link customers to product reviews, loyalty programs, or exclusive discounts. For packaging, receipts and counter signs in a small shop, see [QR codes for small businesses and shops](/solutions/small-business).
 
 ## Static vs. Dynamic QR Codes
 

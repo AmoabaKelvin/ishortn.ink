@@ -1,4 +1,7 @@
 import {
+  IconBasketFilled,
+  IconBoxMultipleFilled,
+  IconBrandInstagramFilled,
   IconBriefcaseFilled,
   IconCalendarEventFilled,
   IconChartPieFilled,
@@ -15,6 +18,7 @@ import {
   IconMapPinFilled,
   IconReportAnalyticsFilled,
   IconShieldCheckFilled,
+  IconStarFilled,
   IconToolsKitchen2Filled,
   IconWorldFilled,
   type TablerIcon,
@@ -206,6 +210,150 @@ export const solutions = {
       { href: "/docs/qr-codes", label: "QR codes in the docs" },
     ],
     ctaTitle: "Make your first menu code",
+    ctaBody: `The free plan has ${freeQrCodes} dynamic QR codes with no ads and no expiry date. No credit card needed.`,
+    ctaButton: "Create a free QR code",
+  },
+  "small-business": {
+    slug: "small-business",
+    name: "Small businesses and shops",
+    footerLabel: "Small business",
+    hubBlurb: "Packaging, receipt, counter and review codes you can change after printing.",
+    metaTitle: "QR Codes for Small Businesses and Shops | iShortn",
+    metaDescription:
+      "Free dynamic QR codes for packaging, receipts, counter signs and Google reviews. Change the link after printing and see which spot gets scanned most.",
+    keywords: [
+      "qr code for small business",
+      "free qr code for small business",
+      "qr code for product packaging",
+      "qr code for business reviews",
+      "qr code sign for small business",
+      "qr code packaging stickers",
+      "qr code for business instagram",
+    ],
+    updatedOn: "2026-11-21",
+    eyebrow: "Small businesses and shops",
+    icon: IconBasketFilled,
+    h1: "QR codes for small businesses and shops",
+    subhead:
+      "Put one code on your bags, labels and receipts and another on the counter for Google reviews. Change where they point when your offer changes, and see which ones people scan.",
+    heroPoints: [
+      `${freeQrCodes} dynamic QR codes free`,
+      "Change the link after printing",
+      "No ads when customers scan",
+    ],
+    heroCta: "Create a free shop code",
+    benefitsTitle: "Print it once, change it when you need to",
+    benefits: [
+      {
+        title: "Packaging that can point somewhere new",
+        body: "Put a code on labels, swing tags, boxes or a thank-you card. Point it at care instructions now and your reorder page later. Packaging you printed last year opens whatever the code points at today.",
+        icon: IconBoxMultipleFilled,
+      },
+      {
+        title: "Google reviews from the counter",
+        body: "Point a counter sign or receipt code at your Google review link. Customers can scan while the card machine works, and you see how many scans each spot gets. Google doesn't allow discounts or gifts in exchange for reviews, so keep the sign to a plain ask.",
+        icon: IconStarFilled,
+      },
+      {
+        title: "A code for each spot",
+        body: `Give the counter, the window, the receipts and the market stall banner their own codes and compare them. Scans show the day, country, city and device. Free accounts see the last ${freeDays} days, and Pro keeps the full history.`,
+        icon: IconMapPinFilled,
+      },
+      {
+        title: "Instagram, shop and reviews on one page",
+        body: `Point one code at a free bio page with your Instagram, online shop and review links, and put the same page in your Instagram bio. The free page holds up to ${count(free.bioLinkBlocksPerPageLimit)} link blocks, plus text and social icons that don't count toward the limit.`,
+        icon: IconBrandInstagramFilled,
+      },
+      {
+        title: "Codes that don't switch off",
+        body: "Some QR generators turn dynamic codes off when a trial or subscription ends, and every printed label stops working with them. iShortn's free dynamic codes have no expiry date and keep working without a paid plan.",
+        icon: IconShieldCheckFilled,
+      },
+    ],
+    howToTitle: "Set up a shop code in four steps",
+    howTo: [
+      {
+        title: "Pick the page",
+        body: "Use your Google review link, your online shop, your Instagram profile or a product page. iShortn doesn't take payments. It sends each scan to the page you choose.",
+      },
+      {
+        title: "Create the code",
+        body: "Paste the link, add your logo and colours, and download a high-resolution PNG, or an SVG for stickers, vinyl and engraving.",
+      },
+      {
+        title: "Print and test",
+        body: "On a receipt, label or card held in the hand, make the code at least 2 cm wide. A counter or window sign read from a metre or two away needs 10 cm or more. Scan a printed copy with two phones before the full run.",
+      },
+      {
+        title: "Change it when your offer changes",
+        body: "Edit the destination in the dashboard. Every bag, sticker and sign you've already printed opens the new page.",
+      },
+    ],
+    plans: [
+      {
+        plan: "free",
+        title: "Free",
+        body: `Up to ${freeQrCodes} codes, ${freeDays} days of scan data and a bio page. Enough for a review code, a packaging code and a counter sign.`,
+      },
+      {
+        plan: "pro",
+        title: `Pro, ${proMonthly} a month, or ${usd(PLAN_PRICES_ANNUAL_USD.pro / 12)} a month billed yearly`,
+        body: `Unlimited codes, ${proDomains} custom domains such as go.yourshop.com, the full scan history and scheduled links for seasonal offers. For shops with more than ${freeQrCodes} placements.`,
+      },
+      {
+        plan: "ultra",
+        title: `Ultra, ${usd(PLAN_PRICES_USD.ultra)} a month`,
+        body: "A shared team workspace, for shops where staff or a partner look after the codes too. Members join free.",
+      },
+    ],
+    plansNote: `Each QR code also uses one short link from the monthly allowance: ${freeLinks} on Free, ${count(PLAN_CAPS.pro.linksLimit)} on Pro and ${count(PLAN_CAPS.ultra.linksLimit)} on Ultra.`,
+    faqs: [
+      {
+        question: "Is a QR code for a small business free with iShortn?",
+        answer: `Yes. The free plan includes ${freeQrCodes} dynamic QR codes with no ads and no expiry date, and you can change where each one points at any time. Each code uses one of your ${freeLinks} free links a month. For more codes, Pro is ${proMonthly} a month.`,
+      },
+      {
+        question: "What should a QR code on product packaging link to?",
+        answer:
+          "Something the buyer needs after the sale: care or setup instructions, ingredients, a how-to video, your reorder page or your Instagram. The code is dynamic, so you can change the page later without reprinting the labels.",
+      },
+      {
+        question: "How do I make a QR code for Google reviews?",
+        answer:
+          "Copy the review link from your Google Business Profile, paste it into a new QR code in iShortn and download it. Print it on a counter sign, a receipt or a thank-you card, and ask customers in person. Google doesn't allow rewards for reviews.",
+      },
+      {
+        question: "How big should the code be on a receipt or label?",
+        answer:
+          "At least 2 cm wide for anything held in the hand, such as a receipt, swing tag or label. A code scans from about ten times its own width, so a counter sign read from a metre away needs a code about 10 cm wide. Print one copy and scan it before the full run.",
+      },
+      {
+        question: "Can customers pay through an iShortn code?",
+        answer:
+          "No. iShortn codes open a web page and don't take payments. For card or mobile payments, use the code from your payment provider. Use iShortn codes for reviews, your online shop, your socials and product information.",
+      },
+      {
+        question: "Will my codes stop working if I don't pay?",
+        answer:
+          "No. Dynamic codes made on the free plan have no expiry date and keep working without a paid plan.",
+      },
+      {
+        question: "Can the code use my shop's own domain?",
+        answer:
+          "Yes, on Pro and Ultra. Use a subdomain such as go.yourshop.com, add the DNS records the dashboard shows, and iShortn handles the SSL certificate.",
+      },
+    ],
+    related: [
+      { href: "/blog/qr-code-for-google-reviews", label: "Make a QR code for Google reviews" },
+      { href: "/blog/qr-code-for-flyers", label: "Put a QR code on a flyer" },
+      {
+        href: "/blog/free-qr-code-generator-guide",
+        label: "QR codes for your business, a free guide",
+      },
+      { href: "/qr-code-generator", label: "Free QR code generator" },
+      { href: "/docs/qr-codes", label: "QR codes in the docs" },
+    ],
+    ctaTitle: "Make your first shop code",
     ctaBody: `The free plan has ${freeQrCodes} dynamic QR codes with no ads and no expiry date. No credit card needed.`,
     ctaButton: "Create a free QR code",
   },
@@ -761,6 +909,7 @@ export const solutions = {
 // Display order for the hub, the footer and /features.
 export const solutionList: Solution[] = [
   solutions.restaurants,
+  solutions["small-business"],
   solutions["churches-and-nonprofits"],
   solutions.agencies,
   solutions.events,
