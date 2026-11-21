@@ -58,6 +58,7 @@ export async function recordClick(opts: RecordClickOptions): Promise<void> {
     linkId: link.id,
     ownerId: link.userId,
     matchedGeoRuleId: matchedGeoRuleId ?? null,
+    countsTowardLimit: !!link.disableLinkAfterClicks,
     ...visitor,
   });
 }

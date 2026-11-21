@@ -1635,7 +1635,11 @@ export const resetLinkStatistics = async (ctx: WorkspaceTRPCContext, input: GetL
     return null;
   }
 
-  await ctx.db.delete(linkVisit).where(eq(linkVisit.linkId, fetchedLink.id));
+  // Clearing the counter restarts the click limit from what is left of the recorded total.
+  await Promise.all([
+    ctx.db.delete(linkVisit).where(eq(linkVisit.linkId, fetchedLink.id)),
+    ctx.db.update(link).set({ clickLimitCount: null }).where(eq(link.id, fetchedLink.id)),
+  ]);
 
   return fetchedLink;
 };

@@ -25,6 +25,8 @@ export const clickEventSchema = z.discriminatedUnion("kind", [
     linkId: z.int(),
     ownerId: z.string(),
     matchedGeoRuleId: z.int().nullable(),
+    // Set when the link has a click limit, so only those links pay for the visit counter.
+    countsTowardLimit: z.boolean().optional(),
   }),
   visitorSchema.extend({
     kind: z.literal("bio"),
