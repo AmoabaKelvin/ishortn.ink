@@ -6,7 +6,7 @@ import {
   getRelatedPosts,
   isPostLive,
   isPostVisible,
-  unlinkHiddenPosts,
+  renderPostBody,
 } from "./blog";
 
 const now = new Date("2026-11-21T12:00:00Z");
@@ -39,6 +39,48 @@ describe("isPostVisible", () => {
   });
 });
 
+describe("renderPostBody", () => {
+  // bitly-alternatives is dated 2026-03-01, short-io-alternatives 2026-12-09.
+  it("links live posts and renders links to scheduled posts as text", async () => {
+    const body = await renderPostBody(
+      "See [Bitly alternatives](/blog/bitly-alternatives) and [Short.io alternatives](/blog/short-io-alternatives).",
+      now,
+    );
+    expect(body).toContain('<a href="/blog/bitly-alternatives">Bitly alternatives</a>');
+    expect(body).toContain("and Short.io alternatives.");
+    expect(body).not.toContain("short-io-alternatives");
+  });
+
+  it("links a scheduled post once its date arrives", async () => {
+    const body = await renderPostBody(
+      "[Short.io alternatives](/blog/short-io-alternatives/#pricing)",
+      new Date("2026-12-09T00:00:00Z"),
+    );
+    expect(body).toContain('<a href="/blog/short-io-alternatives/#pricing">');
+  });
+
+  it("unlinks absolute and autolinked URLs to scheduled or missing posts, keeping formatting", async () => {
+    const body = await renderPostBody(
+      "- [**Short.io**](https://www.ishortn.ink/blog/short-io-alternatives?ref=x)\n- https://ishortn.ink/blog/no-such-post",
+      now,
+    );
+    expect(body).not.toContain("<a ");
+    expect(body).toContain("<li><strong>Short.io</strong></li>");
+    expect(body).toContain("<li>https://ishortn.ink/blog/no-such-post</li>");
+  });
+
+  it("leaves external, non-post and blog index links alone", async () => {
+    const body = await renderPostBody(
+      "[a](https://example.com/blog/short-io-alternatives) [b](/docs/api) [c](/blog) [d](#faq)",
+      now,
+    );
+    expect(body).toContain('<a href="https://example.com/blog/short-io-alternatives">a</a>');
+    expect(body).toContain('<a href="/docs/api">b</a>');
+    expect(body).toContain('<a href="/blog">c</a>');
+    expect(body).toContain('<a href="#faq">d</a>');
+  });
+});
+
 describe("isPostLive", () => {
   // linktree-custom-domain is scheduled for 2026-11-23.
   it("hides a scheduled post until its UTC publish day", () => {
@@ -49,22 +91,6 @@ describe("isPostLive", () => {
   it("shows a published post and hides unknown slugs", () => {
     expect(isPostLive("bitly-alternatives", now)).toBe(true);
     expect(isPostLive("no-such-post", now)).toBe(false);
-  });
-});
-
-describe("unlinkHiddenPosts", () => {
-  const visible = (slug: string) => slug === "live";
-
-  it("keeps links to visible posts and unwraps links to hidden ones", () => {
-    expect(unlinkHiddenPosts("See [this](/blog/live) and [that](/blog/scheduled).", visible)).toBe(
-      "See [this](/blog/live) and that.",
-    );
-  });
-
-  it("matches links with an anchor and leaves other links alone", () => {
-    expect(unlinkHiddenPosts("[a](/blog/scheduled#part) [b](/pricing) [c](/blog)", visible)).toBe(
-      "a [b](/pricing) [c](/blog)",
-    );
   });
 });
 

@@ -1,4 +1,5 @@
 import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+import { defaultOgImage } from "@/lib/seo/og-image";
 
 export type JsonLdValue =
   | string
@@ -137,6 +138,8 @@ export function createArticleSchema(article: {
     author: {
       "@type": "Person",
       name: article.author,
+      // Posts carry no per-author page, so the author links to the site.
+      url: "https://ishortn.ink",
     },
     publisher: {
       "@type": "Organization",
@@ -146,6 +149,7 @@ export function createArticleSchema(article: {
         url: "https://ishortn.ink/icon.png",
       },
     },
-    ...(article.image && { image: article.image }),
+    // Google's Article guidelines expect an image; posts without a cover use the site card.
+    image: article.image ? new URL(article.image, "https://ishortn.ink").href : defaultOgImage.url,
   };
 }
