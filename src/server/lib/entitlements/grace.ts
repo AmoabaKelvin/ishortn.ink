@@ -297,13 +297,15 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
   //    retries are exhausted) with no lapse grace yet, or a cancelled
   //    subscription whose paid period ended in the last grace window. A passed
   //    over-plan grace doesn't cover the lapse, so it is replaced; a running one
-  //    on a failed payment becomes the lapse grace (same dates, emails sent so
-  //    far kept), so the notice asks for a card update instead of an upgrade.
+  //    within the subscribed plan on a failed payment becomes the lapse grace
+  //    (same dates, emails sent so far kept), so the notice asks for a card
+  //    update instead of an upgrade.
   const lapsed = await db
     .select({
       userId: user.id,
       planGraceEndsAt: user.planGraceEndsAt,
       planGraceReason: user.planGraceReason,
+      planGracePlan: user.planGracePlan,
       sub: subscription,
     })
     .from(user)
@@ -335,6 +337,9 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
     const plan = subscribedPlan(row.sub);
     if (plan === "free") continue;
     if (row.planGraceReason === "over_plan" && isGraceActive(row.planGraceEndsAt, now)) {
+      // An over-plan grace above the subscribed plan keeps running: narrowing it
+      // would cut those features off early, and once it passes it is replaced.
+      if (!planAtLeast(plan, row.planGracePlan ?? "free")) continue;
       const [converted] = await db
         .update(user)
         .set({ planGracePlan: plan, planGraceReason: "lapsed" })

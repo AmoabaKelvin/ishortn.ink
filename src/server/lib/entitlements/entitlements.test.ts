@@ -118,6 +118,7 @@ const FAILED_OVER_PLAN_IDS = {
   unpaid: "ent_test_unpaid_over",
 } as const;
 const UNPAID_ULTRA_OWNER_ID = "ent_test_unpaid_ultra";
+const UNPAID_ABOVE_PLAN_ID = "ent_test_unpaid_above_plan";
 const USER_IDS = [
   ...Object.values(ACCOUNTS).map((account) => account.id),
   UNCHECKED_OVER_ID,
@@ -127,6 +128,7 @@ const USER_IDS = [
   UNPAID_ID,
   ...Object.values(FAILED_OVER_PLAN_IDS),
   UNPAID_ULTRA_OWNER_ID,
+  UNPAID_ABOVE_PLAN_ID,
 ];
 const TEAM_SLUGS = ["ent-test-pro-team", "ent-test-ultra-team", "ent-test-unpaid-ultra-team"];
 
@@ -903,13 +905,13 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     id: string,
     status: string,
     variantId: number,
-    grace?: { endsAt: Date; emailStage: number },
+    grace?: { plan: Plan; endsAt: Date; emailStage: number },
   ) {
     await db.insert(schema.user).values({
       id,
       email: `${id}@entitlements.test`,
       planCheckedAt: new Date(),
-      planGracePlan: grace ? "ultra" : null,
+      planGracePlan: grace?.plan ?? null,
       planGraceEndsAt: grace?.endsAt ?? null,
       planGraceReason: grace ? "over_plan" : null,
       planGraceEmailStage: grace?.emailStage ?? 0,
@@ -950,7 +952,7 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
       const id = FAILED_OVER_PLAN_IDS[status];
       // Started three days ago; the day-0 email went out with the over-plan copy.
       const endsAt = new Date(Date.now() + 4 * DAY);
-      await insertFailedPayer(id, status, PRO_VARIANT, { endsAt, emailStage: 1 });
+      await insertFailedPayer(id, status, PRO_VARIANT, { plan: "pro", endsAt, emailStage: 1 });
       const startedAt = await db.query.user.findFirst({ where: eq(schema.user.id, id) });
 
       await reconcileEntitlements();
@@ -975,6 +977,27 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
       expect(again?.planGraceEmailStage).toBe(1);
     },
   );
+
+  test("the reconcile leaves a running over-plan grace above the subscribed plan alone", async () => {
+    // A Pro subscriber still on Ultra-level usage whose renewal then failed.
+    // Whole seconds, so the stored timestamp compares exactly.
+    const endsAt = new Date(Math.floor((Date.now() + 5 * DAY) / 1000) * 1000);
+    await insertFailedPayer(UNPAID_ABOVE_PLAN_ID, "unpaid", PRO_VARIANT, {
+      plan: "ultra",
+      endsAt,
+      emailStage: 1,
+    });
+
+    await reconcileEntitlements();
+    const row = await db.query.user.findFirst({
+      where: eq(schema.user.id, UNPAID_ABOVE_PLAN_ID),
+    });
+    // Narrowing it to Pro would cut the Ultra features off before the grace ends.
+    expect(row?.planGraceReason).toBe("over_plan");
+    expect(row?.planGracePlan).toBe("ultra");
+    expect(row?.planGraceEndsAt?.getTime()).toBe(endsAt.getTime());
+    expect(row?.planGraceEmailStage).toBe(1);
+  });
 
   test("the reconcile starts a team grace for an unpaid Ultra owner with the update-payment action", async () => {
     await insertFailedPayer(UNPAID_ULTRA_OWNER_ID, "unpaid", ULTRA_VARIANT);
