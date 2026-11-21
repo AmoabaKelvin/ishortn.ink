@@ -20,10 +20,30 @@ describe("getWwwRedirectUrl", () => {
     );
   });
 
+  it("serves www API and webhook routes without redirecting", () => {
+    for (const url of [
+      "https://www.ishortn.ink/api",
+      "https://www.ishortn.ink/api/webhooks/clerk",
+      "https://www.ishortn.ink/api/webhooks/lemonsqueezy?x=1",
+      "https://www.ishortn.ink/api/v1/links",
+      "http://WWW.ishortn.ink./api/v1/links?page=2",
+    ]) {
+      expect(getWwwRedirectUrl(url)).toBeNull();
+    }
+  });
+
+  it("still redirects www paths that only start with the letters api", () => {
+    expect(getWwwRedirectUrl("https://www.ishortn.ink/apiary")).toBe("https://ishortn.ink/apiary");
+    expect(getWwwRedirectUrl("https://www.ishortn.ink/docs/api")).toBe(
+      "https://ishortn.ink/docs/api",
+    );
+  });
+
   it("leaves the apex, short-link, team and custom domains alone", () => {
     for (const url of [
       "https://ishortn.ink/",
       "https://ishortn.ink/abc123",
+      "https://ishortn.ink/api/webhooks/clerk",
       "https://isht.ink/abc123",
       "https://www.isht.ink/abc123",
       "https://isht.app/abc123",
