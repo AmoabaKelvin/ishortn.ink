@@ -13,6 +13,7 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import { insertHiddenTrackingLink, prepareHiddenTrackingLink } from "@/server/lib/tracking-link";
@@ -72,6 +73,11 @@ export const createQrCode = userFacing(
       const currentCount = await countWorkspaceQrCodes(ctx);
 
       if (currentCount >= qrCodeLimit) {
+        await recordPlanLimitHit({
+          userId: ctx.auth.userId,
+          limitKey: "qr_codes",
+          plan: ctx.workspace.plan,
+        });
         throw new TRPCError({
           code: "FORBIDDEN",
           message: `You've reached your plan's limit of ${qrCodeLimit} QR codes. Upgrade to create more.`,

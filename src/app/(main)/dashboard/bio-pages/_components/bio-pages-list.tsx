@@ -18,7 +18,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { UpgradeCta } from "@/components/upgrade-cta";
+import { nextPlanFor } from "@/lib/billing/upgrade";
 import { api } from "@/trpc/react";
 
 import { CreateBioPageDialog } from "./create-bio-page-dialog";
@@ -32,7 +33,7 @@ type BioPagesListProps = {
   bioPageLimit: number | null;
 };
 
-export function BioPagesList({ pages, bioPageLimit }: BioPagesListProps) {
+export function BioPagesList({ pages, plan, bioPageLimit }: BioPagesListProps) {
   const router = useRouter();
   const atLimit = bioPageLimit !== null && pages.length >= bioPageLimit;
 
@@ -63,13 +64,13 @@ export function BioPagesList({ pages, bioPageLimit }: BioPagesListProps) {
                 {pages.length.toLocaleString()} of {bioPageLimit.toLocaleString()}{" "}
                 {bioPageLimit === 1 ? "page" : "pages"} used
               </span>
-              <Link
-                href="/dashboard/pricing"
-                onClick={() => trackUpgradeClick("bio_page_limit")}
+              <UpgradeCta
+                requiredPlan={nextPlanFor(plan)}
+                source="bio_page_limit"
                 className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-[background-color,transform] hover:bg-blue-700 active:scale-[0.97]"
               >
                 Upgrade for more
-              </Link>
+              </UpgradeCta>
             </div>
           ) : (
             <CreateBioPageDialog

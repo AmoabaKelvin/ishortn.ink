@@ -3,6 +3,7 @@ import { and, count, eq } from "drizzle-orm";
 
 import { getBioLinkBlockLimit, getBioPageLimit } from "@/lib/billing/plans";
 import { bioBlock, bioPage } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { workspaceFilter } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
@@ -86,6 +87,11 @@ export async function checkBioPageLimit(ctx: WorkspaceTRPCContext): Promise<void
 
   const current = Number(row?.count ?? 0);
   if (current >= limit) {
+    await recordPlanLimitHit({
+      userId: ctx.auth.userId,
+      limitKey: "bio_pages",
+      plan: ctx.workspace.plan,
+    });
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
@@ -121,6 +127,7 @@ export async function lockBioLinkBlockCapacity(
   tx: TransactionClient,
   plan: Plan,
   bioPageId: number,
+  userId: string,
 ): Promise<void> {
   if (getBioLinkBlockLimit(plan) === undefined) return;
 
@@ -131,7 +138,13 @@ export async function lockBioLinkBlockCapacity(
     .from(bioBlock)
     .where(and(eq(bioBlock.bioPageId, bioPageId), eq(bioBlock.type, "link")));
 
-  assertBioLinkBlockCapacity(plan, Number(row?.count ?? 0));
+  try {
+    assertBioLinkBlockCapacity(plan, Number(row?.count ?? 0));
+  } catch (error) {
+    // Root db, not tx: the transaction rolls back on this throw.
+    await recordPlanLimitHit({ userId, limitKey: "bio_link_blocks", plan });
+    throw error;
+  }
 }
 
 /** In-memory ownership check mirroring workspaceFilter (for already-loaded rows). */

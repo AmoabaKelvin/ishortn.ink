@@ -2,9 +2,13 @@
 
 import { IconDiamond, IconFolder } from "@tabler/icons-react";
 import { motion } from "framer-motion";
-import { Link } from "next-view-transitions";
+
+import { UpgradeCta } from "@/components/upgrade-cta";
+import { useRecordPlanLimitView } from "@/lib/hooks/use-record-plan-limit-view";
 
 export function EmptyStateFree() {
+  useRecordPlanLimitView("folders_page_view", true);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -54,13 +58,14 @@ export function EmptyStateFree() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.35 }}
       >
-        <Link
-          href="/dashboard/settings#billing"
+        <UpgradeCta
+          requiredPlan="pro"
+          source="folders"
           className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
         >
           <IconDiamond size={16} stroke={1.5} />
           Upgrade to Pro
-        </Link>
+        </UpgradeCta>
       </motion.div>
     </motion.div>
   );

@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { getAppBaseDomain } from "@/lib/constants/domains";
 import { cn } from "@/lib/utils";
 
@@ -196,10 +197,14 @@ export function WorkspaceSwitcher({
           {!canCreateTeam && teams.length === 0 && (
             <>
               <div className="my-1.5 h-px bg-neutral-100 dark:bg-border/50" />
-              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-neutral-400 dark:text-neutral-500">
+              <UpgradeCta
+                requiredPlan="ultra"
+                source="teams"
+                className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[11px] text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-500 dark:hover:bg-accent dark:hover:text-foreground"
+              >
                 <IconBuilding size={13} stroke={1.5} />
                 <span>Upgrade to Ultra to create teams</span>
-              </div>
+              </UpgradeCta>
             </>
           )}
         </div>

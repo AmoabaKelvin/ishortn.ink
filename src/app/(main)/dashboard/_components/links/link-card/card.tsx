@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTransitionRouter } from "next-view-transitions";
+import { useEffect, useState } from "react";
 
 import { cn, copyToClipboard, daysSinceDate } from "@/lib/utils";
 
@@ -29,6 +30,16 @@ const Link = ({ link, onTagClick }: LinkProps) => {
   const router = useTransitionRouter();
   const { isSelectionMode, isSelected, toggleSelection } = useSelection();
   const selected = isSelected(link.id);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  const shortLink = `${link.domain}/${link.alias}`;
+  const hasName = !!link.name && link.name !== "Untitled Link";
 
   const daysSinceLinkCreation = daysSinceDate(new Date(link.createdAt!));
   const scheduledFor =
@@ -65,7 +76,7 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           <button
             type="button"
             aria-pressed={selected}
-            aria-label={`Select ${link.domain}/${link.alias}`}
+            aria-label={`Select ${shortLink}`}
             onClick={(e) => {
               e.stopPropagation();
               toggleSelection(link.id);
@@ -106,22 +117,36 @@ const Link = ({ link, onTagClick }: LinkProps) => {
                 }
               }}
             >
-              {link.name !== "Untitled Link" && link.name
-                ? link.name
-                : `${link.domain}/${link.alias}`}
+              {hasName ? link.name : shortLink}
             </button>
             <button
               type="button"
-              aria-label={`Copy ${link.domain}/${link.alias}`}
+              aria-label={copied ? `Copied ${shortLink}` : `Copy ${shortLink}`}
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600"
               onClick={async (e) => {
                 e.stopPropagation();
-                await copyToClipboard(`https://${link.domain}/${link.alias}`);
+                await copyToClipboard(`https://${shortLink}`);
+                setCopied(true);
               }}
             >
-              <IconCopy size={14} stroke={1.5} />
+              {copied ? (
+                <IconCheck
+                  size={14}
+                  stroke={1.5}
+                  className="text-emerald-600 dark:text-emerald-400"
+                />
+              ) : (
+                <IconCopy size={14} stroke={1.5} />
+              )}
             </button>
           </div>
+
+          {/* Short link, shown under named links so it is never hidden behind a page title */}
+          {hasName && (
+            <p className="mt-0.5 truncate text-[12px] text-neutral-500 dark:text-neutral-400">
+              {shortLink}
+            </p>
+          )}
 
           {/* Metadata row */}
           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { link, linkCreationFailure } from "@/server/db/schema";
 
 import { createLink } from "./link.service";
@@ -7,7 +8,7 @@ import { createLink } from "./link.service";
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
 
-type InsertedLink = { url: string; name: string };
+type InsertedLink = { url: string; name: string; alias: string; domain: string };
 
 // In-memory stand-in for the queries createLink makes on a free personal
 // workspace: the plan lookup, the reserved-alias check for the generated alias
@@ -83,10 +84,33 @@ describe("createLink", () => {
       },
     );
 
-    expect(result).toEqual({ insertId: 7 });
+    expect(result).toEqual({ id: 7, alias: expect.any(String), domain: DEFAULT_PLATFORM_DOMAIN });
     expect(inserted).toHaveLength(1);
     expect(inserted[0]).toMatchObject({ url: URL, name: "Untitled Link" });
     expect(recordedFailures).toEqual([]);
+  });
+
+  test("returns the id, alias and domain of the inserted link", async () => {
+    const { ctx, inserted } = fakeContext();
+    const generated = await createLink(
+      ctx,
+      { url: URL },
+      { checkUrl: allowUrl, fetchMetadata: noMetadata },
+    );
+    expect(generated).toEqual({
+      id: 7,
+      alias: inserted[0]!.alias,
+      domain: DEFAULT_PLATFORM_DOMAIN,
+    });
+    expect(generated.alias).not.toBe("");
+
+    const custom = await createLink(
+      ctx,
+      { url: URL, alias: "spring-sale" },
+      { checkUrl: allowUrl, fetchMetadata: noMetadata },
+    );
+    expect(custom).toEqual({ id: 7, alias: "spring-sale", domain: DEFAULT_PLATFORM_DOMAIN });
+    expect(inserted[1]).toMatchObject({ alias: "spring-sale", domain: DEFAULT_PLATFORM_DOMAIN });
   });
 
   test("uses fetched metadata when the fetch succeeds", async () => {

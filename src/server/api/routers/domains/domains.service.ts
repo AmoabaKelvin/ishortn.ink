@@ -18,6 +18,7 @@ import {
   teamMember,
   user,
 } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import {
   hasPermission,
   requirePermission,
@@ -103,9 +104,12 @@ export async function addDomainToUserAccount(
   );
 
   // Enforce the per-plan custom-domain cap (workspace-scoped; a team's plan is its owner's).
-  const domainLimit = getPlanCaps(ctx.workspace.plan).domainLimit;
+  const plan = ctx.workspace.plan;
+  const domainLimit = getPlanCaps(plan).domainLimit;
+  const userId = ctx.auth.userId;
 
   if (domainLimit === 0) {
+    await recordPlanLimitHit({ userId, limitKey: "custom_domains", plan });
     throw new Error("You need to have an active subscription to add a custom domain");
   }
 
@@ -118,6 +122,7 @@ export async function addDomainToUserAccount(
     const existingCount = existingDomainsCount[0]?.count ?? 0;
 
     if (existingCount >= domainLimit) {
+      await recordPlanLimitHit({ userId, limitKey: "custom_domains", plan });
       throw new Error(
         `You've reached your plan's limit of ${domainLimit} custom domains. Upgrade to add more.`,
       );

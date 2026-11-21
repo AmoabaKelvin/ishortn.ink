@@ -10,6 +10,7 @@ import {
   linkVisitDailySummary,
   teamMember,
 } from "@/server/db/schema";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import {
   getAccessibleFolderIds,
   getFolderPermissionMap,
@@ -42,6 +43,7 @@ export const createFolder = async (ctx: WorkspaceTRPCContext, input: CreateFolde
   const folderLimit = caps.folderLimit;
 
   if (folderLimit === 0) {
+    await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "folders", plan: workspacePlan });
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Folders are available on Pro and Ultra plans. Upgrade to create folders.",
@@ -60,6 +62,11 @@ export const createFolder = async (ctx: WorkspaceTRPCContext, input: CreateFolde
         .where(workspaceFilter(ctx.workspace, folder.userId, folder.teamId));
 
       if (Number(currentFolders[0]?.count ?? 0) >= folderLimit) {
+        await recordPlanLimitHit({
+          userId: ctx.auth.userId,
+          limitKey: "folders",
+          plan: workspacePlan,
+        });
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You have reached your folder limit. Upgrade to Ultra for unlimited folders.",

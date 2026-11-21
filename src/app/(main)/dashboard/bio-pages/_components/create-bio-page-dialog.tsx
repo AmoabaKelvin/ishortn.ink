@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toastMutationError } from "@/lib/analytics/plan-limit-toast";
 import { api } from "@/trpc/react";
 
 const MAX_SLUG_LENGTH = 100;
@@ -33,7 +34,7 @@ export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
       setOpen(false);
       router.push(`/dashboard/bio-pages/${res.id}`);
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toastMutationError(error, "bio_page_limit"),
   });
 
   const normalizedSlug = slug

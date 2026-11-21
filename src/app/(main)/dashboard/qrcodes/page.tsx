@@ -1,6 +1,8 @@
 import { IconPlus } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
+import { UpgradeCta } from "@/components/upgrade-cta";
+import { nextPlanFor } from "@/lib/billing/upgrade";
 import { api } from "@/trpc/server";
 
 import { QRCodeEmptyState } from "./_components/empty-state-new";
@@ -64,12 +66,13 @@ async function QRCodePage() {
               Upgrade to create unlimited QR codes
             </p>
           </div>
-          <Link
-            href="/dashboard/pricing"
+          <UpgradeCta
+            requiredPlan={nextPlanFor(subDetails.plan)}
+            source="qr_limit"
             className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
           >
             Upgrade
-          </Link>
+          </UpgradeCta>
         </div>
       )}
 

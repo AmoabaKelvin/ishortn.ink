@@ -25,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
+import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -56,7 +57,7 @@ function formatDateRange(start: Date | null, end: Date | null): string | null {
   return null;
 }
 
-export function CampaignsList({ campaigns, campaignLimit }: CampaignsListProps) {
+export function CampaignsList({ campaigns, plan, campaignLimit }: CampaignsListProps) {
   const router = useRouter();
   const utils = api.useUtils();
   const [view, setView] = useState<"active" | "archived">("active");
@@ -86,7 +87,11 @@ export function CampaignsList({ campaigns, campaignLimit }: CampaignsListProps) 
     },
     onError: (error, variables) => {
       if (error.data?.code === "FORBIDDEN" && variables.status === "active") {
-        notifyPlanLimit(error.message, "campaign_unarchive");
+        notifyPlanLimit(
+          error.message,
+          "campaign_unarchive",
+          requiredPlanForLimit(error.message, plan),
+        );
       } else {
         toast.error(error.message);
       }

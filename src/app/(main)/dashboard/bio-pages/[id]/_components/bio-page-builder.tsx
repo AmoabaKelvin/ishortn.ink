@@ -42,8 +42,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { UpgradeCta } from "@/components/upgrade-cta";
+import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { getBioLinkBlockLimit } from "@/lib/billing/plans";
+import { isPlanLimitError, requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { api } from "@/trpc/react";
 
 import { AnalyticsPanel } from "./analytics-panel";
@@ -91,6 +93,14 @@ function toRenderBlock(b: EditorBlock): BioRenderBlock {
     default:
       return { id: b.id, type: "divider" };
   }
+}
+
+// Upgrade source for a plan rejection on save, from the gate named in the message.
+function bioSettingsLimitSource(message: string): string {
+  if (/branding/i.test(message)) return "bio_branding";
+  if (/custom domain/i.test(message)) return "bio_custom_domain";
+  if (/theme/i.test(message)) return "bio_theme";
+  return "bio_settings";
 }
 
 export function BioPageBuilder({
@@ -162,7 +172,13 @@ export function BioPageBuilder({
       const saved = utils.bioPage.get.getData({ id: pageId });
       if (saved) setSettings(toSettingsDraft(saved));
     },
-    onError: (e) => toast.error(formatMutationError(e)),
+    onError: (e) => {
+      if (isPlanLimitError(e)) {
+        notifyPlanLimit(e.message, bioSettingsLimitSource(e.message), "pro");
+        return;
+      }
+      toast.error(formatMutationError(e));
+    },
   });
   const togglePublished = api.bioPage.togglePublished.useMutation({
     onSuccess: (res) => {
@@ -173,7 +189,17 @@ export function BioPageBuilder({
   });
   const addBlock = api.bioPage.addBlock.useMutation({
     onSuccess: refresh,
-    onError: (e) => toast.error(formatMutationError(e)),
+    onError: (e) => {
+      if (isPlanLimitError(e)) {
+        notifyPlanLimit(
+          e.message,
+          /schedul/i.test(e.message) ? "bio_scheduled_blocks" : "bio_link_block_limit",
+          requiredPlanForLimit(e.message, plan),
+        );
+        return;
+      }
+      toast.error(formatMutationError(e));
+    },
   });
 
   function saveSettings() {
@@ -319,13 +345,13 @@ export function BioPageBuilder({
                       unlimited link blocks.
                     </p>
                   </div>
-                  <Link
-                    href="/dashboard/pricing"
-                    onClick={() => trackUpgradeClick("bio_link_block_limit")}
+                  <UpgradeCta
+                    requiredPlan="pro"
+                    source="bio_link_block_limit"
                     className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
                   >
                     Upgrade
-                  </Link>
+                  </UpgradeCta>
                 </div>
               )}
 

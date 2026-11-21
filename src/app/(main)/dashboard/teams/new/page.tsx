@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { APP_BASE_DOMAIN, getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/react";
 
@@ -118,10 +119,15 @@ export default function CreateTeamPage() {
         <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-neutral-500">
           Set up a shared workspace to collaborate with your team members.
         </p>
-        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400">
+        <UpgradeCta
+          requiredPlan="ultra"
+          source="teams"
+          aria-label="Available on Ultra plan. Upgrade to Ultra"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent"
+        >
           <IconDiamond size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
           Available on Ultra plan
-        </div>
+        </UpgradeCta>
       </div>
     );
   }
