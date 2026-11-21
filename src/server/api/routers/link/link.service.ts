@@ -84,15 +84,19 @@ import {
   requireFolderAccess,
   workspaceFilter,
   workspaceOwnership,
+  workspaceUsagePlan,
 } from "@/server/lib/workspace";
 
 import { mergeCampaignUtm } from "../campaign/utils";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 import {
   assertDomainAllowed,
+  assertDomainOwned,
+  assertDomainWithinPlan,
   checkWorkspaceLinkLimit,
   escapeLikePattern,
   getWorkspaceDefaultDomain,
+  hasUtmValues,
   incrementWorkspaceLinkCount,
   parseLinkCsv,
   PASSWORD_ATTEMPTS_PER_IP,
@@ -100,6 +104,9 @@ import {
   readAttemptWindow,
   recordFailedAttempt,
   restrictedLinkValues,
+  toPlanAllowedDomain,
+  sameGeoRules,
+  sameUtmParams,
   settleWithConcurrency,
   toPublicLink,
   checkAliasAvailability as assertAliasAvailable,
@@ -119,6 +126,7 @@ import type {
   UpdateLinkInput,
   VerifyLinkPasswordInput,
 } from "./link.input";
+import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
 import type { ScrapedMetadata } from "@/server/lib/metadata";
@@ -650,8 +658,11 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     await requireFolderAccess(ctx.db, ctx.workspace, existingLink.folderId);
   }
 
-  // Use workspace plan - team workspaces have Ultra features
+  // The workspace's live plan (a team's comes from its owner). Settings the link
+  // already has are held to the usage plan, so they stay editable through an
+  // over-plan grace; adding them needs the live plan.
   const workspacePlan = ctx.workspace.plan;
+  const usagePlan = workspaceUsagePlan(ctx.workspace);
   const isPaidUser = workspacePlan !== "free";
 
   // Re-scan only when the destination actually changes: the check can reach
@@ -661,9 +672,12 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   }
 
   // If domain is being changed, it must be platform-owned or a verified
-  // custom domain for this workspace.
+  // custom domain for this workspace. Either way it must be within the plan's
+  // custom-domain allowance: domains past it take no new or edited links.
   if (input.domain !== undefined && input.domain !== existingLink.domain) {
     await assertDomainAllowed(ctx, input.domain);
+  } else {
+    await assertDomainWithinPlan(ctx, existingLink.domain);
   }
 
   // If alias is being changed, validate it
@@ -675,39 +689,77 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     await assertAliasAvailable(ctx, existingLink.alias, input.domain);
   }
 
-  if (input.activateAt && !isPaidUser) {
+  // Paid-only settings can't be added or changed without the plan, but forms
+  // resend every field, so a value that is unchanged (or being removed) passes:
+  // after a downgrade, links keep their settings and other fields stay editable.
+  if (
+    input.activateAt &&
+    (existingLink.activateAt ? usagePlan : workspacePlan) === "free" &&
+    input.activateAt.getTime() !== existingLink.activateAt?.getTime()
+  ) {
     throw new Error(
       "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
     );
   }
 
   // Check for UTM params - Ultra plan only
-  if (input.utmParams) {
-    const utmParamsValues = Object.values(input.utmParams);
-    const hasUtmParams = utmParamsValues.some(
-      (value) => value !== undefined && value !== null && value !== "",
+  if (
+    (hasUtmValues(existingLink.utmParams) ? usagePlan : workspacePlan) !== "ultra" &&
+    hasUtmValues(input.utmParams) &&
+    !sameUtmParams(input.utmParams, existingLink.utmParams)
+  ) {
+    throw new Error(
+      "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
     );
-    if (hasUtmParams) {
-      if (workspacePlan !== "ultra") {
-        throw new Error(
-          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-        );
-      }
-    }
   }
 
   // Check for link cloaking - Ultra plan only
-  if (input.cloaking) {
-    if (workspacePlan !== "ultra") {
-      throw new Error(
-        "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
-      );
-    }
+  if (input.cloaking && !existingLink.cloaking && workspacePlan !== "ultra") {
+    throw new Error(
+      "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
+    );
   }
 
   // Downgrades are caught again at token-issuance time in resolveShortLink, so a
   // stale `verifiedClicksEnabled=true` doesn't produce tokens for free users.
-  if (input.verifiedClicksEnabled) assertCanEnableVerifiedClicks(workspacePlan);
+  if (input.verifiedClicksEnabled && !existingLink.verifiedClicksEnabled) {
+    assertCanEnableVerifiedClicks(workspacePlan);
+  }
+
+  // Targeting rules over the plan's allowance may only be resubmitted unchanged.
+  let geoRulesInput = input.geoRules;
+  if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
+    const geoLimit = getGeoRulesLimit(workspacePlan);
+    const rulesWithin = (plan: Plan, count: number) => {
+      const limit = getGeoRulesLimit(plan);
+      return (
+        canUseGeoRules(plan) && (isUnlimitedGeoRules(plan) || limit === undefined || count <= limit)
+      );
+    };
+    if (!rulesWithin(workspacePlan, geoRulesInput.length)) {
+      const existingRules = await ctx.db
+        .select()
+        .from(geoRule)
+        .where(eq(geoRule.linkId, input.id))
+        .orderBy(asc(geoRule.priority));
+      // During an over-plan grace a link's rules stay editable, without adding more.
+      const editableInGrace =
+        existingRules.length > 0 &&
+        geoRulesInput.length <= existingRules.length &&
+        rulesWithin(usagePlan, geoRulesInput.length);
+      if (!editableInGrace) {
+        if (!sameGeoRules(geoRulesInput, existingRules)) {
+          throw new Error(
+            canUseGeoRules(workspacePlan)
+              ? `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`
+              : "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+          );
+        }
+        // Unchanged: leave the stored rules alone.
+        geoRulesInput = undefined;
+      }
+    }
+  }
 
   // If assigning to a campaign, it must belong to this workspace and be
   // active (null clears membership).
@@ -727,7 +779,7 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   }
 
   // Extract tags and geoRules from input
-  const { tags: tagNames, geoRules: geoRulesInput, ...linkData } = input;
+  const { tags: tagNames, geoRules: _geoRules, ...linkData } = input;
 
   if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
     if (!canUseGeoRules(workspacePlan)) {
@@ -1094,9 +1146,10 @@ const shortenLinkSteps = async (
 ) => {
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
-  const domain = await getWorkspaceDefaultDomain(ctx);
+  const savedDomain = await getWorkspaceDefaultDomain(ctx);
   // The saved default can outlive the domain (deleted, or never verified)
-  await assertDomainAllowed(ctx, domain);
+  await assertDomainOwned(ctx, savedDomain);
+  const domain = await toPlanAllowedDomain(ctx, savedDomain);
   const alias = await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
@@ -1661,6 +1714,23 @@ export const changeLinkPassword = async (
   ctx: WorkspaceTRPCContext,
   input: { id: number; password: string },
 ) => {
+  const existing = await ctx.db.query.link.findFirst({
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
+    columns: { domain: true, passwordHash: true },
+  });
+  if (!existing) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
+  }
+  // A link that already has a password can change it through an over-plan grace.
+  const plan = existing.passwordHash ? workspaceUsagePlan(ctx.workspace) : ctx.workspace.plan;
+  if (plan === "free") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You need to upgrade to a pro plan to use password protection",
+    });
+  }
+  await assertDomainWithinPlan(ctx, existing.domain);
+
   const passwordHash = await bcrypt.hash(input.password, 10);
 
   await ctx.db

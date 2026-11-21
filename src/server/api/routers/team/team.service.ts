@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { addDays, subDays } from "date-fns";
 import { and, count, eq, gt, gte, isNotNull, isNull, sql } from "drizzle-orm";
 
+import { TEAM_READ_ONLY_MESSAGE } from "@/lib/billing/entitlements";
 import { DEFAULT_TEAM_DOMAIN, getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
 import { deleteFromCache } from "@/lib/core/cache";
 import { runBackgroundTask } from "@/lib/utils/background";
@@ -21,6 +22,7 @@ import {
   sendTeamMemberRemovedEmail,
 } from "@/server/lib/notifications/team-invite";
 import { requireMinimumRole, requirePermission } from "@/server/lib/workspace/permissions";
+import { getTeamAccess, userHasUltraPlan } from "@/server/lib/workspace/workspace.service";
 
 import {
   DAILY_INVITE_EMAIL_LIMIT,
@@ -420,6 +422,14 @@ export async function transferOwnership(ctx: TeamTRPCContext, input: TransferOwn
     });
   }
 
+  // Teams are an Ultra feature and take their entitlements from the owner's plan.
+  if (!(await userHasUltraPlan(input.newOwnerId, ctx.db))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "The new owner needs an Ultra plan to take over this team.",
+    });
+  }
+
   // Transfer in transaction
   await ctx.db.transaction(async (tx) => {
     // Demote current owner to admin
@@ -438,10 +448,11 @@ export async function transferOwnership(ctx: TeamTRPCContext, input: TransferOwn
         and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.newOwnerId)),
       );
 
-    // Update team owner reference
+    // Update team owner reference; the new owner is on Ultra, so any owner-plan
+    // grace period no longer applies.
     await tx
       .update(team)
-      .set({ ownerId: input.newOwnerId })
+      .set({ ownerId: input.newOwnerId, ownerPlanGraceEndsAt: null, ownerPlanGraceEmailStage: 0 })
       .where(eq(team.id, ctx.workspace.teamId));
   });
 
@@ -733,6 +744,10 @@ export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInvit
 
   if (invite.email) {
     await assertInviteRecipient(ctx, invite.email);
+  }
+
+  if ((await getTeamAccess(invite.team, ctx.db)).readOnly) {
+    throw new TRPCError({ code: "FORBIDDEN", message: TEAM_READ_ONLY_MESSAGE });
   }
 
   // Check if already a member

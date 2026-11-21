@@ -46,7 +46,14 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
   // Upsert: the webhook may insert the same row concurrently.
   await db
     .insert(user)
-    .values({ id: userId, name, email: primaryEmail, imageUrl: profile.imageUrl })
+    // New accounts have nothing above their plan to check (see ensurePlanChecked).
+    .values({
+      id: userId,
+      name,
+      email: primaryEmail,
+      imageUrl: profile.imageUrl,
+      planCheckedAt: new Date(),
+    })
     .onDuplicateKeyUpdate({ set: { name, email: primaryEmail, imageUrl: profile.imageUrl } });
   log.info({ userId }, "provisioned user row from Clerk profile");
 

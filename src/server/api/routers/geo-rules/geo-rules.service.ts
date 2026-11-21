@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { canUseGeoRules, getGeoRulesLimit, isUnlimitedGeoRules } from "@/lib/billing/plans";
 import { deleteGeoRulesFromCache } from "@/lib/core/cache";
 import { geoRule } from "@/server/db/schema";
+import { workspaceUsagePlan } from "@/server/lib/workspace";
 
 import { checkWorkspaceLinkLimit, verifyLinkOwnership } from "../link/utils";
 
@@ -16,6 +17,19 @@ import type {
   UpdateGeoRuleInput,
 } from "./geo-rules.input";
 
+const GEO_RULES_PLAN_MESSAGE =
+  "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.";
+
+/**
+ * Editing or reordering existing rules needs a plan with targeting; after a
+ * downgrade the rules keep working as they are and can only be deleted.
+ */
+function assertCanEditGeoRules(ctx: WorkspaceTRPCContext) {
+  if (!canUseGeoRules(workspaceUsagePlan(ctx.workspace))) {
+    throw new TRPCError({ code: "FORBIDDEN", message: GEO_RULES_PLAN_MESSAGE });
+  }
+}
+
 /**
  * Check if the user can add more geo rules to a link
  */
@@ -27,11 +41,7 @@ async function checkGeoRulesLimit(
   const { plan } = await checkWorkspaceLinkLimit(ctx);
 
   if (!canUseGeoRules(plan)) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message:
-        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-    });
+    throw new TRPCError({ code: "FORBIDDEN", message: GEO_RULES_PLAN_MESSAGE });
   }
 
   // Check current rule count for the link
@@ -127,6 +137,7 @@ export async function updateGeoRule(ctx: WorkspaceTRPCContext, input: UpdateGeoR
 
   // Verify link ownership
   await verifyLinkOwnership(ctx, existingRule.linkId);
+  assertCanEditGeoRules(ctx);
 
   // Update the rule
   await ctx.db
@@ -185,6 +196,7 @@ export async function deleteGeoRule(ctx: WorkspaceTRPCContext, input: DeleteGeoR
  */
 export async function reorderGeoRules(ctx: WorkspaceTRPCContext, input: ReorderGeoRulesInput) {
   await verifyLinkOwnership(ctx, input.linkId);
+  assertCanEditGeoRules(ctx);
 
   // Verify all rule IDs belong to this link
   const existingRules = await ctx.db.query.geoRule.findMany({

@@ -13,7 +13,7 @@ const files = readdirSync(import.meta.dir).filter(
 
 describe("email templates", () => {
   test("every template is covered", () => {
-    expect(files.length).toBe(14);
+    expect(files.length).toBe(15);
   });
 
   for (const file of files) {

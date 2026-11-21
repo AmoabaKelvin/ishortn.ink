@@ -287,6 +287,43 @@ export const lemonsqueezyRouter = createTRPCRouter({
     throw new Error("Unable to retrieve subscription management URL");
   }),
 
+  // The subscription's update-payment-method page. Lemon Squeezy signs this URL
+  // and it expires, so it is fetched fresh on every visit instead of stored.
+  // Falls back to the customer portal like subscriptionDetails (Settings →
+  // Billing); null when neither is available.
+  updatePaymentMethodUrl: protectedProcedure.query(async ({ ctx }) => {
+    const userSubscription = await getUserSubscription(ctx);
+    const subscriptionId = userSubscription?.subscriptionId;
+    const customerId = userSubscription?.customerId;
+
+    try {
+      configureLemonSqueezy();
+      if (subscriptionId && subscriptionId > 0) {
+        const providerSub = await getSubscription(subscriptionId);
+        const url = providerSub.data?.data.attributes.urls.update_payment_method;
+        if (url) return url;
+        if (providerSub.error) {
+          log.warn(
+            { err: providerSub.error, userId: ctx.auth.userId, subscriptionId },
+            "failed to fetch update-payment-method url; trying customer portal",
+          );
+        }
+      }
+      if (customerId && customerId > 0) {
+        const customer = await getCustomer(customerId);
+        if (customer.error) throw customer.error;
+        return customer.data.data.attributes.urls.customer_portal ?? null;
+      }
+      return null;
+    } catch (err) {
+      log.error(
+        { err, userId: ctx.auth.userId, subscriptionId, customerId },
+        "failed to fetch payment management url",
+      );
+      return null;
+    }
+  }),
+
   downgradeWithFeedback: protectedProcedure
     .input(downgradeWithFeedbackInput)
     .mutation(async ({ ctx, input }) => {

@@ -3,15 +3,20 @@ import crypto from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
-import { resolvePlan } from "@/lib/billing/plans";
+import { effectivePlan, graceUsagePlan } from "@/lib/billing/entitlements";
+import { getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
+import { domainBeyondPlanMessage, getUsableCustomDomains } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
 import { getApiSunset } from "@/server/lib/api-access";
+import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
 
 import { apiAccessRevokedResponse, withApiSunsetNotice } from "./api-access";
 import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
+
+import type { Plan } from "@/lib/billing/plans";
 
 export async function validateAndGetToken(apiKey: string | null) {
   if (!apiKey) return null;
@@ -26,19 +31,35 @@ export async function validateAndGetToken(apiKey: string | null) {
   const [userRecord, userSubscription] = await Promise.all([
     db.query.user.findFirst({
       where: eq(user.id, userId),
-      columns: { banned: true, deletedAt: true, restrictedAt: true },
+      columns: {
+        id: true,
+        banned: true,
+        deletedAt: true,
+        restrictedAt: true,
+        planGracePlan: true,
+        planGraceEndsAt: true,
+        planGraceReason: true,
+        planCheckedAt: true,
+      },
     }),
     db.select().from(subscription).where(eq(subscription.userId, userId)),
   ]);
 
-  if (userRecord?.banned || userRecord?.deletedAt) {
+  if (!userRecord || userRecord.banned || userRecord.deletedAt) {
     return null;
   }
 
+  const userSub = userSubscription[0] ?? null;
+  // The same entitlement the dashboard uses: API links live in the personal workspace.
+  const grace = await ensurePlanChecked(userRecord, userSub);
   return {
     ...existingToken[0]!,
-    subscription: userSubscription[0],
-    restrictedAt: userRecord?.restrictedAt ?? null,
+    subscription: userSub,
+    grace,
+    plan: effectivePlan(userSub, grace),
+    // Existing usage (domains past the allowance) during an over-plan grace.
+    graceUsagePlan: graceUsagePlan(userSub, grace),
+    restrictedAt: userRecord.restrictedAt ?? null,
   };
 }
 
@@ -64,13 +85,12 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
       return new Response("Invalid or missing API key", { status: 401 });
     }
 
-    const plan = resolvePlan(token.subscription ?? null);
     // Paid keys skip the sunset lookup; for the rest it's cached per isolate.
-    const sunsetAt = canUseApi(plan) ? null : await getApiSunset();
-    const access = getApiAccess(token.subscription ?? null, sunsetAt, new Date());
+    const sunsetAt = canUseApi(token.plan) ? null : await getApiSunset();
+    const access = getApiAccess(token.subscription, token.grace, sunsetAt, new Date());
     if (access.status === "revoked") return apiAccessRevokedResponse();
 
-    const decision = await consumeApiRateLimit(token.userId, plan);
+    const decision = await consumeApiRateLimit(token.userId, token.plan);
     if (!decision.allowed) return withApiSunsetNotice(rateLimitedResponse(decision), access);
 
     const response = await handler(request, token, ...args);
@@ -132,6 +152,28 @@ export async function resolveApiDomainForUser(
   }
 
   return getUserDefaultDomain(userId);
+}
+
+/**
+ * Write-path counterpart of resolveApiDomainForUser: custom domains past the
+ * plan's allowance (oldest first, see getUsableCustomDomains) keep serving their
+ * links but take no new or edited ones. Returns the refusal message, or null.
+ */
+export async function apiDomainWriteError(
+  userId: string,
+  plan: Plan,
+  domain: string,
+): Promise<string | null> {
+  if (isPlatformDomain(domain)) return null;
+  const limit = getPlanCaps(plan).domainLimit;
+  if (limit === undefined) return null;
+
+  const usable = await getUsableCustomDomains(
+    db,
+    and(eq(customDomain.userId, userId), isNull(customDomain.teamId)),
+    limit,
+  );
+  return usable.includes(domain.toLowerCase()) ? null : domainBeyondPlanMessage(domain, limit);
 }
 
 export function getApiDomainParamsFromSearchParams(searchParams: URLSearchParams) {

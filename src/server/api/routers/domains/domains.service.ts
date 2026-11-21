@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, isNull, lt, ne, or, sum } from "drizzle-orm";
 import { getDomain } from "tldts";
 
-import { isSubscriptionEntitled, PLAN_CAPS, resolvePlan } from "@/lib/billing/plans";
+import { getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { deleteFromCache } from "@/lib/core/cache";
@@ -102,19 +102,12 @@ export async function addDomainToUserAccount(
     "add custom domains. Only team owners can manage domains",
   );
 
-  const userId = ctx.auth.userId;
+  // Enforce the per-plan custom-domain cap (workspace-scoped; a team's plan is its owner's).
+  const domainLimit = getPlanCaps(ctx.workspace.plan).domainLimit;
 
-  const userSubscription = await ctx.db.query.subscription.findFirst({
-    where: (table, { eq }) => eq(table.userId, userId),
-  });
-
-  if (!isSubscriptionEntitled(userSubscription)) {
+  if (domainLimit === 0) {
     throw new Error("You need to have an active subscription to add a custom domain");
   }
-
-  // Enforce the per-plan custom-domain cap (workspace-scoped)
-  const plan = resolvePlan(userSubscription);
-  const domainLimit = PLAN_CAPS[plan].domainLimit;
 
   if (domainLimit !== undefined) {
     const existingDomainsCount = await ctx.db

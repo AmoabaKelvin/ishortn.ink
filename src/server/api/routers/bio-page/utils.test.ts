@@ -7,6 +7,7 @@ import {
   assertSlugAllowed,
   lockBioLinkBlockCapacity,
   RESERVED_BIO_SLUGS,
+  sameBioTheme,
 } from "./utils";
 
 import type { db } from "@/server/db";
@@ -129,5 +130,35 @@ describe("bio link block cap under concurrent adds", () => {
       await insertLinkBlock();
     });
     expect(store.linkBlocks()).toBe(501);
+  });
+});
+
+describe("sameBioTheme", () => {
+  test("ignores key order", () => {
+    // Keys in the order MySQL may return them, not the order the editor sends.
+    const stored = JSON.parse(
+      '{"font":"inter","background":{"to":"#000","from":"#fff","type":"gradient"},"accentColor":"#2563eb"}',
+    );
+    expect(
+      sameBioTheme(
+        {
+          accentColor: "#2563eb",
+          background: { type: "gradient", from: "#fff", to: "#000" },
+          font: "inter",
+        },
+        stored,
+      ),
+    ).toBe(true);
+  });
+
+  test("detects changed, added and removed fields", () => {
+    const theme = { accentColor: "#2563eb", background: { type: "solid", color: "#fff" } } as const;
+    expect(sameBioTheme(theme, { ...theme, accentColor: "#000000" })).toBe(false);
+    expect(sameBioTheme(theme, { ...theme, font: "lora" })).toBe(false);
+    expect(sameBioTheme(theme, { accentColor: "#2563eb" })).toBe(false);
+    expect(sameBioTheme(theme, { ...theme, background: { type: "solid", color: "#000" } })).toBe(
+      false,
+    );
+    expect(sameBioTheme(theme, null)).toBe(false);
   });
 });

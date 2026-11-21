@@ -60,6 +60,7 @@ export const PLAN_CAPS: PlanCapsByPlan = {
     linksLimit: 30,
     folderLimit: 0,
     analyticsRangeLimitDays: 7,
+    domainLimit: 0,
     geoRulesLimit: 0, // Targeting rules not available for free plan
     milestonesPerLinkLimit: 0,
     bioPageLimit: 1,

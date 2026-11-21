@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { apiSunsetWarning, canUseApi, getApiAccess, parseApiSunset } from "./api-access";
+import { NO_GRACE } from "./entitlements";
 
 import type { Subscription } from "@/server/db/schema";
 
@@ -51,16 +52,18 @@ describe("parseApiSunset", () => {
 
 describe("getApiAccess", () => {
   test("paid plans keep full access before and after the sunset", () => {
-    expect(getApiAccess(sub({}), SUNSET, AFTER)).toEqual({ status: "full" });
-    expect(getApiAccess(sub({ status: "on_trial" }), SUNSET, AFTER)).toEqual({ status: "full" });
+    expect(getApiAccess(sub({}), NO_GRACE, SUNSET, AFTER)).toEqual({ status: "full" });
+    expect(getApiAccess(sub({ status: "on_trial" }), NO_GRACE, SUNSET, AFTER)).toEqual({
+      status: "full",
+    });
   });
 
   test("free accounts keep full access while no sunset is configured", () => {
-    expect(getApiAccess(null, null, AFTER)).toEqual({ status: "full" });
+    expect(getApiAccess(null, NO_GRACE, null, AFTER)).toEqual({ status: "full" });
   });
 
   test("free accounts are sunsetting until the configured cutoff", () => {
-    expect(getApiAccess(null, SUNSET, BEFORE)).toEqual({
+    expect(getApiAccess(null, NO_GRACE, SUNSET, BEFORE)).toEqual({
       status: "sunsetting",
       deprecatedAt: new Date(SUNSET.getTime() - 7 * DAY),
       sunsetAt: SUNSET,
@@ -68,8 +71,14 @@ describe("getApiAccess", () => {
   });
 
   test("free accounts are revoked from the cutoff on", () => {
-    expect(getApiAccess(null, SUNSET, SUNSET)).toEqual({ status: "revoked", sunsetAt: SUNSET });
-    expect(getApiAccess(null, SUNSET, AFTER)).toEqual({ status: "revoked", sunsetAt: SUNSET });
+    expect(getApiAccess(null, NO_GRACE, SUNSET, SUNSET)).toEqual({
+      status: "revoked",
+      sunsetAt: SUNSET,
+    });
+    expect(getApiAccess(null, NO_GRACE, SUNSET, AFTER)).toEqual({
+      status: "revoked",
+      sunsetAt: SUNSET,
+    });
   });
 
   test("a free-plan subscription row with no paid history uses the configured cutoff", () => {
@@ -80,7 +89,10 @@ describe("getApiAccess", () => {
       variantId: 0,
       endsAt: new Date(BEFORE),
     });
-    expect(getApiAccess(row, SUNSET, AFTER)).toEqual({ status: "revoked", sunsetAt: SUNSET });
+    expect(getApiAccess(row, NO_GRACE, SUNSET, AFTER)).toEqual({
+      status: "revoked",
+      sunsetAt: SUNSET,
+    });
   });
 
   describe("lapsed accounts", () => {
@@ -90,12 +102,12 @@ describe("getApiAccess", () => {
 
     test("keep full access until the paid period ends", () => {
       const now = new Date(endsAt.getTime() - 1000);
-      expect(getApiAccess(cancelled, SUNSET, now)).toEqual({ status: "full" });
+      expect(getApiAccess(cancelled, NO_GRACE, SUNSET, now)).toEqual({ status: "full" });
     });
 
     test("get 7 days on Free limits after the paid period ends", () => {
       const now = new Date(endsAt.getTime() + 2 * DAY);
-      expect(getApiAccess(cancelled, SUNSET, now)).toEqual({
+      expect(getApiAccess(cancelled, NO_GRACE, SUNSET, now)).toEqual({
         status: "sunsetting",
         deprecatedAt: endsAt,
         sunsetAt: lapsedSunset,
@@ -103,7 +115,7 @@ describe("getApiAccess", () => {
     });
 
     test("are revoked 7 days after the paid period ends", () => {
-      expect(getApiAccess(cancelled, SUNSET, lapsedSunset)).toEqual({
+      expect(getApiAccess(cancelled, NO_GRACE, SUNSET, lapsedSunset)).toEqual({
         status: "revoked",
         sunsetAt: lapsedSunset,
       });
@@ -113,7 +125,7 @@ describe("getApiAccess", () => {
       const lapse = new Date(SUNSET.getTime() + DAY);
       const expired = sub({ status: "expired", providerUpdatedAt: lapse });
       const now = new Date(lapse.getTime() + DAY);
-      expect(getApiAccess(expired, SUNSET, now)).toMatchObject({
+      expect(getApiAccess(expired, NO_GRACE, SUNSET, now)).toMatchObject({
         status: "sunsetting",
         sunsetAt: new Date(lapse.getTime() + 7 * DAY),
       });
@@ -137,15 +149,19 @@ describe("getApiAccess", () => {
       const expired = webhookExpired(lapse);
       const lapsedSunset = new Date(lapse.getTime() + 7 * DAY);
 
-      expect(getApiAccess(expired, SUNSET, new Date(lapse.getTime() + 60 * 1000))).toEqual({
+      expect(
+        getApiAccess(expired, NO_GRACE, SUNSET, new Date(lapse.getTime() + 60 * 1000)),
+      ).toEqual({
         status: "sunsetting",
         deprecatedAt: lapse,
         sunsetAt: lapsedSunset,
       });
-      expect(getApiAccess(expired, SUNSET, new Date(lapsedSunset.getTime() - 1))).toMatchObject({
+      expect(
+        getApiAccess(expired, NO_GRACE, SUNSET, new Date(lapsedSunset.getTime() - 1)),
+      ).toMatchObject({
         status: "sunsetting",
       });
-      expect(getApiAccess(expired, SUNSET, lapsedSunset)).toEqual({
+      expect(getApiAccess(expired, NO_GRACE, SUNSET, lapsedSunset)).toEqual({
         status: "revoked",
         sunsetAt: lapsedSunset,
       });
@@ -153,12 +169,35 @@ describe("getApiAccess", () => {
 
     test("expired subscriptions get no window while the cutoff isn't set", () => {
       const expired = webhookExpired(BEFORE);
-      expect(getApiAccess(expired, null, AFTER)).toEqual({ status: "full" });
+      expect(getApiAccess(expired, NO_GRACE, null, AFTER)).toEqual({ status: "full" });
+    });
+
+    test("keep full access during a plan grace period, then count the notice from its end", () => {
+      const lapse = new Date(SUNSET.getTime() + DAY);
+      const expired = webhookExpired(lapse);
+      const graceEnd = new Date(lapse.getTime() + 7 * DAY);
+      const grace = { planGracePlan: "pro" as const, planGraceEndsAt: graceEnd };
+
+      expect(getApiAccess(expired, grace, SUNSET, new Date(graceEnd.getTime() - 1))).toEqual({
+        status: "full",
+      });
+      expect(getApiAccess(expired, grace, SUNSET, graceEnd)).toEqual({
+        status: "sunsetting",
+        deprecatedAt: graceEnd,
+        sunsetAt: new Date(graceEnd.getTime() + 7 * DAY),
+      });
+    });
+
+    test("a past_due subscription keeps the API until its grace period is recorded", () => {
+      const pastDue = sub({ status: "past_due" });
+      expect(getApiAccess(pastDue, NO_GRACE, SUNSET, AFTER)).toEqual({ status: "full" });
+      const ended = { planGracePlan: "pro" as const, planGraceEndsAt: BEFORE };
+      expect(getApiAccess(pastDue, ended, SUNSET, AFTER)).toMatchObject({ status: "sunsetting" });
     });
 
     test("a lapse long before the cutoff still gets the configured cutoff", () => {
       const old = sub({ status: "expired", endsAt: new Date("2025-01-01T00:00:00Z") });
-      expect(getApiAccess(old, SUNSET, BEFORE)).toMatchObject({
+      expect(getApiAccess(old, NO_GRACE, SUNSET, BEFORE)).toMatchObject({
         status: "sunsetting",
         sunsetAt: SUNSET,
       });

@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
+import { TEAM_READ_ONLY_MESSAGE } from "@/lib/billing/entitlements";
 import { isPlatformDomain } from "@/lib/constants/domains";
 import { customDomain, link, linkTag, qrcode } from "@/server/db/schema";
 import { getUserPlanContext } from "@/server/lib/user-plan";
@@ -86,7 +87,7 @@ export async function getAvailableWorkspaces(
 
   const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
   const personalPlan = planCtx?.plan ?? "free";
-  const personalLimit = planCtx?.caps.linksLimit;
+  const personalLimit = planCtx?.linksLimit;
 
   const isCurrentPersonal = ctx.workspace.type === "personal";
 
@@ -121,7 +122,7 @@ export async function getAvailableWorkspaces(
       name: team.name,
       slug: team.slug,
       role,
-      plan: "ultra", // Teams always have Ultra
+      plan: "ultra", // Writable teams have Ultra; read-only ones refuse transfers
       linkCount: Number(teamLinkCount[0]?.count ?? 0),
       linkLimit: undefined, // Teams have unlimited links
       isCurrent,
@@ -195,6 +196,17 @@ export async function validateTransfer(
         linksCount: linkIds.length,
       };
     }
+
+    if (targetWorkspace.type === "team" && targetWorkspace.readOnly) {
+      errors.push({ type: "PERMISSION_DENIED", message: TEAM_READ_ONLY_MESSAGE });
+      return {
+        isValid: false,
+        errors,
+        warnings,
+        targetWorkspace: null,
+        linksCount: linkIds.length,
+      };
+    }
   } else {
     // Personal workspace
     const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
@@ -250,7 +262,7 @@ export async function validateTransfer(
   // Check target workspace link limits (only for personal workspace)
   if (targetWorkspace.type === "personal") {
     const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
-    const limit = planCtx?.caps.linksLimit;
+    const limit = planCtx?.linksLimit;
 
     if (limit !== undefined) {
       const currentCount = await ctx.db

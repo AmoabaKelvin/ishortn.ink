@@ -19,9 +19,6 @@ const PLANS: { id: Plan; name: string }[] = [
 type Cap = keyof ReturnType<typeof getPlanCaps>;
 
 function formatCap(plan: Plan, cap: Cap): string {
-  // Free has no domainLimit in PLAN_CAPS, but adding a domain requires a paid
-  // subscription (domains.service.ts), so "unset" there means unavailable.
-  if (cap === "domainLimit" && plan === "free") return "Not available";
   const value = getPlanCaps(plan)[cap];
   if (value === undefined) return cap === "analyticsRangeLimitDays" ? "All time" : "Unlimited";
   if (value === 0) return "Not available";

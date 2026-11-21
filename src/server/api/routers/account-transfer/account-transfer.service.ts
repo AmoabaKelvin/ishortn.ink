@@ -4,7 +4,8 @@ import { TRPCError } from "@trpc/server";
 import { addDays } from "date-fns";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
-import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
+import { effectivePlan } from "@/lib/billing/entitlements";
+import { getPlanCaps } from "@/lib/billing/plans";
 import { getAppBaseDomain } from "@/lib/constants/domains";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { runBackgroundTask } from "@/lib/utils/background";
@@ -279,7 +280,7 @@ export async function validateAccountTransfer(
   }
 
   // Get target user's plan
-  const targetPlan = resolvePlan(targetUser.subscriptions ?? null);
+  const targetPlan = effectivePlan(targetUser.subscriptions ?? null, targetUser);
   const targetCaps = getPlanCaps(targetPlan);
 
   // Count source resources
