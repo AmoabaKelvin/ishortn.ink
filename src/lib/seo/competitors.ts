@@ -30,7 +30,7 @@ export const competitors = {
     name: "TinyURL",
     slug: "tinyurl",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-20",
+    pricesCheckedOn: "2026-11-21",
     tagline: "The original URL shortener",
     description:
       "TinyURL was one of the first URL shorteners, but it lacks analytics and modern features. See how iShortn compares.",
@@ -45,7 +45,6 @@ export const competitors = {
     whySwitch: [
       "TinyURL offers zero analytics on the free plan — iShortn tracks every click with detailed data",
       "No custom domains or password protection on TinyURL free",
-      "TinyURL free plan shows ads — iShortn is ad-free on all plans",
       "TinyURL Pro starts at $9/month (billed annually) for 125 links a month — iShortn Pro is $8/month for 1,000 links",
       "iShortn includes AI-powered link safety scanning on all plans",
     ],
