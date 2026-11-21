@@ -1,32 +1,21 @@
-import fs from "fs";
-import path from "path";
-
 import matter from "gray-matter";
 import { remark } from "remark";
 import gfm from "remark-gfm";
 import html from "remark-html";
 
+import { loadMarkdownSources } from "../markdown-sources";
 import { changelogFrontmatterSchema } from "./types";
 
 import type { ChangelogEntry, ChangelogManifest } from "./types";
 
-const changelogsDirectory = path.join(process.cwd(), "content/changelogs");
+const changelogSources = loadMarkdownSources("content/changelogs", () =>
+  import.meta.glob("/content/changelogs/*.md", { eager: true, query: "?raw" }),
+);
 
 export async function getChangelogEntries(): Promise<ChangelogEntry[]> {
-  if (!fs.existsSync(changelogsDirectory)) {
-    return [];
-  }
-
-  const fileNames = fs.readdirSync(changelogsDirectory);
-  const markdownFiles = fileNames.filter((name) => name.endsWith(".md"));
-
   const entries = await Promise.all(
-    markdownFiles.map(async (fileName) => {
-      const slug = fileName.replace(/\.md$/, "");
-      const fullPath = path.join(changelogsDirectory, fileName);
-      const fileContents = fs.readFileSync(fullPath, "utf8");
-
-      const { data, content } = matter(fileContents);
+    [...changelogSources].map(async ([slug, source]) => {
+      const { data, content } = matter(source);
 
       const processedContent = await remark().use(gfm).use(html).process(content);
       const htmlContent = processedContent.toString();

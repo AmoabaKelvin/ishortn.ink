@@ -16,6 +16,9 @@ const DOCS_LASTMOD = "2026-11-20";
 const compareList = Object.values(competitors);
 const maxDate = (a: string, b: string) => (a > b ? a : b);
 
+// Rebuild hourly so posts scheduled with a future `date` appear on that day without a deploy.
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [posts, changelogEntries] = await Promise.all([getAllPosts(), getChangelogEntries()]);
 
