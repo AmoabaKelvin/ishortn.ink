@@ -90,6 +90,7 @@ describe("solution copy", () => {
     expect(getSolution("events")).toBe(solutions.events);
     expect(getSolution("churches-and-nonprofits")).toBe(solutions["churches-and-nonprofits"]);
     expect(getSolution("real-estate")).toBe(solutions["real-estate"]);
+    expect(getSolution("small-business")).toBe(solutions["small-business"]);
     expect(getSolution("unknown")).toBeUndefined();
   });
 
