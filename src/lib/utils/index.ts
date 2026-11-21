@@ -3,8 +3,6 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { twMerge } from "tailwind-merge";
 
-import { env } from "@/env.mjs";
-
 import type { ClassValue } from "clsx";
 
 export function cn(...inputs: ClassValue[]) {
@@ -31,10 +29,6 @@ export function formatPrice(price: number | string, options: Intl.NumberFormatOp
     notation: options.notation ?? "compact",
     ...options,
   }).format(Number(price));
-}
-
-export function absoluteUrl(path: string) {
-  return new URL(path, env.NEXT_PUBLIC_APP_URL).href;
 }
 
 export function showSuccessToast() {

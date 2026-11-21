@@ -1,6 +1,6 @@
 "use client";
 
-import posthog from "posthog-js";
+import { withPostHog } from "./posthog";
 
 /**
  * PostHog event names for tracking user activities
@@ -53,11 +53,13 @@ type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];
 type EventProperties = Record<string, string | number | boolean | null | undefined>;
 
 /**
- * Track an event in PostHog
+ * Track an event in PostHog. Events sent before PostHog has loaded are queued and sent, with
+ * the time they happened, once it has.
  */
 export function trackEvent(eventName: PostHogEventName, properties?: EventProperties) {
   // eslint-disable-next-line anti-slop/no-runtime-typeof -- SSR guard
   if (typeof window !== "undefined") {
-    posthog.capture(eventName, properties);
+    const timestamp = new Date();
+    withPostHog((posthog) => posthog.capture(eventName, properties, { timestamp }));
   }
 }
