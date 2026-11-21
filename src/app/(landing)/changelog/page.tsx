@@ -2,6 +2,7 @@ import { IconBoltFilled } from "@tabler/icons-react";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { getChangelogEntries } from "@/lib/changelog";
+import { socialImages } from "@/lib/seo/og-image";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
     title: "Changelog — iShortn",
     description: "Every iShortn release in order: new features, improvements, and fixes.",
     type: "website",
+    images: socialImages(),
   },
 };
 

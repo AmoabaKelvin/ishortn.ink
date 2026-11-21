@@ -1,5 +1,6 @@
 import { IconFlagFilled } from "@tabler/icons-react";
 
+import { socialImages } from "@/lib/seo/og-image";
 import { cn } from "@/lib/utils";
 import { TRPCReactProvider } from "@/trpc/react";
 
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
     description:
       "Report a short link that is being used for phishing, malware, spam, or other abuse.",
     type: "website",
+    images: socialImages(),
   },
 };
 

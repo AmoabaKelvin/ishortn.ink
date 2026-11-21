@@ -2,6 +2,7 @@ import { IconTagFilled } from "@tabler/icons-react";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { getActivePromo } from "@/lib/billing/promo";
+import { socialImages } from "@/lib/seo/og-image";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
@@ -37,6 +38,7 @@ export const metadata: Metadata = {
     description:
       "Start free forever. Upgrade when you're ready. Cancel in one click. Pro and Ultra plans for solo makers and growing teams.",
     type: "website",
+    images: socialImages(),
   },
 };
 

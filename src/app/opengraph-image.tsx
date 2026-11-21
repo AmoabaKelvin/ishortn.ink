@@ -3,11 +3,10 @@ import { join } from "node:path";
 
 import { ImageResponse } from "next/og";
 
-export const alt = "iShortn - Free URL Shortener with Analytics";
-export const size = {
-  width: 1200,
-  height: 630,
-};
+import { OG_IMAGE_ALT, OG_IMAGE_SIZE } from "@/lib/seo/og-image";
+
+export const alt = OG_IMAGE_ALT;
+export const size = OG_IMAGE_SIZE;
 export const contentType = "image/png";
 
 export default async function Image() {

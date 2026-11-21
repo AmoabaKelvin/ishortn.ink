@@ -3,6 +3,7 @@ import { Link } from "next-view-transitions";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { competitors } from "@/lib/seo/competitors";
+import { socialImages } from "@/lib/seo/og-image";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,7 @@ export const metadata: Metadata = {
     description,
     type: "website",
     url: "https://ishortn.ink/compare",
+    images: socialImages(),
   },
 };
 
