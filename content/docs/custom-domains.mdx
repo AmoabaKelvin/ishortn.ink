@@ -15,7 +15,7 @@ In a [team workspace](/docs/teams), only the team owner can add or remove domain
 
 Use a **subdomain** of a domain you own, such as `go.yourbrand.com` or `links.yourbrand.com`. Subdomains work with every DNS provider and leave your main website untouched.
 
-You can also use a bare (apex) domain such as `yourbrand.link`, but only if nothing else is served from it and your DNS provider supports ALIAS, ANAME or flattened CNAME records. Cloudflare, Namecheap, Porkbun and Route 53 all do.
+You can also use a bare (apex) domain such as `yourbrand.link`, but only if nothing else is served from it and your DNS provider supports ALIAS, ANAME or flattened CNAME records. Cloudflare, Namecheap, Porkbun and Route 53 all do. If yours doesn't (GoDaddy, for example), you can move the domain's DNS to Cloudflare's free plan; see [below](#apex-domain-on-a-provider-without-alias-records).
 
 ## Add the domain
 
@@ -56,10 +56,21 @@ If a domain stays misconfigured, iShortn emails a reminder at most once a week. 
 
 - **Still pending after an hour.** Compare each record with the domain card character by character. A common mistake is entering the full domain as the name (`links.example.com.example.com`); most providers add your domain automatically, so enter only `links`.
 - **Cloudflare DNS.** Turn the proxy off (DNS only) on the CNAME record and set SSL/TLS to Full.
-- **An apex domain won't verify.** Your DNS provider may not support CNAME-style records at the root. Use a subdomain such as `links.example.com` instead.
+- **An apex domain won't verify.** Your DNS provider may not support CNAME-style records at the root. Use a subdomain such as `links.example.com`, or, if the domain is already printed or shared, move its DNS to Cloudflare as described below.
 - **"This domain is already added to this workspace".** It's already in your list.
 - **"This domain is already connected to another account".** Remove it from the other account first, or contact [support@ishortn.ink](mailto:support@ishortn.ink) if you own it.
 - **Plan limit.** Pro accounts can add <PlanValue plan="pro" cap="domainLimit" /> domains. Remove one or upgrade to Ultra for more.
+
+## Apex domain on a provider without ALIAS records
+
+Some DNS providers, including GoDaddy, can't point a bare domain such as `yourbrand.link` at another hostname. If you need that exact domain (for example because it's already on printed QR codes), move its DNS to Cloudflare. The free plan is enough, and the domain stays registered where it is.
+
+1. Create a free account at [cloudflare.com](https://www.cloudflare.com), click **Add a domain**, enter the domain and choose the **Free** plan.
+2. Cloudflare scans your existing DNS records. Compare its list with the records at your current provider, especially `MX` and `TXT` records if the domain receives email, and add anything it missed.
+3. Cloudflare shows two nameservers. At your registrar (for GoDaddy: **My Products** > the domain > **DNS** > **Nameservers** > **Change**), replace the current nameservers with Cloudflare's two.
+4. Wait until Cloudflare marks the domain **Active**. This usually takes under an hour and can take up to 24 hours. Your existing records keep working in the meantime.
+5. In Cloudflare DNS, replace the records that point the root elsewhere with a `CNAME` named `@` pointing to `cname.ishortn.ink`, set to **DNS only** (grey cloud). Cloudflare flattens it automatically. Add the `TXT` record from the domain card as well.
+6. Back in iShortn, click **Check Now** until the domain is **Active**.
 
 ## Link-in-bio pages on your domain
 

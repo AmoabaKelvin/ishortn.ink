@@ -52,7 +52,7 @@ In your DNS provider, replace Bitly's records with the ones on the iShortn domai
 | Subdomain, such as `go.yourbrand.com` | `CNAME` to `cname.bitly.com` | `CNAME` to `cname.ishortn.ink`, plus the `TXT` record from the domain card |
 | Whole domain, such as `yourbrand.co` | The two `A` records to `67.199.248.12` and `67.199.248.13` | An `ALIAS` or `ANAME` record (or a flattened `CNAME`) to `cname.ishortn.ink`, plus the `TXT` record from the domain card |
 
-If your DNS is on Cloudflare, set the record to **DNS only** (grey cloud). If your provider has no ALIAS, ANAME or flattened CNAME at the root, a whole domain can't point to iShortn; see [Custom domains](/docs/custom-domains#troubleshooting).
+If your DNS is on Cloudflare, set the record to **DNS only** (grey cloud). If your DNS provider has no ALIAS, ANAME or flattened CNAME records (GoDaddy is the common one), move the domain's DNS to Cloudflare's free plan first. See [Apex domain on GoDaddy or a similar provider](/docs/custom-domains#apex-domain-on-a-provider-without-alias-records). Do it before you change anything else: Cloudflare copies Bitly's records across, so your links keep working while the nameservers change.
 
 Back in iShortn, click **Check Now** until the domain shows **Active**. DNS changes usually show up within minutes.
 
