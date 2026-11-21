@@ -13,7 +13,8 @@ import {
   IconWorld,
 } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -21,6 +22,16 @@ import {
   type BioRenderBlock,
   type BioRenderModel,
 } from "@/components/bio/bio-renderer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +50,15 @@ import { AnalyticsPanel } from "./analytics-panel";
 import { BlockFormDialog } from "./block-form-dialog";
 import { BlockList } from "./block-list";
 import { PageQrDialog } from "./page-qr-dialog";
-import { SettingsPanel, type BioSettingsDraft } from "./settings-panel";
+import { SettingsPanel } from "./settings-panel";
+import {
+  formatMutationError,
+  getBlockPreviewNote,
+  getSlugError,
+  isDraftDirty,
+  toSettingsDraft,
+  type BioSettingsDraft,
+} from "./utils";
 
 import type { Plan } from "@/lib/billing/plans";
 import type { BioBlockType } from "@/server/db/schema";
@@ -87,23 +106,49 @@ export function BioPageBuilder({
   trackingPause: EventTrackingPause | null;
 }) {
   const utils = api.useUtils();
+  const router = useRouter();
   const { data } = api.bioPage.get.useQuery(
     { id: pageId },
     { initialData, refetchOnWindowFocus: false },
   );
   const page = data ?? initialData;
 
-  const [settings, setSettings] = useState<BioSettingsDraft>(() => ({
-    slug: page.slug,
-    title: page.title ?? "",
-    description: page.description ?? "",
-    avatarUrl: page.avatarUrl ?? null,
-    theme: page.theme ?? {},
-    removeBranding: page.removeBranding ?? false,
-    customDomain: page.customDomain ?? "",
-    socialImageUrl: page.socialImageUrl ?? null,
-  }));
+  const [settings, setSettings] = useState<BioSettingsDraft>(() => toSettingsDraft(page));
   const [adding, setAdding] = useState<BioBlockType | null>(null);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  // Fixed at mount: only used to label scheduled blocks in the preview.
+  const [now] = useState(Date.now);
+
+  const dirty = isDraftDirty(settings, toSettingsDraft(page));
+
+  // Guard Design edits against leaving: the browser prompt covers reloads, tab
+  // closes and external links; in-app links are intercepted in the capture phase,
+  // before Next's Link handler, and confirmed with a dialog.
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => e.preventDefault();
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const anchor = e.target instanceof Element ? e.target.closest("a[href]") : null;
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const url = new URL(anchor.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingHref(`${url.pathname}${url.search}${url.hash}`);
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [dirty]);
 
   const linkBlockLimit = getBioLinkBlockLimit(plan);
   const linkBlockCount = page.blocks.filter((b) => b.type === "link").length;
@@ -112,11 +157,15 @@ export function BioPageBuilder({
   const refresh = () => utils.bioPage.get.invalidate({ id: pageId });
 
   const updatePage = api.bioPage.update.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Changes saved.");
-      refresh();
+      await refresh();
+      // The server normalises some fields (uploaded images become URLs, domains are
+      // lowercased), so re-seed the draft from the saved page to make it clean again.
+      const saved = utils.bioPage.get.getData({ id: pageId });
+      if (saved) setSettings(toSettingsDraft(saved));
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => toast.error(formatMutationError(e)),
   });
   const togglePublished = api.bioPage.togglePublished.useMutation({
     onSuccess: (res) => {
@@ -127,10 +176,11 @@ export function BioPageBuilder({
   });
   const addBlock = api.bioPage.addBlock.useMutation({
     onSuccess: refresh,
-    onError: (e) => toast.error(e.message),
+    onError: (e) => toast.error(formatMutationError(e)),
   });
 
   function saveSettings() {
+    if (!dirty || getSlugError(settings.slug)) return;
     updatePage.mutate({
       id: pageId,
       slug: settings.slug,
@@ -159,26 +209,32 @@ export function BioPageBuilder({
     avatarUrl: settings.avatarUrl,
     theme: settings.theme,
     removeBranding: settings.removeBranding,
-    blocks: page.blocks.filter((b) => b.isVisible).map(toRenderBlock),
+    // Unlike the public page, keep hidden, scheduled and blocked blocks but label
+    // them, so the preview explains why the live page differs.
+    blocks: page.blocks.map((b) => ({
+      ...toRenderBlock(b),
+      previewNote: getBlockPreviewNote(b, now),
+    })),
   };
 
   return (
     <div>
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/dashboard/bio-pages"
-            className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
+            aria-label="Back to bio pages"
+            className="shrink-0 rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
           >
             <IconArrowLeft size={18} />
           </Link>
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-semibold tracking-tight text-neutral-900 dark:text-foreground">
               {page.title || `/${page.slug}`}
             </h2>
-            <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-              ishortn.ink/p/{page.slug}
+            <p className="truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+              {page.customDomain || `ishortn.ink/p/${page.slug}`}
             </p>
           </div>
           {page.isPublished ? (
@@ -294,6 +350,7 @@ export function BioPageBuilder({
                 plan={plan}
                 onSave={saveSettings}
                 saving={updatePage.isLoading}
+                dirty={dirty}
               />
             </TabsContent>
 
@@ -310,7 +367,7 @@ export function BioPageBuilder({
         <div className="shrink-0 lg:sticky lg:top-6 lg:w-[360px]">
           <div className="mx-auto w-full max-w-[360px]">
             <div className="overflow-hidden rounded-[2rem] border-[6px] border-neutral-800 bg-white shadow-xl dark:border-neutral-700">
-              <div className="h-[640px] overflow-y-auto">
+              <div className="h-[640px] overflow-y-auto overflow-x-hidden">
                 <BioRenderer model={previewModel} />
               </div>
             </div>
@@ -329,6 +386,28 @@ export function BioPageBuilder({
           canSchedule={plan === "ultra"}
         />
       )}
+
+      <AlertDialog open={pendingHref !== null} onOpenChange={(o) => !o && setPendingHref(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your Design changes haven&apos;t been saved. If you leave now, they&apos;ll be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (pendingHref) router.push(pendingHref);
+              }}
+            >
+              Discard changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
