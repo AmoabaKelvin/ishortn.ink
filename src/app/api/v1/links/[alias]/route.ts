@@ -109,7 +109,7 @@ export const PATCH = withApiKey(
 
     // Links on a custom domain past the plan's allowance keep redirecting but
     // can't be edited.
-    const domainError = await apiDomainWriteError(token.userId, token.plan, domain);
+    const domainError = await apiDomainWriteError(token.userId, token.graceUsagePlan, domain);
     if (domainError) {
       return new Response(domainError, { status: 403 });
     }
@@ -144,7 +144,7 @@ export const PATCH = withApiKey(
     if (parsed.data.activatesAt !== undefined) {
       if (
         parsed.data.activatesAt &&
-        token.plan === "free" &&
+        (existingLink.activateAt ? token.graceUsagePlan : token.plan) === "free" &&
         new Date(parsed.data.activatesAt).getTime() !== existingLink.activateAt?.getTime()
       ) {
         return new Response("Scheduled links are only available on Pro and Ultra plans", {

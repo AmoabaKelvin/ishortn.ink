@@ -4,11 +4,11 @@ import {
   describeOverPlanFeature,
   dueGraceEmail,
   effectivePlan,
+  graceUsagePlan,
   EMPTY_USAGE,
   GRACE_EMAIL_STAGE,
   GRACE_PERIOD_MS,
   graceChangeAfterBillingEvent,
-  newResourcePlan,
   NO_GRACE,
   overPlanFeatures,
   paidPlan,
@@ -89,17 +89,30 @@ describe("effectivePlan", () => {
   test("a passed over-plan grace doesn't stand in for a failed payment's lapse grace", () => {
     const pastDue = sub("past_due", "pro");
     expect(effectivePlan(pastDue, grace("ultra", at(-10), "over_plan"), NOW)).toBe("pro");
-    expect(effectivePlan(pastDue, grace("ultra", at(2), "over_plan"), NOW)).toBe("ultra");
+    expect(effectivePlan(pastDue, grace("ultra", at(2), "over_plan"), NOW)).toBe("pro");
+  });
+
+  test("an over-plan grace doesn't raise the plan; a lapse grace keeps the whole plan", () => {
+    expect(effectivePlan(null, grace("ultra", at(3), "over_plan"), NOW)).toBe("free");
+    expect(effectivePlan(sub("active", "pro"), grace("ultra", at(3), "over_plan"), NOW)).toBe(
+      "pro",
+    );
+    expect(effectivePlan(sub("expired", "pro"), grace("pro", at(3)), NOW)).toBe("pro");
   });
 });
 
-describe("newResourcePlan", () => {
-  test("an over-plan grace keeps existing usage only; a lapse grace keeps the whole plan", () => {
-    expect(newResourcePlan(null, grace("pro", at(3), "over_plan"), NOW)).toBe("free");
-    expect(newResourcePlan(sub("active", "pro"), grace("ultra", at(3), "over_plan"), NOW)).toBe(
-      "pro",
+describe("graceUsagePlan", () => {
+  test("an over-plan grace covers existing usage until it ends", () => {
+    expect(graceUsagePlan(null, grace("ultra", at(3), "over_plan"), NOW)).toBe("ultra");
+    expect(graceUsagePlan(null, grace("ultra", at(-1), "over_plan"), NOW)).toBe("free");
+    expect(graceUsagePlan(sub("active", "ultra"), grace("pro", at(3), "over_plan"), NOW)).toBe(
+      "ultra",
     );
-    expect(newResourcePlan(sub("expired", "pro"), grace("pro", at(3)), NOW)).toBe("pro");
+  });
+
+  test("matches effectivePlan without an over-plan grace", () => {
+    expect(graceUsagePlan(sub("expired", "pro"), grace("pro", at(3)), NOW)).toBe("pro");
+    expect(graceUsagePlan(sub("active", "pro"), NO_GRACE, NOW)).toBe("pro");
   });
 });
 

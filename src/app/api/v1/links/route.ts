@@ -44,7 +44,11 @@ export const POST = withApiKey(async (request: Request, token) => {
         });
       }
       const plan = token.plan;
-      const domainError = await apiDomainWriteError(token.userId, plan, requestedDomain);
+      const domainError = await apiDomainWriteError(
+        token.userId,
+        token.graceUsagePlan,
+        requestedDomain,
+      );
       if (domainError) {
         throw new TRPCError({ code: "FORBIDDEN", message: domainError });
       }

@@ -131,6 +131,9 @@ export type PersonalWorkspaceContext = {
   teamSlug: null;
   role: "owner"; // Users are always owners of their personal workspace
   plan: Plan;
+  // Plan that existing usage is held to during an over-plan grace (see
+  // graceUsagePlan in src/lib/billing/entitlements.ts); absent means `plan`.
+  graceUsagePlan?: Plan;
 };
 
 /**

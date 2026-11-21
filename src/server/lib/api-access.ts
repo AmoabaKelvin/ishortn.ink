@@ -117,6 +117,7 @@ export async function sendApiSunsetEmailsDue(now = new Date()) {
         reminderSentAt: user.apiSunsetReminderSentAt,
         planGracePlan: user.planGracePlan,
         planGraceEndsAt: user.planGraceEndsAt,
+        planGraceReason: user.planGraceReason,
         subscription,
       })
       .from(user)

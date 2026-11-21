@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 
-import { effectivePlan, newResourcePlan } from "@/lib/billing/entitlements";
+import { effectivePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
@@ -36,8 +36,6 @@ export type UserPlanContext = {
   subscription: Subscription | null;
   plan: Plan;
   caps: (typeof PLAN_CAPS)[Plan];
-  /** Plan for the monthly link quota, new domains and API keys (see newResourcePlan). */
-  newResourcePlan: Plan;
   linksLimit: number | undefined;
 };
 
@@ -61,15 +59,13 @@ export async function getUserPlanContext(
 
   const subscription = userRecord.subscriptions ?? null;
   const plan = effectivePlan(subscription, userRecord);
-  const growthPlan = newResourcePlan(subscription, userRecord);
 
   return {
     userRecord,
     subscription,
     plan,
     caps: getPlanCaps(plan),
-    newResourcePlan: growthPlan,
-    linksLimit: getPlanCaps(growthPlan).linksLimit,
+    linksLimit: getPlanCaps(plan).linksLimit,
   };
 }
 
@@ -173,7 +169,7 @@ export async function reserveMonthlyLinkSlot(
   if (result.affectedRows === 0) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: monthlyLinkLimitMessage(planCtx.newResourcePlan, limit),
+      message: monthlyLinkLimitMessage(planCtx.plan, limit),
     });
   }
 

@@ -7,6 +7,8 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconFilter,
+  IconLink,
+  IconPlus,
   IconSearch,
   IconSortAscending,
   IconSortDescending,
@@ -15,9 +17,11 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Link as TransitionLink } from "next-view-transitions";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useOptimistic, useState, useTransition } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -38,130 +42,120 @@ type LinksProps = {
   links: RouterOutputs["link"]["list"]["links"];
   totalPages: number;
   currentPage: number;
+  workspaceHasLinks: boolean;
+  tags: string[];
 };
 
-const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
+type ArchivedFilter = "active" | "archived" | "all";
+
+const parseArchivedFilter = (value: string | null): ArchivedFilter =>
+  value === "archived" || value === "all" ? value : "active";
+
+const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags }: LinksProps) => {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
   const { isSelectionMode, exitSelectionMode, selectAll, clearSelection, selectedLinkIds } =
     useSelection();
-  const [searchQuery, setSearchQuery] = useState(urlSearchParams.get("search") ?? "");
-  const [orderBy, setOrderBy] = useState(urlSearchParams.get("orderBy") ?? "createdAt");
-  const [orderDirection, setOrderDirection] = useState(
-    urlSearchParams.get("orderDirection") ?? "desc",
-  );
-  const [archivedFilter, setArchivedFilter] = useState(
-    urlSearchParams.get("archivedFilter") ?? "active",
-  );
-  const [campaignFilter, setCampaignFilter] = useState(urlSearchParams.get("campaign") ?? "all");
-  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
-    const tagFromUrl = urlSearchParams.get("tag");
-    return tagFromUrl ? [tagFromUrl] : [];
-  });
-  const [syncedSearchParams, setSyncedSearchParams] = useState(urlSearchParams);
 
-  if (syncedSearchParams !== urlSearchParams) {
-    setSyncedSearchParams(urlSearchParams);
-    const tagFromUrl = urlSearchParams.get("tag");
-    if (tagFromUrl) {
-      setSelectedTags([tagFromUrl]);
+  // Filter state lives in the URL. While a navigation is in flight the
+  // optimistic copy shows the new value, then falls back to the real URL.
+  const [, startTransition] = useTransition();
+  const [optimisticQuery, setOptimisticQuery] = useOptimistic(urlSearchParams.toString());
+  const params = new URLSearchParams(optimisticQuery);
+  const archivedFilter = parseArchivedFilter(params.get("archivedFilter"));
+  const tagFilter = params.get("tag");
+  const campaignFilter = params.get("campaign") ?? "all";
+  const orderBy = params.get("orderBy") ?? "createdAt";
+  const orderDirection = params.get("orderDirection") ?? "desc";
+  const pendingSearch = params.get("search") ?? "";
+  const hasFilters =
+    pendingSearch !== "" ||
+    tagFilter !== null ||
+    campaignFilter !== "all" ||
+    archivedFilter !== "active";
+
+  /** Applies `updates` (null removes a key); any change other than paging goes back to page 1. */
+  const navigate = (updates: Record<string, string | null>) => {
+    const next = new URLSearchParams(optimisticQuery);
+    next.delete("page");
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null) next.delete(key);
+      else next.set(key, value);
     }
-    const archivedFromUrl = urlSearchParams.get("archivedFilter");
-    if (archivedFromUrl) {
-      setArchivedFilter(archivedFromUrl);
-    }
-    setCampaignFilter(urlSearchParams.get("campaign") ?? "all");
+    const query = next.toString();
+    startTransition(() => {
+      setOptimisticQuery(query);
+      router.push(query ? `/dashboard?${query}` : "/dashboard");
+    });
+  };
+
+  // The search box needs local state for typing. It follows the URL (Back,
+  // sidebar link) except when the URL change is our own debounced push, so
+  // characters typed while that push was in flight are kept.
+  const urlSearch = urlSearchParams.get("search") ?? "";
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
+  const [syncedSearch, setSyncedSearch] = useState(urlSearch);
+  const [pushedSearch, setPushedSearch] = useState<string | null>(null);
+  if (urlSearch !== syncedSearch) {
+    setSyncedSearch(urlSearch);
+    if (urlSearch === pushedSearch) setPushedSearch(null);
+    else setSearchQuery(urlSearch);
   }
 
-  const allTags = Array.from(new Set(links.flatMap((link) => link.tags)));
+  const pushSearch = useEffectEvent((query: string) => {
+    setPushedSearch(query);
+    navigate({ search: query || null });
+  });
+
+  useEffect(() => {
+    if (searchQuery === pendingSearch) return;
+    const handler = setTimeout(() => pushSearch(searchQuery), 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery, pendingSearch]);
+
+  // Selected ids only make sense for the rows on screen.
+  const queryKey = urlSearchParams.toString();
+  useEffect(() => {
+    clearSelection();
+  }, [queryKey, clearSelection]);
+
+  const tagOptions = tagFilter && !tags.includes(tagFilter) ? [tagFilter, ...tags] : tags;
 
   const { data: campaigns } = api.campaign.listNames.useQuery(undefined, {
     staleTime: 60_000,
   });
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      const params = new URLSearchParams(urlSearchParams.toString());
-      const currentSearch = params.get("search") ?? "";
-
-      if (searchQuery !== currentSearch) {
-        if (searchQuery) {
-          params.set("search", searchQuery);
-        } else {
-          params.delete("search");
-        }
-        params.set("page", "1");
-        router.push(`/dashboard?${params.toString()}`);
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [searchQuery, router, urlSearchParams]);
-
   const handlePageChange = (page: number) => {
-    const params = new URLSearchParams(urlSearchParams.toString());
-    params.set("page", page.toString());
-    router.push(`/dashboard?${params.toString()}`);
+    navigate({ page: page > 1 ? page.toString() : null });
   };
 
   const handleOrderChange = (value: string) => {
     const [newOrderBy, newOrderDirection] = value.split("-");
-    setOrderBy(newOrderBy!);
-    setOrderDirection(newOrderDirection!);
-
-    const params = new URLSearchParams(urlSearchParams.toString());
-    params.set("orderBy", newOrderBy!);
-    params.set("orderDirection", newOrderDirection!);
-    router.push(`/dashboard?${params.toString()}`);
+    navigate({ orderBy: newOrderBy ?? null, orderDirection: newOrderDirection ?? null });
   };
 
   const handleArchivedFilterChange = (value: string) => {
-    setArchivedFilter(value);
-
-    const params = new URLSearchParams(urlSearchParams.toString());
-    if (value === "all") {
-      params.delete("archivedFilter");
-    } else {
-      params.set("archivedFilter", value);
-    }
-    params.set("page", "1");
-    router.push(`/dashboard?${params.toString()}`);
+    navigate({ archivedFilter: value === "active" ? null : value });
   };
 
   const handleCampaignFilterChange = (value: string) => {
-    setCampaignFilter(value);
-
-    const params = new URLSearchParams(urlSearchParams.toString());
-    if (value === "all") {
-      params.delete("campaign");
-    } else {
-      params.set("campaign", value);
-    }
-    params.set("page", "1");
-    router.push(`/dashboard?${params.toString()}`);
+    navigate({ campaign: value === "all" ? null : value });
   };
 
   const handleTagClick = (tag: string) => {
-    setSelectedTags([tag]);
-
-    const params = new URLSearchParams(urlSearchParams.toString());
-    params.set("tag", tag);
-    params.set("page", "1");
-    router.push(`/dashboard?${params.toString()}`);
+    navigate({ tag });
   };
 
-  const removeTag = (tag: string) => {
-    setSelectedTags(selectedTags.filter((t) => t !== tag));
-
-    const params = new URLSearchParams(urlSearchParams.toString());
-    params.delete("tag");
-    params.set("page", "1");
-    router.push(`/dashboard?${params.toString()}`);
+  const clearTag = () => {
+    navigate({ tag: null });
   };
 
-  const allSelected = selectedLinkIds.length === links.length && links.length > 0;
+  const clearFilters = () => {
+    setSearchQuery("");
+    navigate({ search: null, tag: null, campaign: null, archivedFilter: null });
+  };
+
+  const allSelected = links.length > 0 && links.every((link) => selectedLinkIds.includes(link.id));
 
   const handleSelectAllToggle = () => {
     if (allSelected) {
@@ -184,6 +178,7 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
           <Input
             className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card pl-9 text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
             placeholder="Search links..."
+            aria-label="Search links"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />
@@ -218,18 +213,8 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
         </Select>
 
         <Select
-          onValueChange={(value) => {
-            if (value !== "all") {
-              handleTagClick(value);
-            } else {
-              setSelectedTags([]);
-              const params = new URLSearchParams(urlSearchParams.toString());
-              params.delete("tag");
-              params.set("page", "1");
-              router.push(`/dashboard?${params.toString()}`);
-            }
-          }}
-          value={selectedTags.length > 0 ? selectedTags[0] : "all"}
+          onValueChange={(value) => (value === "all" ? clearTag() : handleTagClick(value))}
+          value={tagFilter ?? "all"}
         >
           <SelectTrigger className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] sm:w-[130px]">
             <SelectValue placeholder="Tags" />
@@ -239,7 +224,7 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
               <IconTag size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
               All tags
             </SelectItem>
-            {allTags.map((tag) => (
+            {tagOptions.map((tag) => (
               <SelectItem key={tag} value={tag}>
                 <IconTag size={14} stroke={1.5} className="mr-1.5 inline-block text-neutral-400" />
                 {tag}
@@ -334,30 +319,17 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
       </div>
 
       {/* Active tag filter */}
-      {selectedTags.length > 0 && (
+      {tagFilter && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[12px] text-neutral-400">Filtered by:</span>
-          {selectedTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => removeTag(tag)}
-              className="inline-flex items-center gap-1 rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
-            >
-              {tag}
-              <IconX size={12} stroke={1.5} className="text-neutral-400" />
-            </button>
-          ))}
+          <span className="text-[12px] text-neutral-400 dark:text-neutral-500">Filtered by:</span>
           <button
-            onClick={() => {
-              setSelectedTags([]);
-              const params = new URLSearchParams(urlSearchParams.toString());
-              params.delete("tag");
-              params.set("page", "1");
-              router.push(`/dashboard?${params.toString()}`);
-            }}
-            className="text-[12px] text-neutral-400 transition-colors hover:text-neutral-600"
+            type="button"
+            onClick={clearTag}
+            aria-label={`Remove tag filter ${tagFilter}`}
+            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50"
           >
-            Clear
+            <span className="truncate">{tagFilter}</span>
+            <IconX size={12} stroke={1.5} className="shrink-0 text-neutral-400" />
           </button>
         </div>
       )}
@@ -399,6 +371,8 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
                 )}
               </div>
               <button
+                type="button"
+                aria-label="Exit selection mode"
                 onClick={exitSelectionMode}
                 className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600"
               >
@@ -426,16 +400,65 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
         </AnimatePresence>
       </div>
 
-      {/* Empty state */}
+      {/* Empty states */}
       {links.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-            <IconSearch size={20} stroke={1.5} className="text-neutral-400" />
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
+            {hasFilters ? (
+              <IconSearch
+                size={24}
+                stroke={1.5}
+                className="text-neutral-400 dark:text-neutral-500"
+              />
+            ) : workspaceHasLinks ? (
+              <IconArchive
+                size={24}
+                stroke={1.5}
+                className="text-neutral-400 dark:text-neutral-500"
+              />
+            ) : (
+              <IconLink size={24} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+            )}
           </div>
-          <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
-            No links found
+          <p className="mt-6 text-[14px] font-medium text-neutral-900 dark:text-foreground">
+            {hasFilters ? "No links found" : workspaceHasLinks ? "No active links" : "No links yet"}
           </p>
-          <p className="mt-1 text-[13px] text-neutral-400">Try adjusting your search or filters.</p>
+          <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+            {hasFilters
+              ? "Try adjusting your search or filters."
+              : workspaceHasLinks
+                ? "Archived links are hidden from this view. They still redirect."
+                : "Shorten a long URL to get a link you can share and track."}
+          </p>
+          <div className="mt-6">
+            {hasFilters ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={clearFilters}
+                className="h-9 border-neutral-200 dark:border-border text-[13px]"
+              >
+                Clear filters
+              </Button>
+            ) : workspaceHasLinks ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleArchivedFilterChange("archived")}
+                className="h-9 border-neutral-200 dark:border-border text-[13px]"
+              >
+                Show archived links
+              </Button>
+            ) : (
+              <TransitionLink
+                href="/dashboard/link/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                <IconPlus size={16} stroke={2} />
+                Create your first link
+              </TransitionLink>
+            )}
+          </div>
         </div>
       )}
 
@@ -447,6 +470,8 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
           </p>
           <div className="flex items-center gap-1">
             <button
+              type="button"
+              aria-label="Previous page"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage <= 1}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900 dark:hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
@@ -454,6 +479,8 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
               <IconChevronLeft size={16} stroke={1.5} />
             </button>
             <button
+              type="button"
+              aria-label="Next page"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage >= totalPages}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900 dark:hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
@@ -464,7 +491,7 @@ const LinksContent = ({ links, totalPages, currentPage }: LinksProps) => {
         </div>
       )}
 
-      <BulkActionBar />
+      <BulkActionBar archivedFilter={archivedFilter} />
     </>
   );
 };

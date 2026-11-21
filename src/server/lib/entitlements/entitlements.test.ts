@@ -25,7 +25,7 @@ import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { prepareHiddenTrackingLink } from "@/server/lib/tracking-link";
 import { getUserPlanContext } from "@/server/lib/user-plan";
-import { resolveWorkspaceContext } from "@/server/lib/workspace";
+import { resolveWorkspaceContext, workspaceUsagePlan } from "@/server/lib/workspace";
 import { userHasUltraPlan } from "@/server/lib/workspace/workspace.service";
 
 import { reconcileEntitlements, syncEntitlementsAfterBillingEvent } from "./grace";
@@ -292,8 +292,9 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
         key,
         usable.map((_, i) => ({ domain: domainOf(key, i + 1) })),
       );
+      // Failures report the file line; line 1 is the header.
       expect(result.failures.map((failure) => failure.row)).toEqual(
-        usable.flatMap((allowed, i) => (allowed ? [] : [i + 1])),
+        usable.flatMap((allowed, i) => (allowed ? [] : [i + 2])),
       );
     });
   });
@@ -374,7 +375,8 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     }
 
     const workspace = await resolveWorkspaceContext(UNCHECKED_OVER_ID, "ishortn.ink", db);
-    expect(workspace.plan).toBe("pro");
+    expect(workspace.plan).toBe("free");
+    expect(workspaceUsagePlan(workspace)).toBe("pro");
     const row = await db.query.user.findFirst({ where: eq(schema.user.id, UNCHECKED_OVER_ID) });
     expect(row?.planGraceReason).toBe("over_plan");
     expect(row?.planCheckedAt).not.toBeNull();
@@ -421,7 +423,8 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
   test("an over-plan grace keeps existing usage but grows nothing", async () => {
     // Created by the test above: a free account in an over-plan grace at Ultra.
     const workspace = await resolveWorkspaceContext(OVER_PLAN_GRACE_ID, "ishortn.ink", db);
-    expect(workspace.plan).toBe("ultra");
+    expect(workspace.plan).toBe("free");
+    expect(workspaceUsagePlan(workspace)).toBe("ultra");
     // SAFETY: these services read ctx.db, ctx.auth.userId and ctx.workspace.
     const ctx = {
       db,
@@ -436,6 +439,52 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     expect(addDomainToUserAccount(ctx, { domain: "new.over-plan.test" })).rejects.toThrow(
       /active subscription/,
     );
+
+    // New links can't pick up paid features the grace plan covers.
+    for (const input of [
+      { cloaking: true },
+      { utmParams: { utm_source: "new" } },
+      { password: "hunter22" },
+      { activateAt: new Date(Date.now() + DAY) },
+    ] satisfies Partial<CreateLinkInput>[]) {
+      expect(
+        createLink(ctx, { url: TARGET_URL, alias: uniqueAlias(), ...input }),
+      ).rejects.toThrow();
+    }
+    expect(createFolder(ctx, { name: `Folder ${uniqueAlias()}` })).rejects.toThrow();
+  });
+
+  test("an over-plan grace keeps a link's existing paid settings editable", async () => {
+    const workspace = await resolveWorkspaceContext(OVER_PLAN_GRACE_ID, "ishortn.ink", db);
+    // SAFETY: updateLink reads ctx.db, ctx.auth.userId, ctx.headers and ctx.workspace.
+    const ctx = {
+      db,
+      auth: { userId: OVER_PLAN_GRACE_ID },
+      headers: new Headers({ host: "ishortn.ink" }),
+      workspace,
+    } as WorkspaceTRPCContext;
+    const [withSettings] = await db.insert(schema.link).values({
+      url: TARGET_URL,
+      alias: uniqueAlias(),
+      userId: OVER_PLAN_GRACE_ID,
+      utmParams: { utm_source: "kept" },
+      activateAt: new Date(Date.now() + 2 * DAY),
+    });
+    const id = Number(withSettings.insertId);
+    const activateAt = new Date(Date.now() + 3 * DAY);
+    await updateLink(ctx, { id, utmParams: { utm_source: "changed" }, activateAt });
+    const edited = await db.query.link.findFirst({ where: eq(schema.link.id, id) });
+    expect(edited?.utmParams).toEqual({ utm_source: "changed" });
+
+    // A link without them can't gain them.
+    const [plain] = await db.insert(schema.link).values({
+      url: TARGET_URL,
+      alias: uniqueAlias(),
+      userId: OVER_PLAN_GRACE_ID,
+    });
+    expect(
+      updateLink(ctx, { id: Number(plain.insertId), utmParams: { utm_source: "new" } }),
+    ).rejects.toThrow(/UTM parameters/);
   });
 
   // ---------------------------------------------------------------------------

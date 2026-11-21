@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { parse } from "csv-parse/sync";
 import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import {
   and,
@@ -79,6 +78,7 @@ import {
   requireFolderAccess,
   workspaceFilter,
   workspaceOwnership,
+  workspaceUsagePlan,
 } from "@/server/lib/workspace";
 
 import { mergeCampaignUtm } from "../campaign/utils";
@@ -87,9 +87,11 @@ import {
   assertDomainAllowed,
   assertDomainWithinPlan,
   checkWorkspaceLinkLimit,
+  escapeLikePattern,
   getPlanAllowedDefaultDomain,
   hasUtmValues,
   incrementWorkspaceLinkCount,
+  parseLinkCsv,
   PASSWORD_ATTEMPTS_PER_IP,
   PASSWORD_ATTEMPTS_PER_LINK,
   readAttemptWindow,
@@ -97,6 +99,7 @@ import {
   restrictedLinkValues,
   sameGeoRules,
   sameUtmParams,
+  settleWithConcurrency,
   toPublicLink,
   validateAlias,
 } from "./utils";
@@ -114,6 +117,7 @@ import type {
   UpdateLinkInput,
   VerifyLinkPasswordInput,
 } from "./link.input";
+import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
 import type { ScrapedMetadata } from "@/server/lib/metadata";
@@ -127,13 +131,6 @@ function storedOgImage(metadata: Link["metadata"]): string | undefined {
   const parsed = storedLinkMetadataSchema.safeParse(metadata);
   return parsed.success ? parsed.data?.image : undefined;
 }
-
-const csvLinkRowSchema = z.object({
-  url: z.string(),
-  alias: z.string().optional(),
-  domain: z.string().optional(),
-  note: z.string().optional(),
-});
 
 export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput) => {
   const {
@@ -188,6 +185,8 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
       totalClicks: 0,
       currentPage: page,
       totalPages: 0,
+      // Only read when no filter is active; a tag filter is.
+      workspaceHasLinks: true,
     };
   }
 
@@ -206,7 +205,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
 
   // Add search filtering
   if (search && search.trim() !== "") {
-    const searchLower = `%${search.trim().toLowerCase()}%`;
+    const searchLower = `%${escapeLikePattern(search.trim().toLowerCase())}%`;
     baseCondition = and(
       baseCondition,
       or(like(link.name, searchLower), like(link.alias, searchLower), like(link.url, searchLower)),
@@ -349,6 +348,12 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
   );
 
   const totalLinks = totalLinksResult?.[0]?.count ?? 0;
+  // Tells a brand-new workspace (first-link prompt) apart from a filter that
+  // matched nothing; only queried when this page came back empty.
+  const workspaceHasLinks =
+    totalLinks > 0 ||
+    (await ctx.db.select({ id: link.id }).from(link).where(workspaceLinkCondition).limit(1))
+      .length > 0;
   const totalClicks =
     (totalClicksResult?.[0]?.totalClicks ?? 0) +
     (Number(archivedClicksResult?.[0]?.archivedClicks) || 0);
@@ -359,6 +364,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     totalClicks,
     currentPage: page,
     totalPages: Math.ceil(totalLinks / pageSize),
+    workspaceHasLinks,
   };
 };
 
@@ -636,8 +642,11 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     await requireFolderAccess(ctx.db, ctx.workspace, existingLink.folderId);
   }
 
-  // The workspace's live plan (a team's comes from its owner).
+  // The workspace's live plan (a team's comes from its owner). Settings the link
+  // already has are held to the usage plan, so they stay editable through an
+  // over-plan grace; adding them needs the live plan.
   const workspacePlan = ctx.workspace.plan;
+  const usagePlan = workspaceUsagePlan(ctx.workspace);
   const isPaidUser = workspacePlan !== "free";
 
   // Re-scan only when the destination actually changes: the check can reach
@@ -666,7 +675,7 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   // after a downgrade, links keep their settings and other fields stay editable.
   if (
     input.activateAt &&
-    !isPaidUser &&
+    (existingLink.activateAt ? usagePlan : workspacePlan) === "free" &&
     input.activateAt.getTime() !== existingLink.activateAt?.getTime()
   ) {
     throw new Error(
@@ -676,7 +685,7 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
 
   // Check for UTM params - Ultra plan only
   if (
-    workspacePlan !== "ultra" &&
+    (hasUtmValues(existingLink.utmParams) ? usagePlan : workspacePlan) !== "ultra" &&
     hasUtmValues(input.utmParams) &&
     !sameUtmParams(input.utmParams, existingLink.utmParams)
   ) {
@@ -702,26 +711,34 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   let geoRulesInput = input.geoRules;
   if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
     const geoLimit = getGeoRulesLimit(workspacePlan);
-    const withinPlan =
-      canUseGeoRules(workspacePlan) &&
-      (isUnlimitedGeoRules(workspacePlan) ||
-        geoLimit === undefined ||
-        geoRulesInput.length <= geoLimit);
-    if (!withinPlan) {
+    const rulesWithin = (plan: Plan, count: number) => {
+      const limit = getGeoRulesLimit(plan);
+      return (
+        canUseGeoRules(plan) && (isUnlimitedGeoRules(plan) || limit === undefined || count <= limit)
+      );
+    };
+    if (!rulesWithin(workspacePlan, geoRulesInput.length)) {
       const existingRules = await ctx.db
         .select()
         .from(geoRule)
         .where(eq(geoRule.linkId, input.id))
         .orderBy(asc(geoRule.priority));
-      if (!sameGeoRules(geoRulesInput, existingRules)) {
-        throw new Error(
-          canUseGeoRules(workspacePlan)
-            ? `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`
-            : "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-        );
+      // During an over-plan grace a link's rules stay editable, without adding more.
+      const editableInGrace =
+        existingRules.length > 0 &&
+        geoRulesInput.length <= existingRules.length &&
+        rulesWithin(usagePlan, geoRulesInput.length);
+      if (!editableInGrace) {
+        if (!sameGeoRules(geoRulesInput, existingRules)) {
+          throw new Error(
+            canUseGeoRules(workspacePlan)
+              ? `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`
+              : "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+          );
+        }
+        // Unchanged: leave the stored rules alone.
+        geoRulesInput = undefined;
       }
-      // Unchanged: leave the stored rules alone.
-      geoRulesInput = undefined;
     }
   }
 
@@ -1698,19 +1715,20 @@ export const changeLinkPassword = async (
   ctx: WorkspaceTRPCContext,
   input: { id: number; password: string },
 ) => {
-  if (ctx.workspace.plan === "free") {
+  const existing = await ctx.db.query.link.findFirst({
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
+    columns: { domain: true, passwordHash: true },
+  });
+  if (!existing) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
+  }
+  // A link that already has a password can change it through an over-plan grace.
+  const plan = existing.passwordHash ? workspaceUsagePlan(ctx.workspace) : ctx.workspace.plan;
+  if (plan === "free") {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You need to upgrade to a pro plan to use password protection",
     });
-  }
-
-  const existing = await ctx.db.query.link.findFirst({
-    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
-    columns: { domain: true },
-  });
-  if (!existing) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
   }
   await assertDomainWithinPlan(ctx, existing.domain);
 
@@ -1744,6 +1762,10 @@ export const checkAliasAvailability = async (
   return { isAvailable: !existingLink };
 };
 
+// Alias checks, URL scans and inserts each hold a db connection or an outbound
+// request; cap them so a 1,000-row file doesn't fan out all at once.
+const CSV_IMPORT_CONCURRENCY = 8;
+
 // `checkUrl` is a seam for tests; callers use the default.
 export const bulkCreateLinks = (
   ctx: WorkspaceTRPCContext,
@@ -1760,47 +1782,38 @@ const bulkCreateLinkRows = async (
   csvContent: string,
   checkUrl: (url: string) => Promise<void>,
 ) => {
-  const rows: unknown[] = parse(csvContent, {
-    columns: true,
-    skip_empty_lines: true,
-  });
+  const rows = parseLinkCsv(csvContent);
 
   // Throws when the monthly allowance is already used up, rejecting the whole import.
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
   const remaining = limit === undefined ? Number.POSITIVE_INFINITY : limit - currentCount;
 
-  const records = rows.map((row) => {
-    const parsed = csvLinkRowSchema.safeParse(row);
-    if (!parsed.success || parsed.data.url.trim() === "") return null;
-    return {
-      url: parsed.data.url.trim(),
-      alias: parsed.data.alias?.trim() || undefined,
-      domain: parsed.data.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
-      note: parsed.data.note,
-    };
-  });
+  const records = rows.map((row) => ({
+    ...row,
+    domain: row.domain ?? DEFAULT_PLATFORM_DOMAIN,
+  }));
 
   // One ownership lookup per distinct domain, not per row.
   const domainErrors = new Map<string, unknown>();
-  await Promise.all(
-    [...new Set(records.flatMap((record) => (record ? [record.domain] : [])))].map(
-      async (domain) => {
-        try {
-          await assertDomainAllowed(ctx, domain);
-          domainErrors.set(domain, null);
-        } catch (error) {
-          domainErrors.set(domain, error);
-        }
-      },
-    ),
+  await settleWithConcurrency(
+    [...new Set(records.map((record) => record.domain))],
+    CSV_IMPORT_CONCURRENCY,
+    async (domain) => {
+      try {
+        await assertDomainAllowed(ctx, domain);
+        domainErrors.set(domain, null);
+      } catch (error) {
+        domainErrors.set(domain, error);
+      }
+    },
   );
 
   // Two rows claiming the same alias on the same domain would otherwise race on
   // the unique index; the first one in the file wins.
   const seenAliases = new Set<string>();
-  const aliasChecks = records.map(async (record) => {
-    if (!record) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing or invalid url" });
+  const validated = await settleWithConcurrency(records, CSV_IMPORT_CONCURRENCY, async (record) => {
+    if (!record.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
     const domainError = domainErrors.get(record.domain);
     if (domainError) throw domainError;
     if (!record.alias) return record;
@@ -1817,14 +1830,15 @@ const bulkCreateLinkRows = async (
     await validateAlias(ctx, record.alias, record.domain, isPaidPlan);
     return record;
   });
-  const validated = await Promise.allSettled(aliasChecks);
 
   // Allowance goes to valid rows in file order, before the (slow) URL safety
   // scan, so rows past the limit are never scanned.
   let allotted = 0;
   const rowSteps = validated.map((): LinkCreationStep => "validation");
-  const results = await Promise.allSettled(
-    validated.map(async (check, index) => {
+  const results = await settleWithConcurrency(
+    validated,
+    CSV_IMPORT_CONCURRENCY,
+    async (check, index) => {
       if (check.status === "rejected") throw check.reason;
       if (allotted >= remaining) {
         throw new TRPCError({
@@ -1850,14 +1864,14 @@ const bulkCreateLinkRows = async (
         note: record.note,
         ...restrictedLinkValues(ctx.restrictedAt),
       });
-    }),
+    },
   );
 
   const failures = results.flatMap((result, index) =>
     result.status === "rejected"
       ? [
           {
-            row: index + 1,
+            row: records[index]!.row,
             reason:
               result.reason instanceof Error ? result.reason.message : "Could not create this link",
           },

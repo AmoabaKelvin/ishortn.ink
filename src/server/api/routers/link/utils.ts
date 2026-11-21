@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { CsvError, parse } from "csv-parse/sync";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -12,7 +13,7 @@ import {
   monthlyLinkLimitMessage,
   normalizeMonthlyLinkCount,
 } from "@/server/lib/user-plan";
-import { requireFolderAccess, workspaceFilter } from "@/server/lib/workspace";
+import { requireFolderAccess, workspaceFilter, workspaceUsagePlan } from "@/server/lib/workspace";
 
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type { Plan } from "@/lib/billing/plans";
@@ -89,7 +90,7 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
   if (limit !== undefined && currentCount >= limit) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: monthlyLinkLimitMessage(planCtx.newResourcePlan, limit),
+      message: monthlyLinkLimitMessage(planCtx.plan, limit),
     });
   }
 
@@ -219,7 +220,7 @@ export async function getPlanAllowedDefaultDomain(ctx: WorkspaceTRPCContext): Pr
   const normalized = domain.trim().toLowerCase();
   if (isPlatformDomain(normalized)) return domain;
 
-  const limit = getPlanCaps(ctx.workspace.plan).domainLimit;
+  const limit = getPlanCaps(workspaceUsagePlan(ctx.workspace)).domainLimit;
   if (limit === undefined) return domain;
 
   const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
@@ -271,7 +272,7 @@ export async function assertDomainWithinPlan(
   const normalized = domain.trim().toLowerCase();
   if (isPlatformDomain(normalized)) return;
 
-  const limit = getPlanCaps(ctx.workspace.plan).domainLimit;
+  const limit = getPlanCaps(workspaceUsagePlan(ctx.workspace)).domainLimit;
   if (limit === undefined) return;
 
   const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
@@ -464,3 +465,126 @@ export function readAttemptWindow(raw: string | null, now: number): AttemptWindo
 export function recordFailedAttempt(window: AttemptWindow): string {
   return `${window.count + 1}:${window.resetAt}`;
 }
+
+/** Makes `%`, `_` and `\\` match literally in a MySQL LIKE pattern (default escape char). */
+export const escapeLikePattern = (value: string) => value.replace(/[\\%_]/g, "\\$&");
+
+export const MAX_CSV_IMPORT_ROWS = 1000;
+export const MAX_CSV_IMPORT_CHARS = 1_000_000;
+
+export type CsvLinkRow = {
+  /** Spreadsheet row number: the header is row 1, blank rows still count. */
+  row: number;
+  url: string;
+  alias?: string;
+  domain?: string;
+  note?: string;
+};
+
+const parsedCsvSchema = z.array(z.record(z.string(), z.string()));
+
+const csvReadError = (error: CsvError) => {
+  const line = z.number().int().positive().safeParse(error.lines);
+  const where = line.success ? `line ${line.data.toLocaleString("en-US")} of the file` : "the file";
+  const quoteProblem =
+    error.code === "CSV_INVALID_CLOSING_QUOTE" ||
+    error.code === "CSV_QUOTE_NOT_CLOSED" ||
+    error.code === "INVALID_OPENING_QUOTE";
+  return new TRPCError({
+    code: "BAD_REQUEST",
+    message: quoteProblem
+      ? `Couldn't read ${where}: a quote is not closed or is followed by extra text.`
+      : `Couldn't read ${where}. Save the sheet as CSV and try again.`,
+  });
+};
+
+/**
+ * Parses a bulk-import CSV. Headers match case-insensitively and a UTF-8 BOM
+ * is ignored, so Excel and Google Sheets exports work as-is. File-level
+ * problems throw a user-facing TRPCError; row-level problems are left to the
+ * caller so they can be reported per row.
+ */
+export const parseLinkCsv = (csv: string): CsvLinkRow[] => {
+  if (csv.length > MAX_CSV_IMPORT_CHARS) {
+    throw new TRPCError({
+      code: "PAYLOAD_TOO_LARGE",
+      message: "This file is larger than 1 MB. Split it into smaller files and import each one.",
+    });
+  }
+
+  let headers: string[] = [];
+  let records: z.infer<typeof parsedCsvSchema>;
+  try {
+    records = parsedCsvSchema.parse(
+      // Blank lines are kept (and dropped below) so row numbers match what a
+      // spreadsheet shows; csv-parse's own line counter drifts on quoted CRLFs.
+      parse(csv, {
+        bom: true,
+        columns: (header: string[]) => {
+          headers = header.map((name) => name.trim().toLowerCase());
+          return headers;
+        },
+        relax_column_count: true,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof CsvError) throw csvReadError(error);
+    throw error;
+  }
+
+  if (!headers.includes("url")) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        'The first row must be a header with a "url" column ("alias", "domain" and "note" are optional).',
+    });
+  }
+
+  const rows = records.flatMap((record, index) =>
+    Object.values(record).some((value) => value.trim() !== "")
+      ? [
+          {
+            row: index + 2,
+            url: record.url?.trim() ?? "",
+            alias: record.alias?.trim() || undefined,
+            domain: record.domain?.trim() || undefined,
+            note: record.note || undefined,
+          },
+        ]
+      : [],
+  );
+
+  if (rows.length === 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "The file has no links to import." });
+  }
+  if (rows.length > MAX_CSV_IMPORT_ROWS) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `This file has ${rows.length.toLocaleString("en-US")} links. Import up to ${MAX_CSV_IMPORT_ROWS.toLocaleString("en-US")} at a time.`,
+    });
+  }
+
+  return rows;
+};
+
+/** Promise.allSettled with at most `limit` tasks in flight; tasks start in input order. */
+export const settleWithConcurrency = async <T, R>(
+  items: readonly T[],
+  limit: number,
+  task: (item: T, index: number) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> => {
+  const results: PromiseSettledResult<R>[] = Array.from({ length: items.length });
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next++;
+      try {
+        results[index] = { status: "fulfilled", value: await task(items[index]!, index) };
+      } catch (reason) {
+        results[index] = { status: "rejected", reason };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+};

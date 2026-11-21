@@ -8,9 +8,10 @@ import type { Subscription } from "@/server/db/schema";
  *
  * - `paidPlan`: what the subscription pays for right now. active/on_trial count;
  *   a cancelled subscription counts until `endsAt`; everything else is free.
- * - Grace: when access lapses (expiry, failed payment, refund) or an account is
- *   found using features above its plan, it keeps `planGracePlan` for
- *   GRACE_PERIOD_DAYS. After that the paid plan's limits apply. The grace row is
+ * - Grace: when access lapses (expiry, failed payment, refund) the account keeps
+ *   `planGracePlan` for GRACE_PERIOD_DAYS. An account found using features above
+ *   its plan gets the same period for what it already uses (graceUsagePlan),
+ *   not for anything new. After that the paid plan's limits apply. The grace row is
  *   kept once it passes, so a second one is never granted for the same lapse;
  *   it is cleared when the paid plan covers it again (resubscribing).
  * - Teams take the owner's plan. An owner below Ultra gets a team grace period,
@@ -71,7 +72,12 @@ export function isGraceActive(endsAt: Date | null | undefined, now = new Date())
   return !!endsAt && endsAt > now;
 }
 
-/** The plan an account may use right now: the paid plan, or its grace plan while that lasts. */
+/**
+ * The plan an account may use right now: the paid plan, or the plan it had
+ * before a lapse while that grace period lasts. An over-plan grace doesn't
+ * raise it: that grace only keeps existing usage working (see graceUsagePlan),
+ * it doesn't unlock new paid features, links or domains.
+ */
 export function effectivePlan(
   subscription: SubscriptionState | undefined,
   grace: PlanGrace,
@@ -85,7 +91,7 @@ export function effectivePlan(
   if (subscription?.status === "past_due" && !lapseRecorded(grace)) {
     plan = higherPlan(plan, subscribedPlan(subscription));
   }
-  if (grace.planGracePlan && isGraceActive(grace.planGraceEndsAt, now)) {
+  if (lapseRecorded(grace) && grace.planGracePlan && isGraceActive(grace.planGraceEndsAt, now)) {
     plan = higherPlan(plan, grace.planGracePlan);
   }
   return plan;
@@ -97,16 +103,25 @@ function lapseRecorded(grace: PlanGrace): boolean {
 }
 
 /**
- * The plan for growing an account: the monthly link quota, adding custom
- * domains, creating API keys. An over-plan grace only keeps what the account
- * already uses working until it ends, so it doesn't raise these.
+ * The plan existing usage is held to: the effective plan, raised to the
+ * over-plan grace plan while that grace lasts. Custom domains past the
+ * allowance keep taking links and settings a link already has stay editable
+ * until the grace ends; anything new is checked against effectivePlan.
  */
-export function newResourcePlan(
+export function graceUsagePlan(
   subscription: SubscriptionState | undefined,
   grace: PlanGrace,
   now = new Date(),
 ): Plan {
-  return effectivePlan(subscription, grace.planGraceReason === "over_plan" ? NO_GRACE : grace, now);
+  const plan = effectivePlan(subscription, grace, now);
+  if (
+    grace.planGraceReason === "over_plan" &&
+    grace.planGracePlan &&
+    isGraceActive(grace.planGraceEndsAt, now)
+  ) {
+    return higherPlan(plan, grace.planGracePlan);
+  }
+  return plan;
 }
 
 /** Subscription statuses where access ended without the customer choosing another plan. */

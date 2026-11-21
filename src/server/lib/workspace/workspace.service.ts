@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 
-import { effectivePlan, paidPlan, teamAccess } from "@/lib/billing/entitlements";
+import { effectivePlan, graceUsagePlan, paidPlan, teamAccess } from "@/lib/billing/entitlements";
 import { extractPlatformSubdomain } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import { RESERVED_TEAM_SLUGS, team, teamMember } from "@/server/db/schema";
@@ -104,7 +104,7 @@ async function getPersonalWorkspaceContext(
   }
 
   const sub = userRecord.subscriptions ?? null;
-  const plan = effectivePlan(sub, await ensurePlanChecked(userRecord, sub));
+  const grace = await ensurePlanChecked(userRecord, sub);
 
   return {
     type: "personal",
@@ -112,7 +112,8 @@ async function getPersonalWorkspaceContext(
     teamId: null,
     teamSlug: null,
     role: "owner",
-    plan,
+    plan: effectivePlan(sub, grace),
+    graceUsagePlan: graceUsagePlan(sub, grace),
   };
 }
 
@@ -218,7 +219,7 @@ export async function getTeamWorkspaceContextById(
 export async function getUserEffectivePlan(userId: string, dbClient: DbClient = db): Promise<Plan> {
   const userRecord = await dbClient.query.user.findFirst({
     where: (table, { eq }) => eq(table.id, userId),
-    columns: { planGracePlan: true, planGraceEndsAt: true },
+    columns: { planGracePlan: true, planGraceEndsAt: true, planGraceReason: true },
     with: {
       subscriptions: true,
     },

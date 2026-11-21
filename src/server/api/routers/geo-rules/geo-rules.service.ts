@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { canUseGeoRules, getGeoRulesLimit, isUnlimitedGeoRules } from "@/lib/billing/plans";
 import { deleteGeoRulesFromCache } from "@/lib/core/cache";
 import { geoRule } from "@/server/db/schema";
+import { workspaceUsagePlan } from "@/server/lib/workspace";
 
 import { checkWorkspaceLinkLimit, verifyLinkOwnership } from "../link/utils";
 
@@ -24,7 +25,7 @@ const GEO_RULES_PLAN_MESSAGE =
  * downgrade the rules keep working as they are and can only be deleted.
  */
 function assertCanEditGeoRules(ctx: WorkspaceTRPCContext) {
-  if (!canUseGeoRules(ctx.workspace.plan)) {
+  if (!canUseGeoRules(workspaceUsagePlan(ctx.workspace))) {
     throw new TRPCError({ code: "FORBIDDEN", message: GEO_RULES_PLAN_MESSAGE });
   }
 }

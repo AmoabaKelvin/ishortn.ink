@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
-import { effectivePlan } from "@/lib/billing/entitlements";
+import { effectivePlan, graceUsagePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
@@ -52,12 +52,13 @@ export async function validateAndGetToken(apiKey: string | null) {
   const userSub = userSubscription[0] ?? null;
   // The same entitlement the dashboard uses: API links live in the personal workspace.
   const grace = await ensurePlanChecked(userRecord, userSub);
-  const plan = effectivePlan(userSub, grace);
   return {
     ...existingToken[0]!,
     subscription: userSub,
     grace,
-    plan,
+    plan: effectivePlan(userSub, grace),
+    // Existing usage (domains past the allowance) during an over-plan grace.
+    graceUsagePlan: graceUsagePlan(userSub, grace),
     restrictedAt: userRecord.restrictedAt ?? null,
   };
 }
