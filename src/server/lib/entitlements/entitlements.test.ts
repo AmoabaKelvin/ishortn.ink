@@ -755,6 +755,37 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
       await caller("ultra", TEAM_SLUGS[1]!).create({ url: TARGET_URL, alias: uniqueAlias() });
     });
 
+    test.each([
+      ["past_due", "update_payment"],
+      ["unpaid", "update_payment"],
+      ["cancelled", "upgrade"],
+    ] as const)(
+      "a team grace notice for an Ultra owner whose subscription is %s links to %s",
+      async (status, action) => {
+        const subWhere = eq(schema.subscription.userId, ACCOUNTS.ultra.id);
+        const teamWhere = eq(schema.team.slug, TEAM_SLUGS[1]!);
+        await db.update(schema.subscription).set({ status }).where(subWhere);
+        await db
+          .update(schema.team)
+          .set({ ownerPlanGraceEndsAt: new Date(Date.now() + 5 * DAY) })
+          .where(teamWhere);
+        try {
+          // SAFETY: the procedures under test read only ctx.auth.userId from auth.
+          const auth = { userId: ACCOUNTS.ultra.id } as TRPCContext["auth"];
+          const app = appRouter.createCaller({
+            db,
+            auth,
+            headers: new Headers({ host: `${TEAM_SLUGS[1]!}.localhost:3000` }),
+          });
+          const notice = await app.subscriptions.entitlementNotice();
+          expect(notice).toMatchObject({ type: "team", isOwner: true, action });
+        } finally {
+          await db.update(schema.subscription).set({ status: "active" }).where(subWhere);
+          await db.update(schema.team).set({ ownerPlanGraceEndsAt: null }).where(teamWhere);
+        }
+      },
+    );
+
     test("the reconcile keeps an expired team grace (no extension)", async () => {
       await reconcileEntitlements();
       const proTeam = await db.query.team.findFirst({ where: eq(schema.team.id, proTeamId) });

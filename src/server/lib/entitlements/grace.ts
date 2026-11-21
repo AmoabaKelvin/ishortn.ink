@@ -19,6 +19,7 @@ import {
   planAtLeast,
   planBeforeBillingEvent,
   subscribedPlan,
+  teamGraceAction,
   updatePaymentPath,
 } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
@@ -32,6 +33,7 @@ import { EMAIL_FROM } from "@/server/lib/notifications/send-email";
 
 import { getPlanUsageByUser } from "./usage";
 
+import type { PlanGraceEmailProps } from "@/emails/plan-grace";
 import type { GraceEmailKind, GraceReason, PlanGrace, PlanUsage } from "@/lib/billing/entitlements";
 import type { Plan } from "@/lib/billing/plans";
 import type { Subscription, User } from "@/server/db/schema";
@@ -436,6 +438,42 @@ function accountSubject(
     : `Reminder: some of your iShortn features need ${planName} from ${endsOn}`;
 }
 
+/**
+ * The team grace email to its owner. When the owner's Ultra payment failed it
+ * links to the update-payment-method page instead of pricing.
+ */
+export function teamGraceEmail(options: {
+  teamName: string;
+  ownerName: string | null;
+  ownerSubscription: Subscription | null;
+  endsAt: Date;
+  kind: GraceEmailKind;
+  now: Date;
+}) {
+  const { teamName, endsAt, kind, now } = options;
+  const endsOn = formatDay(endsAt);
+  const paymentFailed = teamGraceAction(options.ownerSubscription) === "update_payment";
+  let subject: string;
+  if (kind !== "started") subject = `${teamName} becomes read-only on ${endsOn}`;
+  else if (paymentFailed) subject = "Your iShortn Ultra payment didn't go through";
+  else subject = `${teamName} needs Ultra to stay editable after ${endsOn}`;
+  return {
+    subject,
+    props: {
+      recipientName: options.ownerName,
+      kind,
+      reason: "team",
+      planName: "Ultra",
+      endsOn,
+      timeLeft: timeLeft(endsAt, now),
+      teamName,
+      items: [],
+      upgradeUrl: upgradeUrl("ultra"),
+      updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
+    } satisfies PlanGraceEmailProps,
+  };
+}
+
 /** Free-plan limits listed when a lapsed account uses no feature above Free. */
 function freePlanSummary(): string[] {
   const free = getPlanCaps("free");
@@ -531,9 +569,11 @@ export async function sendDueGraceEmails(options: {
         stage: team.ownerPlanGraceEmailStage,
         ownerEmail: user.email,
         ownerName: user.name,
+        ownerSubscription: subscription,
       })
       .from(team)
       .innerJoin(user, eq(user.id, team.ownerId))
+      .leftJoin(subscription, eq(subscription.userId, team.ownerId))
       .where(
         and(
           isNull(team.deletedAt),
@@ -550,25 +590,19 @@ export async function sendDueGraceEmails(options: {
         now,
       });
       if (!kind) continue;
-      const endsOn = formatDay(row.endsAt);
       const stage = GRACE_EMAIL_STAGE[kind];
+      const { subject, props } = teamGraceEmail({
+        teamName: row.name,
+        ownerName: row.ownerName,
+        ownerSubscription: row.ownerSubscription,
+        endsAt: row.endsAt,
+        kind,
+        now,
+      });
       pending.push({
         to: row.ownerEmail,
-        subject:
-          kind === "started"
-            ? `${row.name} needs Ultra to stay editable after ${endsOn}`
-            : `${row.name} becomes read-only on ${endsOn}`,
-        react: PlanGraceEmail({
-          recipientName: row.ownerName,
-          kind,
-          reason: "team",
-          planName: "Ultra",
-          endsOn,
-          timeLeft: timeLeft(row.endsAt, now),
-          teamName: row.name,
-          items: [],
-          upgradeUrl: upgradeUrl("ultra"),
-        }),
+        subject,
+        react: PlanGraceEmail(props),
         claim: async () => {
           const [result] = await db
             .update(team)

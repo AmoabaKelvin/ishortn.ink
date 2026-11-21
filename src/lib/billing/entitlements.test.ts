@@ -17,6 +17,7 @@ import {
   planForFeature,
   requiredPlanForUsage,
   teamAccess,
+  teamGraceAction,
 } from "./entitlements";
 
 import type { GraceReason, PlanGrace } from "./entitlements";
@@ -411,5 +412,22 @@ describe("graceAction", () => {
   test("an over-plan grace links to pricing even while a payment is failing", () => {
     expect(graceAction("over_plan", "active")).toBe("upgrade");
     expect(graceAction("over_plan", "past_due")).toBe("upgrade");
+  });
+});
+
+describe("teamGraceAction", () => {
+  test("a failed Ultra payment links the owner to the update-payment-method page", () => {
+    expect(teamGraceAction(sub("past_due", "ultra"))).toBe("update_payment");
+    expect(teamGraceAction(sub("unpaid", "ultra"))).toBe("update_payment");
+  });
+
+  test("a cancelled or expired Ultra subscription links to pricing", () => {
+    expect(teamGraceAction(sub("cancelled", "ultra", at(-1)))).toBe("upgrade");
+    expect(teamGraceAction(sub("expired", "ultra"))).toBe("upgrade");
+    expect(teamGraceAction(null)).toBe("upgrade");
+  });
+
+  test("a failing Pro payment links to pricing, since Pro doesn't cover a team", () => {
+    expect(teamGraceAction(sub("past_due", "pro"))).toBe("upgrade");
   });
 });

@@ -7,6 +7,7 @@ import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { ensureUser } from "@/server/lib/ensure-user";
 import { hasBouncedEmail } from "@/server/lib/notifications/suppression";
+import { api } from "@/trpc/server";
 
 import { AttributionRecorder } from "./_components/attribution-recorder";
 import { BouncedEmailBanner } from "./_components/bounced-email-banner";
@@ -139,8 +140,14 @@ export default async function DashboardLayout({ children }: Props) {
   }
 
   // Fetched after ensureUser so a just-provisioned user has a row. The sidebar reads the same
-  // cache() entry, so the paused-tracking banner adds no query.
-  const subscription = session?.userId ? await getDashboardSubscription() : null;
+  // cache() entry, so the paused-tracking banner adds no query. The grace notice is fetched
+  // alongside so its banner is in the first render instead of shifting the page after hydration.
+  const [subscription, graceNotice] = session?.userId
+    ? await Promise.all([
+        getDashboardSubscription(),
+        api.subscriptions.entitlementNotice.query().catch(() => undefined),
+      ])
+    : [null, undefined];
   const trackingPaused = trackingPausedBannerState(subscription);
 
   return (
@@ -169,7 +176,7 @@ export default async function DashboardLayout({ children }: Props) {
           {emailBounced && <BouncedEmailBanner />}
           {trackingPaused && <TrackingPausedBanner {...trackingPaused} />}
           <div className="mt-7 py-4">
-            <PlanGraceBanner />
+            <PlanGraceBanner initialNotice={graceNotice} />
             {children}
           </div>
         </div>

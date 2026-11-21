@@ -289,20 +289,36 @@ export const lemonsqueezyRouter = createTRPCRouter({
 
   // The subscription's update-payment-method page. Lemon Squeezy signs this URL
   // and it expires, so it is fetched fresh on every visit instead of stored.
-  // Null when there is no subscription or the provider call fails.
+  // Falls back to the customer portal like subscriptionDetails (Settings →
+  // Billing); null when neither is available.
   updatePaymentMethodUrl: protectedProcedure.query(async ({ ctx }) => {
-    const subscriptionId = (await getUserSubscription(ctx))?.subscriptionId;
-    if (!subscriptionId || subscriptionId <= 0) return null;
+    const userSubscription = await getUserSubscription(ctx);
+    const subscriptionId = userSubscription?.subscriptionId;
+    const customerId = userSubscription?.customerId;
 
     try {
       configureLemonSqueezy();
-      const providerSub = await getSubscription(subscriptionId);
-      if (providerSub.error) throw providerSub.error;
-      return providerSub.data.data.attributes.urls.update_payment_method;
+      if (subscriptionId && subscriptionId > 0) {
+        const providerSub = await getSubscription(subscriptionId);
+        const url = providerSub.data?.data.attributes.urls.update_payment_method;
+        if (url) return url;
+        if (providerSub.error) {
+          log.warn(
+            { err: providerSub.error, userId: ctx.auth.userId, subscriptionId },
+            "failed to fetch update-payment-method url; trying customer portal",
+          );
+        }
+      }
+      if (customerId && customerId > 0) {
+        const customer = await getCustomer(customerId);
+        if (customer.error) throw customer.error;
+        return customer.data.data.attributes.urls.customer_portal ?? null;
+      }
+      return null;
     } catch (err) {
       log.error(
-        { err, userId: ctx.auth.userId, subscriptionId },
-        "failed to fetch update-payment-method url",
+        { err, userId: ctx.auth.userId, subscriptionId, customerId },
+        "failed to fetch payment management url",
       );
       return null;
     }

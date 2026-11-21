@@ -6,6 +6,7 @@ import {
   isGraceActive,
   paidPlan,
   planAtLeast,
+  teamGraceAction,
 } from "@/lib/billing/entitlements";
 import { getPlanCaps, getSubscriptionMode } from "@/lib/billing/plans";
 import { folder } from "@/server/db/schema";
@@ -31,11 +32,20 @@ export const subscriptionsRouter = createTRPCRouter({
         ownerGraceEndsAt ??
         (isGraceActive(team.ownerPlanGraceEndsAt) ? team.ownerPlanGraceEndsAt : null);
       if (!readOnly && !endsAt) return null;
+      const isOwner = role === "owner";
+      // The owner's own failed Ultra payment is fixed on that subscription, not
+      // with a new checkout (which pricing would start once it reads as free).
+      const ownerSubscription = isOwner
+        ? await ctx.db.query.subscription.findFirst({
+            where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+          })
+        : undefined;
       return {
         type: "team" as const,
         readOnly,
         endsAt,
-        isOwner: role === "owner",
+        isOwner,
+        action: isOwner ? teamGraceAction(ownerSubscription ?? null) : ("upgrade" as const),
       };
     }
 

@@ -34,6 +34,11 @@ export type PlanGraceEmailProps = {
 function intro(props: PlanGraceEmailProps) {
   const { kind, reason, planName, endsOn, timeLeft, teamName, updatePaymentUrl } = props;
   if (reason === "team") {
+    if (updatePaymentUrl) {
+      return kind === "started"
+        ? `The last payment for your iShortn Ultra subscription didn't go through, and team workspaces are part of Ultra. ${teamName} keeps working as usual until ${endsOn}. After that it becomes read-only for every member: no new links, domains, edits or invites.`
+        : `${timeLeft} left: on ${endsOn}, ${teamName} becomes read-only for every member (no new links, domains, edits or invites) unless the payment method for your Ultra subscription is updated.`;
+    }
     return kind === "started"
       ? `Team workspaces are part of the Ultra plan, and the owner of ${teamName} isn't on Ultra right now. The team keeps working as usual until ${endsOn}. After that it becomes read-only for every member: no new links, domains, edits or invites.`
       : `${timeLeft} left: on ${endsOn}, ${teamName} becomes read-only for every member (no new links, domains, edits or invites) unless its owner is on Ultra.`;
@@ -77,7 +82,9 @@ export const PlanGraceEmail = (props: PlanGraceEmailProps) => {
     <EmailLayout
       preview={
         reason === "team"
-          ? `${props.teamName} needs its owner on Ultra`
+          ? updatePaymentUrl
+            ? `Update your payment method to keep ${props.teamName} editable`
+            : `${props.teamName} needs its owner on Ultra`
           : kind === "ended"
             ? "Your account is on the Free plan now"
             : updatePaymentUrl

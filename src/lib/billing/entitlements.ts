@@ -402,6 +402,17 @@ export function graceAction(
     : "upgrade";
 }
 
+/**
+ * graceAction for a team's grace, shown to its owner. Only a failed Ultra
+ * payment is fixed by updating the card; a failing Pro subscription doesn't
+ * cover a team, so that owner still needs to upgrade.
+ */
+export function teamGraceAction(ownerSubscription?: SubscriptionState) {
+  return subscribedPlan(ownerSubscription) === "ultra"
+    ? graceAction("lapsed", ownerSubscription?.status)
+    : "upgrade";
+}
+
 export type PaymentUpdateSource = "banner" | "email";
 
 /** The page that fetches a fresh signed update-payment-method URL and redirects to it. */

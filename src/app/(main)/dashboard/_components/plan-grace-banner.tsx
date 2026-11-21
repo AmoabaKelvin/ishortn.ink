@@ -7,14 +7,19 @@ import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
 import { PLAN_NAMES, updatePaymentPath } from "@/lib/billing/entitlements";
 import { api } from "@/trpc/react";
 
+import type { RouterOutputs } from "@/trpc/shared";
+
+type GraceNotice = RouterOutputs["subscriptions"]["entitlementNotice"];
+
 // Grace periods end at an instant stored in UTC; render the day in UTC so server
 // and client output match.
 const formatDay = (date: Date) =>
   date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Plan grace-period and read-only-team notice shown above every dashboard page. */
-export function PlanGraceBanner() {
+export function PlanGraceBanner({ initialNotice }: { initialNotice?: GraceNotice }) {
   const { data: notice } = api.subscriptions.entitlementNotice.useQuery(undefined, {
+    initialData: initialNotice,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -24,9 +29,17 @@ export function PlanGraceBanner() {
   let showUpgrade = true;
   let updatePayment = false;
   if (notice.type === "team") {
-    message = notice.readOnly
-      ? "The workspace owner needs Ultra. This workspace is read-only: existing links keep working, but nothing can be added or edited."
-      : `The workspace owner needs Ultra. From ${notice.endsAt ? formatDay(notice.endsAt) : "next week"}, this workspace becomes read-only.`;
+    updatePayment = notice.action === "update_payment";
+    const endsOn = notice.endsAt ? formatDay(notice.endsAt) : "next week";
+    if (updatePayment) {
+      message = notice.readOnly
+        ? "Your last Ultra payment didn't go through. This workspace is read-only until the payment method is updated: existing links keep working, but nothing can be added or edited."
+        : `Your last Ultra payment didn't go through. From ${endsOn}, this workspace becomes read-only unless the payment method is updated.`;
+    } else {
+      message = notice.readOnly
+        ? "The workspace owner needs Ultra. This workspace is read-only: existing links keep working, but nothing can be added or edited."
+        : `The workspace owner needs Ultra. From ${endsOn}, this workspace becomes read-only.`;
+    }
     showUpgrade = notice.isOwner;
   } else {
     const plan = PLAN_NAMES[notice.plan];
