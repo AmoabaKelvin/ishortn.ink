@@ -111,7 +111,7 @@ The analytics show totals, time, location and device, not who scanned. For more 
 
 ## While you're printing table cards
 
-Table cards have room for one more code, and the best use of it is reviews. Guests waiting for the bill have a minute free, which is when they're most likely to leave one. Our [blog](/blog) has a guide to setting up a QR code for Google reviews. Label both codes clearly so nobody scans "reviews" looking for the dessert list.
+Table cards have room for one more code, and the best use of it is reviews. Guests waiting for the bill have a minute free, which is when they're most likely to leave one. Our guide to a [QR code for Google reviews](/blog/qr-code-for-google-reviews) shows how to set that up. Label both codes clearly so nobody scans "reviews" looking for the dessert list.
 
 ## Quick answers
 
