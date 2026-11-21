@@ -58,14 +58,16 @@ function estimateReadingTime(content: string): number {
   return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
 }
 
-// Scheduled posts merge ahead of their `date` and go live on that UTC day. `now` is a parameter so
-// tests can pin the clock.
+// Scheduled posts merge ahead of their `date` and go live on that UTC day. `next dev` shows them
+// early so they can be previewed and screenshotted before merge; production builds never do.
+// `now` and `preview` are parameters so tests can pin them.
 export function isPostVisible(
   post: Pick<BlogPostFrontmatter, "date" | "published">,
   now: Date = new Date(),
+  preview: boolean = process.env.NODE_ENV === "development",
 ): boolean {
   // Both sides are YYYY-MM-DD, so string order is date order.
-  return post.published && post.date <= now.toISOString().slice(0, 10);
+  return post.published && (preview || post.date <= now.toISOString().slice(0, 10));
 }
 
 export async function getAllPosts(): Promise<BlogPost[]> {
