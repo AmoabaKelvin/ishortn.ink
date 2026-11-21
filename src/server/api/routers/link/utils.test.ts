@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 
 import { db } from "@/server/db";
 
@@ -87,6 +88,98 @@ describe("parseLinkCsv", () => {
     expect(() => parseLinkCsv(tooManyRows.join("\n"))).toThrow("Import up to 1,000 at a time");
     expect(() => parseLinkCsv(`url\n${"a".repeat(MAX_CSV_IMPORT_CHARS)}`)).toThrow(
       "larger than 1 MB",
+    );
+  });
+});
+
+describe("parseLinkCsv with a Bitly export", () => {
+  const fixture = (name: string) =>
+    readFileSync(new URL(`./__fixtures__/${name}`, import.meta.url), "utf8");
+
+  test("maps each row of the current export", () => {
+    const rows = parseLinkCsv(fixture("bitly-export-current.csv"));
+    expect(rows[0]).toEqual({
+      row: 2,
+      url: "https://example.com/menu/spring?utm_source=print",
+      domain: "go.example.com",
+      alias: "spring-menu",
+      name: "Spring menu, dinner",
+      note: "Imported from Bitly: https://go.example.com/3XCetqn",
+      bitly: {
+        shortLink: "https://go.example.com/spring-menu",
+        custom: true,
+        code: "3XCetqn",
+        deleted: false,
+      },
+    });
+    expect(rows[1]).toMatchObject({
+      domain: "go.example.com",
+      alias: "3XABUQI",
+      bitly: { custom: false, code: undefined },
+    });
+    expect(rows[2]).toMatchObject({
+      domain: "bit.ly",
+      alias: "example-reviews",
+      bitly: { code: "4aBcDeF" },
+    });
+    expect(rows[3]?.name).toBeUndefined();
+    expect(rows[4]?.bitly?.deleted).toBe(true);
+    expect(rows).toHaveLength(7);
+  });
+
+  test("reads the legacy export, whose Status column may be empty", () => {
+    const rows = parseLinkCsv(fixture("bitly-export-legacy.csv"));
+    expect(rows.map((row) => [row.domain, row.alias, row.bitly?.code, row.bitly?.deleted])).toEqual(
+      [
+        ["go.example.com", "FAQ", "3vLl4Ax", false],
+        ["go.example.com", "3GexGSC", undefined, false],
+      ],
+    );
+    expect(rows[1]?.url).toBe("https://example.com/connect?utm_source=email");
+  });
+
+  test("keeps the back-half's path for alias validation and flags unreadable links", () => {
+    const rows = parseLinkCsv(
+      [
+        "link,destination url",
+        "https://Go.Example.com/a/b/,https://a.example",
+        "not a link,https://b.example",
+        "https://go.example.com/,https://c.example",
+      ].join("\n"),
+    );
+    expect(rows[0]).toMatchObject({ domain: "go.example.com", alias: "a/b" });
+    expect(rows[1]?.bitly?.error).toBe("This row has no valid Bitly link");
+    expect(rows[2]?.bitly?.error).toBe("This row has no valid Bitly link");
+  });
+
+  test("keeps no separate code when it matches the custom back-half or sits on another domain", () => {
+    const rows = parseLinkCsv(
+      [
+        "Link,Custom Link,Destination URL",
+        "https://go.example.com/faq,https://go.example.com/FAQ,https://a.example",
+        "https://bit.ly/abc,https://go.example.com/faq,https://b.example",
+      ].join("\n"),
+    );
+    expect(rows.map((row) => row.bitly?.code)).toEqual([undefined, undefined]);
+  });
+
+  test("caps the title and note at the column width", () => {
+    const [row] = parseLinkCsv(
+      `Link,Title,Destination URL\nhttps://bit.ly/${"a".repeat(300)},${"t".repeat(300)},https://a.example`,
+    );
+    expect(row?.name).toHaveLength(255);
+    expect(row?.note).toHaveLength(255);
+  });
+
+  test("prefers the generic format when a url column is present", () => {
+    expect(parseLinkCsv("url,link,destination url\nhttps://a.example,x,y")).toEqual([
+      { row: 2, url: "https://a.example", alias: undefined, domain: undefined, note: undefined },
+    ]);
+  });
+
+  test("names both accepted formats when neither matches", () => {
+    expect(() => parseLinkCsv("link,title\nhttps://bit.ly/a,x")).toThrow(
+      'The first row must be a header with a "url" column, or a link export from Bitly ("Link" and "Destination URL" columns).',
     );
   });
 });

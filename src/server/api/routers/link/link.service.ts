@@ -94,6 +94,7 @@ import {
   assertDomainAllowed,
   assertDomainOwned,
   assertDomainWithinPlan,
+  BITLY_DOMAINS,
   checkWorkspaceLinkLimit,
   CUSTOM_DOMAIN_IMPORT_ALLOWANCE,
   escapeLikePattern,
@@ -129,6 +130,7 @@ import type {
   UpdateLinkInput,
   VerifyLinkPasswordInput,
 } from "./link.input";
+import type { CsvLinkRow } from "./utils";
 import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
@@ -1806,23 +1808,94 @@ export const checkAliasAvailability = async (
 // request; cap them so a 1,000-row file doesn't fan out all at once.
 const CSV_IMPORT_CONCURRENCY = 8;
 
+// Width of the alias column; a longer alias would fail the insert with a driver error.
+const MAX_IMPORT_ALIAS_LENGTH = 20;
+
+type ImportLink = {
+  row: number;
+  url: string;
+  domain: string;
+  alias?: string;
+  name?: string;
+  note?: string;
+  /** Bitly domain the row's link can't move off; it lands on the workspace default instead. */
+  movedFrom?: string;
+  /** Custom back-half of a moved row that isn't available here, so a generated alias is used. */
+  unavailableAlias?: string;
+};
+
+type PreparedLink = { record: ImportLink; alreadyImported: boolean };
+
+export type BulkCreateLinksOptions = {
+  /** Bitly exports: also create the random code of a custom link on the same domain. */
+  keepBitlyCodes?: boolean;
+};
+
 // `checkUrl` is a seam for tests; callers use the default.
 export const bulkCreateLinks = (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
   checkUrl: (url: string) => Promise<void> = assertUrlSafe,
+  options: BulkCreateLinksOptions = {},
 ) =>
   // Records failures that reject the whole import; per-row failures are recorded below.
   trackLinkCreation(ctx.db, "bulk", ctx.auth.userId, () =>
-    bulkCreateLinkRows(ctx, csvContent, checkUrl),
+    bulkCreateLinkRows(ctx, csvContent, checkUrl, options),
   );
+
+const importAliasKey = (domain: string, alias: string) =>
+  `${domain.toLowerCase()}/${normalizeAlias(alias)}`;
+
+/**
+ * The workspace's links that an earlier run of the same file created: same
+ * alias on the same domain, or (for Bitly links that moved to a generated
+ * alias) the same import note. Both also need the same destination.
+ */
+const findPreviousImports = async (
+  ctx: WorkspaceTRPCContext,
+  aliases: string[],
+  notes: string[],
+) => {
+  const scope = workspaceFilter(ctx.workspace, link.userId, link.teamId);
+  const columns = { alias: link.alias, domain: link.domain, url: link.url, note: link.note };
+  const [byAlias, byNote] = await Promise.all([
+    aliases.length
+      ? ctx.db
+          .select(columns)
+          .from(link)
+          .where(and(scope, inArray(link.alias, aliases)))
+      : [],
+    notes.length
+      ? ctx.db
+          .select(columns)
+          .from(link)
+          .where(and(scope, inArray(link.note, notes)))
+      : [],
+  ]);
+  return {
+    aliases: new Set(
+      byAlias.flatMap((row) =>
+        row.alias ? [`${importAliasKey(row.domain, row.alias)} ${row.url}`] : [],
+      ),
+    ),
+    notes: new Set(byNote.map((row) => `${row.note}\n${row.url}`)),
+  };
+};
+
+const importErrorMessage = ({ reason }: PromiseRejectedResult) =>
+  reason instanceof Error ? reason.message : "Could not create this link";
 
 const bulkCreateLinkRows = async (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
   checkUrl: (url: string) => Promise<void>,
+  { keepBitlyCodes = true }: BulkCreateLinksOptions,
 ) => {
-  const rows = parseLinkCsv(csvContent);
+  const parsed = parseLinkCsv(csvContent);
+  const isBitlyFile = parsed.some((row) => row.bitly);
+  // Links deleted in Bitly are neither created nor counted toward the allowance.
+  const rows = parsed.filter((row) => !row.bitly?.deleted);
+  const skipped = parsed.length - rows.length;
 
   // Throws when the monthly allowance and the custom-domain import allowance are
   // both used up, rejecting the whole import.
@@ -1832,119 +1905,280 @@ const bulkCreateLinkRows = async (
   const isPaidPlan = plan !== "free";
   const remaining = limit === undefined ? Number.POSITIVE_INFINITY : limit - currentCount;
 
-  const records = rows.map((row) => ({
-    ...row,
-    domain: row.domain ?? DEFAULT_PLATFORM_DOMAIN,
-  }));
+  const bitlyHost = (row: CsvLinkRow) =>
+    row.bitly && row.domain && BITLY_DOMAINS.has(row.domain) ? row.domain : undefined;
+  const workspaceDomain = rows.some(bitlyHost) ? await getWorkspaceDefaultDomain(ctx) : undefined;
 
   // One ownership lookup per distinct domain, not per row.
   const domainErrors = new Map<string, unknown>();
   await settleWithConcurrency(
-    [...new Set(records.map((record) => record.domain))],
+    [
+      ...new Set([
+        ...rows.flatMap((row) => (bitlyHost(row) ? [] : [row.domain ?? DEFAULT_PLATFORM_DOMAIN])),
+        ...(workspaceDomain ? [workspaceDomain] : []),
+      ]),
+    ],
     CSV_IMPORT_CONCURRENCY,
     async (domain) => {
       try {
-        await assertDomainAllowed(ctx, domain);
-        domainErrors.set(domain, null);
+        await assertDomainOwned(ctx, domain);
+      } catch (error) {
+        domainErrors.set(
+          domain,
+          isBitlyFile
+            ? new TRPCError({
+                code: "FORBIDDEN",
+                message: `${domain} isn't connected to this workspace. Add it in Domains, wait until it shows Active, then import this file again.`,
+              })
+            : error,
+        );
+        return;
+      }
+      try {
+        await assertDomainWithinPlan(ctx, domain);
       } catch (error) {
         domainErrors.set(domain, error);
       }
     },
   );
+  const movedDomain =
+    workspaceDomain && !domainErrors.has(workspaceDomain)
+      ? workspaceDomain
+      : DEFAULT_PLATFORM_DOMAIN;
+
+  const records = rows.map((row): ImportLink => {
+    const movedFrom = bitlyHost(row);
+    return {
+      row: row.row,
+      url: row.url,
+      domain: movedFrom ? movedDomain : (row.domain ?? DEFAULT_PLATFORM_DOMAIN),
+      // Bitly's random code means nothing on another domain; only a custom back-half moves.
+      alias: movedFrom && !row.bitly?.custom ? undefined : row.alias,
+      name: row.name,
+      note: row.note,
+      movedFrom,
+    };
+  });
+  const codeOf = (index: number) =>
+    keepBitlyCodes && !records[index]!.movedFrom ? rows[index]!.bitly?.code : undefined;
+
+  const previous = await findPreviousImports(
+    ctx,
+    [
+      ...new Set([
+        ...records.flatMap((record) => (record.alias ? [record.alias] : [])),
+        ...records.flatMap((_, index) => codeOf(index) ?? []),
+      ]),
+    ],
+    records.flatMap((record) => (record.movedFrom && record.note ? [record.note] : [])),
+  );
 
   // Two rows claiming the same alias on the same domain would otherwise race on
-  // the unique index; the first one in the file wins.
+  // the unique index; the first one in the file wins. Tasks start in file order
+  // and check this before their first await.
   const seenAliases = new Set<string>();
-  const validated = await settleWithConcurrency(records, CSV_IMPORT_CONCURRENCY, async (row) => {
-    if (!row.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
-    const url = normalizeDestinationUrl(row.url);
-    if (!url) throw new TRPCError({ code: "BAD_REQUEST", message: INVALID_URL_MESSAGE });
-    const record = { ...row, url };
-    const domainError = domainErrors.get(record.domain);
-    if (domainError) throw domainError;
-    if (!record.alias) return record;
+  const prepare = async (record: ImportLink): Promise<PreparedLink> => {
+    const key = record.alias ? importAliasKey(record.domain, record.alias) : undefined;
+    const taken = !!key && seenAliases.has(key);
+    if (key) seenAliases.add(key);
 
-    const aliasKey = `${record.domain.toLowerCase()}/${normalizeAlias(record.alias)}`;
-    if (seenAliases.has(aliasKey)) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "Alias is used by an earlier row in this file",
-      });
+    if (
+      (key && !taken && previous.aliases.has(`${key} ${record.url}`)) ||
+      (record.movedFrom && previous.notes.has(`${record.note}\n${record.url}`))
+    ) {
+      return { record, alreadyImported: true };
     }
-    seenAliases.add(aliasKey);
+    if (!record.alias) return { record, alreadyImported: false };
 
-    await validateAlias(ctx, record.alias, record.domain, isPaidPlan);
-    return record;
-  });
-
-  // Allowance goes to valid rows in file order, before the (slow) URL safety
-  // scan, so rows past the limit are never scanned.
-  let allotted = 0;
-  let importAllotted = 0;
-  const usesImportAllowance = validated.map(() => false);
-  const rowSteps = validated.map((): LinkCreationStep => "validation");
-  const results = await settleWithConcurrency(
-    validated,
-    CSV_IMPORT_CONCURRENCY,
-    async (check, index) => {
-      if (check.status === "rejected") throw check.reason;
-      const record = check.value;
-      // The domain passed assertDomainAllowed, so a non-platform one is an
-      // active custom domain of this workspace.
-      if (!isPlatformDomain(record.domain.toLowerCase()) && importAllotted < importAllowanceLeft) {
-        importAllotted++;
-        usesImportAllowance[index] = true;
-      } else if (allotted >= remaining) {
+    try {
+      if (taken) {
         throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Monthly limit of ${limit?.toLocaleString()} links reached. Upgrade your plan to create more.`,
+          code: "CONFLICT",
+          message: "Alias is used by an earlier row in this file",
         });
-      } else {
-        allotted++;
       }
+      if (record.alias.length > MAX_IMPORT_ALIAS_LENGTH) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Alias can be at most ${MAX_IMPORT_ALIAS_LENGTH} characters`,
+        });
+      }
+      await validateAlias(ctx, record.alias, record.domain, isPaidPlan);
+    } catch (error) {
+      // A moved bit.ly link gets a new address anyway, so its back-half is optional.
+      if (!record.movedFrom) throw error;
+      return {
+        record: { ...record, alias: undefined, unavailableAlias: record.alias },
+        alreadyImported: false,
+      };
+    }
+    return { record, alreadyImported: false };
+  };
 
-      rowSteps[index] = "safety";
-      await checkUrl(record.url);
-
-      rowSteps[index] = "db";
-      const ownership = workspaceOwnership(ctx.workspace);
-      await ctx.db.insert(link).values({
-        url: record.url,
-        alias: record.alias ?? (await generateUnreservedAlias(ctx.db, record.domain)),
-        userId: ownership.userId,
-        teamId: ownership.teamId,
-        createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-        domain: record.domain,
-        note: record.note,
-        ...restrictedLinkValues(ctx.restrictedAt),
-      });
+  const validated = await settleWithConcurrency(
+    records,
+    CSV_IMPORT_CONCURRENCY,
+    (record, index) => {
+      const rowError = rows[index]!.bitly?.error;
+      if (rowError) throw new TRPCError({ code: "BAD_REQUEST", message: rowError });
+      if (!record.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
+      const url = normalizeDestinationUrl(record.url);
+      if (!url) throw new TRPCError({ code: "BAD_REQUEST", message: INVALID_URL_MESSAGE });
+      const domainError = domainErrors.get(record.domain);
+      if (domainError) throw domainError;
+      return prepare({ ...record, url });
     },
   );
 
-  const failures = results.flatMap((result, index) =>
-    result.status === "rejected"
-      ? [
-          {
-            row: records[index]!.row,
-            reason:
-              result.reason instanceof Error ? result.reason.message : "Could not create this link",
-          },
-        ]
-      : [],
+  // Allowance goes to valid links in file order, before the (slow) URL safety
+  // scan, so links past the limit are never scanned.
+  let allotted = 0;
+  let importAllotted = 0;
+  // Rows often share a destination, and a Bitly code always shares its row's.
+  const scans = new Map<string, Promise<void>>();
+  const createLinks = async (checks: PromiseSettledResult<PreparedLink>[]) => {
+    const steps = checks.map((): LinkCreationStep => "validation");
+    const usesImportAllowance = checks.map(() => false);
+    const results = await settleWithConcurrency(
+      checks,
+      CSV_IMPORT_CONCURRENCY,
+      async (check, index) => {
+        if (check.status === "rejected") throw check.reason;
+        const { record, alreadyImported } = check.value;
+        if (alreadyImported) return check.value;
+        // The domain passed assertDomainOwned and assertDomainWithinPlan, so a
+        // non-platform one is an active custom domain of this workspace.
+        if (
+          !isPlatformDomain(record.domain.toLowerCase()) &&
+          importAllotted < importAllowanceLeft
+        ) {
+          importAllotted++;
+          usesImportAllowance[index] = true;
+        } else if (allotted >= remaining) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Monthly limit of ${limit?.toLocaleString()} links reached. Upgrade your plan to create more.`,
+          });
+        } else {
+          allotted++;
+        }
+
+        steps[index] = "safety";
+        let scan = scans.get(record.url);
+        if (!scan) {
+          scan = checkUrl(record.url);
+          scans.set(record.url, scan);
+        }
+        await scan;
+
+        steps[index] = "db";
+        const ownership = workspaceOwnership(ctx.workspace);
+        const alias = record.alias ?? (await generateUnreservedAlias(ctx.db, record.domain));
+        await ctx.db.insert(link).values({
+          url: record.url,
+          alias,
+          name: record.name,
+          userId: ownership.userId,
+          teamId: ownership.teamId,
+          createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+          domain: record.domain,
+          note: record.note,
+          ...restrictedLinkValues(ctx.restrictedAt),
+        });
+        return { record: { ...record, alias }, alreadyImported: false };
+      },
+    );
+    const importCreated = results.filter(
+      (result, index) => result.status === "fulfilled" && usesImportAllowance[index],
+    ).length;
+    return { results, steps, importCreated };
+  };
+
+  const primary = await createLinks(validated);
+
+  // Bitly codes of custom links come after every row's own link, so they never
+  // take allowance a row needs, and only for rows whose link exists.
+  const codeLinks = primary.results.flatMap((result, index): ImportLink[] => {
+    const code = codeOf(index);
+    if (!code || result.status === "rejected") return [];
+    const { record } = result.value;
+    return [
+      {
+        row: record.row,
+        url: record.url,
+        domain: record.domain,
+        alias: code,
+        name: record.name,
+        note: `Bitly code for ${rows[index]!.bitly?.shortLink}`.slice(0, 255),
+      },
+    ];
+  });
+  const codes = await createLinks(
+    await settleWithConcurrency(codeLinks, CSV_IMPORT_CONCURRENCY, prepare),
   );
-  const created = results.length - failures.length;
-  const importCreated = results.filter(
-    (result, index) => result.status === "fulfilled" && usesImportAllowance[index],
-  ).length;
+
+  const failures = [
+    ...primary.results.flatMap((result, index) =>
+      result.status === "rejected"
+        ? [{ row: records[index]!.row, reason: importErrorMessage(result) }]
+        : [],
+    ),
+    ...codes.results.flatMap((result, index) => {
+      if (result.status === "fulfilled") return [];
+      const { row, domain, alias } = codeLinks[index]!;
+      return [
+        {
+          row,
+          reason: `Bitly code ${domain}/${alias} not kept: ${importErrorMessage(result)}`,
+        },
+      ];
+    }),
+  ].sort((a, b) => a.row - b.row);
+
+  const outcomes = [...primary.results, ...codes.results].flatMap((result) =>
+    result.status === "fulfilled" ? [result.value] : [],
+  );
+  const alreadyImported = outcomes.filter((outcome) => outcome.alreadyImported).length;
+  const created = outcomes.length - alreadyImported;
+  const importCreated = primary.importCreated + codes.importCreated;
+
+  const notices = primary.results.flatMap((result) => {
+    if (result.status === "rejected" || result.value.alreadyImported) return [];
+    const { record } = result.value;
+    if (!record.movedFrom) return [];
+    const backHalf = record.unavailableAlias
+      ? `, and the back-half ${record.unavailableAlias} isn't available here`
+      : "";
+    return [
+      {
+        row: record.row,
+        message: `${record.movedFrom} links stay on Bitly${backHalf}. Created ${record.domain}/${record.alias}.`,
+      },
+    ];
+  });
+
+  // Each unconnected domain once, besides the error on each of its rows.
+  const domainNotices = isBitlyFile
+    ? [
+        ...new Set(
+          records.flatMap((record) => {
+            const error = domainErrors.get(record.domain);
+            return error instanceof Error ? [error.message] : [];
+          }),
+        ),
+      ]
+    : [];
 
   await recordLinkCreationFailures(
     ctx.db,
     "bulk",
     ctx.auth.userId,
-    results.flatMap((result, index) =>
-      result.status === "rejected"
-        ? [classifyLinkCreationError(rowSteps[index] ?? "validation", result.reason)]
-        : [],
+    [primary, codes].flatMap(({ results, steps }) =>
+      results.flatMap((result, index) =>
+        result.status === "rejected"
+          ? [classifyLinkCreationError(steps[index] ?? "validation", result.reason)]
+          : [],
+      ),
     ),
   );
 
@@ -1959,14 +2193,25 @@ const bulkCreateLinkRows = async (
       ? `. ${importCreated.toLocaleString()} on your custom domain used the one-time import allowance instead of your monthly limit (${importAllowanceRemaining.toLocaleString()} of ${CUSTOM_DOMAIN_IMPORT_ALLOWANCE.toLocaleString()} left)`
       : "";
 
+  const summary = [
+    `${created} ${created === 1 ? "link" : "links"} created`,
+    `${failures.length} failed`,
+    ...(alreadyImported > 0 ? [`${alreadyImported} already imported`] : []),
+    ...(skipped > 0 ? [`${skipped} skipped (deleted in Bitly)`] : []),
+  ];
+
   return {
     success: true,
     created,
     failed: failures.length,
+    skipped,
+    alreadyImported,
     failures,
+    notices,
+    domainNotices,
     importAllowanceUsed: importCreated,
     importAllowanceRemaining,
-    message: `${created} ${created === 1 ? "link" : "links"} created, ${failures.length} failed${importNotice}`,
+    message: `${summary.join(", ")}${importNotice}`,
   };
 };
 

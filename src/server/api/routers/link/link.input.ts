@@ -253,3 +253,8 @@ export const bulkToggleLinkStatusSchema = z.object({
 });
 
 export type BulkToggleLinkStatusInput = z.infer<typeof bulkToggleLinkStatusSchema>;
+
+export const bulkUploadSchema = z.object({
+  csv: z.string(),
+  keepBitlyCodes: z.boolean().default(true),
+});

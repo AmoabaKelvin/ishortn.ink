@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 
 import { TRPCError } from "@trpc/server";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
@@ -11,13 +12,15 @@ import { customDomainImportAllowanceLeft, RESTRICTED_LINK_REASON } from "./utils
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
-import type { SQL } from "drizzle-orm";
+import type { Column, SQL } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 
 type InsertedLink = {
   url: string;
   alias: string;
   domain: string;
+  name?: string;
+  note?: string;
   blocked?: boolean;
   blockedReason?: string;
 };
@@ -36,8 +39,9 @@ const sqlParams = (value: SQL) => dialect.sqlToQuery(value).params;
 
 // In-memory stand-in for the queries bulkCreateLinks makes: the plan lookup,
 // custom-domain ownership (matched on the rendered query's domain and status),
-// alias availability (all free, none reserved), link inserts, failure records and
-// the monthly and import count updates, which write back to `account`.
+// alias availability (all free, none reserved), earlier imports (the links this
+// context inserted), link inserts, failure records and the monthly and import
+// count updates, which write back to `account`.
 function fakeContext(
   monthlyLinkCount: number,
   {
@@ -72,12 +76,16 @@ function fakeContext(
         },
       },
     },
-    select: () => ({
-      from: (table: MySqlTable) => {
-        const rows = table === customDomain ? domains.map(({ domain }) => ({ domain })) : [];
-        const limit = async () => rows;
-        return { where: () => ({ limit, orderBy: () => ({ limit }) }) };
-      },
+    // Earlier imports select the url column from link and await the where directly.
+    select: (fields: { url?: Column }) => ({
+      from: (table: MySqlTable) => ({
+        where: () => {
+          if (table === link && "url" in fields) return Promise.resolve(inserted);
+          const rows = table === customDomain ? domains.map(({ domain }) => ({ domain })) : [];
+          const limit = async () => rows;
+          return { limit, orderBy: () => ({ limit }) };
+        },
+      }),
     }),
     insert: (table: typeof link | typeof linkCreationFailure) => ({
       values: async (values: InsertedLink | LinkCreationFailure[]) => {
@@ -310,6 +318,193 @@ describe("bulkCreateLinks", () => {
       blocked: true,
       blockedReason: RESTRICTED_LINK_REASON,
     });
+  });
+});
+
+const fixture = (name: string) =>
+  readFileSync(new URL(`./__fixtures__/${name}`, import.meta.url), "utf8");
+
+// Pro workspace with go.example.com active; the default domain is isht.app.
+const bitlyContext = (monthlyLinkCount = 0, customDomainImportCount = 0) =>
+  fakeContext(monthlyLinkCount, {
+    plan: "pro",
+    customDomainImportCount,
+    domains: [{ domain: "go.example.com", status: "active" }],
+  });
+
+const UNCONNECTED =
+  "links.other-brand.test isn't connected to this workspace. Add it in Domains, wait until it shows Active, then import this file again.";
+
+describe("bulkCreateLinks with a Bitly export", () => {
+  test("imports the current export, keeping Bitly's original codes", async () => {
+    const { ctx, inserted, countUpdates, account } = bitlyContext(10);
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl);
+
+    expect(result).toMatchObject({
+      created: 5,
+      failed: 2,
+      skipped: 1,
+      alreadyImported: 0,
+      importAllowanceUsed: 3,
+      importAllowanceRemaining: 4997,
+    });
+    expect(result.message).toBe(
+      "5 links created, 2 failed, 1 skipped (deleted in Bitly). 3 on your custom domain used the one-time import allowance instead of your monthly limit (4,997 of 5,000 left)",
+    );
+    expect(result.failures).toEqual([
+      { row: 7, reason: UNCONNECTED },
+      { row: 8, reason: "Alias is used by an earlier row in this file" },
+    ]);
+    expect(result.domainNotices).toEqual([UNCONNECTED]);
+    // The three go.example.com links use the import allowance; the two moved
+    // bit.ly links land on isht.app and count toward the monthly limit.
+    expect(countUpdates).toEqual([{ monthlyLinkCount: 12 }]);
+    expect(account.customDomainImportCount).toBe(3);
+
+    const byAlias = new Map(inserted.map((row) => [`${row.domain}/${row.alias}`, row]));
+    expect(byAlias.get("go.example.com/spring-menu")).toMatchObject({
+      url: "https://example.com/menu/spring?utm_source=print",
+      name: "Spring menu, dinner",
+      note: "Imported from Bitly: https://go.example.com/3XCetqn",
+    });
+    expect(byAlias.get("go.example.com/3XCetqn")).toMatchObject({
+      url: "https://example.com/menu/spring?utm_source=print",
+      name: "Spring menu, dinner",
+      note: "Bitly code for https://go.example.com/spring-menu",
+    });
+    expect(byAlias.get("go.example.com/3XABUQI")).toMatchObject({
+      url: "https://example.com/book",
+      name: "Booking page",
+    });
+    expect(byAlias.get("isht.app/example-reviews")).toMatchObject({
+      url: "https://g.page/r/example/review",
+    });
+    const contact = inserted.find((row) => row.url === "https://example.com/contact");
+    expect(contact).toMatchObject({
+      domain: "isht.app",
+      note: "Imported from Bitly: https://bit.ly/4zZyYxX",
+    });
+    expect(contact?.alias).toHaveLength(9);
+    expect(contact?.name).toBeUndefined();
+    expect(byAlias.has("go.example.com/4Dupe01")).toBe(false);
+    expect(inserted.some((row) => row.url === "https://example.com/promo-2025")).toBe(false);
+
+    expect(result.notices).toEqual([
+      { row: 4, message: "bit.ly links stay on Bitly. Created isht.app/example-reviews." },
+      { row: 5, message: `bit.ly links stay on Bitly. Created isht.app/${contact?.alias}.` },
+    ]);
+  });
+
+  test("creates only the primary links when original codes are off", async () => {
+    const { ctx, inserted } = bitlyContext();
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl, {
+      keepBitlyCodes: false,
+    });
+
+    expect(result).toMatchObject({ created: 4, failed: 2, skipped: 1 });
+    expect(inserted.some((row) => row.alias === "3XCetqn")).toBe(false);
+  });
+
+  test("counts links from an earlier run of the same file as already imported", async () => {
+    const { ctx, inserted, countUpdates, account } = bitlyContext();
+    await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl);
+    const again = await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl);
+
+    expect(again).toMatchObject({
+      created: 0,
+      alreadyImported: 5,
+      failed: 2,
+      skipped: 1,
+      importAllowanceUsed: 0,
+    });
+    expect(again.failures.map((failure) => failure.row)).toEqual([7, 8]);
+    expect(again.notices).toEqual([]);
+    expect(inserted).toHaveLength(5);
+    expect(countUpdates).toEqual([{ monthlyLinkCount: 2 }]);
+    expect(account.customDomainImportCount).toBe(3);
+  });
+
+  test("imports the legacy export format", async () => {
+    const { ctx, inserted } = bitlyContext();
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-legacy.csv"), allowUrl);
+
+    expect(result).toMatchObject({ created: 3, failed: 0, skipped: 0 });
+    expect(inserted.map((row) => `${row.domain}/${row.alias}`).sort()).toEqual([
+      "go.example.com/3GexGSC",
+      "go.example.com/3vLl4Ax",
+      "go.example.com/FAQ",
+    ]);
+  });
+
+  test("imports onto an active custom domain with the import allowance once the monthly limit is used up", async () => {
+    const { ctx, inserted, countUpdates, account } = bitlyContext(1000);
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-current.csv"), allowUrl);
+
+    expect(result).toMatchObject({
+      created: 3,
+      skipped: 1,
+      importAllowanceUsed: 3,
+      importAllowanceRemaining: 4997,
+    });
+    expect(inserted.map((row) => `${row.domain}/${row.alias}`).sort()).toEqual([
+      "go.example.com/3XABUQI",
+      "go.example.com/3XCetqn",
+      "go.example.com/spring-menu",
+    ]);
+    // Moved bit.ly links land on a platform domain, so they still need the monthly limit.
+    expect(result.failures).toEqual([
+      { row: 4, reason: expect.stringContaining("Monthly limit of 1,000 links reached") },
+      { row: 5, reason: expect.stringContaining("Monthly limit of 1,000 links reached") },
+      { row: 7, reason: UNCONNECTED },
+      { row: 8, reason: "Alias is used by an earlier row in this file" },
+    ]);
+    expect(countUpdates).toEqual([]);
+    expect(account).toEqual({ monthlyLinkCount: 1000, customDomainImportCount: 3 });
+  });
+
+  test("allots the monthly allowance to rows before original codes", async () => {
+    // Pro allows 1,000 links a month; two are left and the import allowance is used up.
+    const { ctx, inserted } = bitlyContext(998, 5000);
+    const result = await bulkCreateLinks(ctx, fixture("bitly-export-legacy.csv"), allowUrl);
+
+    expect(result.created).toBe(2);
+    expect(result.failures).toEqual([
+      {
+        row: 2,
+        reason: expect.stringContaining(
+          "go.example.com/3vLl4Ax not kept: Monthly limit of 1,000 links reached",
+        ),
+      },
+    ]);
+    expect(inserted.map((row) => row.alias).sort()).toEqual(["3GexGSC", "FAQ"]);
+  });
+
+  test("moves a bit.ly back-half that is invalid here to a generated alias", async () => {
+    const { ctx, inserted } = bitlyContext();
+    const result = await bulkCreateLinks(
+      ctx,
+      [
+        "Link,Custom Link,Title,Destination URL,Status",
+        "https://bit.ly/abc,https://bit.ly/menu.pdf,,https://example.com/a,Active",
+        "https://go.example.com/xyz,https://go.example.com/a/b,,https://example.com/b,Active",
+        ",,,https://example.com/c,Active",
+      ].join("\n"),
+      allowUrl,
+    );
+
+    expect(result.notices).toEqual([
+      {
+        row: 2,
+        message: expect.stringMatching(
+          /^bit\.ly links stay on Bitly, and the back-half menu\.pdf isn't available here\. Created isht\.app\/\w{9}\.$/,
+        ),
+      },
+    ]);
+    expect(result.failures).toEqual([
+      { row: 3, reason: expect.stringContaining("alphanumeric") },
+      { row: 4, reason: "This row has no valid Bitly link" },
+    ]);
+    expect(inserted.map((row) => row.domain)).toEqual(["isht.app"]);
   });
 });
 
