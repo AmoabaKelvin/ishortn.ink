@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "5288d6bc-93cc-4e69-a8a8-117b6bc82ada",
+  "id": "99c3dfd0-fd0e-47e5-8d68-f5d3666ff1c9",
   "prevId": "e1e02980-4122-4357-b1fd-8f9aafd59eb6",
   "tables": {
     "AccountDeletion": {
@@ -1924,13 +1924,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "clickLimitCount": {
-          "name": "clickLimitCount",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "disableLinkAfterDate": {
           "name": "disableLinkAfterDate",
           "type": "datetime",
@@ -2939,6 +2932,13 @@
           "type": "varchar(7)",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "style": {
+          "name": "style",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         }
       },

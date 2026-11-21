@@ -1,6 +1,7 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { db } from "@/server/db";
 import { linkVisit, uniqueLinkVisit } from "@/server/db/schema";
 
@@ -15,6 +16,7 @@ const BREAKDOWNS = {
   clicksPerOS: linkVisit.os,
   clicksPerBrowser: linkVisit.browser,
   clicksPerModel: linkVisit.model,
+  clicksPerReferrer: linkVisit.referer,
 };
 
 type Breakdown = keyof typeof BREAKDOWNS;
@@ -62,7 +64,7 @@ export async function countVisits(linkId: number, from: Date | null): Promise<Vi
 
 const counts = (): Record<string, number> => ({});
 
-/** Shapes grouped counts into the analytics response (same keys as `aggregateVisits`). */
+/** Shapes grouped counts into the analytics response (`aggregateVisits` keys plus referrers). */
 export function foldVisitCounts(rows: VisitCountRow[]) {
   const result = {
     totalClicks: 0,
@@ -77,6 +79,7 @@ export function foldVisitCounts(rows: VisitCountRow[]) {
     clicksPerOS: counts(),
     clicksPerBrowser: counts(),
     clicksPerModel: counts(),
+    clicksPerReferrer: counts(),
   };
 
   for (const row of rows) {
@@ -89,6 +92,11 @@ export function foldVisitCounts(rows: VisitCountRow[]) {
       }
     } else if (row.dim === "unique") {
       result.uniqueClicksPerDate[row.k] = row.n;
+    } else if (row.dim === "clicksPerReferrer") {
+      // Stored values mix source names, domains and legacy full URLs or "null";
+      // several can share a display label, so their counts add up.
+      const label = formatReferrerLabel(row.k);
+      result.clicksPerReferrer[label] = (result.clicksPerReferrer[label] ?? 0) + row.n;
     } else if (isBreakdown(row.dim)) {
       result[row.dim][row.k] = row.n;
     }

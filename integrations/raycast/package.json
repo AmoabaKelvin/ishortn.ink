@@ -1,0 +1,76 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "ishortn",
+  "title": "iShortn",
+  "description": "Shorten links with iShortn and view their click analytics.",
+  "icon": "icon.png",
+  "author": "kelvin_amoaba",
+  "license": "MIT",
+  "platforms": [
+    "macOS",
+    "Windows"
+  ],
+  "categories": [
+    "Productivity",
+    "Web"
+  ],
+  "preferences": [
+    {
+      "name": "apiKey",
+      "type": "password",
+      "required": true,
+      "title": "API Key",
+      "description": "Your iShortn API key. Create one in Settings → API Keys (Pro or Ultra plan).",
+      "placeholder": "Paste your API key",
+      "link": "https://ishortn.ink/dashboard/settings?utm_source=raycast&utm_medium=integration&utm_campaign=raycast_extension#api-keys"
+    },
+    {
+      "name": "defaultDomain",
+      "type": "textfield",
+      "required": false,
+      "title": "Default Domain",
+      "description": "Domain for new links, and for Link Analytics when you enter only an alias. A platform domain such as isht.app or an active custom domain. Leave empty to use your account's default domain.",
+      "placeholder": "isht.app"
+    }
+  ],
+  "commands": [
+    {
+      "name": "shorten-link",
+      "title": "Shorten Link",
+      "description": "Shorten a URL with an optional custom alias and domain",
+      "mode": "view"
+    },
+    {
+      "name": "shorten-clipboard-url",
+      "title": "Shorten Clipboard URL",
+      "description": "Shorten the URL in your clipboard and copy the short link",
+      "mode": "no-view"
+    },
+    {
+      "name": "link-analytics",
+      "title": "Link Analytics",
+      "description": "View clicks, top countries, devices and referrers for a short link",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.13.1",
+    "@raycast/utils": "^2.3.3"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "lint": "ray lint",
+    "fix-lint": "ray lint --fix",
+    "test": "node --test 'src/**/*.test.ts'",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}

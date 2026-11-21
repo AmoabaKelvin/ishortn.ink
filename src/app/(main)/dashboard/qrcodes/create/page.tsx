@@ -41,12 +41,20 @@ import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { nextPlanFor } from "@/lib/billing/upgrade";
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
+import { generateQRCodeSvg, hasRasterOnlyOptions, toLogoDataUri } from "@/lib/qr-generator/svg";
 import { cn } from "@/lib/utils";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { api } from "@/trpc/react";
 
 import UpgradeText from "../_components/upgrade-text";
-import { checkIfUserCanCreateMoreQRCodes, qrCodeFileName, saveBlob } from "../utils";
+import {
+  checkIfUserCanCreateMoreQRCodes,
+  qrCodeFileName,
+  qrCodeStyleFrom,
+  saveBlob,
+  saveSvg,
+  SVG_EFFECTS_NOTE,
+} from "../utils";
 import QRAdvancedCustomization from "./_components/qr-advanced-customization";
 
 import type { QRCodeGeneratorState } from "@/lib/qr-generator";
@@ -84,6 +92,7 @@ function QRCodeCreationPage() {
   const [qrCodeTitle, setQRCodeTitle] = useState<string>("");
   const [destinationUrl, setDestinationUrl] = useState<string>("");
   const [selectedDomain, setSelectedDomain] = useState<string>(DEFAULT_PLATFORM_DOMAIN);
+  const [downloadFormat, setDownloadFormat] = useState<"png" | "svg">("png");
 
   const customDomainsQuery = api.customDomain.list.useQuery();
   const userDomains = customDomainsQuery.data ?? [];
@@ -316,15 +325,34 @@ function QRCodeCreationPage() {
         });
         const qrCodeBase64 = finalCanvas.toDataURL("image/png", 1.0);
 
-        // Step 4: Upload the correctly-encoded image
-        await qrCodeSaveImageMutation.mutateAsync({ id, qrCodeBase64 });
+        // A logo picked from a preset is a stored URL, and uploads can be any image format; the
+        // saved style takes PNG/JPEG data URIs. If it can't be read, the PNG above couldn't draw
+        // it either.
+        const logoImage = qrState.logoImage
+          ? await toLogoDataUri(qrState.logoImage).catch(() => undefined)
+          : undefined;
+        const style = qrCodeStyleFrom(qrState, logoImage);
 
-        // Save from the in-memory canvas: the stored image is cross-origin, where `download` is
-        // ignored and the browser would open it instead.
-        const blob = await new Promise<Blob | null>((resolve) =>
-          finalCanvas.toBlob(resolve, "image/png"),
-        );
-        if (blob) saveBlob(blob, qrCodeFileName(finalTitle));
+        // Step 4: Upload the correctly-encoded image, with the style the SVG download redraws
+        await qrCodeSaveImageMutation.mutateAsync({ id, qrCodeBase64, style });
+
+        if (downloadFormat === "svg") {
+          const svg = generateQRCodeSvg({
+            ...qrState,
+            ecc: style.ecc,
+            logoImage,
+            text: trackingUrl,
+            scale: 20,
+          });
+          saveSvg(svg, qrCodeFileName(finalTitle, "svg"));
+        } else {
+          // Save from the in-memory canvas: the stored image is cross-origin, where `download`
+          // is ignored and the browser would open it instead.
+          const blob = await new Promise<Blob | null>((resolve) =>
+            finalCanvas.toBlob(resolve, "image/png"),
+          );
+          if (blob) saveBlob(blob, qrCodeFileName(finalTitle));
+        }
       } catch (err) {
         // Roll back the server record created in step 1 to avoid orphaned data
         await qrCodeDeleteMutation.mutateAsync({ id }).catch(() => {});
@@ -663,6 +691,36 @@ function QRCodeCreationPage() {
                 {destinationUrl || "Enter a destination URL above"}
               </p>
             </div>
+          </div>
+
+          {/* Download format */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="qr-download-format"
+              className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
+            >
+              Download as
+            </Label>
+            <Select
+              value={downloadFormat}
+              onValueChange={(value) => setDownloadFormat(value === "svg" ? "svg" : "png")}
+            >
+              <SelectTrigger
+                id="qr-download-format"
+                className="h-9 w-full border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] text-neutral-700 dark:text-neutral-300"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="png">PNG, high resolution</SelectItem>
+                <SelectItem value="svg">SVG, vector for print and engraving</SelectItem>
+              </SelectContent>
+            </Select>
+            {downloadFormat === "svg" && hasRasterOnlyOptions(qrState) && (
+              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                {SVG_EFFECTS_NOTE}
+              </p>
+            )}
           </div>
 
           {/* Generate Button */}

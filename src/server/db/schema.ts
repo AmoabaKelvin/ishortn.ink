@@ -18,6 +18,8 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 
+import type { QRCodeStyle } from "@/lib/qr-generator/types";
+
 // ============================================================================
 // TEAM TABLES
 // ============================================================================
@@ -517,6 +519,9 @@ export const qrcode = mysqlTable(
 
     // Color
     color: varchar("color", { length: 7 }).notNull(),
+
+    // Generator options used for the SVG download; null for codes saved before SVG export.
+    style: json("style").$type<QRCodeStyle>(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),

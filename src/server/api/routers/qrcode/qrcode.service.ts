@@ -148,23 +148,42 @@ export const saveQrCodeImage = userFacing(
     }
 
     assertValidImageInput(input.qrCodeBase64);
+    const logo = input.style?.logoImage;
+    if (logo) assertValidImageInput(logo);
 
-    // Persist base64 immediately so we have a fallback
-    await ctx.db.update(qrcode).set({ qrCode: input.qrCodeBase64 }).where(eq(qrcode.id, input.id));
+    // Persist base64 immediately so we have a fallback. The style only ever holds an uploaded logo
+    // URL: the list returns every row's style, and a data URI would add up to 2.7MB per code. If
+    // the logo upload fails, the code's SVG is drawn without it.
+    await ctx.db
+      .update(qrcode)
+      .set({
+        qrCode: input.qrCodeBase64,
+        ...(input.style && { style: { ...input.style, logoImage: null } }),
+      })
+      .where(eq(qrcode.id, input.id));
 
-    // Upload to R2
+    // Upload to R2. The logo is kept so the SVG download can embed it.
     try {
-      const imageUrl = await uploadImage(ctx, {
-        image: input.qrCodeBase64,
-        resourceId: input.id,
-        imageType: "qr-code",
-      });
+      const [imageUrl, logoUrl] = await Promise.all([
+        uploadImage(ctx, { image: input.qrCodeBase64, resourceId: input.id, imageType: "qr-code" }),
+        logo
+          ? uploadImage(ctx, { image: logo, resourceId: input.id, imageType: "qr-code-logo" })
+          : undefined,
+      ]);
+      const uploadedImage = imageUrl && imageUrl !== input.qrCodeBase64 ? imageUrl : undefined;
+      const uploadedLogo = logoUrl && logoUrl !== logo ? logoUrl : undefined;
 
-      if (imageUrl && imageUrl !== input.qrCodeBase64) {
-        await ctx.db.update(qrcode).set({ qrCode: imageUrl }).where(eq(qrcode.id, input.id));
-
-        return imageUrl;
+      if (uploadedImage || (input.style && uploadedLogo)) {
+        await ctx.db
+          .update(qrcode)
+          .set({
+            ...(uploadedImage && { qrCode: uploadedImage }),
+            ...(input.style &&
+              uploadedLogo && { style: { ...input.style, logoImage: uploadedLogo } }),
+          })
+          .where(eq(qrcode.id, input.id));
       }
+      if (uploadedImage) return uploadedImage;
     } catch (error) {
       if (error instanceof TRPCError) throw error;
       log.error({ err: error, qrCodeId: input.id }, "failed to upload QR code image to R2");
@@ -259,10 +278,11 @@ export const deleteQrCode = userFacing(
       });
     }
 
-    // Delete QR code image from R2 if present
-    if (qrCode.qrCode) {
+    // Delete the QR code image and its logo from R2 if present
+    for (const image of [qrCode.qrCode, qrCode.style?.logoImage]) {
+      if (!image) continue;
       try {
-        await deleteImage(ctx.workspace, qrCode.qrCode);
+        await deleteImage(ctx.workspace, image);
       } catch (error) {
         log.error({ err: error, qrCodeId: id }, "failed to delete QR code image from R2");
       }

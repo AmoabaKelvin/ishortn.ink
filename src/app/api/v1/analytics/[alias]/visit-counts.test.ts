@@ -23,6 +23,18 @@ describe("foldVisitCounts", () => {
     expect(result.clicksPerDevice).toEqual({});
   });
 
+  test("labels referrers and merges values that share a label", () => {
+    const result = foldVisitCounts([
+      { dim: "clicksPerReferrer", k: "direct", n: 3, v: 0 },
+      { dim: "clicksPerReferrer", k: "null", n: 1, v: 0 },
+      { dim: "clicksPerReferrer", k: "twitter", n: 2, v: 0 },
+      { dim: "clicksPerReferrer", k: "instagram.com", n: 4, v: 0 },
+      { dim: "clicksPerReferrer", k: "https://www.instagram.com/p/abc", n: 1, v: 0 },
+    ]);
+
+    expect(result.clicksPerReferrer).toEqual({ Direct: 4, Twitter: 2, "instagram.com": 5 });
+  });
+
   test("ignores unknown dimensions", () => {
     const result = foldVisitCounts([{ dim: "toString", k: "x", n: 1, v: 0 }]);
     expect(result.totalClicks).toBe(0);
