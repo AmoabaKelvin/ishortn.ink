@@ -174,6 +174,8 @@ export function AddCustomDomainModal() {
                 {createCustomDomainMutation.isLoading ? "Adding..." : "Add Domain"}
               </Button>
             ) : (
+              // The pricing page owns the billing interval choice (annual by default), so the
+              // upgrade goes through it instead of starting a checkout from here.
               <Button asChild className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700">
                 <UpgradeCta requiredPlan="pro" source="custom_domain">
                   Upgrade to Pro

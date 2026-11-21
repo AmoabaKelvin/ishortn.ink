@@ -1,13 +1,16 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 
-import { resolvePlan } from "@/lib/billing/plans";
+import { effectivePlan, graceUsagePlan, paidPlan, teamAccess } from "@/lib/billing/entitlements";
 import { extractPlatformSubdomain } from "@/lib/constants/domains";
 import { db } from "@/server/db";
 import { RESERVED_TEAM_SLUGS, team, teamMember } from "@/server/db/schema";
+import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
 
 import type { WorkspaceContext, PersonalWorkspaceContext, TeamWorkspaceContext } from "./types";
-import type { TeamRole } from "@/server/db/schema";
+import type { TeamAccess } from "@/lib/billing/entitlements";
+import type { Plan } from "@/lib/billing/plans";
+import type { Team, TeamRole } from "@/server/db/schema";
 
 type DbClient = typeof db;
 
@@ -100,7 +103,8 @@ async function getPersonalWorkspaceContext(
     });
   }
 
-  const plan = resolvePlan(userRecord.subscriptions ?? null);
+  const sub = userRecord.subscriptions ?? null;
+  const grace = await ensurePlanChecked(userRecord, sub);
 
   return {
     type: "personal",
@@ -108,7 +112,8 @@ async function getPersonalWorkspaceContext(
     teamId: null,
     teamSlug: null,
     role: "owner",
-    plan,
+    plan: effectivePlan(sub, grace),
+    graceUsagePlan: graceUsagePlan(sub, grace),
   };
 }
 
@@ -132,10 +137,13 @@ async function getTeamWorkspaceContext(
     });
   }
 
-  // Check if user is a member of this team
-  const membership = await dbClient.query.teamMember.findFirst({
-    where: and(eq(teamMember.teamId, teamRecord.id), eq(teamMember.userId, userId)),
-  });
+  // Check if user is a member of this team; the owner's plan is read alongside.
+  const [membership, access] = await Promise.all([
+    dbClient.query.teamMember.findFirst({
+      where: and(eq(teamMember.teamId, teamRecord.id), eq(teamMember.userId, userId)),
+    }),
+    getTeamAccess(teamRecord, dbClient),
+  ]);
 
   if (!membership) {
     throw new TRPCError({
@@ -152,7 +160,9 @@ async function getTeamWorkspaceContext(
     team: teamRecord,
     membership,
     role: membership.role,
-    plan: "ultra", // Teams always have Ultra features
+    plan: access.plan,
+    readOnly: access.readOnly,
+    ownerGraceEndsAt: access.graceEndsAt,
   };
 }
 
@@ -176,10 +186,13 @@ export async function getTeamWorkspaceContextById(
     });
   }
 
-  // Check if user is a member of this team
-  const membership = await dbClient.query.teamMember.findFirst({
-    where: and(eq(teamMember.teamId, teamRecord.id), eq(teamMember.userId, userId)),
-  });
+  // Check if user is a member of this team; the owner's plan is read alongside.
+  const [membership, access] = await Promise.all([
+    dbClient.query.teamMember.findFirst({
+      where: and(eq(teamMember.teamId, teamRecord.id), eq(teamMember.userId, userId)),
+    }),
+    getTeamAccess(teamRecord, dbClient),
+  ]);
 
   if (!membership) {
     throw new TRPCError({
@@ -196,28 +209,45 @@ export async function getTeamWorkspaceContextById(
     team: teamRecord,
     membership,
     role: membership.role,
-    plan: "ultra",
+    plan: access.plan,
+    readOnly: access.readOnly,
+    ownerGraceEndsAt: access.graceEndsAt,
   };
 }
 
-/**
- * Checks if a user has an Ultra plan subscription.
- * Required for team creation.
- */
-export async function userHasUltraPlan(userId: string, dbClient: DbClient = db): Promise<boolean> {
+/** The effective plan of an account (paid plan, or its grace plan while that lasts). */
+export async function getUserEffectivePlan(userId: string, dbClient: DbClient = db): Promise<Plan> {
   const userRecord = await dbClient.query.user.findFirst({
     where: (table, { eq }) => eq(table.id, userId),
+    columns: { planGracePlan: true, planGraceEndsAt: true, planGraceReason: true },
     with: {
       subscriptions: true,
     },
   });
 
-  if (!userRecord) {
-    return false;
-  }
+  if (!userRecord) return "free";
+  return effectivePlan(userRecord.subscriptions ?? null, userRecord);
+}
 
-  const plan = resolvePlan(userRecord.subscriptions ?? null);
-  return plan === "ultra";
+/**
+ * Whether a user is paying for Ultra right now. Required for team creation and
+ * for taking over a team. A grace period doesn't count: it keeps existing usage
+ * working, it doesn't unlock new teams.
+ */
+export async function userHasUltraPlan(userId: string, dbClient: DbClient = db): Promise<boolean> {
+  const sub = await dbClient.query.subscription.findFirst({
+    where: (table, { eq }) => eq(table.userId, userId),
+  });
+  return paidPlan(sub ?? null) === "ultra";
+}
+
+/** A team's entitlements, from its owner's live plan and the team grace period. */
+export async function getTeamAccess(
+  teamRecord: Pick<Team, "ownerId" | "ownerPlanGraceEndsAt">,
+  dbClient: DbClient = db,
+): Promise<TeamAccess> {
+  const ownerPlan = await getUserEffectivePlan(teamRecord.ownerId, dbClient);
+  return teamAccess(ownerPlan, teamRecord.ownerPlanGraceEndsAt);
 }
 
 /**

@@ -1,17 +1,14 @@
-import { getPlanCaps, resolvePlan } from "@/lib/billing/plans";
-import {
-  aggregateVisits,
-  analyticsWindow,
-  mergeArchivedClicks,
-  summarizeArchived,
-} from "@/lib/core/analytics";
+import { getPlanCaps } from "@/lib/billing/plans";
+import { analyticsWindow, mergeArchivedClicks, summarizeArchived } from "@/lib/core/analytics";
 import { db } from "@/server/db";
 
+import { apiError } from "../../errors";
 import {
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
   withApiKey,
 } from "../../utils";
+import { countVisits, foldVisitCounts } from "./visit-counts";
 
 import type { NextRequest } from "next/server";
 
@@ -25,14 +22,11 @@ export const GET = withApiKey(
       getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
     );
     if (!domain) {
-      return new Response("Domain not available for this API key", { status: 403 });
+      return apiError(403, "forbidden", "Domain not available for this API key");
     }
 
     // Same window the dashboard applies for the plan (all-time when uncapped).
-    const window = analyticsWindow(
-      getPlanCaps(resolvePlan(token.subscription ?? null)).analyticsRangeLimitDays,
-      new Date(),
-    );
+    const window = analyticsWindow(getPlanCaps(token.plan).analyticsRangeLimitDays, new Date());
     const from = window.from;
 
     const link = await db.query.link.findFirst({
@@ -45,29 +39,25 @@ export const GET = withApiKey(
           eq(table.userId, token.userId),
           isNull(table.teamId),
         ),
-      with: {
-        linkVisits: from ? { where: (visit, { gte }) => gte(visit.createdAt, from) } : true,
-        uniqueLinkVisits: from ? { where: (visit, { gte }) => gte(visit.createdAt, from) } : true,
-      },
+      columns: { id: true },
     });
 
     if (!link) {
-      return new Response("Link not found", { status: 404 });
+      return apiError(404, "not_found", "Link not found");
     }
 
-    if (link.userId !== token.userId) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-
-    const summaries = await db.query.linkVisitDailySummary.findMany({
-      where: (table, { eq, and, gte }) =>
-        from
-          ? and(eq(table.linkId, link.id), gte(table.date, from.toISOString().slice(0, 10)))
-          : eq(table.linkId, link.id),
-    });
+    const [visitCounts, summaries] = await Promise.all([
+      countVisits(link.id, from),
+      db.query.linkVisitDailySummary.findMany({
+        where: (table, { eq, and, gte }) =>
+          from
+            ? and(eq(table.linkId, link.id), gte(table.date, from.toISOString().slice(0, 10)))
+            : eq(table.linkId, link.id),
+      }),
+    ]);
     const archived = summarizeArchived(summaries);
 
-    const aggregatedVisits = aggregateVisits(link.linkVisits, link.uniqueLinkVisits);
+    const aggregatedVisits = foldVisitCounts(visitCounts);
 
     return Response.json({
       ...aggregatedVisits,

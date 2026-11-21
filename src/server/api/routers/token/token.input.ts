@@ -1,7 +1,13 @@
 import { z } from "zod";
 
+export const TOKEN_NAME_MAX_LENGTH = 64;
+
 const createTokenSchema = z.object({
-  name: z.string(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(TOKEN_NAME_MAX_LENGTH, `Name must be ${TOKEN_NAME_MAX_LENGTH} characters or less`),
 });
 
 const deleteTokenSchema = z.object({

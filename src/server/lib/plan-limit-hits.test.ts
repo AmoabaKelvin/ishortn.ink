@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 
+import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 
 import { createBioPage } from "@/server/api/routers/bio-page/bio-page.service";
@@ -9,6 +10,7 @@ import { addDomainToUserAccount } from "@/server/api/routers/domains/domains.ser
 import { createFolder } from "@/server/api/routers/folder/folder.service";
 import { createGeoRule } from "@/server/api/routers/geo-rules/geo-rules.service";
 import { upsertMilestones } from "@/server/api/routers/link-milestone/link-milestone.service";
+import { updateLink } from "@/server/api/routers/link/link.service";
 import { createQrCode } from "@/server/api/routers/qrcode/qrcode.service";
 import { createToken } from "@/server/api/routers/token/token.service";
 import { db } from "@/server/db";
@@ -105,10 +107,13 @@ describe.skipIf(!testDatabaseUrl)("PlanLimitHit logging (MySQL)", () => {
 
   afterAll(cleanup);
 
+  let editedLinkId = 0;
+
   // Each case seeds what the plan check needs, then runs the rejected action twice:
   // the first rejection logs one row, the second (same day) adds none.
   const cases: {
     limitKey: PlanLimitKey;
+    label?: string;
     seed?: () => Promise<object | number | void>;
     run: () => Promise<object | void>;
   }[] = [
@@ -195,6 +200,18 @@ describe.skipIf(!testDatabaseUrl)("PlanLimitHit logging (MySQL)", () => {
         }),
     },
     {
+      limitKey: "geo_rules",
+      label: "geo_rules (link edit)",
+      seed: async () => (editedLinkId = await seedLink()),
+      run: () =>
+        updateLink(workspaceCtx, {
+          id: editedLinkId,
+          geoRules: [
+            { type: "country", condition: "in", values: ["US"], action: "block", priority: 0 },
+          ],
+        }),
+    },
+    {
       limitKey: "milestones",
       seed: seedLink,
       run: async () =>
@@ -209,8 +226,8 @@ describe.skipIf(!testDatabaseUrl)("PlanLimitHit logging (MySQL)", () => {
     },
   ];
 
-  for (const { limitKey, seed, run } of cases) {
-    test(`a rejected ${limitKey} action logs one row per day`, async () => {
+  for (const { limitKey, label, seed, run } of cases) {
+    test(`a rejected ${label ?? limitKey} action logs one row per day`, async () => {
       await seed?.();
 
       await expect(run()).rejects.toThrow();
@@ -221,6 +238,18 @@ describe.skipIf(!testDatabaseUrl)("PlanLimitHit logging (MySQL)", () => {
       expect(await hits(limitKey)).toHaveLength(1);
     });
   }
+
+  test("a link edit with targeting rules on Free is rejected as FORBIDDEN", async () => {
+    const id = await seedLink();
+    const edit = updateLink(workspaceCtx, {
+      id,
+      geoRules: [
+        { type: "country", condition: "in", values: ["US"], action: "block", priority: 0 },
+      ],
+    });
+    await expect(edit).rejects.toBeInstanceOf(TRPCError);
+    await expect(edit).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 
   test("concurrent hits from different isolates still write one row", async () => {
     const hit = { userId: USER_ID, limitKey: "folders", plan: "free" } as const;

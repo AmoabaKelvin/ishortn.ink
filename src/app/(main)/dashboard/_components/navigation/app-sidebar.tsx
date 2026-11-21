@@ -18,6 +18,7 @@ import {
   IconMessageReport,
   IconMicrophone2,
   IconQrcode,
+  IconReceipt,
   IconSettings,
   IconShieldLock,
   IconSpeakerphone,
@@ -42,6 +43,8 @@ import { FeedbackModal } from "./feedback-modal";
 import { SidebarStats } from "./sidebar-stats";
 import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
+
+import type { EventUsage } from "./sidebar-stats";
 
 const navigationItems = [
   { name: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
@@ -73,6 +76,7 @@ const adminNavigationItems = [
   { name: "Links", href: "/dashboard/admin/links", icon: IconLink },
   { name: "Users", href: "/dashboard/admin/users", icon: IconUsers },
   { name: "Signups", href: "/dashboard/admin/signups", icon: IconUserPlus },
+  { name: "Entitlements", href: "/dashboard/admin/entitlements", icon: IconReceipt },
   { name: "Blocked Domains", href: "/dashboard/admin/domains", icon: IconBan },
   { name: "Flagged Links", href: "/dashboard/admin/flagged", icon: IconFlag },
   { name: "Feedback", href: "/dashboard/admin/feedback", icon: IconMessageReport },
@@ -107,7 +111,7 @@ type AppSidebarProps = {
   monthlyLinkCount?: number;
   totalLinks?: number;
   linkLimit?: number | null;
-  eventUsage?: { count: number; limit: number | null } | undefined;
+  eventUsage?: EventUsage | undefined;
   folderUsage?: { count: number; limit: number | null } | undefined;
   plan?: "free" | "pro" | "ultra";
   teams?: Team[];

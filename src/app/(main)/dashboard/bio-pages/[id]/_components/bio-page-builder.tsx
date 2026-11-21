@@ -45,7 +45,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UpgradeCta } from "@/components/upgrade-cta";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { getBioLinkBlockLimit } from "@/lib/billing/plans";
-import { isPlanLimitError } from "@/lib/billing/required-plan";
+import { isPlanLimitError, requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { api } from "@/trpc/react";
 
 import { AnalyticsPanel } from "./analytics-panel";
@@ -64,7 +64,6 @@ import {
 
 import type { Plan } from "@/lib/billing/plans";
 import type { BioBlockType } from "@/server/db/schema";
-import type { EventTrackingPause } from "@/server/lib/event-usage";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type BioPageData = RouterOutputs["bioPage"]["get"];
@@ -108,12 +107,10 @@ export function BioPageBuilder({
   pageId,
   initialData,
   plan,
-  trackingPause,
 }: {
   pageId: number;
   initialData: BioPageData;
   plan: Plan;
-  trackingPause: EventTrackingPause | null;
 }) {
   const utils = api.useUtils();
   const router = useRouter();
@@ -194,7 +191,11 @@ export function BioPageBuilder({
     onSuccess: refresh,
     onError: (e) => {
       if (isPlanLimitError(e)) {
-        notifyPlanLimit(e.message, "bio_link_block_limit", "pro");
+        notifyPlanLimit(
+          e.message,
+          /schedul/i.test(e.message) ? "bio_scheduled_blocks" : "bio_link_block_limit",
+          requiredPlanForLimit(e.message, plan),
+        );
         return;
       }
       toast.error(formatMutationError(e));
@@ -380,7 +381,7 @@ export function BioPageBuilder({
               value="analytics"
               className="mt-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:fill-mode-both motion-safe:duration-300"
             >
-              <AnalyticsPanel pageId={pageId} plan={plan} trackingPause={trackingPause} />
+              <AnalyticsPanel pageId={pageId} plan={plan} />
             </TabsContent>
           </Tabs>
         </div>

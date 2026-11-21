@@ -22,6 +22,7 @@ export const DOCS_PAGE_MODULES = {
   "api/create-link": () => import("../../../content/docs/api/create-link.mdx"),
   "api/get-link": () => import("../../../content/docs/api/get-link.mdx"),
   "api/update-link": () => import("../../../content/docs/api/update-link.mdx"),
+  "api/delete-link": () => import("../../../content/docs/api/delete-link.mdx"),
   "api/link-analytics": () => import("../../../content/docs/api/link-analytics.mdx"),
   "api/verify-click": () => import("../../../content/docs/api/verify-click.mdx"),
   "self-hosting": () => import("../../../content/docs/self-hosting.mdx"),

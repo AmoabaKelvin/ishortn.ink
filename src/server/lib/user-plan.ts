@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 
+import { effectivePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
@@ -36,6 +37,7 @@ export type UserPlanContext = {
   subscription: Subscription | null;
   plan: Plan;
   caps: (typeof PLAN_CAPS)[Plan];
+  linksLimit: number | undefined;
 };
 
 const getMonthStart = () => {
@@ -57,13 +59,14 @@ export async function getUserPlanContext(
   if (!userRecord) return null;
 
   const subscription = userRecord.subscriptions ?? null;
-  const plan = resolvePlan(subscription);
+  const plan = effectivePlan(subscription, userRecord);
 
   return {
     userRecord,
     subscription,
     plan,
     caps: getPlanCaps(plan),
+    linksLimit: getPlanCaps(plan).linksLimit,
   };
 }
 
@@ -154,7 +157,7 @@ export async function reserveMonthlyLinkSlot(
     throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
   }
 
-  const limit = planCtx.caps.linksLimit;
+  const limit = planCtx.linksLimit;
   if (limit === undefined) return planCtx;
 
   await normalizeMonthlyLinkCount(planCtx, dbClient);

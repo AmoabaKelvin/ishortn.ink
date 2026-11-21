@@ -28,6 +28,12 @@ const config = {
   env: {
     BUILD_COMMIT_SHA: process.env.GITHUB_SHA ?? process.env.WORKERS_CI_COMMIT_SHA ?? "",
   },
+  turbopack: {
+    rules: {
+      // Blog posts are imported as strings (import.meta.glob with ?raw in src/lib/blog.ts).
+      "*.md": { condition: { query: "?raw" }, type: "text" },
+    },
+  },
   experimental: {
     optimizePackageImports: ["@tabler/icons-react"],
   },

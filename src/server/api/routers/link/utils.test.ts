@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
+import { db } from "@/server/db";
+
 import {
   countsTowardMonthlyLinkQuota,
   escapeLikePattern,
+  isAppRouteAlias,
   MAX_CSV_IMPORT_CHARS,
   MAX_CSV_IMPORT_ROWS,
   parseLinkCsv,
   settleWithConcurrency,
+  validateAlias,
 } from "./utils";
 
 describe("monthly link quota", () => {
@@ -115,5 +119,25 @@ describe("escapeLikePattern", () => {
   test("escapes LIKE wildcards and the escape character", () => {
     expect(escapeLikePattern("50%_off\\now")).toBe("50\\%\\_off\\\\now");
     expect(escapeLikePattern("plain-text")).toBe("plain-text");
+  });
+});
+
+describe("reserved app route aliases", () => {
+  test("app route names are reserved on platform domains, in any case", () => {
+    for (const alias of ["utm-builder", "qr-code-generator", "Pricing"]) {
+      expect(isAppRouteAlias(alias, "ishortn.ink")).toBe(true);
+    }
+    expect(isAppRouteAlias("my-launch", "ishortn.ink")).toBe(false);
+  });
+
+  test("app route names stay available on custom domains", () => {
+    expect(isAppRouteAlias("utm-builder", "go.example.com")).toBe(false);
+  });
+
+  test("validateAlias rejects them before looking up the alias", () => {
+    // Throws synchronously, before the database is queried.
+    expect(() => validateAlias({ db }, "utm-builder", "ishortn.ink", true)).toThrow(
+      "This alias is reserved. Choose another one.",
+    );
   });
 });

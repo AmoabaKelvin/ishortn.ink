@@ -1,11 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { CsvError, parse } from "csv-parse/sync";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { getBioLinkBlockLimit } from "@/lib/billing/plans";
+import { getBioLinkBlockLimit, getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
+import { APP_TOP_LEVEL_SEGMENTS } from "@/lib/seo/indexing";
 import { normalizeAlias } from "@/lib/utils";
 import { customDomain, link, team, user } from "@/server/db/schema";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
@@ -15,11 +16,12 @@ import {
   monthlyLinkLimitMessage,
   normalizeMonthlyLinkCount,
 } from "@/server/lib/user-plan";
-import { requireFolderAccess, workspaceFilter } from "@/server/lib/workspace";
+import { requireFolderAccess, workspaceFilter, workspaceUsagePlan } from "@/server/lib/workspace";
 
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
+import type { SQL } from "drizzle-orm";
 
 /** blockedReason for links a restricted account created; lifting the restriction restores them. */
 export const RESTRICTED_LINK_REASON = "Owner account restricted" as const;
@@ -85,15 +87,14 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
     });
   }
 
-  const { plan, caps } = planCtx;
+  const { plan, linksLimit: limit } = planCtx;
   const currentCount = await normalizeMonthlyLinkCount(planCtx, ctx.db);
-  const limit = caps.linksLimit;
 
   if (limit !== undefined && currentCount >= limit) {
     await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "monthly_links", plan });
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: monthlyLinkLimitMessage(plan, limit),
+      message: monthlyLinkLimitMessage(planCtx.plan, limit),
     });
   }
 
@@ -111,10 +112,11 @@ export async function checkAndUpdateLinkLimit(ctx: ProtectedTRPCContext) {
  * Personal workspaces check against the user's plan limits.
  */
 export async function checkWorkspaceLinkLimit(ctx: WorkspaceTRPCContext) {
-  // Team workspaces have unlimited links (Ultra plan)
+  // Team workspaces carry the owner's plan; a team below Ultra is read-only
+  // (refused in workspaceProcedure), so a writable team is never capped here.
   if (ctx.workspace.type === "team") {
     return {
-      plan: "ultra" as const,
+      plan: ctx.workspace.plan,
       currentCount: 0,
       limit: undefined,
       isProUser: true,
@@ -212,6 +214,32 @@ export async function getWorkspaceDefaultDomain(ctx: WorkspaceTRPCContext): Prom
 }
 
 /**
+ * The workspace default domain when the plan still allows new links on it;
+ * otherwise the platform default. A lapsed account whose default is a custom
+ * domain past its allowance keeps creating links instead of hitting an error
+ * on flows without a domain picker (quick shorten, bio blocks, QR codes).
+ */
+export async function getPlanAllowedDefaultDomain(ctx: WorkspaceTRPCContext): Promise<string> {
+  return toPlanAllowedDomain(ctx, await getWorkspaceDefaultDomain(ctx));
+}
+
+/** `domain` when the plan still allows new links on it, else the platform default. */
+export async function toPlanAllowedDomain(
+  ctx: WorkspaceTRPCContext,
+  domain: string,
+): Promise<string> {
+  const normalized = domain.trim().toLowerCase();
+  if (isPlatformDomain(normalized)) return domain;
+
+  const limit = getPlanCaps(workspaceUsagePlan(ctx.workspace)).domainLimit;
+  if (limit === undefined) return domain;
+
+  const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
+  const usable = await getUsableCustomDomains(ctx.db, scope, limit);
+  return usable.includes(normalized) ? domain : DEFAULT_PLATFORM_DOMAIN;
+}
+
+/**
  * Guards against clients submitting arbitrary `domain` values on link/QR
  * writes. Accepts platform-owned domains, or custom domains that are both
  * verified ("active") and scoped to the caller's workspace. Throws on
@@ -221,14 +249,21 @@ export async function assertDomainAllowed(
   ctx: WorkspaceTRPCContext,
   domain: string,
 ): Promise<void> {
+  await assertDomainOwned(ctx, domain);
+  await assertDomainWithinPlan(ctx, domain);
+}
+
+/** The ownership half of assertDomainAllowed: platform, or verified and in this workspace. */
+export async function assertDomainOwned(ctx: WorkspaceTRPCContext, domain: string): Promise<void> {
   const normalized = domain.trim().toLowerCase();
   if (isPlatformDomain(normalized)) return;
 
+  const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
   const owned = await ctx.db.query.customDomain.findFirst({
     where: and(
       sql`lower(${customDomain.domain}) = ${normalized}`,
       eq(customDomain.status, "active"),
-      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
+      scope,
     ),
   });
 
@@ -240,7 +275,105 @@ export async function assertDomainAllowed(
   }
 }
 
-const MINIMUM_ALIAS_LENGTH_FREE = 6;
+/**
+ * Like assertDomainAllowed for a link that already sits on `domain`: only the
+ * plan allowance is checked, so links on a domain whose verification later
+ * lapsed can still be edited.
+ */
+export async function assertDomainWithinPlan(
+  ctx: WorkspaceTRPCContext,
+  domain: string,
+): Promise<void> {
+  const normalized = domain.trim().toLowerCase();
+  if (isPlatformDomain(normalized)) return;
+
+  const limit = getPlanCaps(workspaceUsagePlan(ctx.workspace)).domainLimit;
+  if (limit === undefined) return;
+
+  const scope = workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId);
+  const usable = await getUsableCustomDomains(ctx.db, scope, limit);
+  if (!usable.includes(normalized)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: domainBeyondPlanMessage(normalized, limit) });
+  }
+}
+
+/**
+ * The custom domains (lowercased) within the plan's allowance: the workspace's
+ * oldest `limit` domains, whatever their verification status, matching how the
+ * domain cap counts them. Domains past the allowance (after a downgrade) keep
+ * redirecting their existing links but take no new or edited ones. New links
+ * also need the domain to be verified (assertDomainAllowed).
+ */
+export async function getUsableCustomDomains(
+  dbClient: Pick<ProtectedTRPCContext, "db">["db"],
+  scope: SQL | undefined,
+  limit: number,
+): Promise<string[]> {
+  if (limit <= 0) return [];
+  const rows = await dbClient
+    .select({ domain: customDomain.domain })
+    .from(customDomain)
+    .where(scope)
+    .orderBy(asc(customDomain.createdAt), asc(customDomain.id))
+    .limit(limit);
+  return rows.flatMap((row) => (row.domain ? [row.domain.toLowerCase()] : []));
+}
+
+export function domainBeyondPlanMessage(domain: string, limit: number): string {
+  if (limit === 0) {
+    return `Custom domains are available on Pro and Ultra. Upgrade to create or edit links on ${domain}.`;
+  }
+  return `Your plan includes ${limit} custom ${limit === 1 ? "domain" : "domains"}, so ${domain} can't take new or edited links. Upgrade to Ultra to keep using it.`;
+}
+
+type UtmParams = Link["utmParams"];
+
+export function hasUtmValues(params: UtmParams | undefined): boolean {
+  return Object.values(params ?? {}).some((value) => value !== undefined && value !== "");
+}
+
+/** Same UTM values, ignoring empty fields. */
+export function sameUtmParams(a: UtmParams | undefined, b: UtmParams | undefined): boolean {
+  const filled = (params: UtmParams | undefined) =>
+    JSON.stringify(
+      Object.entries(params ?? {})
+        .filter(([, value]) => value !== undefined && value !== "")
+        .sort(([x], [y]) => x.localeCompare(y)),
+    );
+  return filled(a) === filled(b);
+}
+
+type TargetingRuleFields = {
+  type: string;
+  condition: string;
+  values: string[];
+  action: string;
+  destination?: string | null;
+  blockMessage?: string | null;
+};
+
+/** Same targeting rules in the same order (stored rules sorted by priority). */
+export function sameGeoRules(input: TargetingRuleFields[], stored: TargetingRuleFields[]): boolean {
+  const normalize = (rule: TargetingRuleFields) =>
+    JSON.stringify([
+      rule.type,
+      rule.condition,
+      rule.values,
+      rule.action,
+      rule.action === "redirect" ? rule.destination || null : null,
+      rule.action === "block" ? rule.blockMessage || null : null,
+    ]);
+  return (
+    input.length === stored.length &&
+    input.every((rule, index) => normalize(rule) === normalize(stored[index]!))
+  );
+}
+
+export const MINIMUM_ALIAS_LENGTH_FREE = 6;
+
+/** On platform domains, app routes like /pricing or /utm-builder shadow the [linkAlias] route. */
+export const isAppRouteAlias = (alias: string, domain: string): boolean =>
+  isPlatformDomain(domain) && APP_TOP_LEVEL_SEGMENTS.has(alias.toLowerCase());
 
 export const validateAlias = (
   ctx: Pick<ProtectedTRPCContext, "db">,
@@ -259,6 +392,13 @@ export const validateAlias = (
 
   if (alias.includes(".")) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot include periods in alias" });
+  }
+
+  if (isAppRouteAlias(alias, domain)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This alias is reserved. Choose another one.",
+    });
   }
 
   // Free users must have aliases with at least 6 characters

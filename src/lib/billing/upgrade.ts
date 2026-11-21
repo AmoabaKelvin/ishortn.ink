@@ -25,6 +25,7 @@ const UPGRADE_REASONS = new Map(
     bio_custom_domain: "Custom domains for bio pages are on {plan}",
     bio_link_block_limit: "More link blocks per bio page are on {plan}",
     bio_page_limit: "More bio pages are on {plan}",
+    bio_scheduled_blocks: "Scheduled bio blocks are on {plan}",
     bio_theme: "Theme customization is on {plan}",
     bulk_import: "Bulk link import is on {plan}",
     campaign_create: "More active campaigns are on {plan}",

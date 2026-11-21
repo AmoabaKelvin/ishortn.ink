@@ -24,6 +24,9 @@ import {
 
 import type { Metadata } from "next";
 
+// Rebuild hourly so posts scheduled with a future `date` appear on that day without a deploy.
+export const revalidate = 3600;
+
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
 }
@@ -77,7 +80,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
 
-  if (!post || !post.published) {
+  if (!post) {
     notFound();
   }
 

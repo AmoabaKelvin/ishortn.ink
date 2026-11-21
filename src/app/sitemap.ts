@@ -16,6 +16,9 @@ const DOCS_LASTMOD = "2026-11-20";
 const compareList = Object.values(competitors);
 const maxDate = (a: string, b: string) => (a > b ? a : b);
 
+// Rebuild hourly so posts scheduled with a future `date` appear on that day without a deploy.
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [posts, changelogEntries] = await Promise.all([getAllPosts(), getChangelogEntries()]);
 
@@ -60,6 +63,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: absoluteUrl("/qr-code-generator"),
       lastModified: new Date("2026-11-20").toISOString(),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: absoluteUrl("/utm-builder"),
+      lastModified: "2026-11-21",
       changeFrequency: "monthly",
       priority: 0.9,
     },

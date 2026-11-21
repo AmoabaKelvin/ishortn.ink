@@ -101,12 +101,20 @@ export const RangeSelector = ({ isProPlan, value, onRangeChange }: RangeSelector
         </SelectContent>
       </Select>
 
+      {/* <output> is a status live region; the visual note below only toggles aria-hidden,
+          which screen readers don't announce reliably */}
+      {!isProPlan && (
+        <output className="sr-only">
+          {lockedPicked ? "That range is locked. Pro shows your full history." : ""}
+        </output>
+      )}
+
       {/* Locked-range note: absolutely placed in the gap below so it fades in without moving anything */}
       {!isProPlan && (
         <p
           aria-hidden={!lockedPicked}
           className={cn(
-            "absolute right-0 top-full mt-1 whitespace-nowrap text-[12px] leading-4 text-neutral-500 transition-opacity duration-150 ease-out dark:text-neutral-400",
+            "absolute left-0 top-full mt-1 whitespace-nowrap sm:left-auto sm:right-0 text-[12px] leading-4 text-neutral-500 transition-opacity duration-150 ease-out dark:text-neutral-400",
             lockedPicked ? "opacity-100" : "pointer-events-none opacity-0",
           )}
         >

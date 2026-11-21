@@ -28,7 +28,8 @@
     "lint": "oxlint",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:source-maps": "bun scripts/ci/check-source-maps.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.41",

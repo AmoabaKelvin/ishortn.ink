@@ -1,23 +1,28 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { resolvePlan } from "@/lib/billing/plans";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
 import { normalizeAlias } from "@/lib/utils";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
+import { removeLink } from "@/server/api/routers/link/link.service";
+import { validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
-import { isAliasReserved, reserveLinkAliases } from "@/server/lib/reserved-alias";
+import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 
+import { apiError, errorResponse, readJsonBody, validationError } from "../../errors";
 import {
+  apiDomainWriteError,
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
   restrictedAccountResponse,
   withApiKey,
 } from "../../utils";
 
+import type { ApiToken } from "../../utils";
+import type { PersonalWorkspaceContext } from "@/server/lib/workspace";
 import type { NextRequest } from "next/server";
 
 const log = logger.child({ component: "api.v1.links" });
@@ -58,12 +63,12 @@ export const GET = withApiKey(
       getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
     );
     if (!domain) {
-      return new Response("Domain not available for this API key", { status: 403 });
+      return apiError(403, "forbidden", "Domain not available for this API key");
     }
 
     const retrievedLink = await getOwnedLinkByAlias(alias, domain, token.userId);
     if (!retrievedLink) {
-      return new Response("Link not found", { status: 404 });
+      return apiError(404, "not_found", "Link not found");
     }
 
     return Response.json(toApiLink(retrievedLink));
@@ -83,30 +88,31 @@ export const PATCH = withApiKey(
       getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
     );
     if (!domain) {
-      return new Response("Domain not available for this API key", { status: 403 });
+      return apiError(403, "forbidden", "Domain not available for this API key");
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return new Response("Invalid request body", { status: 400 });
-    }
+    const body = await readJsonBody(request);
+    if (!body.ok) return body.response;
 
     // The request body is untrusted, so parse it against a strict allowlist. A
     // plain cast plus `.set(body)` would let any Link column (userId, blocked,
     // passwordHash, cloaking, ...) be mass-assigned.
-    const parsed = updateLinkSchema.safeParse(body);
-    if (!parsed.success) {
-      return new Response(parsed.error.message, { status: 400 });
-    }
+    const parsed = updateLinkSchema.safeParse(body.body);
+    if (!parsed.success) return validationError(parsed.error);
 
     // Authorize before doing any work. assertUrlSafe below reaches an external
     // reputation service and an LLM, so running it first would let any API key
     // burn those on aliases the caller doesn't own.
     const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
     if (!existingLink) {
-      return new Response("Link not found", { status: 404 });
+      return apiError(404, "not_found", "Link not found");
+    }
+
+    // Links on a custom domain past the plan's allowance keep redirecting but
+    // can't be edited.
+    const domainError = await apiDomainWriteError(token.userId, token.graceUsagePlan, domain);
+    if (domainError) {
+      return apiError(403, "forbidden", domainError);
     }
 
     const filteredUpdateData: LinkUpdate = {};
@@ -117,8 +123,7 @@ export const PATCH = withApiKey(
       try {
         await assertUrlSafe(parsed.data.url);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "URL is not allowed";
-        return new Response(message, { status: 400 });
+        return errorResponse(error);
       }
       filteredUpdateData.url = parsed.data.url;
     }
@@ -126,8 +131,14 @@ export const PATCH = withApiKey(
     const renamed =
       newAlias !== undefined &&
       normalizeAlias(newAlias) !== normalizeAlias(existingLink.alias ?? "");
-    if (renamed && (await isAliasReserved(db, newAlias, existingLink.domain))) {
-      return new Response("Alias already exists for this domain", { status: 409 });
+    if (renamed) {
+      // Same rules as creating a link: format, the free-plan minimum length and
+      // case-insensitive uniqueness (including retired aliases) on the domain.
+      try {
+        await validateAlias({ db }, newAlias, existingLink.domain, token.plan !== "free");
+      } catch (error) {
+        return errorResponse(error);
+      }
     }
     if (newAlias !== undefined) filteredUpdateData.alias = newAlias;
     if (parsed.data.expiresAt !== undefined) {
@@ -136,10 +147,16 @@ export const PATCH = withApiKey(
         : null;
     }
     if (parsed.data.activatesAt !== undefined) {
-      if (parsed.data.activatesAt && resolvePlan(token.subscription ?? null) === "free") {
-        return new Response("Scheduled links are only available on Pro and Ultra plans", {
-          status: 403,
-        });
+      if (
+        parsed.data.activatesAt &&
+        (existingLink.activateAt ? token.graceUsagePlan : token.plan) === "free" &&
+        new Date(parsed.data.activatesAt).getTime() !== existingLink.activateAt?.getTime()
+      ) {
+        return apiError(
+          403,
+          "forbidden",
+          "Scheduled links are only available on Pro and Ultra plans",
+        );
       }
       filteredUpdateData.activateAt = parsed.data.activatesAt
         ? new Date(parsed.data.activatesAt)
@@ -150,7 +167,7 @@ export const PATCH = withApiKey(
     }
 
     if (Object.keys(filteredUpdateData).length === 0) {
-      return new Response("No update fields provided", { status: 400 });
+      return apiError(400, "bad_request", "No update fields provided");
     }
 
     try {
@@ -169,7 +186,7 @@ export const PATCH = withApiKey(
       const updatedLink = await db.query.link.findFirst({ where: eq(link.id, existingLink.id) });
 
       if (!updatedLink) {
-        return new Response("Failed to retrieve updated link", { status: 500 });
+        return apiError(500, "internal_error", "Failed to retrieve updated link");
       }
 
       // The redirect path serves from KV for 24h; drop the stale entry (and the
@@ -195,18 +212,53 @@ export const PATCH = withApiKey(
       );
 
       if (isDuplicateKey && filteredUpdateData.alias) {
-        return new Response("Alias already exists for this domain", {
-          status: 409,
-        }); // 409 Conflict
+        return apiError(409, "conflict", "Alias already exists for this domain");
       }
 
-      // Generic error for other database issues or unexpected errors
-      return new Response("Failed to update link due to a server error", {
-        status: 500,
-      });
+      return apiError(500, "internal_error", "Failed to update link due to a server error");
     }
   },
 );
+
+export const DELETE = withApiKey(
+  async (request: NextRequest, token, props: { params: Promise<{ alias: string }> }) => {
+    const { alias } = await props.params;
+
+    const domain = await resolveApiDomainForUser(
+      token.userId,
+      getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
+    );
+    if (!domain) {
+      return apiError(403, "forbidden", "Domain not available for this API key");
+    }
+
+    const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
+    if (!existingLink) {
+      return apiError(404, "not_found", "Link not found");
+    }
+
+    try {
+      await removeLink(db, personalWorkspace(token), existingLink);
+    } catch (error) {
+      log.error({ err: error, alias, domain }, "failed to delete link");
+      return apiError(500, "internal_error", "Failed to delete link due to a server error");
+    }
+
+    return new Response(null, { status: 204 });
+  },
+);
+
+/** API keys act in the owner's personal workspace (see getOwnedLinkByAlias). */
+function personalWorkspace(token: ApiToken): PersonalWorkspaceContext {
+  return {
+    type: "personal",
+    userId: token.userId,
+    teamId: null,
+    teamSlug: null,
+    role: "owner",
+    plan: token.plan,
+  };
+}
 
 /**
  * Loads a link by (alias, domain) but only when it belongs to the API token

@@ -1,7 +1,9 @@
 import { APP_BASE_DOMAIN } from "@/lib/constants/domains";
 
-import { getPlanFromIds, resolvePlan } from "./plans";
+import { effectivePlan } from "./entitlements";
+import { getPlanFromIds } from "./plans";
 
+import type { PlanGrace } from "./entitlements";
 import type { Plan } from "./plans";
 import type { Subscription } from "@/server/db/schema";
 
@@ -38,40 +40,50 @@ export function parseApiSunset(value: string | undefined | null): Date | null {
 }
 
 /**
- * When a subscription that used to grant a paid plan stopped doing so: the
- * end of the paid period, else the provider's last update. Null for accounts
- * that never paid or are still entitled. Only checkout-created rows carry a
- * provider `subscriptionId`; the plan and variant can't be used here because
- * the webhook resets them to free/0 on `subscription_expired`.
+ * When an account that is no longer entitled to a paid plan lost it: the end
+ * of its paid-plan grace period when one was granted, else the end of the
+ * paid period, else the provider's last update. Null for accounts that never
+ * paid. Only checkout-created rows carry a provider `subscriptionId`; the plan
+ * and variant can't be used here because the webhook resets them to free/0
+ * on `subscription_expired`.
  */
-function lapsedAt(subscription: Subscription | null, nowMs: number): Date | null {
-  if (!subscription || resolvePlan(subscription, nowMs) !== "free") return null;
+function lapsedAt(subscription: Subscription | null, grace: PlanGrace): Date | null {
+  const graceEnd =
+    grace.planGracePlan && grace.planGracePlan !== "free" ? grace.planGraceEndsAt : null;
   const wasPaid =
-    (subscription.subscriptionId ?? 0) !== 0 ||
-    getPlanFromIds(subscription.variantId, subscription.productId) !== null ||
-    subscription.plan === "pro" ||
-    subscription.plan === "ultra";
-  if (!wasPaid) return null;
-  return subscription.endsAt ?? subscription.providerUpdatedAt ?? null;
+    !!subscription &&
+    ((subscription.subscriptionId ?? 0) !== 0 ||
+      getPlanFromIds(subscription.variantId, subscription.productId) !== null ||
+      subscription.plan === "pro" ||
+      subscription.plan === "ultra");
+  const subscriptionEnd = wasPaid
+    ? (subscription.endsAt ?? subscription.providerUpdatedAt ?? null)
+    : null;
+  if (!graceEnd) return subscriptionEnd;
+  if (!subscriptionEnd) return graceEnd;
+  return graceEnd > subscriptionEnd ? graceEnd : subscriptionEnd;
 }
 
 /**
- * Whether an account's API keys work at `now`. Accounts without a paid plan
- * keep working until the stored cutoff (`configuredSunset`, null until the
- * first sunset cron run sets it); an account whose paid plan lapsed
- * gets the same notice period counted from the lapse when that ends later.
+ * Whether an account's API keys work at `now`. The plan is the account's live
+ * entitlement (`effectivePlan`), so a plan grace period keeps the API too.
+ * Accounts without a paid plan keep working until the stored cutoff
+ * (`configuredSunset`, null until the first sunset cron run sets it); an
+ * account whose paid plan lapsed gets the same notice period counted from the
+ * lapse when that ends later.
  */
 export function getApiAccess(
   subscription: Subscription | null,
+  grace: PlanGrace,
   configuredSunset: Date | null,
   now: Date,
 ): ApiAccess {
   const nowMs = now.getTime();
-  if (canUseApi(resolvePlan(subscription, nowMs)) || !configuredSunset) {
+  if (canUseApi(effectivePlan(subscription, grace, now)) || !configuredSunset) {
     return { status: "full" };
   }
 
-  const lapse = lapsedAt(subscription, nowMs);
+  const lapse = lapsedAt(subscription, grace);
   const sunsetMs = Math.max(
     configuredSunset.getTime(),
     lapse ? lapse.getTime() + API_ACCESS_NOTICE_DAYS * DAY_MS : 0,

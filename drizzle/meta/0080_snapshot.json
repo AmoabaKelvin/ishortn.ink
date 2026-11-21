@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "cd983736-40a6-4ff9-ba27-3681f51ac9a6",
+  "id": "8db0ffe9-0ec1-445b-9ce3-0b151609bd71",
   "prevId": "97c0e7b7-e1bf-41a1-a05e-c02ce9d17ee7",
   "tables": {
     "AccountDeletion": {
@@ -2587,84 +2587,6 @@
       },
       "checkConstraint": {}
     },
-    "PlanLimitHit": {
-      "name": "PlanLimitHit",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "limitKey": {
-          "name": "limitKey",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "plan": {
-          "name": "plan",
-          "type": "enum('free','pro','ultra')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "day": {
-          "name": "day",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "limitKey_createdAt_idx": {
-          "name": "limitKey_createdAt_idx",
-          "columns": [
-            "limitKey",
-            "createdAt"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "PlanLimitHit_id": {
-          "name": "PlanLimitHit_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "userId_limitKey_day_unique": {
-          "name": "userId_limitKey_day_unique",
-          "columns": [
-            "userId",
-            "limitKey",
-            "day"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
     "QrPreset": {
       "name": "QrPreset",
       "columns": {
@@ -3413,6 +3335,21 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "ownerPlanGraceEndsAt": {
+          "name": "ownerPlanGraceEndsAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ownerPlanGraceEmailStage": {
+          "name": "ownerPlanGraceEmailStage",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
         }
       },
       "indexes": {
@@ -4008,6 +3945,42 @@
           "notNull": false,
           "autoincrement": false
         },
+        "planGracePlan": {
+          "name": "planGracePlan",
+          "type": "enum('free','pro','ultra')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "planGraceEndsAt": {
+          "name": "planGraceEndsAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "planGraceReason": {
+          "name": "planGraceReason",
+          "type": "enum('lapsed','over_plan')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "planGraceEmailStage": {
+          "name": "planGraceEmailStage",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "planCheckedAt": {
+          "name": "planCheckedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "apiSunsetNoticeSentAt": {
           "name": "apiSunsetNoticeSentAt",
           "type": "timestamp",
@@ -4042,6 +4015,13 @@
           "name": "deletedAt_idx",
           "columns": [
             "deletedAt"
+          ],
+          "isUnique": false
+        },
+        "planGraceEndsAt_idx": {
+          "name": "planGraceEndsAt_idx",
+          "columns": [
+            "planGraceEndsAt"
           ],
           "isUnique": false
         },

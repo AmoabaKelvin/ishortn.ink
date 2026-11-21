@@ -1,3 +1,7 @@
+import {
+  eventsUpgradeTarget,
+  pricingHighlightHref,
+} from "@/app/(main)/dashboard/_components/tracking-paused";
 import EventUsageAlertEmail from "@/emails/event-usage-alert";
 import { getAppUrl } from "@/lib/constants/domains";
 
@@ -24,6 +28,21 @@ export function eventUsageSubject(threshold: number): string {
     : `You're ${threshold}% through your monthly analytics cap`;
 }
 
+/**
+ * The plan that raises the cap and a pricing link that preselects it. `source` and the UTM params
+ * let upgrades be attributed to the 80% and 100% emails. Null for Ultra, which has no cap.
+ */
+export function eventUsageUpgrade(plan: Plan, threshold: number) {
+  const target = eventsUpgradeTarget(plan);
+  if (!target) return null;
+  const path = pricingHighlightHref(target.plan, `events_email_${threshold}`, {
+    utm_source: "ishortn",
+    utm_medium: "email",
+    utm_campaign: "event-cap",
+  });
+  return { plan: target.plan, label: target.label, url: getAppUrl(path) };
+}
+
 export async function sendEventUsageEmail({
   userId,
   email,
@@ -34,6 +53,8 @@ export async function sendEventUsageEmail({
   plan,
   resetsAt,
 }: SendEventUsageEmailInput) {
+  const upgrade = eventUsageUpgrade(plan, threshold);
+  if (!upgrade) return;
   const { notificationSettingsUrl, headers } = productNotificationOptions(userId);
 
   await sendEmail({
@@ -49,7 +70,7 @@ export async function sendEventUsageEmail({
       currentCount,
       plan,
       resetDate: resetsAt.toLocaleDateString("en-US", { month: "long", day: "numeric" }),
-      upgradeUrl: getAppUrl("/dashboard/pricing"),
+      upgrade,
       notificationSettingsUrl,
     }),
     headers,

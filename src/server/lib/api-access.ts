@@ -128,6 +128,9 @@ export async function sendApiSunsetEmailsDue(now = new Date()) {
         name: user.name,
         noticeSentAt: user.apiSunsetNoticeSentAt,
         reminderSentAt: user.apiSunsetReminderSentAt,
+        planGracePlan: user.planGracePlan,
+        planGraceEndsAt: user.planGraceEndsAt,
+        planGraceReason: user.planGraceReason,
         subscription,
       })
       .from(user)
@@ -159,7 +162,7 @@ export async function sendApiSunsetEmailsDue(now = new Date()) {
     const recipients: ApiSunsetRecipient[] = [];
     const closed: string[] = [];
     for (const row of rows) {
-      const access = getApiAccess(row.subscription, sunsetAt, now);
+      const access = getApiAccess(row.subscription, row, sunsetAt, now);
       if (access.status === "revoked") {
         closed.push(row.id);
         continue;

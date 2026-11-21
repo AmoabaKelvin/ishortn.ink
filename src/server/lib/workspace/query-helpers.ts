@@ -1,6 +1,7 @@
 import { and, eq, isNull, type SQL } from "drizzle-orm";
 
 import type { WorkspaceContext } from "./types";
+import type { Plan } from "@/lib/billing/plans";
 import type { MySqlColumn } from "drizzle-orm/mysql-core";
 
 /**
@@ -44,6 +45,17 @@ export function workspaceOwnership(workspace: WorkspaceContext) {
     userId: workspace.userId,
     teamId: workspace.type === "team" ? workspace.teamId : null,
   };
+}
+
+/**
+ * The plan existing usage is checked against: custom domains past the plan's
+ * allowance and settings a link already has. Above `workspace.plan` only while
+ * a personal over-plan grace lasts.
+ */
+export function workspaceUsagePlan(workspace: WorkspaceContext): Plan {
+  return workspace.type === "personal"
+    ? (workspace.graceUsagePlan ?? workspace.plan)
+    : workspace.plan;
 }
 
 /**
