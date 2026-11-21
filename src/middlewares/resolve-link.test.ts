@@ -3,10 +3,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { eq, inArray } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { resetLinkStatistics, toggleLinkStatus } from "@/server/api/routers/link/link.service";
+import { resetQrCodeStatistics } from "@/server/api/routers/qrcode/qrcode.service";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
 import { resolveShortLink } from "./resolve-link";
+
+import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 
 // Runs against a disposable MySQL with the schema pushed (test/setup.ts points
 // the app's db client at it); see CONTRIBUTING.md, "Database tests".
@@ -23,6 +27,22 @@ describe.skipIf(!testDatabaseUrl)("click limits (MySQL)", () => {
   // task, which waitUntil collects so each test can wait for it.
   const CLOUDFLARE_CONTEXT = Symbol.for("__cloudflare-context__");
   let pending: Promise<unknown>[] = [];
+
+  // SAFETY: mirrors what workspaceProcedure resolves for a personal free workspace;
+  // the reset and toggle services read only db and workspace.
+  const ctx = {
+    db,
+    auth: { userId: USER_ID },
+    restrictedAt: null,
+    workspace: {
+      type: "personal",
+      userId: USER_ID,
+      teamId: null,
+      teamSlug: null,
+      role: "owner",
+      plan: "free",
+    },
+  } as WorkspaceTRPCContext;
 
   beforeAll(() => {
     // Another test file replaces @/env.mjs with a partial object for the whole
@@ -45,6 +65,7 @@ describe.skipIf(!testDatabaseUrl)("click limits (MySQL)", () => {
       await db.delete(schema.linkVisit).where(inArray(schema.linkVisit.linkId, ids));
       await db.delete(schema.uniqueLinkVisit).where(inArray(schema.uniqueLinkVisit.linkId, ids));
     }
+    await db.delete(schema.qrcode).where(eq(schema.qrcode.userId, USER_ID));
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
   }
@@ -135,5 +156,44 @@ describe.skipIf(!testDatabaseUrl)("click limits (MySQL)", () => {
     }
 
     expect((await storedLink(id))?.clickLimitCount).toBeNull();
+  });
+
+  async function exhaustLimit(alias: string, id: number) {
+    for (let i = 0; i < 3; i++) await visit(alias);
+    expect(await visit(alias)).toBe(`${BASE_URL}/expired/${id}`);
+    expect((await storedLink(id))?.disabled).toBe(true);
+  }
+
+  test("resetting a link's statistics restarts its click limit", async () => {
+    const id = await createLink("limit-reset", 3);
+    await exhaustLimit("limit-reset", id);
+
+    await resetLinkStatistics(ctx, { id });
+    expect((await storedLink(id))?.clickLimitCount).toBeNull();
+    await toggleLinkStatus(ctx, { id });
+
+    expect(await visit("limit-reset")).toBe(DESTINATION);
+    expect((await storedLink(id))?.clickLimitCount).toBe(1);
+  });
+
+  test("resetting a QR code's statistics restarts its link's click limit", async () => {
+    const id = await createLink("limit-qr-reset", 3);
+    const [qr] = await db.insert(schema.qrcode).values({
+      userId: USER_ID,
+      linkId: id,
+      contentType: "link",
+      content: DESTINATION,
+      patternStyle: "square",
+      cornerStyle: "square",
+      color: "#000000",
+    });
+    await exhaustLimit("limit-qr-reset", id);
+
+    await resetQrCodeStatistics(ctx, qr.insertId);
+    expect((await storedLink(id))?.clickLimitCount).toBeNull();
+    await toggleLinkStatus(ctx, { id });
+
+    expect(await visit("limit-qr-reset")).toBe(DESTINATION);
+    expect((await storedLink(id))?.clickLimitCount).toBe(1);
   });
 });
