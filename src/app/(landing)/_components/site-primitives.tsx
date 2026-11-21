@@ -60,6 +60,12 @@ export const panelClass = "rounded-3xl bg-white shadow-site-card";
 // Recessed well inside a card (mock UI backgrounds, chips)
 export const wellClass = "rounded-xl bg-neutral-100";
 
+/* ------------------------------ Fields ----------------------------- */
+
+// 16px text so iOS does not zoom on focus (same field as the abuse report form)
+export const fieldClass =
+  "mt-2 block w-full rounded-[10px] bg-white px-3 py-2.5 text-base text-neutral-900 shadow-site-btn placeholder:text-neutral-500 focus:outline focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-900";
+
 /* ----------------------------- Buttons ----------------------------- */
 
 type ButtonVariant = "primary" | "secondary" | "soft";

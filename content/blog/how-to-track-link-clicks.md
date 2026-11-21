@@ -59,6 +59,8 @@ https://example.com/pricing?utm_source=linkedin&utm_medium=social&utm_campaign=s
 
 When someone clicks this link, your web analytics tool (such as Google Analytics) records the source, medium, and campaign values. UTM parameters are powerful for attributing traffic to specific campaigns, but they have limitations. They make URLs long and ugly, they only work if you have analytics installed on the destination page, and they do not capture data like device type or geographic location on their own.
 
+To tag a link without typing the parameters by hand, use our [free UTM builder](/utm-builder).
+
 ### URL Shorteners with Built-in Analytics
 
 URL shorteners solve the UTM ugliness problem while adding their own layer of tracking. When you create a short link, the shortener records data about every click before redirecting the visitor to the destination. This means you get click tracking without needing analytics installed on the destination page, which is particularly useful when linking to third-party sites you do not control.

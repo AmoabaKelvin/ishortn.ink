@@ -83,6 +83,27 @@ export const websiteSchema = {
   },
 };
 
+/** A free in-browser tool page (UTM builder, generators). */
+export function createWebApplicationSchema(app: {
+  name: string;
+  url: string;
+  description: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: app.name,
+    url: app.url,
+    description: app.description,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Any",
+    browserRequirements: "Requires JavaScript",
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    publisher: { "@type": "Organization", name: "iShortn", url: "https://ishortn.ink" },
+  };
+}
+
 export function createBreadcrumbSchema(items: { name: string; url: string }[]) {
   return {
     "@context": "https://schema.org",

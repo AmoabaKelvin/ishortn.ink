@@ -9,6 +9,7 @@ import {
 } from "@tabler/icons-react";
 
 import { JsonLd } from "@/components/seo/json-ld";
+import { FREE_QR_CODE_LIMIT as FREE_DYNAMIC_QR_CODES } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
 import { createBreadcrumbSchema, createFaqSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
@@ -57,8 +58,6 @@ export const metadata: Metadata = {
 };
 
 const free = PLAN_CAPS.free;
-// Mirrors FREE_QR_CODE_LIMIT in qrcode.service.ts and the Free list in plan-features.ts.
-const FREE_DYNAMIC_QR_CODES = 5;
 
 const comparison: { title: string; summary: string; points: string[] }[] = [
   {
@@ -206,6 +205,9 @@ export default function QrCodeGeneratorPage() {
               </ButtonLink>
               <ButtonLink variant="soft" href="/pricing">
                 View pricing
+              </ButtonLink>
+              <ButtonLink variant="soft" href="/utm-builder">
+                Build a UTM link
               </ButtonLink>
             </>
           }

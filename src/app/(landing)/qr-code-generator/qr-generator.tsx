@@ -12,6 +12,7 @@ import {
   ButtonLink,
   buttonClass,
   cardClass,
+  fieldClass,
   h3Class,
   wellClass,
 } from "../_components/site-primitives";
@@ -21,10 +22,6 @@ const SIGNUP_HREF = `${Paths.Signup}?utm_source=ishortn_site&utm_medium=landing&
 
 // Drawn at print resolution and scaled down with CSS, so the download is crisp.
 const QR_EXPORT_SIZE = 1024;
-
-// 16px text so iOS does not zoom on focus (same field as the abuse report form)
-const fieldClass =
-  "mt-2 block w-full rounded-[10px] bg-white px-3 py-2.5 text-base text-neutral-900 shadow-site-btn placeholder:text-neutral-500 focus:outline focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-900";
 
 export function QrGenerator() {
   const [value, setValue] = useState("https://ishortn.ink");

@@ -21,11 +21,13 @@ const routes = [
 const subscribeNoop = () => () => {};
 const readSignedIn = () => hasClerkSessionCookie(document.cookie);
 
+/** Whether the visitor looks signed in; null on the server and during hydration. */
+export const useSignedIn = () => useSyncExternalStore(subscribeNoop, readSignedIn, () => null);
+
 export const Header = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  // null on the server and during hydration: the cookie is only readable in the browser.
-  const signedIn = useSyncExternalStore(subscribeNoop, readSignedIn, () => null);
+  const signedIn = useSignedIn();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
