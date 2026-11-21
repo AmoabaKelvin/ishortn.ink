@@ -121,7 +121,7 @@ Free plans and enterprise contracts often have the same core features: short lin
 - **Access control.** Enterprise plans add single sign-on (SSO/SAML), audit logs and fine-grained permissions. Small-team plans usually stop at shared workspaces with a few roles.
 - **Support and guarantees.** Enterprise contracts come with uptime commitments, a named contact and procurement paperwork.
 
-Most small businesses and freelancers need the volume and history upgrades, not the access controls. iShortn Pro ($8/month) removes the analytics history limit, and Ultra ($15/month) adds team workspaces with owner, admin and member roles. iShortn does not offer SSO. If you need it, look at BL.INK or Dub's Enterprise plan.
+Most small businesses and freelancers need the volume and history upgrades, not the access controls. iShortn Pro ($8/month) removes the analytics history limit, and Ultra ($15/month) adds team workspaces with owner, admin and member roles. iShortn does not offer SSO. If you need it, look at Dub's or Rebrandly's Enterprise plan.
 
 ## The Cost of "Free" — Hidden Limitations of Basic Shorteners
 
