@@ -5,7 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 
 import { POST as createApiLink } from "@/app/api/v1/links/route";
 import { env } from "@/env.mjs";
-import { planAtLeast } from "@/lib/billing/entitlements";
+import { dueGraceEmail, planAtLeast } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { appRouter } from "@/server/api/root";
@@ -112,14 +112,23 @@ const UNCHECKED_OVER_ID = "ent_test_unchecked_over";
 const UNCHECKED_FREE_ID = "ent_test_unchecked_free";
 const OVER_PLAN_GRACE_ID = "ent_test_over_plan_grace";
 const PAST_DUE_ID = "ent_test_past_due";
+const UNPAID_ID = "ent_test_unpaid";
+const FAILED_OVER_PLAN_IDS = {
+  past_due: "ent_test_past_due_over",
+  unpaid: "ent_test_unpaid_over",
+} as const;
+const UNPAID_ULTRA_OWNER_ID = "ent_test_unpaid_ultra";
 const USER_IDS = [
   ...Object.values(ACCOUNTS).map((account) => account.id),
   UNCHECKED_OVER_ID,
   UNCHECKED_FREE_ID,
   OVER_PLAN_GRACE_ID,
   PAST_DUE_ID,
+  UNPAID_ID,
+  ...Object.values(FAILED_OVER_PLAN_IDS),
+  UNPAID_ULTRA_OWNER_ID,
 ];
-const TEAM_SLUGS = ["ent-test-pro-team", "ent-test-ultra-team"];
+const TEAM_SLUGS = ["ent-test-pro-team", "ent-test-ultra-team", "ent-test-unpaid-ultra-team"];
 
 const domainOf = (key: AccountKey, n: number) =>
   `d${n}.${ACCOUNTS[key].id.replaceAll("_", "-")}.test`;
@@ -888,6 +897,108 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     await reconcileEntitlements();
     const again = await db.query.user.findFirst({ where: eq(schema.user.id, PAST_DUE_ID) });
     expect(again?.planGraceEndsAt?.getTime()).toBe(endsAt);
+  });
+
+  async function insertFailedPayer(
+    id: string,
+    status: string,
+    variantId: number,
+    grace?: { endsAt: Date; emailStage: number },
+  ) {
+    await db.insert(schema.user).values({
+      id,
+      email: `${id}@entitlements.test`,
+      planCheckedAt: new Date(),
+      planGracePlan: grace ? "ultra" : null,
+      planGraceEndsAt: grace?.endsAt ?? null,
+      planGraceReason: grace ? "over_plan" : null,
+      planGraceEmailStage: grace?.emailStage ?? 0,
+    });
+    await db.insert(schema.subscription).values({
+      userId: id,
+      subscriptionId: 3,
+      status,
+      variantId,
+      plan: variantId === ULTRA_VARIANT ? "ultra" : "pro",
+    });
+  }
+
+  function accountCaller(userId: string, host = "ishortn.ink") {
+    // SAFETY: the procedures under test read only ctx.auth.userId from auth.
+    const auth = { userId } as TRPCContext["auth"];
+    return appRouter.createCaller({ db, auth, headers: new Headers({ host }) });
+  }
+
+  test("the reconcile starts a lapse grace for an unpaid subscription", async () => {
+    await insertFailedPayer(UNPAID_ID, "unpaid", PRO_VARIANT);
+
+    await reconcileEntitlements();
+    const row = await db.query.user.findFirst({ where: eq(schema.user.id, UNPAID_ID) });
+    expect(row?.planGraceReason).toBe("lapsed");
+    expect(row?.planGracePlan).toBe("pro");
+    expect(row?.planGraceEndsAt?.getTime()).toBeGreaterThan(Date.now() + 6.9 * DAY);
+    expect(await accountCaller(UNPAID_ID).subscriptions.entitlementNotice()).toMatchObject({
+      type: "account",
+      reason: "lapsed",
+      action: "update_payment",
+    });
+  });
+
+  test.each(["past_due", "unpaid"] as const)(
+    "the reconcile turns a running over-plan grace on a %s subscription into the lapse grace",
+    async (status) => {
+      const id = FAILED_OVER_PLAN_IDS[status];
+      // Started three days ago; the day-0 email went out with the over-plan copy.
+      const endsAt = new Date(Date.now() + 4 * DAY);
+      await insertFailedPayer(id, status, PRO_VARIANT, { endsAt, emailStage: 1 });
+      const startedAt = await db.query.user.findFirst({ where: eq(schema.user.id, id) });
+
+      await reconcileEntitlements();
+      const row = await db.query.user.findFirst({ where: eq(schema.user.id, id) });
+      expect(row?.planGraceReason).toBe("lapsed");
+      expect(row?.planGracePlan).toBe("pro");
+      // Same start date, so neither extra nor lost days.
+      expect(row?.planGraceEndsAt?.getTime()).toBe(startedAt!.planGraceEndsAt!.getTime());
+      // The first notice already went out, so it isn't sent again.
+      expect(row?.planGraceEmailStage).toBe(1);
+      expect(
+        dueGraceEmail({ reason: "lapsed", endsAt: row!.planGraceEndsAt!, stage: 1 }),
+      ).toBeNull();
+      expect(await accountCaller(id).subscriptions.entitlementNotice()).toMatchObject({
+        reason: "lapsed",
+        action: "update_payment",
+      });
+
+      await reconcileEntitlements();
+      const again = await db.query.user.findFirst({ where: eq(schema.user.id, id) });
+      expect(again?.planGraceEndsAt?.getTime()).toBe(row!.planGraceEndsAt!.getTime());
+      expect(again?.planGraceEmailStage).toBe(1);
+    },
+  );
+
+  test("the reconcile starts a team grace for an unpaid Ultra owner with the update-payment action", async () => {
+    await insertFailedPayer(UNPAID_ULTRA_OWNER_ID, "unpaid", ULTRA_VARIANT);
+    const slug = TEAM_SLUGS[2]!;
+    const [created] = await db
+      .insert(schema.team)
+      .values({ name: "Unpaid Ultra team", slug, ownerId: UNPAID_ULTRA_OWNER_ID });
+    await db
+      .insert(schema.teamMember)
+      .values({ teamId: Number(created.insertId), userId: UNPAID_ULTRA_OWNER_ID, role: "owner" });
+
+    await reconcileEntitlements();
+    const owner = await db.query.user.findFirst({
+      where: eq(schema.user.id, UNPAID_ULTRA_OWNER_ID),
+    });
+    expect(owner?.planGraceReason).toBe("lapsed");
+    expect(owner?.planGracePlan).toBe("ultra");
+    const row = await db.query.team.findFirst({ where: eq(schema.team.slug, slug) });
+    expect(row?.ownerPlanGraceEndsAt?.getTime()).toBeGreaterThan(Date.now() + 6.9 * DAY);
+    const notice = await accountCaller(
+      UNPAID_ULTRA_OWNER_ID,
+      `${slug}.localhost:3000`,
+    ).subscriptions.entitlementNotice();
+    expect(notice).toMatchObject({ type: "team", isOwner: true, action: "update_payment" });
   });
 
   test("the reconcile starts a grace for over-plan accounts once, never again", async () => {
