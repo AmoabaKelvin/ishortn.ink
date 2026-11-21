@@ -6,6 +6,8 @@ import { z } from "zod";
 
 import { loadMarkdownSources } from "./markdown-sources";
 
+import type { Parent, Root } from "mdast";
+
 const blogSources = loadMarkdownSources("content/blog", () =>
   import.meta.glob("/content/blog/*.md", { eager: true, query: "?raw" }),
 );
@@ -81,6 +83,36 @@ export function isPostLive(slug: string, now: Date = new Date()): boolean {
   return isPostVisible(blogPostFrontmatterSchema.parse(matter(source).data), now);
 }
 
+const BLOG_POST_PATH = /^\/blog\/([^/]+)\/?$/;
+
+// A post linking to a scheduled one would otherwise render a link to a 404 until that post's date.
+// Such links render as their text, and come back on the first revalidation after the target is live.
+function isLinkToHiddenPost(url: string, now: Date): boolean {
+  if (!URL.canParse(url, "https://ishortn.ink")) return false;
+  const target = new URL(url, "https://ishortn.ink");
+  if (target.hostname !== "ishortn.ink" && target.hostname !== "www.ishortn.ink") return false;
+  const slug = BLOG_POST_PATH.exec(target.pathname)?.[1];
+  return slug !== undefined && !isPostLive(slug, now);
+}
+
+function unlinkHiddenPosts(node: Parent, now: Date): void {
+  node.children = node.children.flatMap((child) => {
+    // Link children are phrasing content, which is valid wherever the link itself was.
+    if (child.type === "link" && isLinkToHiddenPost(child.url, now)) return child.children;
+    if ("children" in child) unlinkHiddenPosts(child, now);
+    return [child];
+  });
+}
+
+export async function renderPostBody(content: string, now: Date = new Date()): Promise<string> {
+  const processed = await remark()
+    .use(gfm)
+    .use(() => (tree: Root) => unlinkHiddenPosts(tree, now))
+    .use(html)
+    .process(content);
+  return processed.toString();
+}
+
 export async function getAllPosts(): Promise<BlogPost[]> {
   const posts = await Promise.all([...blogSources.keys()].map(getPostBySlug));
 
@@ -102,8 +134,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     return null;
   }
 
-  const processedContent = await remark().use(gfm).use(html).process(content);
-  const htmlContent = processedContent.toString();
+  const htmlContent = await renderPostBody(content);
 
   return {
     ...frontmatter,
