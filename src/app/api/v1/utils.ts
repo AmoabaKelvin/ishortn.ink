@@ -235,8 +235,7 @@ export function toApiLink(retrievedLink: {
   disableLinkAfterClicks: number | null;
 }) {
   return {
-    // The primary key: stable across renames so integrations can dedupe on it, and already
-    // exposed through the list cursor.
+    // Stable across renames, so integrations can dedupe on it instead of shortLink.
     id: retrievedLink.id,
     shortLink: `https://${retrievedLink.domain}/${retrievedLink.alias}`,
     url: retrievedLink.url,
