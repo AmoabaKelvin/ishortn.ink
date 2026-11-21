@@ -42,6 +42,9 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
       monthlyLinkCount,
       lastLinkCountReset: new Date(),
       restrictedAt,
+      // Checked already, so the first-request plan check doesn't start a grace (and send its
+      // email through waitUntil, which needs the Worker context) for past_due subscribers.
+      planCheckedAt: new Date(),
     });
     await db.insert(schema.token).values({
       userId: USER_ID,
