@@ -56,12 +56,12 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
                 {daysSinceCreation === 0 ? "Today" : `${daysSinceCreation}d`}
               </span>
 
-              <span className="text-neutral-300">&middot;</span>
+              <span className="text-neutral-300 dark:text-neutral-600">&middot;</span>
 
               {qr.link ? (
                 <Link
                   href={`/dashboard/qrcodes/${qr.id}`}
-                  className="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-400 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline"
+                  className="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-400 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline dark:hover:text-foreground"
                 >
                   <span className="max-w-[200px] truncate sm:max-w-[300px]">{qr.link.url}</span>
                   <IconExternalLink
@@ -92,18 +92,14 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
 
             <Link
               href={`/dashboard/qrcodes/${qr.id}`}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900"
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900 dark:hover:text-foreground"
             >
               <IconClick size={14} stroke={1.5} />
               <span className="font-medium">{scans}</span>
             </Link>
 
-            <div className="w-7">
-              {qr.link && (
-                <div className="opacity-0 transition-opacity group-hover:opacity-100">
-                  <QRCodeActions qr={qr} />
-                </div>
-              )}
+            <div className="w-7 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+              <QRCodeActions qr={qr} />
             </div>
           </div>
         </div>
