@@ -8,6 +8,7 @@ import {
   IconPencil,
   IconRefresh,
   IconTrash,
+  IconVector,
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,10 +33,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { clientLogger } from "@/lib/logger/client";
+import { generateQRCodeSvg, toDataUri } from "@/lib/qr-generator/svg";
 import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../../revalidate-homepage";
-import { qrCodeFileName, saveBlob } from "../utils";
+import { qrCodeFileName, savedQrCodeSvgState, saveBlob, saveSvg, svgNoteFor } from "../utils";
 import { EditQRCodeDrawer } from "./edit-qrcode-drawer";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -53,6 +55,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
   const isActive = !qr.link?.disabled;
   // Legacy QR codes without a tracking link can only be downloaded or deleted.
   const hasLink = Boolean(qr.link);
+  const svgNote = svgNoteFor(qr);
 
   const toggleStatusMutation = api.qrCode.toggleStatus.useMutation({
     onSuccess: async () => {
@@ -85,7 +88,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
       toast.error("QR code image is not available for download.");
       return;
     }
-    trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED);
+    trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED, { format: "png" });
     // `download` is ignored on cross-origin URLs (the stored R2 image), so fetch it as a blob.
     try {
       const response = await fetch(image);
@@ -97,6 +100,23 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
         "QR code download fell back to opening",
       );
       window.open(image, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const handleDownloadSvg = async () => {
+    const state = savedQrCodeSvgState(qr);
+    if (!state) return;
+    trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED, { format: "svg" });
+    try {
+      // The SVG embeds the logo, so read the stored image into a data URI first.
+      const logoImage = state.logoImage ? await toDataUri(state.logoImage) : undefined;
+      saveSvg(generateQRCodeSvg({ ...state, logoImage }), qrCodeFileName(qr.title, "svg"));
+    } catch (error) {
+      clientLogger.warn(
+        { err: error instanceof Error ? error : String(error), qrCodeId: qr.id },
+        "QR code SVG download failed",
+      );
+      toast.error("Couldn't create the SVG. Please try again.");
     }
   };
 
@@ -150,8 +170,28 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
               stroke={1.5}
               className="mr-2 text-neutral-400 dark:text-neutral-500"
             />
-            Download
+            Download PNG
           </DropdownMenuItem>
+          {hasLink && (
+            <DropdownMenuItem
+              onClick={handleDownloadSvg}
+              className="items-start rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
+            >
+              <IconVector
+                size={15}
+                stroke={1.5}
+                className="mr-2 mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+              />
+              <span className="flex min-w-0 flex-col gap-0.5">
+                Download SVG
+                {svgNote && (
+                  <span className="text-[11px] leading-snug text-neutral-400 dark:text-neutral-500">
+                    {svgNote}
+                  </span>
+                )}
+              </span>
+            </DropdownMenuItem>
+          )}
 
           {hasLink && (
             <>
