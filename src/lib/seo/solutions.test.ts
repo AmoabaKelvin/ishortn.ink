@@ -85,6 +85,7 @@ describe("solution copy", () => {
     for (const [key, solution] of Object.entries(solutions)) expect(solution.slug).toBe(key);
     expect(getSolution("restaurants")).toBe(solutions.restaurants);
     expect(getSolution("agencies")).toBe(solutions.agencies);
+    expect(getSolution("churches-and-nonprofits")).toBe(solutions["churches-and-nonprofits"]);
     expect(getSolution("unknown")).toBeUndefined();
   });
 
