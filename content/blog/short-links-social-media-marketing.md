@@ -149,6 +149,6 @@ iShortn is designed to fit naturally into a social media workflow. Creating a sh
 
 The analytics dashboard gives you real-time click data broken down by location, device, browser, and referral source. You can compare performance across links to see which platforms and campaigns are delivering results.
 
-For teams managing social media at scale, shared workspaces let everyone create and manage links in one place. QR code generation is built in as well, which is useful when bridging online campaigns with offline materials like event signage or printed collateral.
+For teams managing social media at scale, shared workspaces let everyone create and manage links in one place. QR code generation is built in as well, which is useful when bridging online campaigns with offline materials like event signage or printed collateral. If you're a creator, [link in bio for creators](/solutions/creators) shows how a tracked bio page works alongside your short links.
 
 Whether you are managing a single brand account or coordinating campaigns across multiple platforms and team members, iShortn gives you the short links, the data, and the flexibility to make every post count.

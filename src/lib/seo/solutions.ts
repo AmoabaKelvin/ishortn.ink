@@ -3,6 +3,7 @@ import {
   IconCalendarEventFilled,
   IconChartPieFilled,
   IconClockFilled,
+  IconDeviceMobileFilled,
   IconEditFilled,
   IconFileUploadFilled,
   IconFoldersFilled,
@@ -10,12 +11,15 @@ import {
   IconHeartFilled,
   IconHomeFilled,
   IconHourglassFilled,
+  IconIdFilled,
   IconKeyFilled,
+  IconLinkFilled,
   IconListDetailsFilled,
   IconMapPinFilled,
   IconReportAnalyticsFilled,
   IconShieldCheckFilled,
   IconToolsKitchen2Filled,
+  IconUserFilled,
   IconWorldFilled,
   type TablerIcon,
 } from "@tabler/icons-react";
@@ -208,6 +212,151 @@ export const solutions = {
     ctaTitle: "Make your first menu code",
     ctaBody: `The free plan has ${freeQrCodes} dynamic QR codes with no ads and no expiry date. No credit card needed.`,
     ctaButton: "Create a free QR code",
+  },
+  creators: {
+    slug: "creators",
+    name: "Creators and freelancers",
+    footerLabel: "Creators",
+    hubBlurb: "A link-in-bio page with clicks on every link, and your own domain on Pro.",
+    metaTitle: "Link in Bio for Creators and Freelancers | iShortn",
+    metaDescription: `A link-in-bio page, short links and QR codes in one account, with clicks counted on every link. Free to start, and ${proMonthly} a month for your own domain.`,
+    keywords: [
+      "link in bio for creators",
+      "link in bio tool for creators",
+      "best link in bio for creators",
+      "linktree alternatives for creators",
+      "linktree alternative with custom domain",
+      "free link in bio",
+    ],
+    updatedOn: "2026-11-21",
+    eyebrow: "Creators and freelancers",
+    icon: IconUserFilled,
+    h1: "Link in bio for creators",
+    subhead:
+      "One page for your Instagram, TikTok or YouTube bio, with a tracked short link behind every button. See which links people tap, and move the page to your own domain when you're ready.",
+    heroPoints: [
+      "Free bio page, no card",
+      "Clicks counted on every link",
+      "Your own domain on Pro",
+    ],
+    heroCta: "Create a free bio page",
+    benefitsTitle: "A bio page that tells you what people tap",
+    benefits: [
+      {
+        title: "See which links people tap",
+        body: `Each link block on the page gets its own short link, so every button has its own click count, with the country, city, device and referrer. Free accounts see the last ${freeDays} days, and Pro keeps the full history.`,
+        icon: IconChartPieFilled,
+      },
+      {
+        title: "Your page on your own domain",
+        body: `On Pro, the page can open at the root of a domain you own, like yourname.com or links.yourname.com, while your short links work underneath it, like yourname.com/podcast. Pro includes ${proDomains} custom domains, and iShortn issues the SSL certificate.`,
+        icon: IconWorldFilled,
+      },
+      {
+        title: "Short links for everything else",
+        body: `The same account shortens the links you put in a video description, a newsletter or a client proposal, and counts their clicks too. Free accounts get ${freeLinks} new short links a month.`,
+        icon: IconLinkFilled,
+      },
+      {
+        title: "Send phones to the right app",
+        body: `On Pro, one short link can send iPhone visitors to Apple Music and Android visitors to Spotify, or send each country to its own store. Each link takes up to ${count(PLAN_CAPS.pro.geoRulesLimit)} targeting rules on Pro.`,
+        icon: IconDeviceMobileFilled,
+      },
+      {
+        title: "A QR code for the page",
+        body: "Download a QR code for your bio page from the editor and put it on merch, a business card or the last slide of a talk. The code opens the page, so it always shows your current links.",
+        icon: IconIdFilled,
+      },
+    ],
+    howToTitle: "Set up your bio page in four steps",
+    howTo: [
+      {
+        title: "Pick a handle",
+        body: "Your page lives at ishortn.ink/p/yourname. Handles use lowercase letters, numbers, hyphens and underscores.",
+      },
+      {
+        title: "Add your links",
+        body: `Add link blocks for what matters most, plus headings, text, social icons and an email button. A free page holds ${count(free.bioLinkBlocksPerPageLimit)} link blocks, and the other blocks don't count toward that limit.`,
+      },
+      {
+        title: "Pick a theme and publish",
+        body: "Choose a theme, add your photo and publish. Pro can also change the accent colour, background, font and button style.",
+      },
+      {
+        title: "Put it in your bio",
+        body: "Paste the page link into your Instagram, TikTok or YouTube bio. After a week, check which links people tap and move the busiest one to the top.",
+      },
+    ],
+    plans: [
+      {
+        plan: "free",
+        title: "Free",
+        body: `One bio page with up to ${count(free.bioLinkBlocksPerPageLimit)} link blocks, ${freeLinks} short links a month and ${freeQrCodes} dynamic QR codes. The page shows a small "Made with iShortn" badge.`,
+      },
+      {
+        plan: "pro",
+        title: `Pro, ${proMonthly} a month, or ${usd(PLAN_PRICES_ANNUAL_USD.pro / 12)} a month billed yearly`,
+        body: `${count(PLAN_CAPS.pro.bioPageLimit)} bio pages with no link block limit, your own domain, custom colours and fonts, no badge and the full click history. Link blocks on Pro count toward its ${count(PLAN_CAPS.pro.linksLimit)} links a month.`,
+      },
+      {
+        plan: "ultra",
+        title: `Ultra, ${usd(PLAN_PRICES_USD.ultra)} a month`,
+        body: "Unlimited bio pages and links, blocks you can schedule to appear and disappear, and a team workspace for a manager or assistant. Members join free.",
+      },
+    ],
+    plansNote: `Free records ${count(free.eventsLimit)} clicks and page views a month across your account, and Pro records ${count(PLAN_CAPS.pro.eventsLimit)}. Past that, your page and links keep working, but new visits aren't counted until the next month.`,
+    faqs: [
+      {
+        question: "Is the iShortn bio page free?",
+        answer: `Yes. The free plan includes one bio page with up to ${count(free.bioLinkBlocksPerPageLimit)} link blocks, plus headings, text, social icons and an email button that don't count toward the limit. The page has no expiry date. Pro is ${proMonthly} a month and removes the block limit and the badge.`,
+      },
+      {
+        question: "Is iShortn a Linktree alternative?",
+        answer: `For some creators. Linktree's free plan allows unlimited links, and a free iShortn page holds ${count(free.bioLinkBlocksPerPageLimit)} link blocks, so if you need many links for free, Linktree fits better. iShortn fits if you want click counts on every link, short links and QR codes in the same account, or the page on your own domain. Linktree's help centre says it doesn't support custom domains, and iShortn Pro does.`,
+      },
+      {
+        question: "Can I put my link in bio on my own domain?",
+        answer:
+          "Yes, on Pro and Ultra. Add a domain you own, such as yourname.com or links.yourname.com, create the DNS records the dashboard shows, then choose the domain in the page's settings. Your short links keep working at paths under the same domain.",
+      },
+      {
+        question: "Can I see which links people click?",
+        answer: `Yes. Each bio page counts views, and each link block counts clicks with the country, city, device and referrer. Free shows the last ${freeDays} days. Pro and Ultra keep the full history.`,
+      },
+      {
+        question: "Do bio page links count toward my monthly links?",
+        answer: `Not on Free. Link blocks on a free bio page don't use any of your ${freeLinks} free links a month. On Pro, each link block counts toward the ${count(PLAN_CAPS.pro.linksLimit)} links a month.`,
+      },
+      {
+        question: "Can I sell products or take tips on the page?",
+        answer:
+          "No. iShortn has no store, checkout or tip jar. Link to the shop or tip page you already use, such as Shopify, Etsy, Gumroad or Ko-fi, and iShortn counts the clicks. If selling from the page itself matters most, a creator commerce tool fits better.",
+      },
+      {
+        question: "I'm a freelancer. Does this fit me too?",
+        answer:
+          "Yes. Use the page as a short contact page with your portfolio, booking link and an email button. On Pro, put it at links.yourname.com and use that address in your email signature and proposals.",
+      },
+    ],
+    related: [
+      {
+        href: "/blog/linktree-custom-domain",
+        label: "Linktree and custom domains, and what to use instead",
+      },
+      { href: "/compare/linktree", label: "iShortn vs Linktree" },
+      {
+        href: "/blog/short-links-social-media-marketing",
+        label: "Short links in social media marketing",
+      },
+      {
+        href: "/blog/custom-short-links-for-your-brand",
+        label: "Custom short links for your brand",
+      },
+      { href: "/docs/bio-pages", label: "Bio pages in the docs" },
+    ],
+    ctaTitle: "Make your bio page",
+    ctaBody: `The free plan has one bio page, ${freeLinks} short links a month and ${freeQrCodes} dynamic QR codes. No credit card needed.`,
+    ctaButton: "Create a free bio page",
   },
   "churches-and-nonprofits": {
     slug: "churches-and-nonprofits",
@@ -761,6 +910,7 @@ export const solutions = {
 // Display order for the hub, the footer and /features.
 export const solutionList: Solution[] = [
   solutions.restaurants,
+  solutions.creators,
   solutions["churches-and-nonprofits"],
   solutions.agencies,
   solutions.events,
