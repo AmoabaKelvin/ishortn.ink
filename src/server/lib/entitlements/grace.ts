@@ -11,6 +11,7 @@ import {
   graceAction,
   graceChangeAfterBillingEvent,
   higherPlan,
+  isGraceActive,
   lapseEndedByPayment,
   NO_GRACE,
   overPlanFeatures,
@@ -44,6 +45,8 @@ const log = logger.child({ component: "entitlements" });
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EMAIL_BATCH_SIZE = 100; // Resend's batch limit
 const LOOKUP_CHUNK = 1000;
+// Lemon Squeezy statuses for a renewal that failed: retrying, then retries exhausted.
+const FAILED_PAYMENT_STATUSES = ["past_due", "unpaid"];
 
 const chunk = <T>(items: T[], size: number): T[][] =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, i) =>
@@ -290,22 +293,38 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
   }
   result.gracesCleared = toClear.length;
 
-  // 2. Lapses the webhook missed: a failed payment with no lapse grace yet, or a
-  //    cancelled subscription whose paid period ended in the last grace window.
-  //    A passed over-plan grace doesn't cover the lapse, so it is replaced.
+  // 2. Lapses the webhook missed: a failed payment (past_due, or unpaid once
+  //    retries are exhausted) with no lapse grace yet, or a cancelled
+  //    subscription whose paid period ended in the last grace window. A passed
+  //    over-plan grace doesn't cover the lapse, so it is replaced; a running one
+  //    within the subscribed plan on a failed payment becomes the lapse grace
+  //    (same dates, emails sent so far kept), so the notice asks for a card
+  //    update instead of an upgrade.
   const lapsed = await db
-    .select({ userId: user.id, sub: subscription })
+    .select({
+      userId: user.id,
+      planGraceEndsAt: user.planGraceEndsAt,
+      planGraceReason: user.planGraceReason,
+      planGracePlan: user.planGracePlan,
+      sub: subscription,
+    })
     .from(user)
     .innerJoin(subscription, eq(subscription.userId, user.id))
     .where(
       and(
         or(
           isNull(user.planGraceEndsAt),
-          and(eq(user.planGraceReason, "over_plan"), lte(user.planGraceEndsAt, now)),
+          and(
+            eq(user.planGraceReason, "over_plan"),
+            or(
+              lte(user.planGraceEndsAt, now),
+              inArray(subscription.status, FAILED_PAYMENT_STATUSES),
+            ),
+          ),
         ),
         isNull(user.deletedAt),
         or(
-          eq(subscription.status, "past_due"),
+          inArray(subscription.status, FAILED_PAYMENT_STATUSES),
           and(
             eq(subscription.status, "cancelled"),
             lte(subscription.endsAt, now),
@@ -317,6 +336,23 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
   for (const row of lapsed) {
     const plan = subscribedPlan(row.sub);
     if (plan === "free") continue;
+    if (row.planGraceReason === "over_plan" && isGraceActive(row.planGraceEndsAt, now)) {
+      // An over-plan grace above the subscribed plan keeps running: narrowing it
+      // would cut those features off early, and once it passes it is replaced.
+      if (!planAtLeast(plan, row.planGracePlan ?? "free")) continue;
+      const [converted] = await db
+        .update(user)
+        .set({ planGracePlan: plan, planGraceReason: "lapsed" })
+        .where(
+          and(
+            eq(user.id, row.userId),
+            eq(user.planGraceReason, "over_plan"),
+            gt(user.planGraceEndsAt, now),
+          ),
+        );
+      if (converted.affectedRows > 0) result.lapsesStarted++;
+      continue;
+    }
     const from = row.sub.status === "cancelled" && row.sub.endsAt ? row.sub.endsAt : now;
     const endsAt = new Date(from.getTime() + GRACE_PERIOD_MS);
     if (await startUserGrace(db, row.userId, { plan, endsAt, reason: "lapsed" }, false, now)) {
