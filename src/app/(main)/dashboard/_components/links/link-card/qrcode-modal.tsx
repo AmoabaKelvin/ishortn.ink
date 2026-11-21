@@ -1,12 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { clientLogger } from "@/lib/logger/client";
-
-const log = clientLogger.child({ component: "qr-modal" });
 import {
   Dialog,
   DialogBody,
@@ -16,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
+
+import { downloadQRCodePng, renderQRCodePreview } from "./qrcode-export";
 
 type QRCodeModalProps = {
   open: boolean;
@@ -29,20 +26,7 @@ export function QRCodeModal({ open, setOpen, destinationUrl }: QRCodeModalProps)
 
   const renderQRCode = useCallback(async () => {
     if (!canvasRef.current || !destinationUrl) return;
-
-    try {
-      await generateQRCode(canvasRef.current, {
-        ...defaultGeneratorState(),
-        text: destinationUrl,
-        scale: 10,
-        margin: 2,
-      });
-    } catch (error) {
-      log.error(
-        { err: error instanceof Error ? error : String(error), action: "render" },
-        "failed to generate QR code",
-      );
-    }
+    await renderQRCodePreview(canvasRef.current, destinationUrl);
   }, [destinationUrl]);
 
   useEffect(() => {
@@ -54,34 +38,8 @@ export function QRCodeModal({ open, setOpen, destinationUrl }: QRCodeModalProps)
   }, [open, renderQRCode]);
 
   const handleQRCodeDownload = async () => {
-    if (!canvasRef.current || !destinationUrl) return;
-
-    try {
-      // Generate a high-quality version for download
-      const downloadCanvas = document.createElement("canvas");
-      await generateQRCode(downloadCanvas, {
-        ...defaultGeneratorState(),
-        text: destinationUrl,
-        scale: 20,
-        margin: 2,
-      });
-
-      const pngUrl = downloadCanvas
-        .toDataURL("image/png")
-        .replace("image/png", "image/octet-stream");
-      const downloadLink = document.createElement("a");
-      downloadLink.href = pngUrl;
-      downloadLink.download = "qrcode.png";
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-    } catch (error) {
-      log.error(
-        { err: error instanceof Error ? error : String(error), action: "download" },
-        "failed to download QR code",
-      );
-      toast.error("Failed to download QR code");
-    }
+    if (!destinationUrl) return;
+    await downloadQRCodePng(destinationUrl);
   };
 
   return (

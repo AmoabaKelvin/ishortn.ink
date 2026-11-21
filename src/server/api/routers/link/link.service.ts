@@ -641,7 +641,7 @@ const createLinkSteps = async (
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
 
-  return result;
+  return { id: linkId, alias, domain };
 };
 
 export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInput) => {
