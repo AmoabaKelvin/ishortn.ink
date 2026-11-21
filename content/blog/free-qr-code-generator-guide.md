@@ -38,7 +38,7 @@ A QR code on a business card can link to a digital vCard, LinkedIn profile, or p
 
 ### Real Estate
 
-A code on a yard sign or flyer can link to a virtual tour, photo gallery, or scheduling page. Prospective buyers get instant access to detailed property information without needing to call or search online.
+A code on a yard sign or flyer can link to a virtual tour, photo gallery, or scheduling page. Prospective buyers get instant access to detailed property information without needing to call or search online. For sign riders and open house codes you repoint for each listing, see [QR codes for real estate signs and open houses](/solutions/real-estate).
 
 ### Retail and In-Store Promotions
 

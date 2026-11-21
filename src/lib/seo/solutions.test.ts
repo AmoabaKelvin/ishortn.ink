@@ -86,12 +86,13 @@ describe("solution copy", () => {
     expect(getSolution("restaurants")).toBe(solutions.restaurants);
     expect(getSolution("agencies")).toBe(solutions.agencies);
     expect(getSolution("churches-and-nonprofits")).toBe(solutions["churches-and-nonprofits"]);
+    expect(getSolution("real-estate")).toBe(solutions["real-estate"]);
     expect(getSolution("unknown")).toBeUndefined();
   });
 
   // A mistyped blog slug would hide the link forever instead of failing.
-  it("links only to existing docs pages and blog posts", () => {
-    const docs = new Set(DOCS_PAGES.map((page) => docsHref(page.slug)));
+  it("links only to existing docs pages, blog posts and the QR code generator", () => {
+    const docs = new Set([...DOCS_PAGES.map((page) => docsHref(page.slug)), "/qr-code-generator"]);
     const farFuture = new Date("2100-01-01");
     for (const { href } of solutionList.flatMap((solution) => solution.related)) {
       if (href.startsWith("/blog/")) expect(isPostLive(href.slice(6), farFuture)).toBe(true);
