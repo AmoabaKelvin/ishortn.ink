@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { deleteFromCache } from "@/lib/core/cache";
@@ -36,10 +36,12 @@ export async function updateSiteSettings(
   });
 
   if (!isPlatformDomain(input.defaultDomain)) {
+    // This is the personal workspace default, so only personal domains qualify
     const domain = await ctx.db.query.customDomain.findFirst({
       where: (table, { and }) =>
         and(
           eq(table.userId, ctx.auth.userId),
+          isNull(table.teamId),
           eq(table.domain, input.defaultDomain),
           eq(table.status, "active"),
         ),
@@ -48,8 +50,6 @@ export async function updateSiteSettings(
     if (!domain) {
       throw new Error("You can only set verified custom domains as your default domain");
     }
-
-    await deleteFromCache(`user_settings_domain:${ctx.auth.userId}`);
   }
 
   if (existingSettings) {
@@ -60,6 +60,8 @@ export async function updateSiteSettings(
       ...input,
     });
   }
+
+  await deleteFromCache(`user_settings_domain:${ctx.auth.userId}`);
 
   return getSiteSettings(ctx);
 }
