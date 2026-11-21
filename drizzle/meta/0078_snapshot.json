@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "36ad0d03-15de-40ab-b458-1d3bf40b9b5d",
+  "id": "873c0b12-c11b-4ffa-aa1d-67498eb83e8b",
   "prevId": "5f1c9cd5-faf7-4b35-87da-d40952ba0afd",
   "tables": {
     "AccountDeletion": {
@@ -1349,6 +1349,96 @@
             "domain",
             "userId",
             "teamIdForUnique"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "EmailSuppression": {
+      "name": "EmailSuppression",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "suppressionType": {
+          "name": "suppressionType",
+          "type": "enum('bounced','complained')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "detail": {
+          "name": "detail",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastEventAt": {
+          "name": "lastEventAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "clearedAt": {
+          "name": "clearedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "emailSuppression_lastEventAt_idx": {
+          "name": "emailSuppression_lastEventAt_idx",
+          "columns": [
+            "lastEventAt"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "EmailSuppression_id": {
+          "name": "EmailSuppression_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "emailSuppression_email_type_idx": {
+          "name": "emailSuppression_email_type_idx",
+          "columns": [
+            "email",
+            "suppressionType"
           ]
         }
       },
@@ -2800,67 +2890,6 @@
         }
       },
       "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "ReservedAlias": {
-      "name": "ReservedAlias",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "domain": {
-          "name": "domain",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "alias": {
-          "name": "alias",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "reason": {
-          "name": "reason",
-          "type": "enum('deleted','purged','blocked')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "ReservedAlias_id": {
-          "name": "ReservedAlias_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "reservedAlias_domain_alias": {
-          "name": "reservedAlias_domain_alias",
-          "columns": [
-            "domain",
-            "alias"
-          ]
-        }
-      },
       "checkConstraint": {}
     },
     "SiteSettings": {

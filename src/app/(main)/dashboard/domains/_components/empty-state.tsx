@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 import { AddCustomDomainModal } from "./add-domain-modal";
 
-const EmptyState = () => {
+const EmptyState = ({ canManageDomains }: { canManageDomains: boolean }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -46,18 +46,22 @@ const EmptyState = () => {
           No custom domains yet
         </p>
         <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
-          Add your own domain to create branded short links that build trust with your audience.
+          {canManageDomains
+            ? "Add your own domain to create branded short links that build trust with your audience."
+            : "Only the team owner can add custom domains to this workspace. Ask them to connect one."}
         </p>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.35 }}
-        className="mt-6"
-      >
-        <AddCustomDomainModal />
-      </motion.div>
+      {canManageDomains && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.35 }}
+          className="mt-6"
+        >
+          <AddCustomDomainModal />
+        </motion.div>
+      )}
     </motion.div>
   );
 };

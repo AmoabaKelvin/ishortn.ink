@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { addDays, subDays } from "date-fns";
 import { and, count, eq, gt, gte, isNotNull, isNull, sql } from "drizzle-orm";
 
-import { getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
+import { DEFAULT_TEAM_DOMAIN, getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
 import { deleteFromCache } from "@/lib/core/cache";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
@@ -83,6 +83,7 @@ export async function createTeam(ctx: ProtectedTRPCContext, input: CreateTeamInp
       name: input.name,
       slug: normalizedSlug,
       ownerId: ctx.auth.userId,
+      defaultDomain: DEFAULT_TEAM_DOMAIN,
     });
 
     const teamId = Number(teamResult.insertId);

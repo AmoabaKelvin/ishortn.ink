@@ -5,14 +5,13 @@ import {
   IconUsers,
   IconWorld,
 } from "@tabler/icons-react";
-import { TRPCClientError } from "@trpc/client";
-import { TRPCError } from "@trpc/server";
 import { Link } from "next-view-transitions";
 import { notFound } from "next/navigation";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { aggregateVisits, mergeArchivedClicks } from "@/lib/core/analytics";
+import { aggregateVisits, fillClickSeries, mergeArchivedClicks } from "@/lib/core/analytics";
 import { rangeEnum } from "@/server/api/routers/link/link.input";
+import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
 import { BarChart } from "../../analytics/[alias]/_components/bar-chart";
@@ -23,6 +22,10 @@ import { RangeSelectorWrapper } from "../../analytics/[alias]/_components/range-
 import { ReferrerStats } from "../../analytics/[alias]/_components/referrers";
 import { UserAgentStats } from "../../analytics/[alias]/_components/user-agent-stats";
 import WorldMapHeatmap from "../../analytics/[alias]/_components/world-map-heatmap";
+import {
+  RangePendingContent,
+  RangeTransitionProvider,
+} from "../../analytics/_components/range-transition";
 import UpgradeText from "../_components/upgrade-text";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -38,7 +41,7 @@ type QRCodeAnalyticsPageProps = {
 export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProps) {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const range = rangeEnum.catch("7d").parse(searchParams.range);
+  const requestedRange = rangeEnum.catch("7d").parse(searchParams.range);
 
   const id = /^\d+$/.test(params.id) ? Number(params.id) : NaN;
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
@@ -47,15 +50,8 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
   try {
     qrCode = await api.qrCode.get.query({ id });
   } catch (error) {
-    // The server caller wraps the procedure's TRPCError in a TRPCClientError. Only a real
-    // NOT_FOUND becomes a 404; other failures go to the error boundary.
-    if (
-      error instanceof TRPCClientError &&
-      error.cause instanceof TRPCError &&
-      error.cause.code === "NOT_FOUND"
-    ) {
-      notFound();
-    }
+    // Only a real NOT_FOUND becomes a 404; other failures go to the error boundary.
+    if (isNotFoundError(error)) notFound();
     throw error;
   }
 
@@ -94,6 +90,13 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
   const alias = qrCode.link.alias!;
   const domain = qrCode.link.domain ?? DEFAULT_PLATFORM_DOMAIN;
 
+  // The QR code's link can be gone or outside this workspace; that is a 404, not a crash.
+  const visits = await api.link.linkVisits
+    .query({ id: alias, domain, range: requestedRange })
+    .catch((cause: unknown) => {
+      if (isNotFoundError(cause)) notFound();
+      throw cause;
+    });
   const {
     totalVisits,
     uniqueVisits,
@@ -103,18 +106,16 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
     isProPlan,
     geoRules,
     archived,
-  } = await api.link.linkVisits.query({
-    id: alias,
-    domain,
     range,
-  });
+    window,
+  } = visits;
 
-  const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits);
-  const series = mergeArchivedClicks(aggregatedVisits, archived);
+  const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits, window.granularity);
+  const series = fillClickSeries(mergeArchivedClicks(aggregatedVisits, archived), window);
   const countryData = aggregatedVisits.clicksPerCountry;
 
   return (
-    <div>
+    <RangeTransitionProvider range={range}>
       {breadcrumb}
 
       {/* QR Code Header */}
@@ -138,98 +139,93 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
             </p>
             {!isProPlan && (
               <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
-                Viewing limited analytics (last 7 days). <UpgradeText text="Upgrade to Pro" /> for
-                full data.
+                Viewing limited analytics (last 7 days).{" "}
+                <UpgradeText text="Upgrade to Pro" source="qr_analytics" /> for full data.
               </p>
             )}
           </div>
         </div>
 
-        <RangeSelectorWrapper
-          initialRange={range}
-          isProPlan={isProPlan!}
-          domain={domain}
-          alias={alias}
-          basePath={`/dashboard/qrcodes/${params.id}`}
-        />
+        <RangeSelectorWrapper isProPlan={isProPlan} />
       </div>
 
-      {/* Quick info cards */}
-      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-4">
-        <QuickInfoCard
-          title="Total Scans"
-          value={totalVisits.length + archived.clicks}
-          icon={<IconClick size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
-        />
-        <QuickInfoCard
-          title="Unique Scans"
-          value={uniqueVisits.length + archived.uniqueClicks}
-          icon={<IconUsers size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
-        />
-        <QuickInfoCard
-          title="Top Country"
-          value={topCountry}
-          icon={<IconWorld size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
-        />
-        <QuickInfoCard
-          title="Top Referrer"
-          value={topReferrer}
-          icon={
-            <IconTrendingUp size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />
-          }
-        />
-      </div>
+      <RangePendingContent>
+        {/* Quick info cards */}
+        <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-4">
+          <QuickInfoCard
+            title="Total Scans"
+            value={totalVisits.length + archived.clicks}
+            icon={<IconClick size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
+          />
+          <QuickInfoCard
+            title="Unique Scans"
+            value={uniqueVisits.length + archived.uniqueClicks}
+            icon={<IconUsers size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
+          />
+          <QuickInfoCard
+            title="Top Country"
+            value={topCountry}
+            icon={<IconWorld size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />}
+          />
+          <QuickInfoCard
+            title="Top Referrer"
+            value={topReferrer}
+            icon={
+              <IconTrendingUp size={16} stroke={1.5} className="text-blue-600 dark:text-blue-400" />
+            }
+          />
+        </div>
 
-      <div className="mt-8 md:mt-10">
-        <BarChart
-          clicksPerDate={series.clicksPerDate}
-          uniqueClicksPerDate={series.uniqueClicksPerDate}
-          isProPlan={isProPlan}
-          geoRules={geoRules}
-          totalVisits={totalVisits.map((v) => ({
-            matchedGeoRuleId: v.matchedGeoRuleId,
-          }))}
-        />
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-10">
-        <CountriesAndCitiesStats
-          citiesRecords={aggregatedVisits.clicksPerCity}
-          countriesRecords={aggregatedVisits.clicksPerCountry}
-          continentsRecords={aggregatedVisits.clicksPerContinent}
-          totalClicks={totalVisits.length}
-          proUser={!!isProPlan}
-        />
-
-        <UserAgentStats
-          clicksPerBrowser={aggregatedVisits.clicksPerBrowser}
-          clicksPerDevice={aggregatedVisits.clicksPerDevice}
-          clicksPerModel={aggregatedVisits.clicksPerModel}
-          clicksPerOS={aggregatedVisits.clicksPerOS}
-          totalClicks={totalVisits.length}
-        />
-
-        <ReferrerStats referers={referers} totalClicks={totalVisits.length} />
-
-        {geoRules.length > 0 && (
-          <GeoRulesStats
+        <div className="mt-8 md:mt-10">
+          <BarChart
+            series={series}
+            isProPlan={isProPlan}
+            geoRules={geoRules}
             totalVisits={totalVisits.map((v) => ({
               matchedGeoRuleId: v.matchedGeoRuleId,
             }))}
-            geoRules={geoRules}
+          />
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-10">
+          <CountriesAndCitiesStats
+            citiesRecords={aggregatedVisits.clicksPerCity}
+            countriesRecords={aggregatedVisits.clicksPerCountry}
+            continentsRecords={aggregatedVisits.clicksPerContinent}
+            totalClicks={totalVisits.length}
+            proUser={!!isProPlan}
+          />
+
+          <UserAgentStats
+            clicksPerBrowser={aggregatedVisits.clicksPerBrowser}
+            clicksPerDevice={aggregatedVisits.clicksPerDevice}
+            clicksPerModel={aggregatedVisits.clicksPerModel}
+            clicksPerOS={aggregatedVisits.clicksPerOS}
             totalClicks={totalVisits.length}
           />
-        )}
-      </div>
 
-      {isProPlan && (
-        <div className="mt-8 md:mt-10">
-          <h2 className="mb-6 text-base font-semibold tracking-tight text-neutral-900 dark:text-foreground">
-            Global QR Code Scans Distribution
-          </h2>
-          <WorldMapHeatmap data={countryData} />
+          <ReferrerStats referers={referers} totalClicks={totalVisits.length} />
+
+          {geoRules.length > 0 && (
+            <GeoRulesStats
+              totalVisits={totalVisits.map((v) => ({
+                matchedGeoRuleId: v.matchedGeoRuleId,
+              }))}
+              geoRules={geoRules}
+              totalClicks={totalVisits.length}
+            />
+          )}
         </div>
-      )}
-    </div>
+
+        {isProPlan && (
+          <div className="mt-8 md:mt-10">
+            <h2 className="mb-6 text-base font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+              Global QR Code Scans Distribution
+            </h2>
+            <WorldMapHeatmap data={countryData} />
+          </div>
+        )}
+      </RangePendingContent>
+    </RangeTransitionProvider>
   );
 }

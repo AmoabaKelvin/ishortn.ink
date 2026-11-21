@@ -358,11 +358,11 @@ function QRCodeCreationPage() {
 
         <div className="mt-5 space-y-5">
           {!canCreateMoreQRCodes && (
-            <div className="flex flex-col items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-500/10 sm:flex-row sm:items-center sm:justify-between">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-500/10">
               <p className="text-[13px] text-amber-700 dark:text-amber-400">
-                You've reached your plan's QR code limit. Upgrade to create more.
+                You've reached your plan's QR code limit.{" "}
+                <UpgradeText text="Upgrade" source="qr_create_limit" /> to create more.
               </p>
-              <UpgradeText text="Upgrade" />
             </div>
           )}
 

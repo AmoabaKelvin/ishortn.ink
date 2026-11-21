@@ -45,8 +45,10 @@ import {
   PLATFORM_DOMAINS,
 } from "@/lib/constants/domains";
 import { clientLogger } from "@/lib/logger/client";
+import { normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
 import { createLinkSchema } from "@/server/api/routers/link/link.input";
+import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
 
 const log = clientLogger.child({ component: "create-link-page" });
@@ -88,7 +90,7 @@ export default function CreateLinkPage() {
     image: "",
     favicon: "",
   });
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(false);
@@ -104,9 +106,13 @@ export default function CreateLinkPage() {
       setGeneratedAliases(data.alias);
       form.setValue("alias", data.alias[0]);
     },
+    onError: (error) => {
+      toast.error(error.message);
+    },
   });
   const { data: userTags } = api.tag.list.useQuery();
   const { data: campaigns } = api.campaign.listNames.useQuery();
+  const originCampaign = campaigns?.find((campaign) => campaign.id === initialCampaignId);
 
   const defaultValues: Partial<z.infer<typeof createLinkSchema>> = {
     domain: DEFAULT_PLATFORM_DOMAIN,
@@ -131,7 +137,7 @@ export default function CreateLinkPage() {
 
   async function generateAliases(metadata: { title: string; description: string }) {
     generateAliasMutation.mutate({
-      url: form.getValues("url"),
+      url: normalizeDestinationUrl(form.getValues("url")) ?? form.getValues("url"),
       title: metadata.title,
       description: metadata.description,
     });
@@ -153,7 +159,7 @@ export default function CreateLinkPage() {
     setGeneratedAliases([]);
     form.setValue("alias", "");
 
-    const url = form.getValues("url");
+    const url = normalizeDestinationUrl(form.getValues("url") ?? "");
     if (!url) {
       toast.error("Please enter a valid URL first");
       return;
@@ -202,8 +208,8 @@ export default function CreateLinkPage() {
   const formUpdateMutation = api.link.create.useMutation({
     onSuccess: async () => {
       await revalidateHomepage();
-      toast.success("Link updated successfully");
-      router.push("/dashboard");
+      toast.success("Link created");
+      router.push(originCampaign ? `/dashboard/campaigns/${originCampaign.slug}` : "/dashboard");
     },
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN" || /upgrade/i.test(error.message)) {
@@ -243,8 +249,10 @@ export default function CreateLinkPage() {
     }
   };
 
-  const addTag = (tagToAdd: string) => {
-    if (!tags.includes(tagToAdd)) {
+  const addTag = (rawTag: string) => {
+    // Tags are stored lowercase; "Marketing" next to "marketing" is the same tag.
+    const tagToAdd = normalizeTagName(rawTag);
+    if (tagToAdd && !tags.includes(tagToAdd)) {
       const newTags = [...tags, tagToAdd];
       setTags(newTags);
       form.setValue("tags", newTags);
@@ -264,7 +272,7 @@ export default function CreateLinkPage() {
         .filter(
           (tag) =>
             (tagInput === "" || tag.name.toLowerCase().includes(tagInput.toLowerCase())) &&
-            !tags.includes(tag.name),
+            !tags.includes(normalizeTagName(tag.name)),
         )
         .map((tag) => tag.name)
     : [];
@@ -291,28 +299,6 @@ export default function CreateLinkPage() {
     }
   }
 
-  // Fetch platform-default metadata on initial load
-  useEffect(() => {
-    if (isInitialLoad) {
-      fetchMetadataInfo(`https://${DEFAULT_PLATFORM_DOMAIN}`)
-        .then((metadata) => {
-          setMetaData(metadata);
-        })
-        .catch(() => {
-          // Set fallback metadata if fetch fails
-          setMetaData({
-            title: "iShortn",
-            description: "URL Shortener",
-            image: "",
-            favicon: "",
-          });
-        })
-        .finally(() => {
-          setIsInitialLoad(false);
-        });
-    }
-  }, [isInitialLoad]);
-
   useEffect(() => {
     if (debouncedAlias) {
       void checkAliasAvailability.refetch();
@@ -323,7 +309,21 @@ export default function CreateLinkPage() {
 
   useEffect(() => {
     const fetchMetadata = async () => {
-      if (!debouncedUrl || form.formState.errors.url || !form.getValues("url")) {
+      // Get custom metadata from form - these take priority over fetched metadata
+      const customTitle = form.getValues("metadata.title");
+      const customDescription = form.getValues("metadata.description");
+      const customImage = form.getValues("metadata.image");
+      // What the preview falls back to; the previous URL's metadata no longer applies.
+      const customOnly = {
+        title: customTitle ?? "",
+        description: customDescription ?? "",
+        image: customImage ?? "",
+        favicon: "",
+      };
+
+      const url = debouncedUrl ? normalizeDestinationUrl(debouncedUrl) : null;
+      if (!url) {
+        setMetaData(customOnly);
         return;
       }
 
@@ -331,13 +331,9 @@ export default function CreateLinkPage() {
       setGeneratedAliases([]);
       form.setValue("alias", "");
 
-      // Get custom metadata from form - these take priority over fetched metadata
-      const customTitle = form.getValues("metadata.title");
-      const customDescription = form.getValues("metadata.description");
-      const customImage = form.getValues("metadata.image");
-
+      setIsFetchingMetadata(true);
       try {
-        const fetchedMetadata = await fetchMetadataInfo(debouncedUrl);
+        const fetchedMetadata = await fetchMetadataInfo(url);
 
         // Only use fetched values for fields where user hasn't set custom values
         setMetaData({
@@ -349,7 +345,7 @@ export default function CreateLinkPage() {
 
         if ((userSubscription?.data?.plan ?? "free") !== "free") {
           generateAliasMutation.mutate({
-            url: debouncedUrl,
+            url,
             title: customTitle || fetchedMetadata.title,
             description: customDescription || fetchedMetadata.description,
           });
@@ -362,8 +358,10 @@ export default function CreateLinkPage() {
           { err: error instanceof Error ? error : String(error), action: "fetch-metadata" },
           "failed to fetch metadata",
         );
-        // Don't overwrite user-entered metadata on failure
         // Don't generate aliases since we don't have valid metadata
+        setMetaData(customOnly);
+      } finally {
+        setIsFetchingMetadata(false);
       }
     };
 
@@ -376,22 +374,15 @@ export default function CreateLinkPage() {
     const controller = new AbortController();
 
     const runCheck = async () => {
-      if (!cloakingEnabled || !debouncedUrl) {
-        setIframeableResult(null);
-        return;
-      }
-
-      // Validate URL format first
-      try {
-        new URL(debouncedUrl);
-      } catch {
+      const url = debouncedUrl ? normalizeDestinationUrl(debouncedUrl) : null;
+      if (!cloakingEnabled || !url) {
         setIframeableResult(null);
         return;
       }
 
       setIsCheckingIframeable(true);
       try {
-        const iframeable = await checkIframeable(debouncedUrl, controller.signal);
+        const iframeable = await checkIframeable(url, controller.signal);
         setIframeableResult(iframeable);
 
         if (!iframeable) {
@@ -1111,6 +1102,7 @@ export default function CreateLinkPage() {
           metaDescription={metaData.description}
           metaImage={metaData.image}
           favicon={metaData.favicon}
+          isLoading={isFetchingMetadata}
         />
       </div>
     </section>

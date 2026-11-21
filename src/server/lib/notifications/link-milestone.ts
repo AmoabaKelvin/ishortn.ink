@@ -35,6 +35,7 @@ export async function sendLinkMilestoneEmail({
     template: "link-milestone",
     recipientId: userId,
     to: email,
+    essential: false,
     subject: `Your link "${linkName || shortUrl}" hit ${milestone.toLocaleString()} clicks`,
     react: LinkMilestoneEmail({
       userName: name,

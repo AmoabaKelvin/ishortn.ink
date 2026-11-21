@@ -21,6 +21,7 @@ import {
   blockedDomain,
   campaign,
   customDomain,
+  emailSuppression,
   feedback,
   flaggedLink,
   link,
@@ -36,6 +37,7 @@ import {
   deleteCustomHostname,
   getCustomHostname,
   getLiveCustomHostname,
+  isApexHostname,
   mapStatus,
 } from "../domains/cloudflare";
 import { RESTRICTED_LINK_REASON } from "../link/utils";
@@ -484,7 +486,7 @@ export async function restrictUser(ctx: ProtectedTRPCContext, input: RestrictUse
 
       // An apex on the www fallback serves through www.<apex>; release that too
       // and remember it so unrestricting re-adds only what existed.
-      if (hostname.split(".").length !== 2) return;
+      if (!isApexHostname(hostname)) return;
       const www = `www.${hostname}`;
       if (!(await getCustomHostname(www))) return;
       await deleteCustomHostname(www);
@@ -1356,4 +1358,36 @@ export async function getSignupAttribution(ctx: ProtectedTRPCContext, now: Date 
     ),
     ...summarizeSignupGroups(groups, SIGNUP_BREAKDOWN_LIMIT),
   };
+}
+
+export const EMAIL_SUPPRESSION_RECENT_LIMIT = 50;
+
+/** Active suppression counts by type, plus the most recent events (cleared ones included). */
+export async function getEmailSuppressions(ctx: ProtectedTRPCContext) {
+  const [countRows, recent] = await Promise.all([
+    ctx.db
+      .select({ type: emailSuppression.type, count: count() })
+      .from(emailSuppression)
+      .where(isNull(emailSuppression.clearedAt))
+      .groupBy(emailSuppression.type),
+    ctx.db
+      .select({
+        id: emailSuppression.id,
+        email: emailSuppression.email,
+        type: emailSuppression.type,
+        detail: emailSuppression.detail,
+        lastEventAt: emailSuppression.lastEventAt,
+        clearedAt: emailSuppression.clearedAt,
+        userId: emailSuppression.userId,
+        userName: user.name,
+      })
+      .from(emailSuppression)
+      .leftJoin(user, eq(user.id, emailSuppression.userId))
+      .orderBy(desc(emailSuppression.lastEventAt), desc(emailSuppression.id))
+      .limit(EMAIL_SUPPRESSION_RECENT_LIMIT),
+  ]);
+
+  const counts = { bounced: 0, complained: 0 };
+  for (const row of countRows) counts[row.type] = Number(row.count);
+  return { counts, recent };
 }

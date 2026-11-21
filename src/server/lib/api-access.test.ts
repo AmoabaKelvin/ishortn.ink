@@ -74,6 +74,9 @@ describe.skipIf(!testDatabaseUrl || !!process.env.RESEND_API_KEY)(
 
     async function cleanup() {
       await db.delete(schema.apiAccessSunset);
+      await db
+        .delete(schema.emailSuppression)
+        .where(eq(schema.emailSuppression.email, "free@api-sunset.test"));
       await db.delete(schema.token).where(inArray(schema.token.userId, USERS));
       await db.delete(schema.subscription).where(inArray(schema.subscription.userId, USERS));
       await db.delete(schema.user).where(inArray(schema.user.id, USERS));
@@ -151,6 +154,19 @@ describe.skipIf(!testDatabaseUrl || !!process.env.RESEND_API_KEY)(
       });
       expect(await sentAt(FREE)).toEqual({ notice: null, reminder: null });
       expect(await sentAt(PAID)).toEqual({ notice: null, reminder: null });
+    });
+
+    test("a hard-bounced address isn't emailed", async () => {
+      await db.insert(schema.emailSuppression).values({
+        email: "free@api-sunset.test",
+        type: "bounced",
+        userId: FREE,
+        lastEventAt: DEPLOY,
+      });
+
+      const result = await sendApiSunsetEmailsDue(DEPLOY);
+
+      expect(result).toMatchObject({ notice: 0, failed: 0, closed: 0 });
     });
 
     test("accounts past their cutoff are closed without an email", async () => {

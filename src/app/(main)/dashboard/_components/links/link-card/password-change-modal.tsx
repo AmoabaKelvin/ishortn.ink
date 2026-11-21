@@ -45,69 +45,81 @@ export function ChangeLinkPasswordModal({
   hasPassword,
 }: ChangePasswordModalProps) {
   const [newPassword, setNewPassword] = useState("");
-  const changePasswordMutation = api.link.changeLinkPassword.useMutation({
-    onSuccess: () => {
-      setOpen(false);
-      setNewPassword("");
-      trackEvent(POSTHOG_EVENTS.LINK_PASSWORD_CHANGED);
-    },
-    onError: () => {
-      setNewPassword("");
-    },
-  });
+  const changePasswordMutation = api.link.changeLinkPassword.useMutation();
   const componentMessages = getComponentMessages(hasPassword);
 
-  const handlePasswordChange = async () => {
-    if (!newPassword) return;
+  // Closing (Cancel, Escape, outside click) discards what was typed.
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setNewPassword("");
+    setOpen(next);
+  };
 
-    toast.promise(changePasswordMutation.mutateAsync({ id, password: newPassword }), {
+  const handlePasswordChange = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!newPassword || changePasswordMutation.isLoading) return;
+
+    const save = async () => {
+      await changePasswordMutation.mutateAsync({ id, password: newPassword });
+      // Revalidate after the write lands, or the card keeps its old label.
+      await revalidateHomepage();
+      trackEvent(POSTHOG_EVENTS.LINK_PASSWORD_CHANGED);
+      handleOpenChange(false);
+    };
+
+    toast.promise(save(), {
       loading: componentMessages.loading,
       success: componentMessages.loadingSuccess,
-      error: componentMessages.loadingError,
+      error: (error: Error) => error.message || componentMessages.loadingError,
     });
-
-    await revalidateHomepage();
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle>{componentMessages.title}</DialogTitle>
-          <DialogDescription>{componentMessages.description}</DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handlePasswordChange}>
+          <DialogHeader>
+            <DialogTitle>{componentMessages.title}</DialogTitle>
+            <DialogDescription>{componentMessages.description}</DialogDescription>
+          </DialogHeader>
 
-        <DialogBody>
-          <div className="space-y-2">
-            <Label
-              htmlFor="password"
-              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+          <DialogBody>
+            <div className="space-y-2">
+              <Label
+                htmlFor="password"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={componentMessages.inputPlaceholder}
+                className="h-10"
+              />
+            </div>
+          </DialogBody>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => handleOpenChange(false)}
+              className="h-9"
             >
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder={componentMessages.inputPlaceholder}
-              className="h-10"
-            />
-          </div>
-        </DialogBody>
-
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="h-9">
-            Cancel
-          </Button>
-          <Button
-            onClick={handlePasswordChange}
-            disabled={!newPassword || changePasswordMutation.isLoading}
-            className="h-9"
-          >
-            {changePasswordMutation.isLoading ? "Saving..." : componentMessages.buttonText}
-          </Button>
-        </DialogFooter>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!newPassword || changePasswordMutation.isLoading}
+              className="h-9"
+            >
+              {changePasswordMutation.isLoading ? "Saving..." : componentMessages.buttonText}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

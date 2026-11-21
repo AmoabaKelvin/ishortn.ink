@@ -73,7 +73,8 @@ export function DomainMigrationGate() {
     staleTime: 60_000,
   });
 
-  const pendingDomains = data?.filter((entry) => !entry.cloudflareActive) ?? [];
+  // Already limited server-side to pre-migration domains that still need DNS changes
+  const pendingDomains = data ?? [];
 
   if (pendingDomains.length === 0) {
     return null;
@@ -90,13 +91,8 @@ export function DomainMigrationGate() {
   const onDeadline = deadline ? ` on ${deadline.label}` : "";
 
   return (
-    <Dialog open={!dismissed}>
-      <DialogContent
-        className="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[560px] [&>button]:hidden"
-        onPointerDownOutside={(event) => event.preventDefault()}
-        onInteractOutside={(event) => event.preventDefault()}
-        onEscapeKeyDown={(event) => event.preventDefault()}
-      >
+    <Dialog open={!dismissed} onOpenChange={(open) => !open && dismissForSession()}>
+      <DialogContent className="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>
             {deadlinePassed ? "Your custom domains need a DNS update" : "DNS update required"}
@@ -132,16 +128,12 @@ export function DomainMigrationGate() {
   );
 }
 
-type VerifyFeedback = "pending" | "error";
-
-const feedbackMessages = {
-  pending:
-    "Records not detected yet. DNS changes can take up to 48 hours to propagate — check again later.",
-  error: "We could not verify the domain right now. Please try again in a moment.",
-} satisfies Record<VerifyFeedback, string>;
+const PENDING_FEEDBACK =
+  "Records not detected yet. DNS changes can take up to 48 hours to propagate — check again later.";
+const ERROR_FEEDBACK = "We could not verify the domain right now. Please try again in a moment.";
 
 function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
-  const [feedback, setFeedback] = useState<VerifyFeedback | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const utils = api.useUtils();
 
   const checkStatus = api.customDomain.checkStatus.useQuery(
@@ -155,10 +147,10 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
 
   const handleVerify = async () => {
     setFeedback(null);
-    const { data: result } = await checkStatus.refetch();
+    const { data: result, error } = await checkStatus.refetch();
 
     if (!result) {
-      setFeedback("error");
+      setFeedback(error?.message ?? ERROR_FEEDBACK);
       return;
     }
 
@@ -168,7 +160,7 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
       return;
     }
 
-    setFeedback("pending");
+    setFeedback(PENDING_FEEDBACK);
   };
 
   const isVerifying = checkStatus.isFetching;
@@ -196,15 +188,8 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
         </button>
       </div>
 
-      {entry.fetchError && (
-        <p className="mt-2 text-[11px] text-neutral-400 dark:text-neutral-500">
-          We could not confirm this domain&apos;s current status. If you already updated the
-          records, use &quot;Verify configuration&quot; to check again.
-        </p>
-      )}
-
       <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 dark:border-border">
-        <table className="min-w-full divide-y divide-neutral-100">
+        <table className="min-w-full divide-y divide-neutral-100 dark:divide-border/50">
           <thead className="bg-neutral-50 dark:bg-accent/50">
             <tr>
               <th className="px-3 py-2 text-left text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
@@ -218,7 +203,7 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100 bg-white dark:bg-card">
+          <tbody className="divide-y divide-neutral-100 bg-white dark:divide-border/50 dark:bg-card">
             {entry.records.map((record) => (
               <tr key={`${record.type}-${record.name}-${record.value}`}>
                 <td className="whitespace-nowrap px-3 py-2.5">
@@ -231,11 +216,16 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
                     </span>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2.5">
+                <td className="px-3 py-2.5 align-top">
                   <CopyableValue value={record.name} />
+                  {record.fqdn !== record.name && (
+                    <p className="mt-1 break-all text-[11px] text-neutral-400 dark:text-neutral-500">
+                      {record.fqdn}
+                    </p>
+                  )}
                 </td>
-                <td className="px-3 py-2.5">
-                  <CopyableValue value={record.value} truncate />
+                <td className="px-3 py-2.5 align-top">
+                  <CopyableValue value={record.value} />
                 </td>
               </tr>
             ))}
@@ -257,15 +247,13 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
       )}
 
       {feedback && (
-        <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">
-          {feedbackMessages[feedback]}
-        </p>
+        <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">{feedback}</p>
       )}
     </div>
   );
 }
 
-function CopyableValue({ value, truncate }: { value: string; truncate?: boolean }) {
+function CopyableValue({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -276,12 +264,9 @@ function CopyableValue({ value, truncate }: { value: string; truncate?: boolean 
   };
 
   return (
-    <div className="flex items-center gap-1">
-      <code
-        className={`rounded-md border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-1 text-[11px] text-neutral-600 dark:text-neutral-400 ${
-          truncate ? "max-w-[180px] truncate" : ""
-        }`}
-      >
+    <div className="flex items-start gap-1">
+      {/* Values wrap instead of truncating so the whole record stays readable at 390px */}
+      <code className="min-w-0 break-all rounded-md border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-1 text-[11px] text-neutral-600 dark:text-neutral-400">
         {value}
       </code>
       <button

@@ -34,6 +34,10 @@ export const DOCS_SECTIONS = [
       { slug: "api/verify-click", title: "Verify a click" },
     ],
   },
+  {
+    title: "Self-hosting",
+    pages: [{ slug: "self-hosting", title: "Self-hosting iShortn" }],
+  },
 ] as const;
 
 export type DocsSection = (typeof DOCS_SECTIONS)[number];

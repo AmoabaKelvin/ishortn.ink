@@ -1,12 +1,13 @@
 import { TRPCError } from "@trpc/server";
 
 import { logger } from "@/lib/logger";
+import { INVALID_URL_MESSAGE } from "@/lib/utils/destination-url";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
 import { scrapeMetadata } from "@/server/lib/metadata";
 
 import { checkBlocklist } from "./blocklist";
 import { checkGoogleSafeBrowsing } from "./google-safe-browsing";
-import { runHeuristicChecks } from "./heuristics";
+import { INVALID_URL_REASON, runHeuristicChecks } from "./heuristics";
 import { checkGoogleWebRisk } from "./web-risk";
 
 const log = logger.child({ component: "phishing" });
@@ -36,9 +37,11 @@ export async function runDeterministicChecks(url: string): Promise<CheckResult> 
   // Layer 1a: Heuristic pattern checks (synchronous, instant)
   const heuristicResult = runHeuristicChecks(url);
   if (heuristicResult.blocked) {
+    // An unparseable URL is a typo, not a phishing signal.
     return {
       ...heuristicResult,
-      userMessage: USER_MSG_SUSPICIOUS,
+      userMessage:
+        heuristicResult.reason === INVALID_URL_REASON ? INVALID_URL_MESSAGE : USER_MSG_SUSPICIOUS,
     };
   }
 

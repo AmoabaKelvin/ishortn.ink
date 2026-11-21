@@ -11,7 +11,7 @@ export function DomainMigrationBanner() {
     staleTime: 60_000,
   });
 
-  const pendingCount = data?.filter((entry) => !entry.cloudflareActive).length ?? 0;
+  const pendingCount = data?.length ?? 0;
 
   if (pendingCount === 0) {
     return null;

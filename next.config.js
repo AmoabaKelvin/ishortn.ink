@@ -43,7 +43,10 @@ const config = {
   // Guessable auth URLs. Scoped to the app host so `/sign-in` stays usable as a
   // short-link alias on the short and custom domains.
   async redirects() {
-    const has = [{ type: "host", value: "(?:www\\.)?ishortn\\.ink|localhost" }];
+    const appDomain = (
+      process.env.NEXT_PUBLIC_APP_DOMAIN?.trim().toLowerCase() || "ishortn.ink"
+    ).replaceAll(".", "\\.");
+    const has = [{ type: "host", value: `(?:www\\.)?${appDomain}|localhost` }];
     return [
       { source: "/sign-in", destination: "/auth/sign-in", permanent: true, has },
       { source: "/sign-up", destination: "/auth/sign-up", permanent: true, has },

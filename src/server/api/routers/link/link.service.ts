@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import {
   and,
   asc,
@@ -13,6 +12,7 @@ import {
   isNull,
   like,
   lt,
+  lte,
   or,
   sql,
   sum,
@@ -26,7 +26,8 @@ import {
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { summarizeArchived } from "@/lib/core/analytics";
+import { bucketKey, resolveRangeWindow, summarizeArchived } from "@/lib/core/analytics";
+import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import {
   buildCacheKey,
@@ -42,6 +43,7 @@ import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { normalizeAlias } from "@/lib/utils";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
@@ -555,44 +557,50 @@ const createLinkSteps = async (
   // Create link without tags field
   const { tags: _tags, ...linkData } = input;
   const ownership = workspaceOwnership(ctx.workspace);
-  const [result] = await ctx.db.insert(link).values({
-    ...linkData,
-    name,
-    alias,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-    passwordHash: input.password,
-    domain,
-    note: input.note,
-    metadata: {
-      ...input.metadata,
-    },
-    cloaking: input.cloaking ?? false,
-    verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
-    ...restrictedLinkValues(ctx.restrictedAt),
+
+  // One transaction, so a failed tag or rule write doesn't leave a half-made link.
+  const result = await ctx.db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(link).values({
+      ...linkData,
+      name,
+      alias,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      passwordHash: input.password,
+      domain,
+      note: input.note,
+      metadata: {
+        ...input.metadata,
+      },
+      cloaking: input.cloaking ?? false,
+      verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
+      ...restrictedLinkValues(ctx.restrictedAt),
+    });
+    const insertedId = Number(inserted.insertId);
+
+    if (tagNames.length > 0) {
+      await associateTagsWithLink({ ...ctx, db: tx }, insertedId, tagNames);
+    }
+
+    if (geoRulesInput && geoRulesInput.length > 0) {
+      await tx.insert(geoRule).values(
+        geoRulesInput.map((rule, index) => ({
+          linkId: insertedId,
+          type: rule.type,
+          condition: rule.condition,
+          values: rule.values,
+          action: rule.action,
+          destination: rule.action === "redirect" ? rule.destination : null,
+          blockMessage: rule.action === "block" ? rule.blockMessage : null,
+          priority: index,
+        })),
+      );
+    }
+
+    return inserted;
   });
-
-  // Associate tags with the link
   const linkId = Number(result.insertId);
-  if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, linkId, tagNames);
-  }
-
-  if (geoRulesInput && geoRulesInput.length > 0) {
-    await ctx.db.insert(geoRule).values(
-      geoRulesInput.map((rule, index) => ({
-        linkId,
-        type: rule.type,
-        condition: rule.condition,
-        values: rule.values,
-        action: rule.action,
-        destination: rule.action === "redirect" ? rule.destination : null,
-        blockMessage: rule.action === "block" ? rule.blockMessage : null,
-        priority: index,
-      })),
-    );
-  }
 
   // Upload OG image to R2 if it's base64
   if (input.metadata?.image) {
@@ -721,6 +729,25 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   // Extract tags and geoRules from input
   const { tags: tagNames, geoRules: geoRulesInput, ...linkData } = input;
 
+  if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
+    if (!canUseGeoRules(workspacePlan)) {
+      throw new Error(
+        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+      );
+    }
+
+    const geoLimit = getGeoRulesLimit(workspacePlan);
+    if (
+      !isUnlimitedGeoRules(workspacePlan) &&
+      geoLimit !== undefined &&
+      geoRulesInput.length > geoLimit
+    ) {
+      throw new Error(
+        `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
+      );
+    }
+  }
+
   // Upload OG image to R2 if it's base64
   if (linkData.metadata?.image) {
     try {
@@ -744,7 +771,6 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     }
   }
 
-  // Update link data - use workspace filtering
   const linkWhere = and(
     eq(link.id, input.id),
     workspaceFilter(ctx.workspace, link.userId, link.teamId),
@@ -752,63 +778,41 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   const freesOldAlias =
     (!!input.alias && normalizeAlias(input.alias) !== normalizeAlias(existingLink.alias ?? "")) ||
     (!!input.domain && input.domain.toLowerCase() !== existingLink.domain.toLowerCase());
-  if (freesOldAlias) {
+
+  // One transaction: tags are replaced by delete-then-insert, so a failure
+  // part-way must not leave the link without its previous tags.
+  await ctx.db.transaction(async (tx) => {
     // A rename frees the old alias just like a delete does.
-    await ctx.db.transaction(async (tx) => {
+    if (freesOldAlias) {
       await reserveLinkAliases(tx, linkWhere, "deleted");
-      await tx.update(link).set(linkData).where(linkWhere);
-    });
-  } else {
-    await ctx.db.update(link).set(linkData).where(linkWhere);
-  }
+    }
+    await tx.update(link).set(linkData).where(linkWhere);
 
-  // Update tags if provided
-  if (tagNames) {
-    await associateTagsWithLink(ctx, input.id, tagNames);
-  }
+    if (tagNames) {
+      await associateTagsWithLink({ ...ctx, db: tx }, input.id, tagNames);
+    }
 
-  // Handle geo rules if provided
+    if (geoRulesInput !== undefined) {
+      await tx.delete(geoRule).where(eq(geoRule.linkId, input.id));
+
+      if (geoRulesInput.length > 0) {
+        await tx.insert(geoRule).values(
+          geoRulesInput.map((rule, index) => ({
+            linkId: input.id,
+            type: rule.type,
+            condition: rule.condition,
+            values: rule.values,
+            action: rule.action,
+            destination: rule.action === "redirect" ? rule.destination : null,
+            blockMessage: rule.action === "block" ? rule.blockMessage : null,
+            priority: index,
+          })),
+        );
+      }
+    }
+  });
+
   if (geoRulesInput !== undefined) {
-    // Check plan limits for new rules
-    if (geoRulesInput.length > 0) {
-      if (!canUseGeoRules(workspacePlan)) {
-        throw new Error(
-          "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-        );
-      }
-
-      const geoLimit = getGeoRulesLimit(workspacePlan);
-      if (
-        !isUnlimitedGeoRules(workspacePlan) &&
-        geoLimit !== undefined &&
-        geoRulesInput.length > geoLimit
-      ) {
-        throw new Error(
-          `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
-        );
-      }
-    }
-
-    // Delete existing geo rules for this link
-    await ctx.db.delete(geoRule).where(eq(geoRule.linkId, input.id));
-
-    // Insert new geo rules if any
-    if (geoRulesInput.length > 0) {
-      await ctx.db.insert(geoRule).values(
-        geoRulesInput.map((rule, index) => ({
-          linkId: input.id,
-          type: rule.type,
-          condition: rule.condition,
-          values: rule.values,
-          action: rule.action,
-          destination: rule.action === "redirect" ? rule.destination : null,
-          blockMessage: rule.action === "block" ? rule.blockMessage : null,
-          priority: index,
-        })),
-      );
-    }
-
-    // Invalidate geo rules cache
     await deleteGeoRulesFromCache(input.id);
   }
 
@@ -1091,6 +1095,8 @@ const shortenLinkSteps = async (
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
   const domain = await getWorkspaceDefaultDomain(ctx);
+  // The saved default can outlive the domain (deleted, or never verified)
+  await assertDomainAllowed(ctx, domain);
   const alias = await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
@@ -1103,28 +1109,29 @@ const shortenLinkSteps = async (
   const ownership = workspaceOwnership(ctx.workspace);
 
   attempt.step = "db";
+  const result = await ctx.db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(link).values({
+      url: input.url,
+      alias,
+      domain,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      name,
+      metadata: {
+        title: fetchedMetadata?.title,
+        description: fetchedMetadata?.description,
+        image: fetchedMetadata?.image,
+      },
+      ...restrictedLinkValues(ctx.restrictedAt),
+    });
 
-  // Create link without tags field
-  const [result] = await ctx.db.insert(link).values({
-    url: input.url,
-    alias,
-    domain,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-    name,
-    metadata: {
-      title: fetchedMetadata?.title,
-      description: fetchedMetadata?.description,
-      image: fetchedMetadata?.image,
-    },
-    ...restrictedLinkValues(ctx.restrictedAt),
+    if (tagNames.length > 0) {
+      await associateTagsWithLink({ ...ctx, db: tx }, Number(inserted.insertId), tagNames);
+    }
+
+    return inserted;
   });
-
-  // Associate tags with the link
-  if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, Number(result.insertId), tagNames);
-  }
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
 
@@ -1137,37 +1144,27 @@ const shortenLinkSteps = async (
 
 export const getLinkVisits = async (
   ctx: WorkspaceTRPCContext,
-  input: { id: string; domain: string; range: string },
+  input: { id: string; domain?: string; range: string },
 ) => {
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
 
+  const domain = input.domain ?? (await getWorkspaceDefaultDomain(ctx));
+
   // Use workspace filtering to ensure the link belongs to the current workspace
   const foundLink = await ctx.db.query.link.findFirst({
     where: and(
       eq(link.alias, input.id),
-      eq(link.domain, input.domain),
+      eq(link.domain, domain),
       workspaceFilter(ctx.workspace, link.userId, link.teamId),
     ),
   });
 
   if (!foundLink) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      geoRules: [],
-      previous: null,
-      archived: summarizeArchived([]),
-    };
+    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
   }
 
-  let now = new Date();
-  let startDate: Date;
   let range = input.range;
 
   // Enforce 7-day limit for free users
@@ -1175,39 +1172,9 @@ export const getLinkVisits = async (
     range = "7d";
   }
 
-  switch (range) {
-    case "24h":
-      startDate = subDays(now, 1);
-      break;
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "this_month":
-      startDate = startOfMonth(now);
-      break;
-    case "last_month":
-      startDate = startOfMonth(subDays(now, 30));
-      now.setDate(0); // Set to last day of previous month
-      break;
-    case "this_year":
-      startDate = startOfYear(now);
-      break;
-    case "last_year":
-      startDate = startOfYear(subDays(now, 365));
-      now = endOfYear(subDays(now, 365));
-      break;
-    case "all":
-      startDate = new Date(0); // Beginning of time
-      break;
-    default:
-      startDate = subDays(now, 7); // Default to last 7 days
-  }
+  const window = resolveRangeWindow(range, new Date());
+  const startDate = window.from ?? new Date(0);
+  const now = window.to;
 
   // Previous-period window for % delta: same duration immediately before
   // the current window. Skip for "all" and for inverted windows that can
@@ -1216,8 +1183,6 @@ export const getLinkVisits = async (
   const hasPreviousPeriod = range !== "all" && windowMs > 0;
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
-
-  const toDateKey = (d: Date) => d.toISOString().split("T")[0]!;
 
   const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
     await Promise.all([
@@ -1275,8 +1240,8 @@ export const getLinkVisits = async (
         where: (s, { eq, and, gte, lte }) =>
           and(
             eq(s.linkId, foundLink.id),
-            gte(s.date, toDateKey(startDate)),
-            lte(s.date, toDateKey(now)),
+            gte(s.date, bucketKey(startDate)),
+            lte(s.date, bucketKey(now)),
           ),
       }),
       hasPreviousPeriod
@@ -1289,8 +1254,8 @@ export const getLinkVisits = async (
             .where(
               and(
                 eq(linkVisitDailySummary.linkId, foundLink.id),
-                gte(linkVisitDailySummary.date, toDateKey(prevStart)),
-                lt(linkVisitDailySummary.date, toDateKey(prevEnd)),
+                gte(linkVisitDailySummary.date, bucketKey(prevStart)),
+                lt(linkVisitDailySummary.date, bucketKey(prevEnd)),
               ),
             )
         : Promise.resolve(null),
@@ -1317,6 +1282,9 @@ export const getLinkVisits = async (
       geoRules: linkGeoRules,
       previous,
       archived,
+      domain,
+      range,
+      window,
     };
   }
 
@@ -1349,11 +1317,14 @@ export const getLinkVisits = async (
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
+    topReferrer: formatReferrerLabel(topReferrer),
     isProPlan: userHasPaidPlan,
     geoRules: linkGeoRules,
     previous,
     archived,
+    domain,
+    range,
+    window,
   };
 };
 
@@ -1368,6 +1339,24 @@ export const getAllUserAnalytics = async (
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
+
+  const range = !userHasPaidPlan && !["24h", "7d"].includes(input.range) ? "7d" : input.range;
+  const window = resolveRangeWindow(range, new Date());
+  const startDate = window.from ?? new Date(0);
+  const now = window.to;
+  const empty = {
+    totalVisits: [],
+    uniqueVisits: [],
+    topCountry: "N/A",
+    referers: {},
+    topReferrer: "N/A",
+    isProPlan: userHasPaidPlan,
+    clicksByLink: {},
+    clicksByDestination: {},
+    archived: summarizeArchived([]),
+    range,
+    window,
+  };
 
   // Fetch workspace links with optional filtering
   const userLinks = await ctx.db.query.link.findMany({
@@ -1398,65 +1387,14 @@ export const getAllUserAnalytics = async (
   });
 
   if (userLinks.length === 0) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      clicksByLink: {},
-      clicksByDestination: {},
-    };
-  }
-
-  let now = new Date();
-  let startDate: Date;
-  let range = input.range;
-
-  // Enforce 7-day limit for free users
-  if (!userHasPaidPlan && !["24h", "7d"].includes(range)) {
-    range = "7d";
-  }
-
-  switch (range) {
-    case "24h":
-      startDate = subDays(now, 1);
-      break;
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "this_month":
-      startDate = startOfMonth(now);
-      break;
-    case "last_month":
-      startDate = startOfMonth(subDays(now, 30));
-      now.setDate(0);
-      break;
-    case "this_year":
-      startDate = startOfYear(now);
-      break;
-    case "last_year":
-      startDate = startOfYear(subDays(now, 365));
-      now = endOfYear(subDays(now, 365));
-      break;
-    case "all":
-      startDate = new Date(0);
-      break;
-    default:
-      startDate = subDays(now, 7);
+    return empty;
   }
 
   const linkIds = userLinks.map((link) => link.id);
 
-  // Fetch all visits for all links
-  const [totalVisits, uniqueVisits] = await Promise.all([
+  // Fetch all visits for all links, plus the per-day counts archived from
+  // visits past the retention window (summed in SQL, so one row per day).
+  const [totalVisits, uniqueVisits, summaries] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { inArray, and, gte, lte }) =>
         and(
@@ -1473,19 +1411,27 @@ export const getAllUserAnalytics = async (
           lte(visit.createdAt, now),
         ),
     }),
+    ctx.db
+      .select({
+        date: linkVisitDailySummary.date,
+        clicks: sum(linkVisitDailySummary.clicks).mapWith(Number),
+        uniqueClicks: sum(linkVisitDailySummary.uniqueClicks).mapWith(Number),
+      })
+      .from(linkVisitDailySummary)
+      .where(
+        and(
+          inArray(linkVisitDailySummary.linkId, linkIds),
+          gte(linkVisitDailySummary.date, bucketKey(startDate)),
+          lte(linkVisitDailySummary.date, bucketKey(now)),
+        ),
+      )
+      .groupBy(linkVisitDailySummary.date),
   ]);
 
+  const archived = summarizeArchived(summaries);
+
   if (totalVisits.length === 0) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      clicksByLink: {},
-      clicksByDestination: {},
-    };
+    return { ...empty, archived };
   }
 
   // Aggregate clicks by link
@@ -1537,10 +1483,13 @@ export const getAllUserAnalytics = async (
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
+    topReferrer: formatReferrerLabel(topReferrer),
     isProPlan: userHasPaidPlan,
     clicksByLink,
     clicksByDestination,
+    archived,
+    range,
+    window,
   };
 };
 
@@ -1796,8 +1745,11 @@ const bulkCreateLinkRows = async (
   // Two rows claiming the same alias on the same domain would otherwise race on
   // the unique index; the first one in the file wins.
   const seenAliases = new Set<string>();
-  const validated = await settleWithConcurrency(records, CSV_IMPORT_CONCURRENCY, async (record) => {
-    if (!record.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
+  const validated = await settleWithConcurrency(records, CSV_IMPORT_CONCURRENCY, async (row) => {
+    if (!row.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
+    const url = normalizeDestinationUrl(row.url);
+    if (!url) throw new TRPCError({ code: "BAD_REQUEST", message: INVALID_URL_MESSAGE });
+    const record = { ...row, url };
     const domainError = domainErrors.get(record.domain);
     if (domainError) throw domainError;
     if (!record.alias) return record;

@@ -40,6 +40,7 @@ export async function sendEventUsageEmail({
     template: "event-usage-alert",
     recipientId: userId,
     to: email,
+    essential: false,
     subject: eventUsageSubject(threshold),
     react: EventUsageAlertEmail({
       userName: name,

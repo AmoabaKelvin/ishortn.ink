@@ -1,0 +1,267 @@
+---
+title: Self-hosting iShortn
+description: Run your own iShortn instance on Cloudflare Workers with a MySQL database and Clerk. Resources, environment variables, database setup, deploys, cron jobs and upgrades.
+---
+
+iShortn is MIT-licensed, and the code that runs the hosted service is the code you deploy. This guide takes you from a fresh Cloudflare account to a working instance: create a link, follow it, see the click in analytics.
+
+## What you're deploying
+
+A Next.js app built with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare) and deployed as **one Cloudflare Worker**. `custom-worker.ts` is the entry point. It serves every page and short link, runs the cron jobs, and consumes the click queue.
+
+You need:
+
+- **Cloudflare Workers** on the [Workers Paid plan](https://developers.cloudflare.com/workers/platform/pricing/). The configuration raises the CPU limit to `cpu_ms: 300000` for the phishing rescan, which only the paid plan allows. The app also uses KV, Hyperdrive and Queues.
+- **A MySQL 8 database** that Cloudflare can reach.
+- **A Clerk application** for sign-in.
+
+These are optional, and the features that use them stay off until you configure them: Cloudflare R2 (image uploads), Resend (email), Lemon Squeezy (billing), Cloudflare for SaaS (custom domains for your users), OpenAI (alias suggestions) and Google Safe Browsing (link safety checks).
+
+## Prerequisites
+
+- [Bun](https://bun.sh) and a clone of the repository. Run `bun install`.
+- A Cloudflare account with a zone (domain) on it, and wrangler signed in: `bunx wrangler login`.
+- MySQL 8 with `utf8mb4` and the `utf8mb4_unicode_ci` collation, the same settings as the `db` service in `compose.yaml`. Any hosted MySQL works (PlanetScale, Aiven, a VPS) as long as Hyperdrive can reach it over the internet or through a [Cloudflare Tunnel](https://developers.cloudflare.com/hyperdrive/configuration/connect-to-private-database/). Create the database with that collation:
+
+  ```sql
+  CREATE DATABASE ishortn CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  ```
+
+- A Clerk **production** instance. Development instances only work on `localhost`. See [Clerk setup](#clerk-setup).
+
+The examples below use `links.example.com` as the one domain that serves both the dashboard and the short links. Replace it with yours.
+
+## Create the Cloudflare resources
+
+`wrangler.jsonc` in the repository holds the hosted service's resource IDs, which won't work on your account. Start from the template instead:
+
+```bash
+cp wrangler.example.jsonc wrangler.jsonc
+```
+
+Then create each resource and paste the ID wrangler prints into the matching placeholder:
+
+```bash
+# Link cache and the Next.js incremental cache
+bunx wrangler kv namespace create LINK_CACHE_KV
+bunx wrangler kv namespace create NEXT_INC_CACHE_KV
+
+# Database connection pooling. Caching off, so reads always see the latest writes.
+bunx wrangler hyperdrive create ishortn-db \
+  --connection-string="mysql://USER:PASSWORD@HOST:3306/ishortn" \
+  --caching-disabled
+
+# Click ingestion queue and its dead-letter queue
+bunx wrangler queues create ishortn-clicks
+bunx wrangler queues create ishortn-clicks-dlq
+```
+
+| Binding | What it's for | Where it goes in `wrangler.jsonc` |
+| --- | --- | --- |
+| `LINK_CACHE_KV` | Caches link lookups so redirects skip the database | `kv_namespaces[].id` |
+| `NEXT_INC_CACHE_KV` | Next.js incremental cache (prerendered pages) | `kv_namespaces[].id` |
+| `HYPERDRIVE` | Connection to your MySQL database | `hyperdrive[].id` |
+| `CLICK_QUEUE` | Clicks are queued on redirect and written in batches | `queues` (by name, no ID needed) |
+| `WORKER_SELF_REFERENCE` | Lets cron jobs, the queue consumer and page revalidation call the app | `services[].service`: must equal `name` |
+
+If you rename the Worker (`name`), change `services[0].service` to the same name. Set `routes[0].pattern` to your domain; see [Short-link domain](#short-link-domain).
+
+## Environment variables
+
+`src/env.mjs` is the source of truth: it validates every variable at build time and when the Worker starts. `.env.example` lists the same variables with comments.
+
+### Where they go
+
+Write them to `.env.production.local` in the repository root (git ignores it) before you build. The landing pages are prerendered at build time, and `NEXT_PUBLIC_*` values are compiled into the code, so the build must see them. OpenNext also bundles the file's values into the Worker as runtime defaults.
+
+Secrets you'd rather not bundle can be set as Worker secrets instead, which take precedence at runtime:
+
+```bash
+bunx wrangler secret put CLERK_SECRET_KEY
+```
+
+`CRON_SECRET` **must** be a Worker secret as well as in the file: the Worker entry reads it from its bindings to sign cron and queue calls.
+
+```bash
+bunx wrangler secret put CRON_SECRET
+```
+
+Generate each random secret with `openssl rand -hex 32`.
+
+### Required
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | MySQL URL, such as `mysql://USER:PASSWORD@HOST:3306/ishortn`. The Worker talks to the database through Hyperdrive; this URL is used to validate the config and by the migration commands. |
+| `NEXT_PUBLIC_APP_URL` | `https://links.example.com` |
+| `NEXT_PUBLIC_APP_DOMAIN` | `links.example.com`: the host of the dashboard and the domain configured in Clerk |
+| `NEXT_PUBLIC_PLATFORM_DOMAINS` | `links.example.com`: the short-link domains, comma-separated, default first. Unset, the app uses the hosted service's domains, so set it. |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk production publishable key (`pk_live_...`) |
+| `CLERK_SECRET_KEY` | Clerk production secret key (`sk_live_...`) |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/auth/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/auth/sign-up` |
+| `CRON_SECRET` | Random. Authenticates cron jobs and the click queue consumer; without it no clicks are recorded. |
+| `WEBHOOK_SECRET` | The signing secret of your Clerk webhook (`whsec_...`) |
+| `IP_HASH_SECRET` | Random, at least 16 characters. Visitor IPs are stored as an HMAC with this key; rotating it resets unique-visitor counts. |
+| `VERIFIED_CLICKS_SECRET` | Random, at least 32 characters. Unset turns off verified clicks. |
+| `HEALTHCHECK_TOKEN` | Random. Bearer token for the [health check](#health-check). |
+
+The Clerk variables aren't in `src/env.mjs`; the Clerk SDK reads them directly.
+
+### Optional
+
+| Feature | Variables |
+| --- | --- |
+| Image uploads (Cloudflare R2) | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`. `R2_ENDPOINT` is only for a local S3 stand-in. |
+| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (an address on a domain verified in Resend), `RESEND_WEBHOOK_SECRET` (bounce and complaint webhook), `EMAIL_UNSUBSCRIBE_SECRET` (random, at least 32 characters, for one-click unsubscribe links) |
+| Billing (Lemon Squeezy) | `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET` |
+| Custom domains for users (Cloudflare for SaaS) | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_SAAS_ZONE_ID`, `CUSTOM_DOMAIN_CNAME_TARGET`, and `NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE` (only shown in a notice about moving existing domains) |
+| AI alias suggestions and phishing classification | `OPENAI_API_KEY` |
+| Link safety checks | `GOOGLE_SAFE_BROWSING_API_KEY` (Safe Browsing and Web Risk; checks pass when unset), `URLHAUS_AUTH_KEY` (adds the URLhaus feed to the phishing rescan) |
+| Product analytics | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `UMAMI_TRACKING_ID`, `UMAMI_URL` |
+| Footer status badge | `STATUS_PAGE_API_URL` (OpenStatus, Better Stack or Statuspage-compatible public API). Read when the landing pages are prerendered, so it must be in the build file. |
+| Notifications | `DISCORD_WEBHOOK_URL` (feedback, downgrades and link-creation health alerts) |
+| Logging | `LOG_LEVEL` (pino level, default `info` in production) |
+
+Leave `NODE_ENV`, `BUILD_COMMIT_SHA` (set by the build) and `API_FREE_ACCESS_SUNSET_AT` (tests only) unset.
+
+## Database
+
+The migration files in `drizzle/` were generated against a database that already existed, so they don't replay on an empty one. A new instance builds the schema from `src/server/db/schema.ts` instead, then records the existing migrations as applied:
+
+```bash
+DATABASE_URL='mysql://USER:PASSWORD@HOST:3306/ishortn' bun run db:push
+DATABASE_URL='mysql://USER:PASSWORD@HOST:3306/ishortn' bun run db:baseline
+```
+
+`db:push` creates every table. `db:baseline` writes each migration in `drizzle/` into the `__drizzle_migrations` table (the way drizzle's migrator records them), and refuses to run on a database that already has migrations recorded. Run both once, before the first deploy.
+
+On every upgrade, apply the new migrations before you deploy the new code:
+
+```bash
+DATABASE_URL='mysql://USER:PASSWORD@HOST:3306/ishortn' bun run db:migrate
+```
+
+`db:migrate` applies only the migrations newer than the last one recorded. Schema changes in the project are additive (new tables, columns and indexes), so running migrations before the deploy is safe for the code that's still live.
+
+`workers/migrator` is the hosted service's deploy pipeline applying the same migrations through Hyperdrive from CI. You don't need it: run `db:migrate` from any machine that can reach the database.
+
+## Build and deploy
+
+To try the production build locally first, run `bun run preview`. It builds with OpenNext and runs the Worker in `wrangler dev` against the `DATABASE_URL` in your local `.env`, with cron triggers available at `/__scheduled?cron=<expression>`.
+
+Then deploy:
+
+```bash
+export CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE='mysql://placeholder:placeholder@localhost:3306/placeholder'
+bun run deploy
+```
+
+`bun run deploy` runs `opennextjs-cloudflare build && opennextjs-cloudflare deploy`. Wrangler insists on a local Hyperdrive connection string during the build; it's never dialled, so a placeholder is enough.
+
+## Clerk setup
+
+In the [Clerk dashboard](https://dashboard.clerk.com):
+
+1. **Create a production instance** and add `links.example.com` as its domain. Clerk shows DNS records to create (for its frontend API and email); create them in Cloudflare DNS and wait for Clerk to verify them.
+2. **Paths:** set the sign-in URL to `/auth/sign-in` and the sign-up URL to `/auth/sign-up`, matching `NEXT_PUBLIC_CLERK_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_SIGN_UP_URL`.
+3. **API keys:** copy the publishable and secret keys into `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
+4. **Webhooks:** add an endpoint at `https://links.example.com/api/webhooks/clerk`, subscribed to `user.created`, `user.updated` and `user.deleted`. Copy its signing secret into `WEBHOOK_SECRET`.
+
+The webhook keeps names and emails in sync and soft-deletes users who delete their Clerk account. If a delivery is missed, the app still creates the user row on that user's first signed-in request.
+
+To use the admin dashboard at `/dashboard/admin`, sign up, then mark your account as an admin:
+
+```sql
+UPDATE User SET isAdmin = 1 WHERE email = 'you@example.com';
+```
+
+## Short-link domain
+
+The Worker serves the dashboard and short links from the same code; the request's host decides which domain a link belongs to.
+
+- **One domain** (simplest): set `NEXT_PUBLIC_APP_DOMAIN` and `NEXT_PUBLIC_PLATFORM_DOMAINS` to the same host and keep the `routes` entry in `wrangler.jsonc`:
+
+  ```jsonc
+  "routes": [{ "pattern": "links.example.com", "custom_domain": true }]
+  ```
+
+  On deploy, wrangler creates the DNS record and certificate. The zone must be on the same Cloudflare account. You can also add the domain under **Workers & Pages → your Worker → Settings → Domains & Routes**.
+
+- **A separate, shorter link domain:** add a second `custom_domain` route for it and list it first in `NEXT_PUBLIC_PLATFORM_DOMAINS`, such as `exmpl.link,links.example.com`. New links default to the first entry. Users can pick any listed domain, and marketing pages on the short domain redirect to the app domain. Sign-in and the dashboard stay on `NEXT_PUBLIC_APP_DOMAIN`, the domain configured in Clerk.
+
+- **Team subdomains:** a team's workspace is served on its own subdomain of the app domain (`acme.links.example.com`), so teams need a proxied wildcard DNS record `*.links.example.com` and a Worker route `*.links.example.com/*`. Skip this if you won't use teams.
+
+After changing either domain variable, rebuild and redeploy: both are compiled into the build.
+
+Some text still names the hosted service and doesn't come from configuration: the marketing, pricing, legal and blog pages under `src/app/(landing)`, the support and safety email addresses, and the email templates in `src/emails`. Edit them to match your instance.
+
+## Cron jobs
+
+`triggers.crons` in `wrangler.jsonc` lists the schedules. `CRON_ROUTES` in `custom-worker.ts` maps each one to an app route, which the Worker calls with `Authorization: Bearer <CRON_SECRET>`. Routes reject any other caller.
+
+| Schedule (UTC) | Route | What it does | Keep? |
+| --- | --- | --- | --- |
+| `0 9 * * *` | `/api/cron/domain-reminders` | Emails owners of custom domains whose DNS is still misconfigured | Only with custom domains and email |
+| `0 0 * * *` | `/api/cron/cleanup-teams` | Deletes teams whose deletion grace period has passed | Yes |
+| `0 2 * * SUN` | `/api/cron/cleanup-analytics` | Deletes click data older than each plan's retention | Yes, or drop it to keep every click |
+| `0 4 * * *` | `/api/cron/cleanup-expired` | Removes expired team invites, custom domains invalid for 30 days and accounts past their deletion grace period | Yes |
+| `30 */6 * * *` | `/api/cron/phishing-rescan` | Re-scans live links against public phishing feeds and blocks matches | Drop on a private instance where only people you trust create links |
+| `5,20,35,50 * * * *` | `/api/cron/phishing-rescan?backlog=1` | Works through blocks the full rescan held back | Drop with the rescan |
+| `10 * * * *` | `/api/cron/api-access-sunset` | Starts the notice period for API keys on accounts without a paid plan and emails their owners | Drop: it exists for keys created before API access became a paid feature |
+| `40 * * * *` | `/api/cron/link-creation-health` | Posts to `DISCORD_WEBHOOK_URL` when link creation starts failing | Only with `DISCORD_WEBHOOK_URL` |
+
+To drop a job, remove its expression from `triggers.crons`. To run one by hand:
+
+```bash
+CRON_SECRET='...' bun run cron cleanup-teams --url https://links.example.com
+```
+
+## Plans and billing
+
+Every account starts on the Free plan, with its [limits](/docs/plans). There are two ways to change that.
+
+**Grant plans directly** (no billing). This suits a private or team instance. Give an account Ultra:
+
+```sql
+INSERT INTO Subscription (userId, status, plan)
+SELECT id, 'active', 'ultra' FROM User WHERE email = 'you@example.com'
+ON DUPLICATE KEY UPDATE status = 'active', plan = 'ultra';
+```
+
+Creating a team needs Ultra, and team workspaces always get Ultra limits.
+
+**Sell plans with Lemon Squeezy.** Set the three `LEMONSQUEEZY_*` variables and point a store webhook at `https://links.example.com/api/webhooks/lemonsqueezy`. The product and variant IDs that map to Pro and Ultra are constants in `src/lib/billing/plans.ts`; replace them with your store's.
+
+## Optional features
+
+- **Custom domains for your users** (Cloudflare for SaaS). Your users' domains CNAME to a hostname on one of your zones, and Cloudflare issues their certificates:
+  1. On the zone, enable **SSL/TLS → Custom Hostnames** and set up [a Worker as the fallback origin](https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/advanced-settings/worker-as-origin/): a proxied DNS record for the fallback origin (such as `cname.example.com`) and a Worker route `*/*` on the zone pointing at this Worker.
+  2. Set `CLOUDFLARE_SAAS_ZONE_ID` to the zone's ID, `CUSTOM_DOMAIN_CNAME_TARGET` to the fallback hostname, and `CLOUDFLARE_API_TOKEN` to a token with **SSL and Certificates: Edit** on the zone.
+- **Image uploads** (QR code logos, bio page avatars, link preview images). Create an R2 bucket, make it public through a custom domain or its `r2.dev` URL (that's `R2_PUBLIC_URL`), and create an R2 API token with read and write access for `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`.
+- **Email** (team invites, domain reminders, account notices). Verify a sending domain in Resend and set `RESEND_API_KEY` and `EMAIL_FROM`. For bounce and complaint tracking, add a Resend webhook at `https://links.example.com/api/webhooks/resend` and set `RESEND_WEBHOOK_SECRET`. Without a key, emails are skipped and logged.
+
+## Health check
+
+After each deploy, confirm the Worker reaches the database through Hyperdrive and the schema matches the code:
+
+```bash
+curl -H "Authorization: Bearer $HEALTHCHECK_TOKEN" https://links.example.com/api/health/deep
+```
+
+A healthy instance answers `200` with `"ok": true` and an empty `migrations.pending` list. A `503` names the tables that failed or the migrations still to apply. Without `HEALTHCHECK_TOKEN` set, the endpoint answers `503` with `not configured`.
+
+To check the rest end to end, sign in, create a link, open it in a private window and check that the click shows up in the link's analytics within a few seconds. That last step proves the queue and the `CRON_SECRET` Worker secret are set up.
+
+## Upgrading
+
+```bash
+git pull
+bun install
+DATABASE_URL='mysql://USER:PASSWORD@HOST:3306/ishortn' bun run db:migrate
+bun run deploy
+```
+
+Then run the [health check](#health-check). Compare `wrangler.example.jsonc` with your `wrangler.jsonc` after pulling: new bindings or cron schedules show up there first.
+
+The project doesn't publish tagged releases yet, so `main` is what you get. Pin to a commit you've tested, and read the commit log before moving to a newer one.

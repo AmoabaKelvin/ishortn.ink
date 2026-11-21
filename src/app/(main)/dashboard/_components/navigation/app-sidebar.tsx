@@ -14,6 +14,7 @@ import {
   IconLink,
   IconLogout,
   IconMenu2,
+  IconMailOff,
   IconMessageReport,
   IconMicrophone2,
   IconQrcode,
@@ -75,6 +76,7 @@ const adminNavigationItems = [
   { name: "Blocked Domains", href: "/dashboard/admin/domains", icon: IconBan },
   { name: "Flagged Links", href: "/dashboard/admin/flagged", icon: IconFlag },
   { name: "Feedback", href: "/dashboard/admin/feedback", icon: IconMessageReport },
+  { name: "Email Health", href: "/dashboard/admin/email-health", icon: IconMailOff },
   {
     name: "Audience Feedback",
     href: "/dashboard/admin/audience-feedback",

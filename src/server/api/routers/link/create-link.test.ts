@@ -45,6 +45,8 @@ function fakeContext({ failInsert = false } = {}) {
       },
     }),
     update: () => ({ set: () => ({ where: async () => {} }) }),
+    // The link insert runs in a transaction; the stub hands the callback itself as `tx`.
+    transaction: async <T>(run: (tx: typeof db) => Promise<T>) => run(db),
   };
   // SAFETY: createLink without tags, geo rules, campaign or image only reaches
   // the db methods stubbed above, plus ctx.workspace and ctx.auth.userId.

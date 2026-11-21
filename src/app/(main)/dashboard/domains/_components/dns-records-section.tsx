@@ -9,6 +9,8 @@ import { copyToClipboard } from "@/lib/utils";
 type Challenge = {
   type: "TXT" | "A" | "CNAME";
   domain: string;
+  // Absent on records stored before fully qualified names were saved
+  fqdn?: string;
   value: string;
 };
 
@@ -45,8 +47,8 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
         <p className="text-[12px] font-medium text-neutral-700 dark:text-neutral-300">
           Set the following records on your DNS provider:
         </p>
-        <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-border">
-          <table className="min-w-full divide-y divide-neutral-100">
+        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-border">
+          <table className="min-w-full divide-y divide-neutral-100 dark:divide-border/50">
             <thead className="bg-neutral-50 dark:bg-accent/50">
               <tr>
                 <th className="px-3 py-2 text-left text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
@@ -60,17 +62,17 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100 bg-white dark:bg-card">
+            <tbody className="divide-y divide-neutral-100 bg-white dark:divide-border/50 dark:bg-card">
               {verificationChallenges.map((challenge, index) => (
                 <tr key={index} className="hover:bg-neutral-50 dark:hover:bg-accent/50">
-                  <td className="whitespace-nowrap px-3 py-2.5">
+                  <td className="whitespace-nowrap px-3 py-2.5 align-top">
                     <span className="inline-flex items-center rounded-md border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-1.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-400">
                       {challenge.type}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5">
-                    <div className="flex items-center gap-1">
-                      <code className="rounded-md border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-1 text-[11px] text-neutral-600 dark:text-neutral-400">
+                  <td className="px-3 py-2.5 align-top">
+                    <div className="flex items-start gap-1">
+                      <code className="min-w-0 break-all rounded-md border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-1 text-[11px] text-neutral-600 dark:text-neutral-400">
                         {challenge.domain}
                       </code>
                       <button
@@ -86,10 +88,15 @@ export function DNSRecordsSection({ verificationChallenges }: DNSRecordsSectionP
                         )}
                       </button>
                     </div>
+                    {challenge.fqdn && challenge.fqdn !== challenge.domain && (
+                      <p className="mt-1 break-all text-[11px] text-neutral-400 dark:text-neutral-500">
+                        {challenge.fqdn}
+                      </p>
+                    )}
                   </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1">
-                      <code className="max-w-[180px] truncate rounded-md border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-1 text-[11px] text-neutral-600 dark:text-neutral-400">
+                  <td className="px-3 py-2.5 align-top">
+                    <div className="flex items-start gap-1">
+                      <code className="min-w-0 break-all rounded-md border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-2 py-1 text-[11px] text-neutral-600 dark:text-neutral-400">
                         {challenge.value}
                       </code>
                       <button

@@ -36,6 +36,7 @@ export function sendDomainReminderEmail({
     template: "domain-reminder",
     recipientId: userId,
     to: email,
+    essential: false,
     subject: `${domain} needs configuration on iShortn`,
     react: DomainReminderEmail({
       recipientName,
