@@ -1,7 +1,11 @@
 import {
+  IconBriefcaseFilled,
   IconEditFilled,
+  IconFileUploadFilled,
+  IconFoldersFilled,
   IconListDetailsFilled,
   IconMapPinFilled,
+  IconReportAnalyticsFilled,
   IconShieldCheckFilled,
   IconToolsKitchen2Filled,
   IconWorldFilled,
@@ -55,6 +59,7 @@ const freeQrCodes = count(free.qrCodeLimit);
 const freeLinks = count(free.linksLimit);
 const freeDays = count(free.analyticsRangeLimitDays);
 const proMonthly = usd(PLAN_PRICES_USD.pro);
+const proDomains = count(PLAN_CAPS.pro.domainLimit);
 
 export const solutions = {
   restaurants: {
@@ -196,10 +201,143 @@ export const solutions = {
     ctaBody: `The free plan has ${freeQrCodes} dynamic QR codes with no ads and no expiry date. No credit card needed.`,
     ctaButton: "Create a free QR code",
   },
+  agencies: {
+    slug: "agencies",
+    name: "Agencies and print shops",
+    footerLabel: "Agencies",
+    hubBlurb: "Client codes on client domains, with a workspace per client.",
+    metaTitle: "QR Codes and Short Links for Agencies | iShortn",
+    metaDescription:
+      "Make QR codes and short links for clients that you can change after printing. Keep each client in its own workspace and on its own domain, with scan numbers to report.",
+    keywords: [
+      "qr codes for agencies",
+      "url shortener for agencies",
+      "link management for agencies",
+      "dynamic qr codes for clients",
+      "qr codes for print shops",
+      "white label qr code generator",
+    ],
+    updatedOn: "2026-11-21",
+    eyebrow: "Agencies and print shops",
+    icon: IconBriefcaseFilled,
+    h1: "QR codes and short links for agencies and print shops",
+    subhead:
+      "Make codes for clients that you can still change after the job is printed. Each client gets a separate workspace and their own domain, and you can send them the scan numbers.",
+    heroPoints: ["Editable after printing", "Runs on the client's domain", "Teammates join free"],
+    heroCta: "Start free",
+    benefitsTitle: "Made for client work",
+    benefits: [
+      {
+        title: "Change the code after the job is printed",
+        body: "A static code fixes the URL into the print. An iShortn code holds a short link instead. When a client changes a handle, a menu or a landing page, you edit the link and the stickers, signs and postcards keep working.",
+        icon: IconEditFilled,
+      },
+      {
+        title: "A workspace for each client",
+        body: "On Ultra you can create team workspaces and keep each client's links, QR codes and domains apart. Invite your staff, or the client, as admins or members. Members don't need a paid plan, there's no limit on members, and a team workspace has no cap on QR codes.",
+        icon: IconFoldersFilled,
+      },
+      {
+        title: "Links on the client's own domain",
+        body: `Links and codes can run on the client's domain, like go.clientbrand.com/spring. Pro includes ${proDomains} custom domains and Ultra has no limit. iShortn issues and renews the SSL certificates.`,
+        icon: IconWorldFilled,
+      },
+      {
+        title: "Scan numbers for every job",
+        body: "Each scan records the day, country, city, device and referrer, and unique visitors are counted separately. Pro and Ultra keep the full history, and campaign analytics export to CSV for client reports.",
+        icon: IconReportAnalyticsFilled,
+      },
+      {
+        title: "Bring existing links with you",
+        body: "On Pro and Ultra you can import up to 1,000 links per CSV file, and a Bitly export works as it is. Once the client's short domain points to iShortn, their existing Bitly links can keep working.",
+        icon: IconFileUploadFilled,
+      },
+    ],
+    howToTitle: "How a client job runs",
+    howTo: [
+      {
+        title: "Set up the client",
+        body: `On Ultra, create a team workspace for the client. On Pro, use folders in your own workspace, up to ${count(PLAN_CAPS.pro.folderLimit)} of them.`,
+      },
+      {
+        title: "Connect the client's domain",
+        body: "Add a subdomain such as go.clientbrand.com, then create the CNAME and TXT records the dashboard shows.",
+      },
+      {
+        title: "Make the codes",
+        body: "Style each code with the client's logo and colours and download a high-resolution PNG for the print file.",
+      },
+      {
+        title: "Repoint and report",
+        body: "Change destinations when the campaign changes, and send the client the scan numbers.",
+      },
+    ],
+    plans: [
+      {
+        plan: "pro",
+        title: `Pro, ${proMonthly} a month`,
+        body: `For freelancers and small studios. ${proDomains} custom domains, unlimited QR codes, ${count(PLAN_CAPS.pro.linksLimit)} links a month, CSV import and the API.`,
+      },
+      {
+        plan: "ultra",
+        title: `Ultra, ${usd(PLAN_PRICES_USD.ultra)} a month`,
+        body: "For agencies with several clients or staff. Unlimited custom domains and links, plus team workspaces that teammates join free.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Can I manage QR codes for several clients in one account?",
+        answer: `Yes. On Ultra, create a team workspace for each client and switch between them in the dashboard. On Pro, keep clients apart with folders and up to ${proDomains} custom domains.`,
+      },
+      {
+        question: "Can my clients see their own scan numbers?",
+        answer:
+          "Yes. Invite the client to their team workspace and they see its links and analytics. Members can also create and edit links, so if you'd rather keep the client read-only, export the campaign analytics to CSV and send that instead.",
+      },
+      {
+        question: "Is iShortn white label?",
+        answer:
+          "Partly. Links and QR codes can run on the client's own domain, so the link their customers see has no iShortn name in it. The dashboard carries the iShortn name, and there's no reseller portal or custom-branded login.",
+      },
+      {
+        question: "What file format do the QR codes download in?",
+        answer: "A high-resolution PNG that works for print. There's no SVG or PDF export yet.",
+      },
+      {
+        question: "Do the codes expire if a trial or plan ends?",
+        answer:
+          "iShortn has no trial that switches codes off. Dynamic codes made on the free plan have no expiry date and keep working without a paid plan.",
+      },
+      {
+        question: "What happens to the codes when a client contract ends?",
+        answer:
+          "You can hand the client's team workspace to them by transferring ownership. The new owner must already be a team member with an Ultra plan. You can also move links into another workspace you both belong to, up to 100 at a time, and QR codes move with their links. Agree who owns the codes before you print.",
+      },
+      {
+        question: "Can I move a client's links from Bitly?",
+        answer:
+          "Yes. Upload their Bitly export as a CSV on Pro or Ultra. If the client's branded short domain then points to iShortn, their existing Bitly links keep working. The migration guide walks through it.",
+      },
+    ],
+    related: [
+      { href: "/docs/teams", label: "Teams and workspaces" },
+      { href: "/docs/custom-domains", label: "Custom domains" },
+      { href: "/docs/migrate-from-bitly", label: "Move your links from Bitly" },
+      {
+        href: "/blog/url-shortener-for-marketers",
+        label: "What marketers need from a link shortener",
+      },
+      { href: "/blog/how-to-track-qr-code-scans", label: "How to track QR code scans" },
+    ],
+    ctaTitle: "Set up your first client",
+    ctaBody:
+      "Start on the free plan and move to Pro or Ultra when you add client domains. No credit card needed.",
+    ctaButton: "Start free",
+  },
 } satisfies Record<string, Solution>;
 
 // Display order for the hub, the footer and /features.
-export const solutionList: Solution[] = [solutions.restaurants];
+export const solutionList: Solution[] = [solutions.restaurants, solutions.agencies];
 
 export const getSolution = (slug: string): Solution | undefined =>
   solutionList.find((solution) => solution.slug === slug);

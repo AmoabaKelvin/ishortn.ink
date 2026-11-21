@@ -141,3 +141,5 @@ Scans are counted before the page loads, while GA4 only counts visitors whose pa
 ## Start tracking your next QR code
 
 If your next flyer, menu or poster is about to go to print, take five minutes now to make its code dynamic and tag the destination. You can [create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=how-to-track-qr-code-scans) and have a tracked QR code ready in about a minute. For tracking your other links, see our [complete guide to link click tracking](/blog/how-to-track-link-clicks).
+
+If you make codes for clients, see [QR codes and short links for agencies and print shops](/solutions/agencies).

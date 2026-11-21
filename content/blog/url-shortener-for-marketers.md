@@ -108,3 +108,5 @@ Not if your program forbids it, and many do. Amazon's policy prohibits cloaking 
 ## Try iShortn
 
 [Create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=url-shortener-for-marketers) to track 30 links a month with full click details. When you need your own domain and campaign UTM defaults, [Pro is $8 a month](/pricing).
+
+Doing this for clients? [QR codes and short links for agencies](/solutions/agencies) covers a workspace and domain per client.
