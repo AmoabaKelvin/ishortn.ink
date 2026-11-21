@@ -31,9 +31,11 @@ import { api } from "@/trpc/react";
 
 import { BulkActionBar } from "./bulk-action-bar";
 import Link from "./link-card/card";
+import { LinkReadyDialog } from "./link-ready-dialog";
 import { QuickCreateLink } from "./quick-create-link";
 import { SelectionProvider, useSelection } from "./selection-context";
 
+import type { CreatedLink } from "./link-ready-dialog";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type LinksProps = {
@@ -154,9 +156,9 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
   };
 
   // An empty workspace gets the quick-create panel instead of filters that
-  // filter nothing. The panel stays after the first link so its result
-  // survives the refresh that brings the new link into the list.
-  const [keepQuickCreate, setKeepQuickCreate] = useState(false);
+  // filter nothing. The created link is held here, not in the panel, because
+  // the refresh that brings it into the list unmounts the panel.
+  const [quickCreated, setQuickCreated] = useState<CreatedLink | null>(null);
   const isNewWorkspace = !workspaceHasLinks && !hasFilters;
 
   const allSelected = links.length > 0 && links.every((link) => selectedLinkIds.includes(link.id));
@@ -171,9 +173,15 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
 
   return (
     <>
-      {(isNewWorkspace || keepQuickCreate) && (
-        <QuickCreateLink onCreated={() => setKeepQuickCreate(true)} />
-      )}
+      {isNewWorkspace && <QuickCreateLink onCreated={setQuickCreated} />}
+      <LinkReadyDialog
+        link={quickCreated}
+        onDone={() => setQuickCreated(null)}
+        onCreateAnother={() => {
+          setQuickCreated(null);
+          router.push("/dashboard/link/new");
+        }}
+      />
 
       {/* Filter bar */}
       {workspaceHasLinks && (

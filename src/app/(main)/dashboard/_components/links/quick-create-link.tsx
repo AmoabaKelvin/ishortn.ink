@@ -1,6 +1,6 @@
 "use client";
 
-import { IconCheck, IconCopy, IconLink, IconQrcode } from "@tabler/icons-react";
+import { IconLink } from "@tabler/icons-react";
 import { Link as TransitionLink } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -9,15 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
-import { copyToClipboard } from "@/lib/utils";
+import { isPlanLimitError, requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { api } from "@/trpc/react";
 
-import { QRCodeModal } from "./link-card/qrcode-modal";
+import type { CreatedLink } from "./link-ready-dialog";
 
 type QuickCreateLinkProps = {
-  /** Called once a link exists, so the parent keeps this panel mounted across the list refresh. */
-  onCreated: () => void;
+  /** Receives the new link; the parent shows it, since this panel unmounts once the list refreshes. */
+  onCreated: (link: CreatedLink) => void;
 };
 
 /** One-field first-link form for an empty workspace (`link.quickShorten`). */
@@ -26,8 +26,6 @@ export function QuickCreateLink({ onCreated }: QuickCreateLinkProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [shortUrl, setShortUrl] = useState<string | null>(null);
-  const [qrOpen, setQrOpen] = useState(false);
 
   // Shares the cache entry the dashboard banner fills, so this adds no request.
   const { data: notice } = api.subscriptions.entitlementNotice.useQuery(undefined, {
@@ -43,16 +41,19 @@ export function QuickCreateLink({ onCreated }: QuickCreateLinkProps) {
 
   const quickShorten = api.link.quickShorten.useMutation({
     onSuccess: (data) => {
-      setShortUrl(`https://${data.domain}/${data.alias}`);
       setUrl("");
       trackEvent(POSTHOG_EVENTS.LINK_QUICK_SHORTENED, { domain: data.domain, source: "dashboard" });
-      onCreated();
+      onCreated({ alias: data.alias, domain: data.domain });
       router.refresh();
     },
     onError: (mutationError) => {
       setError(mutationError.message);
-      if (mutationError.data?.code === "FORBIDDEN" || /upgrade/i.test(mutationError.message)) {
-        notifyPlanLimit(mutationError.message, "link_quick_create");
+      if (isPlanLimitError(mutationError)) {
+        notifyPlanLimit(
+          mutationError.message,
+          "link_quick_create",
+          requiredPlanForLimit(mutationError.message),
+        );
       }
     },
   });
@@ -68,67 +69,6 @@ export function QuickCreateLink({ onCreated }: QuickCreateLinkProps) {
     setError(null);
     quickShorten.mutate({ url: normalized });
   };
-
-  const shortenAnother = () => {
-    setShortUrl(null);
-    // The input mounts again on the next render.
-    requestAnimationFrame(() => inputRef.current?.focus());
-  };
-
-  if (shortUrl) {
-    const displayUrl = shortUrl.replace(/^https:\/\//, "");
-    return (
-      <div className="flex flex-col items-center py-12 text-center sm:py-20">
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
-          <IconCheck size={24} stroke={1.5} className="text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <p className="mt-6 text-[14px] font-medium text-neutral-900 dark:text-foreground">
-          Your link is ready
-        </p>
-        <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
-          Share it anywhere. Clicks show up in analytics.
-        </p>
-        <div className="mt-6 flex w-full max-w-md flex-col gap-2 sm:flex-row">
-          <a
-            href={shortUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-9 min-w-0 flex-1 items-center rounded-lg border border-neutral-200 bg-white px-3 text-[13px] font-medium text-blue-600 dark:border-border dark:bg-card dark:text-blue-400"
-          >
-            <span className="truncate">{displayUrl}</span>
-          </a>
-          <div className="grid grid-cols-2 gap-2 sm:flex">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => copyToClipboard(shortUrl)}
-              className="h-9 gap-1.5 border-neutral-200 text-[13px] dark:border-border"
-            >
-              <IconCopy size={16} stroke={1.5} />
-              Copy link
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setQrOpen(true)}
-              className="h-9 gap-1.5 border-neutral-200 text-[13px] dark:border-border"
-            >
-              <IconQrcode size={16} stroke={1.5} />
-              QR code
-            </Button>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={shortenAnother}
-          className="mt-4 rounded-md text-[12px] text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-foreground"
-        >
-          Shorten another link
-        </button>
-        <QRCodeModal open={qrOpen} setOpen={setQrOpen} destinationUrl={shortUrl} />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center py-12 text-center sm:py-20">
