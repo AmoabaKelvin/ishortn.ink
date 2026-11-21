@@ -76,7 +76,8 @@ export function isPostVisible(
   return previewScheduled || post.date <= now.toISOString().slice(0, 10);
 }
 
-// Frontmatter-only check for pages that link to a post: skips rendering the markdown.
+// Frontmatter-only check for pages that link to a post, so links never point at a scheduled
+// post's 404. Skips rendering the markdown; unknown slugs are not live.
 export function isPostLive(slug: string, now: Date = new Date()): boolean {
   const source = blogSources.get(slug);
   if (source === undefined) return false;
