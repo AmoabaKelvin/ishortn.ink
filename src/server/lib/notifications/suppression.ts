@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, lt, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { emailSuppression, user } from "@/server/db/schema";
@@ -7,9 +7,18 @@ import { normalizeEmail, type SuppressionAction } from "./suppression-event";
 
 import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
-/** SQL condition: the address in `emailColumn` has an active bounce or complaint. */
+/**
+ * SQL condition: the address in `emailColumn` has an active bounce or complaint. Built with the
+ * query builder because a raw `sql` subquery in a single-table select list renders its columns
+ * unqualified (`email = email`), which matches every row.
+ */
 export function isSuppressedSql(emailColumn: AnyMySqlColumn) {
-  return sql`exists (select 1 from ${emailSuppression} where ${emailSuppression.email} = ${emailColumn} and ${emailSuppression.clearedAt} is null)`;
+  return exists(
+    db
+      .select({ id: emailSuppression.id })
+      .from(emailSuppression)
+      .where(and(eq(emailSuppression.email, emailColumn), isNull(emailSuppression.clearedAt))),
+  );
 }
 
 export async function isEmailSuppressed(email: string): Promise<boolean> {

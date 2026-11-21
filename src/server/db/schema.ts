@@ -168,7 +168,8 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
-    // Milestone, usage-alert and domain-reminder emails. Account, billing and team emails ignore it.
+    // Milestone, usage-alert, domain-reminder and first-link nudge emails. Account, billing and
+    // team emails ignore it.
     productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
     // Account transfer deletion tracking
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period
@@ -192,6 +193,9 @@ export const user = mysqlTable(
     // email went out, or once the account's keys were already past their cutoff.
     apiSunsetNoticeSentAt: timestamp("apiSunsetNoticeSentAt"),
     apiSunsetReminderSentAt: timestamp("apiSunsetReminderSentAt"),
+    // First-link nudge (see src/server/lib/first-link-nudge.ts): set when the one reminder to
+    // create a first link was sent, so an account never gets a second.
+    firstLinkNudgeSentAt: timestamp("firstLinkNudgeSentAt"),
     // Restriction: can sign in and pay, but can't create or edit links, domains, bio pages or QR codes
     restrictedAt: timestamp("restrictedAt"),
     restrictedReason: varchar("restrictedReason", { length: 255 }),
