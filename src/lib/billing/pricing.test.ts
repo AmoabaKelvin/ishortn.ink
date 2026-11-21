@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { formatUsd, planPriceDisplay, planSignupHref, resolveBillingInterval } from "./pricing";
+import { ACTIVE_PROMO } from "./promo";
 
 describe("resolveBillingInterval", () => {
   test("defaults to annual without a param", () => {
@@ -58,6 +59,35 @@ describe("planPriceDisplay", () => {
   test("free is the same on both intervals", () => {
     expect(planPriceDisplay("free", "annual")).toEqual(planPriceDisplay("free", "monthly"));
     expect(planPriceDisplay("free", "annual").perMonth).toBe("0");
+  });
+
+  test("a promo discounts the first year against the same interval's list price", () => {
+    expect(planPriceDisplay("pro", "monthly", ACTIVE_PROMO)).toEqual({
+      perMonth: "6.40",
+      compareAt: "8",
+      note: "for 12 months, then $8/mo",
+    });
+    expect(planPriceDisplay("ultra", "monthly", ACTIVE_PROMO)).toEqual({
+      perMonth: "12",
+      compareAt: "15",
+      note: "for 12 months, then $15/mo",
+    });
+    expect(planPriceDisplay("pro", "annual", ACTIVE_PROMO)).toEqual({
+      perMonth: "5.33",
+      compareAt: "6.67",
+      note: "billed $64 first year, then $80/yr",
+    });
+    expect(planPriceDisplay("ultra", "annual", ACTIVE_PROMO)).toEqual({
+      perMonth: "10",
+      compareAt: "12.50",
+      note: "billed $120 first year, then $150/yr",
+    });
+  });
+
+  test("a promo leaves free unchanged", () => {
+    expect(planPriceDisplay("free", "annual", ACTIVE_PROMO)).toEqual(
+      planPriceDisplay("free", "annual"),
+    );
   });
 });
 

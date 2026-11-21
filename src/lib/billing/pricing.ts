@@ -1,6 +1,9 @@
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
+import { promoPrice } from "./promo";
+
 import type { BillingInterval, Plan } from "./plans";
+import type { Promo } from "./promo";
 
 /**
  * Interval a pricing surface opens on. An explicit `?interval=` wins; otherwise free accounts
@@ -25,15 +28,43 @@ export function formatUsd(amount: number): string {
 export type PlanPriceDisplay = {
   /** Headline per-month figure, without the "$". */
   perMonth: string;
-  /** Monthly list price shown struck through next to an annual figure. */
+  /**
+   * Price shown struck through: the monthly list price next to an annual figure, or during a
+   * promo the undiscounted per-month price of the same interval.
+   */
   compareAt: string | null;
   /** Line under the price, e.g. "billed $80 yearly". */
   note: string;
 };
 
-export function planPriceDisplay(plan: Plan, interval: BillingInterval): PlanPriceDisplay {
+/**
+ * During a promo, paid plans show their first-year price: the discount repeats for the first 12
+ * monthly payments, or applies once to the first annual payment.
+ */
+export function planPriceDisplay(
+  plan: Plan,
+  interval: BillingInterval,
+  promo: Promo | null = null,
+): PlanPriceDisplay {
   if (plan === "free") {
     return { perMonth: formatUsd(PLAN_PRICES_USD.free), compareAt: null, note: "free forever" };
+  }
+  if (promo && interval === "annual") {
+    const yearly = PLAN_PRICES_ANNUAL_USD[plan];
+    const firstYear = promoPrice(yearly, promo);
+    return {
+      perMonth: formatUsd(firstYear / 12),
+      compareAt: formatUsd(yearly / 12),
+      note: `billed $${formatUsd(firstYear)} first year, then $${formatUsd(yearly)}/yr`,
+    };
+  }
+  if (promo) {
+    const monthly = PLAN_PRICES_USD[plan];
+    return {
+      perMonth: formatUsd(promoPrice(monthly, promo)),
+      compareAt: formatUsd(monthly),
+      note: `for 12 months, then $${formatUsd(monthly)}/mo`,
+    };
   }
   if (interval === "annual") {
     const yearly = PLAN_PRICES_ANNUAL_USD[plan];
