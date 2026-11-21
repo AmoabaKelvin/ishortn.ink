@@ -1065,6 +1065,8 @@ const shortenLinkSteps = async (
 
   const alias = await generateShortLink();
   const domain = await getWorkspaceDefaultDomain(ctx);
+  // The saved default can outlive the domain (deleted, or never verified)
+  await assertDomainAllowed(ctx, domain);
 
   attempt.step = "safety";
   await assertUrlSafe(input.url);
