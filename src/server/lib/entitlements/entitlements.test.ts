@@ -28,7 +28,11 @@ import { getUserPlanContext } from "@/server/lib/user-plan";
 import { resolveWorkspaceContext, workspaceUsagePlan } from "@/server/lib/workspace";
 import { userHasUltraPlan } from "@/server/lib/workspace/workspace.service";
 
-import { reconcileEntitlements, syncEntitlementsAfterBillingEvent } from "./grace";
+import {
+  clearUnneededOverPlanGraces,
+  reconcileEntitlements,
+  syncEntitlementsAfterBillingEvent,
+} from "./grace";
 
 import type { Plan } from "@/lib/billing/plans";
 import type { CreateLinkInput } from "@/server/api/routers/link/link.input";
@@ -122,6 +126,8 @@ const UNPAID_ABOVE_PLAN_ID = "ent_test_unpaid_above_plan";
 const UNPAID_ULTRA_ID = "ent_test_unpaid_ultra_solo";
 const UNPAID_PASSED_LAPSE_ID = "ent_test_unpaid_passed_lapse";
 const UNCHECKED_UNPAID_ID = "ent_test_unchecked_unpaid";
+const CREATION_CAP_GRACE_ID = "ent_test_creation_cap_grace";
+const PASSWORD_GRACE_ID = "ent_test_password_grace";
 const USER_IDS = [
   ...Object.values(ACCOUNTS).map((account) => account.id),
   UNCHECKED_OVER_ID,
@@ -135,6 +141,8 @@ const USER_IDS = [
   UNPAID_ULTRA_ID,
   UNPAID_PASSED_LAPSE_ID,
   UNCHECKED_UNPAID_ID,
+  CREATION_CAP_GRACE_ID,
+  PASSWORD_GRACE_ID,
 ];
 const TEAM_SLUGS = ["ent-test-pro-team", "ent-test-ultra-team", "ent-test-unpaid-ultra-team"];
 
@@ -1038,6 +1046,13 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
       endsAt,
       emailStage: 1,
     });
+    await db.insert(schema.link).values({
+      url: TARGET_URL,
+      alias: uniqueAlias(),
+      domain: DEFAULT_PLATFORM_DOMAIN,
+      userId: UNPAID_ABOVE_PLAN_ID,
+      utmParams: { utm_source: "newsletter" },
+    });
 
     await reconcileEntitlements();
     const row = await db.query.user.findFirst({
@@ -1093,6 +1108,82 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
       where: eq(schema.user.id, ACCOUNTS.lapsedAfterGrace.id),
     });
     expect(lapsed?.planGraceEndsAt?.getTime()).toBeLessThan(Date.now());
+  });
+
+  test("the reconcile clears a running over-plan grace that only covered creation caps", async () => {
+    const checkedAt = new Date(Math.floor((Date.now() - DAY) / 1000) * 1000);
+    const endsAt = new Date(Math.floor((Date.now() + 6 * DAY) / 1000) * 1000);
+    for (const id of [CREATION_CAP_GRACE_ID, PASSWORD_GRACE_ID]) {
+      await db.insert(schema.user).values({
+        id,
+        email: `${id}@entitlements.test`,
+        planCheckedAt: checkedAt,
+        planGracePlan: "pro",
+        planGraceEndsAt: endsAt,
+        planGraceReason: "over_plan",
+        planGraceEmailStage: 1,
+      });
+    }
+    // Three folders on Free: a creation cap, so the grace changes nothing.
+    await db
+      .insert(schema.folder)
+      .values([1, 2, 3].map((n) => ({ name: `Folder ${n}`, userId: CREATION_CAP_GRACE_ID })));
+    await db.insert(schema.link).values({
+      url: TARGET_URL,
+      alias: uniqueAlias(),
+      domain: DEFAULT_PLATFORM_DOMAIN,
+      userId: PASSWORD_GRACE_ID,
+      passwordHash: "hash",
+    });
+    const lapseBefore = await db.query.user.findFirst({
+      where: eq(schema.user.id, ACCOUNTS.lapsedInGrace.id),
+    });
+
+    const result = await reconcileEntitlements();
+    expect(result.overPlanCleared).toBeGreaterThanOrEqual(1);
+
+    const cleared = await db.query.user.findFirst({
+      where: eq(schema.user.id, CREATION_CAP_GRACE_ID),
+    });
+    expect(cleared).toMatchObject({
+      planGracePlan: null,
+      planGraceEndsAt: null,
+      planGraceReason: null,
+      planGraceEmailStage: 0,
+      planCheckedAt: checkedAt,
+    });
+    // Not started again by the first-request check.
+    const workspace = await resolveWorkspaceContext(CREATION_CAP_GRACE_ID, "ishortn.ink", db);
+    expect(workspaceUsagePlan(workspace)).toBe("free");
+    const after = await db.query.user.findFirst({
+      where: eq(schema.user.id, CREATION_CAP_GRACE_ID),
+    });
+    expect(after?.planGraceEndsAt).toBeNull();
+
+    // A genuine over-plan grace (a password-protected link on Free) is kept.
+    const kept = await db.query.user.findFirst({ where: eq(schema.user.id, PASSWORD_GRACE_ID) });
+    expect(kept).toMatchObject({
+      planGracePlan: "pro",
+      planGraceReason: "over_plan",
+      planGraceEmailStage: 1,
+    });
+    expect(kept?.planGraceEndsAt?.getTime()).toBe(endsAt.getTime());
+
+    // A running lapse grace is left alone.
+    const lapse = await db.query.user.findFirst({
+      where: eq(schema.user.id, ACCOUNTS.lapsedInGrace.id),
+    });
+    expect(lapse?.planGraceReason).toBe("lapsed");
+    expect(lapse?.planGraceEndsAt?.getTime()).toBe(lapseBefore?.planGraceEndsAt?.getTime());
+
+    // Once the password is gone, the hourly run clears that grace too.
+    await db
+      .update(schema.link)
+      .set({ passwordHash: null })
+      .where(eq(schema.link.userId, PASSWORD_GRACE_ID));
+    expect(await clearUnneededOverPlanGraces()).toBeGreaterThanOrEqual(1);
+    const gone = await db.query.user.findFirst({ where: eq(schema.user.id, PASSWORD_GRACE_ID) });
+    expect(gone?.planGraceEndsAt).toBeNull();
   });
 });
 
