@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { serializeShortenIntentCookie } from "@/lib/auth/shorten-intent";
 import { PLAN_CAPS } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
@@ -604,10 +605,18 @@ export function UtmBuilder() {
                   country, device and referrer. Free accounts get {PLAN_CAPS.free.linksLimit} links
                   a month.
                 </p>
-                {/* No prefetch: the href carries the typed URL, and the tool promises nothing leaves the browser. */}
+                {/* Signed out, the URL goes in a cookie set on click, not the href. No prefetch: the
+                    sign-up page reads that cookie when it renders, so it must load after the click. */}
                 <ButtonLink
                   href={getShortenHref(output, signedIn)}
                   prefetch={false}
+                  onClick={() => {
+                    if (signedIn) return;
+                    document.cookie = serializeShortenIntentCookie(
+                      output,
+                      window.location.protocol === "https:",
+                    );
+                  }}
                   className="mt-4 whitespace-normal"
                 >
                   {signedIn ? "Shorten this link" : "Shorten and track this link, free"}

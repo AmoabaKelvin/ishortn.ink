@@ -1,6 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import { SHORTEN_INTENT_MAX_LENGTH, extractShortenIntent, getPostAuthUrl } from "./shorten-intent";
+import { RequestCookies } from "next/dist/server/web/spec-extension/cookies";
+import { NextResponse } from "next/server";
+
+import {
+  SHORTEN_INTENT_COOKIE,
+  SHORTEN_INTENT_MAX_LENGTH,
+  clearShortenIntent,
+  extractShortenIntent,
+  getPostAuthUrl,
+  isShortenIntentLanding,
+  serializeShortenIntentCookie,
+} from "./shorten-intent";
 
 const tagged = "https://example.com/p?utm_source=news&utm_medium=email";
 
@@ -91,5 +102,54 @@ describe("getPostAuthUrl", () => {
 
   test("falls back to the dashboard", () => {
     expect(getPostAuthUrl({ next: undefined, intent: undefined })).toBe("/dashboard");
+  });
+});
+
+describe("serializeShortenIntentCookie", () => {
+  const read = (cookie: string) =>
+    new RequestCookies(new Headers({ cookie: cookie.split(";")[0] ?? "" })).get(
+      SHORTEN_INTENT_COOKIE,
+    )?.value;
+
+  test("stores the URL so the auth page's cookies() reads it back unchanged", () => {
+    const cookie = serializeShortenIntentCookie(tagged, true);
+    expect(cookie).toContain("; Path=/auth; Max-Age=1800; SameSite=Lax; Secure");
+    expect(read(cookie)).toBe(tagged);
+  });
+
+  test("omits Secure over http so local development still gets it", () => {
+    expect(serializeShortenIntentCookie(tagged, false)).not.toContain("Secure");
+  });
+
+  test("clears an earlier intent when there is nothing storable", () => {
+    for (const value of [
+      null,
+      "  ",
+      `https://example.com/${"a".repeat(SHORTEN_INTENT_MAX_LENGTH)}`,
+    ]) {
+      const cookie = serializeShortenIntentCookie(value, true);
+      expect(cookie).toContain("Max-Age=0");
+      expect(read(cookie)).toBe("");
+    }
+  });
+});
+
+describe("clearing a used intent", () => {
+  test("happens where the post-auth redirect lands", () => {
+    const landing = new URL(
+      getPostAuthUrl({ next: undefined, intent: tagged }),
+      "https://ishortn.ink",
+    );
+    expect(isShortenIntentLanding(landing)).toBe(true);
+    expect(isShortenIntentLanding(new URL("https://ishortn.ink/dashboard/link/new"))).toBe(false);
+    expect(isShortenIntentLanding(new URL("https://ishortn.ink/dashboard?url=x"))).toBe(false);
+  });
+
+  test("expires the cookie on the path it was set with", () => {
+    const setCookie = clearShortenIntent(NextResponse.next()).headers.get("set-cookie") ?? "";
+    expect(setCookie).toStartWith(`${SHORTEN_INTENT_COOKIE}=;`);
+    expect(setCookie).toContain("Path=/auth;");
+    expect(setCookie).toMatch(/Expires=Thu, 01 Jan 1970/);
+    expect(serializeShortenIntentCookie(tagged, true)).toContain("; Path=/auth;");
   });
 });
