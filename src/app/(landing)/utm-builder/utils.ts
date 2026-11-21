@@ -117,14 +117,16 @@ export const toCsv = (links: BulkLink[]): string =>
     "\r\n",
   );
 
-/** Where "Shorten this link" goes: straight to the editor when signed in, else via sign-up. */
+/**
+ * Where "Shorten this link" goes: straight to the editor when signed in, else via sign-up with the
+ * tool's own UTM params only. The tagged URL rides in the shorten-intent cookie set on click, so
+ * it never sits in an href that analytics records.
+ */
 export const getShortenHref = (output: string | null, signedIn: boolean | null): string => {
   if (signedIn) {
     return output ? `/dashboard/link/new?url=${encodeURIComponent(output)}` : "/dashboard/link/new";
   }
-  return output
-    ? `${Paths.Signup}?url=${encodeURIComponent(output)}&${TOOL_UTM}`
-    : `${Paths.Signup}?${TOOL_UTM}`;
+  return `${Paths.Signup}?${TOOL_UTM}`;
 };
 
 export const getBulkSignupHref = (signedIn: boolean | null): string =>

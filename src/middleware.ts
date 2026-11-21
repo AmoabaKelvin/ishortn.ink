@@ -6,6 +6,13 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 import {
+  SHORTEN_INTENT_COOKIE,
+  SHORTEN_INTENT_COOKIE_OPTIONS,
+  clearShortenIntent,
+  extractShortenIntent,
+  isShortenIntentLanding,
+} from "@/lib/auth/shorten-intent";
+import {
   extractPlatformSubdomain,
   getAppBaseDomain,
   isPlatformDomain,
@@ -29,8 +36,25 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(`https://${appHost}${legacyDocsRedirectPath(pathname)}`, 308);
   }
 
+  // Keep a shorten-this-URL destination out of the auth page's address bar
+  // (and so out of analytics and Referer); the page reads it from the cookie.
+  const shortenIntent = extractShortenIntent(new URL(req.url));
+  if (shortenIntent) {
+    const response = NextResponse.redirect(shortenIntent.cleanUrl, 307);
+    if (shortenIntent.intent) {
+      response.cookies.set(SHORTEN_INTENT_COOKIE, shortenIntent.intent, {
+        ...SHORTEN_INTENT_COOKIE_OPTIONS,
+        secure: shortenIntent.cleanUrl.protocol === "https:",
+      });
+    }
+    return response;
+  }
+
   if (isProtectedRoute(req)) {
     await auth.protect();
+    // The shorten intent has been used once the editor opens with it; clear it
+    // so a later sign-in on this browser doesn't prefill the same URL again.
+    if (isShortenIntentLanding(req.nextUrl)) return clearShortenIntent(NextResponse.next());
     return;
   }
 

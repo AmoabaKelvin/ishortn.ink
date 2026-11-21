@@ -123,11 +123,11 @@ describe("toCsv", () => {
 describe("getShortenHref", () => {
   const output = "https://example.com/p?ref=x&utm_source=a%20b#top";
 
-  it("sends signed-out visitors through sign-up with the URL encoded once", () => {
+  it("keeps the typed URL out of the signed-out sign-up href", () => {
     const href = getShortenHref(output, false);
-    expect(href.startsWith("/auth/sign-up?url=")).toBe(true);
+    expect(href).not.toContain("example.com");
     const params = new URL(href, "https://ishortn.ink").searchParams;
-    expect(params.get("url")).toBe(output);
+    expect(params.has("url")).toBe(false);
     expect(params.get("utm_source")).toBe("ishortn");
     expect(params.get("utm_medium")).toBe("tool");
     expect(params.get("utm_campaign")).toBe("utm-builder");
