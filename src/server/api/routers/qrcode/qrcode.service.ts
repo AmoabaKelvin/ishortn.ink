@@ -377,10 +377,12 @@ export const resetQrCodeStatistics = userFacing(
   async (ctx: WorkspaceTRPCContext, id: number) => {
     const qrCode = await fetchQrCodeWithLink(ctx, id);
 
-    // Delete both visit tables to fully reset stats (matches deleteQrCode cleanup)
+    // Delete both visit tables to fully reset stats (matches deleteQrCode cleanup), and clear
+    // the click-limit counter so the limit restarts from what is left of the recorded total.
     await Promise.all([
       ctx.db.delete(linkVisit).where(eq(linkVisit.linkId, qrCode.linkId)),
       ctx.db.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, qrCode.linkId)),
+      ctx.db.update(link).set({ clickLimitCount: null }).where(eq(link.id, qrCode.linkId)),
     ]);
 
     return true;

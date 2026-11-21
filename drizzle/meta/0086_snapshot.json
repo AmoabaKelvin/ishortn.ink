@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "234f181d-9480-4c14-9476-c4814da67797",
+  "id": "685f723c-ef23-4dab-814f-2b0dd976e8da",
   "prevId": "99c3dfd0-fd0e-47e5-8d68-f5d3666ff1c9",
   "tables": {
     "AccountDeletion": {
@@ -1924,6 +1924,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "clickLimitCount": {
+          "name": "clickLimitCount",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "disableLinkAfterDate": {
           "name": "disableLinkAfterDate",
           "type": "datetime",
@@ -2154,16 +2161,6 @@
             "teamId",
             "isQrCode",
             "archived"
-          ],
-          "isUnique": false
-        },
-        "userId_teamId_createdAt_idx": {
-          "name": "userId_teamId_createdAt_idx",
-          "columns": [
-            "userId",
-            "teamId",
-            "createdAt",
-            "id"
           ],
           "isUnique": false
         }

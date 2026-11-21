@@ -1,13 +1,20 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
-import { bioPageView, linkVisit, uniqueBioPageView, uniqueLinkVisit } from "@/server/db/schema";
+import {
+  bioPageView,
+  link,
+  linkVisit,
+  uniqueBioPageView,
+  uniqueLinkVisit,
+} from "@/server/db/schema";
 
 import { reserveEventUsage } from "./event-usage";
 import { checkAndFireMilestones } from "./milestone-check";
 import { type SendEventUsageEmailInput, sendEventUsageEmail } from "./notifications/event-usage";
+import { clicksTowardLimitSql } from "./total-clicks";
 
 import type { DbClient } from "./user-plan";
 import type {
@@ -65,6 +72,31 @@ async function applyQuota(
     }
   }
   return { accepted, alerts };
+}
+
+// Counts every visit to a link with a click limit, including those over the owner's event quota,
+// so the limit still closes the link once analytics stop recording. Runs before this batch's
+// visits are inserted: a counter that starts here starts from the visits recorded before it.
+async function countClicksTowardLimits(tx: DbClient, events: VisitEvent[]): Promise<void> {
+  const visitsByLink = new Map<number, number>();
+  for (const event of events) {
+    if (event.kind !== "link" || !event.countsTowardLimit) continue;
+    visitsByLink.set(event.linkId, (visitsByLink.get(event.linkId) ?? 0) + 1);
+  }
+  if (visitsByLink.size === 0) return;
+
+  const increment = sql.join(
+    [
+      sql`case ${link.id}`,
+      ...[...visitsByLink].map(([linkId, visits]) => sql`when ${linkId} then ${visits}`),
+      sql`end`,
+    ],
+    sql` `,
+  );
+  await tx
+    .update(link)
+    .set({ clickLimitCount: sql`${clicksTowardLimitSql} + ${increment}` })
+    .where(and(inArray(link.id, [...visitsByLink.keys()]), isNotNull(link.disableLinkAfterClicks)));
 }
 
 async function insertLinkVisits(tx: DbClient, events: LinkClickEvent[]): Promise<void> {
@@ -150,10 +182,9 @@ export async function ingestClickBatch(events: ClickEvent[]): Promise<void> {
 
   const { accepted, alerts } = await db.transaction(async (tx) => {
     const recorded = await alreadyRecorded(tx, visits);
-    const { accepted, alerts } = await applyQuota(
-      tx,
-      visits.filter((e) => !recorded.has(e.id)),
-    );
+    const fresh = visits.filter((e) => !recorded.has(e.id));
+    const { accepted, alerts } = await applyQuota(tx, fresh);
+    await countClicksTowardLimits(tx, fresh);
     await insertLinkVisits(
       tx,
       accepted.filter((e): e is LinkClickEvent => e.kind === "link"),
