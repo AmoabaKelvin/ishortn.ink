@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -18,15 +18,10 @@ import {
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 
-const PLANS: { id: Plan; name: string; monthly: number; annual: number }[] = [
-  { id: "free", name: "Free", monthly: PLAN_PRICES_USD.free, annual: 0 },
-  { id: "pro", name: "Pro", monthly: PLAN_PRICES_USD.pro, annual: PLAN_PRICES_ANNUAL_USD.pro },
-  {
-    id: "ultra",
-    name: "Ultra",
-    monthly: PLAN_PRICES_USD.ultra,
-    annual: PLAN_PRICES_ANNUAL_USD.ultra,
-  },
+const PLANS: { id: Plan; name: string }[] = [
+  { id: "free", name: "Free" },
+  { id: "pro", name: "Pro" },
+  { id: "ultra", name: "Ultra" },
 ];
 
 const planOrder = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
@@ -44,7 +39,10 @@ export function PlanSwitcher({
   subscriptionMode,
   renewsAt,
 }: PlanSwitcherProps) {
-  const [interval, setIntervalState] = useState<BillingInterval>(currentInterval);
+  const [interval, setIntervalState] = useState<BillingInterval>(() =>
+    resolveBillingInterval(null, currentPlan, currentInterval),
+  );
+  const [priceFade, setPriceFade] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [downgradeOpen, setDowngradeOpen] = useState(false);
   const [targetDowngrade, setTargetDowngrade] = useState<Exclude<Plan, "ultra"> | null>(null);
@@ -114,14 +112,18 @@ export function PlanSwitcher({
         <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">Change plan</p>
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            Save 2 months
+            2 months free
           </span>
           <div className="inline-flex items-center gap-0.5 rounded-full border border-neutral-200 dark:border-border p-0.5">
             {(["monthly", "annual"] as const).map((value) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setIntervalState(value)}
+                aria-pressed={interval === value}
+                onClick={() => {
+                  setIntervalState(value);
+                  setPriceFade(true);
+                }}
                 className={cn(
                   "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
                   interval === value
@@ -154,12 +156,7 @@ export function PlanSwitcher({
           const isUpgrade = !isResumable && planOrder[plan.id] > planOrder[currentPlan];
           const isDowngrade = canChangeInPlace && planOrder[plan.id] < planOrder[currentPlan];
 
-          const priceLabel =
-            plan.id === "free"
-              ? "Free forever"
-              : interval === "annual"
-                ? `$${plan.annual}/yr`
-                : `$${plan.monthly}/mo`;
+          const price = planPriceDisplay(plan.id, interval);
 
           return (
             <div
@@ -173,7 +170,27 @@ export function PlanSwitcher({
                 <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
                   {plan.name}
                 </p>
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">{priceLabel}</p>
+                <p
+                  key={price.note}
+                  className={cn(
+                    "text-[12px] tabular-nums text-neutral-400 dark:text-neutral-500",
+                    priceFade &&
+                      "motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 motion-safe:ease-out",
+                  )}
+                >
+                  {plan.id === "free" ? (
+                    "Free forever"
+                  ) : (
+                    <>
+                      {price.compareAt && (
+                        <del className="mr-1">
+                          <span className="sr-only">Regular price </span>${price.compareAt}
+                        </del>
+                      )}
+                      ${price.perMonth}/mo &middot; {price.note}
+                    </>
+                  )}
+                </p>
               </div>
 
               {matchesCurrent ? (

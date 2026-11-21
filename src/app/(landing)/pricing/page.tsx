@@ -45,6 +45,10 @@ const pricingFaqs = [
     a: "Yes. Cancel or downgrade in one click. Your plan stays active until the end of the current billing period, and your links keep working.",
   },
   {
+    q: "Can I switch between monthly and annual?",
+    a: "Yes, from the billing settings in your dashboard. Switching to annual charges the yearly price right away, minus credit for the unused part of your current month. Switching to monthly takes effect right away too, and the unused time on your annual plan is credited toward your next invoices.",
+  },
+  {
     q: "What happens when I hit my monthly link limit?",
     a: "Existing links keep working and keep collecting clicks. You won't be able to create new ones until the next month rolls over or you upgrade.",
   },
