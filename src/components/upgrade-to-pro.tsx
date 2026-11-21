@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpRightIcon, CheckIcon, Loader2 } from "lucide-react";
+import localFont from "next/font/local";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +16,16 @@ import {
 import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { clientLogger } from "@/lib/logger/client";
-import { satoshi } from "@/styles/fonts";
 import { api } from "@/trpc/react";
+
+// Declared here rather than in @/styles/fonts so routes importing the shared fonts don't preload it.
+const satoshi = localFont({
+  src: "../styles/Satoshi-Variable.woff2",
+  variable: "--font-satoshi",
+  weight: "300 900",
+  display: "swap",
+  style: "normal",
+});
 
 const proPlanBenefits = PLAN_FEATURES.pro.features;
 
