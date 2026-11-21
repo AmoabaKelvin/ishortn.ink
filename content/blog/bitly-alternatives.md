@@ -2,7 +2,7 @@
 title: "7 Best Bitly Alternatives in 2026 (Free and Paid)"
 description: "Looking for a Bitly alternative? Compare the best URL shorteners that offer more features, better pricing, or more generous free plans than Bitly."
 date: "2026-03-01"
-updated: "2026-11-20"
+updated: "2026-11-21"
 author: "Kelvin Amoaba"
 tags: ["bitly alternative", "url shortener", "comparison", "link management"]
 published: true
@@ -164,7 +164,7 @@ Dub.co is an open-source link management platform aimed at modern development te
 - Tag-based link organization
 - Conversion tracking
 
-**Pricing:** No free plan; a 14-day trial is available. Paid plans start with Business at $90/month, which is also where custom domains begin.
+**Pricing:** Free plan with 25 new links and 1,000 tracked events a month, 30 days of analytics history and 3 custom domains for one user. Paid plans start with Pro at $30/month for 1,000 new links; Business is $90/month.
 
 **Best for:** Developer teams and SaaS companies that value open-source tooling and API-first workflows.
 
@@ -178,7 +178,7 @@ Dub.co is an open-source link management platform aimed at modern development te
 **Cons:**
 
 - Paid plans are significantly more expensive than other alternatives
-- No free plan, only a 14-day trial
+- Free plan is small (25 new links a month), and paid plans start at $30/month
 - Self-hosting requires technical expertise
 
 ---
@@ -247,14 +247,14 @@ T.ly is a lightweight URL shortener that focuses on simplicity and affordability
 
 | Feature | iShortn | TinyURL | Rebrandly | Short.io | Dub.co | BL.INK | T.ly |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Free plan | Yes (30 links/mo) | Yes (30 links/mo) | Yes (10 links/mo) | Yes (1,000 links total) | No (14-day trial) | No | Yes (limited) |
+| Free plan | Yes (30 links/mo) | Yes (30 links/mo) | Yes (10 links/mo) | Yes (1,000 links total) | Yes (25 links/mo) | No | Yes (limited) |
 | Click analytics | Yes | Basic | Yes | Yes | Yes | Yes | Basic |
-| Custom domains | Pro ($8/mo) | Paid only | 1 free | Required (5 free) | Business ($90/mo) | Yes | Paid only |
+| Custom domains | Pro ($8/mo) | Paid only | 1 free | Required (5 free) | 3 free | Yes | Paid only |
 | QR codes | 5 dynamic free | Yes (static) | 10/mo free (watermarked) | Yes | Yes | Yes | Yes |
 | API access | Pro ($8/mo) | Yes (free account) | Paid only | Yes | Yes | Paid only | Paid only |
-| Geo-targeting | Pro ($8/mo) | No | Paid only | Paid ($5/mo+) | No | Yes | No |
+| Geo-targeting | Pro ($8/mo) | No | Paid only | Paid ($5/mo+) | Paid ($30/mo+) | Yes | No |
 | Team collaboration | Ultra ($15/mo) | No | Yes | Yes | Yes | Yes | No |
-| Paid plan starting price | $8/mo | $9/mo (annual) | Essentials | $5/mo | $90/mo | $48/mo | $12/mo |
+| Paid plan starting price | $8/mo | $9/mo (annual) | Essentials | $5/mo | $30/mo | $48/mo | $12/mo |
 
 ## How to Choose the Right Bitly Alternative
 
@@ -264,7 +264,7 @@ Picking the best link shortener depends on what matters most to your workflow.
 
 **If you need advanced branding and custom domains**, Rebrandly and Short.io specialize in branded link management and both include custom domains on their free plans, though their paid tiers come at a higher price.
 
-**If you are a developer or run a SaaS product**, Dub.co's open-source model and API-first design make it a natural fit, provided you are comfortable with its pricing and the lack of a free plan.
+**If you are a developer or run a SaaS product**, Dub.co's open-source model and API-first design make it a natural fit, provided its small free plan (25 links a month) or $30/month starting price fits your budget.
 
 **If you work in a regulated industry**, BL.INK offers compliance features like HIPAA readiness and SSO that other tools do not.
 

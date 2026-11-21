@@ -1,18 +1,19 @@
 ---
 title: "Dub.co Alternatives in 2026: Free and Cheaper Options"
 seoTitle: "Dub.co Alternatives in 2026: Free and Cheaper"
-description: "Dub no longer lists a free plan and custom domains start at $90/month. Compare cheaper Dub alternatives for small teams, and how to move your links."
+description: "Dub's free plan allows 25 new links a month and paid plans start at $30/month. Compare cheaper Dub alternatives for small teams, and how to move your links."
 date: "2026-11-20"
+updated: "2026-11-21"
 author: "Kelvin Amoaba"
 tags: ["dub alternative", "url shortener", "comparison", "link management"]
 published: true
 ---
 
-Dub built a well-designed, open-source link shortener, and for a while its free plan was one of the most generous around. That has changed. As of November 2026, [Dub's pricing page](https://dub.co/pricing) lists three plans: Business at $90 a month, Advanced at $300 a month, and Enterprise. There is a 14-day trial, but no free plan is listed.
+Dub built a well-designed, open-source link shortener. Its free plan still exists but is small: 25 new links and 1,000 tracked events a month, 30 days of analytics history and 3 custom domains for one user. Paid Links plans start with Pro at $30 a month for 1,000 new links, and Business is $90 a month ([Dub Links pricing](https://dub.co/pricing/links), checked 21 November 2026). Dub's main [pricing page](https://dub.co/pricing) now leads with its Partners plans, which start at $90 a month.
 
-For a company running an affiliate or partner program, that may still be good value. Dub's recent [changelog](https://dub.co/changelog) is mostly partner and affiliate features, and that's clearly where the product is heading. If you're a freelancer, creator or small business who just wants branded short links, QR codes and click stats, $90 a month is a lot.
+For a company running an affiliate or partner program, that may still be good value. Dub's recent [changelog](https://dub.co/changelog) is mostly partner and affiliate features, and that's clearly where the product is heading. If you're a freelancer, creator or small business who just wants branded short links, QR codes and click stats, 25 links a month runs out fast, and $30 a month is a lot to pay for the next step.
 
-This guide covers the realistic alternatives, what each costs today, and how to move your links. We make iShortn, one of the options below, so we've kept the facts to what each company's own pricing page says (checked on 20 November 2026) and been clear about where each tool, including ours, is the wrong fit.
+This guide covers the realistic alternatives, what each costs today, and how to move your links. We make iShortn, one of the options below, so we've kept the facts to what each company's own pricing page says (checked on 21 November 2026) and been clear about where each tool, including ours, is the wrong fit.
 
 ## What you probably used Dub for
 
@@ -35,9 +36,9 @@ Fewer people used Dub's newer features: conversion and revenue attribution, and 
 | **Rebrandly** | 10 links/mo, 100 tracked clicks/mo, watermarked QR codes | Free (1 custom domain) | Brands that need compliance features at higher tiers |
 | **Bitly** | 5 links and 2 QR codes/mo, no analytics history | Growth, $29/mo | Teams that want the best-known name |
 | **Self-hosted Dub** | Free software, you pay for hosting | Yours | Developers who want Dub itself and can run it |
-| **Dub** (for reference) | None listed, 14-day trial | Business, $90/mo | Partner programs and conversion attribution |
+| **Dub** (for reference) | 25 new links/mo, 1,000 tracked events/mo, 3 custom domains | Free (3 domains); paid from Pro, $30/mo | Developers, partner programs and conversion attribution |
 
-Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https://www.rebrandly.com/pricing), [Bitly pricing](https://bitly.com/pages/pricing), [Dub pricing](https://dub.co/pricing). Prices change often, so check the live pages before you decide.
+Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https://www.rebrandly.com/pricing), [Bitly pricing](https://bitly.com/pages/pricing), [Dub Links pricing](https://dub.co/pricing/links). Prices change often, so check the live pages before you decide.
 
 ## 1. iShortn: the closest fit for small teams on a budget
 
@@ -63,7 +64,7 @@ Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https
 
 ## 2. Short.io: the biggest free plan for custom domains
 
-[Short.io](https://short.io/pricing) is the alternative most often recommended for people leaving Dub's free plan, and it's easy to see why. Its free plan includes 1,000 branded links in total (a lifetime limit, not monthly), 50,000 tracked clicks a month, and 5 custom domains. Paid plans are Hobby at $5 a month, Pro at $18, and Team at $48 (annual billing saves about 17%).
+[Short.io](https://short.io/pricing) is the alternative most often recommended for people outgrowing Dub's free plan, and it's easy to see why. Its free plan includes 1,000 branded links in total (a lifetime limit, not monthly), 50,000 tracked clicks a month, and 5 custom domains. Paid plans are Hobby at $5 a month, Pro at $18, and Team at $48 (annual billing saves about 17%).
 
 **Watch for:** the 1,000-link free limit is total, so a busy account will use it up eventually. Team members beyond one user start on the Team plan.
 
@@ -81,7 +82,7 @@ Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https
 
 [Bitly](https://bitly.com/pages/pricing) is the default many teams know. Free covers 5 links and 2 QR codes a month, with unlimited clicks and scans but no analytics history, and you can't change a link's or QR code's destination. Core is $10 a month (billed annually) for 100 links but no custom domain. A custom domain starts on Growth at $29 a month.
 
-**Watch for:** the free plan isn't a realistic long-term home for anyone who left Dub's free plan, and Growth is more than three times the price of the cheapest custom-domain plan elsewhere. We've written a longer guide to [Bitly alternatives](/blog/bitly-alternatives).
+**Watch for:** the free plan isn't a realistic long-term home for anyone who outgrew Dub's free plan, and Growth is more than three times the price of the cheapest custom-domain plan elsewhere. We've written a longer guide to [Bitly alternatives](/blog/bitly-alternatives).
 
 **Best for:** organisations that want a well-known vendor and already budget for it. See [Bitly vs iShortn](/compare/bitly).
 
@@ -95,7 +96,7 @@ Dub's core is open source under the AGPLv3 license, and its [README](https://git
 
 ## How to choose
 
-- **"I need a custom domain and want to pay nothing."** Short.io's free plan.
+- **"I need a custom domain and want to pay nothing."** Short.io's free plan, or Dub's free plan if 25 new links a month is enough.
 - **"I want links, QR codes and analytics for under $10 a month."** iShortn Pro at $8 with 3 domains, or Short.io Hobby at $5 if you only need links.
 - **"I need QR codes I can edit after printing."** Check each free plan's QR rules closely. iShortn Free includes 5 dynamic codes that don't expire, and Bitly Free can't change QR destinations. We explain the difference between static and dynamic codes in our [QR code generator guide](/blog/free-qr-code-generator-guide).
 - **"I need conversion tracking or an affiliate program."** Stay with Dub, or self-host it.
