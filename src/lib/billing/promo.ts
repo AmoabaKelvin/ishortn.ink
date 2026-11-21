@@ -1,0 +1,67 @@
+export type Promo = {
+  /** Lemon Squeezy discount code applied to new checkouts. */
+  code: string;
+  percentOff: number;
+  /** Inclusive ISO-8601 instants (UTC). */
+  startsAt: string;
+  endsAt: string;
+  label: string;
+  /** `utm_campaign` on in-app links to the offer. */
+  utmCampaign: string;
+};
+
+export const ACTIVE_PROMO: Promo = {
+  code: "BFCM20",
+  percentOff: 20,
+  startsAt: "2026-11-25T00:00:00Z",
+  endsAt: "2026-12-01T23:59:59Z",
+  label: "Black Friday",
+  utmCampaign: "bfcm2026",
+};
+
+/** The promo running at `now`, or null outside its window. */
+export function getActivePromo(now = new Date(), promo: Promo = ACTIVE_PROMO): Promo | null {
+  const t = now.getTime();
+  return t >= Date.parse(promo.startsAt) && t <= Date.parse(promo.endsAt) ? promo : null;
+}
+
+/** List price with the promo's discount, rounded to cents. */
+export function promoPrice(listPrice: number, promo: Promo): number {
+  return Math.round(listPrice * (100 - promo.percentOff)) / 100;
+}
+
+/**
+ * Discount code for a new subscription checkout at `now`. Plan changes and resumes go through
+ * updateSubscription and never get it.
+ */
+export function checkoutDiscountCode(now = new Date()): string | undefined {
+  return getActivePromo(now)?.code;
+}
+
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+// Built by hand rather than with toLocaleDateString: the banner renders on the server and
+// hydrates in the browser, and ICU punctuation differs between runtimes ("Tuesday, 1 December").
+function formatPromoEnd(iso: string): string {
+  const date = new Date(iso);
+  return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+}
+
+/** One-line announcement shown above the plan cards while the promo runs. */
+export function promoBannerText(promo: Promo): string {
+  return `${promo.label}: ${promo.percentOff}% off your first year of Pro or Ultra. Applied at checkout, until ${formatPromoEnd(promo.endsAt)}.`;
+}
