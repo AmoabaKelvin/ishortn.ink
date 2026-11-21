@@ -26,5 +26,6 @@ export const DOCS_PAGE_MODULES = {
   "api/delete-link": () => import("../../../content/docs/api/delete-link.mdx"),
   "api/link-analytics": () => import("../../../content/docs/api/link-analytics.mdx"),
   "api/verify-click": () => import("../../../content/docs/api/verify-click.mdx"),
+  "integrations/raycast": () => import("../../../content/docs/integrations/raycast.mdx"),
   "self-hosting": () => import("../../../content/docs/self-hosting.mdx"),
 } satisfies { [Slug in DocsSlug]: () => Promise<DocsModule> };

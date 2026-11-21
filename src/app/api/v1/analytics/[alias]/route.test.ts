@@ -70,8 +70,8 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/analytics/[alias] (MySQL)", () =>
     });
     const linkId = inserted[0].insertId;
     await db.insert(schema.linkVisit).values([
-      { linkId, createdAt: subDays(now, 2) },
-      { linkId, createdAt: subDays(now, 20) },
+      { linkId, referer: "twitter", createdAt: subDays(now, 2) },
+      { linkId, referer: "null", createdAt: subDays(now, 20) },
     ]);
     await db.insert(schema.uniqueLinkVisit).values([
       { linkId, ipHash: "a".repeat(64), createdAt: subDays(now, 2) },
@@ -129,6 +129,7 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/analytics/[alias] (MySQL)", () =>
 
     const body = await response.json();
     expect(body.totalClicks).toBe(7);
+    expect(body.clicksPerReferrer).toEqual({ Twitter: 1, Direct: 1 });
     expect(body.window).toMatchObject({ days: null, from: null });
   });
 
