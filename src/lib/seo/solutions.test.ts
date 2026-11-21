@@ -4,6 +4,7 @@ import { PLAN_CAPS } from "@/lib/billing/plans";
 import { isPostLive } from "@/lib/blog";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
+import { competitors } from "@/lib/seo/competitors";
 import { MAX_CSV_IMPORT_ROWS } from "@/server/api/routers/link/utils";
 
 import { getSolution, solutionList, solutions, usd } from "./solutions";
@@ -84,6 +85,7 @@ describe("solution copy", () => {
   it("keys each solution by its slug", () => {
     for (const [key, solution] of Object.entries(solutions)) expect(solution.slug).toBe(key);
     expect(getSolution("restaurants")).toBe(solutions.restaurants);
+    expect(getSolution("creators")).toBe(solutions.creators);
     expect(getSolution("agencies")).toBe(solutions.agencies);
     expect(getSolution("events")).toBe(solutions.events);
     expect(getSolution("churches-and-nonprofits")).toBe(solutions["churches-and-nonprofits"]);
@@ -93,8 +95,12 @@ describe("solution copy", () => {
   });
 
   // A mistyped blog slug would hide the link forever instead of failing.
-  it("links only to existing docs pages, blog posts and the QR code generator", () => {
-    const docs = new Set([...DOCS_PAGES.map((page) => docsHref(page.slug)), "/qr-code-generator"]);
+  it("links only to existing docs pages, blog posts, comparison pages and the QR code generator", () => {
+    const docs = new Set([
+      ...DOCS_PAGES.map((page) => docsHref(page.slug)),
+      ...Object.values(competitors).map((competitor) => `/compare/${competitor.slug}`),
+      "/qr-code-generator",
+    ]);
     const farFuture = new Date("2100-01-01");
     for (const { href } of solutionList.flatMap((solution) => solution.related)) {
       if (href.startsWith("/blog/")) expect(isPostLive(href.slice(6), farFuture)).toBe(true);

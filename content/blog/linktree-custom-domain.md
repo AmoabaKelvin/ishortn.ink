@@ -104,7 +104,7 @@ To be fair to Linktree:
 - **You sell directly from your bio.** Linktree and Beacons have built-in commerce features. iShortn is a link-in-bio page with link tracking, not a storefront. (See [iShortn vs Beacons](/compare/beacons) if commerce is part of your decision.)
 - **You want a large template library.** Linktree has many more visual templates.
 
-If the custom domain is the thing you're after, Linktree can't do it, and iShortn Pro can, along with tracked links, short links and QR codes on the same domain. The full side-by-side is on our [iShortn vs Linktree](/compare/linktree) page.
+If the custom domain is the thing you're after, Linktree can't do it, and iShortn Pro can, along with tracked links, short links and QR codes on the same domain. The full side-by-side is on our [iShortn vs Linktree](/compare/linktree) page. If you're a creator or freelancer, [link in bio for creators](/solutions/creators) shows how the bio page, short links and QR codes fit together.
 
 ## Quick answers
 
