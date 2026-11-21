@@ -1,3 +1,4 @@
+import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
 
 import { resend } from "./resend-client";
@@ -8,7 +9,7 @@ import type { Context } from "@/lib/logger/shared";
 import type { ReactElement } from "react";
 import type { CreateEmailOptions, CreateEmailResponse } from "resend";
 
-export const EMAIL_FROM = "Kelvin from iShortn <kelvin@ishortn.ink>";
+export const EMAIL_FROM = env.EMAIL_FROM ?? "Kelvin from iShortn <kelvin@ishortn.ink>";
 
 type EmailClient = {
   emails: { send: (payload: CreateEmailOptions) => Promise<CreateEmailResponse> };

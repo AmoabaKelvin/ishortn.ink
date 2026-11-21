@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     !(await isEmailSuppressed(userInfo.email))
   ) {
     const { error } = await resend.emails.send({
-      from: "Kelvin <developer@ishortn.ink>",
+      from: env.EMAIL_FROM ?? "Kelvin <developer@ishortn.ink>",
       to: userInfo.email,
       subject: "Welcome to iShortn",
       react: WelcomeEmail({
