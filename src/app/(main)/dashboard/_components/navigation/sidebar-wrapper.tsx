@@ -1,15 +1,17 @@
 import { api } from "@/trpc/server";
 
+import { getDashboardSubscription } from "../../_lib/get-subscription";
 import { AppSidebar } from "./app-sidebar";
 
 interface SidebarWrapperProps {
   isAdmin: boolean;
+  userName: string | null;
 }
 
-export async function SidebarWrapper({ isAdmin }: SidebarWrapperProps) {
+export async function SidebarWrapper({ isAdmin, userName }: SidebarWrapperProps) {
   // Fetch subscription, teams, and workspace in parallel
   const [userSubscription, teams, currentWorkspace] = await Promise.all([
-    api.subscriptions.get.query().catch(() => null),
+    getDashboardSubscription(),
     api.team.list.query().catch(() => []),
     api.team.currentWorkspace.query().catch(() => ({
       type: "personal" as const,
@@ -38,6 +40,7 @@ export async function SidebarWrapper({ isAdmin }: SidebarWrapperProps) {
       currentWorkspace={currentWorkspace}
       canCreateTeam={canCreateTeam}
       isAdmin={isAdmin}
+      userName={userName}
     />
   );
 }

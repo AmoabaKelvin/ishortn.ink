@@ -1,7 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { parse } from "csv-parse/sync";
-import { endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import {
   and,
   asc,
@@ -14,6 +12,7 @@ import {
   isNull,
   like,
   lt,
+  lte,
   or,
   sql,
   sum,
@@ -27,7 +26,8 @@ import {
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { summarizeArchived } from "@/lib/core/analytics";
+import { bucketKey, resolveRangeWindow, summarizeArchived } from "@/lib/core/analytics";
+import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import {
   buildCacheKey,
@@ -39,11 +39,11 @@ import {
   setStringInCache,
 } from "@/lib/core/cache";
 import { matchTargetingRules } from "@/lib/core/geo-rules/matcher";
-import { generateShortLink } from "@/lib/core/links";
 import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { normalizeAlias } from "@/lib/utils";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
@@ -61,8 +61,18 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
+import {
+  classifyLinkCreationError,
+  recordLinkCreationFailures,
+  trackLinkCreation,
+} from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import {
+  generateUnreservedAlias,
+  isAliasReserved,
+  reserveLinkAliases,
+} from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   assertCanEnableVerifiedClicks,
@@ -74,20 +84,32 @@ import {
   requireFolderAccess,
   workspaceFilter,
   workspaceOwnership,
+  workspaceUsagePlan,
 } from "@/server/lib/workspace";
 
 import { mergeCampaignUtm } from "../campaign/utils";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 import {
   assertDomainAllowed,
+  assertDomainOwned,
+  assertDomainWithinPlan,
   checkWorkspaceLinkLimit,
+  escapeLikePattern,
   getWorkspaceDefaultDomain,
+  hasUtmValues,
   incrementWorkspaceLinkCount,
+  parseLinkCsv,
   PASSWORD_ATTEMPTS_PER_IP,
   PASSWORD_ATTEMPTS_PER_LINK,
   readAttemptWindow,
   recordFailedAttempt,
+  restrictedLinkValues,
+  toPlanAllowedDomain,
+  sameGeoRules,
+  sameUtmParams,
+  settleWithConcurrency,
   toPublicLink,
+  checkAliasAvailability as assertAliasAvailable,
   validateAlias,
 } from "./utils";
 
@@ -104,7 +126,10 @@ import type {
   UpdateLinkInput,
   VerifyLinkPasswordInput,
 } from "./link.input";
+import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
+import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
+import type { ScrapedMetadata } from "@/server/lib/metadata";
 import type { WorkspaceContext } from "@/server/lib/workspace";
 
 const log = logger.child({ component: "link.service" });
@@ -116,13 +141,6 @@ function storedOgImage(metadata: Link["metadata"]): string | undefined {
   const parsed = storedLinkMetadataSchema.safeParse(metadata);
   return parsed.success ? parsed.data?.image : undefined;
 }
-
-const csvLinkRowSchema = z.object({
-  url: z.string(),
-  alias: z.string().optional(),
-  domain: z.string().optional(),
-  note: z.string().optional(),
-});
 
 export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput) => {
   const {
@@ -177,6 +195,8 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
       totalClicks: 0,
       currentPage: page,
       totalPages: 0,
+      // Only read when no filter is active; a tag filter is.
+      workspaceHasLinks: true,
     };
   }
 
@@ -195,7 +215,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
 
   // Add search filtering
   if (search && search.trim() !== "") {
-    const searchLower = `%${search.trim().toLowerCase()}%`;
+    const searchLower = `%${escapeLikePattern(search.trim().toLowerCase())}%`;
     baseCondition = and(
       baseCondition,
       or(like(link.name, searchLower), like(link.alias, searchLower), like(link.url, searchLower)),
@@ -338,6 +358,12 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
   );
 
   const totalLinks = totalLinksResult?.[0]?.count ?? 0;
+  // Tells a brand-new workspace (first-link prompt) apart from a filter that
+  // matched nothing; only queried when this page came back empty.
+  const workspaceHasLinks =
+    totalLinks > 0 ||
+    (await ctx.db.select({ id: link.id }).from(link).where(workspaceLinkCondition).limit(1))
+      .length > 0;
   const totalClicks =
     (totalClicksResult?.[0]?.totalClicks ?? 0) +
     (Number(archivedClicksResult?.[0]?.archivedClicks) || 0);
@@ -348,6 +374,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     totalClicks,
     currentPage: page,
     totalPages: Math.ceil(totalLinks / pageSize),
+    workspaceHasLinks,
   };
 };
 
@@ -364,35 +391,77 @@ export const getLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) =>
   return linkData;
 };
 
-export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInput) => {
+// Seams for tests; callers use the defaults.
+type LinkCreationDeps = {
+  checkUrl?: (url: string) => Promise<void>;
+  fetchMetadata?: (url: string) => Promise<ScrapedMetadata>;
+};
+
+// Best-effort: a metadata-service outage must not block link creation.
+async function fetchMetadataFailOpen(
+  fetchMetadata: (url: string) => Promise<ScrapedMetadata>,
+  url: string,
+): Promise<ScrapedMetadata | null> {
+  try {
+    return await fetchMetadata(url);
+  } catch (error) {
+    const { code } = classifyLinkCreationError("metadata", error);
+    log.warn({ step: "metadata", code }, "metadata fetch failed, creating link without it");
+    return null;
+  }
+}
+
+export const createLink = (
+  ctx: WorkspaceTRPCContext,
+  input: CreateLinkInput,
+  deps: LinkCreationDeps = {},
+) =>
+  trackLinkCreation(ctx.db, "dashboard", ctx.auth.userId, (attempt) =>
+    createLinkSteps(ctx, input, attempt, deps),
+  );
+
+const createLinkSteps = async (
+  ctx: WorkspaceTRPCContext,
+  input: CreateLinkInput,
+  attempt: LinkCreationAttempt,
+  { checkUrl = assertUrlSafe, fetchMetadata = scrapeMetadata }: LinkCreationDeps,
+) => {
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
 
   const domain = input.domain?.trim() || DEFAULT_PLATFORM_DOMAIN;
   await assertDomainAllowed(ctx, domain);
-  const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
+  const alias =
+    input.alias && input.alias !== "" ? input.alias : await generateUnreservedAlias(ctx.db, domain);
 
-  await assertUrlSafe(input.url);
+  attempt.step = "safety";
+  await checkUrl(input.url);
 
-  // Best-effort: a metadata-service outage must not block link creation.
-  const fetchedMetadata = await scrapeMetadata(input.url).catch(() => null);
+  attempt.step = "metadata";
+  const fetchedMetadata = await fetchMetadataFailOpen(fetchMetadata, input.url);
 
+  attempt.step = "validation";
   if (input.alias) {
     await validateAlias(ctx, input.alias, domain, isPaidPlan);
   }
 
   if (input.password) {
     if (!isPaidPlan) {
-      throw new Error("You need to upgrade to a pro plan to use password protection");
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You need to upgrade to a pro plan to use password protection",
+      });
     }
 
     input.password = await bcrypt.hash(input.password, 10);
   }
 
   if (input.activateAt && !isPaidPlan) {
-    throw new Error(
-      "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-    );
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+    });
   }
 
   const inputMetaData = input.metadata;
@@ -402,7 +471,10 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
   );
   if (hasUserFilledMetadata) {
     if (!isPaidPlan) {
-      throw new Error("You need to upgrade to a pro plan to use custom social media previews");
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You need to upgrade to a pro plan to use custom social media previews",
+      });
     }
   }
 
@@ -413,18 +485,22 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
   );
   if (hasUtmParams) {
     if (plan !== "ultra") {
-      throw new Error(
-        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
+      });
     }
   }
 
   // Check for link cloaking - Ultra plan only
   if (input.cloaking) {
     if (plan !== "ultra") {
-      throw new Error(
-        "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
+      });
     }
   }
 
@@ -442,10 +518,13 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
       ),
     });
     if (!campaignRow) {
-      throw new Error("Campaign not found");
+      throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
     }
     if (campaignRow.status === "archived") {
-      throw new Error("This campaign is archived. Restore it before adding links.");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "This campaign is archived. Restore it before adding links.",
+      });
     }
     if (canUseCampaignUtmDefaults(plan)) {
       input.utmParams = mergeCampaignUtm(campaignRow, input.utmParams);
@@ -463,63 +542,74 @@ export const createLink = async (ctx: WorkspaceTRPCContext, input: CreateLinkInp
 
   if (input.metadata?.image) assertValidImageInput(input.metadata.image);
 
-  // Create link without tags field
-  const { tags: _tags, ...linkData } = input;
-  const ownership = workspaceOwnership(ctx.workspace);
-  const [result] = await ctx.db.insert(link).values({
-    ...linkData,
-    name,
-    alias,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-    passwordHash: input.password,
-    domain,
-    note: input.note,
-    metadata: {
-      ...input.metadata,
-    },
-    cloaking: input.cloaking ?? false,
-    verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
-  });
-
-  // Associate tags with the link
-  const linkId = Number(result.insertId);
-  if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, linkId, tagNames);
-  }
-
-  // Handle geo rules if provided
+  // Plan checks run before the insert so a rejected request leaves no link behind.
   const geoRulesInput = input.geoRules;
   if (geoRulesInput && geoRulesInput.length > 0) {
-    // Check plan limits
     if (!canUseGeoRules(plan)) {
-      throw new Error(
-        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+      });
     }
 
     const geoLimit = getGeoRulesLimit(plan);
     if (!isUnlimitedGeoRules(plan) && geoLimit !== undefined && geoRulesInput.length > geoLimit) {
-      throw new Error(
-        `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
+      });
+    }
+  }
+
+  attempt.step = "db";
+  // Create link without tags field
+  const { tags: _tags, ...linkData } = input;
+  const ownership = workspaceOwnership(ctx.workspace);
+
+  // One transaction, so a failed tag or rule write doesn't leave a half-made link.
+  const result = await ctx.db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(link).values({
+      ...linkData,
+      name,
+      alias,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      passwordHash: input.password,
+      domain,
+      note: input.note,
+      metadata: {
+        ...input.metadata,
+      },
+      cloaking: input.cloaking ?? false,
+      verifiedClicksEnabled: input.verifiedClicksEnabled ?? false,
+      ...restrictedLinkValues(ctx.restrictedAt),
+    });
+    const insertedId = Number(inserted.insertId);
+
+    if (tagNames.length > 0) {
+      await associateTagsWithLink({ ...ctx, db: tx }, insertedId, tagNames);
+    }
+
+    if (geoRulesInput && geoRulesInput.length > 0) {
+      await tx.insert(geoRule).values(
+        geoRulesInput.map((rule, index) => ({
+          linkId: insertedId,
+          type: rule.type,
+          condition: rule.condition,
+          values: rule.values,
+          action: rule.action,
+          destination: rule.action === "redirect" ? rule.destination : null,
+          blockMessage: rule.action === "block" ? rule.blockMessage : null,
+          priority: index,
+        })),
       );
     }
 
-    // Insert geo rules
-    await ctx.db.insert(geoRule).values(
-      geoRulesInput.map((rule, index) => ({
-        linkId,
-        type: rule.type,
-        condition: rule.condition,
-        values: rule.values,
-        action: rule.action,
-        destination: rule.action === "redirect" ? rule.destination : null,
-        blockMessage: rule.action === "block" ? rule.blockMessage : null,
-        priority: index,
-      })),
-    );
-  }
+    return inserted;
+  });
+  const linkId = Number(result.insertId);
 
   // Upload OG image to R2 if it's base64
   if (input.metadata?.image) {
@@ -569,8 +659,11 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     await requireFolderAccess(ctx.db, ctx.workspace, existingLink.folderId);
   }
 
-  // Use workspace plan - team workspaces have Ultra features
+  // The workspace's live plan (a team's comes from its owner). Settings the link
+  // already has are held to the usage plan, so they stay editable through an
+  // over-plan grace; adding them needs the live plan.
   const workspacePlan = ctx.workspace.plan;
+  const usagePlan = workspaceUsagePlan(ctx.workspace);
   const isPaidUser = workspacePlan !== "free";
 
   // Re-scan only when the destination actually changes: the check can reach
@@ -580,50 +673,94 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   }
 
   // If domain is being changed, it must be platform-owned or a verified
-  // custom domain for this workspace.
+  // custom domain for this workspace. Either way it must be within the plan's
+  // custom-domain allowance: domains past it take no new or edited links.
   if (input.domain !== undefined && input.domain !== existingLink.domain) {
     await assertDomainAllowed(ctx, input.domain);
+  } else {
+    await assertDomainWithinPlan(ctx, existingLink.domain);
   }
 
   // If alias is being changed, validate it
   if (input.alias && input.alias !== existingLink.alias) {
     const domain = input.domain ?? existingLink.domain;
     await validateAlias(ctx, input.alias, domain, isPaidUser);
+  } else if (input.domain && input.domain !== existingLink.domain && existingLink.alias) {
+    // Moving the alias to another domain claims it there.
+    await assertAliasAvailable(ctx, existingLink.alias, input.domain);
   }
 
-  if (input.activateAt && !isPaidUser) {
+  // Paid-only settings can't be added or changed without the plan, but forms
+  // resend every field, so a value that is unchanged (or being removed) passes:
+  // after a downgrade, links keep their settings and other fields stay editable.
+  if (
+    input.activateAt &&
+    (existingLink.activateAt ? usagePlan : workspacePlan) === "free" &&
+    input.activateAt.getTime() !== existingLink.activateAt?.getTime()
+  ) {
     throw new Error(
       "Scheduled links are only available on Pro and Ultra plans. Please upgrade to use this feature.",
     );
   }
 
   // Check for UTM params - Ultra plan only
-  if (input.utmParams) {
-    const utmParamsValues = Object.values(input.utmParams);
-    const hasUtmParams = utmParamsValues.some(
-      (value) => value !== undefined && value !== null && value !== "",
+  if (
+    (hasUtmValues(existingLink.utmParams) ? usagePlan : workspacePlan) !== "ultra" &&
+    hasUtmValues(input.utmParams) &&
+    !sameUtmParams(input.utmParams, existingLink.utmParams)
+  ) {
+    throw new Error(
+      "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
     );
-    if (hasUtmParams) {
-      if (workspacePlan !== "ultra") {
-        throw new Error(
-          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-        );
-      }
-    }
   }
 
   // Check for link cloaking - Ultra plan only
-  if (input.cloaking) {
-    if (workspacePlan !== "ultra") {
-      throw new Error(
-        "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
-      );
-    }
+  if (input.cloaking && !existingLink.cloaking && workspacePlan !== "ultra") {
+    throw new Error(
+      "Link cloaking is only available on the Ultra plan. Please upgrade to use this feature.",
+    );
   }
 
   // Downgrades are caught again at token-issuance time in resolveShortLink, so a
   // stale `verifiedClicksEnabled=true` doesn't produce tokens for free users.
-  if (input.verifiedClicksEnabled) assertCanEnableVerifiedClicks(workspacePlan);
+  if (input.verifiedClicksEnabled && !existingLink.verifiedClicksEnabled) {
+    assertCanEnableVerifiedClicks(workspacePlan);
+  }
+
+  // Targeting rules over the plan's allowance may only be resubmitted unchanged.
+  let geoRulesInput = input.geoRules;
+  if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
+    const geoLimit = getGeoRulesLimit(workspacePlan);
+    const rulesWithin = (plan: Plan, count: number) => {
+      const limit = getGeoRulesLimit(plan);
+      return (
+        canUseGeoRules(plan) && (isUnlimitedGeoRules(plan) || limit === undefined || count <= limit)
+      );
+    };
+    if (!rulesWithin(workspacePlan, geoRulesInput.length)) {
+      const existingRules = await ctx.db
+        .select()
+        .from(geoRule)
+        .where(eq(geoRule.linkId, input.id))
+        .orderBy(asc(geoRule.priority));
+      // During an over-plan grace a link's rules stay editable, without adding more.
+      const editableInGrace =
+        existingRules.length > 0 &&
+        geoRulesInput.length <= existingRules.length &&
+        rulesWithin(usagePlan, geoRulesInput.length);
+      if (!editableInGrace) {
+        if (!sameGeoRules(geoRulesInput, existingRules)) {
+          throw new Error(
+            canUseGeoRules(workspacePlan)
+              ? `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`
+              : "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+          );
+        }
+        // Unchanged: leave the stored rules alone.
+        geoRulesInput = undefined;
+      }
+    }
+  }
 
   // If assigning to a campaign, it must belong to this workspace and be
   // active (null clears membership).
@@ -643,7 +780,26 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   }
 
   // Extract tags and geoRules from input
-  const { tags: tagNames, geoRules: geoRulesInput, ...linkData } = input;
+  const { tags: tagNames, geoRules: _geoRules, ...linkData } = input;
+
+  if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
+    if (!canUseGeoRules(workspacePlan)) {
+      throw new Error(
+        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+      );
+    }
+
+    const geoLimit = getGeoRulesLimit(workspacePlan);
+    if (
+      !isUnlimitedGeoRules(workspacePlan) &&
+      geoLimit !== undefined &&
+      geoRulesInput.length > geoLimit
+    ) {
+      throw new Error(
+        `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
+      );
+    }
+  }
 
   // Upload OG image to R2 if it's base64
   if (linkData.metadata?.image) {
@@ -668,59 +824,48 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     }
   }
 
-  // Update link data - use workspace filtering
-  await ctx.db
-    .update(link)
-    .set(linkData)
-    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+  const linkWhere = and(
+    eq(link.id, input.id),
+    workspaceFilter(ctx.workspace, link.userId, link.teamId),
+  );
+  const freesOldAlias =
+    (!!input.alias && normalizeAlias(input.alias) !== normalizeAlias(existingLink.alias ?? "")) ||
+    (!!input.domain && input.domain.toLowerCase() !== existingLink.domain.toLowerCase());
 
-  // Update tags if provided
-  if (tagNames) {
-    await associateTagsWithLink(ctx, input.id, tagNames);
-  }
+  // One transaction: tags are replaced by delete-then-insert, so a failure
+  // part-way must not leave the link without its previous tags.
+  await ctx.db.transaction(async (tx) => {
+    // A rename frees the old alias just like a delete does.
+    if (freesOldAlias) {
+      await reserveLinkAliases(tx, linkWhere, "deleted");
+    }
+    await tx.update(link).set(linkData).where(linkWhere);
 
-  // Handle geo rules if provided
+    if (tagNames) {
+      await associateTagsWithLink({ ...ctx, db: tx }, input.id, tagNames);
+    }
+
+    if (geoRulesInput !== undefined) {
+      await tx.delete(geoRule).where(eq(geoRule.linkId, input.id));
+
+      if (geoRulesInput.length > 0) {
+        await tx.insert(geoRule).values(
+          geoRulesInput.map((rule, index) => ({
+            linkId: input.id,
+            type: rule.type,
+            condition: rule.condition,
+            values: rule.values,
+            action: rule.action,
+            destination: rule.action === "redirect" ? rule.destination : null,
+            blockMessage: rule.action === "block" ? rule.blockMessage : null,
+            priority: index,
+          })),
+        );
+      }
+    }
+  });
+
   if (geoRulesInput !== undefined) {
-    // Check plan limits for new rules
-    if (geoRulesInput.length > 0) {
-      if (!canUseGeoRules(workspacePlan)) {
-        throw new Error(
-          "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-        );
-      }
-
-      const geoLimit = getGeoRulesLimit(workspacePlan);
-      if (
-        !isUnlimitedGeoRules(workspacePlan) &&
-        geoLimit !== undefined &&
-        geoRulesInput.length > geoLimit
-      ) {
-        throw new Error(
-          `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
-        );
-      }
-    }
-
-    // Delete existing geo rules for this link
-    await ctx.db.delete(geoRule).where(eq(geoRule.linkId, input.id));
-
-    // Insert new geo rules if any
-    if (geoRulesInput.length > 0) {
-      await ctx.db.insert(geoRule).values(
-        geoRulesInput.map((rule, index) => ({
-          linkId: input.id,
-          type: rule.type,
-          condition: rule.condition,
-          values: rule.values,
-          action: rule.action,
-          destination: rule.action === "redirect" ? rule.destination : null,
-          blockMessage: rule.action === "block" ? rule.blockMessage : null,
-          priority: index,
-        })),
-      );
-    }
-
-    // Invalidate geo rules cache
     await deleteGeoRulesFromCache(input.id);
   }
 
@@ -785,13 +930,16 @@ export const removeLink = async (
 
   await db.delete(linkMilestone).where(eq(linkMilestone.linkId, linkToDelete.id));
 
+  const where = and(
+    eq(link.id, linkToDelete.id),
+    workspaceFilter(workspace, link.userId, link.teamId),
+  );
   await Promise.all([
     deleteFromCache(buildCacheKey(linkToDelete.domain, linkToDelete.alias!)),
-    db
-      .delete(link)
-      .where(
-        and(eq(link.id, linkToDelete.id), workspaceFilter(workspace, link.userId, link.teamId)),
-      ),
+    db.transaction(async (tx) => {
+      await reserveLinkAliases(tx, where, "deleted");
+      await tx.delete(link).where(where);
+    }),
   ]);
 };
 
@@ -856,7 +1004,8 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     // 5. Delete milestone notifications
     await tx.delete(linkMilestone).where(inArray(linkMilestone.linkId, validLinkIds));
 
-    // 6. Finally delete the links themselves
+    // 6. Finally delete the links themselves, tombstoning their aliases
+    await reserveLinkAliases(tx, inArray(link.id, validLinkIds), "deleted");
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
 
@@ -995,42 +1144,60 @@ export const retrieveOriginalUrl = async (
   return found ? toPublicLink(found) : null;
 };
 
-export const shortenLinkWithAutoAlias = async (
+export const shortenLinkWithAutoAlias = (
   ctx: WorkspaceTRPCContext,
   input: QuickLinkShorteningInput,
+) =>
+  trackLinkCreation(ctx.db, "dashboard", ctx.auth.userId, (attempt) =>
+    shortenLinkSteps(ctx, input, attempt),
+  );
+
+const shortenLinkSteps = async (
+  ctx: WorkspaceTRPCContext,
+  input: QuickLinkShorteningInput,
+  attempt: LinkCreationAttempt,
 ) => {
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
-  const alias = await generateShortLink();
-  const domain = await getWorkspaceDefaultDomain(ctx);
+  const savedDomain = await getWorkspaceDefaultDomain(ctx);
+  // The saved default can outlive the domain (deleted, or never verified)
+  await assertDomainOwned(ctx, savedDomain);
+  const domain = await toPlanAllowedDomain(ctx, savedDomain);
+  const alias = await generateUnreservedAlias(ctx.db, domain);
 
+  attempt.step = "safety";
   await assertUrlSafe(input.url);
 
-  const fetchedMetadata = await scrapeMetadata(input.url).catch(() => null);
+  attempt.step = "metadata";
+  const fetchedMetadata = await fetchMetadataFailOpen(scrapeMetadata, input.url);
   const name = fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
 
-  // Create link without tags field
-  const [result] = await ctx.db.insert(link).values({
-    url: input.url,
-    alias,
-    domain,
-    userId: ownership.userId,
-    teamId: ownership.teamId,
-    createdByUserId: ctx.auth.userId, // Track the actual user who created the link
-    name,
-    metadata: {
-      title: fetchedMetadata?.title,
-      description: fetchedMetadata?.description,
-      image: fetchedMetadata?.image,
-    },
-  });
+  attempt.step = "db";
+  const result = await ctx.db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(link).values({
+      url: input.url,
+      alias,
+      domain,
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      name,
+      metadata: {
+        title: fetchedMetadata?.title,
+        description: fetchedMetadata?.description,
+        image: fetchedMetadata?.image,
+      },
+      ...restrictedLinkValues(ctx.restrictedAt),
+    });
 
-  // Associate tags with the link
-  if (tagNames.length > 0) {
-    await associateTagsWithLink(ctx, Number(result.insertId), tagNames);
-  }
+    if (tagNames.length > 0) {
+      await associateTagsWithLink({ ...ctx, db: tx }, Number(inserted.insertId), tagNames);
+    }
+
+    return inserted;
+  });
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
 
@@ -1043,37 +1210,27 @@ export const shortenLinkWithAutoAlias = async (
 
 export const getLinkVisits = async (
   ctx: WorkspaceTRPCContext,
-  input: { id: string; domain: string; range: string },
+  input: { id: string; domain?: string; range: string },
 ) => {
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
 
+  const domain = input.domain ?? (await getWorkspaceDefaultDomain(ctx));
+
   // Use workspace filtering to ensure the link belongs to the current workspace
   const foundLink = await ctx.db.query.link.findFirst({
     where: and(
       eq(link.alias, input.id),
-      eq(link.domain, input.domain),
+      eq(link.domain, domain),
       workspaceFilter(ctx.workspace, link.userId, link.teamId),
     ),
   });
 
   if (!foundLink) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      geoRules: [],
-      previous: null,
-      archived: summarizeArchived([]),
-    };
+    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
   }
 
-  let now = new Date();
-  let startDate: Date;
   let range = input.range;
 
   // Enforce 7-day limit for free users
@@ -1081,39 +1238,9 @@ export const getLinkVisits = async (
     range = "7d";
   }
 
-  switch (range) {
-    case "24h":
-      startDate = subDays(now, 1);
-      break;
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "this_month":
-      startDate = startOfMonth(now);
-      break;
-    case "last_month":
-      startDate = startOfMonth(subDays(now, 30));
-      now.setDate(0); // Set to last day of previous month
-      break;
-    case "this_year":
-      startDate = startOfYear(now);
-      break;
-    case "last_year":
-      startDate = startOfYear(subDays(now, 365));
-      now = endOfYear(subDays(now, 365));
-      break;
-    case "all":
-      startDate = new Date(0); // Beginning of time
-      break;
-    default:
-      startDate = subDays(now, 7); // Default to last 7 days
-  }
+  const window = resolveRangeWindow(range, new Date());
+  const startDate = window.from ?? new Date(0);
+  const now = window.to;
 
   // Previous-period window for % delta: same duration immediately before
   // the current window. Skip for "all" and for inverted windows that can
@@ -1122,8 +1249,6 @@ export const getLinkVisits = async (
   const hasPreviousPeriod = range !== "all" && windowMs > 0;
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
-
-  const toDateKey = (d: Date) => d.toISOString().split("T")[0]!;
 
   const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
     await Promise.all([
@@ -1181,8 +1306,8 @@ export const getLinkVisits = async (
         where: (s, { eq, and, gte, lte }) =>
           and(
             eq(s.linkId, foundLink.id),
-            gte(s.date, toDateKey(startDate)),
-            lte(s.date, toDateKey(now)),
+            gte(s.date, bucketKey(startDate)),
+            lte(s.date, bucketKey(now)),
           ),
       }),
       hasPreviousPeriod
@@ -1195,8 +1320,8 @@ export const getLinkVisits = async (
             .where(
               and(
                 eq(linkVisitDailySummary.linkId, foundLink.id),
-                gte(linkVisitDailySummary.date, toDateKey(prevStart)),
-                lt(linkVisitDailySummary.date, toDateKey(prevEnd)),
+                gte(linkVisitDailySummary.date, bucketKey(prevStart)),
+                lt(linkVisitDailySummary.date, bucketKey(prevEnd)),
               ),
             )
         : Promise.resolve(null),
@@ -1223,6 +1348,9 @@ export const getLinkVisits = async (
       geoRules: linkGeoRules,
       previous,
       archived,
+      domain,
+      range,
+      window,
     };
   }
 
@@ -1255,11 +1383,14 @@ export const getLinkVisits = async (
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
+    topReferrer: formatReferrerLabel(topReferrer),
     isProPlan: userHasPaidPlan,
     geoRules: linkGeoRules,
     previous,
     archived,
+    domain,
+    range,
+    window,
   };
 };
 
@@ -1274,6 +1405,24 @@ export const getAllUserAnalytics = async (
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
+
+  const range = !userHasPaidPlan && !["24h", "7d"].includes(input.range) ? "7d" : input.range;
+  const window = resolveRangeWindow(range, new Date());
+  const startDate = window.from ?? new Date(0);
+  const now = window.to;
+  const empty = {
+    totalVisits: [],
+    uniqueVisits: [],
+    topCountry: "N/A",
+    referers: {},
+    topReferrer: "N/A",
+    isProPlan: userHasPaidPlan,
+    clicksByLink: {},
+    clicksByDestination: {},
+    archived: summarizeArchived([]),
+    range,
+    window,
+  };
 
   // Fetch workspace links with optional filtering
   const userLinks = await ctx.db.query.link.findMany({
@@ -1304,65 +1453,14 @@ export const getAllUserAnalytics = async (
   });
 
   if (userLinks.length === 0) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      clicksByLink: {},
-      clicksByDestination: {},
-    };
-  }
-
-  let now = new Date();
-  let startDate: Date;
-  let range = input.range;
-
-  // Enforce 7-day limit for free users
-  if (!userHasPaidPlan && !["24h", "7d"].includes(range)) {
-    range = "7d";
-  }
-
-  switch (range) {
-    case "24h":
-      startDate = subDays(now, 1);
-      break;
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "this_month":
-      startDate = startOfMonth(now);
-      break;
-    case "last_month":
-      startDate = startOfMonth(subDays(now, 30));
-      now.setDate(0);
-      break;
-    case "this_year":
-      startDate = startOfYear(now);
-      break;
-    case "last_year":
-      startDate = startOfYear(subDays(now, 365));
-      now = endOfYear(subDays(now, 365));
-      break;
-    case "all":
-      startDate = new Date(0);
-      break;
-    default:
-      startDate = subDays(now, 7);
+    return empty;
   }
 
   const linkIds = userLinks.map((link) => link.id);
 
-  // Fetch all visits for all links
-  const [totalVisits, uniqueVisits] = await Promise.all([
+  // Fetch all visits for all links, plus the per-day counts archived from
+  // visits past the retention window (summed in SQL, so one row per day).
+  const [totalVisits, uniqueVisits, summaries] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { inArray, and, gte, lte }) =>
         and(
@@ -1379,19 +1477,27 @@ export const getAllUserAnalytics = async (
           lte(visit.createdAt, now),
         ),
     }),
+    ctx.db
+      .select({
+        date: linkVisitDailySummary.date,
+        clicks: sum(linkVisitDailySummary.clicks).mapWith(Number),
+        uniqueClicks: sum(linkVisitDailySummary.uniqueClicks).mapWith(Number),
+      })
+      .from(linkVisitDailySummary)
+      .where(
+        and(
+          inArray(linkVisitDailySummary.linkId, linkIds),
+          gte(linkVisitDailySummary.date, bucketKey(startDate)),
+          lte(linkVisitDailySummary.date, bucketKey(now)),
+        ),
+      )
+      .groupBy(linkVisitDailySummary.date),
   ]);
 
+  const archived = summarizeArchived(summaries);
+
   if (totalVisits.length === 0) {
-    return {
-      totalVisits: [],
-      uniqueVisits: [],
-      topCountry: "N/A",
-      referers: {},
-      topReferrer: "N/A",
-      isProPlan: userHasPaidPlan,
-      clicksByLink: {},
-      clicksByDestination: {},
-    };
+    return { ...empty, archived };
   }
 
   // Aggregate clicks by link
@@ -1443,10 +1549,13 @@ export const getAllUserAnalytics = async (
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: topReferrer !== "null" ? topReferrer : "Direct",
+    topReferrer: formatReferrerLabel(topReferrer),
     isProPlan: userHasPaidPlan,
     clicksByLink,
     clicksByDestination,
+    archived,
+    range,
+    window,
   };
 };
 
@@ -1618,6 +1727,23 @@ export const changeLinkPassword = async (
   ctx: WorkspaceTRPCContext,
   input: { id: number; password: string },
 ) => {
+  const existing = await ctx.db.query.link.findFirst({
+    where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
+    columns: { domain: true, passwordHash: true },
+  });
+  if (!existing) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
+  }
+  // A link that already has a password can change it through an over-plan grace.
+  const plan = existing.passwordHash ? workspaceUsagePlan(ctx.workspace) : ctx.workspace.plan;
+  if (plan === "free") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You need to upgrade to a pro plan to use password protection",
+    });
+  }
+  await assertDomainWithinPlan(ctx, existing.domain);
+
   const passwordHash = await bcrypt.hash(input.password, 10);
 
   await ctx.db
@@ -1640,108 +1766,131 @@ export const checkAliasAvailability = async (
   ctx: PublicTRPCContext,
   input: { alias: string; domain: string },
 ) => {
-  const existingLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
-  });
+  const [existingLink, reserved] = await Promise.all([
+    ctx.db.query.link.findFirst({
+      columns: { id: true },
+      where: (table, { eq, and }) =>
+        and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
+    }),
+    isAliasReserved(ctx.db, input.alias, input.domain),
+  ]);
 
-  return { isAvailable: !existingLink };
+  return { isAvailable: !existingLink && !reserved };
 };
 
+// Alias checks, URL scans and inserts each hold a db connection or an outbound
+// request; cap them so a 1,000-row file doesn't fan out all at once.
+const CSV_IMPORT_CONCURRENCY = 8;
+
 // `checkUrl` is a seam for tests; callers use the default.
-export const bulkCreateLinks = async (
+export const bulkCreateLinks = (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
   checkUrl: (url: string) => Promise<void> = assertUrlSafe,
+) =>
+  // Records failures that reject the whole import; per-row failures are recorded below.
+  trackLinkCreation(ctx.db, "bulk", ctx.auth.userId, () =>
+    bulkCreateLinkRows(ctx, csvContent, checkUrl),
+  );
+
+const bulkCreateLinkRows = async (
+  ctx: WorkspaceTRPCContext,
+  csvContent: string,
+  checkUrl: (url: string) => Promise<void>,
 ) => {
-  const rows: unknown[] = parse(csvContent, {
-    columns: true,
-    skip_empty_lines: true,
-  });
+  const rows = parseLinkCsv(csvContent);
 
   // Throws when the monthly allowance is already used up, rejecting the whole import.
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
   const remaining = limit === undefined ? Number.POSITIVE_INFINITY : limit - currentCount;
 
-  const records = rows.map((row) => {
-    const parsed = csvLinkRowSchema.safeParse(row);
-    if (!parsed.success || parsed.data.url.trim() === "") return null;
-    return {
-      url: parsed.data.url.trim(),
-      alias: parsed.data.alias?.trim() || undefined,
-      domain: parsed.data.domain?.trim() || DEFAULT_PLATFORM_DOMAIN,
-      note: parsed.data.note,
-    };
-  });
+  const records = rows.map((row) => ({
+    ...row,
+    domain: row.domain ?? DEFAULT_PLATFORM_DOMAIN,
+  }));
 
   // One ownership lookup per distinct domain, not per row.
-  const domainErrors = new Map<string, string | null>();
-  await Promise.all(
-    [...new Set(records.flatMap((record) => (record ? [record.domain] : [])))].map(
-      async (domain) => {
-        try {
-          await assertDomainAllowed(ctx, domain);
-          domainErrors.set(domain, null);
-        } catch (error) {
-          domainErrors.set(domain, error instanceof Error ? error.message : "Domain check failed");
-        }
-      },
-    ),
+  const domainErrors = new Map<string, unknown>();
+  await settleWithConcurrency(
+    [...new Set(records.map((record) => record.domain))],
+    CSV_IMPORT_CONCURRENCY,
+    async (domain) => {
+      try {
+        await assertDomainAllowed(ctx, domain);
+        domainErrors.set(domain, null);
+      } catch (error) {
+        domainErrors.set(domain, error);
+      }
+    },
   );
 
   // Two rows claiming the same alias on the same domain would otherwise race on
   // the unique index; the first one in the file wins.
   const seenAliases = new Set<string>();
-  const aliasChecks = records.map(async (record) => {
-    if (!record) throw new Error("Missing or invalid url");
+  const validated = await settleWithConcurrency(records, CSV_IMPORT_CONCURRENCY, async (row) => {
+    if (!row.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
+    const url = normalizeDestinationUrl(row.url);
+    if (!url) throw new TRPCError({ code: "BAD_REQUEST", message: INVALID_URL_MESSAGE });
+    const record = { ...row, url };
     const domainError = domainErrors.get(record.domain);
-    if (domainError) throw new Error(domainError);
+    if (domainError) throw domainError;
     if (!record.alias) return record;
 
     const aliasKey = `${record.domain.toLowerCase()}/${normalizeAlias(record.alias)}`;
-    if (seenAliases.has(aliasKey)) throw new Error("Alias is used by an earlier row in this file");
+    if (seenAliases.has(aliasKey)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Alias is used by an earlier row in this file",
+      });
+    }
     seenAliases.add(aliasKey);
 
     await validateAlias(ctx, record.alias, record.domain, isPaidPlan);
     return record;
   });
-  const validated = await Promise.allSettled(aliasChecks);
 
   // Allowance goes to valid rows in file order, before the (slow) URL safety
   // scan, so rows past the limit are never scanned.
   let allotted = 0;
-  const results = await Promise.allSettled(
-    validated.map(async (check) => {
+  const rowSteps = validated.map((): LinkCreationStep => "validation");
+  const results = await settleWithConcurrency(
+    validated,
+    CSV_IMPORT_CONCURRENCY,
+    async (check, index) => {
       if (check.status === "rejected") throw check.reason;
       if (allotted >= remaining) {
-        throw new Error(
-          `Monthly limit of ${limit?.toLocaleString()} links reached. Upgrade your plan to create more.`,
-        );
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Monthly limit of ${limit?.toLocaleString()} links reached. Upgrade your plan to create more.`,
+        });
       }
       allotted++;
 
       const record = check.value;
+      rowSteps[index] = "safety";
       await checkUrl(record.url);
 
+      rowSteps[index] = "db";
       const ownership = workspaceOwnership(ctx.workspace);
       await ctx.db.insert(link).values({
         url: record.url,
-        alias: record.alias ?? (await generateShortLink()),
+        alias: record.alias ?? (await generateUnreservedAlias(ctx.db, record.domain)),
         userId: ownership.userId,
         teamId: ownership.teamId,
         createdByUserId: ctx.auth.userId, // Track the actual user who created the link
         domain: record.domain,
         note: record.note,
+        ...restrictedLinkValues(ctx.restrictedAt),
       });
-    }),
+    },
   );
 
   const failures = results.flatMap((result, index) =>
     result.status === "rejected"
       ? [
           {
-            row: index + 1,
+            row: records[index]!.row,
             reason:
               result.reason instanceof Error ? result.reason.message : "Could not create this link",
           },
@@ -1749,6 +1898,17 @@ export const bulkCreateLinks = async (
       : [],
   );
   const created = results.length - failures.length;
+
+  await recordLinkCreationFailures(
+    ctx.db,
+    "bulk",
+    ctx.auth.userId,
+    results.flatMap((result, index) =>
+      result.status === "rejected"
+        ? [classifyLinkCreationError(rowSteps[index] ?? "validation", result.reason)]
+        : [],
+    ),
+  );
 
   if (created > 0) {
     await incrementWorkspaceLinkCount(ctx, currentCount, limit, created);

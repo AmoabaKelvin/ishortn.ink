@@ -1,4 +1,4 @@
-import { createTRPCRouter, workspaceProcedure } from "../../trpc";
+import { createTRPCRouter, contentWriteProcedure, workspaceProcedure } from "../../trpc";
 import * as inputs from "./campaign.input";
 import * as services from "./campaign.service";
 
@@ -31,7 +31,7 @@ export const campaignRouter = createTRPCRouter({
     .input(inputs.campaignIdSchema)
     .mutation(({ ctx, input }) => services.deleteCampaign(ctx, input.id)),
 
-  addLinks: workspaceProcedure
+  addLinks: contentWriteProcedure
     .input(inputs.addLinksSchema)
     .mutation(({ ctx, input }) => services.addLinks(ctx, input)),
 

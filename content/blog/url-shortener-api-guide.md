@@ -16,7 +16,7 @@ A URL shortener API gives you a programmatic interface to create, manage, and tr
 
 ### Automation at Scale
 
-If you are sending transactional emails, each one containing a unique tracking link, you cannot create those links by hand. A shorten URL API lets your application generate a unique short link for every email, every user, or every event, automatically and instantly.
+If you are sending transactional emails, each one containing a unique tracking link, you cannot create those links by hand. A URL shortener API lets your application generate a unique short link for every email, every user, or every event, automatically and instantly.
 
 ### Integration With Existing Systems
 
@@ -40,7 +40,7 @@ Email service providers and SMS platforms use short links to keep message bodies
 
 ### Marketing Automation
 
-Platforms like HubSpot, Marketo, and custom-built marketing tools can call a shorten URL API to create campaign-specific links. Each link carries its own analytics, giving marketers granular visibility into which channels, audiences, and creatives drive the most clicks.
+Platforms like HubSpot, Marketo, and custom-built marketing tools can call a URL shortener API to create campaign-specific links. Each link carries its own analytics, giving marketers granular visibility into which channels, audiences, and creatives drive the most clicks.
 
 ### Mobile Applications
 
@@ -72,11 +72,11 @@ The best APIs do not just create links. They also expose analytics endpoints so 
 
 ## Example API Workflow
 
-A typical integration with a URL shortener API follows three steps: authenticate, create a short link, and retrieve analytics. Here is what that looks like in practice.
+A typical integration with a URL shortener API follows three steps: authenticate, create a short link, and retrieve analytics. Here is what that looks like with the iShortn API.
 
 ### Step 1: Authenticate
 
-Most APIs use a bearer token or API key passed in the request headers. You typically generate this key from the provider's dashboard and include it in every request.
+Most APIs use an API key passed in a request header. You generate the key from the provider's dashboard and include it in every request. iShortn reads it from the `x-api-key` header.
 
 ```typescript
 const API_BASE = "https://ishortn.ink/api/v1";
@@ -84,71 +84,92 @@ const API_KEY = process.env.ISHORTN_API_KEY;
 
 const headers = {
   "Content-Type": "application/json",
-  Authorization: `Bearer ${API_KEY}`,
+  "x-api-key": API_KEY ?? "",
 };
 ```
 
 ### Step 2: Create a Short Link
 
-Send a POST request with the destination URL and any optional parameters like a custom slug or expiration date.
+Send a POST request with the destination URL and any optional parameters, such as a custom `alias` or an expiration date (`expiresAt`).
 
 ```typescript
-async function createShortLink(
-  url: string,
-  customSlug?: string
-): Promise<{ shortUrl: string; id: string }> {
+type ShortLink = { shortLink: string; url: string; alias: string };
+
+async function createShortLink(url: string, alias?: string): Promise<ShortLink> {
   const response = await fetch(`${API_BASE}/links`, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      url,
-      ...(customSlug && { slug: customSlug }),
-    }),
+    body: JSON.stringify({ url, ...(alias && { alias }) }),
   });
 
   if (!response.ok) {
-    const { error } = await response.json();
-    throw new Error(`Failed to create short link: ${error.message}`);
-  }
-
-  const data = await response.json();
-  return {
-    shortUrl: data.shortUrl,
-    id: data.id,
-  };
-}
-
-// Usage
-const link = await createShortLink(
-  "https://example.com/products/summer-2026?utm_source=email",
-  "summer26"
-);
-console.log(link.shortUrl); // https://ishortn.ink/summer26
-```
-
-### Step 3: Retrieve Analytics
-
-Once your link is live and collecting clicks, pull analytics data through the API to feed your own reporting tools.
-
-```typescript
-async function getLinkAnalytics(
-  linkId: string
-): Promise<{ clicks: number; countries: Record<string, number> }> {
-  const response = await fetch(`${API_BASE}/links/${linkId}/analytics`, {
-    method: "GET",
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to retrieve analytics");
+    // Errors come back as JSON: { "error": { "code", "message", "details" } }.
+    throw new Error(`Failed to create short link (${response.status}): ${await response.text()}`);
   }
 
   return response.json();
 }
 
 // Usage
-const analytics = await getLinkAnalytics(link.id);
-console.log(`Total clicks: ${analytics.clicks}`);
+const link = await createShortLink(
+  "https://example.com/products/summer-2026?utm_source=email",
+  "summer26",
+);
+console.log(link.shortLink); // https://isht.app/summer26 (your default domain)
+```
+
+To look up, change or delete a link later, use `GET`, `PATCH` or `DELETE` on `/links/{alias}`. A `PATCH` body can update `url`, `alias`, `expiresAt`, `activatesAt` or `expiresAfter`.
+
+```typescript
+await fetch(`${API_BASE}/links/${link.alias}`, {
+  method: "PATCH",
+  headers,
+  body: JSON.stringify({ url: "https://example.com/products/summer-2026-sale" }),
+});
+```
+
+### Step 3: Retrieve Analytics
+
+Once your link is live and collecting clicks, pull its analytics through the API to feed your own reporting tools.
+
+```typescript
+type LinkAnalytics = {
+  totalClicks: number;
+  clicksPerDate: Record<string, number>;
+  clicksPerCountry: Record<string, number>;
+  clicksPerDevice: Record<string, number>;
+  clicksPerBrowser: Record<string, number>;
+};
+
+async function getLinkAnalytics(alias: string): Promise<LinkAnalytics> {
+  const response = await fetch(`${API_BASE}/analytics/${alias}`, { headers });
+
+  if (!response.ok) {
+    throw new Error(`Failed to retrieve analytics (${response.status}): ${await response.text()}`);
+  }
+
+  return response.json();
+}
+
+// Usage
+const analytics = await getLinkAnalytics(link.alias);
+console.log(`Total clicks: ${analytics.totalClicks}`);
+```
+
+The same calls with `curl`:
+
+```bash
+# Create a link
+curl -X POST https://ishortn.ink/api/v1/links \
+  -H "x-api-key: $ISHORTN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/products/summer-2026", "alias": "summer26"}'
+
+# Read it back
+curl https://ishortn.ink/api/v1/links/summer26 -H "x-api-key: $ISHORTN_API_KEY"
+
+# Fetch its analytics
+curl https://ishortn.ink/api/v1/analytics/summer26 -H "x-api-key: $ISHORTN_API_KEY"
 ```
 
 ## Best Practices for API Integration
@@ -160,19 +181,14 @@ Following these practices will make your integration more robust and easier to m
 Never assume API calls will succeed. Network issues, rate limits, and invalid inputs can all cause failures. Wrap every request in proper error handling, log failures with enough context to debug, and present meaningful messages to your users.
 
 ```typescript
-async function createLinkWithRetry(
-  url: string,
-  retries = 3
-): Promise<{ shortUrl: string; id: string }> {
+async function createLinkWithRetry(url: string, retries = 3): Promise<ShortLink> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       return await createShortLink(url);
     } catch (error) {
       if (attempt === retries) throw error;
       // Exponential backoff
-      await new Promise((resolve) =>
-        setTimeout(resolve, 1000 * Math.pow(2, attempt))
-      );
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
     }
   }
   throw new Error("Unreachable");
@@ -181,7 +197,7 @@ async function createLinkWithRetry(
 
 ### Respect Rate Limits
 
-Check response headers for rate limit information. If you receive a `429 Too Many Requests` response, back off and retry after the interval specified in the `Retry-After` header. Building this logic into your HTTP client from day one prevents outages as your usage grows.
+Check response headers for rate limit information. iShortn returns `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` on every API response. If you receive a `429 Too Many Requests` response, back off and retry after the number of seconds in the `Retry-After` header. Building this logic into your HTTP client from day one prevents outages as your usage grows.
 
 ### Cache Short Links
 
@@ -197,15 +213,15 @@ Store API keys in environment variables or a secrets manager, never in source co
 
 ## iShortn API Overview
 
-iShortn provides a RESTful API that gives you programmatic access to link creation, management, and analytics. The API is available on the **Pro plan** ([see pricing](/pricing)) and supports all the features you can access through the dashboard, including custom slugs, link expiration, and detailed click analytics.
+iShortn provides a REST API for creating and updating short links and reading their analytics. The API is available on the **Pro plan** ([see pricing](/pricing)) and supports custom aliases, custom domains, link expiration, scheduled activation and password protection when creating links.
 
-Key highlights of the iShortn API:
+The endpoints:
 
-- **RESTful JSON endpoints** for creating, updating, and deleting short links.
-- **Analytics endpoints** for retrieving click counts, geographic data, device breakdowns, and referrer information.
-- **API key authentication** with keys managed from your account dashboard.
-- **Consistent error responses** with clear status codes and messages.
-- **Generous rate limits** designed for production workloads.
+- **`POST /api/v1/links`** creates a short link and returns its `shortLink`, `url` and `alias`.
+- **`GET /api/v1/links/{alias}`** returns a link; **`PATCH /api/v1/links/{alias}`** updates its destination, alias or expiration; **`DELETE /api/v1/links/{alias}`** deletes it.
+- **`GET /api/v1/analytics/{alias}`** returns click counts by date, country, city, device, OS and browser for your plan's analytics window.
+
+Requests authenticate with an API key in the `x-api-key` header; keys are managed from your dashboard. Errors return a 4xx or 5xx status with a JSON body `{"error": {"code": "...", "message": "...", "details": [...]}}`, and every response carries `X-RateLimit-*` headers for your plan's per-minute and per-day limits. A key on an account without Pro or Ultra gets `403` with a JSON body `{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}`; during the 7-day notice period before that, its responses carry `Deprecation` and `Sunset` headers and JSON bodies include a `warning` field with the cutoff date.
 
 Whether you are building a SaaS product that needs shareable links, an internal tool that generates tracking URLs, or a marketing platform that creates campaign links at scale, the iShortn API gives you the building blocks to integrate programmatic URL shortening into your stack. To decide which metrics to pull from the analytics endpoints, see [how to track link clicks](/blog/how-to-track-link-clicks).
 
@@ -214,9 +230,9 @@ Whether you are building a SaaS product that needs shareable links, an internal 
 Setting up your first API integration takes just a few minutes:
 
 1. **Sign up** for an account at [ishortn.ink](https://ishortn.ink) and upgrade to the Pro plan.
-2. **Generate an API key** from your account dashboard under the API settings section.
+2. **Generate an API key** from Dashboard → Settings → API Keys.
 3. **Make your first request** using the code examples above or your preferred HTTP client.
-4. **Explore the endpoints** to discover link management, bulk operations, and analytics capabilities.
+4. **Read links back and pull analytics** with the `GET` endpoints once your links start collecting clicks.
 5. **Integrate into your application** by building a thin wrapper around the API that fits your codebase.
 
 A URL shortener API turns link management from a manual chore into an automated, integrated part of your development workflow. Once you start generating and tracking links programmatically, you will wonder how you ever managed without it.

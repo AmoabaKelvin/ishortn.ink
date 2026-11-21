@@ -19,7 +19,7 @@ export function EditFolderButton({ folder }: EditFolderButtonProps) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-1.5 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+        className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-border dark:text-neutral-300 dark:hover:bg-accent/50"
       >
         <IconPencil size={14} stroke={1.5} />
         Edit

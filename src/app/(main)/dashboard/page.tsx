@@ -1,5 +1,6 @@
 import { IconPlus } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { env } from "@/env.mjs";
@@ -42,16 +43,33 @@ export default async function DashboardPage(props: Props) {
   const { page, orderBy, orderDirection, tag, campaign, archivedFilter, search } =
     dashboardSearchParamsSchema.parse(await props.searchParams);
 
-  const { links, totalLinks, totalPages, currentPage } = await api.link.list.query({
-    page,
-    pageSize: 10,
-    orderBy,
-    orderDirection,
-    tag,
-    campaignId: campaign,
-    archivedFilter,
-    search,
-  });
+  const [{ links, totalLinks, totalPages, currentPage, workspaceHasLinks }, tags] =
+    await Promise.all([
+      api.link.list.query({
+        page,
+        pageSize: 10,
+        orderBy,
+        orderDirection,
+        tag,
+        campaignId: campaign,
+        archivedFilter,
+        search,
+      }),
+      api.tag.list.query(),
+    ]);
+
+  // Deleting or archiving the last links on the last page leaves the URL past
+  // the end; send the user to the new last page instead of an empty list.
+  if (totalPages > 0 && page > totalPages) {
+    const params = new URLSearchParams();
+    const kept = { search, tag, campaign, archivedFilter, orderBy, orderDirection };
+    for (const [key, value] of Object.entries(kept)) {
+      if (value !== undefined) params.set(key, String(value));
+    }
+    if (totalPages > 1) params.set("page", totalPages.toString());
+    const query = params.toString();
+    redirect(query ? `/dashboard?${query}` : "/dashboard");
+  }
 
   return (
     <div>
@@ -62,7 +80,7 @@ export default async function DashboardPage(props: Props) {
           </h2>
           {totalLinks > 0 && (
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              {totalLinks} {totalLinks === 1 ? "link" : "links"} total
+              {totalLinks.toLocaleString("en-US")} {totalLinks === 1 ? "link" : "links"} total
             </p>
           )}
         </div>
@@ -78,7 +96,13 @@ export default async function DashboardPage(props: Props) {
         </div>
       </div>
 
-      <Links links={links} totalPages={totalPages} currentPage={currentPage} />
+      <Links
+        links={links}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        workspaceHasLinks={workspaceHasLinks}
+        tags={tags.map((tag) => tag.name)}
+      />
 
       <AudienceFeedbackCard hasLinks={totalLinks > 0} />
     </div>

@@ -1,7 +1,18 @@
 import { z } from "zod";
 
+import { HOSTNAME_PATTERN, normalizeDomainInput } from "./utils";
+
 export const createCustomDomainSchema = z.object({
-  domain: z.string().min(1, "Domain is required").max(255, "Domain name is too long"),
+  domain: z
+    .string()
+    .max(255, "Domain name is too long")
+    .transform(normalizeDomainInput)
+    .pipe(
+      z
+        .string()
+        .min(1, "Domain is required")
+        .regex(HOSTNAME_PATTERN, "Enter a domain like links.example.com, without a path or port"),
+    ),
 });
 
 // Zod schema for the custom domain object

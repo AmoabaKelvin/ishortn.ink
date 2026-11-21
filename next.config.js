@@ -9,6 +9,17 @@ if (process.env.NODE_ENV === "development") {
   initOpenNextCloudflareForDev();
 }
 
+const createMDX = require("@next/mdx");
+
+// Docs pages (content/docs) are MDX compiled at build time. Plugins are named
+// by string so the options stay serializable for Turbopack.
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [["remark-frontmatter"], ["remark-gfm"]],
+    rehypePlugins: [["rehype-slug"], [require.resolve("./src/lib/docs/rehype-code.mjs")]],
+  },
+});
+
 /** @type {import("next").NextConfig} */
 const config = {
   // CLAUDE.md is maintained by hand; stop `next dev` injecting its agent block.
@@ -16,6 +27,12 @@ const config = {
   // The deploy runs in GitHub Actions; Workers Builds names the same thing differently.
   env: {
     BUILD_COMMIT_SHA: process.env.GITHUB_SHA ?? process.env.WORKERS_CI_COMMIT_SHA ?? "",
+  },
+  turbopack: {
+    rules: {
+      // Blog posts are imported as strings (import.meta.glob with ?raw in src/lib/blog.ts).
+      "*.md": { condition: { query: "?raw" }, type: "text" },
+    },
   },
   experimental: {
     optimizePackageImports: ["@tabler/icons-react"],
@@ -28,6 +45,18 @@ const config = {
     fetches: {
       fullUrl: true,
     },
+  },
+  // Guessable auth URLs. Scoped to the app host so `/sign-in` stays usable as a
+  // short-link alias on the short and custom domains.
+  async redirects() {
+    const appDomain = (
+      process.env.NEXT_PUBLIC_APP_DOMAIN?.trim().toLowerCase() || "ishortn.ink"
+    ).replaceAll(".", "\\.");
+    const has = [{ type: "host", value: `(?:www\\.)?${appDomain}|localhost` }];
+    return [
+      { source: "/sign-in", destination: "/auth/sign-in", permanent: true, has },
+      { source: "/sign-up", destination: "/auth/sign-up", permanent: true, has },
+    ];
   },
   async headers() {
     return [
@@ -49,4 +78,4 @@ const config = {
   },
 };
 
-module.exports = config;
+module.exports = withMDX(config);

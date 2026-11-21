@@ -111,6 +111,18 @@ function AcceptInviteContent() {
     },
   });
 
+  const declineInviteMutation = api.team.declineInvite.useMutation({
+    onSuccess: () => {
+      toast.success("Invite declined");
+      void inviteDetails.refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const isResponding = acceptInviteMutation.isLoading || declineInviteMutation.isLoading;
+
   const handleAcceptInvite = () => {
     if (token) {
       acceptInviteMutation.mutate({ token });
@@ -185,30 +197,13 @@ function AcceptInviteContent() {
   const config = roleConfig[invite.role];
   const RoleIcon = config.icon;
 
-  // Expired
-  if (invite.isExpired) {
-    return (
-      <StateCard
-        icon={<Clock className="h-6 w-6 text-amber-500" />}
-        iconBg="bg-amber-50"
-        title="Invite expired"
-        description={`This invitation to ${invite.team.name} has expired. Ask the team admin to send a new one.`}
-      >
-        <Button variant="outline" onClick={() => router.push("/dashboard")} className="w-full">
-          Go to Dashboard
-        </Button>
-      </StateCard>
-    );
-  }
-
-  // Already accepted
-  if (invite.isAccepted) {
+  if (invite.view === "member") {
     return (
       <StateCard
         icon={<Check className="h-6 w-6 text-emerald-500" />}
         iconBg="bg-emerald-50"
         title="Already a member"
-        description="You're already part of this team."
+        description={`You're already part of ${invite.team.name}.`}
       >
         <div className="space-y-2 w-full">
           <Button
@@ -228,6 +223,51 @@ function AcceptInviteContent() {
             Personal dashboard
           </Button>
         </div>
+      </StateCard>
+    );
+  }
+
+  if (invite.view === "used") {
+    return (
+      <StateCard
+        icon={<Clock className="h-6 w-6 text-amber-500" />}
+        iconBg="bg-amber-50"
+        title="Invite no longer valid"
+        description="This invite link has already been used or expired. Ask a team admin for a new link."
+      >
+        <Button variant="outline" onClick={() => router.push("/dashboard")} className="w-full">
+          Go to Dashboard
+        </Button>
+      </StateCard>
+    );
+  }
+
+  if (invite.view === "expired") {
+    return (
+      <StateCard
+        icon={<Clock className="h-6 w-6 text-amber-500" />}
+        iconBg="bg-amber-50"
+        title="Invite expired"
+        description={`This invitation to ${invite.team.name} has expired. Ask the team admin to send a new one.`}
+      >
+        <Button variant="outline" onClick={() => router.push("/dashboard")} className="w-full">
+          Go to Dashboard
+        </Button>
+      </StateCard>
+    );
+  }
+
+  if (invite.view === "declined") {
+    return (
+      <StateCard
+        icon={<Users className="h-6 w-6 text-neutral-600" />}
+        iconBg="bg-neutral-100"
+        title="Invite declined"
+        description={`You declined the invitation to ${invite.team.name}. If you change your mind, ask a team admin for a new invite.`}
+      >
+        <Button variant="outline" onClick={() => router.push("/dashboard")} className="w-full">
+          Go to Dashboard
+        </Button>
       </StateCard>
     );
   }
@@ -310,14 +350,15 @@ function AcceptInviteContent() {
             <Button
               variant="outline"
               className="flex-1 h-11 border-neutral-200 hover:bg-neutral-50"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => token && declineInviteMutation.mutate({ token })}
+              disabled={isResponding}
             >
-              Decline
+              {declineInviteMutation.isLoading ? "Declining..." : "Decline"}
             </Button>
             <Button
               className="flex-1 h-11 bg-neutral-900 hover:bg-neutral-800 shadow-lg shadow-neutral-900/10"
               onClick={handleAcceptInvite}
-              disabled={acceptInviteMutation.isLoading}
+              disabled={isResponding}
             >
               {acceptInviteMutation.isLoading ? (
                 <>

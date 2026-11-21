@@ -3,19 +3,30 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { generateShortLink } from "@/lib/core/links";
-import { validateAlias } from "@/server/api/routers/link/utils";
+import { destinationUrlSchema } from "@/lib/utils/destination-url";
+import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
+import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
-import { apiError, errorResponse, readJsonBody, validationError } from "../errors";
-import { resolveApiDomainForUser, withApiKey } from "../utils";
+import { errorResponse, readJsonBody, validationError } from "../errors";
+import {
+  apiDomainWriteError,
+  resolveApiDomainForUser,
+  restrictedAccountResponse,
+  withApiKey,
+} from "../utils";
 
 import type { Plan } from "@/lib/billing/plans";
+import type { LinkCreationAttempt } from "@/server/lib/link-creation/failures";
 
 export const POST = withApiKey(async (request: Request, token) => {
+  const restricted = restrictedAccountResponse(token);
+  if (restricted) return restricted;
+
   const body = await readJsonBody(request);
   if (!body.ok) return body.response;
 
@@ -23,19 +34,36 @@ export const POST = withApiKey(async (request: Request, token) => {
   if (!input.success) return validationError(input.error);
 
   const parsedData = input.data;
-  const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
-  if (!requestedDomain) {
-    return apiError(403, "forbidden", "Domain not available for this API key");
-  }
-  if (parsedData.activatesAt && token.plan === "free") {
-    return apiError(403, "forbidden", "Scheduled links are only available on Pro and Ultra plans");
-  }
 
   try {
-    if (parsedData.alias) {
-      await validateAlias({ db }, parsedData.alias, requestedDomain, token.plan !== "free");
-    }
-    const newLink = await createNewLink(parsedData, token.userId, token.plan, requestedDomain);
+    const newLink = await trackLinkCreation(db, "api", token.userId, async (attempt) => {
+      const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
+      if (!requestedDomain) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Domain not available for this API key",
+        });
+      }
+      const plan = token.plan;
+      const domainError = await apiDomainWriteError(
+        token.userId,
+        token.graceUsagePlan,
+        requestedDomain,
+      );
+      if (domainError) {
+        throw new TRPCError({ code: "FORBIDDEN", message: domainError });
+      }
+      if (parsedData.activatesAt && plan === "free") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Scheduled links are only available on Pro and Ultra plans",
+        });
+      }
+      if (parsedData.alias) {
+        await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
+      }
+      return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt);
+    });
     return Response.json(newLink, { status: 201 });
   } catch (error) {
     return errorResponse(error);
@@ -43,7 +71,7 @@ export const POST = withApiKey(async (request: Request, token) => {
 });
 
 const shortenLinkSchema = z.object({
-  url: z.string().url(),
+  url: destinationUrlSchema,
   expiresAt: z.string().optional(),
   activatesAt: z.string().datetime({ offset: true }).optional(),
   expiresAfter: z.number().optional(),
@@ -63,7 +91,13 @@ const shortenLinkSchema = z.object({
 
 type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 
-async function createNewLink(data: ShortenLinkInput, userId: string, plan: Plan, domain: string) {
+async function createNewLink(
+  data: ShortenLinkInput,
+  userId: string,
+  plan: Plan,
+  domain: string,
+  attempt: LinkCreationAttempt,
+) {
   if (data.password) {
     if (plan === "free") {
       throw new TRPCError({
@@ -91,11 +125,14 @@ async function createNewLink(data: ShortenLinkInput, userId: string, plan: Plan,
     }
   }
 
+  attempt.step = "safety";
   await assertUrlSafe(data.url);
+
+  attempt.step = "db";
 
   const newLinkData = {
     url: data.url,
-    alias: data.alias ?? (await generateShortLink()),
+    alias: data.alias ?? (await generateUnreservedAlias(db, domain)),
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     activateAt: data.activatesAt ? new Date(data.activatesAt) : null,
@@ -109,8 +146,10 @@ async function createNewLink(data: ShortenLinkInput, userId: string, plan: Plan,
   // Count the link and insert it together so a failed insert doesn't consume
   // quota and parallel requests can't exceed the monthly limit.
   const newLinkId = await db.transaction(async (tx) => {
-    await reserveMonthlyLinkSlot(userId, tx);
-    const newLink = await tx.insert(link).values(newLinkData);
+    const { userRecord } = await reserveMonthlyLinkSlot(userId, tx);
+    const newLink = await tx
+      .insert(link)
+      .values({ ...newLinkData, ...restrictedLinkValues(userRecord.restrictedAt) });
     return newLink[0].insertId;
   });
 

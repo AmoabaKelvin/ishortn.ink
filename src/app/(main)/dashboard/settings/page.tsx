@@ -1,25 +1,35 @@
 import { Link } from "next-view-transitions";
 
+import { withProductUtm } from "@/lib/attribution/referral";
+import { getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/server";
 
 import { SettingsNav } from "./_components/settings-nav";
 import Billing from "./billing/billing";
 import { DeleteAccountSection } from "./delete-account/delete-account-section";
 import { SettingsForm } from "./general/settings-form";
+import { NotificationSettings } from "./notifications/notification-settings";
 import { ProfileForm } from "./profile/profile-form";
 import { ApiKeys } from "./tokens/_components/api-keys";
 import { AccountTransferSection } from "./transfer/account-transfer-section";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Settings" };
+
 export const dynamic = "force-dynamic";
 
 async function SettingsPage() {
-  const [userSettings, userDomains, subscriptions, tokens, userProfile] = await Promise.all([
-    api.siteSettings.get.query(),
-    api.customDomain.list.query(),
-    api.subscriptions.get.query(),
-    api.token.list.query(),
-    api.user.getProfile.query(),
-  ]);
+  const [userSettings, userDomains, subscriptions, tokens, apiAccess, userProfile, workspace] =
+    await Promise.all([
+      api.siteSettings.get.query(),
+      api.customDomain.list.query(),
+      api.subscriptions.get.query(),
+      api.token.list.query(),
+      api.token.access.query(),
+      api.user.getProfile.query(),
+      api.team.currentWorkspace.query(),
+    ]);
 
   return (
     <div>
@@ -58,7 +68,33 @@ async function SettingsPage() {
               Default settings and preferences
             </p>
             <div className="mt-4">
-              <SettingsForm userSettings={userSettings} availableDomains={userDomains} />
+              {/* The default domain is a personal-workspace setting; team domains can't be picked here */}
+              {workspace.type === "personal" ? (
+                <SettingsForm userSettings={userSettings} availableDomains={userDomains} />
+              ) : (
+                <div className="rounded-xl border border-neutral-200 p-5 dark:border-border">
+                  <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                    Default Domain
+                  </p>
+                  <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
+                    Your default domain applies to your personal workspace. Switch to your personal
+                    workspace to change it.
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Notifications */}
+          <section id="notifications" className="scroll-mt-24">
+            <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+              Notifications
+            </h2>
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+              Emails we send about your links and domains
+            </p>
+            <div className="mt-4">
+              <NotificationSettings productEmailsEnabled={userProfile.productEmailsEnabled} />
             </div>
           </section>
 
@@ -82,7 +118,12 @@ async function SettingsPage() {
                 API Keys
               </h2>
               <Link
-                href="https://ishortn.mintlify.app/api-reference/introduction"
+                // Absolute: docs are served on the app host only, not on team subdomains.
+                href={withProductUtm(
+                  `https://${getAppBaseDomain()}/docs/api`,
+                  "app",
+                  "settings_api_docs",
+                )}
                 target="_blank"
                 className="text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700"
               >
@@ -93,7 +134,7 @@ async function SettingsPage() {
               Programmatic access to your account
             </p>
             <div className="mt-4">
-              <ApiKeys tokens={tokens} />
+              <ApiKeys tokens={tokens} apiAccess={apiAccess} />
             </div>
           </section>
 

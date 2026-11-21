@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { getHTTPStatusCodeFromError } from "@trpc/server/http";
 
 import type { ZodError } from "zod";
 
@@ -55,18 +56,21 @@ function trpcErrorResponse(error: TRPCError): Response {
       return apiError(404, "not_found", error.message);
     case "CONFLICT":
       return apiError(409, "conflict", error.message);
-    default:
-      return apiError(500, "internal_error", "An unexpected error occurred");
   }
+  if (getHTTPStatusCodeFromError(error) < 500) return apiError(400, "bad_request", error.message);
+  return internalError();
+}
+
+function internalError(): Response {
+  return apiError(500, "internal_error", "An unexpected error occurred");
 }
 
 /**
  * Maps an error thrown by shared link logic to a response. Those helpers throw
- * TRPCErrors or plain Errors whose messages are user-facing validation errors
- * (alias rules, plan gates), so plain Errors are a 400.
+ * TRPCErrors with user-facing messages for client errors; anything else is a
+ * server-side failure (database, timeouts) whose message is internal.
  */
 export function errorResponse(cause: unknown): Response {
   if (cause instanceof TRPCError) return trpcErrorResponse(cause);
-  if (cause instanceof Error) return apiError(400, "bad_request", cause.message);
-  return apiError(400, "bad_request", "An error occurred");
+  return internalError();
 }

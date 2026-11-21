@@ -4,12 +4,21 @@ import { IconKey, IconPlus } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 
+import { ApiKeySunsetNotice, ApiProGate } from "./api-access-notice";
 import { CreateTokenDialog } from "./create-token";
 import TokenCard from "./token-card";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
-export function ApiKeys({ tokens }: { tokens: RouterOutputs["token"]["list"] }) {
+export function ApiKeys({
+  tokens,
+  apiAccess,
+}: {
+  tokens: RouterOutputs["token"]["list"];
+  apiAccess: RouterOutputs["token"]["access"];
+}) {
+  if (tokens.length === 0 && !apiAccess.canCreateKeys) return <ApiProGate />;
+
   if (tokens.length === 0) {
     return (
       <div className="py-6 text-center">
@@ -38,20 +47,24 @@ export function ApiKeys({ tokens }: { tokens: RouterOutputs["token"]["list"] }) 
     <div className="space-y-3">
       <div className="divide-y divide-neutral-300/60 rounded-lg border border-neutral-200 bg-white dark:divide-border dark:border-border dark:bg-card">
         {tokens.map((token) => (
-          <TokenCard key={token.id} token={token} />
+          <TokenCard key={token.id} token={token} active={apiAccess.access.status !== "revoked"} />
         ))}
       </div>
-      <CreateTokenDialog
-        trigger={
-          <Button
-            variant="outline"
-            className="h-9 gap-1.5 border-neutral-200 text-[13px] dark:border-border"
-          >
-            <IconPlus size={14} stroke={1.5} />
-            Create API Key
-          </Button>
-        }
-      />
+      {apiAccess.canCreateKeys ? (
+        <CreateTokenDialog
+          trigger={
+            <Button
+              variant="outline"
+              className="h-9 gap-1.5 border-neutral-200 text-[13px] dark:border-border"
+            >
+              <IconPlus size={14} stroke={1.5} />
+              Create API Key
+            </Button>
+          }
+        />
+      ) : (
+        <ApiKeySunsetNotice access={apiAccess.access} />
+      )}
     </div>
   );
 }

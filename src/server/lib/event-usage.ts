@@ -50,9 +50,12 @@ export function getEventTrackingPause(input: {
 }): EventTrackingPause | null {
   const { count, limit, dropped, pausedAt, now = new Date() } = input;
   if (limit === null || count < limit || dropped <= 0 || !pausedAt) return null;
-  // Counters reset lazily on the first event after the month starts (normalizeMonthlyEventCount).
-  const resetsAt = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return { dropped, pausedAt, resetsAt };
+  return { dropped, pausedAt, resetsAt: nextEventCountReset(now) };
+}
+
+// Counters reset lazily on the first event after the month starts (normalizeMonthlyEventCount).
+export function nextEventCountReset(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
 }
 
 /**
@@ -96,9 +99,12 @@ export async function reserveEventUsage(
     await dbClient.update(user).set(usageUpdate).where(eq(user.id, userId));
   }
 
+  // The level is still recorded when emails are off, so turning them back on doesn't replay it.
   const alert =
-    alertLevel !== null && ctx.userRecord.email
+    alertLevel !== null && ctx.userRecord.email && ctx.userRecord.productEmailsEnabled
       ? {
+          userId,
+          resetsAt: nextEventCountReset(new Date()),
           threshold: alertLevel,
           limit,
           currentCount: newCount,

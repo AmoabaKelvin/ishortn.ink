@@ -12,4 +12,10 @@ export const userRouter = createTRPCRouter({
     .mutation(({ ctx, input }) => {
       return services.updateUserProfile(ctx, input);
     }),
+
+  updateNotificationPreferences: protectedProcedure
+    .input(inputs.updateNotificationPreferencesSchema)
+    .mutation(({ ctx, input }) => {
+      return services.updateNotificationPreferences(ctx, input);
+    }),
 });

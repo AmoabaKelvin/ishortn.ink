@@ -516,8 +516,64 @@
     {
       "idx": 73,
       "version": "5",
-      "when": 1795206539265,
-      "tag": "0073_shiny_king_cobra",
+      "when": 1795202887157,
+      "tag": "0073_good_the_liberteens",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1795212151567,
+      "tag": "0074_marvelous_loki",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1795213124724,
+      "tag": "0075_harsh_moonstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "5",
+      "when": 1795214016517,
+      "tag": "0076_glamorous_loa",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "5",
+      "when": 1795216219929,
+      "tag": "0077_amusing_secret_warriors",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "5",
+      "when": 1795221725509,
+      "tag": "0078_lean_wong",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "5",
+      "when": 1795227448529,
+      "tag": "0079_dark_retro_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "5",
+      "when": 1795232074382,
+      "tag": "0080_numerous_dark_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "5",
+      "when": 1795241886654,
+      "tag": "0081_burly_red_hulk",
       "breakpoints": true
     }
   ]

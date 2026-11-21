@@ -45,6 +45,10 @@ const pricingFaqs = [
     a: "Yes. Cancel or downgrade in one click. Your plan stays active until the end of the current billing period, and your links keep working.",
   },
   {
+    q: "Can I switch between monthly and annual?",
+    a: "Yes, from the billing settings in your dashboard. Switching to annual charges the yearly price right away, minus credit for the unused part of your current month. Switching to monthly takes effect right away too, and the unused time on your annual plan is credited toward your next invoices.",
+  },
+  {
     q: "What happens when I hit my monthly link limit?",
     a: "Existing links keep working and keep collecting clicks. You won't be able to create new ones until the next month rolls over or you upgrade.",
   },
@@ -54,7 +58,7 @@ const pricingFaqs = [
   },
   {
     q: "Is the API available on every plan?",
-    a: "The REST API is available on Pro and Ultra. Free is for interactive use through the dashboard.",
+    a: "The REST API is available on Pro and Ultra. Free is for interactive use through the dashboard and can't create API keys. If a paid plan ends, its API keys keep working on Free limits for 7 days, then requests return 403 until the account upgrades.",
   },
 ];
 
@@ -81,7 +85,7 @@ export default function PricingPage() {
         </div>
       </Section>
 
-      <Pricing />
+      <Pricing showHeading={false} />
 
       <Faq faqs={pricingFaqs} />
 

@@ -1,19 +1,25 @@
 import { auth } from "@clerk/nextjs/server";
-import { IconBan, IconTrash } from "@tabler/icons-react";
+import { IconAlertTriangle, IconBan, IconTrash } from "@tabler/icons-react";
 import { Funnel_Sans } from "next/font/google";
 
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
-import { ChangelogToast } from "@/components/changelog/changelog-toast";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
 import { ensureUser } from "@/server/lib/ensure-user";
+import { hasBouncedEmail } from "@/server/lib/notifications/suppression";
+import { api } from "@/trpc/server";
 
 import { AttributionRecorder } from "./_components/attribution-recorder";
+import { BouncedEmailBanner } from "./_components/bounced-email-banner";
 import { DomainMigrationGate } from "./_components/domain-migration-gate";
 import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
+import { PlanGraceBanner } from "./_components/plan-grace-banner";
 import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
+import { trackingPausedBannerState } from "./_components/tracking-paused";
+import { TrackingPausedBanner } from "./_components/tracking-paused-banner";
+import { getDashboardSubscription } from "./_lib/get-subscription";
 
 interface Props {
   children: React.ReactNode;
@@ -29,11 +35,21 @@ export default async function DashboardLayout({ children }: Props) {
   // Check ban/admin status directly via DB, bypassing tRPC (which blocks banned users)
   const session = await auth();
   let isAdmin = false;
+  let isRestricted = false;
+  let userName: string | null = null;
+  let emailBounced = false;
 
   if (session?.userId) {
-    const currentUser = await ensureUser(session.userId);
+    // Parallel so the banner check adds no round trip; it only hides the banner if it fails.
+    const [currentUser, bounced] = await Promise.all([
+      ensureUser(session.userId),
+      hasBouncedEmail(session.userId).catch(() => false),
+    ]);
+    emailBounced = bounced;
 
     isAdmin = currentUser?.isAdmin ?? false;
+    isRestricted = !!currentUser?.restrictedAt;
+    userName = currentUser?.name ?? null;
 
     if (currentUser?.banned) {
       return (
@@ -123,25 +139,48 @@ export default async function DashboardLayout({ children }: Props) {
     }
   }
 
+  // Fetched after ensureUser so a just-provisioned user has a row. The sidebar reads the same
+  // cache() entry, so the paused-tracking banner adds no query. The grace notice is fetched
+  // alongside so its banner is in the first render instead of shifting the page after hydration.
+  const [subscription, graceNotice] = session?.userId
+    ? await Promise.all([
+        getDashboardSubscription(),
+        api.subscriptions.entitlementNotice.query().catch(() => undefined),
+      ])
+    : [null, undefined];
+  const trackingPaused = trackingPausedBannerState(subscription);
+
   return (
     <div className={cn("min-h-screen bg-neutral-50 dark:bg-accent/50", funnelSans.className)}>
-      {/* Changelog banner at the top */}
-      <div className="fixed top-0 left-0 right-0 z-50 lg:left-[280px]">
-        <ChangelogBanner />
-      </div>
-
-      <SidebarWrapper isAdmin={isAdmin} />
+      <SidebarWrapper isAdmin={isAdmin} userName={userName} />
 
       {/* Main content area with left margin for sidebar */}
       <div className="lg:pl-[280px]">
-        <div className="mx-auto max-w-[1180px] px-4 pt-16 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
+        <ChangelogBanner />
+        <div className="mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
           <DashboardNav />
-          <div className="mt-7 py-4">{children}</div>
+          {isRestricted && (
+            <div className="mt-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+              <IconAlertTriangle size={16} stroke={1.5} className="mt-0.5 shrink-0" />
+              <p className="min-w-0">
+                Your account is restricted. Contact{" "}
+                <a
+                  href="mailto:safety@ishortn.ink"
+                  className="font-medium underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300"
+                >
+                  safety@ishortn.ink
+                </a>
+              </p>
+            </div>
+          )}
+          {emailBounced && <BouncedEmailBanner />}
+          {trackingPaused && <TrackingPausedBanner {...trackingPaused} />}
+          <div className="mt-7 py-4">
+            <PlanGraceBanner initialNotice={graceNotice} />
+            {children}
+          </div>
         </div>
       </div>
-
-      {/* Changelog toast notification */}
-      <ChangelogToast />
 
       <DomainMigrationGate />
 

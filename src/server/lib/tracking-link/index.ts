@@ -2,16 +2,17 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
-import { generateShortLink } from "@/lib/core/links";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
   assertDomainAllowed,
   checkWorkspaceLinkLimit,
   countsTowardMonthlyLinkQuota,
-  getWorkspaceDefaultDomain,
+  getPlanAllowedDefaultDomain,
+  restrictedLinkValues,
 } from "@/server/api/routers/link/utils";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { generateUnreservedAlias, reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "@/server/api/trpc";
@@ -75,10 +76,8 @@ export async function prepareHiddenTrackingLink(
     await assertDomainAllowed(ctx, requestedDomain);
   }
 
-  const [alias, domain] = await Promise.all([
-    generateShortLink(),
-    requestedDomain ? Promise.resolve(requestedDomain) : getWorkspaceDefaultDomain(ctx),
-  ]);
+  const domain = requestedDomain || (await getPlanAllowedDefaultDomain(ctx));
+  const alias = await generateUnreservedAlias(ctx.db, domain);
 
   const ownership = workspaceOwnership(ctx.workspace);
 
@@ -93,6 +92,7 @@ export async function prepareHiddenTrackingLink(
       userId: ownership.userId ?? ctx.auth.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId,
+      ...restrictedLinkValues(ctx.restrictedAt),
     },
     trackingUrl: `https://${domain}/${alias}`,
     alias,
@@ -174,6 +174,7 @@ export async function deleteHiddenTrackingLink(
     tx.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, linkId)),
     tx.delete(linkVisit).where(eq(linkVisit.linkId, linkId)),
   ]);
+  await reserveLinkAliases(tx, eq(link.id, linkId), "deleted");
   await tx.delete(link).where(eq(link.id, linkId));
 }
 

@@ -14,6 +14,7 @@ type PlanCaps = {
   bioPageLimit?: number; // Max bio pages (undefined => unlimited)
   bioLinkBlocksPerPageLimit?: number; // Max link blocks per bio page (undefined => unlimited)
   campaignLimit?: number; // Max ACTIVE campaigns (archived don't count; undefined => unlimited)
+  qrCodeLimit?: number; // Max QR codes in the personal workspace (undefined => unlimited)
 };
 
 // Lemon Squeezy variant IDs per plan + billing interval.
@@ -59,11 +60,13 @@ export const PLAN_CAPS: PlanCapsByPlan = {
     linksLimit: 30,
     folderLimit: 0,
     analyticsRangeLimitDays: 7,
+    domainLimit: 0,
     geoRulesLimit: 0, // Targeting rules not available for free plan
     milestonesPerLinkLimit: 0,
     bioPageLimit: 1,
     bioLinkBlocksPerPageLimit: 3,
     campaignLimit: 1,
+    qrCodeLimit: 5,
   },
   pro: {
     eventsLimit: 10000,
@@ -106,7 +109,8 @@ export function getPlanFromIds(variantId?: number | null, productId?: number | n
 }
 
 // Lemon Squeezy statuses that grant paid access outright.
-const ENTITLED_STATUSES = new Set(["active", "on_trial", "past_due"]);
+export const ENTITLED_SUBSCRIPTION_STATUSES = ["active", "on_trial", "past_due"];
+const ENTITLED_STATUSES = new Set(ENTITLED_SUBSCRIPTION_STATUSES);
 
 /**
  * Whether a subscription currently grants paid access. Honors the paid period:
@@ -114,21 +118,24 @@ const ENTITLED_STATUSES = new Set(["active", "on_trial", "past_due"]);
  * entitled until its `endsAt` passes (users keep access until the end of the
  * period they already paid for).
  */
-export function isSubscriptionEntitled(subscription?: Subscription | null): boolean {
+export function isSubscriptionEntitled(
+  subscription?: Subscription | null,
+  nowMs = Date.now(),
+): boolean {
   if (!subscription) return false;
 
   const status = subscription.status ?? "";
   if (ENTITLED_STATUSES.has(status)) return true;
 
   if (status === "cancelled" && subscription.endsAt) {
-    return subscription.endsAt.getTime() > Date.now();
+    return subscription.endsAt.getTime() > nowMs;
   }
 
   return false;
 }
 
-export function resolvePlan(subscription?: Subscription | null): Plan {
-  if (!subscription || !isSubscriptionEntitled(subscription)) {
+export function resolvePlan(subscription?: Subscription | null, nowMs = Date.now()): Plan {
+  if (!subscription || !isSubscriptionEntitled(subscription, nowMs)) {
     return "free";
   }
 
@@ -139,7 +146,30 @@ export function resolvePlan(subscription?: Subscription | null): Plan {
     return mappedPlan;
   }
 
-  return "pro"; // entitled subscription without recognized plan defaults to pro
+  // Rows with no recognised variant and no stored paid plan (e.g. `plan: "free"`
+  // with zeroed ids) carry no evidence of a paid subscription.
+  return "free";
+}
+
+/**
+ * How a plan change applies to a user's subscription:
+ * - `checkout`: no paid subscription, so start a new hosted checkout.
+ * - `update`: a live paid subscription, changed in place on Lemon Squeezy.
+ * - `resume`: cancelled but still inside the paid period; it must be resumed
+ *   rather than replaced, or the user would end up with two subscriptions.
+ */
+export type SubscriptionMode = "checkout" | "update" | "resume";
+
+export function getSubscriptionMode(subscription?: Subscription | null): SubscriptionMode {
+  if (
+    !subscription?.subscriptionId ||
+    subscription.subscriptionId <= 0 ||
+    resolvePlan(subscription) === "free"
+  ) {
+    return "checkout";
+  }
+
+  return subscription.status === "cancelled" ? "resume" : "update";
 }
 
 export function getPlanCaps(plan: Plan): PlanCaps {

@@ -1,0 +1,49 @@
+---
+title: CSV bulk import
+description: Create many short links at once from a CSV file. File format, columns, limits and error messages.
+---
+
+Bulk import creates one short link per row of a CSV file. It's available on **Pro and Ultra** and in team workspaces.
+
+## Upload a file
+
+1. Open the [dashboard](/dashboard).
+2. Open the **…** (bulk actions) menu next to **New Link** and choose **Upload CSV**.
+3. Drop in your `.csv` file, or click to choose it.
+4. Click **Create links** and wait for the summary, which reads like `48 links created, 2 failed`.
+
+## File format
+
+The first row must be a header row. Column names are case-sensitive; other columns are ignored, so you can upload an export from another tool without trimming it.
+
+| Column | Required | Description |
+| --- | --- | --- |
+| `url` | Yes | The destination URL. |
+| `alias` | No | A custom alias. Follows the [alias rules](/docs/short-links#aliases). Leave empty for a generated alias. |
+| `domain` | No | A [platform domain](/docs/platform-domains) or an active [custom domain](/docs/custom-domains) in the workspace. Defaults to `isht.app`. |
+| `note` | No | A private note on the link. |
+
+```csv title="links.csv"
+url,alias,domain,note
+https://example.com/spring-sale,spring-sale,isht.app,Instagram bio
+https://example.com/blog/launch-day,,isht.ink,
+https://example.com/pricing,pricing-2026,,Newsletter footer
+```
+
+## Limits
+
+- Each created row counts toward your [monthly link limit](/docs/short-links#monthly-link-limit). If you've already reached it, the whole upload is rejected. Otherwise rows are created in file order until the limit is reached, and the remaining rows fail with `Monthly limit of {limit} links reached. Upgrade your plan to create more.`
+- Every destination goes through the [link safety check](/docs/abuse#link-safety-checks).
+
+## Row errors
+
+A row that fails doesn't stop the others. The summary lists each failed row with the reason:
+
+| Message | Fix |
+| --- | --- |
+| `Missing or invalid url` | Put a full URL, including `https://`, in the `url` column. |
+| `Alias is used by an earlier row in this file` | Give each row a different alias. |
+| `Alias already exists` | Pick another alias, or leave it empty. |
+| `Alias can only contain alphanumeric characters, dashes, and underscores` | Remove other characters from the alias. |
+| `Selected domain is not available for this workspace.` | Use a platform domain or one of the workspace's active custom domains. |
+| A link safety message | The destination was flagged; see [Abuse and acceptable use](/docs/abuse). |

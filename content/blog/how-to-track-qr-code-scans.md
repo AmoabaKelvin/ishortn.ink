@@ -43,7 +43,7 @@ Because the code contains the short link, you can also change the destination la
 
 1. In your dashboard, go to **QR Codes** and create a new code.
 2. Paste the destination URL. Scan tracking is set up automatically; you don't need to make a short link first.
-3. Style it (colours, pixel and corner shapes) and download it.
+3. Style it (colors, pixel and corner shapes) and download it.
 4. Click the QR code card any time to see its scans.
 
 On the [free plan](/pricing) you get 5 dynamic QR codes. They don't expire, have no ads and include scan analytics with a 7-day view. Scans count toward the free plan's 1,000 tracked events a month; above that, codes keep redirecting but new scans aren't recorded until the month resets. Pro ($8/month) keeps your full scan history and adds a world map view.
@@ -58,6 +58,8 @@ UTM parameters are tags you add to the end of a URL, like this:
 https://yourshop.com/menu?utm_source=qr&utm_medium=print&utm_campaign=winter_menu&utm_content=table_tent
 ```
 
+You can build the tagged URL with our [free UTM builder](/utm-builder). Its QR code preset fills in `qr` as the source and `print` as the medium.
+
 When someone opens that URL, Google Analytics (and most other analytics tools, such as Plausible, Fathom, Matomo and PostHog) reads the tags and files the visit under that source and campaign. Without tags, QR visits usually show up as "Direct" traffic, mixed in with people who typed your address or used a bookmark.
 
 **How to set it up:**
@@ -69,7 +71,7 @@ When someone opens that URL, Google Analytics (and most other analytics tools, s
 
 **The limitations:**
 
-- **It counts visits, not scans.** If someone scans but the page never loads (bad signal, they cancelled), or they decline your cookie banner, GA4 won't see them. Expect GA4 numbers to be lower than scan counts.
+- **It counts visits, not scans.** If someone scans but the page never loads (bad signal, they canceled), or they decline your cookie banner, GA4 won't see them. Expect GA4 numbers to be lower than scan counts.
 - **With a static code, the URL is fixed forever.** A typo in a tag, or a page you later move, means reprinting.
 - **Long URLs make dense codes.** A static code that contains a long tagged URL has more modules and is harder to scan from print. Short links fix this.
 
@@ -78,7 +80,7 @@ When someone opens that URL, Google Analytics (and most other analytics tools, s
 Use a dynamic QR code, and make its destination the UTM-tagged URL. You get:
 
 - **Scan counts** from the QR code service, including scans that never reached your page
-- **On-site behaviour and conversions** in Google Analytics, attributed to the right campaign and placement
+- **On-site behavior and conversions** in Google Analytics, attributed to the right campaign and placement
 - **A small, easy-to-scan code**, because it only contains a short link
 - **The ability to fix mistakes**: edit the destination (tags included) after printing
 
@@ -112,7 +114,7 @@ Say you run a café with two locations and you're launching a winter menu. You w
 2. Point each one at your online menu with its own tags, for example `?utm_source=qr&utm_medium=print&utm_campaign=winter_menu&utm_content=table_tent_east`.
 3. On iShortn, add all four to one campaign (the free plan includes one active campaign). The campaign page totals scans across the codes and ranks them side by side, so you can see the split without a spreadsheet. If you also share the menu on Instagram with a short link, add that link to the same campaign to compare print with social.
 4. After two weeks, compare: scans per code in iShortn, then online orders by `utm_content` in GA4.
-5. Move your budget towards what worked. Because the codes are dynamic, you can repoint the weaker ones at a different offer instead of throwing the print away.
+5. Move your budget toward what worked. Because the codes are dynamic, you can repoint the weaker ones at a different offer instead of throwing the print away.
 
 ## Common mistakes
 

@@ -10,8 +10,10 @@ const log = logger.child({ component: "ensure-user" });
 export type UserAccess = {
   banned: boolean | null;
   bannedReason: string | null;
+  restrictedAt: Date | null;
   isAdmin: boolean | null;
   deletedAt: Date | null;
+  name: string | null;
 };
 
 /**
@@ -22,7 +24,14 @@ export type UserAccess = {
 export async function ensureUser(userId: string): Promise<UserAccess | undefined> {
   const existing = await db.query.user.findFirst({
     where: eq(user.id, userId),
-    columns: { banned: true, bannedReason: true, isAdmin: true, deletedAt: true },
+    columns: {
+      banned: true,
+      bannedReason: true,
+      restrictedAt: true,
+      isAdmin: true,
+      deletedAt: true,
+      name: true,
+    },
   });
   if (existing) return existing;
 
@@ -37,9 +46,23 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
   // Upsert: the webhook may insert the same row concurrently.
   await db
     .insert(user)
-    .values({ id: userId, name, email: primaryEmail, imageUrl: profile.imageUrl })
+    // New accounts have nothing above their plan to check (see ensurePlanChecked).
+    .values({
+      id: userId,
+      name,
+      email: primaryEmail,
+      imageUrl: profile.imageUrl,
+      planCheckedAt: new Date(),
+    })
     .onDuplicateKeyUpdate({ set: { name, email: primaryEmail, imageUrl: profile.imageUrl } });
   log.info({ userId }, "provisioned user row from Clerk profile");
 
-  return { banned: false, bannedReason: null, isAdmin: false, deletedAt: null };
+  return {
+    banned: false,
+    bannedReason: null,
+    restrictedAt: null,
+    isAdmin: false,
+    deletedAt: null,
+    name,
+  };
 }

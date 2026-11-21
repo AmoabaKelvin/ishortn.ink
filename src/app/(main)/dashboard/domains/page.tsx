@@ -1,3 +1,4 @@
+import { ROLE_PERMISSIONS } from "@/server/lib/workspace/types";
 import { api } from "@/trpc/server";
 
 import { AddCustomDomainModal } from "./_components/add-domain-modal";
@@ -6,10 +7,23 @@ import { DomainCardNew } from "./_components/domain-card-new";
 import { DomainMigrationBanner } from "./_components/domain-migration-banner";
 import EmptyState from "./_components/empty-state";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Domains" };
+
 export const dynamic = "force-dynamic";
 
 async function CustomDomainsPage() {
-  const userDomains = await api.customDomain.list.query();
+  const [userDomains, workspace] = await Promise.all([
+    api.customDomain.list.query(),
+    api.team.currentWorkspace.query(),
+  ]);
+
+  // Mirrors the server's domains.create / domains.delete checks so team
+  // members don't see actions that would only fail
+  const canManageDomains =
+    workspace.type === "personal" ||
+    ROLE_PERMISSIONS[workspace.role].some((permission) => permission === "domains.create");
 
   return (
     <div>
@@ -25,20 +39,25 @@ async function CustomDomainsPage() {
           )}
         </div>
 
-        {userDomains.length > 0 && <AddCustomDomainModal />}
+        {userDomains.length > 0 && canManageDomains && <AddCustomDomainModal />}
       </div>
 
       {userDomains.length === 0 ? (
-        <EmptyState />
+        <EmptyState canManageDomains={canManageDomains} />
       ) : (
         <div className="space-y-6">
           <DomainMigrationBanner />
 
           <CloudflareIssuesCard />
 
-          <div className="divide-y divide-neutral-300/60">
+          <div className="divide-y divide-neutral-300/60 dark:divide-border">
             {userDomains.map((domain, index) => (
-              <DomainCardNew key={domain.id} domain={domain} index={index} />
+              <DomainCardNew
+                key={domain.id}
+                domain={domain}
+                index={index}
+                canManageDomains={canManageDomains}
+              />
             ))}
           </div>
         </div>

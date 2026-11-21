@@ -1,10 +1,11 @@
 import crypto from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
-import { addDays } from "date-fns";
-import { and, eq, isNull } from "drizzle-orm";
+import { addDays, subDays } from "date-fns";
+import { and, count, eq, gt, gte, isNotNull, isNull, sql } from "drizzle-orm";
 
-import { getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
+import { TEAM_READ_ONLY_MESSAGE } from "@/lib/billing/entitlements";
+import { DEFAULT_TEAM_DOMAIN, getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
 import { deleteFromCache } from "@/lib/core/cache";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
@@ -15,13 +16,28 @@ import {
   teamMember,
   user,
 } from "@/server/db/schema";
-import { sendTeamInviteEmail } from "@/server/lib/notifications/team-invite";
+import {
+  sendTeamInviteAcceptedEmail,
+  sendTeamInviteEmail,
+  sendTeamMemberRemovedEmail,
+} from "@/server/lib/notifications/team-invite";
 import { requireMinimumRole, requirePermission } from "@/server/lib/workspace/permissions";
+import { getTeamAccess, userHasUltraPlan } from "@/server/lib/workspace/workspace.service";
+
+import {
+  DAILY_INVITE_EMAIL_LIMIT,
+  inviteEmailMatches,
+  inviteStatus,
+  inviteView,
+  memberRoleChangeError,
+  normalizeInviteEmail,
+} from "./utils";
 
 import type { ProtectedTRPCContext, TeamTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type {
   AcceptInviteInput,
   CreateTeamInput,
+  DeclineInviteInput,
   InviteMemberInput,
   RemoveMemberInput,
   RevokeInviteInput,
@@ -69,6 +85,7 @@ export async function createTeam(ctx: ProtectedTRPCContext, input: CreateTeamInp
       name: input.name,
       slug: normalizedSlug,
       ownerId: ctx.auth.userId,
+      defaultDomain: DEFAULT_TEAM_DOMAIN,
     });
 
     const teamId = Number(teamResult.insertId);
@@ -173,16 +190,13 @@ export async function updateTeamSlug(ctx: TeamTRPCContext, input: UpdateTeamSlug
 
 /**
  * Delete team (owner only)
- * Implements soft delete with grace period - sets deletedAt timestamp.
- * A background cleanup job will permanently delete the team and its resources
- * after the grace period (30 days).
+ * Members lose access immediately and there is no restore. The team row is only
+ * soft-deleted so the cleanup cron can purge its resources in batches later
+ * (team-cleanup.service.ts).
  */
 export async function deleteTeam(ctx: TeamTRPCContext) {
   requirePermission(ctx.workspace, "team.delete", "delete team");
 
-  // Soft delete: set deletedAt timestamp
-  // Team resources (links, folders, QR codes, etc.) are preserved during grace period
-  // A background cleanup job will permanently delete everything after 30 days
   await ctx.db.transaction(async (tx) => {
     // Delete all pending invites (no need to preserve these)
     await tx.delete(teamInvite).where(eq(teamInvite.teamId, ctx.workspace.teamId));
@@ -279,7 +293,6 @@ export async function listMembers(ctx: TeamTRPCContext) {
 export async function updateMemberRole(ctx: TeamTRPCContext, input: UpdateMemberRoleInput) {
   requirePermission(ctx.workspace, "team.settings", "update member role");
 
-  // Cannot change owner's role
   const targetMember = await ctx.db.query.teamMember.findFirst({
     where: and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.userId)),
   });
@@ -291,19 +304,9 @@ export async function updateMemberRole(ctx: TeamTRPCContext, input: UpdateMember
     });
   }
 
-  if (targetMember.role === "owner") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Cannot change the owner's role. Use transfer ownership instead.",
-    });
-  }
-
-  // Admin cannot promote to admin (only owner can)
-  if (input.role === "admin" && ctx.workspace.role !== "owner") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Only the team owner can promote members to admin",
-    });
+  const roleChangeError = memberRoleChangeError(ctx.workspace.role, targetMember.role, input.role);
+  if (roleChangeError) {
+    throw new TRPCError({ code: "FORBIDDEN", message: roleChangeError });
   }
 
   await ctx.db
@@ -359,6 +362,22 @@ export async function removeMember(ctx: TeamTRPCContext, input: RemoveMemberInpu
     .delete(teamMember)
     .where(and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.userId)));
 
+  const removedUser = await ctx.db.query.user.findFirst({
+    where: eq(user.id, input.userId),
+    columns: { email: true, name: true },
+  });
+  if (removedUser?.email) {
+    void runBackgroundTask(
+      sendTeamMemberRemovedEmail({
+        memberId: input.userId,
+        memberEmail: removedUser.email,
+        memberName: removedUser.name,
+        teamName: ctx.workspace.team.name,
+        teamSlug: ctx.workspace.team.slug,
+      }),
+    );
+  }
+
   return { success: true };
 }
 
@@ -403,6 +422,14 @@ export async function transferOwnership(ctx: TeamTRPCContext, input: TransferOwn
     });
   }
 
+  // Teams are an Ultra feature and take their entitlements from the owner's plan.
+  if (!(await userHasUltraPlan(input.newOwnerId, ctx.db))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "The new owner needs an Ultra plan to take over this team.",
+    });
+  }
+
   // Transfer in transaction
   await ctx.db.transaction(async (tx) => {
     // Demote current owner to admin
@@ -421,10 +448,11 @@ export async function transferOwnership(ctx: TeamTRPCContext, input: TransferOwn
         and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, input.newOwnerId)),
       );
 
-    // Update team owner reference
+    // Update team owner reference; the new owner is on Ultra, so any owner-plan
+    // grace period no longer applies.
     await tx
       .update(team)
-      .set({ ownerId: input.newOwnerId })
+      .set({ ownerId: input.newOwnerId, ownerPlanGraceEndsAt: null, ownerPlanGraceEmailStage: 0 })
       .where(eq(team.id, ctx.workspace.teamId));
   });
 
@@ -449,87 +477,138 @@ export async function createInvite(ctx: TeamTRPCContext, input: InviteMemberInpu
     });
   }
 
-  // Generate secure token
+  const email = input.email ? normalizeInviteEmail(input.email) : null;
   const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = addDays(new Date(), 7); // 7 day expiry
+  const now = new Date();
+  const expiresAt = addDays(now, 7);
 
-  // If email provided, check if already a member
-  if (input.email) {
-    const existingUser = await ctx.db.query.user.findFirst({
-      where: eq(user.email, input.email),
+  const recipient = email
+    ? await ctx.db.query.user.findFirst({
+        where: eq(user.email, email),
+        columns: { id: true, name: true },
+      })
+    : undefined;
+
+  if (recipient) {
+    const existingMember = await ctx.db.query.teamMember.findFirst({
+      where: and(eq(teamMember.teamId, ctx.workspace.teamId), eq(teamMember.userId, recipient.id)),
     });
 
-    if (existingUser) {
-      const existingMember = await ctx.db.query.teamMember.findFirst({
-        where: and(
-          eq(teamMember.teamId, ctx.workspace.teamId),
-          eq(teamMember.userId, existingUser.id),
-        ),
+    if (existingMember) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "This user is already a member of the team",
       });
-
-      if (existingMember) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "This user is already a member of the team",
-        });
-      }
     }
   }
 
-  const [result] = await ctx.db.insert(teamInvite).values({
-    teamId: ctx.workspace.teamId,
-    email: input.email ?? null,
-    role: input.role,
-    token,
-    invitedBy: ctx.auth.userId,
-    expiresAt,
+  const inviteId = await ctx.db.transaction(async (tx) => {
+    if (email) {
+      // Serialises email invites per team so two concurrent requests can't both
+      // pass the duplicate and daily-limit checks below.
+      await tx
+        .select({ id: team.id })
+        .from(team)
+        .where(eq(team.id, ctx.workspace.teamId))
+        .for("update");
+
+      // LOWER() also matches invites stored before emails were normalised.
+      const pending = await tx.query.teamInvite.findFirst({
+        where: and(
+          eq(teamInvite.teamId, ctx.workspace.teamId),
+          sql`LOWER(${teamInvite.email}) = ${email}`,
+          isNull(teamInvite.acceptedAt),
+          isNull(teamInvite.declinedAt),
+          isNull(teamInvite.revokedAt),
+          gt(teamInvite.expiresAt, now),
+        ),
+        columns: { id: true },
+      });
+
+      if (pending) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "An invite to this email is already pending. Copy its link or revoke it from the Invites list.",
+        });
+      }
+
+      const [sentToday] = await tx
+        .select({ count: count() })
+        .from(teamInvite)
+        .where(
+          and(
+            eq(teamInvite.teamId, ctx.workspace.teamId),
+            isNotNull(teamInvite.email),
+            gte(teamInvite.createdAt, subDays(now, 1)),
+          ),
+        );
+
+      if ((sentToday?.count ?? 0) >= DAILY_INVITE_EMAIL_LIMIT) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `This team has sent ${DAILY_INVITE_EMAIL_LIMIT} invite emails in the last 24 hours. Try again later, or create a link invite instead.`,
+        });
+      }
+    }
+
+    const [result] = await tx.insert(teamInvite).values({
+      teamId: ctx.workspace.teamId,
+      email,
+      role: input.role,
+      token,
+      invitedBy: ctx.auth.userId,
+      expiresAt,
+    });
+
+    return Number(result.insertId);
   });
 
-  // Send email invitation if email provided
-  if (input.email) {
-    // Get inviter's name
+  const inviteUrl = `https://${getAppBaseDomain()}/teams/accept-invite?token=${token}`;
+
+  // Awaited rather than backgrounded so a failed send can be shown to the
+  // inviter, who still has the link to share by hand.
+  let emailSent: boolean | null = null;
+  if (email) {
     const inviter = await ctx.db.query.user.findFirst({
       where: eq(user.id, ctx.auth.userId),
       columns: { name: true },
     });
 
-    // Get recipient's name if they exist
-    const recipient = await ctx.db.query.user.findFirst({
-      where: eq(user.email, input.email),
-      columns: { name: true },
+    emailSent = await sendTeamInviteEmail({
+      email,
+      recipientId: recipient?.id,
+      recipientName: recipient?.name,
+      teamName: ctx.workspace.team.name,
+      teamSlug: ctx.workspace.team.slug,
+      inviterName: inviter?.name || "Someone",
+      role: input.role,
+      inviteUrl,
     });
-
-    void runBackgroundTask(
-      sendTeamInviteEmail({
-        email: input.email,
-        recipientName: recipient?.name,
-        teamName: ctx.workspace.team.name,
-        teamSlug: ctx.workspace.team.slug,
-        inviterName: inviter?.name || "Someone",
-        role: input.role,
-        token,
-      }),
-    );
   }
 
-  const baseDomain = getAppBaseDomain();
-
   return {
-    inviteId: Number(result.insertId),
+    inviteId,
     token,
-    inviteUrl: `https://${baseDomain}/teams/accept-invite?token=${token}`,
+    inviteUrl,
     expiresAt,
+    /** Null when the invite has no email address (link-only). */
+    emailSent,
   };
 }
 
 /**
- * List pending invites for the team
+ * List open invites for the team. Declined ones stay listed so the inviter can see the answer.
  */
 export async function listInvites(ctx: TeamTRPCContext) {
   requirePermission(ctx.workspace, "team.invite", "view team invites");
 
   const invites = await ctx.db.query.teamInvite.findMany({
-    where: eq(teamInvite.teamId, ctx.workspace.teamId),
+    where: and(
+      eq(teamInvite.teamId, ctx.workspace.teamId),
+      isNull(teamInvite.acceptedAt),
+      isNull(teamInvite.revokedAt),
+    ),
     with: {
       inviter: {
         columns: {
@@ -542,19 +621,17 @@ export async function listInvites(ctx: TeamTRPCContext) {
     orderBy: (table, { desc }) => desc(table.createdAt),
   });
 
-  // Filter out accepted invites
-  return invites
-    .filter((i) => !i.acceptedAt)
-    .map((i) => ({
-      id: i.id,
-      email: i.email,
-      role: i.role,
-      token: i.token,
-      expiresAt: i.expiresAt,
-      createdAt: i.createdAt,
-      invitedBy: i.inviter,
-      isExpired: i.expiresAt < new Date(),
-    }));
+  const now = new Date();
+  return invites.map((i) => ({
+    id: i.id,
+    email: i.email,
+    role: i.role,
+    token: i.token,
+    expiresAt: i.expiresAt,
+    createdAt: i.createdAt,
+    invitedBy: i.inviter,
+    status: inviteStatus(i, now),
+  }));
 }
 
 /**
@@ -564,7 +641,11 @@ export async function revokeInvite(ctx: TeamTRPCContext, input: RevokeInviteInpu
   requirePermission(ctx.workspace, "team.invite", "revoke team invite");
 
   const invite = await ctx.db.query.teamInvite.findFirst({
-    where: and(eq(teamInvite.id, input.inviteId), eq(teamInvite.teamId, ctx.workspace.teamId)),
+    where: and(
+      eq(teamInvite.id, input.inviteId),
+      eq(teamInvite.teamId, ctx.workspace.teamId),
+      isNull(teamInvite.revokedAt),
+    ),
   });
 
   if (!invite) {
@@ -574,9 +655,44 @@ export async function revokeInvite(ctx: TeamTRPCContext, input: RevokeInviteInpu
     });
   }
 
-  await ctx.db.delete(teamInvite).where(eq(teamInvite.id, input.inviteId));
+  await ctx.db
+    .update(teamInvite)
+    .set({ revokedAt: new Date() })
+    .where(eq(teamInvite.id, input.inviteId));
 
   return { success: true };
+}
+
+async function notifyInviterOfAcceptance(
+  ctx: ProtectedTRPCContext,
+  invite: {
+    invitedBy: string;
+    role: "admin" | "member";
+    team: { name: string; slug: string };
+  },
+) {
+  const [inviter, member] = await Promise.all([
+    ctx.db.query.user.findFirst({
+      where: eq(user.id, invite.invitedBy),
+      columns: { email: true, name: true },
+    }),
+    ctx.db.query.user.findFirst({
+      where: eq(user.id, ctx.auth.userId),
+      columns: { email: true, name: true },
+    }),
+  ]);
+  if (!inviter?.email) return;
+
+  await sendTeamInviteAcceptedEmail({
+    inviterId: invite.invitedBy,
+    inviterEmail: inviter.email,
+    inviterName: inviter.name,
+    memberName: member?.name || member?.email || "A new member",
+    memberEmail: member?.email,
+    teamName: invite.team.name,
+    teamSlug: invite.team.slug,
+    role: invite.role,
+  });
 }
 
 /**
@@ -584,7 +700,7 @@ export async function revokeInvite(ctx: TeamTRPCContext, input: RevokeInviteInpu
  */
 export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInviteInput) {
   const invite = await ctx.db.query.teamInvite.findFirst({
-    where: eq(teamInvite.token, input.token),
+    where: and(eq(teamInvite.token, input.token), isNull(teamInvite.revokedAt)),
     with: {
       team: true,
     },
@@ -612,6 +728,13 @@ export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInvit
     });
   }
 
+  if (invite.declinedAt) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This invite was declined. Ask a team admin for a new one.",
+    });
+  }
+
   if (invite.expiresAt < new Date()) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -619,18 +742,12 @@ export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInvit
     });
   }
 
-  // If invite is email-specific, verify it matches
   if (invite.email) {
-    const currentUser = await ctx.db.query.user.findFirst({
-      where: eq(user.id, ctx.auth.userId),
-    });
+    await assertInviteRecipient(ctx, invite.email);
+  }
 
-    if (currentUser?.email !== invite.email) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "This invite was sent to a different email address",
-      });
-    }
+  if ((await getTeamAccess(invite.team, ctx.db)).readOnly) {
+    throw new TRPCError({ code: "FORBIDDEN", message: TEAM_READ_ONLY_MESSAGE });
   }
 
   // Check if already a member
@@ -653,7 +770,14 @@ export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInvit
     const claim = await tx
       .update(teamInvite)
       .set({ acceptedAt: new Date() })
-      .where(and(eq(teamInvite.id, invite.id), isNull(teamInvite.acceptedAt)));
+      .where(
+        and(
+          eq(teamInvite.id, invite.id),
+          isNull(teamInvite.acceptedAt),
+          isNull(teamInvite.declinedAt),
+          isNull(teamInvite.revokedAt),
+        ),
+      );
 
     if (claim[0].affectedRows === 0) {
       throw new TRPCError({
@@ -670,6 +794,8 @@ export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInvit
     });
   });
 
+  void runBackgroundTask(notifyInviterOfAcceptance(ctx, invite));
+
   return {
     teamId: invite.team.id,
     teamSlug: invite.team.slug,
@@ -677,12 +803,65 @@ export async function acceptInvite(ctx: ProtectedTRPCContext, input: AcceptInvit
   };
 }
 
+async function assertInviteRecipient(ctx: ProtectedTRPCContext, inviteEmail: string) {
+  const currentUser = await ctx.db.query.user.findFirst({
+    where: eq(user.id, ctx.auth.userId),
+    columns: { email: true },
+  });
+
+  if (!inviteEmailMatches(inviteEmail, currentUser?.email)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This invite was sent to a different email address",
+    });
+  }
+}
+
+/**
+ * Decline a team invite. The invite stays visible to the team as "Declined".
+ */
+export async function declineInvite(ctx: ProtectedTRPCContext, input: DeclineInviteInput) {
+  const invite = await ctx.db.query.teamInvite.findFirst({
+    where: and(eq(teamInvite.token, input.token), isNull(teamInvite.revokedAt)),
+    columns: { id: true, email: true, acceptedAt: true, declinedAt: true, expiresAt: true },
+  });
+
+  if (!invite) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Invalid invite token",
+    });
+  }
+
+  if (invite.email) {
+    await assertInviteRecipient(ctx, invite.email);
+  }
+
+  if (invite.declinedAt) {
+    return { success: true };
+  }
+
+  if (inviteStatus(invite) !== "pending") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This invite has already been used or has expired",
+    });
+  }
+
+  await ctx.db
+    .update(teamInvite)
+    .set({ declinedAt: new Date() })
+    .where(and(eq(teamInvite.id, invite.id), isNull(teamInvite.acceptedAt)));
+
+  return { success: true };
+}
+
 /**
  * Get invite details by token (public - for invite preview page)
  */
 export async function getInviteByToken(ctx: ProtectedTRPCContext, token: string) {
   const invite = await ctx.db.query.teamInvite.findFirst({
-    where: eq(teamInvite.token, token),
+    where: and(eq(teamInvite.token, token), isNull(teamInvite.revokedAt)),
     with: {
       team: {
         columns: {
@@ -711,6 +890,11 @@ export async function getInviteByToken(ctx: ProtectedTRPCContext, token: string)
     return null;
   }
 
+  const membership = await ctx.db.query.teamMember.findFirst({
+    where: and(eq(teamMember.teamId, invite.teamId), eq(teamMember.userId, ctx.auth.userId)),
+    columns: { id: true },
+  });
+
   return {
     team: {
       id: invite.team.id,
@@ -720,8 +904,7 @@ export async function getInviteByToken(ctx: ProtectedTRPCContext, token: string)
     },
     role: invite.role,
     invitedBy: invite.inviter,
-    isExpired: invite.expiresAt < new Date(),
-    isAccepted: !!invite.acceptedAt,
+    view: inviteView(invite, !!membership),
   };
 }
 

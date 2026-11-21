@@ -4,8 +4,6 @@ import {
   IconArchive,
   IconArchiveOff,
   IconArrowsExchange,
-  IconChartBar,
-  IconCopy,
   IconDots,
   IconFolderShare,
   IconKey,
@@ -42,7 +40,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { TransferToWorkspaceModal } from "../transfer-to-workspace-modal";
@@ -66,19 +63,11 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   const [transferToWorkspaceModal, setTransferToWorkspaceModal] = useState(false);
   const [resetStatsDialog, setResetStatsDialog] = useState(false);
   const [deleteLinkDialog, setDeleteLinkDialog] = useState(false);
-  const isPublicStatsEnabled = link.publicStats!;
   const isLinkActive = !link.disabled!;
   const router = useTransitionRouter();
 
-  const togglePublicStatMutation = api.link.togglePublicStats.useMutation({
-    onSuccess: async () => {
-      toast.success("Public stats toggled");
-      await revalidateHomepage();
-    },
-  });
   const toggleLinkStatusMutation = api.link.toggleLinkStatus.useMutation({
     onSuccess: async () => {
-      toast.success("Link status toggled");
       await revalidateHomepage();
     },
   });
@@ -96,45 +85,25 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   });
 
   const toggleArchive = api.link.toggleArchive.useMutation({
-    onSuccess: (data) => {
-      toast.success(data.archived ? "Link archived" : "Link restored");
+    onSuccess: () => {
       router.refresh();
-    },
-    onError: (error) => {
-      toast.error("Error updating link status", {
-        description: error.message,
-      });
     },
   });
 
-  const copyPublicStatsLink = async () => {
-    await copyToClipboard(`https://ishortn.ink/analytics/${link.alias}?domain=${link.domain}`);
-  };
-
-  const handleLinkToggleMutation = async () => {
+  // Toasts come from toast.promise alone; the mutations above stay silent.
+  const handleLinkToggleMutation = () => {
     toast.promise(toggleLinkStatusMutation.mutateAsync({ id: link.id }), {
       loading: "Updating...",
       success: isLinkActive ? "Link deactivated" : "Link activated",
-      error: "Failed to update link",
-    });
-  };
-
-  const handlePublicStatsToggleMutation = async () => {
-    toast.promise(togglePublicStatMutation.mutateAsync({ id: link.id }), {
-      loading: "Updating...",
-      success: isPublicStatsEnabled ? "Public stats disabled" : "Public stats enabled",
-      error: "Failed to update",
+      error: (error: Error) => error.message,
     });
   };
 
   const handleToggleArchive = () => {
     toast.promise(toggleArchive.mutateAsync({ id: link.id }), {
       loading: link.archived ? "Restoring..." : "Archiving...",
-      success: (data) => {
-        router.refresh();
-        return data.archived ? "Link archived" : "Link restored";
-      },
-      error: "Failed to update",
+      success: (data) => (data.archived ? "Link archived" : "Link restored"),
+      error: (error: Error) => error.message,
     });
   };
 
@@ -144,6 +113,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
+            aria-label="Link actions"
             className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 focus:outline-none"
           >
             <IconDots size={16} stroke={1.5} />
@@ -243,23 +213,6 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
             <IconKey size={15} stroke={1.5} className="mr-2 text-neutral-400" />
             {link.passwordHash ? "Change password" : "Add password"}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={handlePublicStatsToggleMutation}
-            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
-          >
-            <IconChartBar size={15} stroke={1.5} className="mr-2 text-neutral-400" />
-            {isPublicStatsEnabled ? "Disable public stats" : "Enable public stats"}
-          </DropdownMenuItem>
-          {isPublicStatsEnabled && (
-            <DropdownMenuItem
-              onClick={copyPublicStatsLink}
-              className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
-            >
-              <IconCopy size={15} stroke={1.5} className="mr-2 text-neutral-400" />
-              Copy stats link
-            </DropdownMenuItem>
-          )}
-
           <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
 
           <DropdownMenuItem

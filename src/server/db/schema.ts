@@ -34,6 +34,11 @@ export const team = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for grace period cleanup
+    // Grace period for a team whose owner is not on Ultra (see src/lib/billing/entitlements.ts).
+    // Kept after it passes so the daily reconcile never grants a second one; cleared once the
+    // owner is on Ultra again.
+    ownerPlanGraceEndsAt: timestamp("ownerPlanGraceEndsAt"),
+    ownerPlanGraceEmailStage: int("ownerPlanGraceEmailStage").default(0),
   },
   (table) => ({
     ownerIdIdx: index("ownerId_idx").on(table.ownerId),
@@ -69,6 +74,9 @@ export const teamInvite = mysqlTable(
     invitedBy: varchar("invitedBy", { length: 32 }).notNull(),
     expiresAt: timestamp("expiresAt").notNull(),
     acceptedAt: timestamp("acceptedAt"),
+    declinedAt: timestamp("declinedAt"),
+    // Revoked invites are kept until they expire so they still count toward the daily email limit.
+    revokedAt: timestamp("revokedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
@@ -160,6 +168,8 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
+    // Milestone, usage-alert and domain-reminder emails. Account, billing and team emails ignore it.
+    productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
     // Account transfer deletion tracking
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period
     // Platform admin
@@ -168,9 +178,27 @@ export const user = mysqlTable(
     banned: boolean("banned").default(false),
     bannedAt: timestamp("bannedAt"),
     bannedReason: varchar("bannedReason", { length: 255 }),
+    // Plan entitlement grace period (see src/lib/billing/entitlements.ts): the account keeps
+    // `planGracePlan` until `planGraceEndsAt`. Kept after it passes so the daily reconcile never
+    // grants a second one; cleared when the paid plan covers it again.
+    planGracePlan: mysqlEnum("planGracePlan", ["free", "pro", "ultra"]),
+    planGraceEndsAt: timestamp("planGraceEndsAt"),
+    planGraceReason: mysqlEnum("planGraceReason", ["lapsed", "over_plan"]),
+    planGraceEmailStage: int("planGraceEmailStage").default(0),
+    // When the account's usage was last checked against its plan; null until the first check,
+    // so accounts that predate enforcement get their grace period before any restriction applies.
+    planCheckedAt: timestamp("planCheckedAt"),
+    // API access sunset emails (see src/server/lib/api-access.ts): set once the
+    // email went out, or once the account's keys were already past their cutoff.
+    apiSunsetNoticeSentAt: timestamp("apiSunsetNoticeSentAt"),
+    apiSunsetReminderSentAt: timestamp("apiSunsetReminderSentAt"),
+    // Restriction: can sign in and pay, but can't create or edit links, domains, bio pages or QR codes
+    restrictedAt: timestamp("restrictedAt"),
+    restrictedReason: varchar("restrictedReason", { length: 255 }),
   },
   (table) => ({
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),
+    planGraceEndsAtIdx: index("planGraceEndsAt_idx").on(table.planGraceEndsAt),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
   }),
 );
@@ -288,6 +316,23 @@ export const link = mysqlTable(
     blockedAtIdx: index("blocked_blockedAt_idx").on(table.blocked, table.blockedAt),
     domainIdx: index("domain_idx").on(table.domain),
     listingIdx: index("listing_idx").on(table.userId, table.teamId, table.isQrCode, table.archived),
+  }),
+);
+
+// Aliases on platform domains that may never be claimed again once their link is
+// gone, so old printed codes and shared URLs can't start pointing somewhere new.
+// Custom-domain aliases are not recorded: only the domain's owner can use them.
+export const reservedAlias = mysqlTable(
+  "ReservedAlias",
+  {
+    id: serial("id").primaryKey(),
+    domain: varchar("domain", { length: 255 }).notNull(),
+    alias: varchar("alias", { length: 20 }).notNull(), // normalizeAlias()d
+    reason: mysqlEnum("reason", ["deleted", "purged", "blocked"]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    domainAliasIdx: unique("reservedAlias_domain_alias").on(table.domain, table.alias),
   }),
 );
 
@@ -525,6 +570,33 @@ export const siteSettings = mysqlTable(
   }),
 );
 
+// When API keys on accounts without Pro/Ultra stop working (see
+// src/server/lib/api-access.ts). A single row (id 1), inserted by the first
+// api-access-sunset cron run after deploy and never moved afterwards.
+export const apiAccessSunset = mysqlTable("ApiAccessSunset", {
+  id: int("id").primaryKey(),
+  sunsetAt: timestamp("sunsetAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// One row per failed link creation, read by the link-creation-health cron to
+// alert on failure spikes (src/server/lib/link-creation). Holds no URL or user
+// details; rows older than the retention window are pruned by that cron.
+export const linkCreationFailure = mysqlTable(
+  "LinkCreationFailure",
+  {
+    id: serial("id").primaryKey(),
+    source: mysqlEnum("source", ["dashboard", "bulk", "api"]).notNull(),
+    step: mysqlEnum("step", ["validation", "safety", "metadata", "db"]).notNull(),
+    code: varchar("code", { length: 64 }).notNull(),
+    serverError: boolean("serverError").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
+  }),
+);
+
 // Tag model for storing unique tags
 // Uniqueness strategy:
 // - Team workspaces: unique(name, teamId) enforced at DB level
@@ -613,6 +685,27 @@ export const blockedDomain = mysqlTable("BlockedDomain", {
   createdByUserId: varchar("createdByUserId", { length: 32 }),
 });
 
+// Addresses Resend reported as hard-bounced or complained (src/app/api/webhooks/resend).
+// Non-essential email skips active rows; a later delivery clears a bounce by setting clearedAt.
+export const emailSuppression = mysqlTable(
+  "EmailSuppression",
+  {
+    id: serial("id").primaryKey(),
+    email: varchar("email", { length: 255 }).notNull(),
+    type: mysqlEnum("suppressionType", ["bounced", "complained"]).notNull(),
+    // The account with this address when the event arrived, if any.
+    userId: varchar("userId", { length: 32 }),
+    detail: varchar("detail", { length: 255 }),
+    lastEventAt: timestamp("lastEventAt").notNull(),
+    clearedAt: timestamp("clearedAt"),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => ({
+    emailTypeIdx: unique("emailSuppression_email_type_idx").on(table.email, table.type),
+    lastEventAtIdx: index("emailSuppression_lastEventAt_idx").on(table.lastEventAt),
+  }),
+);
+
 export const flaggedLink = mysqlTable(
   "FlaggedLink",
   {
@@ -696,6 +789,9 @@ export const customDomain = mysqlTable(
     status: mysqlEnum("status", ["pending", "active", "invalid"]).default("pending"),
     verificationDetails: json("verificationDetails"),
     lastReminderSentAt: timestamp("lastReminderSentAt"),
+    // Set when an account restriction released this apex's www fallback hostname,
+    // so lifting the restriction re-adds it (and only then)
+    wwwHostnameReleased: boolean("wwwHostnameReleased").default(false),
     // Generated column to handle NULL teamId in unique constraint
     // MySQL treats NULLs as distinct, so we coalesce to 0 for personal workspaces
     teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(sql`COALESCE(\`teamId\`, 0)`, {

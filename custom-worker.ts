@@ -1,5 +1,7 @@
 // @ts-ignore `.open-next/worker.js` is generated at build time
 import { default as handler } from "./.open-next/worker.js";
+import { APP_BASE_DOMAIN } from "./src/lib/constants/domains";
+import { applyLinkStateStatus } from "./src/lib/routing/link-state";
 import { getWwwRedirectUrl } from "./src/lib/routing/www-redirect";
 
 import type { ClickEvent } from "./src/lib/core/analytics/click-event";
@@ -14,8 +16,12 @@ const CRON_ROUTES = new Map([
   ["0 0 * * *", "/api/cron/cleanup-teams"],
   ["0 2 * * SUN", "/api/cron/cleanup-analytics"],
   ["0 4 * * *", "/api/cron/cleanup-expired"],
+  ["0 5 * * *", "/api/cron/entitlements"],
+  ["25 * * * *", "/api/cron/entitlements?emails=1"],
   ["30 */6 * * *", "/api/cron/phishing-rescan"],
   ["5,20,35,50 * * * *", "/api/cron/phishing-rescan?backlog=1"],
+  ["10 * * * *", "/api/cron/api-access-sunset"],
+  ["40 * * * *", "/api/cron/link-creation-health"],
 ]);
 
 // The queue consumer lives in a Next.js route so it shares the app's DB setup.
@@ -27,10 +33,10 @@ function callApp(env: Env, path: string, body?: ClickEvent[]): Promise<Response>
   if (!self) throw new Error("WORKER_SELF_REFERENCE binding missing");
   const headers = new Headers({ Authorization: `Bearer ${env.CRON_SECRET}` });
   if (body === undefined) {
-    return self.fetch(`https://ishortn.ink${path}`, { method: "GET", headers });
+    return self.fetch(`https://${APP_BASE_DOMAIN}${path}`, { method: "GET", headers });
   }
   headers.set("content-type", "application/json");
-  return self.fetch(`https://ishortn.ink${path}`, {
+  return self.fetch(`https://${APP_BASE_DOMAIN}${path}`, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
@@ -41,7 +47,8 @@ export default {
   fetch(request, env, ctx) {
     const wwwRedirect = getWwwRedirectUrl(request.url);
     if (wwwRedirect) return Response.redirect(wwwRedirect, 301);
-    return handler.fetch(request, env, ctx);
+    const render = (req: Request): Promise<Response> => handler.fetch(req, env, ctx);
+    return render(request).then((response) => applyLinkStateStatus(request, response, render));
   },
 
   async scheduled(controller, env) {

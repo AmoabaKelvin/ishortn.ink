@@ -1,6 +1,8 @@
-import { Body, Container, Head, Html, Preview, Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
 
-import type { Plan } from "@/lib/billing/plans";
+import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
+
+import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
 type EventUsageAlertEmailProps = {
   userName?: string | null;
@@ -8,7 +10,13 @@ type EventUsageAlertEmailProps = {
   limit: number;
   currentCount: number;
   plan: Plan;
+  resetDate: string;
+  /** The next plan up; its event allowance is read from PLAN_CAPS. */
+  upgrade: { plan: Exclude<Plan, "free">; label: string; url: string };
+  notificationSettingsUrl: string;
 };
+
+const PLAN_NAMES = { free: "Free", pro: "Pro", ultra: "Ultra" } satisfies Record<Plan, string>;
 
 export const EventUsageAlertEmail = ({
   userName,
@@ -16,59 +24,76 @@ export const EventUsageAlertEmail = ({
   limit,
   currentCount,
   plan,
+  resetDate,
+  upgrade,
+  notificationSettingsUrl,
 }: EventUsageAlertEmailProps) => {
+  const capReached = threshold >= 100;
+  const planName = PLAN_NAMES[plan];
+  const upgradeLimit = PLAN_CAPS[upgrade.plan].eventsLimit;
+  const upgradeOffer =
+    upgradeLimit === undefined
+      ? `The ${PLAN_NAMES[upgrade.plan]} plan has no monthly event cap.`
+      : `The ${PLAN_NAMES[upgrade.plan]} plan includes ${upgradeLimit.toLocaleString()} analytics events a month.`;
+
   return (
-    <Html>
-      <Head />
-      <Preview>You&apos;re nearing your monthly analytics cap</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Section style={section}>
-            <Text style={text}>Hi {userName || "there"},</Text>
+    <EmailLayout
+      preview={
+        capReached
+          ? "Analytics recording is paused until your monthly cap resets"
+          : `You've used ${threshold}% of your monthly analytics events`
+      }
+      notificationSettingsUrl={notificationSettingsUrl}
+    >
+      <Text style={text}>Hi {userName || "there"},</Text>
 
-            <Text style={text}>
-              Heads up: you&apos;ve used {currentCount} of your monthly analytics events on the{" "}
-              {plan.toUpperCase()} plan ({threshold}% of the {limit.toLocaleString()} event limit).
-            </Text>
+      {capReached ? (
+        <>
+          <Text style={text}>
+            You&apos;ve used all {limit.toLocaleString()} analytics events included in the{" "}
+            {planName} plan this month. Your links keep redirecting as normal, but new visits
+            aren&apos;t recorded until your cap resets on {resetDate}.
+          </Text>
+          <Text style={text}>{upgradeOffer} Upgrading resumes recording straight away.</Text>
+        </>
+      ) : (
+        <>
+          <Text style={text}>
+            Heads up: you&apos;ve used {currentCount.toLocaleString()} of the{" "}
+            {limit.toLocaleString()} analytics events included in the {planName} plan this month (
+            {threshold}%).
+          </Text>
+          <Text style={text}>
+            Your links keep redirecting either way, but once you reach the cap new visits
+            aren&apos;t recorded until it resets on {resetDate}. {upgradeOffer}
+          </Text>
+        </>
+      )}
 
-            <Text style={text}>
-              We&apos;ll keep redirecting your links, but analytics recording will pause if you hit
-              100% of your limit. Upgrade anytime to raise or remove this cap.
-            </Text>
+      <EmailButton href={upgrade.url}>{upgrade.label}</EmailButton>
 
-            <Text style={text}>
-              If this doesn&apos;t look right, reply to this email and we&apos;ll help out.
-            </Text>
+      <Text style={text}>
+        If this doesn&apos;t look right, reply to this email and we&apos;ll help out.
+      </Text>
 
-            <Text style={text}>Thanks for using iShortn!</Text>
-            <Text style={{ ...text, fontWeight: 500 }}>Kelvin & the iShortn team</Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+      <Signoff />
+    </EmailLayout>
   );
 };
 
-const main = {
-  backgroundColor: "#ffffff",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-};
-
-const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  maxWidth: "560px",
-};
-
-const section = {
-  padding: "24px",
-};
-
-const text = {
-  color: "#333",
-  fontSize: "16px",
-  lineHeight: "24px",
-};
+EventUsageAlertEmail.PreviewProps = {
+  userName: "Ama",
+  threshold: 100,
+  limit: 1000,
+  currentCount: 1000,
+  plan: "free",
+  resetDate: "December 1",
+  upgrade: {
+    plan: "pro",
+    label: "Upgrade to Pro",
+    url: "https://ishortn.ink/dashboard/pricing?highlight=pro&source=events_email_100&utm_source=ishortn&utm_medium=email&utm_campaign=event-cap",
+  },
+  notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
+} satisfies EventUsageAlertEmailProps;
 
 export default EventUsageAlertEmail;

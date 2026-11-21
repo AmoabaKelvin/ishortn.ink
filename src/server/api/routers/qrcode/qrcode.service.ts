@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, eq, inArray, sql, sum } from "drizzle-orm";
+import { and, count, eq, inArray, sum } from "drizzle-orm";
 
+import { getPlanCaps } from "@/lib/billing/plans";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
@@ -12,11 +13,13 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
+import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import { insertHiddenTrackingLink, prepareHiddenTrackingLink } from "@/server/lib/tracking-link";
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import { updateLink } from "../link/link.service";
+import { toLegacyQrStyles } from "./utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type {
@@ -30,8 +33,13 @@ import type { z } from "zod";
 
 const log = logger.child({ component: "qrcode.service" });
 
-// Free tier QR code limit
-const FREE_QR_CODE_LIMIT = 5;
+export async function countWorkspaceQrCodes(ctx: WorkspaceTRPCContext) {
+  const [result] = await ctx.db
+    .select({ count: count() })
+    .from(qrcode)
+    .where(workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId));
+  return Number(result?.count ?? 0);
+}
 
 function userFacing<A extends unknown[], R>(
   operation: string,
@@ -56,24 +64,17 @@ export const createQrCode = userFacing(
   "createQrCode",
   "Something went wrong while creating your QR code. Please try again.",
   async (ctx: WorkspaceTRPCContext, input: QRCodeInput) => {
-    // Use workspace plan - team workspaces have Ultra features (unlimited QR codes)
-    const workspacePlan = ctx.workspace.plan;
-    const isTeamWorkspace = ctx.workspace.type === "team";
+    // Team workspaces have Ultra features (unlimited QR codes); limits apply to personal ones.
+    const qrCodeLimit =
+      ctx.workspace.type === "team" ? undefined : getPlanCaps(ctx.workspace.plan).qrCodeLimit;
 
-    // Only check limits for free plan personal workspaces
-    if (workspacePlan === "free" && !isTeamWorkspace) {
-      // Count QR codes in the personal workspace (exclude team QR codes)
-      const qrCodeCountResult = await ctx.db
-        .select({ count: sql<number>`count(*)` })
-        .from(qrcode)
-        .where(workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId));
+    if (qrCodeLimit !== undefined) {
+      const currentCount = await countWorkspaceQrCodes(ctx);
 
-      const currentCount = Number(qrCodeCountResult[0]?.count ?? 0);
-
-      if (currentCount >= FREE_QR_CODE_LIMIT) {
+      if (currentCount >= qrCodeLimit) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: `You've reached the free plan limit of ${FREE_QR_CODE_LIMIT} QR codes. Upgrade to Pro to create more.`,
+          message: `You've reached your plan's limit of ${qrCodeLimit} QR codes. Upgrade to create more.`,
         });
       }
     }
@@ -110,11 +111,7 @@ export const createQrCode = userFacing(
         title: input.title,
         color: input.selectedColor,
         content: input.content,
-        // SAFETY: the create form writes its markerFrame vocabulary into this legacy enum
-        // column verbatim; the DB enum, not this layer, validates the value.
-        cornerStyle: input.cornerStyle as (typeof qrcode.cornerStyle.enumValues)[number],
-        // SAFETY: same contract as cornerStyle, fed from the form's pixelStyle.
-        patternStyle: input.patternStyle as (typeof qrcode.patternStyle.enumValues)[number],
+        ...toLegacyQrStyles(input.patternStyle, input.cornerStyle),
         linkId: hiddenLinkId,
         contentType: "link",
       });
@@ -280,6 +277,7 @@ export const deleteQrCode = userFacing(
           tx.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, qrCode.linkId)),
           tx.delete(linkVisit).where(eq(linkVisit.linkId, qrCode.linkId)),
         ]);
+        await reserveLinkAliases(tx, eq(link.id, qrCode.linkId), "deleted");
         await tx.delete(link).where(eq(link.id, qrCode.linkId));
       }
     });

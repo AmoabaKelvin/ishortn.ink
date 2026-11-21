@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 
-import WelcomeEmail from "@/emails/welcome-to-pro";
 import { env } from "@/env.mjs";
 import { getIntervalFromVariantId, getPlanFromIds } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
@@ -14,11 +13,20 @@ import {
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
-import { resend } from "@/server/lib/notifications/resend-client";
+import {
+  applyBillingEventEntitlements,
+  syncEntitlementsAfterBillingEvent,
+} from "@/server/lib/entitlements/grace";
+import {
+  sendSubscriptionCancelledEmail,
+  sendWelcomeEmail,
+} from "@/server/lib/notifications/billing";
 
 import { eventIsBehindProvider } from "./reconcile";
 
 import type { LemonsqueezySubscriptionEvent } from "@/lib/types/lemonsqueezy";
+import type { Subscription } from "@/server/db/schema";
+import type { BillingRecipient } from "@/server/lib/notifications/billing";
 import type { MySqlRawQueryResult } from "drizzle-orm/mysql2";
 
 const log = logger.child({ webhook: "lemonsqueezy" });
@@ -68,8 +76,17 @@ export async function POST(request: Request) {
 
   const subscriptionId = Number.parseInt(event.data.data.id);
   try {
-    const { result, userId } = await processWebhook(event.data);
+    const { result, userId, previous } = await processWebhook(event.data);
     log.info({ event: eventName, subscriptionId, userId, result }, "processed webhook");
+    if (result === "applied" && userId) {
+      // A retry would be dropped as stale, so a failure here is logged rather
+      // than returned; the daily entitlements reconcile catches it.
+      try {
+        await syncEntitlementsAfterBillingEvent(userId, previous ?? null);
+      } catch (err) {
+        log.error({ err, event: eventName, subscriptionId, userId }, "entitlement sync failed");
+      }
+    }
     if (result === "invalid_payload") {
       return new Response("Invalid updated_at", { status: 400 });
     }
@@ -121,10 +138,17 @@ async function resolveUserId({ meta, data }: LemonsqueezySubscriptionEvent) {
   return byEmail?.id ?? null;
 }
 
+type WebhookOutcome = {
+  result: WebhookResult;
+  userId: string | null;
+  /** The subscription row before this event, for the entitlement sync. */
+  previous?: Subscription | null;
+};
+
 /** Applies the event, throwing on any failure a retry could fix. */
 async function processWebhook(
   webhookEvent: LemonsqueezySubscriptionEvent,
-): Promise<{ result: WebhookResult; userId: string | null }> {
+): Promise<WebhookOutcome> {
   const { meta, data } = webhookEvent;
   const { event_name } = meta;
   const subscriptionId = Number.parseInt(data.id);
@@ -171,7 +195,6 @@ async function processWebhook(
   // can revoke the row a newer subscription now owns.
   const existing = await db.query.subscription.findFirst({
     where: eq(subscription.userId, userId),
-    columns: { subscriptionId: true, providerUpdatedAt: true },
   });
 
   let isStale = false;
@@ -235,6 +258,29 @@ async function processWebhook(
     return "no_row_matched";
   };
 
+  const paidPlan = plan === "ultra" ? "ultra" : "pro";
+
+  // Billing emails go out after the write and outside the response: a mail
+  // failure must not fail the delivery, and a retry would be dropped as stale.
+  const emailOwner = (send: (recipient: BillingRecipient) => Promise<boolean>) => {
+    void runBackgroundTask(
+      (async () => {
+        const owner = await db.query.user.findFirst({
+          where: eq(user.id, userId),
+          columns: { email: true, name: true },
+        });
+        if (!owner?.email) {
+          log.error(
+            { event: event_name, subscriptionId, userId },
+            "user has no email for billing email",
+          );
+          return;
+        }
+        await send({ userId, email: owner.email, name: owner.name });
+      })(),
+    );
+  };
+
   if (event_name === "subscription_created") {
     const account = await db.query.user.findFirst({
       where: eq(user.id, userId),
@@ -291,69 +337,72 @@ async function processWebhook(
       });
 
     const email = account.email;
-    const emailPlan = plan === "ultra" ? "ultra" : "pro";
 
     if (!email) {
       log.error({ event: event_name, subscriptionId, userId }, "user has no email for welcome");
-    } else if (resend) {
-      // Sent after the write and outside the response: a mail failure must not
-      // fail the delivery, and a retry would be dropped as stale anyway.
-      void runBackgroundTask(
-        resend.emails.send({
-          from: "Kelvin from iShortn <kelvin@ishortn.ink>",
-          to: email,
-          subject: `Welcome to iShortn ${emailPlan === "ultra" ? "Ultra" : "Pro"}`,
-          react: WelcomeEmail({ userName: account.name ?? "there", plan: emailPlan }),
-        }),
-      );
+    } else {
+      void runBackgroundTask(sendWelcomeEmail({ userId, email, name: account.name }, paidPlan));
     }
-    return { result: "applied", userId };
+    return { result: "applied", userId, previous: existing ?? null };
   }
 
   if (event_name === "subscription_updated") {
-    return {
-      result: updateResult(
-        await db
-          .update(subscription)
-          .set({
-            status,
-            plan,
-            billingInterval,
-            variantId,
-            productId,
-            renewsAt: renewsAt ? new Date(renewsAt) : null,
-            endsAt: endsAt ? new Date(endsAt) : null,
-            cardBrand,
-            cardLastFour,
-            providerUpdatedAt,
-          })
-          .where(currentSubscription),
-      ),
-      userId,
-    };
+    const storedPlan = existing
+      ? (getPlanFromIds(existing.variantId, existing.productId) ?? existing.plan)
+      : null;
+    const result = updateResult(
+      await db
+        .update(subscription)
+        .set({
+          status,
+          plan,
+          billingInterval,
+          variantId,
+          productId,
+          renewsAt: renewsAt ? new Date(renewsAt) : null,
+          endsAt: endsAt ? new Date(endsAt) : null,
+          cardBrand,
+          cardLastFour,
+          providerUpdatedAt,
+        })
+        .where(currentSubscription),
+    );
+
+    // An in-place upgrade arrives as an update, not a new subscription.
+    if (result === "applied" && storedPlan === "pro" && plan === "ultra" && status === "active") {
+      emailOwner((recipient) => sendWelcomeEmail(recipient, "ultra"));
+    }
+    return { result, userId, previous: existing ?? null };
   }
 
   if (event_name === "subscription_cancelled") {
     // Keep the plan/variant intact — a cancelled subscription stays entitled
-    // until endsAt. resolvePlan() drops it to free once that date passes.
-    return {
-      result: updateResult(
-        await db
-          .update(subscription)
-          .set({
-            status,
-            endsAt: endsAt ? new Date(endsAt) : null,
-            providerUpdatedAt,
-          })
-          .where(currentSubscription),
-      ),
-      userId,
-    };
+    // until endsAt (see paidPlan in src/lib/billing/entitlements.ts).
+    const result = updateResult(
+      await db
+        .update(subscription)
+        .set({
+          status,
+          endsAt: endsAt ? new Date(endsAt) : null,
+          providerUpdatedAt,
+        })
+        .where(currentSubscription),
+    );
+
+    if (result === "applied") {
+      emailOwner((recipient) =>
+        sendSubscriptionCancelledEmail(recipient, paidPlan, endsAt ? new Date(endsAt) : null),
+      );
+    }
+    return { result, userId, previous: existing ?? null };
   }
 
-  return {
-    result: updateResult(
-      await db
+  // The row is reset to free here, so the lapse grace (which needs the plan the
+  // account had) is recorded in the same transaction: nothing else could
+  // recover it from the row afterwards.
+  return db.transaction(async (tx) => {
+    const result = updateResult(
+      await tx
         .update(subscription)
         .set({
           status,
@@ -364,7 +413,10 @@ async function processWebhook(
           providerUpdatedAt,
         })
         .where(currentSubscription),
-    ),
-    userId,
-  };
+    );
+    if (result === "applied") {
+      await applyBillingEventEntitlements(tx, userId, existing ?? null);
+    }
+    return { result, userId, previous: existing ?? null };
+  });
 }

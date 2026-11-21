@@ -40,7 +40,13 @@ describe("v1 error responses", () => {
     expect(errorResponse(new TRPCError({ code: "FORBIDDEN", message: "Upgrade" })).status).toBe(
       403,
     );
-    expect(errorResponse(new Error("Alias already exists")).status).toBe(400);
+    expect(
+      errorResponse(new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Slow down" })).status,
+    ).toBe(400);
+
+    const driver = errorResponse(new Error("ER_LOCK_WAIT_TIMEOUT: connection details"));
+    expect(driver.status).toBe(500);
+    expect((await driver.json()).error.message).toBe("An unexpected error occurred");
 
     const internal = errorResponse(
       new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "db exploded" }),

@@ -8,7 +8,7 @@ import { workspaceFilter } from "@/server/lib/workspace";
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { Plan } from "@/lib/billing/plans";
 import type { db } from "@/server/db";
-import type { BioPage } from "@/server/db/schema";
+import type { BioPage, BioPageTheme } from "@/server/db/schema";
 
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -37,6 +37,8 @@ export const RESERVED_BIO_SLUGS = new Set([
   "features",
   "pricing",
   "compare",
+  "qr-code-generator",
+  "utm-builder",
   "admin",
   "settings",
   "login",
@@ -162,4 +164,28 @@ export function rethrowBioDuplicate(error: Error): never {
     });
   }
   throw error;
+}
+
+/**
+ * Whether a theme the editor resends matches the stored one. MySQL JSON
+ * columns don't keep key order, so fields are compared one by one.
+ */
+export function sameBioTheme(a: BioPageTheme, b: BioPageTheme | null): boolean {
+  if (!b) return false;
+  const bgA = a.background;
+  const bgB = b.background;
+  const sameBackground =
+    bgA === undefined || bgB === undefined
+      ? bgA === bgB
+      : bgA.type === bgB.type &&
+        bgA.color === bgB.color &&
+        bgA.from === bgB.from &&
+        bgA.to === bgB.to;
+  return (
+    sameBackground &&
+    a.preset === b.preset &&
+    a.accentColor === b.accentColor &&
+    a.buttonStyle === b.buttonStyle &&
+    a.font === b.font
+  );
 }

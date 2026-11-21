@@ -17,7 +17,6 @@ import { Hero } from "./_components/hero";
 import { HowItWorks } from "./_components/how-it-works";
 import { Pricing } from "./_components/pricing";
 import { QRSection } from "./_components/qr-section";
-import { Testimonials } from "./_components/testimonials";
 
 import type { Metadata } from "next";
 
@@ -66,7 +65,6 @@ export default function HomePage() {
       <Features />
       <DashboardPreview />
       <QRSection />
-      <Testimonials />
       <Pricing />
       <Faq />
       <CTA />

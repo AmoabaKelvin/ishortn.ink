@@ -1,11 +1,19 @@
-import { TRPCError } from "@trpc/server";
 import { notFound } from "next/navigation";
 
+import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
 import { CampaignDetail } from "./_components/campaign-detail";
 
 import type { RouterOutputs } from "@/trpc/shared";
+import type { Metadata } from "next";
+
+export async function generateMetadata(props: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await props.params;
+  return { title: `${slug} | Campaigns` };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +28,7 @@ export default async function CampaignDetailPage(props: Props) {
   } catch (error) {
     // Only a real NOT_FOUND becomes a 404 — auth/server errors must surface,
     // not masquerade as a missing campaign.
-    if (error instanceof TRPCError && error.code === "NOT_FOUND") {
+    if (isNotFoundError(error)) {
       notFound();
     }
     throw error;

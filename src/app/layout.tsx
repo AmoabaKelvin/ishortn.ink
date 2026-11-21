@@ -1,20 +1,12 @@
 import "@/styles/globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
 import { ViewTransitions } from "next-view-transitions";
-import Script from "next/script";
 
-import { MicrosoftClarityScript } from "@/components/scripts/clarity";
-import { ReleaseNotesScript } from "@/components/scripts/release-notes";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { env } from "@/env.mjs";
 import { APP_TITLE } from "@/lib/constants/app";
 import { fontDisplay, fontHeading, fontLogo, fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { fontTitle, inter } from "@/styles/fonts";
-import { TRPCReactProvider } from "@/trpc/react";
-
-import { CSPostHogProvider } from "./providers";
 
 import type { Metadata, Viewport } from "next";
 
@@ -26,7 +18,10 @@ export const metadata: Metadata = {
   },
   description:
     "Free URL shortener with powerful analytics. Create custom short links, track clicks, locations, and devices. QR codes, custom domains, and API included.",
-  icons: [{ rel: "icon", url: "/icon.png" }],
+  icons: [
+    { rel: "icon", url: "/icon.png", type: "image/png", sizes: "512x512" },
+    { rel: "apple-touch-icon", url: "/apple-icon.png", sizes: "180x180" },
+  ],
   openGraph: {
     siteName: "iShortn",
     type: "website",
@@ -47,52 +42,35 @@ export const viewport: Viewport = {
   ],
 };
 
+// Kept free of Clerk, tRPC and analytics: short links, interstitials and bio
+// pages render on short and custom domains, and marketing pages stay light.
+// Route-group layouts add what they need (AppProviders, AnalyticsProviders).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider
-      localization={{
-        signIn: { start: { title: "Welcome back", subtitle: "Sign in to continue" } },
-        signUp: {
-          start: { title: "Create your account", subtitle: "Start shortening in seconds" },
-        },
-      }}
-    >
-      <ViewTransitions>
-        {env.UMAMI_TRACKING_ID && (
-          <Script
-            strategy="lazyOnload"
-            src={env.UMAMI_URL}
-            data-website-id={env.UMAMI_TRACKING_ID}
-          />
-        )}
-        <ReleaseNotesScript />
-        <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
-          <MicrosoftClarityScript />
-          <CSPostHogProvider>
-            <body
-              className={cn(
-                "min-h-screen bg-background font-sans antialiased",
-                fontSans.variable,
-                fontDisplay.variable,
-                fontHeading.variable,
-                fontLogo.variable,
-                fontTitle.variable,
-                inter.variable,
-              )}
-            >
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-                disableTransitionOnChange
-              >
-                <TRPCReactProvider>{children}</TRPCReactProvider>
-                <Toaster />
-              </ThemeProvider>
-            </body>
-          </CSPostHogProvider>
-        </html>
-      </ViewTransitions>
-    </ClerkProvider>
+    <ViewTransitions>
+      <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
+        <body
+          className={cn(
+            "min-h-screen bg-background font-sans antialiased",
+            fontSans.variable,
+            fontDisplay.variable,
+            fontHeading.variable,
+            fontLogo.variable,
+            fontTitle.variable,
+            inter.variable,
+          )}
+        >
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </body>
+      </html>
+    </ViewTransitions>
   );
 }

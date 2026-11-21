@@ -2,6 +2,7 @@
 
 import { IconLoader2 } from "@tabler/icons-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import {
   Dialog,
@@ -32,11 +33,25 @@ export function AccountTransferSection() {
   const validateMutation = api.accountTransfer.validate.useMutation();
 
   const initiateMutation = api.accountTransfer.initiate.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       utils.accountTransfer.getPending.invalidate();
       setShowConfirmDialog(false);
       setTargetEmail("");
       setValidationResult(null);
+      if (data.emailSent) {
+        toast.success("Transfer request sent");
+      } else {
+        toast.error("Transfer created but the email failed to send — copy the link instead", {
+          duration: 30_000,
+          action: {
+            label: "Copy link",
+            onClick: () => {
+              void navigator.clipboard.writeText(data.acceptUrl);
+              toast.success("Link copied");
+            },
+          },
+        });
+      }
     },
   });
 

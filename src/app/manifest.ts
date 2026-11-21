@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       {
         src: "/icon.png",
-        sizes: "any",
+        sizes: "512x512",
         type: "image/png",
       },
     ],

@@ -2,6 +2,10 @@ import { api } from "@/trpc/server";
 
 import { CampaignsList } from "./_components/campaigns-list";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Campaigns" };
+
 export const dynamic = "force-dynamic";
 
 async function CampaignsPage() {

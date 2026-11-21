@@ -6,6 +6,8 @@ import { hashIp } from "@/lib/utils/ip-hash";
 import { isBot } from "@/lib/utils/is-bot";
 import { lookup } from "@/lib/utils/lookup";
 
+import { baseDomain } from "./referrer";
+
 import type { Visitor } from "./click-event";
 
 // Shared visitor-fingerprinting helpers used by every analytics recorder
@@ -82,8 +84,7 @@ export function parseReferrer(referrer: string | null): string {
     const source = lookup(REFERRER_SOURCES, hostname);
     if (source) return source;
 
-    const parts = hostname.split(".");
-    return parts.slice(-2).join(".");
+    return baseDomain(hostname);
   } catch {
     return "unknown";
   }

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -16,17 +16,12 @@ import {
   PlanChangeConfirmDialog,
 } from "../../pricing/_components/plan-change-confirm-dialog";
 
-import type { BillingInterval, Plan } from "@/lib/billing/plans";
+import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 
-const PLANS: { id: Plan; name: string; monthly: number; annual: number }[] = [
-  { id: "free", name: "Free", monthly: PLAN_PRICES_USD.free, annual: 0 },
-  { id: "pro", name: "Pro", monthly: PLAN_PRICES_USD.pro, annual: PLAN_PRICES_ANNUAL_USD.pro },
-  {
-    id: "ultra",
-    name: "Ultra",
-    monthly: PLAN_PRICES_USD.ultra,
-    annual: PLAN_PRICES_ANNUAL_USD.ultra,
-  },
+const PLANS: { id: Plan; name: string }[] = [
+  { id: "free", name: "Free" },
+  { id: "pro", name: "Pro" },
+  { id: "ultra", name: "Ultra" },
 ];
 
 const planOrder = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
@@ -34,10 +29,20 @@ const planOrder = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 type PlanSwitcherProps = {
   currentPlan: Plan;
   currentInterval: BillingInterval;
+  subscriptionMode: SubscriptionMode;
+  renewsAt: Date | null;
 };
 
-export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps) {
-  const [interval, setIntervalState] = useState<BillingInterval>(currentInterval);
+export function PlanSwitcher({
+  currentPlan,
+  currentInterval,
+  subscriptionMode,
+  renewsAt,
+}: PlanSwitcherProps) {
+  const [interval, setIntervalState] = useState<BillingInterval>(() =>
+    resolveBillingInterval(null, currentPlan, currentInterval),
+  );
+  const [priceFade, setPriceFade] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [downgradeOpen, setDowngradeOpen] = useState(false);
   const [targetDowngrade, setTargetDowngrade] = useState<Exclude<Plan, "ultra"> | null>(null);
@@ -49,7 +54,7 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
 
   const createCheckoutOrUpdate = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
     onSuccess: (data) => {
-      if (data.status === "redirect" && data.url) {
+      if (data.status === "redirect") {
         window.location.href = data.url;
         return;
       }
@@ -80,7 +85,7 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
     // Free → paid goes through the Lemon Squeezy hosted checkout (its own
     // confirmation). In-place changes for an existing paid subscriber charge
     // the card immediately, so confirm those first.
-    if (currentPlan === "free") {
+    if (subscriptionMode === "checkout") {
       runUpgrade(plan);
       return;
     }
@@ -94,6 +99,8 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
     setDowngradeOpen(true);
   };
 
+  const canChangeInPlace = subscriptionMode === "update";
+  const isResumable = subscriptionMode === "resume";
   const currentPlanName = PLANS.find((p) => p.id === currentPlan)?.name ?? currentPlan;
   const confirmCopy = pendingChange
     ? buildPlanChangeCopy(pendingChange.kind, pendingChange.plan, interval)
@@ -105,14 +112,18 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
         <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">Change plan</p>
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            Save 2 months
+            2 months free
           </span>
           <div className="inline-flex items-center gap-0.5 rounded-full border border-neutral-200 dark:border-border p-0.5">
             {(["monthly", "annual"] as const).map((value) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setIntervalState(value)}
+                aria-pressed={interval === value}
+                onClick={() => {
+                  setIntervalState(value);
+                  setPriceFade(true);
+                }}
                 className={cn(
                   "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
                   interval === value
@@ -127,22 +138,25 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
         </div>
       </div>
 
+      {isResumable && (
+        <p className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-400">
+          Your subscription is cancelled. Resume it to change plans.
+        </p>
+      )}
+
       <div className="mt-3 divide-y divide-neutral-100 dark:divide-border/50 overflow-hidden rounded-lg border border-neutral-200 dark:border-border">
         {PLANS.map((plan) => {
           const isCurrentTier = plan.id === currentPlan;
           const matchesCurrent =
             isCurrentTier && (plan.id === "free" || interval === currentInterval);
+          // Switching and downgrading change a live subscription in place; a
+          // cancelled one has to be resumed first.
           const canSwitchInterval =
-            isCurrentTier && plan.id !== "free" && interval !== currentInterval;
-          const isUpgrade = planOrder[plan.id] > planOrder[currentPlan];
-          const isDowngrade = planOrder[plan.id] < planOrder[currentPlan];
+            canChangeInPlace && isCurrentTier && plan.id !== "free" && interval !== currentInterval;
+          const isUpgrade = !isResumable && planOrder[plan.id] > planOrder[currentPlan];
+          const isDowngrade = canChangeInPlace && planOrder[plan.id] < planOrder[currentPlan];
 
-          const priceLabel =
-            plan.id === "free"
-              ? "Free forever"
-              : interval === "annual"
-                ? `$${plan.annual}/yr`
-                : `$${plan.monthly}/mo`;
+          const price = planPriceDisplay(plan.id, interval);
 
           return (
             <div
@@ -156,7 +170,27 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
                 <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
                   {plan.name}
                 </p>
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">{priceLabel}</p>
+                <p
+                  key={price.note}
+                  className={cn(
+                    "text-[12px] tabular-nums text-neutral-400 dark:text-neutral-500",
+                    priceFade &&
+                      "motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 motion-safe:ease-out",
+                  )}
+                >
+                  {plan.id === "free" ? (
+                    "Free forever"
+                  ) : (
+                    <>
+                      {price.compareAt && (
+                        <del className="mr-1">
+                          <span className="sr-only">Regular price </span>${price.compareAt}
+                        </del>
+                      )}
+                      ${price.perMonth}/mo &middot; {price.note}
+                    </>
+                  )}
+                </p>
               </div>
 
               {matchesCurrent ? (
@@ -210,6 +244,7 @@ export function PlanSwitcher({ currentPlan, currentInterval }: PlanSwitcherProps
           onOpenChange={setDowngradeOpen}
           targetPlan={targetDowngrade}
           currentPlanName={currentPlanName}
+          renewsAt={renewsAt}
           targetPlanName={PLANS.find((p) => p.id === targetDowngrade)?.name ?? targetDowngrade}
         />
       )}

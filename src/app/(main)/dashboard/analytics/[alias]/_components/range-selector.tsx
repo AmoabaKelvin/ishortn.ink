@@ -9,7 +9,6 @@ import {
   IconClock,
   IconInfinity,
 } from "@tabler/icons-react";
-import React from "react";
 
 import {
   Select,
@@ -31,21 +30,17 @@ const rangeOptions = [
 
 type RangeSelectorProps = {
   isProPlan: boolean;
-  initialRange: string;
+  value: string;
   onRangeChange: (range: string) => void;
 };
 
-export const RangeSelector = ({ isProPlan, initialRange, onRangeChange }: RangeSelectorProps) => {
-  const [selectedRange, setSelectedRange] = React.useState(initialRange);
-
-  const handleRangeChange = (value: string) => {
-    setSelectedRange(value);
-    onRangeChange(value);
-  };
-
+export const RangeSelector = ({ isProPlan, value, onRangeChange }: RangeSelectorProps) => {
   return (
-    <Select value={selectedRange} onValueChange={handleRangeChange}>
-      <SelectTrigger className="h-9 w-[180px] border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]">
+    <Select value={value} onValueChange={onRangeChange}>
+      <SelectTrigger
+        aria-label="Date range"
+        className="h-9 w-[180px] border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
+      >
         <SelectValue placeholder="Select range" />
       </SelectTrigger>
       <SelectContent>

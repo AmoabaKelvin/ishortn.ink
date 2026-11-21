@@ -18,7 +18,11 @@ export const env = createEnv({
     CRON_SECRET: z.string().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     RESEND_API_KEY: z.string().optional(),
+    // Sender for transactional email; must be on a domain verified in Resend
+    EMAIL_FROM: z.string().optional(),
     WEBHOOK_SECRET: z.string().optional(),
+    // Resend webhook signing secret (svix whsec_…) for /api/webhooks/resend
+    RESEND_WEBHOOK_SECRET: z.string().optional(),
     UMAMI_TRACKING_ID: z.string().optional(),
     UMAMI_URL: z.string().url().optional(),
     DISCORD_WEBHOOK_URL: z.string().url().optional(),
@@ -52,6 +56,9 @@ export const env = createEnv({
     // beacons. Optional: when unset, tokens are not issued and no verification
     // events are accepted — the feature is effectively disabled.
     VERIFIED_CLICKS_SECRET: z.string().min(32).optional(),
+    // Signs one-click unsubscribe links in notification emails. Unset: those emails carry only a
+    // mailto List-Unsubscribe and the settings link in the footer.
+    EMAIL_UNSUBSCRIBE_SECRET: z.string().min(32).optional(),
     // Public status API (OpenStatus, Better Stack or Statuspage-compatible) for the footer badge.
     // Unset: the footer shows a plain "Status" link with no uptime claim.
     STATUS_PAGE_API_URL: z.string().url().optional(),
@@ -59,6 +66,15 @@ export const env = createEnv({
     HEALTHCHECK_TOKEN: z.string().optional(),
     // Inlined at build time by next.config.js; reported by /api/health/deep.
     BUILD_COMMIT_SHA: z.string().optional(),
+    // Tests only: overrides the API access sunset that the api-access-sunset cron
+    // stores in the ApiAccessSunset table. Leave unset in every deployed environment.
+    API_FREE_ACCESS_SUNSET_AT: z
+      .string()
+      .refine(
+        (value) => !Number.isNaN(Date.parse(value)),
+        "API_FREE_ACCESS_SUNSET_AT must be a parseable date",
+      )
+      .optional(),
   },
 
   /**
@@ -69,6 +85,10 @@ export const env = createEnv({
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
+    // Host of the dashboard and marketing site (read by src/lib/constants/domains.ts)
+    NEXT_PUBLIC_APP_DOMAIN: z.string().optional(),
+    // Comma-separated short-link domains, default first (read by src/lib/constants/domains.ts)
+    NEXT_PUBLIC_PLATFORM_DOMAINS: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
     // Optional ISO date shown in the custom-domain migration notice
@@ -91,7 +111,9 @@ export const env = createEnv({
     CRON_SECRET: process.env.CRON_SECRET,
     NODE_ENV: process.env.NODE_ENV,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+    RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,
     UMAMI_URL: process.env.UMAMI_URL,
     DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,
@@ -115,11 +137,15 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
+    EMAIL_UNSUBSCRIBE_SECRET: process.env.EMAIL_UNSUBSCRIBE_SECRET,
     STATUS_PAGE_API_URL: process.env.STATUS_PAGE_API_URL,
     HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
     BUILD_COMMIT_SHA: process.env.BUILD_COMMIT_SHA,
+    API_FREE_ACCESS_SUNSET_AT: process.env.API_FREE_ACCESS_SUNSET_AT,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_APP_DOMAIN: process.env.NEXT_PUBLIC_APP_DOMAIN,
+    NEXT_PUBLIC_PLATFORM_DOMAINS: process.env.NEXT_PUBLIC_PLATFORM_DOMAINS,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE: process.env.NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE,

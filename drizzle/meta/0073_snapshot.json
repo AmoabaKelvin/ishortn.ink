@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "135646c5-4e3a-4cc2-aa0e-1590549a03ab",
+  "id": "a69476df-be39-40d1-a07f-c9eddeae7495",
   "prevId": "88d37d61-169c-4e70-aff6-cbb1704b42e7",
   "tables": {
     "AccountDeletion": {
@@ -3166,6 +3166,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "declinedAt": {
+          "name": "declinedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revokedAt": {
+          "name": "revokedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -3301,27 +3315,6 @@
         "token": {
           "name": "token",
           "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "prefix": {
-          "name": "prefix",
-          "type": "varchar(8)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lastUsedAt": {
-          "name": "lastUsedAt",
-          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

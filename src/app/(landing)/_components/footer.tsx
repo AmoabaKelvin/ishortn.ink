@@ -2,7 +2,6 @@ import { IconBrandGithub, IconBrandX, IconMail } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
 import { Section, Wordmark } from "./site-primitives";
-import { StatusBadge } from "./status-badge";
 
 const columns = [
   {
@@ -10,9 +9,10 @@ const columns = [
     links: [
       { label: "Features", href: "/features" },
       { label: "QR code generator", href: "/qr-code-generator" },
+      { label: "UTM builder", href: "/utm-builder" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },
-      { label: "API docs", href: "https://docs.ishortn.ink/api" },
+      { label: "API docs", href: "/docs/api" },
       { label: "Open dashboard", href: "/dashboard" },
     ],
   },
@@ -27,15 +27,15 @@ const columns = [
       { label: "vs Linktree", href: "/compare/linktree" },
       { label: "vs Beacons", href: "/compare/beacons" },
       { label: "vs Carrd", href: "/compare/carrd" },
+      { label: "All comparisons", href: "/compare" },
     ],
   },
   {
     title: "Resources",
     links: [
       { label: "Blog", href: "/blog" },
-      { label: "Documentation", href: "https://ishortn.ink/docs" },
+      { label: "Docs", href: "/docs" },
       { label: "Support", href: "mailto:support@ishortn.ink" },
-      { label: "Status", href: "https://status.ishortn.ink" },
     ],
   },
   {
@@ -70,7 +70,6 @@ export const Footer = () => {
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <StatusBadge />
               <ul className="flex items-center gap-1">
                 {socials.map((social) => (
                   <li key={social.label}>

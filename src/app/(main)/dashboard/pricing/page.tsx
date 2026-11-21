@@ -3,6 +3,10 @@ import { api } from "@/trpc/server";
 
 import { PricingCards } from "./_components/pricing-cards";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Pricing" };
+
 export const dynamic = "force-dynamic";
 
 async function PricingPage() {
@@ -10,9 +14,12 @@ async function PricingPage() {
   const currentInterval = getIntervalFromVariantId(subscriptions.subscriptions?.variantId);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <PricingCards currentPlan={subscriptions.plan} currentInterval={currentInterval} />
-    </div>
+    <PricingCards
+      currentPlan={subscriptions.plan}
+      currentInterval={currentInterval}
+      subscriptionMode={subscriptions.subscriptionMode}
+      renewsAt={subscriptions.subscriptions?.renewsAt ?? null}
+    />
   );
 }
 

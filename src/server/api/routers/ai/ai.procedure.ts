@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { isSubscriptionEntitled } from "@/lib/billing/plans";
+import { getUserPlanContext } from "@/server/lib/user-plan";
 
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
 import { generateAliasFromMetadata } from "./ai.service";
@@ -13,11 +13,9 @@ const metadataSchema = z.object({
 
 export const aiRouter = createTRPCRouter({
   generateAlias: protectedProcedure.input(metadataSchema).mutation(async ({ ctx, input }) => {
-    const userSubscription = await ctx.db.query.subscription.findFirst({
-      where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
-    });
+    const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
 
-    if (!isSubscriptionEntitled(userSubscription)) {
+    if (!planCtx || planCtx.plan === "free") {
       throw new Error("You need an active subscription to use AI features");
     }
     const alias = await generateAliasFromMetadata(input);

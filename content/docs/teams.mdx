@@ -1,0 +1,61 @@
+---
+title: Teams and workspaces
+description: Share links, domains, QR codes and analytics with a team. Workspaces, roles, invites, team subdomains and folder permissions.
+---
+
+Everything in iShortn lives in a **workspace**. Your account comes with a personal workspace, and you can create team workspaces to work on links together. Switch between them from the workspace menu in the dashboard sidebar.
+
+Creating a team needs the **Ultra** plan. Every team workspace gets Ultra features and limits, whatever plan its members are on, and there's no limit on the number of members.
+
+## Create a team
+
+1. Open [New team](/dashboard/teams/new).
+2. Enter a name and a slug. The slug is 3 to 50 lowercase letters, numbers and hyphens, starting and ending with a letter or number. Some slugs are reserved.
+3. Create the team, then invite people.
+
+## Team subdomains
+
+A team's workspace opens at its slug on any [platform domain](/docs/platform-domains): a team with the slug `acme` is at `acme.isht.app`, `acme.isht.ink` and `acme.ishortn.ink`. The owner can change the slug in the team settings.
+
+## Roles
+
+| Permission | Owner | Admin | Member |
+| --- | --- | --- | --- |
+| Create, edit and delete links, QR codes, folders, tags, bio pages, campaigns and UTM templates | Yes | Yes | Yes |
+| Invite members | Yes | Yes | No |
+| Invite admins and promote members to admin | Yes | No | No |
+| Remove members | Yes | Yes | No |
+| Remove admins | Yes | No | No |
+| Change team settings | Yes | Yes | No |
+| Manage folder permissions | Yes | Yes | No |
+| Add and remove custom domains | Yes | No | No |
+| Change the slug, transfer ownership, delete the team | Yes | No | No |
+
+The owner can't leave the team; transfer ownership to another member first, or delete the team.
+
+## Invite people
+
+From [Members](/dashboard/teams/members), create an invite as an admin or member:
+
+- **With an email address**: iShortn emails the invite, and only that address can accept it.
+- **Without an email**: you get a link to share yourself.
+
+Invites expire after **7 days** and can be used once. The person accepting signs in (or signs up) at `ishortn.ink` and joins the team.
+
+## Folder permissions
+
+In a team, a folder can be restricted to chosen members. Owners and admins always see every folder; other members see a restricted folder only if they're on its list. Only owners and admins can change folder permissions.
+
+## Moving links between workspaces
+
+Select links in the dashboard and move them to another workspace you belong to, up to 100 at a time. Before moving, iShortn checks the target workspace's limits, that the aliases are free on their domains there, and that any custom domains exist in the target. Tags and folder assignments are removed; QR codes move with their links. Only owners and admins can move links out of a team.
+
+To hand your whole account's resources to another person, use **Account Transfer** in [Settings](/dashboard/settings#account-transfer). The recipient has to accept by email within 7 days. API keys and subscriptions aren't transferred.
+
+## API access
+
+API keys belong to a person, not a team. Creating and using them needs a Pro or Ultra plan on the key owner's own account; being a member of a team doesn't count (see [API access by plan](/docs/api#api-access-by-plan)). Requests made with a key work in the key owner's personal workspace only; see [Which links the API can reach](/docs/api#which-links-the-api-can-reach).
+
+## Deleting a team
+
+When the owner deletes a team, members and pending invites are removed straight away. The team's links, domains and other resources are permanently deleted after 30 days.

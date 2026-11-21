@@ -21,19 +21,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
+import { getSlugError, type BioSettingsDraft } from "./utils";
+
 import type { Plan } from "@/lib/billing/plans";
 import type { BioPageTheme } from "@/server/db/schema";
-
-export type BioSettingsDraft = {
-  slug: string;
-  title: string;
-  description: string;
-  avatarUrl: string | null;
-  theme: BioPageTheme;
-  removeBranding: boolean;
-  customDomain: string;
-  socialImageUrl: string | null;
-};
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
@@ -60,12 +51,14 @@ type Props = {
   plan: Plan;
   onSave: () => void;
   saving: boolean;
+  dirty: boolean;
 };
 
-export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) {
+export function SettingsPanel({ value, onChange, plan, onSave, saving, dirty }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const socialFileRef = useRef<HTMLInputElement>(null);
   const isPaid = plan !== "free";
+  const slugError = getSlugError(value.slug);
 
   // Only verified domains in this workspace can serve a bio page (the server
   // enforces this on save), so offer exactly those instead of a free-text field.
@@ -103,19 +96,32 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
 
         <div className="space-y-1.5">
           <Label htmlFor="settings-slug">Handle</Label>
-          <div className="flex h-9 items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 dark:border-border dark:bg-card dark:shadow-none">
+          <div
+            className={cn(
+              "flex h-9 items-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 dark:border-border dark:bg-card dark:shadow-none",
+              slugError &&
+                "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/20 dark:border-red-500",
+            )}
+          >
             <span className="flex h-full select-none items-center border-r border-gray-200 bg-gray-50 px-3 text-[13px] text-gray-500 dark:border-border dark:bg-muted dark:text-gray-400">
               /p/
             </span>
             <input
               id="settings-slug"
               value={value.slug}
+              aria-invalid={slugError !== null}
+              aria-describedby={slugError ? "settings-slug-error" : undefined}
               onChange={(e) =>
                 onChange({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "-") })
               }
-              className="h-full flex-1 bg-transparent px-3 text-sm font-medium text-gray-900 outline-none placeholder:text-gray-500 dark:text-foreground dark:placeholder:text-gray-400"
+              className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm font-medium text-gray-900 outline-none placeholder:text-gray-500 dark:text-foreground dark:placeholder:text-gray-400"
             />
           </div>
+          {slugError && (
+            <p id="settings-slug-error" className="text-[12px] text-red-500">
+              {slugError}
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -151,7 +157,11 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
               type="file"
               accept="image/png,image/jpeg,image/gif,image/webp"
               className="hidden"
-              onChange={(e) => handleImage(e.target.files?.[0], "avatarUrl")}
+              onChange={(e) => {
+                handleImage(e.target.files?.[0], "avatarUrl");
+                // Reset so picking the same file again (e.g. after removing it) fires onChange.
+                e.target.value = "";
+              }}
             />
           </div>
         </div>
@@ -359,15 +369,30 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving }: Props) 
               type="file"
               accept="image/png,image/jpeg,image/gif,image/webp"
               className="hidden"
-              onChange={(e) => handleImage(e.target.files?.[0], "socialImageUrl")}
+              onChange={(e) => {
+                handleImage(e.target.files?.[0], "socialImageUrl");
+                e.target.value = "";
+              }}
             />
           </div>
         </div>
       </section>
 
-      <Button onClick={onSave} disabled={saving} className="w-full">
-        {saving ? "Saving…" : "Save changes"}
-      </Button>
+      <div className="flex items-center gap-3">
+        {dirty && (
+          <output className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-amber-700 dark:text-amber-400">
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            Unsaved changes
+          </output>
+        )}
+        <Button
+          onClick={onSave}
+          disabled={saving || !dirty || slugError !== null}
+          className="min-w-0 flex-1"
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </Button>
+      </div>
     </div>
   );
 }

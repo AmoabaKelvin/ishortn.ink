@@ -69,7 +69,8 @@ not configured (see `src/server/api/routers/domains/cloudflare.ts` for the patte
 - **Cloudflare bindings**: `next dev` boots wrangler's emulator, so KV and the queue binding exist;
   clicks are ingested inline in development. Hyperdrive is pointed at `DATABASE_URL` automatically.
 - **R2**: `docker compose --profile storage up -d` runs MinIO; enable the `R2_*` block in `.env`.
-- **Resend**: sends are skipped (and logged) without `RESEND_API_KEY`.
+- **Resend**: sends are skipped (and logged) without `RESEND_API_KEY`. `bun run webhook resend
+email.bounced --email <address>` marks an address as hard-bounced (`email.delivered` clears it).
 - **Lemon Squeezy, OpenAI, Safe Browsing, PostHog, Discord**: off until their keys are set.
 
 ## Code style

@@ -1,9 +1,13 @@
+import { getEntitlementOverview } from "@/server/lib/entitlements/overview";
+
 import { createTRPCRouter, adminProcedure } from "../../trpc";
 import * as inputs from "./admin.input";
 import * as services from "./admin.service";
 
 export const adminRouter = createTRPCRouter({
   getStats: adminProcedure.query(({ ctx }) => services.getStats(ctx)),
+
+  getEntitlements: adminProcedure.query(({ ctx }) => getEntitlementOverview(ctx.db)),
 
   getRecentActivity: adminProcedure.query(({ ctx }) => services.getRecentActivity(ctx)),
 
@@ -34,6 +38,14 @@ export const adminRouter = createTRPCRouter({
   unbanUser: adminProcedure
     .input(inputs.unbanUserSchema)
     .mutation(({ ctx, input }) => services.unbanUser(ctx, input)),
+
+  restrictUser: adminProcedure
+    .input(inputs.restrictUserSchema)
+    .mutation(({ ctx, input }) => services.restrictUser(ctx, input)),
+
+  unrestrictUser: adminProcedure
+    .input(inputs.unrestrictUserSchema)
+    .mutation(({ ctx, input }) => services.unrestrictUser(ctx, input)),
 
   getBlockedDomains: adminProcedure.query(({ ctx }) => services.getBlockedDomains(ctx)),
 
@@ -91,4 +103,8 @@ export const adminRouter = createTRPCRouter({
   getRecentSubscriptions: adminProcedure
     .input(inputs.getRecentSubscriptionsSchema)
     .query(({ ctx, input }) => services.getRecentSubscriptions(ctx, input)),
+
+  getSignupAttribution: adminProcedure.query(({ ctx }) => services.getSignupAttribution(ctx)),
+
+  getEmailSuppressions: adminProcedure.query(({ ctx }) => services.getEmailSuppressions(ctx)),
 });

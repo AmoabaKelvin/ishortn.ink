@@ -9,18 +9,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
+import { getPlanCaps } from "@/lib/billing/plans";
+import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
+import { ResumeSubscriptionButton } from "../../settings/billing/resume-subscription-button";
 import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
 import { buildPlanChangeCopy, PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
 
-import type { BillingInterval, Plan } from "@/lib/billing/plans";
+import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 
 type PricingCardsProps = {
   currentPlan: Plan;
   currentInterval: BillingInterval;
+  subscriptionMode: SubscriptionMode;
+  renewsAt: Date | null;
 };
 
 type PricingPlanSpec = {
@@ -71,19 +76,44 @@ type PendingChange = { plan: PaidPricingPlan; kind: "switch" | "upgrade" };
 
 const PLAN_ORDER = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
-export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps) {
+const PRO_EVENTS_LIMIT = getPlanCaps("pro").eventsLimit ?? 0;
+
+export function PricingCards({
+  currentPlan,
+  currentInterval,
+  subscriptionMode,
+  renewsAt,
+}: PricingCardsProps) {
   const searchParams = useSearchParams();
   const [interval, setIntervalState] = useState<BillingInterval>(
-    searchParams?.get("interval") === "annual" ? "annual" : "monthly",
+    resolveBillingInterval(searchParams?.get("interval"), currentPlan, currentInterval),
   );
+  const [priceFade, setPriceFade] = useState(false);
   // Arriving with ?plan=pro|ultra (e.g. right after signup) starts that upgrade
   // right away: hosted checkout for free users, the confirm dialog otherwise.
   const [autoUpgrade] = useState(() => {
     const plan = plans.find((p) => p.id === searchParams?.get("plan"));
-    if (!plan || plan.id === "free" || PLAN_ORDER[plan.id] <= PLAN_ORDER[currentPlan]) return null;
+    if (
+      !plan ||
+      plan.id === "free" ||
+      subscriptionMode === "resume" ||
+      PLAN_ORDER[plan.id] <= PLAN_ORDER[currentPlan]
+    ) {
+      return null;
+    }
     return plan;
   });
-  const autoCheckout = autoUpgrade && currentPlan === "free" ? autoUpgrade : null;
+  // ?highlight=pro|ultra (from in-app upgrade prompts) only preselects a plan; it never starts
+  // checkout on its own.
+  const highlightParam = plans.find((p) => p.id === searchParams?.get("highlight"));
+  const highlightedPlanId: Plan | null =
+    highlightParam && PLAN_ORDER[highlightParam.id] > PLAN_ORDER[currentPlan]
+      ? highlightParam.id
+      : currentPlan === "free"
+        ? "pro"
+        : null;
+  const fromEventsCap = searchParams?.get("source")?.startsWith("events_") ?? false;
+  const autoCheckout = autoUpgrade && subscriptionMode === "checkout" ? autoUpgrade : null;
   const autoCheckoutFired = useRef(false);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(autoCheckout?.id ?? null);
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
@@ -97,7 +127,7 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
 
   const createCheckoutOrUpdateMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
     onSuccess: (data) => {
-      if (data.status === "redirect" && data.url) {
+      if (data.status === "redirect") {
         window.location.href = data.url;
       } else if (data.status === "updated") {
         trackEvent(POSTHOG_EVENTS.SUBSCRIPTION_UPGRADED, {
@@ -140,7 +170,7 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
     // Free → paid goes through the Lemon Squeezy hosted checkout (its own
     // confirmation). In-place changes for an existing paid subscriber charge
     // the card immediately, so confirm those first.
-    if (currentPlan === "free") {
+    if (subscriptionMode === "checkout") {
       runUpgrade(plan);
       return;
     }
@@ -189,7 +219,11 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
             <button
               key={value}
               type="button"
-              onClick={() => setIntervalState(value)}
+              aria-pressed={interval === value}
+              onClick={() => {
+                setIntervalState(value);
+                setPriceFade(true);
+              }}
               className={cn(
                 "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                 interval === value
@@ -202,28 +236,39 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
           ))}
         </div>
         <Badge className="bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 hover:bg-green-100">
-          Save 2 months
+          2 months free
         </Badge>
       </div>
+
+      {fromEventsCap && (
+        <p className="mx-auto max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+          Pro records {PRO_EVENTS_LIMIT.toLocaleString()} visits a month; Ultra has no limit. Visits
+          from before the upgrade are not recovered.
+        </p>
+      )}
 
       {/* Pricing Cards */}
       <div className="grid gap-6 lg:grid-cols-3">
         {plans.map((plan) => {
           const isCurrentPlan = plan.id === currentPlan;
-          const canUpgrade = PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan];
-          const canDowngrade = PLAN_ORDER[plan.id] < PLAN_ORDER[currentPlan];
+          // A cancelled subscription still in its paid period is resumed, not
+          // replaced or changed, so it only offers Resume on the current plan.
+          const isResumable = subscriptionMode === "resume";
+          const canChangeInPlace = subscriptionMode === "update";
+          const canUpgrade = !isResumable && PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan];
+          const canDowngrade = canChangeInPlace && PLAN_ORDER[plan.id] < PLAN_ORDER[currentPlan];
           // Same tier, but the toggle points at the other billing interval —
           // offer a switch instead of "Manage Subscription".
           const canSwitchInterval =
-            isCurrentPlan && plan.id !== "free" && interval !== currentInterval;
+            canChangeInPlace && isCurrentPlan && plan.id !== "free" && interval !== currentInterval;
+          const price = planPriceDisplay(plan.id, interval);
 
           return (
             <div
               key={plan.id}
               className={cn(
                 "relative flex flex-col rounded-2xl border bg-white dark:bg-card p-6 shadow-sm transition-shadow hover:shadow-md",
-                plan.popular &&
-                  currentPlan === "free" &&
+                plan.id === highlightedPlanId &&
                   "border-gray-900 dark:border-border ring-1 ring-gray-900 dark:ring-border",
                 isCurrentPlan && "border-blue-500 ring-1 ring-blue-500",
               )}
@@ -256,25 +301,37 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
               </div>
 
               {/* Price */}
-              <div className="mb-6">
-                <div className="flex items-baseline">
-                  <span className="text-sm font-medium text-gray-500 dark:text-neutral-400">$</span>
-                  <span className="text-5xl font-bold tracking-tight text-gray-900 dark:text-foreground">
-                    {interval === "annual" ? plan.annualPrice : plan.monthlyPrice}
+              {/* Keyed on the figure so a toggle fades the new price in; always two lines so the
+                  buttons stay aligned across cards on both intervals. */}
+              <div
+                key={`${price.perMonth}-${price.note}`}
+                className={cn(
+                  "mb-6",
+                  priceFade &&
+                    "motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 motion-safe:ease-out",
+                )}
+              >
+                <div className="flex items-baseline gap-1 whitespace-nowrap">
+                  {price.compareAt && (
+                    <del className="mr-1 text-lg tabular-nums text-gray-400 dark:text-neutral-500">
+                      <span className="sr-only">Regular price </span>${price.compareAt}
+                    </del>
+                  )}
+                  <span className="text-5xl font-bold tabular-nums tracking-tight text-gray-900 dark:text-foreground">
+                    ${price.perMonth}
                   </span>
+                  <span className="text-sm text-gray-500 dark:text-neutral-400">/mo</span>
                 </div>
-                <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
-                  {plan.id === "free"
-                    ? "forever"
-                    : interval === "annual"
-                      ? "per year"
-                      : "per month"}
+                <p className="mt-1 text-sm tabular-nums text-gray-500 dark:text-neutral-400">
+                  {price.note}
                 </p>
               </div>
 
               {/* CTA Button */}
               <div className="mb-6">
-                {canSwitchInterval ? (
+                {isCurrentPlan && isResumable ? (
+                  <ResumeSubscriptionButton className="w-full" />
+                ) : canSwitchInterval ? (
                   <Button
                     className="w-full"
                     onClick={() => requestUpgrade(plan, "switch")}
@@ -317,6 +374,11 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
                     Downgrade
                   </Button>
                 ) : null}
+                {fromEventsCap && canUpgrade && plan.id === highlightedPlanId && (
+                  <p className="mt-2 text-center text-xs tabular-nums text-gray-500 dark:text-neutral-400">
+                    ${plan.monthlyPrice}/month or ${plan.annualPrice}/year
+                  </p>
+                )}
               </div>
 
               {/* Features */}
@@ -393,6 +455,7 @@ export function PricingCards({ currentPlan, currentInterval }: PricingCardsProps
           targetPlanName={
             plans.find((p) => p.id === targetDowngradePlan)?.name ?? targetDowngradePlan
           }
+          renewsAt={renewsAt}
         />
       )}
 

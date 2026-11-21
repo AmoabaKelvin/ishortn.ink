@@ -1,9 +1,16 @@
 "use client";
 
-import { IconClick, IconEye, IconTrendingUp, IconUsers } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconClick,
+  IconEye,
+  IconTrendingUp,
+  IconUsers,
+} from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   type ChartConfig,
@@ -15,11 +22,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatChartDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
-import { TrackingPausedBanner } from "../../../_components/tracking-paused-banner";
 import { QuickInfoCard } from "../../../analytics/[alias]/_components/quick-info-card";
 
 import type { Plan } from "@/lib/billing/plans";
-import type { EventTrackingPause } from "@/server/lib/event-usage";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type Analytics = RouterOutputs["bioPage"]["getAnalytics"];
@@ -37,29 +42,22 @@ const chartConfig = {
   views: { label: "Views", color: "#2563eb" },
 } satisfies ChartConfig;
 
-export function AnalyticsPanel({
-  pageId,
-  plan,
-  trackingPause,
-}: {
-  pageId: number;
-  plan: Plan;
-  trackingPause: EventTrackingPause | null;
-}) {
+export function AnalyticsPanel({ pageId, plan }: { pageId: number; plan: Plan }) {
   const [range, setRange] = useState<Range>("7d");
   const isFree = plan === "free";
 
-  const { data, isLoading, isFetching } = api.bioPage.getAnalytics.useQuery(
-    { id: pageId, range },
-    {
-      // Lazy by design (this tab unmounts when inactive). Keep the previous
-      // range's data on screen while a new range loads so switching never
-      // flashes a skeleton, and don't refetch aggressively.
-      keepPreviousData: true,
-      staleTime: 30_000,
-      refetchOnWindowFocus: false,
-    },
-  );
+  const { data, isLoading, isFetching, isError, isPreviousData, refetch } =
+    api.bioPage.getAnalytics.useQuery(
+      { id: pageId, range },
+      {
+        // Lazy by design (this tab unmounts when inactive). Keep the previous
+        // range's data on screen while a new range loads so switching never
+        // flashes a skeleton, and don't refetch aggressively.
+        keepPreviousData: true,
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+      },
+    );
 
   return (
     <div className="space-y-5">
@@ -93,11 +91,31 @@ export function AnalyticsPanel({
         )}
       </div>
 
-      {trackingPause && (
-        <TrackingPausedBanner pause={trackingPause} source="bio_analytics_tracking_paused" />
-      )}
-
-      {isLoading || !data ? (
+      {isError && (!data || isPreviousData) ? (
+        <div
+          role="alert"
+          className="flex flex-col items-center rounded-lg border border-dashed border-neutral-200 px-4 py-10 text-center dark:border-border"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400">
+            <IconAlertTriangle size={16} stroke={1.5} />
+          </span>
+          <p className="mt-3 text-[14px] font-medium text-neutral-900 dark:text-foreground">
+            Couldn&apos;t load analytics
+          </p>
+          <p className="mt-1 max-w-xs text-[13px] text-neutral-500 dark:text-neutral-400">
+            Something went wrong while loading this page&apos;s stats.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? "Retrying…" : "Try again"}
+          </Button>
+        </div>
+      ) : isLoading || !data ? (
         <AnalyticsSkeleton />
       ) : (
         <div className={cn("space-y-5 transition-opacity", isFetching && "opacity-60")}>

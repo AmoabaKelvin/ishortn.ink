@@ -131,6 +131,9 @@ export type PersonalWorkspaceContext = {
   teamSlug: null;
   role: "owner"; // Users are always owners of their personal workspace
   plan: Plan;
+  // Plan that existing usage is held to during an over-plan grace (see
+  // graceUsagePlan in src/lib/billing/entitlements.ts); absent means `plan`.
+  graceUsagePlan?: Plan;
 };
 
 /**
@@ -144,7 +147,11 @@ export type TeamWorkspaceContext = {
   team: Team;
   membership: TeamMember;
   role: TeamRole;
-  plan: "ultra"; // Teams are always Ultra (since only Ultra users can create teams)
+  // From the owner's live plan (see teamAccess in src/lib/billing/entitlements.ts).
+  plan: Plan;
+  // Owner not on Ultra past the grace period: every write is refused.
+  readOnly: boolean;
+  ownerGraceEndsAt: Date | null;
 };
 
 /**

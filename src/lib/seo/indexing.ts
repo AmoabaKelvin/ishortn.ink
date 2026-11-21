@@ -1,5 +1,5 @@
 // Edge-safe (used by src/middleware.ts): no db, Node-only or network imports.
-import { APP_BASE_DOMAIN } from "@/lib/constants/domains";
+import { APP_BASE_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 
 import type { Metadata } from "next";
 
@@ -20,6 +20,7 @@ const MARKETING_PATHS = new Set([
   "/pricing",
   "/features",
   "/qr-code-generator",
+  "/utm-builder",
   "/blog",
   "/compare",
   "/changelog",
@@ -31,8 +32,8 @@ const MARKETING_PATHS = new Set([
 const MARKETING_PREFIXES = ["/blog/", "/compare/"];
 
 // Short-link domains and subdomains of the app domain (www, status, team
-// subdomains). *.isht.app and *.isht.ink team subdomains are left alone.
-const NON_PRIMARY_HOSTS = new Set(["isht.ink", "isht.app"]);
+// subdomains). Team subdomains of the other short domains are left alone.
+const NON_PRIMARY_HOSTS = new Set(PLATFORM_DOMAINS.filter((domain) => domain !== APP_BASE_DOMAIN));
 
 function normalizeHost(host: string): string {
   return (host.split(":")[0] ?? host).replace(/\.$/, "").toLowerCase();
@@ -50,7 +51,7 @@ function isMarketingPath(pathname: string): boolean {
   );
 }
 
-/** The https://ishortn.ink URL a marketing request on another platform host moves to, else null. */
+/** The app-domain URL a marketing request on another platform host moves to, else null. */
 export function getMarketingRedirectUrl(
   host: string,
   pathname: string,
@@ -67,13 +68,16 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "abuse",
   "account",
   "api",
+  "apple-icon.png",
   "auth",
   "blog",
   "changelog",
   "compare",
   "dashboard",
+  "docs-site",
   "favicon.ico",
   "features",
+  "icon.png",
   "fonts",
   "manifest.webmanifest",
   "opengraph-image",
@@ -86,6 +90,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "sitemap.xml",
   "teams",
   "terms",
+  "utm-builder",
 ]);
 
 const INTERSTITIAL_PREFIXES = [

@@ -3,7 +3,9 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { TEAM_READ_ONLY_MESSAGE } from "@/lib/billing/entitlements";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { db } from "@/server/db";
 import { ensureUser, type UserAccess } from "@/server/lib/ensure-user";
 import {
@@ -54,6 +56,8 @@ export type ProtectedTRPCContext = Omit<TRPCContext, "auth"> & {
   /** Whether the user has isAdmin=true, fetched once during auth */
   isAdmin: boolean;
   deletedAt: Date | null;
+  /** Set when moderation restricted the account; see contentWriteProcedure */
+  restrictedAt: Date | null;
 };
 
 // Per-request memo so batched procedures share one ban/admin lookup.
@@ -88,6 +92,7 @@ export const softDeletedProcedure = t.procedure.use(async ({ ctx, next }) => {
     },
     isAdmin: currentUser?.isAdmin ?? false,
     deletedAt: currentUser?.deletedAt ?? null,
+    restrictedAt: currentUser?.restrictedAt ?? null,
   };
 
   return next({ ctx: protectedCtx });
@@ -120,12 +125,49 @@ export type WorkspaceTRPCContext = ProtectedTRPCContext & {
  * Workspace-aware procedure that resolves the current workspace from the hostname.
  * This should be used for all operations that need workspace context.
  */
-export const workspaceProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+export const workspaceProcedure = protectedProcedure.use(async ({ ctx, next, type, path }) => {
   const hostname = ctx.headers.get("host") ?? DEFAULT_PLATFORM_DOMAIN;
 
   const workspace = await resolveWorkspaceContext(ctx.auth.userId, hostname, ctx.db);
 
+  // A team whose owner is not on Ultra (past the grace period) is read-only for
+  // every member. Every workspace mutation goes through here, so this is the one
+  // gate; only the ways out of the team stay open.
+  if (
+    workspace.type === "team" &&
+    workspace.readOnly &&
+    type === "mutation" &&
+    !READ_ONLY_TEAM_MUTATIONS.has(path)
+  ) {
+    throw new TRPCError({ code: "FORBIDDEN", message: TEAM_READ_ONLY_MESSAGE });
+  }
+
   return next({ ctx: { ...ctx, workspace } });
+});
+
+// Mutations a read-only team still allows: leaving or winding the team down,
+// and ones that only read (members can still get their links out).
+const READ_ONLY_TEAM_MUTATIONS = new Set([
+  "link.exportUserLinks",
+  "link.validateTransfer",
+  "team.leave",
+  "team.delete",
+  "team.transferOwnership",
+  "team.removeMember",
+  "team.revokeInvite",
+]);
+
+/**
+ * Workspace procedure for creating or editing links, custom domains, bio pages
+ * and QR codes. A restricted account keeps read, delete and billing access but
+ * is refused here in every workspace, personal or team.
+ */
+export const contentWriteProcedure = workspaceProcedure.use(({ ctx, next }) => {
+  if (ctx.restrictedAt) {
+    throw new TRPCError({ code: "FORBIDDEN", message: ACCOUNT_RESTRICTED_MESSAGE });
+  }
+
+  return next({ ctx });
 });
 
 /**

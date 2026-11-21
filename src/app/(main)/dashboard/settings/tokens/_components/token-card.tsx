@@ -26,7 +26,7 @@ type Token = RouterOutputs["token"]["list"][number];
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
-const TokenCard = ({ token }: { token: Token }) => {
+const TokenCard = ({ token, active = true }: { token: Token; active?: boolean }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Keys created before names were stored have none.
   const name = token.name ?? "API key";
@@ -58,6 +58,17 @@ const TokenCard = ({ token }: { token: Token }) => {
             <code className="flex-shrink-0 rounded-md bg-neutral-50 px-1.5 py-0.5 font-mono text-[11px] text-neutral-500 dark:bg-accent/50 dark:text-neutral-400">
               {token.prefix}••••
             </code>
+          )}
+          {active ? (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Active
+            </span>
+          ) : (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500" />
+              Inactive
+            </span>
           )}
         </div>
         <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">

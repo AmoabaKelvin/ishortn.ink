@@ -2,14 +2,23 @@ import crypto from "node:crypto";
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 
-import { resolvePlan } from "@/lib/billing/plans";
+import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
+import { effectivePlan, graceUsagePlan } from "@/lib/billing/entitlements";
+import { getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { domainBeyondPlanMessage, getUsableCustomDomains } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
+import { getApiSunset } from "@/server/lib/api-access";
+import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
 
+import { apiAccessRevokedResponse, withApiSunsetNotice } from "./api-access";
 import { apiError } from "./errors";
 import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
+
+import type { Plan } from "@/lib/billing/plans";
 
 // Bounds the write load from busy keys: lastUsedAt is only for display.
 const LAST_USED_RESOLUTION_MS = 60 * 60 * 1000;
@@ -23,16 +32,25 @@ export async function validateAndGetToken(apiKey: string | null) {
 
   const userId = existingToken[0]!.userId;
 
-  // Run ban check and subscription lookup in parallel
+  // Run ban/restriction check and subscription lookup in parallel
   const [userRecord, userSubscription] = await Promise.all([
     db.query.user.findFirst({
       where: eq(user.id, userId),
-      columns: { banned: true, deletedAt: true },
+      columns: {
+        id: true,
+        banned: true,
+        deletedAt: true,
+        restrictedAt: true,
+        planGracePlan: true,
+        planGraceEndsAt: true,
+        planGraceReason: true,
+        planCheckedAt: true,
+      },
     }),
     db.select().from(subscription).where(eq(subscription.userId, userId)),
   ]);
 
-  if (userRecord?.banned || userRecord?.deletedAt) {
+  if (!userRecord || userRecord.banned || userRecord.deletedAt) {
     return null;
   }
 
@@ -44,18 +62,34 @@ export async function validateAndGetToken(apiKey: string | null) {
     );
   }
 
-  const userSub = userSubscription[0];
+  const userSub = userSubscription[0] ?? null;
+  // The same entitlement the dashboard uses: API links live in the personal workspace.
   // Every paid-feature check in v1 reads this plan, so a trialing, past-due or
   // cancelled-but-paid-up subscriber gets the same access as in the dashboard.
-  return { ...existingToken[0]!, subscription: userSub, plan: resolvePlan(userSub ?? null) };
+  const grace = await ensurePlanChecked(userRecord, userSub);
+  return {
+    ...existingToken[0]!,
+    subscription: userSub,
+    grace,
+    plan: effectivePlan(userSub, grace),
+    // Existing usage (domains past the allowance) during an over-plan grace.
+    graceUsagePlan: graceUsagePlan(userSub, grace),
+    restrictedAt: userRecord.restrictedAt ?? null,
+  };
 }
 
 export type ApiToken = NonNullable<Awaited<ReturnType<typeof validateAndGetToken>>>;
 
+/** 403 for write routes when the token owner's account is restricted, else null. */
+export function restrictedAccountResponse(token: ApiToken): Response | null {
+  return token.restrictedAt ? apiError(403, "forbidden", ACCOUNT_RESTRICTED_MESSAGE) : null;
+}
+
 /**
- * Wraps a v1 route handler with API key auth and the plan's rate limit. The
- * limit is checked after auth (it needs the plan) and every response carries
- * the X-RateLimit-* headers.
+ * Wraps a v1 route handler with API key auth, the plan's API access and its
+ * rate limit. The limit is checked after auth (it needs the plan) and every
+ * response carries the X-RateLimit-* headers. Keys on accounts without a paid
+ * plan get 403 after their sunset and the sunset headers until then.
  */
 export function withApiKey<Req extends Request, Args extends unknown[]>(
   handler: (request: Req, token: ApiToken, ...args: Args) => Promise<Response>,
@@ -66,14 +100,19 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
       return apiError(401, "unauthorized", "Invalid or missing API key");
     }
 
+    // Paid keys skip the sunset lookup; for the rest it's cached per isolate.
+    const sunsetAt = canUseApi(token.plan) ? null : await getApiSunset();
+    const access = getApiAccess(token.subscription, token.grace, sunsetAt, new Date());
+    if (access.status === "revoked") return apiAccessRevokedResponse();
+
     const decision = await consumeApiRateLimit(token.userId, token.plan);
-    if (!decision.allowed) return rateLimitedResponse(decision);
+    if (!decision.allowed) return withApiSunsetNotice(rateLimitedResponse(decision), access);
 
     const response = await handler(request, token, ...args);
     for (const [name, value] of Object.entries(rateLimitHeaders(decision))) {
       response.headers.set(name, value);
     }
-    return response;
+    return withApiSunsetNotice(response, access);
   };
 }
 
@@ -128,6 +167,28 @@ export async function resolveApiDomainForUser(
   }
 
   return getUserDefaultDomain(userId);
+}
+
+/**
+ * Write-path counterpart of resolveApiDomainForUser: custom domains past the
+ * plan's allowance (oldest first, see getUsableCustomDomains) keep serving their
+ * links but take no new or edited ones. Returns the refusal message, or null.
+ */
+export async function apiDomainWriteError(
+  userId: string,
+  plan: Plan,
+  domain: string,
+): Promise<string | null> {
+  if (isPlatformDomain(domain)) return null;
+  const limit = getPlanCaps(plan).domainLimit;
+  if (limit === undefined) return null;
+
+  const usable = await getUsableCustomDomains(
+    db,
+    and(eq(customDomain.userId, userId), isNull(customDomain.teamId)),
+    limit,
+  );
+  return usable.includes(domain.toLowerCase()) ? null : domainBeyondPlanMessage(domain, limit);
 }
 
 export function getApiDomainParamsFromSearchParams(searchParams: URLSearchParams) {

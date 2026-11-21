@@ -5,6 +5,9 @@ import { api } from "@/trpc/server";
 import { BioPageBuilder } from "./_components/bio-page-builder";
 
 import type { RouterOutputs } from "@/trpc/shared";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Edit Bio Page" };
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +27,5 @@ export default async function BioPageBuilderPage(props: Props) {
 
   const sub = await api.subscriptions.get.query();
 
-  return (
-    <BioPageBuilder
-      pageId={id}
-      initialData={page}
-      plan={sub.plan}
-      trackingPause={sub.usage.events.paused}
-    />
-  );
+  return <BioPageBuilder pageId={id} initialData={page} plan={sub.plan} />;
 }

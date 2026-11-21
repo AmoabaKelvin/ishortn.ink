@@ -38,6 +38,7 @@ import {
   userAttribution,
   utmTemplate,
 } from "@/server/db/schema";
+import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 
 import { deleteCustomHostname } from "../domains/cloudflare";
 
@@ -57,8 +58,15 @@ export interface AccountCleanupResult {
   failures: number;
 }
 
+async function deleteClerkUser(userId: string): Promise<void> {
+  await (await clerkClient()).users.deleteUser(userId);
+}
+
 // Personal resources only; team-owned rows and the AccountDeletion survey row stay.
-export async function cleanupDeletedAccounts(): Promise<AccountCleanupResult> {
+// `deleteAuthUser` is a seam for tests; callers use the default.
+export async function cleanupDeletedAccounts(
+  deleteAuthUser: (userId: string) => Promise<void> = deleteClerkUser,
+): Promise<AccountCleanupResult> {
   const result: AccountCleanupResult = {
     accountsDeleted: 0,
     linksDeleted: 0,
@@ -76,7 +84,7 @@ export async function cleanupDeletedAccounts(): Promise<AccountCleanupResult> {
 
   for (const record of usersToDelete) {
     try {
-      if (await purgeAccount(record.id, result)) result.accountsDeleted += 1;
+      if (await purgeAccount(record.id, result, deleteAuthUser)) result.accountsDeleted += 1;
     } catch (err) {
       result.failures += 1;
       log.error({ err, userId: record.id }, "failed to purge account; will retry next run");
@@ -86,7 +94,11 @@ export async function cleanupDeletedAccounts(): Promise<AccountCleanupResult> {
   return result;
 }
 
-async function purgeAccount(userId: string, result: AccountCleanupResult): Promise<boolean> {
+async function purgeAccount(
+  userId: string,
+  result: AccountCleanupResult,
+  deleteAuthUser: (userId: string) => Promise<void>,
+): Promise<boolean> {
   const [links, bioPages, domains, folders] = await Promise.all([
     db
       .select({ id: link.id, alias: link.alias, domain: link.domain })
@@ -123,7 +135,7 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
 
     // Clerk first, so nobody signs in mid-purge. Failure aborts; next run retries.
     try {
-      await (await clerkClient()).users.deleteUser(userId);
+      await deleteAuthUser(userId);
     } catch (err) {
       // SAFETY: Clerk's backend SDK throws errors carrying a numeric `status`;
       // reading it off an unknown shape yields undefined, which we rethrow. A 404
@@ -158,9 +170,9 @@ async function purgeAccount(userId: string, result: AccountCleanupResult): Promi
       await tx.delete(folderPermission).where(inArray(folderPermission.folderId, ids));
     }
 
-    const deletedLinks = await tx
-      .delete(link)
-      .where(and(eq(link.userId, userId), isNull(link.teamId)));
+    const ownedLinks = and(eq(link.userId, userId), isNull(link.teamId));
+    await reserveLinkAliases(tx, ownedLinks, "purged");
+    const deletedLinks = await tx.delete(link).where(ownedLinks);
     result.linksDeleted += deletedLinks[0].affectedRows;
 
     const deletedBioPages = await tx

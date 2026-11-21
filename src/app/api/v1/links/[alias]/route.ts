@@ -3,16 +3,21 @@ import { z } from "zod";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { normalizeAlias } from "@/lib/utils";
+import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { removeLink } from "@/server/api/routers/link/link.service";
 import { validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 
 import { apiError, errorResponse, readJsonBody, validationError } from "../../errors";
 import {
+  apiDomainWriteError,
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
+  restrictedAccountResponse,
   withApiKey,
 } from "../../utils";
 
@@ -24,7 +29,7 @@ const log = logger.child({ component: "api.v1.links" });
 
 const updateLinkSchema = z
   .object({
-    url: z.string().url().optional(),
+    url: destinationUrlSchema.optional(),
     alias: z
       .string()
       .min(1)
@@ -72,6 +77,9 @@ export const GET = withApiKey(
 
 export const PATCH = withApiKey(
   async (request: NextRequest, token, props: { params: Promise<{ alias: string }> }) => {
+    const restricted = restrictedAccountResponse(token);
+    if (restricted) return restricted;
+
     const params = await props.params;
     const alias = params.alias;
 
@@ -100,6 +108,13 @@ export const PATCH = withApiKey(
       return apiError(404, "not_found", "Link not found");
     }
 
+    // Links on a custom domain past the plan's allowance keep redirecting but
+    // can't be edited.
+    const domainError = await apiDomainWriteError(token.userId, token.graceUsagePlan, domain);
+    if (domainError) {
+      return apiError(403, "forbidden", domainError);
+    }
+
     const filteredUpdateData: LinkUpdate = {};
 
     if (parsed.data.url !== undefined) {
@@ -112,25 +127,31 @@ export const PATCH = withApiKey(
       }
       filteredUpdateData.url = parsed.data.url;
     }
-    if (parsed.data.alias !== undefined) {
+    const newAlias = parsed.data.alias;
+    const renamed =
+      newAlias !== undefined &&
+      normalizeAlias(newAlias) !== normalizeAlias(existingLink.alias ?? "");
+    if (renamed) {
       // Same rules as creating a link: format, the free-plan minimum length and
-      // case-insensitive uniqueness on the domain.
-      if (parsed.data.alias !== existingLink.alias) {
-        try {
-          await validateAlias({ db }, parsed.data.alias, domain, token.plan !== "free");
-        } catch (error) {
-          return errorResponse(error);
-        }
+      // case-insensitive uniqueness (including retired aliases) on the domain.
+      try {
+        await validateAlias({ db }, newAlias, existingLink.domain, token.plan !== "free");
+      } catch (error) {
+        return errorResponse(error);
       }
-      filteredUpdateData.alias = parsed.data.alias;
     }
+    if (newAlias !== undefined) filteredUpdateData.alias = newAlias;
     if (parsed.data.expiresAt !== undefined) {
       filteredUpdateData.disableLinkAfterDate = parsed.data.expiresAt
         ? new Date(parsed.data.expiresAt)
         : null;
     }
     if (parsed.data.activatesAt !== undefined) {
-      if (parsed.data.activatesAt && token.plan === "free") {
+      if (
+        parsed.data.activatesAt &&
+        (existingLink.activateAt ? token.graceUsagePlan : token.plan) === "free" &&
+        new Date(parsed.data.activatesAt).getTime() !== existingLink.activateAt?.getTime()
+      ) {
         return apiError(
           403,
           "forbidden",
@@ -150,7 +171,15 @@ export const PATCH = withApiKey(
     }
 
     try {
-      await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+      if (renamed) {
+        // A rename frees the old alias just like a delete does.
+        await db.transaction(async (tx) => {
+          await reserveLinkAliases(tx, eq(link.id, existingLink.id), "deleted");
+          await tx.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+        });
+      } else {
+        await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+      }
 
       // Refetch by id: ownership is already settled, and the alias may have just
       // changed, so looking it up by alias again would race a concurrent rename.

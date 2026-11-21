@@ -1,15 +1,21 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { link, linkTag, tag } from "@/server/db/schema";
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
+import { normalizeTagName, normalizeTagNames } from "./utils";
+
 import type { WorkspaceTRPCContext } from "../../trpc";
+import type { DbClient } from "@/server/lib/user-plan";
+
+/** A workspace context whose db may be a transaction, so tag writes can join the caller's. */
+type TagWriteContext = Pick<WorkspaceTRPCContext, "auth" | "workspace"> & { db: DbClient };
 
 // Create a new tag if it doesn't exist
 // Uses transaction to prevent race conditions for personal workspace tags
 // (MySQL unique constraint on (name, teamId) doesn't prevent duplicates when teamId is NULL)
-export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
-  const normalizedName = tagName.toLowerCase().trim();
+export const createTag = async (ctx: TagWriteContext, tagName: string) => {
+  const normalizedName = normalizeTagName(tagName);
   const ownership = workspaceOwnership(ctx.workspace);
 
   // For team workspaces, the DB unique constraint handles uniqueness
@@ -53,10 +59,15 @@ export const createTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
         (isDuplicateKey(error) || (error.cause instanceof Error && isDuplicateKey(error.cause)));
 
       if (isDuplicateKeyError) {
-        // Another request created the tag concurrently, fetch and return it
-        const createdTag = await ctx.db.query.tag.findFirst({
-          where: and(eq(tag.name, normalizedName), eq(tag.teamId, ctx.workspace.teamId)),
-        });
+        // Another request created the tag concurrently, fetch and return it. A locking read
+        // sees the latest committed row; a plain read inside the caller's transaction would
+        // use its REPEATABLE READ snapshot and miss it.
+        const [createdTag] = await ctx.db
+          .select()
+          .from(tag)
+          .where(and(eq(tag.name, normalizedName), eq(tag.teamId, ctx.workspace.teamId)))
+          .limit(1)
+          .for("share");
 
         if (createdTag) {
           return createdTag;
@@ -108,9 +119,10 @@ export const getUserTags = async (ctx: WorkspaceTRPCContext) => {
   });
 };
 
-// Associate tags with a link
+// Replace a link's tags. Callers run this in a transaction with the link write
+// (pass the transaction as ctx.db), so a failure leaves the previous tags intact.
 export const associateTagsWithLink = async (
-  ctx: WorkspaceTRPCContext,
+  ctx: TagWriteContext,
   linkId: number,
   tagNames: string[],
 ) => {
@@ -124,26 +136,33 @@ export const associateTagsWithLink = async (
     return;
   }
 
-  // First, remove all existing tag associations for this link
+  // "Marketing" and "marketing" are one tag; two copies would collide on the
+  // LinkTag primary key.
+  const names = normalizeTagNames(tagNames);
+
+  const existingTags = names.length
+    ? await ctx.db.query.tag.findMany({
+        where: and(
+          inArray(tag.name, names),
+          workspaceFilter(ctx.workspace, tag.userId, tag.teamId),
+        ),
+      })
+    : [];
+  const tagIdByName = new Map(existingTags.map((t) => [normalizeTagName(t.name), t.id]));
+
+  // Sequential: a transaction runs on one connection anyway.
+  for (const name of names) {
+    if (tagIdByName.has(name)) continue;
+    const created = await createTag(ctx, name);
+    tagIdByName.set(name, Number(created.id));
+  }
+
   await ctx.db.delete(linkTag).where(eq(linkTag.linkId, linkId));
 
-  if (!tagNames.length) return;
+  const tagIds = [...new Set(names.map((name) => tagIdByName.get(name)!))];
+  if (!tagIds.length) return;
 
-  // Create or get tags and create associations
-  const tagPromises = tagNames.map(async (tagName) => {
-    const tagRecord = await createTag(ctx, tagName);
-    return tagRecord;
-  });
-
-  const tags = await Promise.all(tagPromises);
-
-  // Create link-tag associations
-  const linkTagValues = tags.map((tag) => ({
-    linkId,
-    tagId: Number(tag.id),
-  }));
-
-  await ctx.db.insert(linkTag).values(linkTagValues);
+  await ctx.db.insert(linkTag).values(tagIds.map((tagId) => ({ linkId, tagId: Number(tagId) })));
 };
 
 // Get tags for a specific link
@@ -175,7 +194,7 @@ export const getTagsForLink = async (ctx: WorkspaceTRPCContext, linkId: number) 
 export const getLinksByTag = async (ctx: WorkspaceTRPCContext, tagName: string) => {
   const tagRecord = await ctx.db.query.tag.findFirst({
     where: and(
-      eq(tag.name, tagName.toLowerCase().trim()),
+      eq(tag.name, normalizeTagName(tagName)),
       workspaceFilter(ctx.workspace, tag.userId, tag.teamId),
     ),
   });

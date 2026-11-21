@@ -88,8 +88,11 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
 
   test("PATCH rejects an alias already taken on the domain, ignoring case", async () => {
     const response = await patch(ALIAS, JSON.stringify({ alias: OTHER_ALIAS.toUpperCase() }));
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toBe("Alias already exists");
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatchObject({
+      code: "conflict",
+      message: "Alias already exists",
+    });
   });
 
   test("PATCH renames to a valid alias", async () => {
