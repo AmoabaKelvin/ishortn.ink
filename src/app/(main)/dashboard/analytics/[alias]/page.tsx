@@ -8,7 +8,6 @@ import { rangeEnum } from "@/server/api/routers/link/link.input";
 import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
-import { TrackingPausedBanner } from "../../_components/tracking-paused-banner";
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
 import { RangePendingContent, RangeTransitionProvider } from "../_components/range-transition";
@@ -59,16 +58,12 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     analyticsSearchParamsSchema.parse(searchParams);
 
   let visits: RouterOutputs["link"]["linkVisits"];
-  let subscription: RouterOutputs["subscriptions"]["get"] | null;
   try {
-    [visits, subscription] = await Promise.all([
-      api.link.linkVisits.query({
-        id: params.alias,
-        domain: requestedDomain,
-        range: requestedRange,
-      }),
-      api.subscriptions.get.query().catch(() => null),
-    ]);
+    visits = await api.link.linkVisits.query({
+      id: params.alias,
+      domain: requestedDomain,
+      range: requestedRange,
+    });
   } catch (error) {
     // Only a missing link becomes a 404; auth/server errors must surface.
     if (isNotFoundError(error)) notFound();
@@ -86,7 +81,6 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     range,
     window,
   } = visits;
-  const trackingPause = subscription?.usage.events.paused ?? null;
 
   const aggregatedVisits = aggregateVisits(totalVisits, uniqueVisits, window.granularity);
   const series = fillClickSeries(mergeArchivedClicks(aggregatedVisits, archived), window);
@@ -120,14 +114,6 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
       </div>
 
       <RangePendingContent>
-        {trackingPause && (
-          <TrackingPausedBanner
-            pause={trackingPause}
-            source="link_analytics_tracking_paused"
-            className="mt-6 md:mt-8"
-          />
-        )}
-
         {/* quick info cards */}
         <div
           className={cn(

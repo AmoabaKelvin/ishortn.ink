@@ -43,6 +43,8 @@ import { SidebarStats } from "./sidebar-stats";
 import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
+import type { EventUsage } from "./sidebar-stats";
+
 const navigationItems = [
   { name: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
   {
@@ -107,7 +109,7 @@ type AppSidebarProps = {
   monthlyLinkCount?: number;
   totalLinks?: number;
   linkLimit?: number | null;
-  eventUsage?: { count: number; limit: number | null } | undefined;
+  eventUsage?: EventUsage | undefined;
   folderUsage?: { count: number; limit: number | null } | undefined;
   plan?: "free" | "pro" | "ultra";
   teams?: Team[];

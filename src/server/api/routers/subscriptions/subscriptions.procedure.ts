@@ -2,7 +2,7 @@ import { and, count, eq, isNull } from "drizzle-orm";
 
 import { getPlanCaps, getSubscriptionMode, resolvePlan } from "@/lib/billing/plans";
 import { folder } from "@/server/db/schema";
-import { getEventTrackingPause } from "@/server/lib/event-usage";
+import { getEventTrackingPause, nextEventCountReset } from "@/server/lib/event-usage";
 import {
   getUserPlanContext,
   normalizeMonthlyEventCount,
@@ -101,6 +101,7 @@ export const subscriptionsRouter = createTRPCRouter({
         events: {
           count: monthlyEventCount,
           limit: eventLimit,
+          resetsAt: nextEventCountReset(new Date()),
           paused: getEventTrackingPause({
             count: monthlyEventCount,
             limit: eventLimit,

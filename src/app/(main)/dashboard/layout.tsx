@@ -15,6 +15,9 @@ import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
 import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
+import { trackingPausedBannerState } from "./_components/tracking-paused";
+import { TrackingPausedBanner } from "./_components/tracking-paused-banner";
+import { getDashboardSubscription } from "./_lib/get-subscription";
 
 interface Props {
   children: React.ReactNode;
@@ -134,6 +137,11 @@ export default async function DashboardLayout({ children }: Props) {
     }
   }
 
+  // Fetched after ensureUser so a just-provisioned user has a row. The sidebar reads the same
+  // cache() entry, so the paused-tracking banner adds no query.
+  const subscription = session?.userId ? await getDashboardSubscription() : null;
+  const trackingPaused = trackingPausedBannerState(subscription);
+
   return (
     <div className={cn("min-h-screen bg-neutral-50 dark:bg-accent/50", funnelSans.className)}>
       <SidebarWrapper isAdmin={isAdmin} userName={userName} />
@@ -158,6 +166,7 @@ export default async function DashboardLayout({ children }: Props) {
             </div>
           )}
           {emailBounced && <BouncedEmailBanner />}
+          {trackingPaused && <TrackingPausedBanner {...trackingPaused} />}
           <div className="mt-7 py-4">{children}</div>
         </div>
       </div>

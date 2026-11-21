@@ -1,5 +1,6 @@
 import { api } from "@/trpc/server";
 
+import { getDashboardSubscription } from "../../_lib/get-subscription";
 import { AppSidebar } from "./app-sidebar";
 
 interface SidebarWrapperProps {
@@ -10,7 +11,7 @@ interface SidebarWrapperProps {
 export async function SidebarWrapper({ isAdmin, userName }: SidebarWrapperProps) {
   // Fetch subscription, teams, and workspace in parallel
   const [userSubscription, teams, currentWorkspace] = await Promise.all([
-    api.subscriptions.get.query().catch(() => null),
+    getDashboardSubscription(),
     api.team.list.query().catch(() => []),
     api.team.currentWorkspace.query().catch(() => ({
       type: "personal" as const,

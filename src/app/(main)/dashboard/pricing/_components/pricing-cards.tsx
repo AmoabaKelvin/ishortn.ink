@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
+import { getPlanCaps } from "@/lib/billing/plans";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -74,6 +75,8 @@ type PendingChange = { plan: PaidPricingPlan; kind: "switch" | "upgrade" };
 
 const PLAN_ORDER = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
+const PRO_EVENTS_LIMIT = getPlanCaps("pro").eventsLimit ?? 0;
+
 export function PricingCards({
   currentPlan,
   currentInterval,
@@ -98,6 +101,16 @@ export function PricingCards({
     }
     return plan;
   });
+  // ?highlight=pro|ultra (from in-app upgrade prompts) only preselects a plan; it never starts
+  // checkout on its own.
+  const highlightParam = plans.find((p) => p.id === searchParams?.get("highlight"));
+  const highlightedPlanId: Plan | null =
+    highlightParam && PLAN_ORDER[highlightParam.id] > PLAN_ORDER[currentPlan]
+      ? highlightParam.id
+      : currentPlan === "free"
+        ? "pro"
+        : null;
+  const fromEventsCap = searchParams?.get("source")?.startsWith("events_") ?? false;
   const autoCheckout = autoUpgrade && subscriptionMode === "checkout" ? autoUpgrade : null;
   const autoCheckoutFired = useRef(false);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(autoCheckout?.id ?? null);
@@ -221,6 +234,13 @@ export function PricingCards({
         </Badge>
       </div>
 
+      {fromEventsCap && (
+        <p className="mx-auto max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+          Pro records {PRO_EVENTS_LIMIT.toLocaleString()} visits a month; Ultra has no limit. Visits
+          from before the upgrade are not recovered.
+        </p>
+      )}
+
       {/* Pricing Cards */}
       <div className="grid gap-6 lg:grid-cols-3">
         {plans.map((plan) => {
@@ -241,8 +261,7 @@ export function PricingCards({
               key={plan.id}
               className={cn(
                 "relative flex flex-col rounded-2xl border bg-white dark:bg-card p-6 shadow-sm transition-shadow hover:shadow-md",
-                plan.popular &&
-                  currentPlan === "free" &&
+                plan.id === highlightedPlanId &&
                   "border-gray-900 dark:border-border ring-1 ring-gray-900 dark:ring-border",
                 isCurrentPlan && "border-blue-500 ring-1 ring-blue-500",
               )}
@@ -338,6 +357,11 @@ export function PricingCards({
                     Downgrade
                   </Button>
                 ) : null}
+                {fromEventsCap && canUpgrade && plan.id === highlightedPlanId && (
+                  <p className="mt-2 text-center text-xs tabular-nums text-gray-500 dark:text-neutral-400">
+                    ${plan.monthlyPrice}/month or ${plan.annualPrice}/year
+                  </p>
+                )}
               </div>
 
               {/* Features */}
