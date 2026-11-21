@@ -50,6 +50,8 @@ Depending on your needs, Bitly may lack features like geo-targeting, QR code cus
 
 **Best for:** Individuals and small teams who want a generous free plan with real analytics, or anyone looking for an affordable paid plan that does not sacrifice features.
 
+**Moving from Bitly:** upload Bitly's link export as it is. Links on your own domain keep their addresses, so printed QR codes keep working. See [Move your links from Bitly](/docs/migrate-from-bitly).
+
 **Pros:**
 
 - 30 new links a month on the free plan, more than Bitly (5), Rebrandly (10) or Dub (25)

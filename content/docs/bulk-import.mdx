@@ -42,6 +42,8 @@ Upload a link export from Bitly as it is: the file Bitly gives you from **Links*
 
 Importing the same file again is safe: links created by an earlier run are counted as already imported, so after fixing a domain you can re-upload the whole file.
 
+For the whole move, including pointing your domain's DNS away from Bitly, see [Move your links from Bitly](/docs/migrate-from-bitly).
+
 ## Limits
 
 - Each created row counts toward your [monthly link limit](/docs/short-links#monthly-link-limit), except rows that use the custom-domain import allowance below. If you've already reached it (and have no import allowance left), the whole upload is rejected. Otherwise rows are created in file order until the limit is reached, and the remaining rows fail with `Monthly limit of {limit} links reached. Upgrade your plan to create more.`
@@ -54,11 +56,13 @@ A row that fails doesn't stop the others. The summary lists each failed row with
 
 | Message | Fix |
 | --- | --- |
-| `Missing or invalid url` | Put a full URL, including `https://`, in the `url` column. |
+| `Missing url` | Put a full URL, including `https://`, in the `url` column. |
+| `Enter a valid URL, e.g. https://example.com` | Put a full URL, including `https://`, in the `url` column. |
 | `Alias can be at most 20 characters` | Shorten the alias. |
 | `Alias is used by an earlier row in this file` | Give each row a different alias. |
 | `Alias already exists` | Pick another alias, or leave it empty. |
 | `Alias can only contain alphanumeric characters, dashes, and underscores` | Remove other characters from the alias. |
 | `Selected domain is not available for this workspace.` | Use a platform domain or one of the workspace's active custom domains. |
 | `<domain> isn't connected to this workspace.` | Bitly exports: add the domain in Domains, wait until it shows Active, then import the file again. |
+| `… links stay on Bitly … Created <short link>.` (a notice, not a failure) | None needed. Use the new short link listed. |
 | A link safety message | The destination was flagged; see [Abuse and acceptable use](/docs/abuse). |

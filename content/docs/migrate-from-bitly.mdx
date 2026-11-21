@@ -1,0 +1,94 @@
+---
+title: Move your links from Bitly
+description: Bring your Bitly links, branded domain and printed QR codes to iShortn. Export from Bitly, connect your domain, import the file and check that old links still work.
+---
+
+You can move your Bitly links to iShortn by importing Bitly's link export as it is, without editing the file. Links on your own domain, such as `go.yourbrand.com/menu`, keep their exact addresses: printed flyers, menus and QR codes keep working once your domain points to iShortn.
+
+## What moves and what doesn't
+
+| | Moves | Notes |
+| --- | --- | --- |
+| Links on your own domain | Yes, same address | Custom back-halves become aliases on your domain. |
+| Bitly's random codes on your domain, such as `go.yourbrand.com/3XCetqn` | Yes, same address | Optional, on by default. Each one counts as a link. |
+| Titles | Yes | Become the link name. |
+| Links on `bit.ly` | Destination only | `bit.ly` belongs to Bitly, so those addresses can't move. The import creates a new short link for each one and lists the new address. |
+| Tags, click history, created dates | No | Bitly's export has no tags. Analytics start fresh from the first click on iShortn. |
+| Links deleted in Bitly | No | Rows marked `Deleted` are skipped. |
+
+A QR code keeps working after the move only if it opens an address on your own domain. Scan one of your printed codes and look at the address before you start.
+
+## Before you start
+
+- **An iShortn Pro or Ultra plan.** CSV import and custom domains are on paid plans. Pro includes 3 custom domains and 1,000 new links a month; Ultra has no link limit. See [Plans and limits](/docs/plans).
+- **A Bitly plan with data export.** Bitly lists data export on Growth and higher. Bitly Free and Core don't have custom domains, so their links all sit on `bit.ly` and can't keep their addresses anyway.
+- **Access to your domain's DNS**, at the company where you manage the domain.
+- **About 15 minutes**, at a quiet time for your links. Links on your domain stop redirecting from the moment you change the DNS until the import finishes. That's usually a few minutes.
+
+## 1. Export your links from Bitly
+
+1. In Bitly, open **Links** in the left sidebar and click **Export**.
+2. Choose an email address and click **Export links**.
+3. Open the email from Bitly (from team@accounts.bitly.com; large exports can take up to 30 minutes) and click **View Report** to download the CSV.
+
+Selecting links and exporting them gives at most 100 links, so use the full export above. Keep your Bitly account until you've checked the move: it's your way back if something goes wrong.
+
+If the file has more than 1,000 links, split it into files of up to 1,000 rows. Each file needs the header row.
+
+## 2. Add your domain to iShortn
+
+1. Open [Domains](/dashboard/domains) and click **Add Domain**.
+2. Enter the same domain you use on Bitly, for example `go.yourbrand.com`.
+3. Leave the page open. The domain card shows the DNS records to create.
+
+Full details are in [Custom domains](/docs/custom-domains).
+
+## 3. Point the domain to iShortn
+
+In your DNS provider, replace Bitly's records with the ones on the iShortn domain card.
+
+| Your Bitly setup | Remove | Add |
+| --- | --- | --- |
+| Subdomain, such as `go.yourbrand.com` | `CNAME` to `cname.bitly.com` | `CNAME` to `cname.ishortn.ink`, plus the `TXT` record from the domain card |
+| Whole domain, such as `yourbrand.co` | The two `A` records to `67.199.248.12` and `67.199.248.13` | An `ALIAS` or `ANAME` record (or a flattened `CNAME`) to `cname.ishortn.ink`, plus the `TXT` record from the domain card |
+
+If your DNS is on Cloudflare, set the record to **DNS only** (grey cloud). If your provider has no ALIAS, ANAME or flattened CNAME at the root, a whole domain can't point to iShortn; see [Custom domains](/docs/custom-domains#troubleshooting).
+
+Back in iShortn, click **Check Now** until the domain shows **Active**. DNS changes usually show up within minutes.
+
+## 4. Import the file
+
+1. Open the [dashboard](/dashboard), open the **…** menu next to **New Link** and choose **Upload CSV**.
+2. Drop in the file from Bitly, unchanged.
+3. Leave **Also keep Bitly's original codes working** on if any of those codes were shared or printed.
+4. Click **Import links**.
+
+The summary lists anything that needs attention:
+
+- **"… isn't connected to this workspace"**: the domain isn't Active yet, or it was added in another workspace. Finish step 3, then import the same file again.
+- **"bit.ly links stay on Bitly. Created …"**: a new short link was made for a `bit.ly` link. Use the new address from now on.
+- **"Alias already exists"**: another link on that domain uses the alias. Aliases ignore letter case, so `Menu` and `menu` are the same alias.
+
+You can import the same file again after fixing a problem. Links that already came across are counted as already imported, and only real errors are listed.
+
+## 5. Check that it worked
+
+1. Open three or four of your old links in a private browser window, including one with a custom back-half and one random code.
+2. Scan a printed QR code with your phone.
+3. Open [Analytics](/dashboard) and confirm those visits appear.
+
+When everything redirects, you can cancel Bitly. Until then, putting Bitly's DNS records back undoes the move.
+
+## Questions
+
+### Do my printed QR codes need reprinting?
+
+Not if they open an address on your own domain. They point to the same address, and that address now redirects through iShortn. Codes that open a `bit.ly` address stay on Bitly.
+
+### Can I bring my Bitly tags?
+
+Not from the CSV, because Bitly's export doesn't include them. Add tags to the links from the dashboard after the import.
+
+### I have more links than my monthly limit
+
+Each imported link counts toward your [monthly link limit](/docs/short-links#monthly-link-limit). Pro allows 1,000 new links a month and Ultra has no limit. Rows past the limit are listed in the summary; import the same file again next month, or upgrade to Ultra.
