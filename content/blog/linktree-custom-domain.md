@@ -31,7 +31,7 @@ Since Linktree can't serve your page on your domain, people try other routes:
 - **Forward your domain to linktr.ee.** Set yourdomain.com to forward to linktr.ee/yourname at your registrar. It works, but visitors see the address change to linktr.ee as the page loads, so the page still lives on Linktree's address. Linktree says it doesn't offer tools for domain forwarding, so this is all set up at your registrar.
 - **Use Linktree's Redirect link.** Linktree's suggested workaround is a Redirect link (on its paid plans), which sends everyone who opens your Linktree straight on to a link you choose. That helps if your real page lives elsewhere, but the address you share is still linktr.ee.
 - **Build a page on your own website.** Full control, but now you're maintaining a web page every time a link changes, and you lose per-link click tracking unless you set it up yourself.
-- **Use a one-page site builder.** Tools like Carrd let you put a simple page on a custom domain cheaply. Carrd doesn't have native click analytics, though, so you can't see which links people tap without adding Google Analytics. (Our [iShortn vs Carrd](/compare/carrd) page has the details.)
+- **Use a one-page site builder.** Tools like Carrd let you put a simple page on a custom domain cheaply. Carrd's analytics (Google Analytics or its own) need the $19/yr Pro Standard plan, though, and it has no per-link click tracking or short links. (Our [iShortn vs Carrd](/compare/carrd) page has the details.)
 
 What most people actually want is a link-in-bio builder, on their domain, with tracking on every link. That's what we built.
 
@@ -104,7 +104,7 @@ To be fair to Linktree:
 - **You sell directly from your bio.** Linktree and Beacons have built-in commerce features. iShortn is a link-in-bio page with link tracking, not a storefront. (See [iShortn vs Beacons](/compare/beacons) if commerce is part of your decision.)
 - **You want a large template library.** Linktree has many more visual templates.
 
-If the custom domain is the thing you're after, Linktree can't do it, and iShortn Pro can, along with tracked links, short links and QR codes on the same domain. The full side-by-side is on our [iShortn vs Linktree](/compare/linktree) page.
+If the custom domain is the thing you're after, Linktree can't do it, and iShortn Pro can, along with tracked links, short links and QR codes on the same domain. The full side-by-side is on our [iShortn vs Linktree](/compare/linktree) page. If you're a creator or freelancer, [link in bio for creators](/solutions/creators) shows how the bio page, short links and QR codes fit together.
 
 ## Quick answers
 

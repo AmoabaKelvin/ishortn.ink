@@ -1,0 +1,1 @@
+CREATE INDEX `userId_teamId_createdAt_idx` ON `Link` (`userId`,`teamId`,`createdAt`,`id`);

@@ -22,7 +22,7 @@ The versatility of QR codes makes them valuable across nearly every industry. He
 
 ### Restaurant Menus
 
-QR codes on tables link directly to a digital menu. This eliminates printing costs, makes it easy to update prices or seasonal items, and provides a contactless experience customers prefer.
+QR codes on tables link directly to a digital menu. This eliminates printing costs, makes it easy to update prices or seasonal items, and provides a contactless experience customers prefer. See [QR codes for restaurants and bars](/solutions/restaurants) for a setup with one code per table or location.
 
 ### Product Packaging
 
@@ -30,7 +30,7 @@ A QR code on packaging can link to setup instructions, ingredient details, warra
 
 ### Event Tickets and Check-In
 
-Event organizers use QR codes as digital tickets. Attendees present their code at the door for a quick scan, speeding up entry. The same code can link to event schedules, maps, or exclusive content.
+Event organizers use QR codes as digital tickets. Attendees present their code at the door for a quick scan, speeding up entry. The same code can link to event schedules, maps, or exclusive content. For bulletins, giving pages and event posters, see [QR codes for churches and nonprofits](/solutions/churches-and-nonprofits). For posters and registration links, see [QR codes for events and posters](/solutions/events).
 
 ### Business Cards
 
@@ -38,11 +38,11 @@ A QR code on a business card can link to a digital vCard, LinkedIn profile, or p
 
 ### Real Estate
 
-A code on a yard sign or flyer can link to a virtual tour, photo gallery, or scheduling page. Prospective buyers get instant access to detailed property information without needing to call or search online.
+A code on a yard sign or flyer can link to a virtual tour, photo gallery, or scheduling page. Prospective buyers get instant access to detailed property information without needing to call or search online. For sign riders and open house codes you repoint for each listing, see [QR codes for real estate signs and open houses](/solutions/real-estate).
 
 ### Retail and In-Store Promotions
 
-Retailers place QR codes on shelf tags, window displays, and receipts to link customers to product reviews, loyalty programs, or exclusive discounts.
+Retailers place QR codes on shelf tags, window displays, and receipts to link customers to product reviews, loyalty programs, or exclusive discounts. For packaging, receipts and counter signs in a small shop, see [QR codes for small businesses and shops](/solutions/small-business).
 
 ## Static vs. Dynamic QR Codes
 
@@ -65,7 +65,7 @@ Creating a QR code is straightforward. Here is the process from start to finish.
 1. **Choose a QR code generator.** Look for a tool that supports dynamic codes with built-in analytics. A free QR code generator like iShortn lets you create codes without upfront costs.
 2. **Enter your destination URL.** This is the page, menu, form, or file you want the code to link to.
 3. **Customize the design.** Adjust colors, add a logo, or change the shape of the pattern. Keep scannability as your top priority.
-4. **Download the QR code.** Export a high-resolution PNG; iShortn exports codes as print-resolution PNG files. For large-format print, test a proof at the final size before the full run.
+4. **Download the QR code.** Export a high-resolution PNG, or an SVG for large-format print and engraving. iShortn's no-signup generator downloads print-resolution PNGs; codes made in a free iShortn account can also download as SVG, which scales to any size. For large-format print, test a proof at the final size before the full run.
 5. **Test before publishing.** Scan with at least two different devices to verify it works. Check that the destination loads properly on mobile.
 6. **Place and distribute.** Add the QR code to menus, packaging, signage, flyers, or digital channels.
 

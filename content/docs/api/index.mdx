@@ -1,9 +1,9 @@
 ---
 title: API reference
-description: Create, read, update and delete short links and read their analytics over HTTPS with an API key. Requires a Pro or Ultra plan.
+description: Create, list, read, update and delete short links and read their analytics over HTTPS with an API key. Requires a Pro or Ultra plan.
 ---
 
-The iShortn REST API lets you create short links from your own code, change where they point, delete them and pull their click analytics. Every endpoint lives under one base URL and speaks JSON. API access is part of the **Pro** and **Ultra** plans; see [API access by plan](#api-access-by-plan).
+The iShortn REST API lets you create short links from your own code, list them, change where they point, delete them and pull their click analytics. Every endpoint lives under one base URL and speaks JSON. API access is part of the **Pro** and **Ultra** plans; see [API access by plan](#api-access-by-plan).
 
 ```text
 https://ishortn.ink/api/v1
@@ -12,13 +12,15 @@ https://ishortn.ink/api/v1
 | Endpoint | What it does |
 | --- | --- |
 | [`POST /api/v1/links`](/docs/api/create-link) | Create a short link |
+| [`GET /api/v1/links`](/docs/api/list-links) | List your short links, newest first |
 | [`GET /api/v1/links/{alias}`](/docs/api/get-link) | Get a short link |
 | [`PATCH /api/v1/links/{alias}`](/docs/api/update-link) | Change a link's destination, alias, expiry or schedule |
 | [`DELETE /api/v1/links/{alias}`](/docs/api/delete-link) | Delete a short link |
 | [`GET /api/v1/analytics/{alias}`](/docs/api/link-analytics) | Get click analytics for a link |
+| [`GET /api/v1/me`](/docs/api/get-me) | Get the account that owns the key, to check a connection |
 | [`POST /api/v1/clicks/verify`](/docs/api/verify-click) | Confirm a verified click (called by iShortn's redirect page) |
 
-These are the only endpoints. Listing links isn't available through the API yet; use the [dashboard](/dashboard) for that.
+To shorten links and check their clicks without writing code, use the [Raycast extension](/docs/integrations/raycast), which runs on this API.
 
 ## Authentication
 
@@ -80,7 +82,7 @@ Keys aren't deleted. [Upgrading to Pro or Ultra](/pricing) makes the same keys w
 An API key belongs to you, not to a team, so it works in your **personal workspace**:
 
 - Links created through the API are added to your personal workspace.
-- `GET`, `PATCH`, `DELETE` and analytics requests only find links in your personal workspace. Links in a [team workspace](/docs/teams) return `404`.
+- Listing, `GET`, `PATCH`, `DELETE` and analytics requests only find links in your personal workspace. Links in a [team workspace](/docs/teams) return `404`.
 
 ## Domains
 
@@ -155,7 +157,7 @@ The one exception to this shape is the [plan-gated `403`](#api-access-by-plan) a
 | --- | --- | --- |
 | `bad_request` | `400` | The request is invalid, for example an alias in the wrong format or a URL that failed the [link safety check](#link-safety). |
 | `invalid_json` | `400` | The request body isn't valid JSON. The message is `Request body must be valid JSON`. |
-| `validation_failed` | `400` | The body doesn't match the endpoint's schema. The message is `Request body is invalid` and `details` lists the fields. |
+| `validation_failed` | `400` | The body or query string doesn't match the endpoint's schema. The message is `Request body is invalid`, or `Query parameters are invalid` for [List links](/docs/api/list-links), and `details` lists the fields. |
 | `unauthorized` | `401` | Missing or invalid API key. |
 | `forbidden` | `403` | The domain isn't available to the key, the feature or domain isn't on your plan, the monthly link limit is reached, or the account is restricted. |
 | `not_found` | `404` | No link with that alias on that domain in your personal workspace. |

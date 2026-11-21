@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { getChangelogEntries } from "@/lib/changelog";
 import { competitors } from "@/lib/seo/competitors";
+import { solutionList } from "@/lib/seo/solutions";
 
 // test/setup.ts sets NEXT_PUBLIC_APP_URL before env.mjs loads.
 import sitemap from "./sitemap";
@@ -30,6 +31,16 @@ describe("sitemap", () => {
   it("lists the UTM builder", async () => {
     const urls = (await sitemap()).map((entry) => entry.url);
     expect(urls).toContain("https://ishortn.ink/utm-builder");
+  });
+
+  it("lists the solutions hub and dates each solution page by its last copy update", async () => {
+    const entries = await sitemap();
+    expect(entries.map((entry) => entry.url)).toContain("https://ishortn.ink/solutions");
+
+    for (const solution of solutionList) {
+      const entry = entries.find((e) => e.url === `https://ishortn.ink/solutions/${solution.slug}`);
+      expect(entry?.lastModified).toBe(solution.updatedOn);
+    }
   });
 
   it("dates the changelog by its newest entry", async () => {

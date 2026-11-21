@@ -2,24 +2,33 @@ import { SignUp } from "@clerk/nextjs";
 import { cookies } from "next/headers";
 
 import { SHORTEN_INTENT_COOKIE, getPostAuthUrl } from "@/lib/auth/shorten-intent";
+import { formatShortenIntentForDisplay } from "@/lib/auth/shorten-intent-display";
 
 import { siteClerkAppearance } from "../../_shared/clerk-appearance";
 import { ClerkFormPlaceholder } from "../../_shared/clerk-form-placeholder";
+import { ShortenIntentNotice } from "../../_shared/shorten-intent-notice";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const [{ next }, cookieStore] = await Promise.all([searchParams, cookies()]);
-  const afterSignUpUrl = getPostAuthUrl({
-    next,
-    intent: cookieStore.get(SHORTEN_INTENT_COOKIE)?.value,
-  });
+  const intent = cookieStore.get(SHORTEN_INTENT_COOKIE)?.value;
+  const afterSignUpUrl = getPostAuthUrl({ next, intent });
+  const intentLabel = formatShortenIntentForDisplay(intent);
 
   return (
-    <SignUp
-      path="/auth/sign-up"
-      appearance={siteClerkAppearance}
-      fallback={<ClerkFormPlaceholder variant="signUp" next={next} />}
-      forceRedirectUrl={afterSignUpUrl}
-      signInForceRedirectUrl={afterSignUpUrl}
-    />
+    <>
+      {intentLabel && (
+        <ShortenIntentNotice
+          lead="Create a free account to get your short link for"
+          url={intentLabel}
+        />
+      )}
+      <SignUp
+        path="/auth/sign-up"
+        appearance={siteClerkAppearance}
+        fallback={<ClerkFormPlaceholder variant="signUp" next={next} />}
+        forceRedirectUrl={afterSignUpUrl}
+        signInForceRedirectUrl={afterSignUpUrl}
+      />
+    </>
   );
 }

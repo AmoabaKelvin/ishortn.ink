@@ -30,6 +30,9 @@ const cachedLinkSchema = z.object({
   domain: z.string(),
   createdAt: nullableIsoDate,
   disableLinkAfterClicks: z.number().nullable(),
+  // Absent from entries cached before the column existed. Never read from the cache: the click
+  // limit check reads it from the database.
+  clickLimitCount: z.number().nullable().default(null),
   disableLinkAfterDate: nullableIsoDate,
   activateAt: nullableIsoDate,
   disabled: z.boolean().nullable(),

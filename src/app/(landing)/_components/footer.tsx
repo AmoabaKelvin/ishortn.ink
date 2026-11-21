@@ -1,6 +1,8 @@
 import { IconBrandGithub, IconBrandX, IconMail } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
+import { solutionList } from "@/lib/seo/solutions";
+
 import { Section, Wordmark } from "./site-primitives";
 
 const columns = [
@@ -14,6 +16,16 @@ const columns = [
       { label: "Changelog", href: "/changelog" },
       { label: "API docs", href: "/docs/api" },
       { label: "Open dashboard", href: "/dashboard" },
+    ],
+  },
+  {
+    title: "Solutions",
+    links: [
+      ...solutionList.map((solution) => ({
+        label: solution.footerLabel,
+        href: `/solutions/${solution.slug}`,
+      })),
+      { label: "All solutions", href: "/solutions" },
     ],
   },
   {
@@ -60,7 +72,7 @@ export const Footer = () => {
   return (
     <footer>
       <Section className="py-16 sm:py-20">
-        <div className="grid gap-x-8 gap-y-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <div className="grid gap-x-8 gap-y-14 xl:grid-cols-[minmax(0,1fr)_auto]">
           <div>
             <Link href="/" aria-label="Homepage">
               <Wordmark className="text-2xl" />
@@ -101,7 +113,10 @@ export const Footer = () => {
             </p>
           </div>
 
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
+          <nav
+            aria-label="Footer"
+            className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-5"
+          >
             {columns.map((column) => (
               <div key={column.title}>
                 <h3 className="font-title text-base font-semibold text-neutral-900">

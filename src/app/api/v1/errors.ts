@@ -26,8 +26,8 @@ export function apiError(
   return Response.json({ error: { code, message, details } }, { status, headers });
 }
 
-export function validationError(error: ZodError): Response {
-  return apiError(400, "validation_failed", "Request body is invalid", {
+export function validationError(error: ZodError, message = "Request body is invalid"): Response {
+  return apiError(400, "validation_failed", message, {
     details: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
   });
 }

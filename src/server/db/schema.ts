@@ -18,6 +18,8 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 
+import type { QRCodeStyle } from "@/lib/qr-generator/types";
+
 // ============================================================================
 // TEAM TABLES
 // ============================================================================
@@ -280,6 +282,9 @@ export const link = mysqlTable(
     domain: varchar("domain", { length: 255 }).notNull().default("ishortn.ink"),
     createdAt: timestamp("createdAt").defaultNow(),
     disableLinkAfterClicks: int("disableLinkAfterClicks"),
+    // Visits counted toward disableLinkAfterClicks, including ones the monthly event cap kept out
+    // of analytics. Null until the first counted visit, which starts it from the recorded total.
+    clickLimitCount: int("clickLimitCount"),
     disableLinkAfterDate: datetime("disableLinkAfterDate"),
     activateAt: datetime("activateAt"), // link is not reachable before this instant
     disabled: boolean("disabled").default(false),
@@ -323,6 +328,13 @@ export const link = mysqlTable(
     blockedAtIdx: index("blocked_blockedAt_idx").on(table.blocked, table.blockedAt),
     domainIdx: index("domain_idx").on(table.domain),
     listingIdx: index("listing_idx").on(table.userId, table.teamId, table.isQrCode, table.archived),
+    // GET /api/v1/links pages newest first; lets each page read only its own rows.
+    newestIdx: index("userId_teamId_createdAt_idx").on(
+      table.userId,
+      table.teamId,
+      table.createdAt,
+      table.id,
+    ),
   }),
 );
 
@@ -514,6 +526,9 @@ export const qrcode = mysqlTable(
 
     // Color
     color: varchar("color", { length: 7 }).notNull(),
+
+    // Generator options used for the SVG download; null for codes saved before SVG export.
+    style: json("style").$type<QRCodeStyle>(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),

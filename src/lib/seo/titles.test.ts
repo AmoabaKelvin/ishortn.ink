@@ -7,6 +7,7 @@ import matter from "gray-matter";
 import { APP_TITLE } from "@/lib/constants/app";
 
 import { comparisonTitle, competitors } from "./competitors";
+import { solutionList, solutionsHubTitle } from "./solutions";
 
 // Search results cut titles off at about 60 characters.
 const MAX_TITLE_LENGTH = 60;
@@ -17,6 +18,15 @@ const brandCount = (title: string) => title.split(APP_TITLE).length - 1;
 describe("page titles", () => {
   it("keeps comparison titles short with the brand once", () => {
     const titles = Object.values(competitors).map(comparisonTitle);
+    for (const title of titles) {
+      expect(title.length).toBeLessThanOrEqual(MAX_TITLE_LENGTH);
+      expect(brandCount(title)).toBe(1);
+    }
+    expect(new Set(titles).size).toBe(titles.length);
+  });
+
+  it("keeps solution titles short with the brand once", () => {
+    const titles = [solutionsHubTitle, ...solutionList.map((solution) => solution.metaTitle)];
     for (const title of titles) {
       expect(title.length).toBeLessThanOrEqual(MAX_TITLE_LENGTH);
       expect(brandCount(title)).toBe(1);

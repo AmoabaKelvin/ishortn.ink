@@ -1,11 +1,12 @@
 "use client";
 
 import { IconQrcode } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { encode } from "uqr";
 
 import { cn } from "@/lib/utils";
 
+import { buildQRPath, qrStrokeWidth, type QRStyle } from "./qr-path";
 import {
   bodyClass,
   ButtonLink,
@@ -16,8 +17,6 @@ import {
   SectionHeading,
 } from "./site-primitives";
 
-type QRStyle = "square" | "rounded" | "dot" | "squircle";
-
 const STYLES: { value: QRStyle; label: string }[] = [
   { value: "square", label: "Square" },
   { value: "rounded", label: "Rounded" },
@@ -27,33 +26,17 @@ const STYLES: { value: QRStyle; label: string }[] = [
 
 const QR_TEXT = "https://ishortn.ink/dashboard";
 const QR_FG = "#171717"; // neutral-900
+const DEFAULT_STYLE: QRStyle = "squircle";
 
-const QRCanvas = ({ data, style }: { data: boolean[][]; style: QRStyle }) => {
-  const size = data.length;
-  const modules: { x: number; y: number }[] = [];
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      if (data[y]?.[x]) modules.push({ x, y });
-    }
-  }
+// Encode once with ECC H so the center logo overlay doesn't break scans. The encoding and each
+// style's path live at module scope, so they're built once per process, not per render.
+const QR_DATA = encode(QR_TEXT, { ecc: "H", border: 0 }).data;
+const qrPaths: Partial<Record<QRStyle, string>> = {};
+const getQRPath = (style: QRStyle) => (qrPaths[style] ??= buildQRPath(QR_DATA, style));
 
-  const renderModule = (x: number, y: number) => {
-    if (style === "dot") {
-      return <circle key={`${x}-${y}`} cx={x + 0.5} cy={y + 0.5} r={0.45} fill={QR_FG} />;
-    }
-    const rx = style === "squircle" ? 0.45 : style === "rounded" ? 0.3 : 0;
-    return (
-      <rect
-        key={`${x}-${y}`}
-        x={x + 0.05}
-        y={y + 0.05}
-        width={0.9}
-        height={0.9}
-        rx={rx}
-        fill={QR_FG}
-      />
-    );
-  };
+const QRCanvas = ({ style }: { style: QRStyle }) => {
+  const size = QR_DATA.length;
+  const strokeWidth = qrStrokeWidth(style);
 
   return (
     <svg
@@ -65,16 +48,24 @@ const QRCanvas = ({ data, style }: { data: boolean[][]; style: QRStyle }) => {
       role="img"
       aria-label={`QR code for ${QR_TEXT}`}
     >
-      {modules.map((m) => renderModule(m.x, m.y))}
+      {strokeWidth === 0 ? (
+        <path d={getQRPath(style)} fill={QR_FG} />
+      ) : (
+        <path
+          d={getQRPath(style)}
+          fill="none"
+          stroke={QR_FG}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
     </svg>
   );
 };
 
 export const QRSection = () => {
-  const [style, setStyle] = useState<QRStyle>("squircle");
-
-  // Encode once with ECC H so the center logo overlay doesn't break scans.
-  const { data } = useMemo(() => encode(QR_TEXT, { ecc: "H", border: 0 }), []);
+  const [style, setStyle] = useState<QRStyle>(DEFAULT_STYLE);
 
   return (
     <Section>
@@ -127,7 +118,7 @@ export const QRSection = () => {
 
         <div className="mx-auto w-full max-w-md">
           <div className={cn(cardClass, "relative aspect-square p-8")}>
-            <QRCanvas data={data} style={style} />
+            <QRCanvas style={style} />
             <div className="absolute left-1/2 top-1/2 grid size-[18%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-2xl bg-neutral-900 text-white ring-8 ring-white">
               <Logo className="size-1/2" />
             </div>

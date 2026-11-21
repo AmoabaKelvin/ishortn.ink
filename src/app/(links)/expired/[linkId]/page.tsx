@@ -7,7 +7,7 @@ import { LinkStatusPage } from "@/components/link-status/link-status-page";
 import { linkStatusMetadata } from "@/components/link-status/metadata";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
-import { getTotalClicks } from "@/server/lib/total-clicks";
+import { getClicksTowardLimit } from "@/server/lib/total-clicks";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,7 @@ export default async function ExpiredPage({ params }: ExpiredPageProps) {
 
   let clicksExpired = false;
   if (!dateExpired && linkRecord.disableLinkAfterClicks != null) {
-    const clickCount = await getTotalClicks(linkRecord.id);
+    const clickCount = await getClicksTowardLimit(linkRecord.id);
     clicksExpired = clickCount >= linkRecord.disableLinkAfterClicks;
   }
 

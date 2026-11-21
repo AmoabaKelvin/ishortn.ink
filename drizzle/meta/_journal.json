@@ -596,6 +596,27 @@
       "when": 1795264605917,
       "tag": "0084_robust_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "5",
+      "when": 1795287536087,
+      "tag": "0085_fast_bill_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "5",
+      "when": 1795292167086,
+      "tag": "0086_light_bill_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "5",
+      "when": 1795293332341,
+      "tag": "0087_warm_sleepwalker",
+      "breakpoints": true
     }
   ]
 }

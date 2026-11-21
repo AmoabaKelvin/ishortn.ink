@@ -48,6 +48,7 @@
     ".wrangler",
     "cloudflare-env.d.ts",
     "drizzle",
+    "integrations",
     "public",
     "tools/oxlint/anti-slop/**",
     "**/*.js"

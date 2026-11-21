@@ -5,7 +5,11 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
 import { effectivePlan, graceUsagePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
-import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
+import {
+  DEFAULT_PLATFORM_DOMAIN,
+  isPlatformDomain,
+  PLATFORM_DOMAINS,
+} from "@/lib/constants/domains";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { domainBeyondPlanMessage, getUsableCustomDomains } from "@/server/api/routers/link/utils";
@@ -125,7 +129,7 @@ function normalizeApiDomain(domain: string | null | undefined) {
   return normalized || null;
 }
 
-async function getUserDefaultDomain(userId: string) {
+export async function getUserDefaultDomain(userId: string) {
   const settings = await db.query.siteSettings.findFirst({
     where: eq(siteSettings.userId, userId),
     columns: {
@@ -174,6 +178,24 @@ export async function resolveApiDomainForUser(
 }
 
 /**
+ * Every domain resolveApiDomainForUser accepts for this user: the platform
+ * domains plus the active custom domains in their personal workspace.
+ */
+export async function getApiReadableDomains(userId: string) {
+  const owned = await db
+    .select({ domain: customDomain.domain })
+    .from(customDomain)
+    .where(
+      and(
+        eq(customDomain.status, "active"),
+        eq(customDomain.userId, userId),
+        isNull(customDomain.teamId),
+      ),
+    );
+  return [...PLATFORM_DOMAINS, ...owned.flatMap((row) => row.domain ?? [])];
+}
+
+/**
  * Write-path counterpart of resolveApiDomainForUser: custom domains past the
  * plan's allowance (oldest first, see getUsableCustomDomains) keep serving their
  * links but take no new or edited ones. Returns the refusal message, or null.
@@ -198,5 +220,24 @@ export async function apiDomainWriteError(
 export function getApiDomainParamsFromSearchParams(searchParams: URLSearchParams) {
   return {
     domain: searchParams.get("domain"),
+  };
+}
+
+/** The public shape of a link in v1 responses; never includes the password hash. */
+export function toApiLink(retrievedLink: {
+  domain: string;
+  alias: string | null;
+  url: string | null;
+  disableLinkAfterDate: Date | null;
+  activateAt: Date | null;
+  disableLinkAfterClicks: number | null;
+}) {
+  return {
+    shortLink: `https://${retrievedLink.domain}/${retrievedLink.alias}`,
+    url: retrievedLink.url,
+    alias: retrievedLink.alias,
+    expiresAt: retrievedLink.disableLinkAfterDate,
+    activatesAt: retrievedLink.activateAt,
+    expiresAfter: retrievedLink.disableLinkAfterClicks,
   };
 }

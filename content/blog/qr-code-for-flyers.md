@@ -54,7 +54,7 @@ A static code is fine when the link will never change, for example a page on you
 
 ### Option A: a static code (no account)
 
-Paste your link into our [free QR code generator](/qr-code-generator) and download the PNG. There's no sign-up, no watermark and no expiry. The download is 1024 pixels square, which prints sharply up to about 8.5 cm (3.4 inches) wide at 300 dpi. That covers handouts and most flyers. For a bigger code, print a test copy first.
+Paste your link into our [free QR code generator](/qr-code-generator) and download the PNG. There's no sign-up, no watermark and no expiry. The download is 1024 pixels square, which prints sharply up to about 8.5 cm (3.4 inches) wide at 300 dpi. That covers handouts and most flyers. For a bigger code, print a test copy first, or use Option B: codes made in a free account also download as SVG, which scales to any size.
 
 ### Option B: a dynamic code you can edit and track
 
@@ -64,7 +64,7 @@ In iShortn:
 2. Create a code and paste your page's link as the destination.
 3. Give it a name you'll recognise later, like "Spring market flyer - library".
 4. Style it if you want: colours, shapes, a logo in the middle. Keep it dark on a light background.
-5. Download the PNG.
+5. Download the PNG, or the SVG if the code will be printed large.
 
 The free plan includes 5 dynamic QR codes. They don't expire, they show no ads, and you can edit the destination whenever you like. Each code uses one of your 30 free links for that month. Free analytics show the last 7 days and count up to 1,000 events a month; codes keep working past that, but scans above the cap aren't recorded until the month resets. [Pro](/pricing) is $8 a month if you need more codes or the full history.
 
@@ -134,6 +134,8 @@ Two ways to go further:
 
 Scan counts tell you how many times a code was scanned, when, and from which country and device. They don't tell you who scanned, which is how it should be for a flyer.
 
+If you run events all year, [QR codes for events and posters](/solutions/events) covers registration links that close on a date and a code for each poster spot.
+
 ## After the event: repoint the code
 
 Your flyers will keep getting scanned after the date has passed. They'll still be on noticeboards, in bags and on fridges. With a dynamic code, edit the destination once the event is over:
@@ -142,7 +144,7 @@ Your flyers will keep getting scanned after the date has passed. They'll still b
 - Point it at the next date or a waitlist.
 - Point it at a "join our mailing list" page so late scanners still become contacts.
 
-It takes a minute, and people who find an old flyer land somewhere useful instead of on a page for an event that's over.
+It takes a minute, and people who find an old flyer land somewhere useful instead of on a page for an event that's over. Churches and charities that print every week can use the same code over and over; see [QR codes for churches and nonprofits](/solutions/churches-and-nonprofits).
 
 ## Quick answers
 

@@ -23,13 +23,14 @@ const MARKETING_PATHS = new Set([
   "/utm-builder",
   "/blog",
   "/compare",
+  "/solutions",
   "/changelog",
   "/abuse",
   "/privacy",
   "/terms",
   "/sitemap.xml",
 ]);
-const MARKETING_PREFIXES = ["/blog/", "/compare/"];
+const MARKETING_PREFIXES = ["/blog/", "/compare/", "/solutions/"];
 
 // Short-link domains and subdomains of the app domain (www, status, team
 // subdomains). Team subdomains of the other short domains are left alone.
@@ -88,6 +89,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "qr-code-generator",
   "robots.txt",
   "sitemap.xml",
+  "solutions",
   "teams",
   "terms",
   "utm-builder",

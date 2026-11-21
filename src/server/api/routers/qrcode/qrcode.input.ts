@@ -5,6 +5,8 @@ import { destinationUrlSchema } from "@/lib/utils/destination-url";
 
 import { geoRuleInputSchema } from "../link/link.input";
 
+import type { QRCodeStyle } from "@/lib/qr-generator/types";
+
 export const qrcodeInput = z.object({
   title: z.string().max(255, "Title must be 255 characters or fewer").optional(),
   content: destinationUrlSchema,
@@ -13,11 +15,6 @@ export const qrcodeInput = z.object({
   cornerStyle: z.enum(MarkerFrames),
   selectedColor: z.string(),
   domain: z.string().optional(),
-});
-
-export const qrcodeSaveImageInput = z.object({
-  id: z.number(),
-  qrCodeBase64: z.string(),
 });
 
 export const qrcodeUpdateInput = z.object({
@@ -59,7 +56,7 @@ const marginNoiseRateSchema = z.string().refine((val) => {
 
 // Logo image validator: must be a valid base64 data URI (PNG/JPEG) under 2MB
 const MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
-const logoImageSchema = z
+export const logoImageSchema = z
   .string()
   .regex(
     /^data:image\/(png|jpe?g);base64,[A-Za-z0-9+/]+=*$/,
@@ -77,6 +74,30 @@ const logoImageSchema = z
     return decodedSize <= MAX_LOGO_SIZE_BYTES;
   }, "Logo image must be under 2MB")
   .nullish();
+
+export const qrCodeStyleInput = z.object({
+  pixelStyle: z.enum(PixelStyles),
+  markerFrame: z.enum(MarkerFrames),
+  markerCenter: z.enum(QRMarkerCenters),
+  darkColor: hexColorSchema,
+  lightColor: hexColorSchema,
+  ecc: z.enum(["L", "M", "Q", "H"]),
+  margin: z.number().int().min(0).max(10),
+  seed: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  marginNoise: z.boolean(),
+  marginNoiseRate: z.number().min(0).max(1),
+  effect: z.enum(QREffects),
+  logoImage: logoImageSchema,
+  logoSize: z.number().min(10).max(30),
+  logoMargin: z.number().min(0).max(20),
+  logoBorderRadius: z.number().min(0).max(50),
+}) satisfies z.ZodType<QRCodeStyle>;
+
+export const qrcodeSaveImageInput = z.object({
+  id: z.number(),
+  qrCodeBase64: z.string(),
+  style: qrCodeStyleInput.optional(),
+});
 
 export const qrPresetCreateInput = z.object({
   name: z.string().min(1, "Name is required").max(255),

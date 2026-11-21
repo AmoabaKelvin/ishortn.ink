@@ -112,6 +112,8 @@ This is where a dynamic code earns its keep. Some situations we see:
 
 In iShortn, open the QR code, edit the destination URL and save. The next scan goes to the new address.
 
+If you're setting up menu and table codes at the same time, see [QR codes for restaurants and bars](/solutions/restaurants). For shops and market stalls that also want codes on packaging and receipts, see [QR codes for small businesses and shops](/solutions/small-business).
+
 ## Quick answers
 
 **Is a QR code for Google reviews free?** Yes. Google's own code is free and never expires. A dynamic code is free on iShortn's free plan (5 codes), and those don't expire either. If you only need a static code with no tracking, our [free QR code generator](/qr-code-generator) makes one without an account.

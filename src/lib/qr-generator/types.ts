@@ -91,6 +91,27 @@ export interface QRCodeGeneratorState extends QrCodeGeneratorMarkerState {
   logoBorderRadius: number; // Border radius percentage (0-50 for circle)
 }
 
+/** Generator options saved with a QR code so its SVG can be drawn again from the QR Codes list. */
+export type QRCodeStyle = Pick<
+  QRCodeGeneratorState,
+  | "pixelStyle"
+  | "markerFrame"
+  | "markerCenter"
+  | "darkColor"
+  | "lightColor"
+  | "ecc"
+  | "margin"
+  | "seed"
+  | "marginNoise"
+  | "marginNoiseRate"
+  | "effect"
+  | "logoSize"
+  | "logoMargin"
+  | "logoBorderRadius"
+> & {
+  logoImage?: string | null;
+};
+
 export interface QRCodeGenerateResult {
   qrcode: QrCodeGenerateResult;
   info: {
