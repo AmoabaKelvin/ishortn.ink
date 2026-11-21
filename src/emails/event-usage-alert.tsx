@@ -1,8 +1,8 @@
 import { Text } from "@react-email/components";
 
-import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
+import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
 
-import type { Plan } from "@/lib/billing/plans";
+import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
 type EventUsageAlertEmailProps = {
   userName?: string | null;
@@ -11,7 +11,8 @@ type EventUsageAlertEmailProps = {
   currentCount: number;
   plan: Plan;
   resetDate: string;
-  upgradeUrl: string;
+  /** The next plan up; its event allowance is read from PLAN_CAPS. */
+  upgrade: { plan: Exclude<Plan, "free">; label: string; url: string };
   notificationSettingsUrl: string;
 };
 
@@ -24,11 +25,16 @@ export const EventUsageAlertEmail = ({
   currentCount,
   plan,
   resetDate,
-  upgradeUrl,
+  upgrade,
   notificationSettingsUrl,
 }: EventUsageAlertEmailProps) => {
   const capReached = threshold >= 100;
   const planName = PLAN_NAMES[plan];
+  const upgradeLimit = PLAN_CAPS[upgrade.plan].eventsLimit;
+  const upgradeOffer =
+    upgradeLimit === undefined
+      ? `The ${PLAN_NAMES[upgrade.plan]} plan has no monthly event cap.`
+      : `The ${PLAN_NAMES[upgrade.plan]} plan includes ${upgradeLimit.toLocaleString()} analytics events a month.`;
 
   return (
     <EmailLayout
@@ -45,13 +51,10 @@ export const EventUsageAlertEmail = ({
         <>
           <Text style={text}>
             You&apos;ve used all {limit.toLocaleString()} analytics events included in the{" "}
-            {planName} plan this month, so new clicks aren&apos;t being recorded until your cap
-            resets on {resetDate}.
+            {planName} plan this month. Your links keep redirecting as normal, but new visits
+            aren&apos;t recorded until your cap resets on {resetDate}.
           </Text>
-          <Text style={text}>
-            Your links keep redirecting as normal; only analytics are paused. Upgrade to resume
-            recording straight away.
-          </Text>
+          <Text style={text}>{upgradeOffer} Upgrading resumes recording straight away.</Text>
         </>
       ) : (
         <>
@@ -61,13 +64,13 @@ export const EventUsageAlertEmail = ({
             {threshold}%).
           </Text>
           <Text style={text}>
-            Your links will keep redirecting either way, but analytics recording pauses once you
-            reach the cap, until it resets on {resetDate}. Upgrade to raise or remove the cap.
+            Your links keep redirecting either way, but once you reach the cap new visits
+            aren&apos;t recorded until it resets on {resetDate}. {upgradeOffer}
           </Text>
         </>
       )}
 
-      <EmailButton href={upgradeUrl}>Compare plans</EmailButton>
+      <EmailButton href={upgrade.url}>{upgrade.label}</EmailButton>
 
       <Text style={text}>
         If this doesn&apos;t look right, reply to this email and we&apos;ll help out.
@@ -85,7 +88,11 @@ EventUsageAlertEmail.PreviewProps = {
   currentCount: 1000,
   plan: "free",
   resetDate: "December 1",
-  upgradeUrl: "https://ishortn.ink/dashboard/pricing",
+  upgrade: {
+    plan: "pro",
+    label: "Upgrade to Pro",
+    url: "https://ishortn.ink/dashboard/pricing?highlight=pro&source=events_email_100&utm_source=ishortn&utm_medium=email&utm_campaign=event-cap",
+  },
   notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
 } satisfies EventUsageAlertEmailProps;
 
