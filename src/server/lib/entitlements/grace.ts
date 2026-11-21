@@ -14,7 +14,7 @@ import {
   isGraceActive,
   lapseEndedByPayment,
   NO_GRACE,
-  overPlanFeatures,
+  overPlanGraceFeatures,
   paidPlan,
   PLAN_NAMES,
   planAtLeast,
@@ -109,9 +109,13 @@ function failedPaymentGrace(sub: Subscription | null, now: Date) {
   return { plan, endsAt: new Date(now.getTime() + GRACE_PERIOD_MS), reason: "lapsed" as const };
 }
 
-/** The grace an account using features above `plan` gets: the plan that covers it, for 7 days. */
-function overPlanGrace(usage: PlanUsage, plan: Plan, now: Date) {
-  const over = overPlanFeatures(usage, plan);
+/**
+ * The grace an account using features above `plan` gets: the plan that covers
+ * it, for 7 days. Only features held to graceUsagePlan count (see
+ * overPlanGraceFeatures); creation caps never need one.
+ */
+export function overPlanGrace(usage: PlanUsage, plan: Plan, now: Date) {
+  const over = overPlanGraceFeatures(usage, plan);
   if (over.length === 0) return null;
   return {
     plan: over.reduce<Plan>((acc, item) => higherPlan(acc, item.requiredPlan), "free"),
@@ -176,6 +180,52 @@ export async function ensurePlanChecked(
     planGraceEndsAt: grace.endsAt,
     planGraceReason: grace.reason,
   };
+}
+
+/**
+ * Clears running over-plan graces that no longer cover anything: the account
+ * uses no feature held to graceUsagePlan above its paid plan any more (it was
+ * removed, or only creation caps were ever over). Their notice and emails stop
+ * with them. planCheckedAt stays set, so ensurePlanChecked doesn't start the
+ * grace again. Lapse graces are left alone.
+ */
+export async function clearUnneededOverPlanGraces(now = new Date()): Promise<number> {
+  const running = await db
+    .select({ userId: user.id, sub: subscription })
+    .from(user)
+    .leftJoin(subscription, eq(subscription.userId, user.id))
+    .where(and(eq(user.planGraceReason, "over_plan"), gt(user.planGraceEndsAt, now)));
+
+  let cleared = 0;
+  for (const rows of chunk(running, LOOKUP_CHUNK)) {
+    const usage = await getPlanUsageByUser(
+      db,
+      rows.map((row) => row.userId),
+      now,
+    );
+    const ids = rows
+      .filter(
+        (row) =>
+          overPlanGraceFeatures(usage.get(row.userId) ?? EMPTY_USAGE, paidPlan(row.sub, now))
+            .length === 0,
+      )
+      .map((row) => row.userId);
+    if (ids.length === 0) continue;
+    // Re-checked in the write, so a lapse grace recorded meanwhile is kept.
+    const [result] = await db
+      .update(user)
+      .set(CLEARED_GRACE)
+      .where(
+        and(
+          inArray(user.id, ids),
+          eq(user.planGraceReason, "over_plan"),
+          gt(user.planGraceEndsAt, now),
+        ),
+      );
+    cleared += result.affectedRows;
+  }
+  if (cleared > 0) log.info({ cleared }, "cleared over-plan graces that no longer apply");
+  return cleared;
 }
 
 /** Keeps the grace period of teams owned by `ownerId` in step with the owner's paid plan. */
@@ -258,6 +308,7 @@ export async function syncEntitlementsAfterBillingEvent(
 export type ReconcileResult = {
   gracesCleared: number;
   lapsesStarted: number;
+  overPlanCleared: number;
   overPlanStarted: number;
   teamGracesStarted: number;
   teamGracesCleared: number;
@@ -275,6 +326,7 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
   const result: ReconcileResult = {
     gracesCleared: 0,
     lapsesStarted: 0,
+    overPlanCleared: 0,
     overPlanStarted: 0,
     teamGracesStarted: 0,
     teamGracesCleared: 0,
@@ -379,7 +431,9 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
     }
   }
 
-  // 3. Accounts using features above their plan with no grace recorded.
+  // 3. Running over-plan graces that no longer cover anything are cleared; then
+  //    accounts using features above their plan with no grace recorded get one.
+  result.overPlanCleared = await clearUnneededOverPlanGraces(now);
   const usage = await getPlanUsageByUser(db, undefined, now);
   for (const ids of chunk([...usage.keys()], LOOKUP_CHUNK)) {
     const accounts = await db.query.user.findMany({
@@ -542,7 +596,8 @@ function freePlanSummary(): string[] {
 /**
  * The grace email to an account. A failed payment links to the
  * update-payment-method page (fixed on the existing subscription) instead of
- * pricing (a new checkout).
+ * pricing (a new checkout). Null for an over-plan grace with nothing left to
+ * list: the account no longer uses anything the grace covers.
  */
 export function accountGraceEmail(options: {
   name: string | null;
@@ -556,9 +611,10 @@ export function accountGraceEmail(options: {
 }) {
   const { subscription, gracePlan, reason, endsAt, kind, now } = options;
   const paid = paidPlan(subscription, now);
-  const items = overPlanFeatures(options.usage, paid).map((item) =>
+  const items = overPlanGraceFeatures(options.usage, paid).map((item) =>
     describeOverPlanFeature(item, PLAN_NAMES[paid]),
   );
+  if (reason === "over_plan" && items.length === 0) return null;
   const planName = PLAN_NAMES[gracePlan];
   const endsOn = formatDay(endsAt);
   const paymentFailed = graceAction(reason, subscription, gracePlan) === "update_payment";
@@ -615,7 +671,7 @@ export async function sendDueGraceEmails(options: {
 
   for (const { account, email, endsAt, gracePlan, reason, kind } of due) {
     const stage = GRACE_EMAIL_STAGE[kind];
-    const { subject, props } = accountGraceEmail({
+    const message = accountGraceEmail({
       name: account.name,
       subscription: account.subscriptions,
       usage: usage.get(account.id) ?? EMPTY_USAGE,
@@ -625,11 +681,13 @@ export async function sendDueGraceEmails(options: {
       kind,
       now,
     });
+    // Cleared by the next clearUnneededOverPlanGraces run.
+    if (!message) continue;
 
     pending.push({
       to: email,
-      subject,
-      react: PlanGraceEmail(props),
+      subject: message.subject,
+      react: PlanGraceEmail(message.props),
       claim: async () => {
         const [result] = await db
           .update(user)

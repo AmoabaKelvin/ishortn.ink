@@ -6,8 +6,9 @@ import { createElement } from "react";
 import PlanGraceEmail from "@/emails/plan-grace";
 import { EMPTY_USAGE } from "@/lib/billing/entitlements";
 
-import { accountGraceEmail, teamGraceEmail } from "./grace";
+import { accountGraceEmail, overPlanGrace, teamGraceEmail } from "./grace";
 
+import type { PlanUsage } from "@/lib/billing/entitlements";
 import type { Plan } from "@/lib/billing/plans";
 import type { Subscription } from "@/server/db/schema";
 
@@ -72,11 +73,16 @@ describe("teamGraceEmail", () => {
   });
 });
 
-const accountEmail = (sub: Subscription, gracePlan: Plan, reason: "lapsed" | "over_plan") =>
+const accountEmail = (
+  sub: Subscription | null,
+  gracePlan: Plan,
+  reason: "lapsed" | "over_plan",
+  usage: PlanUsage = { ...EMPTY_USAGE, customDomains: 3 },
+) =>
   accountGraceEmail({
     name: "Ama",
     subscription: sub,
-    usage: { ...EMPTY_USAGE, customDomains: 3 },
+    usage,
     gracePlan,
     reason,
     endsAt: ENDS_AT,
@@ -86,7 +92,7 @@ const accountEmail = (sub: Subscription, gracePlan: Plan, reason: "lapsed" | "ov
 
 describe("accountGraceEmail", () => {
   test("the day-0 email for an unpaid subscription asks for a payment method update", async () => {
-    const { subject, props } = accountEmail(ownerSubscription("unpaid"), "ultra", "lapsed");
+    const { subject, props } = accountEmail(ownerSubscription("unpaid"), "ultra", "lapsed")!;
     expect(subject).toBe("Your iShortn Ultra payment didn't go through");
     expect(props.updatePaymentUrl).toContain(
       "/dashboard/settings/billing/update-payment?source=email",
@@ -98,7 +104,11 @@ describe("accountGraceEmail", () => {
   });
 
   test("an over-plan grace the unpaid subscription covers asks for a payment method update", () => {
-    const { subject, props } = accountEmail(ownerSubscription("unpaid", "pro"), "pro", "over_plan");
+    const { subject, props } = accountEmail(
+      ownerSubscription("unpaid", "pro"),
+      "pro",
+      "over_plan",
+    )!;
     expect(subject).toBe("Your iShortn Pro payment didn't go through");
     expect(props.updatePaymentUrl).toBeDefined();
   });
@@ -108,9 +118,68 @@ describe("accountGraceEmail", () => {
       ownerSubscription("unpaid", "pro"),
       "ultra",
       "over_plan",
-    );
+    )!;
     expect(subject).toBe("Some of your iShortn features need Ultra after November 27, 2026");
     expect(props.updatePaymentUrl).toBeUndefined();
     expect(props.upgradeUrl).toContain("/dashboard/pricing?plan=ultra");
   });
+
+  test("an over-plan grace with nothing it covers left produces no email", () => {
+    expect(accountEmail(null, "pro", "over_plan", EMPTY_USAGE)).toBeNull();
+    // Creation caps alone aren't listed, so nothing is left either.
+    expect(accountEmail(null, "pro", "over_plan", { ...EMPTY_USAGE, qrCodes: 12 })).toBeNull();
+  });
+
+  test("an over-plan email lists only features the grace covers", () => {
+    const email = accountEmail(null, "pro", "over_plan", {
+      ...EMPTY_USAGE,
+      passwordLinks: 2,
+      qrCodes: 12,
+      folders: 3,
+    });
+    expect(email?.props.items).toEqual(["Password-protected links: 2 (not included in Free)"]);
+  });
+
+  test("a lapse with nothing over the plan still gets its email", () => {
+    const email = accountEmail(null, "pro", "lapsed", EMPTY_USAGE);
+    expect(email?.props.items.length).toBeGreaterThan(0);
+  });
+});
+
+describe("overPlanGrace", () => {
+  test.each([
+    ["12 QR codes", { qrCodes: 12 }],
+    ["6 link blocks on a bio page", { maxLinkBlocksPerBioPage: 6 }],
+    ["3 folders", { folders: 3 }],
+    [
+      "only creation caps",
+      {
+        bioPages: 4,
+        bioPagesWithPaidOptions: 1,
+        activeCampaigns: 3,
+        maxMilestonesPerLink: 9,
+        verifiedClickLinks: 2,
+        cloakedLinks: 1,
+      },
+    ],
+  ] satisfies [string, Partial<PlanUsage>][])("a Free account with %s gets none", (_, usage) => {
+    expect(overPlanGrace({ ...EMPTY_USAGE, ...usage }, "free", NOW)).toBeNull();
+  });
+
+  test.each([
+    ["a password-protected link", { passwordLinks: 1 }, "pro"],
+    ["a custom domain", { customDomains: 1 }, "pro"],
+    ["a scheduled link", { scheduledLinks: 1 }, "pro"],
+    ["a link with UTM parameters", { utmLinks: 1 }, "ultra"],
+    ["targeting rules", { maxTargetingRulesPerLink: 2 }, "pro"],
+  ] satisfies [string, Partial<PlanUsage>, Plan][])(
+    "a Free account with %s gets one",
+    (_, usage, plan) => {
+      expect(overPlanGrace({ ...EMPTY_USAGE, ...usage, qrCodes: 12 }, "free", NOW)).toEqual({
+        plan,
+        endsAt: new Date(NOW.getTime() + 7 * 24 * 60 * 60 * 1000),
+        reason: "over_plan",
+      });
+    },
+  );
 });

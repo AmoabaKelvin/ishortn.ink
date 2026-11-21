@@ -11,7 +11,8 @@ import type { Subscription } from "@/server/db/schema";
  * - Grace: when access lapses (expiry, failed payment, refund) the account keeps
  *   `planGracePlan` for GRACE_PERIOD_DAYS. An account found using features above
  *   its plan gets the same period for what it already uses (graceUsagePlan),
- *   not for anything new. After that the paid plan's limits apply. The grace row is
+ *   not for anything new; only GRACE_FEATURES count, as creation caps never
+ *   restrict what already exists. After that the paid plan's limits apply. The grace row is
  *   kept once it passes, so a second one is never granted for the same lapse;
  *   it is cleared when the paid plan covers it again (resubscribing).
  * - Teams take the owner's plan. An owner below Ultra gets a team grace period,
@@ -304,6 +305,27 @@ const FEATURE_LIMITS = {
   cloakedLinks: (plan) => (plan === "ultra" ? undefined : 0),
 } satisfies Record<UsageFeature, (plan: Plan) => number | undefined>;
 
+/**
+ * Features whose existing usage is held to graceUsagePlan, so the end of an
+ * over-plan grace restricts what the account already has. Only these start an
+ * over-plan grace or appear in its emails. The rest of FEATURE_LIMITS are
+ * creation caps, checked against the live plan only when something new is
+ * created (folders, bio pages and blocks, campaigns, QR codes, milestones,
+ * cloaking, verified clicks), so a grace for them would change nothing.
+ */
+const GRACE_FEATURES = new Set<UsageFeature>([
+  // assertDomainWithinPlan (link/utils.ts) and apiDomainWriteError (api/v1/utils.ts).
+  "customDomains",
+  // changeLinkPassword (link.service.ts).
+  "passwordLinks",
+  // activateAt edits in updateLink (link.service.ts) and PATCH /api/v1/links/[alias].
+  "scheduledLinks",
+  // UTM edits in updateLink (link.service.ts).
+  "utmLinks",
+  // geoRules edits in updateLink (link.service.ts) and geo-rules.service.ts.
+  "maxTargetingRulesPerLink",
+]);
+
 export const FEATURE_LABELS = {
   customDomains: "Custom domains",
   folders: "Folders",
@@ -355,6 +377,11 @@ export function overPlanFeatures(usage: PlanUsage, plan: Plan): OverPlanFeature[
     });
   }
   return over;
+}
+
+/** overPlanFeatures limited to GRACE_FEATURES: what an over-plan grace covers. */
+export function overPlanGraceFeatures(usage: PlanUsage, plan: Plan): OverPlanFeature[] {
+  return overPlanFeatures(usage, plan).filter((item) => GRACE_FEATURES.has(item.feature));
 }
 
 const PER_ITEM_FEATURES = new Set<UsageFeature>([
