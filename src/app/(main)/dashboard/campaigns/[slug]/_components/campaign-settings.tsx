@@ -1,7 +1,6 @@
 "use client";
 
 import { IconLock } from "@tabler/icons-react";
-import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -11,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { normalizeCampaignSlug } from "@/lib/campaigns/slug";
 import { api } from "@/trpc/react";
 
@@ -167,14 +166,14 @@ export function CampaignSettings({ campaign, plan }: { campaign: CampaignData; p
               </p>
             </div>
             {!canUseUtm && (
-              <Link
-                href="/dashboard/pricing"
-                onClick={() => trackUpgradeClick("campaign_utm_defaults")}
+              <UpgradeCta
+                requiredPlan="pro"
+                source="campaign_utm_defaults"
                 className="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-900 px-2.5 py-1 text-[11px] font-medium text-white dark:bg-foreground dark:text-background"
               >
                 <IconLock size={11} stroke={2} />
                 Pro
-              </Link>
+              </UpgradeCta>
             )}
           </div>
 

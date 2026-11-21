@@ -68,6 +68,7 @@ import {
 } from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import {
   generateUnreservedAlias,
   isAliasReserved,
@@ -546,6 +547,7 @@ const createLinkSteps = async (
   const geoRulesInput = input.geoRules;
   if (geoRulesInput && geoRulesInput.length > 0) {
     if (!canUseGeoRules(plan)) {
+      await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "geo_rules", plan });
       throw new TRPCError({
         code: "FORBIDDEN",
         message:
@@ -555,6 +557,7 @@ const createLinkSteps = async (
 
     const geoLimit = getGeoRulesLimit(plan);
     if (!isUnlimitedGeoRules(plan) && geoLimit !== undefined && geoRulesInput.length > geoLimit) {
+      await recordPlanLimitHit({ userId: ctx.auth.userId, limitKey: "geo_rules", plan });
       throw new TRPCError({
         code: "FORBIDDEN",
         message: `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
@@ -750,11 +753,17 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
         rulesWithin(usagePlan, geoRulesInput.length);
       if (!editableInGrace) {
         if (!sameGeoRules(geoRulesInput, existingRules)) {
-          throw new Error(
-            canUseGeoRules(workspacePlan)
+          await recordPlanLimitHit({
+            userId: ctx.auth.userId,
+            limitKey: "geo_rules",
+            plan: workspacePlan,
+          });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: canUseGeoRules(workspacePlan)
               ? `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`
               : "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-          );
+          });
         }
         // Unchanged: leave the stored rules alone.
         geoRulesInput = undefined;
@@ -784,9 +793,16 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
 
   if (geoRulesInput !== undefined && geoRulesInput.length > 0) {
     if (!canUseGeoRules(workspacePlan)) {
-      throw new Error(
-        "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
-      );
+      await recordPlanLimitHit({
+        userId: ctx.auth.userId,
+        limitKey: "geo_rules",
+        plan: workspacePlan,
+      });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Targeting rules are only available on Pro and Ultra plans. Please upgrade to use this feature.",
+      });
     }
 
     const geoLimit = getGeoRulesLimit(workspacePlan);
@@ -795,9 +811,15 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
       geoLimit !== undefined &&
       geoRulesInput.length > geoLimit
     ) {
-      throw new Error(
-        `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
-      );
+      await recordPlanLimitHit({
+        userId: ctx.auth.userId,
+        limitKey: "geo_rules",
+        plan: workspacePlan,
+      });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your plan allows a maximum of ${geoLimit} targeting rules per link. Please upgrade to Ultra for unlimited rules.`,
+      });
     }
   }
 

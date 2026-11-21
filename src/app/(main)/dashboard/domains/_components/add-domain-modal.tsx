@@ -1,11 +1,9 @@
 "use client";
 
 import { IconInfoCircle, IconPlus, IconWorld } from "@tabler/icons-react";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { pricingHighlightHref } from "@/app/(main)/dashboard/_components/tracking-paused";
 import { revalidateRoute } from "@/app/(main)/dashboard/revalidate-homepage";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,11 +18,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { useRecordPlanLimitView } from "@/lib/hooks/use-record-plan-limit-view";
 import { createCustomDomainSchema } from "@/server/api/routers/domains/domains.input";
 import { api } from "@/trpc/react";
-
-const DOMAIN_UPGRADE_HREF = pricingHighlightHref("pro", "domain_modal");
 
 export function AddCustomDomainModal() {
   const { data: userSubscription } = api.subscriptions.get.useQuery();
@@ -48,6 +46,7 @@ export function AddCustomDomainModal() {
       toast.error(error.message);
     },
   });
+
   const handleDomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDomain(e.target.value);
     setDomainError(null);
@@ -70,6 +69,10 @@ export function AddCustomDomainModal() {
   };
 
   const isProUser = (userSubscription?.plan ?? "free") !== "free";
+  useRecordPlanLimitView(
+    "domains_page_view",
+    userSubscription !== undefined && !isProUser && workspace?.type === "personal",
+  );
 
   // Only team owners hold domains.create
   if (workspace?.type === "team" && workspace.role !== "owner") {
@@ -174,7 +177,9 @@ export function AddCustomDomainModal() {
               // The pricing page owns the billing interval choice (annual by default), so the
               // upgrade goes through it instead of starting a checkout from here.
               <Button asChild className="h-9 bg-blue-600 text-[13px] hover:bg-blue-700">
-                <Link href={DOMAIN_UPGRADE_HREF}>Upgrade to Pro</Link>
+                <UpgradeCta requiredPlan="pro" source="custom_domain">
+                  Upgrade to Pro
+                </UpgradeCta>
               </Button>
             )}
           </DialogFooter>

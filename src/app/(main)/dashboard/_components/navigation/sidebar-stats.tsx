@@ -1,12 +1,11 @@
 "use client";
 
 import { IconArrowUpRight } from "@tabler/icons-react";
-import { Link } from "next-view-transitions";
 
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { cn } from "@/lib/utils";
 
-import { eventsUpgradeTarget, formatResetDay, pricingHighlightHref } from "../tracking-paused";
+import { eventsUpgradeTarget, formatResetDay } from "../tracking-paused";
 
 export type EventUsage = {
   count: number;
@@ -89,11 +88,8 @@ export function SidebarStats({
     linkLimitValue != null ? Math.min((monthlyLinkCount / (linkLimitValue || 1)) * 100, 100) : 0;
   const isNearLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue * 0.83 : false;
   const isAtLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue : false;
-  // While tracking is paused the upgrade CTA leads with the event cap: it preselects the next plan.
+  // While tracking is paused the upgrade CTA leads with the event cap.
   const eventsTarget = eventUsage?.paused ? eventsUpgradeTarget(plan) : null;
-  const upgradeHref = eventsTarget
-    ? pricingHighlightHref(eventsTarget.plan, EVENTS_PAUSED_SOURCE)
-    : "/dashboard/pricing";
 
   if (userHasPaidPlan) {
     return (
@@ -113,14 +109,14 @@ export function SidebarStats({
         </div>
 
         {plan === "pro" && (
-          <Link
-            href={upgradeHref}
-            onClick={() => trackUpgradeClick(eventsTarget ? EVENTS_PAUSED_SOURCE : "sidebar_pro")}
+          <UpgradeCta
+            requiredPlan="ultra"
+            source={eventsTarget ? EVENTS_PAUSED_SOURCE : "sidebar_pro"}
             className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
           >
             Upgrade to Ultra
             <IconArrowUpRight size={12} stroke={1.5} />
-          </Link>
+          </UpgradeCta>
         )}
       </div>
     );
@@ -166,22 +162,16 @@ export function SidebarStats({
         {eventUsage && <EventMeter eventUsage={eventUsage} />}
       </div>
 
-      <Link
-        href={upgradeHref}
-        onClick={() =>
-          trackUpgradeClick(
-            eventsTarget
-              ? EVENTS_PAUSED_SOURCE
-              : isAtLimit
-                ? "sidebar_free_at_limit"
-                : "sidebar_free",
-          )
+      <UpgradeCta
+        requiredPlan="pro"
+        source={
+          eventsTarget ? EVENTS_PAUSED_SOURCE : isAtLimit ? "sidebar_free_at_limit" : "sidebar_free"
         }
         className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
       >
         Upgrade to Pro
         <IconArrowUpRight size={13} stroke={2} />
-      </Link>
+      </UpgradeCta>
     </div>
   );
 }

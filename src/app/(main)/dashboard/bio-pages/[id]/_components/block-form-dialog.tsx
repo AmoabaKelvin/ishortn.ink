@@ -99,7 +99,7 @@ function BlockForm({
     ...mutationOptions,
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN" && /upgrade/i.test(error.message)) {
-        notifyPlanLimit(error.message, "bio_link_block_limit");
+        notifyPlanLimit(error.message, "bio_link_block_limit", "pro");
       } else {
         toast.error(error.message);
       }

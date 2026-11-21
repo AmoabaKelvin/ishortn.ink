@@ -575,6 +575,13 @@
       "when": 1795241886654,
       "tag": "0081_burly_red_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "5",
+      "when": 1795249067951,
+      "tag": "0082_redundant_stryfe",
+      "breakpoints": true
     }
   ]
 }

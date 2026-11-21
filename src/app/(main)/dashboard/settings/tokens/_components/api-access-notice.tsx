@@ -1,6 +1,7 @@
 import { IconAlertTriangle, IconKey, IconSparkles } from "@tabler/icons-react";
-import { Link } from "next-view-transitions";
 
+import { RecordPlanLimitView } from "@/components/record-plan-limit-view";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { formatSunsetDate } from "@/lib/billing/api-access";
 
 import type { ApiAccess } from "@/lib/billing/api-access";
@@ -9,6 +10,7 @@ import type { ApiAccess } from "@/lib/billing/api-access";
 export function ApiProGate() {
   return (
     <div className="py-6 text-center">
+      <RecordPlanLimitView limitKey="tokens_page_view" />
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
         <IconKey size={18} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
       </div>
@@ -19,13 +21,14 @@ export function ApiProGate() {
         Upgrade to Pro or Ultra to create API keys and manage your links and analytics from your own
         code.
       </p>
-      <Link
-        href="/dashboard/pricing"
+      <UpgradeCta
+        requiredPlan="pro"
+        source="api_access"
         className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
       >
         <IconSparkles size={14} stroke={2} />
         Upgrade to Pro
-      </Link>
+      </UpgradeCta>
     </div>
   );
 }
@@ -44,12 +47,13 @@ export function ApiKeySunsetNotice({ access }: { access: ApiAccess }) {
       <IconAlertTriangle size={16} stroke={1.5} className="mt-0.5 shrink-0" />
       <p className="min-w-0">
         {message}{" "}
-        <Link
-          href="/dashboard/pricing"
+        <UpgradeCta
+          requiredPlan="pro"
+          source="api_access"
           className="font-medium underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300"
         >
           Upgrade
-        </Link>
+        </UpgradeCta>
       </p>
     </div>
   );

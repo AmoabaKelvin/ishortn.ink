@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { DEVICE_TYPES, OS_TYPES, type TargetingRuleType } from "@/lib/constants/targeting";
 import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
@@ -537,7 +538,14 @@ export function GeoRulesForm({
                 <div className="rounded-lg border border-dashed border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 p-6 text-center">
                   <IconWorld size={28} stroke={1.5} className="mx-auto text-neutral-300" />
                   <p className="mt-2 text-[13px] text-neutral-600 dark:text-neutral-400">
-                    Upgrade to Pro to use targeting rules
+                    <UpgradeCta
+                      requiredPlan="pro"
+                      source="geo_rules"
+                      className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                    >
+                      Upgrade to Pro
+                    </UpgradeCta>{" "}
+                    to use targeting rules
                   </p>
                   <p className="mt-1 text-[12px] text-neutral-400">
                     Redirect visitors to different URLs or block access based on their country,
