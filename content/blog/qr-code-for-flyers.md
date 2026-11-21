@@ -134,6 +134,8 @@ Two ways to go further:
 
 Scan counts tell you how many times a code was scanned, when, and from which country and device. They don't tell you who scanned, which is how it should be for a flyer.
 
+If you run events all year, [QR codes for events and posters](/solutions/events) covers registration links that close on a date and a code for each poster spot.
+
 ## After the event: repoint the code
 
 Your flyers will keep getting scanned after the date has passed. They'll still be on noticeboards, in bags and on fridges. With a dynamic code, edit the destination once the event is over:
