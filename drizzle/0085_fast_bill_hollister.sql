@@ -1,0 +1,1 @@
+ALTER TABLE `QrCode` ADD `style` json;
