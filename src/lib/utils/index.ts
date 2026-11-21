@@ -83,6 +83,21 @@ export function formatChartDate(dateString: string): string {
 }
 
 /**
+ * Axis tick for a chart bucket: "Nov 20" for a "YYYY-MM-DD" day, "14:00" for a
+ * "YYYY-MM-DDTHH" hour (UTC, matching `bucketKey` in `@/lib/core/analytics`).
+ */
+export function formatChartBucket(key: string): string {
+  return key.length > 10 ? `${key.slice(11, 13)}:00` : formatChartDate(key);
+}
+
+/** Tooltip label for a chart bucket; hour buckets also show the day. */
+export function formatChartBucketLabel(key: string): string {
+  return key.length > 10
+    ? `${formatChartDate(key.slice(0, 10))}, ${key.slice(11, 13)}:00`
+    : formatChartDate(key);
+}
+
+/**
  * Formats a "YYYY-MM" month string into a human-readable label.
  * Used by chart and table components for month display.
  */

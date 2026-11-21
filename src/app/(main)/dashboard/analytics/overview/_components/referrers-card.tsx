@@ -1,5 +1,7 @@
 "use client";
 
+import { groupReferrers } from "@/lib/core/analytics/referrer";
+
 import { ColoredDistributionCard } from "./colored-distribution-card";
 
 type ReferrersCardProps = {
@@ -8,27 +10,13 @@ type ReferrersCardProps = {
 };
 
 export function ReferrersCard({ referers, totalClicks }: ReferrersCardProps) {
-  const items = Object.entries(referers).map(([name, clicks]) => ({
-    name: name === "null" ? "Direct" : formatReferrer(name),
-    clicks,
-  }));
-
   return (
     <ColoredDistributionCard
       title="Traffic Sources"
       description="Click distribution by referrers"
-      items={items}
+      items={groupReferrers(referers)}
       totalClicks={totalClicks}
       color="red"
     />
   );
-}
-
-function formatReferrer(referrer: string): string {
-  try {
-    const url = new URL(referrer);
-    return url.hostname.replace("www.", "");
-  } catch {
-    return referrer;
-  }
 }

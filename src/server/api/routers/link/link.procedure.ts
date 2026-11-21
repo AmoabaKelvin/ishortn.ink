@@ -49,7 +49,8 @@ export const linkRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        domain: z.string(),
+        // Omitted: the workspace's default domain.
+        domain: z.string().optional(),
         range: z
           .enum([
             "24h",
