@@ -66,6 +66,9 @@
   "limits": {
     "cpu_ms": 300000,
   },
+  // Wrangler uploads source maps unless this is false, and the bundled worker's map is over
+  // Cloudflare's 60 MiB upload limit (scripts/ci/check-source-maps.ts guards it).
+  "upload_source_maps": false,
   "observability": {
     "enabled": true,
   },

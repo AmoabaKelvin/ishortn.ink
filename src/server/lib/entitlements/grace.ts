@@ -58,17 +58,26 @@ const chunk = <T>(items: T[], size: number): T[][] =>
 // ----------------------------------------------------------------------------
 
 /**
- * Starts an account grace period. `ifNone` only starts it when the account has
- * never had one recorded (the reconcile); otherwise it also replaces one that
- * has already passed (a new lapse from the webhook).
+ * Which recorded grace a new one may replace: `none` only starts it when the
+ * account has never had one (over-plan, from the reconcile); `passed` also
+ * replaces one that has ended (a new lapse from the webhook); `over_plan` also
+ * replaces any over-plan grace, running or not (a lapse the reconcile found),
+ * but never a lapse grace, so a lapse gets one grace period.
  */
+type GraceReplace = "none" | "passed" | "over_plan";
+
 async function startUserGrace(
   dbClient: DbClient,
   userId: string,
   grace: { plan: Plan; endsAt: Date; reason: GraceReason },
-  ifNone: boolean,
+  replace: GraceReplace,
   now: Date,
 ): Promise<boolean> {
+  const replaceable = {
+    none: isNull(user.planGraceEndsAt),
+    passed: or(isNull(user.planGraceEndsAt), lte(user.planGraceEndsAt, now)),
+    over_plan: or(isNull(user.planGraceEndsAt), eq(user.planGraceReason, "over_plan")),
+  }[replace];
   const [result] = await dbClient
     .update(user)
     .set({
@@ -77,14 +86,7 @@ async function startUserGrace(
       planGraceReason: grace.reason,
       planGraceEmailStage: GRACE_EMAIL_STAGE.none,
     })
-    .where(
-      and(
-        eq(user.id, userId),
-        ifNone
-          ? isNull(user.planGraceEndsAt)
-          : or(isNull(user.planGraceEndsAt), lte(user.planGraceEndsAt, now)),
-      ),
-    );
+    .where(and(eq(user.id, userId), replaceable));
   return result.affectedRows > 0;
 }
 
@@ -94,6 +96,18 @@ const CLEARED_GRACE = {
   planGraceReason: null,
   planGraceEmailStage: GRACE_EMAIL_STAGE.none,
 };
+
+/**
+ * The lapse grace a failed renewal (past_due, or unpaid once retries are
+ * exhausted) gets: the subscribed plan for 7 days from now. Null otherwise.
+ */
+function failedPaymentGrace(sub: Subscription | null, now: Date) {
+  const plan = subscribedPlan(sub);
+  if (!sub?.status || !FAILED_PAYMENT_STATUSES.includes(sub.status) || plan === "free") {
+    return null;
+  }
+  return { plan, endsAt: new Date(now.getTime() + GRACE_PERIOD_MS), reason: "lapsed" as const };
+}
 
 /** The grace an account using features above `plan` gets: the plan that covers it, for 7 days. */
 function overPlanGrace(usage: PlanUsage, plan: Plan, now: Date) {
@@ -124,14 +138,15 @@ export async function ensurePlanChecked(
 ): Promise<PlanGrace> {
   if (account.planCheckedAt || account.planGraceEndsAt) return account;
 
-  const usage = await getPlanUsageByUser(db, [account.id], now);
-  // Base plan without any grace: a failed renewal is still covered until its
-  // lapse grace is recorded, so it isn't treated as over its plan here.
-  const grace = overPlanGrace(
-    usage.get(account.id) ?? EMPTY_USAGE,
-    effectivePlan(sub, NO_GRACE, now),
-    now,
-  );
+  // A failed renewal gets its lapse grace, as the reconcile would give it, not
+  // an over-plan one. Otherwise usage is held to the base plan without any grace.
+  const grace =
+    failedPaymentGrace(sub, now) ??
+    overPlanGrace(
+      (await getPlanUsageByUser(db, [account.id], now)).get(account.id) ?? EMPTY_USAGE,
+      effectivePlan(sub, NO_GRACE, now),
+      now,
+    );
   if (!grace) {
     await db.update(user).set({ planCheckedAt: now }).where(eq(user.id, account.id));
     return account;
@@ -150,7 +165,10 @@ export async function ensurePlanChecked(
   // Batched requests can all reach this point; only the one that recorded the
   // grace sends its email.
   if (result.affectedRows > 0) {
-    log.info({ userId: account.id, plan: grace.plan }, "started over-plan grace on first check");
+    log.info(
+      { userId: account.id, plan: grace.plan, reason: grace.reason },
+      "started grace on first check",
+    );
     await runBackgroundTask(sendDueGraceEmails({ userIds: [account.id], now }));
   }
   return {
@@ -215,7 +233,7 @@ export async function applyBillingEventEntitlements(
   });
 
   if (change.type === "start") {
-    await startUserGrace(dbClient, userId, { ...change, reason: "lapsed" }, false, now);
+    await startUserGrace(dbClient, userId, { ...change, reason: "lapsed" }, "passed", now);
   } else if (change.type === "clear") {
     await dbClient.update(user).set(CLEARED_GRACE).where(eq(user.id, userId));
   }
@@ -296,10 +314,11 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
   // 2. Lapses the webhook missed: a failed payment (past_due, or unpaid once
   //    retries are exhausted) with no lapse grace yet, or a cancelled
   //    subscription whose paid period ended in the last grace window. A passed
-  //    over-plan grace doesn't cover the lapse, so it is replaced; a running one
-  //    within the subscribed plan on a failed payment becomes the lapse grace
-  //    (same dates, emails sent so far kept), so the notice asks for a card
-  //    update instead of an upgrade.
+  //    over-plan grace doesn't cover the lapse, so it is replaced. On a failed
+  //    payment a running over-plan grace within the subscribed plan is replaced
+  //    too, by a fresh lapse grace from today with its emails reset, so the
+  //    customer gets the "payment didn't go through" notice that asks for a
+  //    card update instead of the upgrade one.
   const lapsed = await db
     .select({
       userId: user.id,
@@ -334,28 +353,28 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
       ),
     );
   for (const row of lapsed) {
-    const plan = subscribedPlan(row.sub);
-    if (plan === "free") continue;
-    if (row.planGraceReason === "over_plan" && isGraceActive(row.planGraceEndsAt, now)) {
+    const failed = failedPaymentGrace(row.sub, now);
+    if (failed) {
       // An over-plan grace above the subscribed plan keeps running: narrowing it
       // would cut those features off early, and once it passes it is replaced.
-      if (!planAtLeast(plan, row.planGracePlan ?? "free")) continue;
-      const [converted] = await db
-        .update(user)
-        .set({ planGracePlan: plan, planGraceReason: "lapsed" })
-        .where(
-          and(
-            eq(user.id, row.userId),
-            eq(user.planGraceReason, "over_plan"),
-            gt(user.planGraceEndsAt, now),
-          ),
-        );
-      if (converted.affectedRows > 0) result.lapsesStarted++;
+      if (
+        row.planGraceReason === "over_plan" &&
+        isGraceActive(row.planGraceEndsAt, now) &&
+        !planAtLeast(failed.plan, row.planGracePlan ?? "free")
+      ) {
+        continue;
+      }
+      if (await startUserGrace(db, row.userId, failed, "over_plan", now)) {
+        result.lapsesStarted++;
+      }
       continue;
     }
-    const from = row.sub.status === "cancelled" && row.sub.endsAt ? row.sub.endsAt : now;
-    const endsAt = new Date(from.getTime() + GRACE_PERIOD_MS);
-    if (await startUserGrace(db, row.userId, { plan, endsAt, reason: "lapsed" }, false, now)) {
+    const plan = subscribedPlan(row.sub);
+    if (plan === "free" || !row.sub.endsAt) continue;
+    const endsAt = new Date(row.sub.endsAt.getTime() + GRACE_PERIOD_MS);
+    if (
+      await startUserGrace(db, row.userId, { plan, endsAt, reason: "lapsed" }, "over_plan", now)
+    ) {
       result.lapsesStarted++;
     }
   }
@@ -379,7 +398,7 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
         paidPlan(account.subscriptions, now),
         now,
       );
-      if (grace && (await startUserGrace(db, account.id, grace, true, now))) {
+      if (grace && (await startUserGrace(db, account.id, grace, "none", now))) {
         result.overPlanStarted++;
       }
     }
@@ -521,6 +540,45 @@ function freePlanSummary(): string[] {
 }
 
 /**
+ * The grace email to an account. A failed payment links to the
+ * update-payment-method page (fixed on the existing subscription) instead of
+ * pricing (a new checkout).
+ */
+export function accountGraceEmail(options: {
+  name: string | null;
+  subscription: Subscription | null;
+  usage: PlanUsage;
+  gracePlan: Plan;
+  reason: GraceReason;
+  endsAt: Date;
+  kind: GraceEmailKind;
+  now: Date;
+}) {
+  const { subscription, gracePlan, reason, endsAt, kind, now } = options;
+  const paid = paidPlan(subscription, now);
+  const items = overPlanFeatures(options.usage, paid).map((item) =>
+    describeOverPlanFeature(item, PLAN_NAMES[paid]),
+  );
+  const planName = PLAN_NAMES[gracePlan];
+  const endsOn = formatDay(endsAt);
+  const paymentFailed = graceAction(reason, subscription, gracePlan) === "update_payment";
+  return {
+    subject: accountSubject(kind, reason, planName, endsOn, paymentFailed),
+    props: {
+      recipientName: options.name,
+      kind,
+      reason,
+      planName,
+      endsOn,
+      timeLeft: timeLeft(endsAt, now),
+      items: items.length > 0 || reason !== "lapsed" ? items : freePlanSummary(),
+      upgradeUrl: upgradeUrl(gracePlan),
+      updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
+    } satisfies PlanGraceEmailProps,
+  };
+}
+
+/**
  * Sends the grace emails that are due (see dueGraceEmail) and records each
  * stage once its batch is accepted. Scoped to `userIds` when given (webhook).
  */
@@ -556,29 +614,22 @@ export async function sendDueGraceEmails(options: {
   );
 
   for (const { account, email, endsAt, gracePlan, reason, kind } of due) {
-    const paid = paidPlan(account.subscriptions, now);
-    const over = overPlanFeatures(usage.get(account.id) ?? EMPTY_USAGE, paid);
-    const items = over.map((item) => describeOverPlanFeature(item, PLAN_NAMES[paid]));
-    const planName = PLAN_NAMES[gracePlan];
-    const endsOn = formatDay(endsAt);
     const stage = GRACE_EMAIL_STAGE[kind];
-    // A failed payment is fixed on the existing subscription, not with a new checkout.
-    const paymentFailed = graceAction(reason, account.subscriptions?.status) === "update_payment";
+    const { subject, props } = accountGraceEmail({
+      name: account.name,
+      subscription: account.subscriptions,
+      usage: usage.get(account.id) ?? EMPTY_USAGE,
+      gracePlan,
+      reason,
+      endsAt,
+      kind,
+      now,
+    });
 
     pending.push({
       to: email,
-      subject: accountSubject(kind, reason, planName, endsOn, paymentFailed),
-      react: PlanGraceEmail({
-        recipientName: account.name,
-        kind,
-        reason,
-        planName,
-        endsOn,
-        timeLeft: timeLeft(endsAt, now),
-        items: items.length > 0 || reason !== "lapsed" ? items : freePlanSummary(),
-        upgradeUrl: upgradeUrl(gracePlan),
-        updatePaymentUrl: paymentFailed ? getAppUrl(updatePaymentPath("email")) : undefined,
-      }),
+      subject,
+      react: PlanGraceEmail(props),
       claim: async () => {
         const [result] = await db
           .update(user)
