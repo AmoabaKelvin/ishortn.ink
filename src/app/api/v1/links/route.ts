@@ -233,14 +233,6 @@ async function createNewLink(
     return newLink[0].insertId;
   });
 
-  const retrievedLink = await db.select().from(link).where(eq(link.id, newLinkId));
-  return {
-    shortLink: `https://${retrievedLink[0]!.domain}/${retrievedLink[0]!.alias}`,
-    url: retrievedLink[0]!.url,
-    alias: retrievedLink[0]!.alias,
-    expiresAt: retrievedLink[0]!.disableLinkAfterDate,
-    activatesAt: retrievedLink[0]!.activateAt,
-    expiresAfter: retrievedLink[0]!.disableLinkAfterClicks,
-    isProtected: !!retrievedLink[0]!.passwordHash,
-  };
+  const [retrievedLink] = await db.select().from(link).where(eq(link.id, newLinkId));
+  return { ...toApiLink(retrievedLink!), isProtected: !!retrievedLink!.passwordHash };
 }

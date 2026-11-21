@@ -97,6 +97,24 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     expect(await storedCount()).toBe(1);
   });
 
+  test("returns the created link with its id and creation time", async () => {
+    const response = await createLink({ alias: "route-test-shape" });
+    expect(response.status).toBe(201);
+
+    const stored = await db.query.link.findFirst({ where: eq(schema.link.userId, USER_ID) });
+    expect(await response.json()).toEqual({
+      id: stored?.id,
+      shortLink: `https://${stored?.domain}/route-test-shape`,
+      url: TARGET_URL,
+      alias: "route-test-shape",
+      createdAt: stored?.createdAt?.toISOString(),
+      expiresAt: null,
+      activatesAt: null,
+      expiresAfter: null,
+      isProtected: false,
+    });
+  });
+
   test("returns 403 with the dashboard message once the free limit is reached", async () => {
     await reset(30);
 

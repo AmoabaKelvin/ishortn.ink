@@ -79,7 +79,7 @@ print(len(links), "links")
 
 </CodeGroup>
 
-To watch for new links, as a polling trigger in Zapier, Make or n8n does, request the first page and look for links you haven't seen yet.
+To watch for new links, as a polling trigger in Zapier, Make or n8n does, request the first page and look for `id`s you haven't seen yet. Use `id` rather than `shortLink`: it stays the same when a link is renamed.
 
 ## Response
 
@@ -94,17 +94,21 @@ To watch for new links, as a polling trigger in Zapier, Make or n8n does, reques
 {
   "data": [
     {
+      "id": 4907,
       "shortLink": "https://isht.app/launch-day",
       "url": "https://example.com/blog/launch-day",
       "alias": "launch-day",
+      "createdAt": "2026-11-21T18:45:12.000Z",
       "expiresAt": null,
       "activatesAt": null,
       "expiresAfter": null
     },
     {
+      "id": 4821,
       "shortLink": "https://go.example.com/pricing",
       "url": "https://example.com/pricing",
       "alias": "pricing",
+      "createdAt": "2026-11-21T17:00:00.000Z",
       "expiresAt": "2026-12-31T23:59:59.000Z",
       "activatesAt": null,
       "expiresAfter": 1000

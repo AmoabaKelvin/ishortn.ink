@@ -95,9 +95,11 @@ print(response.json()["shortLink"])
 
 | Field | Type | Description |
 | --- | --- | --- |
+| `id` | number | The link's ID. It never changes, even when the link is renamed, so use it to tell links apart. |
 | `shortLink` | string | The full short URL, `https://<domain>/<alias>`. |
 | `url` | string | The destination URL. |
 | `alias` | string | The alias, either yours or the generated one. |
+| `createdAt` | string \| null | When the link was created, in ISO 8601 UTC. `null` for some older links. |
 | `expiresAt` | string \| null | When the link expires, or `null`. |
 | `activatesAt` | string \| null | When the link starts redirecting, or `null`. |
 | `expiresAfter` | number \| null | Click limit, or `null`. |
@@ -105,9 +107,11 @@ print(response.json()["shortLink"])
 
 ```json
 {
+  "id": 4907,
   "shortLink": "https://isht.app/launch-day",
   "url": "https://example.com/blog/launch-day",
   "alias": "launch-day",
+  "createdAt": "2026-11-21T18:45:12.000Z",
   "expiresAt": null,
   "activatesAt": null,
   "expiresAfter": 1000,
