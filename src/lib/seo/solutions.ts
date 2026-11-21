@@ -1,6 +1,8 @@
 import {
   IconBriefcaseFilled,
+  IconCalendarEventFilled,
   IconChartPieFilled,
+  IconClockFilled,
   IconEditFilled,
   IconFileUploadFilled,
   IconFoldersFilled,
@@ -472,6 +474,146 @@ export const solutions = {
       "Start on the free plan and move to Pro or Ultra when you add client domains. No credit card needed.",
     ctaButton: "Start free",
   },
+  events: {
+    slug: "events",
+    name: "Events and posters",
+    footerLabel: "Events",
+    hubBlurb: "Poster and registration codes you can change after printing.",
+    metaTitle: "QR Codes for Events and Posters | iShortn",
+    metaDescription:
+      "Dynamic QR codes for event posters, flyers and registration forms. Change the link after printing, close sign-ups on a date and see scans for each poster.",
+    keywords: [
+      "qr code for events",
+      "qr code for event registration",
+      "qr code for posters",
+      "event qr code",
+      "qr code for event flyer",
+      "how big should a qr code be on a poster",
+    ],
+    updatedOn: "2026-11-21",
+    eyebrow: "Events and posters",
+    icon: IconCalendarEventFilled,
+    h1: "QR codes for events and posters",
+    subhead:
+      "Put one code on the poster and point it at registration. After the event, send the same code to the photos or a feedback form, and see which posters people scanned.",
+    heroPoints: [
+      `${freeQrCodes} dynamic QR codes free`,
+      "Change the link after printing",
+      "No ads when people scan",
+    ],
+    heroCta: "Create a free event code",
+    benefitsTitle: "Posters that keep working after the event",
+    benefits: [
+      {
+        title: "One code from registration to the photos",
+        body: "The code on the poster holds a short link you control. Point it at the registration form before the event, the schedule on the day and the photos or a feedback form afterwards. Posters stay up for weeks, so people who scan late still land on a page that makes sense.",
+        icon: IconEditFilled,
+      },
+      {
+        title: "A code for each poster spot",
+        body: `Give the café window, the noticeboard and the handout flyers their own codes and compare them. Scans show the day, country, city and device. Free accounts see the last ${freeDays} days, and Pro keeps the full history.`,
+        icon: IconMapPinFilled,
+      },
+      {
+        title: "Registration that closes on time",
+        body: "A link can stop working at a set date or after a number of visits. People who scan after the deadline see an expired page instead of a form that still takes sign-ups. Expiry works on every plan, including Free.",
+        icon: IconHourglassFilled,
+      },
+      {
+        title: "Print early, go live later",
+        body: 'On Pro you can schedule a link to go live at a set time. Print the posters before registration opens, and anyone who scans early sees a "not live yet" page until then.',
+        icon: IconClockFilled,
+      },
+      {
+        title: "Codes that don't switch off",
+        body: "Some QR generators turn dynamic codes off when a trial or subscription ends, and every printed poster stops working with them. iShortn's free dynamic codes have no expiry date and keep working without a paid plan.",
+        icon: IconShieldCheckFilled,
+      },
+    ],
+    howToTitle: "Set up a poster code in four steps",
+    howTo: [
+      {
+        title: "Pick the page",
+        body: "Use your registration form, ticket page or event page. iShortn doesn't sell tickets or take registrations. It sends each scan to the tool that does.",
+      },
+      {
+        title: "Create the code",
+        body: "Paste the link, add your logo and colours, and download a high-resolution PNG.",
+      },
+      {
+        title: "Print and test",
+        body: "A code scans from about ten times its own width, so a poster read from 2 metres needs a code about 20 cm wide. Scan a printed copy from that distance before you print the full run.",
+      },
+      {
+        title: "Repoint it after the event",
+        body: "Change the destination to the photos, a recap or the next date. The posters still on the walls open the new page.",
+      },
+    ],
+    plans: [
+      {
+        plan: "free",
+        title: "Free",
+        body: `Up to ${freeQrCodes} codes and ${freeDays} days of scan data, with expiry dates on every link. Enough for one event's posters and flyers.`,
+      },
+      {
+        plan: "pro",
+        title: `Pro, ${proMonthly} a month, or ${usd(PLAN_PRICES_ANNUAL_USD.pro)} a year`,
+        body: "Unlimited codes, scheduled go-live, your own domain such as go.yourevent.com and the full scan history. For clubs and venues that run events all year.",
+      },
+      {
+        plan: "ultra",
+        title: `Ultra, ${usd(PLAN_PRICES_USD.ultra)} a month`,
+        body: "A shared team workspace where organisers and volunteers manage the codes together. Members join free.",
+      },
+    ],
+    plansNote: `Free records ${count(free.eventsLimit)} scans, clicks and bio page views a month across your account, and Pro records ${count(PLAN_CAPS.pro.eventsLimit)}. Past that, codes keep working, but new scans aren't counted until the next month.`,
+    faqs: [
+      {
+        question: "Is an event QR code free with iShortn?",
+        answer: `Yes. The free plan includes ${freeQrCodes} dynamic QR codes with no ads and no expiry date, and you can change where each one points at any time. Each code uses one of your ${freeLinks} free links a month. For more codes, Pro is ${proMonthly} a month.`,
+      },
+      {
+        question: "How big should a QR code be on a poster?",
+        answer:
+          "A code scans well from about ten times its own width. For a poster read from 2 metres away, make it about 20 cm wide. On a handout read at arm's length, 2.5 to 3 cm is enough. Print one copy at full size and scan it from where people will stand.",
+      },
+      {
+        question: "How do I make a QR code for event registration?",
+        answer:
+          "Copy the link to your registration form or ticket page, whether that's Google Forms, Eventbrite or your own site. Paste it into a new QR code in iShortn and download the PNG. iShortn doesn't sell tickets or collect registrations. It sends each scan to your form and counts the scans.",
+      },
+      {
+        question: "Can the code stop sign-ups when the event is full?",
+        answer:
+          "Partly. A link can close after a number of visits, but a visit isn't a finished sign-up, because some people scan and never register. To cap numbers, use the limit in your form or ticketing tool, and use the link's expiry date for the deadline.",
+      },
+      {
+        question: "Will the code stop working after the event?",
+        answer:
+          "Only if you set an expiry. Dynamic codes made on the free plan have no expiry date of their own and keep working without a paid plan. Point the code at the photos, a recap or the next date, and old posters still lead somewhere useful.",
+      },
+      {
+        question: "Can I check people in at the door with iShortn?",
+        answer:
+          "No. iShortn doesn't scan tickets or keep a guest list, so use your ticketing tool's check-in app for that. An iShortn code can send people to the schedule, the venue map or a feedback form once they're inside.",
+      },
+      {
+        question: "Can the code use my own domain, like go.yourevent.com?",
+        answer:
+          "Yes, on Pro and Ultra. Add the subdomain in the dashboard and create the DNS records it shows. iShortn handles the SSL certificate.",
+      },
+    ],
+    related: [
+      { href: "/blog/qr-code-for-flyers", label: "Put a QR code on a flyer" },
+      { href: "/qr-code-generator", label: "Free QR code generator" },
+      { href: "/blog/how-to-track-qr-code-scans", label: "How to track QR code scans" },
+      { href: "/blog/qr-code-stopped-working", label: "Why QR codes stop working" },
+      { href: "/docs/short-links", label: "Expiry and scheduling in the docs" },
+    ],
+    ctaTitle: "Make your first event code",
+    ctaBody: `The free plan has ${freeQrCodes} dynamic QR codes with no ads and no expiry date. No credit card needed.`,
+    ctaButton: "Create a free QR code",
+  },
 } satisfies Record<string, Solution>;
 
 // Display order for the hub, the footer and /features.
@@ -479,6 +621,7 @@ export const solutionList: Solution[] = [
   solutions.restaurants,
   solutions["churches-and-nonprofits"],
   solutions.agencies,
+  solutions.events,
 ];
 
 export const getSolution = (slug: string): Solution | undefined =>
