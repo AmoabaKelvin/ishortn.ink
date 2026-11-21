@@ -38,3 +38,29 @@ describe("createDeferredClient", () => {
     expect(log).toEqual(["a", "b"]);
   });
 });
+
+describe("runWithin", () => {
+  test("resolves once the call has run on the loaded client", async () => {
+    const deferred = createDeferredClient<string[]>(10);
+    let settled = false;
+    const done = deferred
+      .runWithin((log) => log.push("sent"), 60_000)
+      .then(() => {
+        settled = true;
+      });
+    await Bun.sleep(5);
+    expect(settled).toBe(false);
+
+    const log: string[] = [];
+    deferred.ready(log);
+    await done;
+    expect(log).toEqual(["sent"]);
+  });
+
+  test("resolves after the timeout when the client never loads", async () => {
+    const deferred = createDeferredClient<string[]>(10);
+    const started = Date.now();
+    await deferred.runWithin(() => {}, 20);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(15);
+  });
+});

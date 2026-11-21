@@ -1,6 +1,6 @@
 "use client";
 
-import { withPostHog } from "./posthog";
+import { withPostHog, withPostHogNow } from "./posthog";
 
 /**
  * PostHog event names for tracking user activities
@@ -62,4 +62,30 @@ export function trackEvent(eventName: PostHogEventName, properties?: EventProper
     const timestamp = new Date();
     withPostHog((posthog) => posthog.capture(eventName, properties, { timestamp }));
   }
+}
+
+/**
+ * Track an event that is followed by a full page navigation, which discards events still
+ * waiting for PostHog to load. Loads PostHog straight away and sends the event at once, skipping
+ * the batch queue, on a request that outlives the page (posthog-js 1.236 uses a keepalive fetch
+ * and ignores `transport`; later versions honour the sendBeacon request). Resolves once it is
+ * sent or after `timeoutMs`; await it before navigating.
+ */
+export function flushTrackEvent(
+  eventName: PostHogEventName,
+  properties: EventProperties | undefined,
+  { timeoutMs }: { timeoutMs: number },
+) {
+  // eslint-disable-next-line anti-slop/no-runtime-typeof -- SSR guard
+  if (typeof window === "undefined") return Promise.resolve();
+  const timestamp = new Date();
+  return withPostHogNow(
+    (posthog) =>
+      posthog.capture(eventName, properties, {
+        timestamp,
+        send_instantly: true,
+        transport: "sendBeacon",
+      }),
+    timeoutMs,
+  );
 }

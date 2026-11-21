@@ -18,6 +18,7 @@ const INTERACTION_EVENTS = ["pointerdown", "keydown"] as const;
 
 const deferred = createDeferredClient<PostHog>(100);
 let loadStarted = false;
+let importStarted = false;
 let holds = 0;
 let resumeAfterHolds: (() => void) | null = null;
 
@@ -56,6 +57,39 @@ export function holdPostHog() {
   return release;
 }
 
+function importPostHog() {
+  if (importStarted || !POSTHOG_KEY) return;
+  importStarted = true;
+  for (const type of INTERACTION_EVENTS) window.removeEventListener(type, startWhenFree, true);
+  import("posthog-js")
+    .then(({ default: posthog }) => {
+      posthog.init(POSTHOG_KEY, {
+        api_host: POSTHOG_HOST,
+        person_profiles: "always",
+        // Sent from loadPostHog with the URL of the page it was loaded on. Page leaves would
+        // otherwise follow capture_pageview off.
+        capture_pageview: false,
+        capture_pageleave: true,
+      });
+      deferred.ready(posthog);
+    })
+    .catch((error) =>
+      clientLogger.warn(
+        { err: error instanceof Error ? error : String(error) },
+        "posthog-js failed to load",
+      ),
+    );
+}
+
+function startWhenFree() {
+  if (importStarted) return;
+  if (holds > 0) {
+    resumeAfterHolds = startWhenFree;
+    return;
+  }
+  importPostHog();
+}
+
 /**
  * Records the page view for this document, then loads and initialises posthog-js once the
  * browser is idle (at most 2 s) or the visitor first interacts, whichever comes first, and no
@@ -66,48 +100,31 @@ export function loadPostHog() {
   loadStarted = true;
 
   // Taken now: by the time PostHog loads, a client-side navigation may have changed the URL.
+  // Not the title: posthog-js sets it from document.title when it sends a $pageview.
   const { href, host, pathname } = window.location;
-  const title = document.title;
   const timestamp = new Date();
   deferred.run((posthog) =>
     posthog.capture(
       "$pageview",
-      { $current_url: href, $host: host, $pathname: pathname, title },
+      { $current_url: href, $host: host, $pathname: pathname },
       { timestamp },
     ),
   );
 
-  let started = false;
-  const start = () => {
-    if (started) return;
-    if (holds > 0) {
-      resumeAfterHolds = start;
-      return;
-    }
-    started = true;
-    for (const type of INTERACTION_EVENTS) window.removeEventListener(type, start, true);
-    import("posthog-js")
-      .then(({ default: posthog }) => {
-        posthog.init(POSTHOG_KEY, {
-          api_host: POSTHOG_HOST,
-          person_profiles: "always",
-          // Sent above with the URL of the page it was loaded on. Page leaves would otherwise
-          // follow capture_pageview off.
-          capture_pageview: false,
-          capture_pageleave: true,
-        });
-        deferred.ready(posthog);
-      })
-      .catch((error) =>
-        clientLogger.warn(
-          { err: error instanceof Error ? error : String(error) },
-          "posthog-js failed to load",
-        ),
-      );
-  };
-
   for (const type of INTERACTION_EVENTS) {
-    window.addEventListener(type, start, { capture: true, once: true, passive: true });
+    window.addEventListener(type, startWhenFree, { capture: true, once: true, passive: true });
   }
-  whenIdle(start);
+  whenIdle(startWhenFree);
+}
+
+/**
+ * Loads posthog-js straight away, skipping the idle wait and any hold, and runs `call` with it.
+ * Resolves once `call` has run or after `timeoutMs`, whichever is first. For events sent just
+ * before a full page navigation, which would discard calls still queued for PostHog.
+ */
+export function withPostHogNow(call: (posthog: PostHog) => void, timeoutMs: number) {
+  if (!POSTHOG_KEY) return Promise.resolve();
+  loadPostHog();
+  importPostHog();
+  return deferred.runWithin(call, timeoutMs);
 }

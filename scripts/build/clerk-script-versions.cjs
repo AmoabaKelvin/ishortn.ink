@@ -4,8 +4,15 @@
 // more round trip before the sign-in form can start loading. @clerk/shared only carries these
 // versions as defaults inside its URL helpers, so they are read from the function sources and
 // checked against the major tag the SDK would otherwise request.
-const { clerkJSScriptUrl, clerkUIScriptUrl } = require("@clerk/shared/loadClerkJsScript");
-const { versionSelector } = require("@clerk/shared/versionSelector");
+const path = require("node:path");
+
+// Resolved from @clerk/nextjs, not the root: @clerk/shared is its dependency, not ours, and may
+// not be hoisted or may be a different copy there. Its package.json isn't exported, so the
+// lookup starts from its entry file.
+const clerkNextjsDir = path.dirname(require.resolve("@clerk/nextjs"));
+const fromClerkNextjs = (id) => require(require.resolve(id, { paths: [clerkNextjsDir] }));
+const { clerkJSScriptUrl, clerkUIScriptUrl } = fromClerkNextjs("@clerk/shared/loadClerkJsScript");
+const { versionSelector } = fromClerkNextjs("@clerk/shared/versionSelector");
 
 // Any valid key works: only the CDN path of the returned URL is compared.
 const probeKey = `pk_live_${Buffer.from("clerk.example.com$").toString("base64")}`;

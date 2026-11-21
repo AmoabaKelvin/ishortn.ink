@@ -5,7 +5,8 @@ import { Link } from "next-view-transitions";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+
+import { openPaymentPage } from "./open-payment-page";
 
 import type { PaymentUpdateSource } from "@/lib/billing/entitlements";
 
@@ -41,9 +42,8 @@ export function PaymentRedirect({
   source: PaymentUpdateSource | null;
 }) {
   useEffect(() => {
-    trackEvent(POSTHOG_EVENTS.PAYMENT_UPDATE_CLICKED, { source, opened: !!url });
     // replace: Back from Lemon Squeezy returns to the page that linked here.
-    if (url) window.location.replace(url);
+    void openPaymentPage({ url, source, navigate: (target) => window.location.replace(target) });
   }, [url, source]);
 
   if (url) return <RedirectingState />;

@@ -21,7 +21,7 @@ const variants = {
   signIn: {
     ...clerkLocalization.signIn.start,
     fields: ["Email address"],
-    footerText: "Don't have an account?",
+    footerText: "Don’t have an account?",
     footerLink: { label: "Sign up", href: "/auth/sign-up" },
   },
 };

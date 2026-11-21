@@ -8,8 +8,18 @@ import { siteClerkAppearance } from "../../_shared/clerk-appearance";
 import { ClerkFormPlaceholder } from "../../_shared/clerk-form-placeholder";
 import { ShortenIntentNotice } from "../../_shared/shorten-intent-notice";
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const [{ next }, cookieStore] = await Promise.all([searchParams, cookies()]);
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ "sign-up"?: string[] }>;
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const [{ "sign-up": step }, { next }, cookieStore] = await Promise.all([
+    params,
+    searchParams,
+    cookies(),
+  ]);
   const intent = cookieStore.get(SHORTEN_INTENT_COOKIE)?.value;
   const afterSignUpUrl = getPostAuthUrl({ next, intent });
   const intentLabel = formatShortenIntentForDisplay(intent);
@@ -25,7 +35,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
       <SignUp
         path="/auth/sign-up"
         appearance={siteClerkAppearance}
-        fallback={<ClerkFormPlaceholder variant="signUp" next={next} />}
+        // The placeholder is the start step; later steps (factor-one, sso-callback, verify-…)
+        // render a different card, so they get no stand-in.
+        fallback={step?.length ? undefined : <ClerkFormPlaceholder variant="signUp" next={next} />}
         forceRedirectUrl={afterSignUpUrl}
         signInForceRedirectUrl={afterSignUpUrl}
       />
