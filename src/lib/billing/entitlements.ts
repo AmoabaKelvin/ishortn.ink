@@ -391,13 +391,18 @@ export type GraceReason = "lapsed" | "over_plan";
  * What a grace notice asks the customer to do. A lapse caused by a failed
  * payment (Lemon Squeezy `past_due` or `unpaid`) is fixed by updating the card
  * on the existing subscription; sending it to pricing invites a second
- * subscription. Cancellations and plan changes go to pricing.
+ * subscription. The same goes for an over-plan grace the failing subscription
+ * covers (recorded before the lapse was). Cancellations, plan changes and
+ * over-plan graces above the subscribed plan go to pricing.
  */
 export function graceAction(
   reason: GraceReason,
-  status: string | null | undefined,
+  subscription: SubscriptionState | undefined,
+  gracePlan: Plan,
 ): "update_payment" | "upgrade" {
-  return reason === "lapsed" && (status === "past_due" || status === "unpaid")
+  const status = subscription?.status;
+  if (status !== "past_due" && status !== "unpaid") return "upgrade";
+  return reason === "lapsed" || planAtLeast(subscribedPlan(subscription), gracePlan)
     ? "update_payment"
     : "upgrade";
 }
@@ -409,7 +414,7 @@ export function graceAction(
  */
 export function teamGraceAction(ownerSubscription?: SubscriptionState) {
   return subscribedPlan(ownerSubscription) === "ultra"
-    ? graceAction("lapsed", ownerSubscription?.status)
+    ? graceAction("lapsed", ownerSubscription, "ultra")
     : "upgrade";
 }
 

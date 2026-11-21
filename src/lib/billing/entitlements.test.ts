@@ -399,20 +399,35 @@ describe("usage above a plan", () => {
 
 describe("graceAction", () => {
   test("a failed payment links to the update-payment-method page", () => {
-    expect(graceAction("lapsed", "past_due")).toBe("update_payment");
-    expect(graceAction("lapsed", "unpaid")).toBe("update_payment");
+    expect(graceAction("lapsed", sub("past_due", "pro"), "pro")).toBe("update_payment");
+    expect(graceAction("lapsed", sub("unpaid", "ultra"), "ultra")).toBe("update_payment");
   });
 
   test("cancellations and expiries link to pricing", () => {
-    expect(graceAction("lapsed", "cancelled")).toBe("upgrade");
-    expect(graceAction("lapsed", "expired")).toBe("upgrade");
-    expect(graceAction("lapsed", null)).toBe("upgrade");
+    expect(graceAction("lapsed", sub("cancelled", "pro", at(-1)), "pro")).toBe("upgrade");
+    expect(graceAction("lapsed", sub("expired", "pro"), "pro")).toBe("upgrade");
+    expect(graceAction("lapsed", null, "pro")).toBe("upgrade");
   });
 
-  test("an over-plan grace links to pricing even while a payment is failing", () => {
-    expect(graceAction("over_plan", "active")).toBe("upgrade");
-    expect(graceAction("over_plan", "past_due")).toBe("upgrade");
+  test("an over-plan grace on a paying subscription links to pricing", () => {
+    expect(graceAction("over_plan", sub("active", "pro"), "ultra")).toBe("upgrade");
+    expect(graceAction("over_plan", null, "pro")).toBe("upgrade");
   });
+
+  test.each(["past_due", "unpaid"])(
+    "an over-plan grace the %s subscription covers links to the update-payment-method page",
+    (status) => {
+      expect(graceAction("over_plan", sub(status, "pro"), "pro")).toBe("update_payment");
+      expect(graceAction("over_plan", sub(status, "ultra"), "pro")).toBe("update_payment");
+    },
+  );
+
+  test.each(["past_due", "unpaid"])(
+    "an over-plan grace above the %s subscription's plan links to pricing",
+    (status) => {
+      expect(graceAction("over_plan", sub(status, "pro"), "ultra")).toBe("upgrade");
+    },
+  );
 });
 
 describe("teamGraceAction", () => {

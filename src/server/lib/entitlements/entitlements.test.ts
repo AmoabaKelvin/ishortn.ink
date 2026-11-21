@@ -119,6 +119,9 @@ const FAILED_OVER_PLAN_IDS = {
 } as const;
 const UNPAID_ULTRA_OWNER_ID = "ent_test_unpaid_ultra";
 const UNPAID_ABOVE_PLAN_ID = "ent_test_unpaid_above_plan";
+const UNPAID_ULTRA_ID = "ent_test_unpaid_ultra_solo";
+const UNPAID_PASSED_LAPSE_ID = "ent_test_unpaid_passed_lapse";
+const UNCHECKED_UNPAID_ID = "ent_test_unchecked_unpaid";
 const USER_IDS = [
   ...Object.values(ACCOUNTS).map((account) => account.id),
   UNCHECKED_OVER_ID,
@@ -129,6 +132,9 @@ const USER_IDS = [
   ...Object.values(FAILED_OVER_PLAN_IDS),
   UNPAID_ULTRA_OWNER_ID,
   UNPAID_ABOVE_PLAN_ID,
+  UNPAID_ULTRA_ID,
+  UNPAID_PASSED_LAPSE_ID,
+  UNCHECKED_UNPAID_ID,
 ];
 const TEAM_SLUGS = ["ent-test-pro-team", "ent-test-ultra-team", "ent-test-unpaid-ultra-team"];
 
@@ -905,15 +911,16 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     id: string,
     status: string,
     variantId: number,
-    grace?: { plan: Plan; endsAt: Date; emailStage: number },
+    grace?: { plan: Plan; endsAt: Date; emailStage: number; reason?: "lapsed" | "over_plan" },
+    planCheckedAt: Date | null = new Date(),
   ) {
     await db.insert(schema.user).values({
       id,
       email: `${id}@entitlements.test`,
-      planCheckedAt: new Date(),
+      planCheckedAt,
       planGracePlan: grace?.plan ?? null,
       planGraceEndsAt: grace?.endsAt ?? null,
-      planGraceReason: grace ? "over_plan" : null,
+      planGraceReason: grace ? (grace.reason ?? "over_plan") : null,
       planGraceEmailStage: grace?.emailStage ?? 0,
     });
     await db.insert(schema.subscription).values({
@@ -946,37 +953,81 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     });
   });
 
+  test("the reconcile starts a lapse grace for an unpaid Ultra subscription", async () => {
+    await insertFailedPayer(UNPAID_ULTRA_ID, "unpaid", ULTRA_VARIANT);
+
+    await reconcileEntitlements();
+    const row = await db.query.user.findFirst({ where: eq(schema.user.id, UNPAID_ULTRA_ID) });
+    expect(row?.planGraceReason).toBe("lapsed");
+    expect(row?.planGracePlan).toBe("ultra");
+    expect(row?.planGraceEndsAt?.getTime()).toBeGreaterThan(Date.now() + 6.9 * DAY);
+    // Still covered by the lapse grace.
+    const workspace = await resolveWorkspaceContext(UNPAID_ULTRA_ID, "ishortn.ink", db);
+    expect(workspace.plan).toBe("ultra");
+  });
+
   test.each(["past_due", "unpaid"] as const)(
-    "the reconcile turns a running over-plan grace on a %s subscription into the lapse grace",
+    "the reconcile replaces a running over-plan grace on a %s subscription with a lapse grace",
     async (status) => {
       const id = FAILED_OVER_PLAN_IDS[status];
       // Started three days ago; the day-0 email went out with the over-plan copy.
       const endsAt = new Date(Date.now() + 4 * DAY);
       await insertFailedPayer(id, status, PRO_VARIANT, { plan: "pro", endsAt, emailStage: 1 });
-      const startedAt = await db.query.user.findFirst({ where: eq(schema.user.id, id) });
 
       await reconcileEntitlements();
       const row = await db.query.user.findFirst({ where: eq(schema.user.id, id) });
       expect(row?.planGraceReason).toBe("lapsed");
       expect(row?.planGracePlan).toBe("pro");
-      // Same start date, so neither extra nor lost days.
-      expect(row?.planGraceEndsAt?.getTime()).toBe(startedAt!.planGraceEndsAt!.getTime());
-      // The first notice already went out, so it isn't sent again.
-      expect(row?.planGraceEmailStage).toBe(1);
-      expect(
-        dueGraceEmail({ reason: "lapsed", endsAt: row!.planGraceEndsAt!, stage: 1 }),
-      ).toBeNull();
+      // A fresh 7 days from the failed payment, and the day-0 email is due again
+      // so the customer gets the update-payment notice.
+      const newEndsAt = row!.planGraceEndsAt!.getTime();
+      expect(newEndsAt).toBeGreaterThan(Date.now() + 6.9 * DAY);
+      expect(row?.planGraceEmailStage).toBe(0);
+      expect(dueGraceEmail({ reason: "lapsed", endsAt: row!.planGraceEndsAt!, stage: 0 })).toBe(
+        "started",
+      );
       expect(await accountCaller(id).subscriptions.entitlementNotice()).toMatchObject({
         reason: "lapsed",
         action: "update_payment",
       });
 
+      // Once recorded, the next run leaves it alone.
       await reconcileEntitlements();
       const again = await db.query.user.findFirst({ where: eq(schema.user.id, id) });
-      expect(again?.planGraceEndsAt?.getTime()).toBe(row!.planGraceEndsAt!.getTime());
-      expect(again?.planGraceEmailStage).toBe(1);
+      expect(again?.planGraceReason).toBe("lapsed");
+      expect(again?.planGraceEndsAt?.getTime()).toBe(newEndsAt);
     },
   );
+
+  test("the reconcile doesn't restart a passed lapse grace on an unpaid subscription", async () => {
+    const endsAt = new Date(Math.floor((Date.now() - 3 * DAY) / 1000) * 1000);
+    await insertFailedPayer(UNPAID_PASSED_LAPSE_ID, "unpaid", PRO_VARIANT, {
+      plan: "pro",
+      endsAt,
+      emailStage: 3,
+      reason: "lapsed",
+    });
+
+    await reconcileEntitlements();
+    const row = await db.query.user.findFirst({
+      where: eq(schema.user.id, UNPAID_PASSED_LAPSE_ID),
+    });
+    expect(row?.planGraceReason).toBe("lapsed");
+    expect(row?.planGraceEndsAt?.getTime()).toBe(endsAt.getTime());
+    expect(row?.planGraceEmailStage).toBe(3);
+  });
+
+  test("an unchecked unpaid account gets the lapse grace on the first request", async () => {
+    await insertFailedPayer(UNCHECKED_UNPAID_ID, "unpaid", PRO_VARIANT, undefined, null);
+
+    const workspace = await resolveWorkspaceContext(UNCHECKED_UNPAID_ID, "ishortn.ink", db);
+    expect(workspace.plan).toBe("pro");
+    const row = await db.query.user.findFirst({ where: eq(schema.user.id, UNCHECKED_UNPAID_ID) });
+    expect(row?.planGraceReason).toBe("lapsed");
+    expect(row?.planGracePlan).toBe("pro");
+    expect(row?.planCheckedAt).not.toBeNull();
+    expect(row?.planGraceEndsAt?.getTime()).toBeGreaterThan(Date.now() + 6.9 * DAY);
+  });
 
   test("the reconcile leaves a running over-plan grace above the subscribed plan alone", async () => {
     // A Pro subscriber still on Ultra-level usage whose renewal then failed.
