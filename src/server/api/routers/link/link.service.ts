@@ -38,7 +38,6 @@ import {
   setStringInCache,
 } from "@/lib/core/cache";
 import { matchTargetingRules } from "@/lib/core/geo-rules/matcher";
-import { generateShortLink } from "@/lib/core/links";
 import { logger } from "@/lib/logger";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { normalizeAlias } from "@/lib/utils";
@@ -67,6 +66,11 @@ import {
 } from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import {
+  generateUnreservedAlias,
+  isAliasReserved,
+  reserveLinkAliases,
+} from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   assertCanEnableVerifiedClicks,
@@ -96,6 +100,7 @@ import {
   restrictedLinkValues,
   settleWithConcurrency,
   toPublicLink,
+  checkAliasAvailability as assertAliasAvailable,
   validateAlias,
 } from "./utils";
 
@@ -415,7 +420,8 @@ const createLinkSteps = async (
 
   const domain = input.domain?.trim() || DEFAULT_PLATFORM_DOMAIN;
   await assertDomainAllowed(ctx, domain);
-  const alias = input.alias && input.alias !== "" ? input.alias : await generateShortLink();
+  const alias =
+    input.alias && input.alias !== "" ? input.alias : await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
   await checkUrl(input.url);
@@ -656,6 +662,9 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   if (input.alias && input.alias !== existingLink.alias) {
     const domain = input.domain ?? existingLink.domain;
     await validateAlias(ctx, input.alias, domain, isPaidUser);
+  } else if (input.domain && input.domain !== existingLink.domain && existingLink.alias) {
+    // Moving the alias to another domain claims it there.
+    await assertAliasAvailable(ctx, existingLink.alias, input.domain);
   }
 
   if (input.activateAt && !isPaidUser) {
@@ -736,10 +745,22 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   }
 
   // Update link data - use workspace filtering
-  await ctx.db
-    .update(link)
-    .set(linkData)
-    .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)));
+  const linkWhere = and(
+    eq(link.id, input.id),
+    workspaceFilter(ctx.workspace, link.userId, link.teamId),
+  );
+  const freesOldAlias =
+    (!!input.alias && normalizeAlias(input.alias) !== normalizeAlias(existingLink.alias ?? "")) ||
+    (!!input.domain && input.domain.toLowerCase() !== existingLink.domain.toLowerCase());
+  if (freesOldAlias) {
+    // A rename frees the old alias just like a delete does.
+    await ctx.db.transaction(async (tx) => {
+      await reserveLinkAliases(tx, linkWhere, "deleted");
+      await tx.update(link).set(linkData).where(linkWhere);
+    });
+  } else {
+    await ctx.db.update(link).set(linkData).where(linkWhere);
+  }
 
   // Update tags if provided
   if (tagNames) {
@@ -840,11 +861,16 @@ export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput)
 
   await ctx.db.delete(linkMilestone).where(eq(linkMilestone.linkId, input.id));
 
+  const where = and(
+    eq(link.id, input.id),
+    workspaceFilter(ctx.workspace, link.userId, link.teamId),
+  );
   await Promise.all([
     deleteFromCache(buildCacheKey(linkToDelete.domain, linkToDelete.alias!)),
-    ctx.db
-      .delete(link)
-      .where(and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId))),
+    ctx.db.transaction(async (tx) => {
+      await reserveLinkAliases(tx, where, "deleted");
+      await tx.delete(link).where(where);
+    }),
   ]);
 };
 
@@ -909,7 +935,8 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     // 5. Delete milestone notifications
     await tx.delete(linkMilestone).where(inArray(linkMilestone.linkId, validLinkIds));
 
-    // 6. Finally delete the links themselves
+    // 6. Finally delete the links themselves, tombstoning their aliases
+    await reserveLinkAliases(tx, inArray(link.id, validLinkIds), "deleted");
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
 
@@ -1063,8 +1090,8 @@ const shortenLinkSteps = async (
 ) => {
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
-  const alias = await generateShortLink();
   const domain = await getWorkspaceDefaultDomain(ctx);
+  const alias = await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
   await assertUrlSafe(input.url);
@@ -1707,12 +1734,16 @@ export const checkAliasAvailability = async (
   ctx: PublicTRPCContext,
   input: { alias: string; domain: string },
 ) => {
-  const existingLink = await ctx.db.query.link.findFirst({
-    where: (table, { eq, and }) =>
-      and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
-  });
+  const [existingLink, reserved] = await Promise.all([
+    ctx.db.query.link.findFirst({
+      columns: { id: true },
+      where: (table, { eq, and }) =>
+        and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
+    }),
+    isAliasReserved(ctx.db, input.alias, input.domain),
+  ]);
 
-  return { isAvailable: !existingLink };
+  return { isAvailable: !existingLink && !reserved };
 };
 
 // Alias checks, URL scans and inserts each hold a db connection or an outbound
@@ -1809,7 +1840,7 @@ const bulkCreateLinkRows = async (
       const ownership = workspaceOwnership(ctx.workspace);
       await ctx.db.insert(link).values({
         url: record.url,
-        alias: record.alias ?? (await generateShortLink()),
+        alias: record.alias ?? (await generateUnreservedAlias(ctx.db, record.domain)),
         userId: ownership.userId,
         teamId: ownership.teamId,
         createdByUserId: ctx.auth.userId, // Track the actual user who created the link

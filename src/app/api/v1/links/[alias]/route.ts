@@ -4,9 +4,11 @@ import { z } from "zod";
 import { resolvePlan } from "@/lib/billing/plans";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { normalizeAlias } from "@/lib/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { isAliasReserved, reserveLinkAliases } from "@/server/lib/reserved-alias";
 
 import {
   getApiDomainParamsFromSearchParams,
@@ -119,7 +121,14 @@ export const PATCH = withApiKey(
       }
       filteredUpdateData.url = parsed.data.url;
     }
-    if (parsed.data.alias !== undefined) filteredUpdateData.alias = parsed.data.alias;
+    const newAlias = parsed.data.alias;
+    const renamed =
+      newAlias !== undefined &&
+      normalizeAlias(newAlias) !== normalizeAlias(existingLink.alias ?? "");
+    if (renamed && (await isAliasReserved(db, newAlias, existingLink.domain))) {
+      return new Response("Alias already exists for this domain", { status: 409 });
+    }
+    if (newAlias !== undefined) filteredUpdateData.alias = newAlias;
     if (parsed.data.expiresAt !== undefined) {
       filteredUpdateData.disableLinkAfterDate = parsed.data.expiresAt
         ? new Date(parsed.data.expiresAt)
@@ -144,7 +153,15 @@ export const PATCH = withApiKey(
     }
 
     try {
-      await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+      if (renamed) {
+        // A rename frees the old alias just like a delete does.
+        await db.transaction(async (tx) => {
+          await reserveLinkAliases(tx, eq(link.id, existingLink.id), "deleted");
+          await tx.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+        });
+      } else {
+        await db.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
+      }
 
       // Refetch by id: ownership is already settled, and the alias may have just
       // changed, so looking it up by alias again would race a concurrent rename.

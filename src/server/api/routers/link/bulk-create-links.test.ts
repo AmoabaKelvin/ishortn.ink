@@ -20,7 +20,7 @@ type InsertedLink = {
 
 // In-memory stand-in for the queries bulkCreateLinks makes: the plan lookup,
 // custom-domain ownership (the workspace owns none), alias availability (all
-// free), link inserts, failure records and the monthly count update.
+// free, none reserved), link inserts, failure records and the monthly count update.
 function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null) {
   const inserted: InsertedLink[] = [];
   const recordedFailures: LinkCreationFailure[] = [];
@@ -38,7 +38,7 @@ function fakeContext(monthlyLinkCount: number, restrictedAt: Date | null = null)
       },
       customDomain: { findFirst: async () => undefined },
     },
-    select: () => ({ from: () => ({ where: async () => [] }) }),
+    select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
     insert: (table: typeof link | typeof linkCreationFailure) => ({
       values: async (values: InsertedLink | LinkCreationFailure[]) => {
         if (table === linkCreationFailure && Array.isArray(values)) {

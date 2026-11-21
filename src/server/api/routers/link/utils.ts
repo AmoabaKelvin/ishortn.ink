@@ -8,6 +8,7 @@ import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domai
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
 import { normalizeAlias } from "@/lib/utils";
 import { customDomain, link, team, user } from "@/server/db/schema";
+import { isAliasReserved } from "@/server/lib/reserved-alias";
 import {
   getUserPlanContext,
   monthlyLinkLimitMessage,
@@ -275,12 +276,17 @@ export const checkAliasAvailability = async (
   domain: string,
 ): Promise<void> => {
   const normalizedAlias = normalizeAlias(alias);
-  const aliasExists = await ctx.db
-    .select()
-    .from(link)
-    .where(and(sql`lower(${link.alias}) = ${normalizedAlias}`, eq(link.domain, domain)));
+  const [aliasExists, reserved] = await Promise.all([
+    ctx.db
+      .select({ id: link.id })
+      .from(link)
+      .where(and(sql`lower(${link.alias}) = ${normalizedAlias}`, eq(link.domain, domain)))
+      .limit(1),
+    isAliasReserved(ctx.db, alias, domain),
+  ]);
 
-  if (aliasExists.length) {
+  // Same message for a tombstoned alias, so callers can't probe deleted links.
+  if (aliasExists.length || reserved) {
     throw new TRPCError({ code: "CONFLICT", message: "Alias already exists" });
   }
 };

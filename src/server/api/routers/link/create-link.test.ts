@@ -10,7 +10,8 @@ import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
 type InsertedLink = { url: string; name: string };
 
 // In-memory stand-in for the queries createLink makes on a free personal
-// workspace: the plan lookup, the link insert, failure records and the
+// workspace: the plan lookup, the reserved-alias check for the generated alias
+// (none reserved), the link insert, failure records and the
 // monthly count update. `failInsert` makes the link insert throw like a
 // database outage would.
 function fakeContext({ failInsert = false } = {}) {
@@ -28,6 +29,7 @@ function fakeContext({ failInsert = false } = {}) {
         }),
       },
     },
+    select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
     insert: (table: typeof link | typeof linkCreationFailure) => ({
       values: async (values: InsertedLink | LinkCreationFailure[]) => {
         if (table === linkCreationFailure && Array.isArray(values)) {

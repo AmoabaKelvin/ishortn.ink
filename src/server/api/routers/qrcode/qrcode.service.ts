@@ -13,6 +13,7 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
+import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import { insertHiddenTrackingLink, prepareHiddenTrackingLink } from "@/server/lib/tracking-link";
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
@@ -276,6 +277,7 @@ export const deleteQrCode = userFacing(
           tx.delete(uniqueLinkVisit).where(eq(uniqueLinkVisit.linkId, qrCode.linkId)),
           tx.delete(linkVisit).where(eq(linkVisit.linkId, qrCode.linkId)),
         ]);
+        await reserveLinkAliases(tx, eq(link.id, qrCode.linkId), "deleted");
         await tx.delete(link).where(eq(link.id, qrCode.linkId));
       }
     });
