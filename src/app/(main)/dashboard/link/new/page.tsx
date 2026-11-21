@@ -63,6 +63,7 @@ const GeoRulesForm = dynamic(
 import { DateTimePicker } from "../../_components/date-time-picker";
 import { checkIframeable } from "../../_components/links/check-iframeable";
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
+import { LinkReadyDialog } from "../../_components/links/link-ready-dialog";
 import { PlanBadge, SectionToggle } from "../../_components/section-toggle";
 import { UtmParamsForm } from "../../_components/utm-params-form";
 import { UtmTemplateSelector } from "../../_components/utm-template-selector";
@@ -71,12 +72,44 @@ import { LinkPreviewComponent } from "./_components/link-preview";
 import { OgImageUploader } from "./_components/og-image-uploader";
 import UpgradeToProAIButtonTooltip from "./_components/upgrade-to-pro-ai-tooltip";
 
+import type { CreatedLink } from "../../_components/links/link-ready-dialog";
 import type { z } from "zod";
 
 export default function CreateLinkPage() {
   const router = useTransitionRouter();
+  const [created, setCreated] = useState<{ link: CreatedLink; returnTo: string } | null>(null);
+  // Bumping the key remounts the form, clearing every field and section in one step.
+  const [formKey, setFormKey] = useState(0);
+
+  return (
+    <>
+      <CreateLinkForm
+        key={formKey}
+        ignoreUrlParam={formKey > 0}
+        onCreated={(link, returnTo) => setCreated({ link, returnTo })}
+      />
+      <LinkReadyDialog
+        link={created?.link ?? null}
+        onDone={() => {
+          if (created) router.push(created.returnTo);
+        }}
+        onCreateAnother={() => {
+          setCreated(null);
+          setFormKey((key) => key + 1);
+        }}
+      />
+    </>
+  );
+}
+
+type CreateLinkFormProps = {
+  ignoreUrlParam: boolean;
+  onCreated: (link: CreatedLink, returnTo: string) => void;
+};
+
+function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
   const searchParams = useSearchParams();
-  const initialUrl = searchParams.get("url") ?? undefined;
+  const initialUrl = ignoreUrlParam ? undefined : (searchParams.get("url") ?? undefined);
   const campaignIdParam = Number(searchParams.get("campaignId"));
   const initialCampaignId =
     Number.isInteger(campaignIdParam) && campaignIdParam > 0 ? campaignIdParam : undefined;
@@ -208,10 +241,12 @@ export default function CreateLinkPage() {
   };
 
   const formUpdateMutation = api.link.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       await revalidateHomepage();
-      toast.success("Link created");
-      router.push(originCampaign ? `/dashboard/campaigns/${originCampaign.slug}` : "/dashboard");
+      onCreated(
+        created,
+        originCampaign ? `/dashboard/campaigns/${originCampaign.slug}` : "/dashboard",
+      );
     },
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN" || /upgrade/i.test(error.message)) {
