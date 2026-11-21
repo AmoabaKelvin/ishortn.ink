@@ -74,6 +74,24 @@ export function isPostVisible(
   return previewScheduled || post.date <= now.toISOString().slice(0, 10);
 }
 
+// Frontmatter-only check for linking to a post from another page, so links never point at a
+// scheduled post's 404. Unknown slugs are not visible.
+export function isPostSlugVisible(slug: string, now: Date = new Date()): boolean {
+  const source = blogSources.get(slug);
+  if (source === undefined) return false;
+  return isPostVisible(blogPostFrontmatterSchema.parse(matter(source).data), now);
+}
+
+const BLOG_POST_LINK = /\[([^\]]+)\]\(\/blog\/([\w-]+)(?:[/#][^)\s]*)?\)/g;
+
+// Posts link ahead to scheduled posts. Until the target is live, render such a link as its plain
+// text so a published post never links to a 404; ISR restores the link on the target's date.
+export function unlinkHiddenPosts(markdown: string, isVisible: (slug: string) => boolean): string {
+  return markdown.replace(BLOG_POST_LINK, (link, text: string, slug: string) =>
+    isVisible(slug) ? link : text,
+  );
+}
+
 export async function getAllPosts(): Promise<BlogPost[]> {
   const posts = await Promise.all([...blogSources.keys()].map(getPostBySlug));
 
@@ -95,7 +113,10 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     return null;
   }
 
-  const processedContent = await remark().use(gfm).use(html).process(content);
+  const processedContent = await remark()
+    .use(gfm)
+    .use(html)
+    .process(unlinkHiddenPosts(content, isPostSlugVisible));
   const htmlContent = processedContent.toString();
 
   return {

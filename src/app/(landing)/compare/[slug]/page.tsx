@@ -9,6 +9,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
+import { isPostSlugVisible } from "@/lib/blog";
 import { Paths } from "@/lib/constants/app";
 import { comparisonTitle, competitors, type Competitor } from "@/lib/seo/competitors";
 import { socialImages } from "@/lib/seo/og-image";
@@ -31,6 +32,9 @@ import {
 } from "../../_components/site-primitives";
 
 import type { Metadata } from "next";
+
+// Hourly ISR, matching the blog, so a scheduled guide's link appears on its publish date.
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return Object.values(competitors).map((c) => ({ slug: c.slug }));
@@ -106,10 +110,16 @@ const featureRows: FeatureRow[] = [
   { label: "Pricing", competitorKey: "pricing" },
 ];
 
+const guideLinkClass =
+  "font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900";
+
 export default async function ComparePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const competitor = getCompetitor(slug);
   if (!competitor) return notFound();
+
+  const guide =
+    "guide" in competitor && isPostSlugVisible(competitor.guide.slug) ? competitor.guide : null;
 
   return (
     <main>
@@ -193,11 +203,15 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
         </ul>
         {"migrationGuide" in competitor && (
           <p className={cn(bodyClass, "mt-8")}>
-            <Link
-              href={competitor.migrationGuide.href}
-              className="font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
-            >
+            <Link href={competitor.migrationGuide.href} className={guideLinkClass}>
               {competitor.migrationGuide.label}
+            </Link>
+          </p>
+        )}
+        {guide && (
+          <p className={cn(bodyClass, "migrationGuide" in competitor ? "mt-3" : "mt-8")}>
+            <Link href={`/blog/${guide.slug}`} className={guideLinkClass}>
+              {guide.label}
             </Link>
           </p>
         )}
