@@ -67,6 +67,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: absoluteUrl("/utm-builder"),
+      lastModified: "2026-11-21",
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
       url: absoluteUrl("/blog"),
       lastModified: latestPostDate,
       changeFrequency: "daily",

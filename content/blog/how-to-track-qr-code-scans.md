@@ -58,6 +58,8 @@ UTM parameters are tags you add to the end of a URL, like this:
 https://yourshop.com/menu?utm_source=qr&utm_medium=print&utm_campaign=winter_menu&utm_content=table_tent
 ```
 
+You can build the tagged URL with our [free UTM builder](/utm-builder). Its QR code preset fills in `qr` as the source and `print` as the medium.
+
 When someone opens that URL, Google Analytics (and most other analytics tools, such as Plausible, Fathom, Matomo and PostHog) reads the tags and files the visit under that source and campaign. Without tags, QR visits usually show up as "Direct" traffic, mixed in with people who typed your address or used a bookmark.
 
 **How to set it up:**

@@ -20,6 +20,7 @@ const MARKETING_PATHS = new Set([
   "/pricing",
   "/features",
   "/qr-code-generator",
+  "/utm-builder",
   "/blog",
   "/compare",
   "/changelog",
@@ -89,6 +90,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "sitemap.xml",
   "teams",
   "terms",
+  "utm-builder",
 ]);
 
 const INTERSTITIAL_PREFIXES = [

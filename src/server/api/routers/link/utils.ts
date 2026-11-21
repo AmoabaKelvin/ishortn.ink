@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getBioLinkBlockLimit, getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
+import { APP_TOP_LEVEL_SEGMENTS } from "@/lib/seo/indexing";
 import { normalizeAlias } from "@/lib/utils";
 import { customDomain, link, team, user } from "@/server/db/schema";
 import { isAliasReserved } from "@/server/lib/reserved-alias";
@@ -368,6 +369,10 @@ export function sameGeoRules(input: TargetingRuleFields[], stored: TargetingRule
 
 export const MINIMUM_ALIAS_LENGTH_FREE = 6;
 
+/** On platform domains, app routes like /pricing or /utm-builder shadow the [linkAlias] route. */
+export const isAppRouteAlias = (alias: string, domain: string): boolean =>
+  isPlatformDomain(domain) && APP_TOP_LEVEL_SEGMENTS.has(alias.toLowerCase());
+
 export const validateAlias = (
   ctx: Pick<ProtectedTRPCContext, "db">,
   alias: string,
@@ -385,6 +390,13 @@ export const validateAlias = (
 
   if (alias.includes(".")) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot include periods in alias" });
+  }
+
+  if (isAppRouteAlias(alias, domain)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This alias is reserved. Choose another one.",
+    });
   }
 
   // Free users must have aliases with at least 6 characters

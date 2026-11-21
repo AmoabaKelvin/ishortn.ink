@@ -37,6 +37,8 @@ export const RESERVED_BIO_SLUGS = new Set([
   "features",
   "pricing",
   "compare",
+  "qr-code-generator",
+  "utm-builder",
   "admin",
   "settings",
   "login",

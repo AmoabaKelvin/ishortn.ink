@@ -27,6 +27,11 @@ describe("sitemap", () => {
     }
   });
 
+  it("lists the UTM builder", async () => {
+    const urls = (await sitemap()).map((entry) => entry.url);
+    expect(urls).toContain("https://ishortn.ink/utm-builder");
+  });
+
   it("dates the changelog by its newest entry", async () => {
     const [entries, changelog] = await Promise.all([sitemap(), getChangelogEntries()]);
     const entry = entries.find((e) => e.url === "https://ishortn.ink/changelog");
