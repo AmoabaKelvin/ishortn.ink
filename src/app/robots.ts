@@ -1,4 +1,4 @@
-import { absoluteUrl } from "@/lib/utils";
+import { absoluteUrl } from "@/lib/utils/absolute-url";
 
 import type { MetadataRoute } from "next";
 

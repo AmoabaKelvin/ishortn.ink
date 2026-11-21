@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 
 import { AnalyticsProviders } from "@/components/analytics-providers";
+import { clerkLocalization } from "@/lib/auth/clerk-localization";
 import { TRPCReactProvider } from "@/trpc/react";
 
 import type { ReactNode } from "react";
@@ -11,14 +12,7 @@ import type { ReactNode } from "react";
 // domains must not load it either.
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <ClerkProvider
-      localization={{
-        signIn: { start: { title: "Welcome back", subtitle: "Sign in to continue" } },
-        signUp: {
-          start: { title: "Create your account", subtitle: "Start shortening in seconds" },
-        },
-      }}
-    >
+    <ClerkProvider localization={clerkLocalization}>
       <TRPCReactProvider>
         <AnalyticsProviders>{children}</AnalyticsProviders>
       </TRPCReactProvider>

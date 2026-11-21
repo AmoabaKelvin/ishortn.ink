@@ -9,7 +9,6 @@ import {
 } from "@tabler/icons-react";
 import { TRPCClientError } from "@trpc/client";
 import { useTransitionRouter } from "next-view-transitions";
-import posthog from "posthog-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
@@ -36,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { nextPlanFor } from "@/lib/billing/upgrade";
@@ -290,7 +290,7 @@ function QRCodeCreationPage() {
       return;
     }
 
-    posthog.capture("qr_code_created");
+    trackEvent(POSTHOG_EVENTS.QR_CODE_CREATED);
     savingRef.current = true;
     setIsSaving(true);
 

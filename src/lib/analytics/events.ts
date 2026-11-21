@@ -1,6 +1,6 @@
 "use client";
 
-import posthog from "posthog-js";
+import { withPostHog, withPostHogNow } from "./posthog";
 
 /**
  * PostHog event names for tracking user activities
@@ -53,11 +53,39 @@ type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];
 type EventProperties = Record<string, string | number | boolean | null | undefined>;
 
 /**
- * Track an event in PostHog
+ * Track an event in PostHog. Events sent before PostHog has loaded are queued and sent, with
+ * the time they happened, once it has.
  */
 export function trackEvent(eventName: PostHogEventName, properties?: EventProperties) {
   // eslint-disable-next-line anti-slop/no-runtime-typeof -- SSR guard
   if (typeof window !== "undefined") {
-    posthog.capture(eventName, properties);
+    const timestamp = new Date();
+    withPostHog((posthog) => posthog.capture(eventName, properties, { timestamp }));
   }
+}
+
+/**
+ * Track an event that is followed by a full page navigation, which discards events still
+ * waiting for PostHog to load. Loads PostHog straight away and sends the event at once, skipping
+ * the batch queue, on a request that outlives the page (posthog-js 1.236 uses a keepalive fetch
+ * and ignores `transport`; later versions honour the sendBeacon request). Resolves once it is
+ * sent or after `timeoutMs`; await it before navigating.
+ */
+export function flushTrackEvent(
+  eventName: PostHogEventName,
+  properties: EventProperties | undefined,
+  { timeoutMs }: { timeoutMs: number },
+) {
+  // eslint-disable-next-line anti-slop/no-runtime-typeof -- SSR guard
+  if (typeof window === "undefined") return Promise.resolve();
+  const timestamp = new Date();
+  return withPostHogNow(
+    (posthog) =>
+      posthog.capture(eventName, properties, {
+        timestamp,
+        send_instantly: true,
+        transport: "sendBeacon",
+      }),
+    timeoutMs,
+  );
 }

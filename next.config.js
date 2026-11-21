@@ -11,6 +11,10 @@ if (process.env.NODE_ENV === "development") {
 
 const createMDX = require("@next/mdx");
 
+const { clerkScriptVersions } = require("./scripts/build/clerk-script-versions.cjs");
+
+const clerkVersions = clerkScriptVersions();
+
 // Docs pages (content/docs) are MDX compiled at build time. Plugins are named
 // by string so the options stay serializable for Turbopack.
 const withMDX = createMDX({
@@ -27,6 +31,11 @@ const config = {
   // The deploy runs in GitHub Actions; Workers Builds names the same thing differently.
   env: {
     BUILD_COMMIT_SHA: process.env.GITHUB_SHA ?? process.env.WORKERS_CI_COMMIT_SHA ?? "",
+    // Read by @clerk/nextjs to build exact-version script URLs (see clerk-script-versions.cjs).
+    NEXT_PUBLIC_CLERK_JS_VERSION:
+      process.env.NEXT_PUBLIC_CLERK_JS_VERSION || clerkVersions.js || "",
+    NEXT_PUBLIC_CLERK_UI_VERSION:
+      process.env.NEXT_PUBLIC_CLERK_UI_VERSION || clerkVersions.ui || "",
   },
   turbopack: {
     rules: {

@@ -3,7 +3,7 @@ import { getChangelogEntries } from "@/lib/changelog";
 import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
 import { competitors } from "@/lib/seo/competitors";
 import { solutionList } from "@/lib/seo/solutions";
-import { absoluteUrl } from "@/lib/utils";
+import { absoluteUrl } from "@/lib/utils/absolute-url";
 
 import type { MetadataRoute } from "next";
 
