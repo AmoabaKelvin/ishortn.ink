@@ -45,6 +45,7 @@ import { normalizeAlias } from "@/lib/utils";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
+import { displayName } from "@/lib/utils/user-name";
 import { recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
 import {
@@ -327,7 +328,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
           imageUrl: true,
         },
       });
-      creatorMap = new Map(creators.map((c) => [c.id, c]));
+      creatorMap = new Map(creators.map((c) => [c.id, { ...c, name: displayName(c.name) }]));
     }
   }
 

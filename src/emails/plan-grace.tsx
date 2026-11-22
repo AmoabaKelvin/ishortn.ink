@@ -1,5 +1,7 @@
 import { Section, Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import {
   CodeBlock,
   EmailButton,
@@ -92,7 +94,7 @@ export const PlanGraceEmail = (props: PlanGraceEmailProps) => {
               : `Keep your ${planName} features after ${props.endsOn}`
       }
     >
-      <Text style={text}>Hi {recipientName || "there"},</Text>
+      <Text style={text}>Hi {displayName(recipientName) ?? "there"},</Text>
 
       <Text style={text}>{intro(props)}</Text>
 

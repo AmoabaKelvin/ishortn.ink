@@ -1,5 +1,7 @@
 import { Link, Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import {
   EmailButton,
   EmailLayout,
@@ -30,7 +32,7 @@ export const AccountTransferEmail = ({
 }: AccountTransferEmailProps) => {
   return (
     <EmailLayout preview={`${senderName} wants to transfer their iShortn resources to you`}>
-      <Text style={text}>Hi {recipientName || "there"},</Text>
+      <Text style={text}>Hi {displayName(recipientName) ?? "there"},</Text>
 
       <Text style={text}>
         <strong>{senderName}</strong> ({senderEmail}) has requested to transfer their iShortn

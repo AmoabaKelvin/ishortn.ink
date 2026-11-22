@@ -1,5 +1,7 @@
 import { Link, Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import { EmailButton, EmailLayout, link, Signoff, smallText, text } from "./_components/layout";
 
 type TeamInviteEmailProps = {
@@ -21,7 +23,7 @@ export const TeamInviteEmail = ({
 
   return (
     <EmailLayout preview={`${inviterName} invited you to join ${teamName} on iShortn`}>
-      <Text style={text}>Hi {recipientName || "there"},</Text>
+      <Text style={text}>Hi {displayName(recipientName) ?? "there"},</Text>
 
       <Text style={text}>
         {inviterName} has invited you to join <strong>{teamName}</strong> as {roleLabel} on iShortn.

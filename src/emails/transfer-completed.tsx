@@ -1,5 +1,7 @@
 import { Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import { EmailButton, EmailLayout, headingText, Signoff, text } from "./_components/layout";
 import { ResourceList } from "./_components/resource-list";
 
@@ -22,7 +24,7 @@ export const TransferCompletedEmail = ({
 }: TransferCompletedEmailProps) => {
   return (
     <EmailLayout preview="Your iShortn resources have been transferred">
-      <Text style={text}>Hi {senderName || "there"},</Text>
+      <Text style={text}>Hi {displayName(senderName) ?? "there"},</Text>
 
       <Text style={text}>
         Your resource transfer to <strong>{recipientName}</strong> ({recipientEmail}) has been

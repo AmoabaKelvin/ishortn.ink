@@ -8,6 +8,7 @@ import { TEAM_READ_ONLY_MESSAGE } from "@/lib/billing/entitlements";
 import { DEFAULT_TEAM_DOMAIN, getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
 import { deleteFromCache } from "@/lib/core/cache";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { displayName } from "@/lib/utils/user-name";
 import {
   customDomain,
   RESERVED_TEAM_SLUGS,
@@ -283,7 +284,7 @@ export async function listMembers(ctx: TeamTRPCContext) {
     userId: m.userId,
     role: m.role,
     createdAt: m.createdAt,
-    user: m.user,
+    user: { ...m.user, name: displayName(m.user.name) },
   }));
 }
 
@@ -581,7 +582,7 @@ export async function createInvite(ctx: TeamTRPCContext, input: InviteMemberInpu
       recipientName: recipient?.name,
       teamName: ctx.workspace.team.name,
       teamSlug: ctx.workspace.team.slug,
-      inviterName: inviter?.name || "Someone",
+      inviterName: displayName(inviter?.name) ?? "Someone",
       role: input.role,
       inviteUrl,
     });
@@ -687,7 +688,7 @@ async function notifyInviterOfAcceptance(
     inviterId: invite.invitedBy,
     inviterEmail: inviter.email,
     inviterName: inviter.name,
-    memberName: member?.name || member?.email || "A new member",
+    memberName: displayName(member?.name) || member?.email || "A new member",
     memberEmail: member?.email,
     teamName: invite.team.name,
     teamSlug: invite.team.slug,
@@ -903,7 +904,7 @@ export async function getInviteByToken(ctx: ProtectedTRPCContext, token: string)
       avatarUrl: invite.team.avatarUrl,
     },
     role: invite.role,
-    invitedBy: invite.inviter,
+    invitedBy: invite.inviter && { ...invite.inviter, name: displayName(invite.inviter.name) },
     view: inviteView(invite, !!membership),
   };
 }

@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { type PaidPlan } from "@/lib/constants/plan-pricing";
 import { timeAgo } from "@/lib/utils";
+import { displayName } from "@/lib/utils/user-name";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -60,12 +61,12 @@ export function RecentSubscriptionsCard({
                   />
                 ) : (
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-muted text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-                    {(s.userName ?? s.userEmail ?? "?").charAt(0).toUpperCase()}
+                    {(displayName(s.userName) ?? s.userEmail ?? "?").charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                    {s.userName ?? "Unnamed"}
+                    {displayName(s.userName) ?? "Unnamed"}
                   </p>
                   <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
                     {s.userEmail}

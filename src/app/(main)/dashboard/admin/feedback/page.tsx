@@ -13,6 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { displayName } from "@/lib/utils/user-name";
 import { api } from "@/trpc/react";
 
 import { useCursorPages } from "../_components/use-cursor-pages";
@@ -196,9 +197,9 @@ export default function AdminFeedbackPage() {
 
                       <div className="mt-2 flex items-center gap-2 text-[11px] text-neutral-400 dark:text-neutral-500">
                         <span>
-                          {item.user?.name && item.user?.email
-                            ? `${item.user.name} (${item.user.email})`
-                            : (item.user?.email ?? item.user?.name ?? "Unknown user")}
+                          {displayName(item.user?.name) && item.user?.email
+                            ? `${displayName(item.user.name)} (${item.user.email})`
+                            : (item.user?.email ?? displayName(item.user?.name) ?? "Unknown user")}
                         </span>
                         <span>·</span>
                         <span>
@@ -217,7 +218,7 @@ export default function AdminFeedbackPage() {
                       {item.user?.email && (
                         <Button variant="outline" size="sm" className="h-8 text-[12px]" asChild>
                           <a
-                            href={`mailto:${item.user.email}?subject=${encodeURIComponent(`Re: Your ${config.label.toLowerCase()} on iShortn`)}&body=${encodeURIComponent(`Hi ${item.user.name ?? "there"},\n\nRegarding your feedback:\n"${item.message.slice(0, 200)}${item.message.length > 200 ? "..." : ""}"\n\n`)}`}
+                            href={`mailto:${item.user.email}?subject=${encodeURIComponent(`Re: Your ${config.label.toLowerCase()} on iShortn`)}&body=${encodeURIComponent(`Hi ${displayName(item.user.name) ?? "there"},\n\nRegarding your feedback:\n"${item.message.slice(0, 200)}${item.message.length > 200 ? "..." : ""}"\n\n`)}`}
                           >
                             <IconMail size={14} />
                             Reply
