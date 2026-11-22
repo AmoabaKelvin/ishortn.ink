@@ -77,7 +77,7 @@ const adminNavigationItems = [
   { name: "Users", href: "/dashboard/admin/users", icon: IconUsers },
   { name: "Signups", href: "/dashboard/admin/signups", icon: IconUserPlus },
   { name: "Entitlements", href: "/dashboard/admin/entitlements", icon: IconReceipt },
-  { name: "Blocked Domains", href: "/dashboard/admin/domains", icon: IconBan },
+  { name: "Domains", href: "/dashboard/admin/domains", icon: IconBan },
   { name: "Flagged Links", href: "/dashboard/admin/flagged", icon: IconFlag },
   { name: "Feedback", href: "/dashboard/admin/feedback", icon: IconMessageReport },
   { name: "Email Health", href: "/dashboard/admin/email-health", icon: IconMailOff },

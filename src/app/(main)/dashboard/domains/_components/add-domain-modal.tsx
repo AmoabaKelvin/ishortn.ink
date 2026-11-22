@@ -33,8 +33,12 @@ export function AddCustomDomainModal() {
   const [isOpen, setIsOpen] = useState(false);
 
   const createCustomDomainMutation = api.customDomain.create.useMutation({
-    onSuccess: async (_data, variables) => {
-      toast.success("Domain added successfully");
+    onSuccess: async (data, variables) => {
+      toast.success(
+        data.inReview
+          ? "Domain added. We're reviewing it, and it usually goes live within 24 hours."
+          : "Domain added successfully",
+      );
       trackEvent(POSTHOG_EVENTS.CUSTOM_DOMAIN_ADDED, {
         domain: variables.domain,
       });

@@ -3,8 +3,15 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import { customDomain, teamInvite } from "@/server/db/schema";
 
+import { notRejectedDomain } from "../domains/domains.service";
+
 // Invalid domain retention: 30 days before cleanup
 const INVALID_DOMAIN_RETENTION_DAYS = 30;
+
+// A domain rejected in admin review is also "invalid", but its row is what keeps
+// the domain from being added again, so it is never cleaned up
+const expiredInvalidDomain = (cutoff: Date) =>
+  and(eq(customDomain.status, "invalid"), lt(customDomain.createdAt, cutoff), notRejectedDomain);
 
 interface ExpiredDataCleanupResult {
   expiredInvitesDeleted: number;
@@ -42,9 +49,7 @@ export async function cleanupExpiredData(): Promise<ExpiredDataCleanupResult> {
   // These are domains that users added but never configured properly
   const invalidDomainsResult = await db
     .delete(customDomain)
-    .where(
-      and(eq(customDomain.status, "invalid"), lt(customDomain.createdAt, invalidDomainCutoffDate)),
-    );
+    .where(expiredInvalidDomain(invalidDomainCutoffDate));
   result.invalidDomainsDeleted = invalidDomainsResult[0].affectedRows;
 
   return result;
@@ -71,9 +76,7 @@ export async function getExpiredDataCleanupStats() {
   const invalidDomains = await db
     .select({ count: sql<number>`count(*)` })
     .from(customDomain)
-    .where(
-      and(eq(customDomain.status, "invalid"), lt(customDomain.createdAt, invalidDomainCutoffDate)),
-    );
+    .where(expiredInvalidDomain(invalidDomainCutoffDate));
 
   // Count all pending invites (not yet expired)
   const pendingInvites = await db

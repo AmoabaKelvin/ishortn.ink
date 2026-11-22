@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import {
   and,
   between,
@@ -13,6 +14,7 @@ import {
   sql,
 } from "drizzle-orm";
 
+import { resolvePlan } from "@/lib/billing/plans";
 import { PAID_PLANS, PLAN_PRICES_USD, type PaidPlan } from "@/lib/constants/plan-pricing";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
@@ -40,6 +42,7 @@ import {
   isApexHostname,
   mapStatus,
 } from "../domains/cloudflare";
+import { domainCanGoLive, isHostnameActive, notRejectedDomain } from "../domains/domains.service";
 import { RESTRICTED_LINK_REASON } from "../link/utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
@@ -50,6 +53,7 @@ import { buildSignupSeries, summarizeSignupGroups } from "./utils";
 
 import type {
   AddBlockedDomainInput,
+  ApproveHeldDomainInput,
   BanUserInput,
   BlockLinkInput,
   GetActivityChartInput,
@@ -62,6 +66,7 @@ import type {
   GetTopLinksInput,
   GetTopUsersInput,
   GetUserBaseSummaryInput,
+  RejectHeldDomainInput,
   RemoveBlockedDomainInput,
   ResolveFlaggedLinkInput,
   RestrictUserInput,
@@ -475,10 +480,11 @@ export async function restrictUser(ctx: ProtectedTRPCContext, input: RestrictUse
   const toRelease = hostnames.filter((hostname) => !sharedSet.has(hostname));
 
   // "pending", not "invalid": the cleanup cron deletes old invalid domains.
+  // Rejected domains stay invalid so lifting the restriction doesn't revive them.
   await ctx.db
     .update(customDomain)
     .set({ status: "pending" })
-    .where(eq(customDomain.userId, input.userId));
+    .where(and(eq(customDomain.userId, input.userId), notRejectedDomain));
 
   const results = await Promise.allSettled(
     toRelease.map(async (hostname) => {
@@ -566,13 +572,20 @@ export async function unrestrictUser(ctx: ProtectedTRPCContext, input: Unrestric
         : response.hostname;
       if (!live) throw new Error(`No custom hostname for ${hostname}`);
 
+      // Domains still held for review stay pending until approved
       await ctx.db
         .update(customDomain)
         .set({
           status: mapStatus(live),
           verificationDetails: buildVerificationChallenges(hostname, live),
         })
-        .where(and(eq(customDomain.userId, input.userId), eq(customDomain.domain, hostname)));
+        .where(
+          and(
+            eq(customDomain.userId, input.userId),
+            eq(customDomain.domain, hostname),
+            domainCanGoLive,
+          ),
+        );
     }),
   );
   const domainFailures = hostnames.filter((_, i) => results[i]?.status === "rejected");
@@ -614,6 +627,125 @@ export async function removeBlockedDomain(
   input: RemoveBlockedDomainInput,
 ) {
   await ctx.db.delete(blockedDomain).where(eq(blockedDomain.id, input.id));
+}
+
+// Held domains leave the queue once reviewed, so this only caps a backlog
+const HELD_DOMAINS_LIMIT = 100;
+
+export async function getHeldDomains(ctx: ProtectedTRPCContext, now: Date = new Date()) {
+  const rows = await ctx.db
+    .select({
+      id: customDomain.id,
+      domain: customDomain.domain,
+      createdAt: customDomain.createdAt,
+      reviewReason: customDomain.reviewReason,
+      registeredAt: customDomain.registrableDomainRegisteredAt,
+      registrar: customDomain.registrar,
+      ownerId: customDomain.userId,
+      ownerEmail: user.email,
+      ownerCreatedAt: user.createdAt,
+      subscription,
+    })
+    .from(customDomain)
+    .leftJoin(user, eq(user.id, customDomain.userId))
+    .leftJoin(subscription, eq(subscription.userId, customDomain.userId))
+    .where(eq(customDomain.reviewStatus, "held"))
+    .orderBy(desc(customDomain.createdAt))
+    .limit(HELD_DOMAINS_LIMIT);
+
+  return rows.map(({ subscription: sub, ...row }) => ({
+    ...row,
+    plan: resolvePlan(sub, now.getTime()),
+  }));
+}
+
+const notHeldError = () =>
+  new TRPCError({ code: "NOT_FOUND", message: "This domain is no longer held for review" });
+
+async function findHeldDomain(ctx: ProtectedTRPCContext, id: number) {
+  const record = await ctx.db.query.customDomain.findFirst({
+    where: and(eq(customDomain.id, id), eq(customDomain.reviewStatus, "held")),
+    columns: { id: true, domain: true },
+  });
+  if (!record?.domain) throw notHeldError();
+  return { id: record.id, domain: record.domain };
+}
+
+/**
+ * Releases the hold and resumes normal verification: the domain goes active
+ * now if Cloudflare already validated it, otherwise the owner's status checks
+ * and the reminder cron activate it once DNS is in place.
+ */
+export async function approveHeldDomain(
+  ctx: ProtectedTRPCContext,
+  input: ApproveHeldDomainInput,
+  {
+    lookupHostname = getLiveCustomHostname,
+  }: { lookupHostname?: typeof getLiveCustomHostname } = {},
+) {
+  const record = await findHeldDomain(ctx, input.id);
+
+  let active = false;
+  try {
+    active = await isHostnameActive(record.domain, await lookupHostname(record.domain));
+  } catch (error) {
+    // Approval still stands; the next status check picks the domain up
+    log.warn({ err: error, domain: record.domain }, "status lookup failed while approving domain");
+  }
+
+  const status = active ? ("active" as const) : ("pending" as const);
+  const [result] = await ctx.db
+    .update(customDomain)
+    .set({ reviewStatus: "approved", reviewedAt: new Date(), status })
+    .where(and(eq(customDomain.id, record.id), eq(customDomain.reviewStatus, "held")));
+  // Another admin decided first
+  if (result.affectedRows === 0) throw notHeldError();
+
+  return { status };
+}
+
+/**
+ * Marks the domain invalid with the admin's reason and releases its Cloudflare
+ * hostname, unless another workspace's claim on the same domain still uses it.
+ */
+export async function rejectHeldDomain(
+  ctx: ProtectedTRPCContext,
+  input: RejectHeldDomainInput,
+  {
+    removeHostname = deleteCustomHostname,
+  }: { removeHostname?: (domain: string) => Promise<void> } = {},
+) {
+  const record = await findHeldDomain(ctx, input.id);
+
+  const [result] = await ctx.db
+    .update(customDomain)
+    .set({
+      status: "invalid",
+      reviewStatus: "rejected",
+      reviewReason: input.reason,
+      reviewedAt: new Date(),
+    })
+    .where(and(eq(customDomain.id, record.id), eq(customDomain.reviewStatus, "held")));
+  // Another admin decided first; an approved domain must keep its hostname
+  if (result.affectedRows === 0) throw notHeldError();
+
+  const otherClaim = await ctx.db.query.customDomain.findFirst({
+    where: and(
+      eq(customDomain.domain, record.domain),
+      ne(customDomain.id, record.id),
+      notRejectedDomain,
+    ),
+    columns: { id: true },
+  });
+  if (otherClaim) return { hostnameReleased: false };
+
+  try {
+    await removeHostname(record.domain);
+    return { hostnameReleased: true };
+  } catch (error) {
+    log.error({ err: error, domain: record.domain }, "failed to release rejected domain hostname");
+    return { hostnameReleased: false };
+  }
 }
 
 export async function getFlaggedLinks(ctx: ProtectedTRPCContext, input: GetFlaggedLinksInput) {

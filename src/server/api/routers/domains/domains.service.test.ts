@@ -8,14 +8,18 @@ import mysql from "mysql2/promise";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import * as schema from "@/server/db/schema";
 
+import { approveHeldDomain, getHeldDomains, rejectHeldDomain } from "../admin/admin.service";
+import { cleanupExpiredData } from "../cleanup/expired-data-cleanup.service";
 import { shortenLinkWithAutoAlias } from "../link/link.service";
+import { assertDomainOwned } from "../link/utils";
 import {
   checkDomainStatus,
   deleteDomainAndAssociatedLinks,
+  getCustomDomainsForUser,
   getDomainsNeedingMigration,
 } from "./domains.service";
 
-import type { WorkspaceTRPCContext } from "../../trpc";
+import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type { CloudflareCustomHostname } from "./cloudflare";
 import type { TeamRole } from "@/server/db/schema";
 
@@ -224,6 +228,202 @@ describe.skipIf(!testDatabaseUrl)("domains service (MySQL)", () => {
     expect(await errorCode(checkDomainStatus(await teamCtx(OWNER, "owner"), DOMAIN))).toBe(
       "NOT_FOUND",
     );
+  });
+
+  describe("review hold", () => {
+    const HELD_DOMAIN = "login.acmme-test.co.uk";
+
+    const activeHostname = async (hostname: string): Promise<CloudflareCustomHostname> => ({
+      id: "id",
+      hostname,
+      status: "active",
+      ssl: { status: "active" },
+    });
+    const pendingHostname = async (hostname: string): Promise<CloudflareCustomHostname> => ({
+      id: "id",
+      hostname,
+      status: "pending",
+      ssl: { status: "pending_validation" },
+    });
+
+    function adminCtx() {
+      // SAFETY: adminProcedure only adds the admin check on top of the protected context.
+      return { db, auth: { userId: ADMIN } } as ProtectedTRPCContext;
+    }
+
+    async function heldRow() {
+      const row = await db.query.customDomain.findFirst({
+        where: eq(schema.customDomain.domain, HELD_DOMAIN),
+      });
+      if (!row) throw new Error("held domain not seeded");
+      return row;
+    }
+
+    beforeEach(async () => {
+      await db.insert(schema.customDomain).values({
+        userId: OWNER,
+        domain: HELD_DOMAIN,
+        status: "pending",
+        reviewStatus: "held",
+        reviewReason: "Account 1 day old; domain registered 21 days ago",
+        registrableDomainRegisteredAt: new Date("2026-11-01T00:00:00Z"),
+        registrar: "NameCheap, Inc.",
+      });
+    });
+
+    test("a held domain stays inactive after DNS verification passes", async () => {
+      const result = await checkDomainStatus(personalCtx(OWNER), HELD_DOMAIN, {
+        lookupHostname: activeHostname,
+      });
+
+      expect(result.status).toBe("in_review");
+      expect((await heldRow()).status).toBe("pending");
+      // The guard every link, QR code and bio page write uses refuses it
+      expect(await errorCode(assertDomainOwned(personalCtx(OWNER), HELD_DOMAIN))).toBe("FORBIDDEN");
+    });
+
+    test("the owner sees that it's in review, not why", async () => {
+      const domains = await getCustomDomainsForUser(personalCtx(OWNER));
+      const held = domains.find((d) => d.domain === HELD_DOMAIN);
+
+      expect(held?.review).toBe("in_review");
+      expect(held).not.toHaveProperty("reviewReason");
+      expect(held).not.toHaveProperty("registrar");
+      expect(domains.find((d) => d.domain === DOMAIN)?.review).toBeNull();
+    });
+
+    test("admins see held domains with owner and registration details", async () => {
+      const held = (await getHeldDomains(adminCtx())).filter((d) => d.domain === HELD_DOMAIN);
+
+      expect(held).toHaveLength(1);
+      expect(held[0]).toMatchObject({
+        domain: HELD_DOMAIN,
+        ownerEmail: "owner@domains.test",
+        plan: "free",
+        registrar: "NameCheap, Inc.",
+        registeredAt: new Date("2026-11-01T00:00:00Z"),
+      });
+    });
+
+    test("approving activates a domain whose DNS is already verified", async () => {
+      const { id } = await heldRow();
+      const result = await approveHeldDomain(
+        adminCtx(),
+        { id },
+        { lookupHostname: activeHostname },
+      );
+
+      const row = await heldRow();
+      expect(result.status).toBe("active");
+      expect(row.status).toBe("active");
+      expect(row.reviewStatus).toBe("approved");
+      expect(row.reviewedAt).not.toBeNull();
+      expect((await getHeldDomains(adminCtx())).map((d) => d.id)).not.toContain(id);
+    });
+
+    test("approving a domain without DNS yet leaves it to normal verification", async () => {
+      const { id } = await heldRow();
+      await approveHeldDomain(adminCtx(), { id }, { lookupHostname: pendingHostname });
+      expect((await heldRow()).status).toBe("pending");
+
+      const result = await checkDomainStatus(personalCtx(OWNER), HELD_DOMAIN, {
+        lookupHostname: activeHostname,
+      });
+      expect(result.status).toBe("active");
+      expect((await heldRow()).status).toBe("active");
+    });
+
+    test("rejecting marks the domain invalid, keeps the reason and releases the hostname", async () => {
+      const { id } = await heldRow();
+      const released: string[] = [];
+      const result = await rejectHeldDomain(
+        adminCtx(),
+        { id, reason: "Lookalike of a bank" },
+        {
+          removeHostname: async (domain) => {
+            released.push(domain);
+          },
+        },
+      );
+
+      const row = await heldRow();
+      expect(result.hostnameReleased).toBe(true);
+      expect(released).toEqual([HELD_DOMAIN]);
+      expect(row.status).toBe("invalid");
+      expect(row.reviewStatus).toBe("rejected");
+      expect(row.reviewReason).toBe("Lookalike of a bank");
+      // A rejected domain can't be revived through a status check
+      expect(
+        await errorCode(
+          checkDomainStatus(personalCtx(OWNER), HELD_DOMAIN, { lookupHostname: activeHostname }),
+        ),
+      ).toBe("FORBIDDEN");
+    });
+
+    test("a rejected domain survives the invalid-domain cleanup and can't be deleted by its owner", async () => {
+      const { id } = await heldRow();
+      await rejectHeldDomain(adminCtx(), { id, reason: "Lookalike of a bank" }, { removeHostname });
+      await db
+        .update(schema.customDomain)
+        .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+        .where(inArray(schema.customDomain.domain, [HELD_DOMAIN, FOREIGN_DOMAIN]));
+      await db
+        .update(schema.customDomain)
+        .set({ status: "invalid" })
+        .where(eq(schema.customDomain.domain, FOREIGN_DOMAIN));
+
+      await cleanupExpiredData();
+
+      const row = await heldRow();
+      expect(row.reviewStatus).toBe("rejected");
+      expect(row.reviewReason).toBe("Lookalike of a bank");
+      // An ordinary invalid domain past retention still goes
+      expect(
+        await db.query.customDomain.findFirst({
+          where: eq(schema.customDomain.domain, FOREIGN_DOMAIN),
+        }),
+      ).toBeUndefined();
+
+      expect(
+        await errorCode(deleteDomainAndAssociatedLinks(personalCtx(OWNER), id, { removeHostname })),
+      ).toBe("FORBIDDEN");
+      expect((await heldRow()).id).toBe(id);
+    });
+
+    test("approving fails if another admin rejected the domain meanwhile", async () => {
+      const { id } = await heldRow();
+      const code = await errorCode(
+        approveHeldDomain(
+          adminCtx(),
+          { id },
+          {
+            lookupHostname: async (hostname) => {
+              await rejectHeldDomain(adminCtx(), { id, reason: "Lookalike" }, { removeHostname });
+              return activeHostname(hostname);
+            },
+          },
+        ),
+      );
+
+      const row = await heldRow();
+      expect(code).toBe("NOT_FOUND");
+      expect(row.reviewStatus).toBe("rejected");
+      expect(row.status).toBe("invalid");
+    });
+
+    test("only held domains can be approved or rejected", async () => {
+      const notHeld = await domainId(DOMAIN);
+      expect(
+        await errorCode(
+          approveHeldDomain(adminCtx(), { id: notHeld }, { lookupHostname: activeHostname }),
+        ),
+      ).toBe("NOT_FOUND");
+      expect(
+        await errorCode(
+          rejectHeldDomain(adminCtx(), { id: notHeld, reason: "x" }, { removeHostname }),
+        ),
+      ).toBe("NOT_FOUND");
+    });
   });
 
   describe("migration notice", () => {

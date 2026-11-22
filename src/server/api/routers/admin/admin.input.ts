@@ -63,6 +63,19 @@ export const removeBlockedDomainSchema = z.object({
 
 export type RemoveBlockedDomainInput = z.infer<typeof removeBlockedDomainSchema>;
 
+export const approveHeldDomainSchema = z.object({
+  id: z.number().int().positive(),
+});
+
+export type ApproveHeldDomainInput = z.infer<typeof approveHeldDomainSchema>;
+
+export const rejectHeldDomainSchema = z.object({
+  id: z.number().int().positive(),
+  reason: z.string().trim().min(1, "Enter a reason").max(255),
+});
+
+export type RejectHeldDomainInput = z.infer<typeof rejectHeldDomainSchema>;
+
 export const getFlaggedLinksSchema = z.object({
   status: z.enum(["pending", "blocked", "dismissed"]).optional(),
   page: z.number().int().positive().default(1),
