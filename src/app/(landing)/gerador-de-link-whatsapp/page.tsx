@@ -45,8 +45,10 @@ import { WhatsAppLinkGenerator } from "../whatsapp-link-generator/whatsapp-link-
 import type { IconCard } from "../whatsapp-link-generator/icon-card-grid";
 import type { Metadata } from "next";
 
-// Brazilian Portuguese version of /whatsapp-link-generator: same tool, translated copy. The shared
-// header and footer stay in English and sit outside <main lang="pt-BR"> (the root is lang="en").
+// Brazilian Portuguese version of /whatsapp-link-generator: same tool, translated copy. The root
+// layout's <html lang="en"> can't vary per route while staying static, so the page's outermost
+// element declares pt-BR (next.config.js adds Content-Language). The shared header and footer stay
+// in English; their wrappers are display: contents so the header stays sticky for the whole page.
 const CAMPAIGN = "whatsapp-link-pt";
 
 const description =
@@ -199,9 +201,11 @@ const faqs = [
 
 export default function WhatsAppLinkGeneratorPtBrPage() {
   return (
-    <>
-      <Header />
-      <main lang="pt-BR">
+    <div lang="pt-BR">
+      <div lang="en" className="contents">
+        <Header />
+      </div>
+      <main>
         <JsonLd
           data={createBreadcrumbSchema([
             { name: "Início", url: "https://ishortn.ink" },
@@ -323,7 +327,9 @@ export default function WhatsAppLinkGeneratorPtBrPage() {
           />
         </Section>
       </main>
-      <Footer />
-    </>
+      <div lang="en" className="contents">
+        <Footer />
+      </div>
+    </div>
   );
 }
