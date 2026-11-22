@@ -57,6 +57,16 @@ export const adminRouter = createTRPCRouter({
     .input(inputs.removeBlockedDomainSchema)
     .mutation(({ ctx, input }) => services.removeBlockedDomain(ctx, input)),
 
+  getHeldDomains: adminProcedure.query(({ ctx }) => services.getHeldDomains(ctx)),
+
+  approveHeldDomain: adminProcedure
+    .input(inputs.approveHeldDomainSchema)
+    .mutation(({ ctx, input }) => services.approveHeldDomain(ctx, input)),
+
+  rejectHeldDomain: adminProcedure
+    .input(inputs.rejectHeldDomainSchema)
+    .mutation(({ ctx, input }) => services.rejectHeldDomain(ctx, input)),
+
   getFlaggedLinks: adminProcedure
     .input(inputs.getFlaggedLinksSchema)
     .query(({ ctx, input }) => services.getFlaggedLinks(ctx, input)),

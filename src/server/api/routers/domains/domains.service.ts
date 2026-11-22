@@ -35,7 +35,8 @@ import {
   mapStatus,
   wwwFallbackActive,
 } from "./cloudflare";
-import { DOMAIN_MIGRATION_CUTOFF } from "./utils";
+import { reviewNewDomain } from "./rdap";
+import { DOMAIN_MIGRATION_CUTOFF, DOMAIN_REJECTED_MESSAGE } from "./utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { CloudflareCustomHostname } from "./cloudflare";
@@ -60,9 +61,19 @@ function toUserFacingError(cause: unknown, fallback: string): TRPCError {
 // www.brand.com and brand.com serve the same page.
 const bioPageDomain = (domain: string) => domain.replace(/^www\./, "");
 
-async function isHostnameActive(domain: string, hostname: CloudflareCustomHostname | null) {
+export async function isHostnameActive(domain: string, hostname: CloudflareCustomHostname | null) {
   return (hostname !== null && mapStatus(hostname) === "active") || wwwFallbackActive(domain);
 }
+
+/**
+ * Rows allowed to become "active". Every write that activates a domain adds
+ * this to its WHERE clause, so a domain held for review (or rejected) never
+ * serves links, whatever Cloudflare reports.
+ */
+export const domainCanGoLive = or(
+  isNull(customDomain.reviewStatus),
+  eq(customDomain.reviewStatus, "approved"),
+);
 
 /**
  * True when at least one of the existing claims on a domain sits in a workspace
@@ -162,6 +173,7 @@ export async function addDomainToUserAccount(
     .select({
       userId: customDomain.userId,
       teamId: customDomain.teamId,
+      reviewStatus: customDomain.reviewStatus,
       ownerRestrictedAt: user.restrictedAt,
     })
     .from(customDomain)
@@ -174,6 +186,10 @@ export async function addDomainToUserAccount(
     throw new TRPCError({ code: "FORBIDDEN", message: ACCOUNT_RESTRICTED_MESSAGE });
   }
 
+  if (existingClaims.some((claim) => claim.reviewStatus === "rejected")) {
+    throw new TRPCError({ code: "FORBIDDEN", message: DOMAIN_REJECTED_MESSAGE });
+  }
+
   if (existingClaims.length > 0 && !(await callerControlsAClaim(ctx, existingClaims))) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -181,6 +197,15 @@ export async function addDomainToUserAccount(
         "This domain is already connected to another account. Remove it there first, or contact support if you own it.",
     });
   }
+
+  const account = await ctx.db.query.user.findFirst({
+    where: eq(user.id, userId),
+    columns: { createdAt: true },
+  });
+  const review = await reviewNewDomain(domain, account?.createdAt ?? null);
+  const held = review.reviewStatus === "held";
+
+  if (held) log.info({ domain, userId, reason: review.reviewReason }, "domain held for review");
 
   try {
     const response = await addCustomHostname(domain);
@@ -198,8 +223,10 @@ export async function addDomainToUserAccount(
       userId: ownership.userId,
       teamId: ownership.teamId,
       domain: domain,
-      status: mapStatus(hostname),
+      // A held domain waits for review even if Cloudflare already validated it
+      status: held && mapStatus(hostname) === "active" ? "pending" : mapStatus(hostname),
       verificationDetails: buildVerificationChallenges(domain, hostname),
+      ...review,
     });
   } catch (error) {
     throw toUserFacingError(
@@ -208,15 +235,31 @@ export async function addDomainToUserAccount(
     );
   }
 
-  return { success: true };
+  return { success: true, inReview: held };
 }
 
 export async function getCustomDomainsForUser(ctx: WorkspaceTRPCContext) {
   const customDomains = await ctx.db.query.customDomain.findMany({
     where: workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
+    // Review details are for admins; the owner only learns whether it's in review
+    columns: {
+      reviewReason: false,
+      reviewedAt: false,
+      registrableDomainRegisteredAt: false,
+      registrar: false,
+      rdapLookupFailed: false,
+    },
   });
 
-  return customDomains;
+  return customDomains.map(({ reviewStatus, ...domain }) => ({
+    ...domain,
+    review:
+      reviewStatus === "held"
+        ? ("in_review" as const)
+        : reviewStatus === "rejected"
+          ? ("rejected" as const)
+          : null,
+  }));
 }
 
 export async function deleteDomainAndAssociatedLinks(
@@ -350,7 +393,13 @@ export async function deleteDomainAndAssociatedLinks(
   return { success: true, message: "Domain and associated links deleted successfully" };
 }
 
-export async function checkDomainStatus(ctx: WorkspaceTRPCContext, domainName: string) {
+export async function checkDomainStatus(
+  ctx: WorkspaceTRPCContext,
+  domainName: string,
+  {
+    lookupHostname = getLiveCustomHostname,
+  }: { lookupHostname?: typeof getLiveCustomHostname } = {},
+) {
   // Look the domain up in the caller's workspace first: the Cloudflare call
   // below can re-arm validation, which must not run on someone else's hostname
   const record = await ctx.db.query.customDomain.findFirst({
@@ -358,11 +407,15 @@ export async function checkDomainStatus(ctx: WorkspaceTRPCContext, domainName: s
       eq(customDomain.domain, domainName),
       workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
     ),
-    columns: { id: true, domain: true },
+    columns: { id: true, domain: true, reviewStatus: true },
   });
 
   if (!record?.domain) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Domain not found" });
+  }
+
+  if (record.reviewStatus === "rejected") {
+    throw new TRPCError({ code: "FORBIDDEN", message: DOMAIN_REJECTED_MESSAGE });
   }
 
   const domain = record.domain;
@@ -370,7 +423,7 @@ export async function checkDomainStatus(ctx: WorkspaceTRPCContext, domainName: s
   let active: boolean;
 
   try {
-    hostname = await getLiveCustomHostname(domain);
+    hostname = await lookupHostname(domain);
     active = await isHostnameActive(domain, hostname);
   } catch (error) {
     throw toUserFacingError(
@@ -388,11 +441,11 @@ export async function checkDomainStatus(ctx: WorkspaceTRPCContext, domainName: s
     "Cloudflare custom hostname state",
   );
 
-  if (active) {
+  if (active && record.reviewStatus !== "held") {
     await ctx.db
       .update(customDomain)
       .set({ status: "active" })
-      .where(eq(customDomain.id, record.id));
+      .where(and(eq(customDomain.id, record.id), domainCanGoLive));
     return { status: "active" as const };
   }
 
@@ -405,7 +458,10 @@ export async function checkDomainStatus(ctx: WorkspaceTRPCContext, domainName: s
     .set({ verificationDetails: JSON.stringify(verificationChallenges) })
     .where(eq(customDomain.id, record.id));
 
-  return { status: "pending" as const, verificationChallenges };
+  return {
+    status: record.reviewStatus === "held" ? ("in_review" as const) : ("pending" as const),
+    verificationChallenges,
+  };
 }
 
 /**

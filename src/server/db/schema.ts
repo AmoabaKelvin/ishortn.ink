@@ -814,6 +814,15 @@ export const customDomain = mysqlTable(
     // Set when an account restriction released this apex's www fallback hostname,
     // so lifting the restriction re-adds it (and only then)
     wwwHostnameReleased: boolean("wwwHostnameReleased").default(false),
+    // Admin review for domains added by new accounts (see domains/rdap.ts). null when the
+    // domain was never held; a "held" domain stays out of "active" until approved.
+    reviewStatus: mysqlEnum("reviewStatus", ["held", "approved", "rejected"]),
+    reviewReason: varchar("reviewReason", { length: 255 }),
+    reviewedAt: timestamp("reviewedAt"),
+    // RDAP data for the registrable domain, captured when the domain was added
+    registrableDomainRegisteredAt: timestamp("registrableDomainRegisteredAt"),
+    registrar: varchar("registrar", { length: 255 }),
+    rdapLookupFailed: boolean("rdapLookupFailed").default(false),
     // Generated column to handle NULL teamId in unique constraint
     // MySQL treats NULLs as distinct, so we coalesce to 0 for personal workspaces
     teamIdForUnique: int("teamIdForUnique").generatedAlwaysAs(sql`COALESCE(\`teamId\`, 0)`, {
@@ -824,6 +833,7 @@ export const customDomain = mysqlTable(
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
     statusCreatedAtIdx: index("status_createdAt_idx").on(table.status, table.createdAt),
+    reviewStatusIdx: index("reviewStatus_idx").on(table.reviewStatus),
     // Allow the same domain in different workspaces, but not in the same workspace twice
     // Uses teamIdForUnique to properly handle NULL teamId values
     domainWorkspaceUnique: unique("domain_workspace_unique").on(
