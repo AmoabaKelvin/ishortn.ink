@@ -5,6 +5,7 @@ import { Funnel_Sans } from "next/font/google";
 import { ChangelogBanner } from "@/components/changelog/changelog-banner";
 import { purgeDateFor } from "@/lib/account-deletion/constants";
 import { cn } from "@/lib/utils";
+import { displayName } from "@/lib/utils/user-name";
 import { ensureUser } from "@/server/lib/ensure-user";
 import { hasBouncedEmail } from "@/server/lib/notifications/suppression";
 import { api } from "@/trpc/server";
@@ -51,7 +52,7 @@ export default async function DashboardLayout({ children }: Props) {
 
     isAdmin = currentUser?.isAdmin ?? false;
     isRestricted = !!currentUser?.restrictedAt;
-    userName = currentUser?.name ?? null;
+    userName = displayName(currentUser?.name);
 
     if (currentUser?.banned) {
       return (

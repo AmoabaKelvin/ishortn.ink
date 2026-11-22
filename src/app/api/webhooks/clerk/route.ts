@@ -1,7 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
-import { z } from "zod";
 
 import { env } from "@/env.mjs";
 import WelcomeEmail from "@/lib/email/templates/welcome-email";
@@ -10,6 +9,8 @@ import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 import { resend } from "@/server/lib/notifications/resend-client";
 import { isEmailSuppressed } from "@/server/lib/notifications/suppression";
+
+import { clerkUserDeletedEventSchema, clerkUserEventSchema, getUserInfo } from "./user-info";
 
 const log = logger.child({ webhook: "clerk" });
 
@@ -106,9 +107,7 @@ export async function POST(req: Request) {
       from: env.EMAIL_FROM ?? "Kelvin <developer@ishortn.ink>",
       to: userInfo.email,
       subject: "Welcome to iShortn",
-      react: WelcomeEmail({
-        userFirstname: userInfo.name.split(" ")[0] ?? "there",
-      }),
+      react: WelcomeEmail({ userName: userInfo.name }),
     });
 
     if (error) {
@@ -117,39 +116,4 @@ export async function POST(req: Request) {
   }
 
   return new Response("", { status: 201 });
-}
-
-const clerkUserDeletedEventSchema = z.object({
-  type: z.literal("user.deleted"),
-  data: z.object({ id: z.string() }),
-});
-
-const clerkUserEventSchema = z.object({
-  type: z.string(),
-  data: z.object({
-    id: z.string(),
-    first_name: z.string().nullable(),
-    last_name: z.string().nullable(),
-    image_url: z.string(),
-    primary_email_address_id: z.string().nullish(),
-    email_addresses: z.array(z.object({ id: z.string().optional(), email_address: z.string() })),
-  }),
-});
-
-type ClerkUserEvent = z.infer<typeof clerkUserEventSchema>;
-
-function getUserInfo(payload: ClerkUserEvent) {
-  const data = payload.data;
-  // The primary address, so a changed email (user.updated) replaces the stored one.
-  const emailData =
-    data.email_addresses.find((e) => e.id === data.primary_email_address_id) ??
-    data.email_addresses[0];
-
-  const userInfo = {
-    name: `${data.first_name} ${data.last_name}`,
-    email: emailData?.email_address,
-    avatarUrl: data.image_url,
-  };
-
-  return userInfo;
 }

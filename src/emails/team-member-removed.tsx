@@ -1,5 +1,7 @@
 import { Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
 type TeamMemberRemovedEmailProps = {
@@ -15,7 +17,7 @@ export const TeamMemberRemovedEmail = ({
 }: TeamMemberRemovedEmailProps) => {
   return (
     <EmailLayout preview={`You were removed from ${teamName} on iShortn`}>
-      <Text style={text}>Hi {memberName || "there"},</Text>
+      <Text style={text}>Hi {displayName(memberName) ?? "there"},</Text>
 
       <Text style={text}>
         You&apos;ve been removed from the <strong>{teamName}</strong> team on iShortn, so you no

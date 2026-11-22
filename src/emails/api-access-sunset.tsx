@@ -1,5 +1,7 @@
 import { Link, Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import { EmailButton, EmailLayout, link, smallText, text } from "./_components/layout";
 
 type ApiAccessSunsetEmailProps = {
@@ -23,7 +25,7 @@ export const ApiAccessSunsetEmail = ({
 
   return (
     <EmailLayout preview={preview}>
-      <Text style={text}>Hi {userName || "there"},</Text>
+      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
 
       {kind === "reminder" ? (
         <Text style={text}>

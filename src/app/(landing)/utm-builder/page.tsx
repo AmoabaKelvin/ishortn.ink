@@ -11,7 +11,6 @@ import {
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
-import { socialImages } from "@/lib/seo/og-image";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
@@ -62,7 +61,6 @@ export const metadata: Metadata = {
     description,
     type: "website",
     url: "/utm-builder",
-    images: socialImages(),
   },
 };
 

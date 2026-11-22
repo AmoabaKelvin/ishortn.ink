@@ -12,8 +12,10 @@ import {
 } from "@react-email/components";
 import { render } from "@react-email/render";
 
+import { firstName } from "@/lib/utils/user-name";
+
 interface WelcomeEmailProps {
-  userFirstname: string;
+  userName: string | null;
 }
 
 const UTM = "utm_source=email&utm_medium=lifecycle&utm_campaign=welcome";
@@ -29,13 +31,13 @@ const nextSteps = [
   { label: "Build a link-in-bio page", href: `https://ishortn.ink/docs/bio-pages?${UTM}` },
 ];
 
-export const WelcomeEmail = ({ userFirstname }: WelcomeEmailProps) => (
+export const WelcomeEmail = ({ userName }: WelcomeEmailProps) => (
   <Html>
     <Head />
     <Preview>Shorten your first link in under a minute</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={paragraph}>Hi {userFirstname ? userFirstname : "there"},</Text>
+        <Text style={paragraph}>Hi {firstName(userName) ?? "there"},</Text>
         <Text style={paragraph}>Welcome to iShortn!</Text>
         <Text style={paragraph}>
           The best place to start is your first short link. Paste a long URL and you get a short
@@ -82,12 +84,12 @@ export const WelcomeEmail = ({ userFirstname }: WelcomeEmailProps) => (
   </Html>
 );
 
-export const renderWelcomeEmail = (name: string) => {
-  return render(<WelcomeEmail userFirstname={name} />);
+export const renderWelcomeEmail = (name: string | null) => {
+  return render(<WelcomeEmail userName={name} />);
 };
 
 WelcomeEmail.PreviewProps = {
-  userFirstname: "Kelvin",
+  userName: "Kelvin Amoaba",
 } satisfies WelcomeEmailProps;
 
 export default WelcomeEmail;

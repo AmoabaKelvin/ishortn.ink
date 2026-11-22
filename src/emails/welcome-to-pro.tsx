@@ -3,6 +3,7 @@ import { Link, Section, Text } from "@react-email/components";
 import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
 import { SUPPORT_EMAIL } from "@/lib/constants/app";
 import { getAppUrl } from "@/lib/constants/domains";
+import { displayName } from "@/lib/utils/user-name";
 
 import {
   EmailButton,
@@ -17,7 +18,7 @@ import {
 type PaidPlan = Exclude<Plan, "free">;
 
 interface WelcomeEmailProps {
-  userName?: string;
+  userName?: string | null;
   plan?: PaidPlan;
 }
 
@@ -48,16 +49,16 @@ const planBenefits = {
   ],
 } satisfies Record<PaidPlan, string[]>;
 
-export const WelcomeEmail = ({ userName = "there", plan = "pro" }: WelcomeEmailProps) => {
-  const displayName = planDisplayNames[plan];
+export const WelcomeEmail = ({ userName, plan = "pro" }: WelcomeEmailProps) => {
+  const planName = planDisplayNames[plan];
 
   return (
-    <EmailLayout preview={`Welcome to iShortn ${displayName}`}>
-      <Text style={text}>Hi {userName},</Text>
+    <EmailLayout preview={`Welcome to iShortn ${planName}`}>
+      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
 
       <Text style={text}>
-        Thank you for upgrading to iShortn {displayName}! Your account is upgraded and every{" "}
-        {displayName} feature is ready to use.
+        Thank you for upgrading to iShortn {planName}! Your account is upgraded and every {planName}{" "}
+        feature is ready to use.
       </Text>
 
       <Text style={headingText}>What&apos;s included in your plan</Text>

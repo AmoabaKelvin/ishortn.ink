@@ -1,5 +1,7 @@
 import { Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
 type TransferDeclinedEmailProps = {
@@ -17,7 +19,7 @@ export const TransferDeclinedEmail = ({
 }: TransferDeclinedEmailProps) => {
   return (
     <EmailLayout preview="Your iShortn transfer request was declined">
-      <Text style={text}>Hi {senderName || "there"},</Text>
+      <Text style={text}>Hi {displayName(senderName) ?? "there"},</Text>
 
       <Text style={text}>
         Your resource transfer request to <strong>{recipientName}</strong> ({recipientEmail}) has

@@ -2,6 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
+import { fullName } from "@/lib/utils/user-name";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 
@@ -41,7 +42,7 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
   const primaryEmail =
     profile.emailAddresses.find((e) => e.id === profile.primaryEmailAddressId)?.emailAddress ??
     profile.emailAddresses[0]?.emailAddress;
-  const name = [profile.firstName, profile.lastName].filter(Boolean).join(" ") || null;
+  const name = fullName(profile.firstName, profile.lastName);
 
   // Upsert: the webhook may insert the same row concurrently.
   await db

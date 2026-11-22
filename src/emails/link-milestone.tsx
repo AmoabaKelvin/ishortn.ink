@@ -1,5 +1,7 @@
 import { Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
 type LinkMilestoneEmailProps = {
@@ -26,7 +28,7 @@ export const LinkMilestoneEmail = ({
       preview={`${linkName || shortUrl} just hit ${milestone.toLocaleString()} clicks`}
       notificationSettingsUrl={notificationSettingsUrl}
     >
-      <Text style={text}>Hi {userName || "there"},</Text>
+      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
 
       <Text style={text}>
         {linkName ? (

@@ -1,0 +1,36 @@
+import { z } from "zod";
+
+import { fullName } from "@/lib/utils/user-name";
+
+export const clerkUserDeletedEventSchema = z.object({
+  type: z.literal("user.deleted"),
+  data: z.object({ id: z.string() }),
+});
+
+export const clerkUserEventSchema = z.object({
+  type: z.string(),
+  data: z.object({
+    id: z.string(),
+    first_name: z.string().nullable(),
+    last_name: z.string().nullable(),
+    image_url: z.string(),
+    primary_email_address_id: z.string().nullish(),
+    email_addresses: z.array(z.object({ id: z.string().optional(), email_address: z.string() })),
+  }),
+});
+
+type ClerkUserEvent = z.infer<typeof clerkUserEventSchema>;
+
+export function getUserInfo(payload: ClerkUserEvent) {
+  const data = payload.data;
+  // The primary address, so a changed email (user.updated) replaces the stored one.
+  const emailData =
+    data.email_addresses.find((e) => e.id === data.primary_email_address_id) ??
+    data.email_addresses[0];
+
+  return {
+    name: fullName(data.first_name, data.last_name),
+    email: emailData?.email_address,
+    avatarUrl: data.image_url,
+  };
+}

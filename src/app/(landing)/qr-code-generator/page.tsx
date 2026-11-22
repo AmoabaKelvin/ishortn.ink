@@ -11,7 +11,6 @@ import {
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT as FREE_DYNAMIC_QR_CODES } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
-import { socialImages } from "@/lib/seo/og-image";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
@@ -60,7 +59,6 @@ export const metadata: Metadata = {
     description,
     type: "website",
     url: "/qr-code-generator",
-    images: socialImages(),
   },
 };
 
@@ -172,8 +170,7 @@ export default function QrCodeGeneratorPage() {
             Free QR code generator that doesn&apos;t expire
           </h1>
           <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>
-            Paste a link and download a QR code as a PNG or SVG in seconds. No account, no ads, no
-            expiry date.
+            Paste a link and download a QR code in seconds. No account, no ads, no expiry date.
           </p>
         </div>
         <div className="mt-12 sm:mt-14">

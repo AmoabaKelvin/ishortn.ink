@@ -1,6 +1,7 @@
 import { JsonLd } from "@/components/seo/json-ld";
 import { landingPageCopy } from "@/lib/copy/landing-page";
-import { socialImages } from "@/lib/seo/og-image";
+import { pageCards } from "@/lib/seo/og-cards";
+import { ROOT_OG_IMAGE_URL, socialImages } from "@/lib/seo/og-image";
 import {
   createFaqSchema,
   organizationSchema,
@@ -44,14 +45,14 @@ export const metadata: Metadata = {
     description:
       "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
     type: "website",
-    images: socialImages(),
+    images: socialImages(ROOT_OG_IMAGE_URL, pageCards.home.alt),
   },
   twitter: {
     card: "summary_large_image",
     title: "iShortn — The better way to share your links. Free URL shortener with analytics",
     description:
       "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
-    images: socialImages(),
+    images: socialImages(ROOT_OG_IMAGE_URL, pageCards.home.alt),
   },
 };
 

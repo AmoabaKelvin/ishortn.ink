@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getDocsPageContent } from "@/lib/docs/content";
 import { DOCS_PAGES, docsHref, findDocsPage, getDocsNeighbours } from "@/lib/docs/navigation";
 import { DOCS_PAGE_MODULES } from "@/lib/docs/pages";
+import { docsCard, docsOgImageUrl } from "@/lib/seo/og-cards";
 import { socialImages } from "@/lib/seo/og-image";
 
 import { DocsToc } from "../_components/docs-toc";
@@ -32,6 +33,8 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
   const { frontmatter } = getDocsPageContent(page.slug);
   const url = `https://ishortn.ink${docsHref(page.slug)}`;
   const title = page.slug === "" ? "Documentation" : `${frontmatter.title} · Docs`;
+  const { alt } = docsCard({ ...page, description: frontmatter.description });
+  const images = socialImages(docsOgImageUrl(page.slug), alt);
 
   return {
     title,
@@ -42,13 +45,13 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
       description: frontmatter.description,
       url,
       type: "article",
-      images: socialImages(),
+      images,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: frontmatter.description,
-      images: socialImages(),
+      images,
     },
   };
 }

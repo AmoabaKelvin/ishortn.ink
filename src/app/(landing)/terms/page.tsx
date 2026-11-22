@@ -1,7 +1,6 @@
 import { IconShieldCheckFilled } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
-import { socialImages } from "@/lib/seo/og-image";
 import { cn } from "@/lib/utils";
 import "@/styles/site-content.css";
 
@@ -18,7 +17,6 @@ export const metadata: Metadata = {
     title: "Terms of Service - iShortn",
     description: "Read the terms and conditions for using iShortn URL shortener service.",
     type: "website",
-    images: socialImages(),
   },
 };
 

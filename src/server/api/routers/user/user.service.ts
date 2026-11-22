@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
+import { displayName } from "@/lib/utils/user-name";
 import { user } from "@/server/db/schema";
 
 import type { ProtectedTRPCContext } from "../../trpc";
@@ -26,7 +27,7 @@ export async function getUserProfile(ctx: ProtectedTRPCContext) {
     });
   }
 
-  return userProfile;
+  return { ...userProfile, name: displayName(userProfile.name) };
 }
 
 export async function updateUserProfile(ctx: ProtectedTRPCContext, input: UpdateUserProfileInput) {

@@ -149,8 +149,13 @@ export function AppSidebar({
   const { signOut } = useClerk();
   const openButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  // The DB name is what settings edits; Clerk's name is only a fallback.
-  const displayName = userName || user?.firstName || user?.username || "User";
+  // The DB name is what settings edits; Clerk's name and the email are only fallbacks.
+  const displayName =
+    userName ||
+    user?.firstName ||
+    user?.username ||
+    user?.primaryEmailAddress?.emailAddress.split("@")[0] ||
+    "User";
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;

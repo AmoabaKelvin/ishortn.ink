@@ -127,7 +127,7 @@ All under `src/app/(main)/dashboard/`:
 - **Dialog form**: `folders/_components/create-folder-modal.tsx`.
 - **Destructive confirm**: `folders/_components/delete-folder-dialog.tsx`.
 - **Empty state**: `domains/_components/empty-state.tsx` (icon tile `h-14 w-14 rounded-xl
-bg-neutral-100 dark:bg-muted`, `text-[14px]` title, `max-w-xs text-[13px]` copy, one action).
+  bg-neutral-100 dark:bg-muted`, `text-[14px]` title, `max-w-xs text-[13px]` copy, one action).
   Inline empty results: the dashed panel in `admin/users/page.tsx`.
 - **Loading**: `folders/loading.tsx` (route `loading.tsx` with `Skeleton`s matching the layout).
 - **Error boundary**: `error.tsx`.
@@ -178,7 +178,7 @@ bg-neutral-100 dark:bg-muted`, `text-[14px]` title, `max-w-xs text-[13px]` copy,
 - Schema changes are additive only: new tables, nullable or defaulted columns, new indexes. Never
   write or generate a migration that drops, renames or deletes data.
 - Every workspace-owned query filters with `workspaceFilter(ctx.workspace, table.userId,
-table.teamId)` and inserts with `workspaceOwnership(ctx.workspace)`
+  table.teamId)` and inserts with `workspaceOwnership(ctx.workspace)`
   (`src/server/lib/workspace/query-helpers.ts`). Lookups by id include the workspace filter and
   throw `NOT_FOUND` when missing (`getFolder` in `folder.service.ts`).
 - Never weaken or bypass procedure guards (`workspaceProcedure`, `teamProcedure`, `adminProcedure`,
