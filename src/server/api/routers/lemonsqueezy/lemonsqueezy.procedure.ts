@@ -182,7 +182,8 @@ export const lemonsqueezyRouter = createTRPCRouter({
         },
         productOptions: {
           enabledVariants: [variantId],
-          redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings#billing`,
+          // The flag opens the "how did you find us" prompt (checkout-acquisition-prompt.tsx).
+          redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?checkout=success#billing`,
           receiptButtonText: "Go to Dashboard",
           receiptThankYouNote: `Thank you for signing up to iShortn ${
             input.plan.charAt(0).toUpperCase() + input.plan.slice(1)

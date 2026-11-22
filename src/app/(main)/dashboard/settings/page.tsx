@@ -6,6 +6,7 @@ import { api } from "@/trpc/server";
 
 import { SettingsNav } from "./_components/settings-nav";
 import Billing from "./billing/billing";
+import { CheckoutAcquisitionPrompt } from "./billing/checkout-acquisition-prompt";
 import { DeleteAccountSection } from "./delete-account/delete-account-section";
 import { SettingsForm } from "./general/settings-form";
 import { NotificationSettings } from "./notifications/notification-settings";
@@ -19,7 +20,11 @@ export const metadata: Metadata = { title: "Settings" };
 
 export const dynamic = "force-dynamic";
 
-async function SettingsPage() {
+interface Props {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+async function SettingsPage(props: Props) {
   const [userSettings, userDomains, subscriptions, tokens, apiAccess, userProfile, workspace] =
     await Promise.all([
       api.siteSettings.get.query(),
@@ -30,6 +35,8 @@ async function SettingsPage() {
       api.user.getProfile.query(),
       api.team.currentWorkspace.query(),
     ]);
+  // Set by the checkout redirect (lemonsqueezy.procedure.ts).
+  const { checkout } = await props.searchParams;
 
   return (
     <div>
@@ -108,6 +115,7 @@ async function SettingsPage() {
             </p>
             <div className="mt-4">
               <Billing subscriptions={subscriptions} />
+              {checkout === "success" && <CheckoutAcquisitionPrompt />}
             </div>
           </section>
 

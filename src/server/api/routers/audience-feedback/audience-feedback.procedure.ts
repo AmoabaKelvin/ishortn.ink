@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, isNotNull, lt, sql } from "drizzle-orm";
+import { and, eq, isNotNull, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { resolvePlan } from "@/lib/billing/plans";
@@ -11,9 +11,18 @@ import { adminProcedure, createTRPCRouter, protectedProcedure } from "../../trpc
 import {
   audienceFeedbackAcquisitionChannelValues,
   audienceFeedbackPriorToolValues,
+  audienceFeedbackResponseFilterValues,
   audienceFeedbackRoleValues,
+  submitAcquisitionInput,
   submitAudienceFeedbackSchema,
 } from "./audience-feedback.input";
+import {
+  dismissAcquisition,
+  getAcquisitionPrompt,
+  submitAcquisition,
+} from "./audience-feedback.service";
+
+import type { AudienceFeedbackResponseFilter } from "./audience-feedback.input";
 
 const DISMISS_COOLDOWN_DAYS = 7;
 const MAX_DISMISS_COUNT = 3;
@@ -29,6 +38,16 @@ function shouldAutoPromptAudienceFeedback(params: {
   if (!params.dismissedAt) return true;
 
   return params.dismissedAt.getTime() <= Date.now() - DISMISS_COOLDOWN_MS;
+}
+
+// Rows that hold answers: a submitted full survey, an acquisition prompt answer, or both.
+function responseCondition(response: AudienceFeedbackResponseFilter) {
+  if (response === "survey") return isNotNull(audienceFeedback.submittedAt);
+  if (response === "acquisition") return isNotNull(audienceFeedback.acquisitionAnsweredAt);
+  return or(
+    isNotNull(audienceFeedback.submittedAt),
+    isNotNull(audienceFeedback.acquisitionAnsweredAt),
+  );
 }
 
 export const audienceFeedbackRouter = createTRPCRouter({
@@ -174,9 +193,18 @@ export const audienceFeedbackRouter = createTRPCRouter({
       return { success: true, submittedAt, planSnapshot };
     }),
 
+  acquisitionPrompt: protectedProcedure.query(({ ctx }) => getAcquisitionPrompt(ctx)),
+
+  submitAcquisition: protectedProcedure
+    .input(submitAcquisitionInput)
+    .mutation(({ ctx, input }) => submitAcquisition(ctx, input)),
+
+  dismissAcquisition: protectedProcedure.mutation(({ ctx }) => dismissAcquisition(ctx)),
+
   list: adminProcedure
     .input(
       z.object({
+        response: z.enum(audienceFeedbackResponseFilterValues).default("all"),
         plan: z.enum(["free", "pro", "ultra"]).optional(),
         acquisitionChannel: z.enum(audienceFeedbackAcquisitionChannelValues).optional(),
         priorTool: z.enum(audienceFeedbackPriorToolValues).optional(),
@@ -186,7 +214,7 @@ export const audienceFeedbackRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const conditions = [isNotNull(audienceFeedback.submittedAt)];
+      const conditions = [responseCondition(input.response)];
       if (input.plan) conditions.push(eq(audienceFeedback.planSnapshot, input.plan));
       if (input.acquisitionChannel) {
         conditions.push(eq(audienceFeedback.acquisitionChannel, input.acquisitionChannel));
@@ -200,7 +228,8 @@ export const audienceFeedbackRouter = createTRPCRouter({
         with: {
           user: { columns: { name: true, email: true, imageUrl: true } },
         },
-        orderBy: (table, { desc: descOrder }) => descOrder(table.submittedAt),
+        // Matches the id cursor; acquisition-only rows have no submittedAt to sort on.
+        orderBy: (table, { desc: descOrder }) => descOrder(table.id),
         limit: input.limit + 1,
       });
 
@@ -213,37 +242,39 @@ export const audienceFeedbackRouter = createTRPCRouter({
       return { items, nextCursor };
     }),
 
-  stats: adminProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db
-      .select({
-        planSnapshot: audienceFeedback.planSnapshot,
-        acquisitionChannel: audienceFeedback.acquisitionChannel,
-        priorTool: audienceFeedback.priorTool,
-        role: audienceFeedback.role,
-        useCase: audienceFeedback.useCase,
-        magicFeature: audienceFeedback.magicFeature,
-      })
-      .from(audienceFeedback)
-      .where(isNotNull(audienceFeedback.submittedAt));
+  stats: adminProcedure
+    .input(z.object({ response: z.enum(audienceFeedbackResponseFilterValues).default("all") }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          planSnapshot: audienceFeedback.planSnapshot,
+          acquisitionChannel: audienceFeedback.acquisitionChannel,
+          priorTool: audienceFeedback.priorTool,
+          role: audienceFeedback.role,
+          useCase: audienceFeedback.useCase,
+          magicFeature: audienceFeedback.magicFeature,
+        })
+        .from(audienceFeedback)
+        .where(responseCondition(input.response));
 
-    const tally = (key: keyof (typeof rows)[number]) => {
-      const counts = new Map<string | null, number>();
-      for (const row of rows) {
-        counts.set(row[key], (counts.get(row[key]) ?? 0) + 1);
-      }
-      return Array.from(counts, ([value, count]) => ({ value, count })).sort(
-        (a, b) => b.count - a.count,
-      );
-    };
+      const tally = (key: keyof (typeof rows)[number]) => {
+        const counts = new Map<string | null, number>();
+        for (const row of rows) {
+          counts.set(row[key], (counts.get(row[key]) ?? 0) + 1);
+        }
+        return Array.from(counts, ([value, count]) => ({ value, count })).sort(
+          (a, b) => b.count - a.count,
+        );
+      };
 
-    return {
-      total: rows.length,
-      byPlan: tally("planSnapshot"),
-      byChannel: tally("acquisitionChannel"),
-      byPriorTool: tally("priorTool"),
-      byRole: tally("role"),
-      byUseCase: tally("useCase"),
-      byMagicFeature: tally("magicFeature"),
-    };
-  }),
+      return {
+        total: rows.length,
+        byPlan: tally("planSnapshot"),
+        byChannel: tally("acquisitionChannel"),
+        byPriorTool: tally("priorTool"),
+        byRole: tally("role"),
+        byUseCase: tally("useCase"),
+        byMagicFeature: tally("magicFeature"),
+      };
+    }),
 });

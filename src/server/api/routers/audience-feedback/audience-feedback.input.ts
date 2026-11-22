@@ -87,3 +87,16 @@ export const submitAudienceFeedbackSchema = z.object({
 });
 
 export type SubmitAudienceFeedbackInput = z.infer<typeof submitAudienceFeedbackSchema>;
+
+// The two-question prompt shown to paid accounts after checkout and on the dashboard.
+export const submitAcquisitionInput = z.object({
+  acquisitionChannel: z.enum(audienceFeedbackAcquisitionChannelValues),
+  acquisitionDetail: optionalFreeText,
+  useCase: z.enum(audienceFeedbackUseCaseValues).optional().nullable(),
+});
+
+export type SubmitAcquisitionInput = z.infer<typeof submitAcquisitionInput>;
+
+export const audienceFeedbackResponseFilterValues = ["all", "survey", "acquisition"] as const;
+
+export type AudienceFeedbackResponseFilter = (typeof audienceFeedbackResponseFilterValues)[number];

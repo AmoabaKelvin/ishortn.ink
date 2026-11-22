@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ACQUISITION_CHANNEL_OPTIONS, USE_CASE_OPTIONS } from "@/lib/audience-feedback/options";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -46,32 +47,12 @@ const ROLE_OPTIONS = [
   { value: "other", label: "Something else" },
 ] as const;
 
-const USE_CASE_OPTIONS = [
-  { value: "social_media", label: "Social media bio or posts" },
-  { value: "marketing_campaigns", label: "Marketing campaigns" },
-  { value: "client_links", label: "Client work" },
-  { value: "product_links", label: "Product or app links" },
-  { value: "qr_codes", label: "QR codes for print or packaging" },
-  { value: "internal_sharing", label: "Internal or team sharing" },
-  { value: "other", label: "Something else" },
-] as const;
-
 const MONTHLY_VOLUME_OPTIONS = [
   { value: "1_10", label: "1 to 10 links" },
   { value: "11_50", label: "11 to 50 links" },
   { value: "51_200", label: "51 to 200 links" },
   { value: "201_1000", label: "201 to 1,000 links" },
   { value: "1000_plus", label: "1,000 or more links" },
-] as const;
-
-const ACQUISITION_CHANNEL_OPTIONS = [
-  { value: "search", label: "Google or another search engine" },
-  { value: "social", label: "Social media (X, Reddit, LinkedIn, etc.)" },
-  { value: "friend_or_colleague", label: "A friend or colleague" },
-  { value: "community", label: "A community or forum" },
-  { value: "directory", label: "A directory or comparison article" },
-  { value: "ad", label: "An advertisement" },
-  { value: "other", label: "Somewhere else" },
 ] as const;
 
 const PRIOR_TOOL_OPTIONS = [
