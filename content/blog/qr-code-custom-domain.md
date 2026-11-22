@@ -74,7 +74,7 @@ A few practical points:
 - **Create the codes in an account the company owns**, with at least two people who can sign in.
 - **Keep a list of what's printed where**, so you know which codes to update when a page moves.
 
-We wrote separately about [QR codes for instruction manuals](/blog/qr-code-for-instruction-manuals), where codes have to keep working for the life of the product, and about [QR codes for trade shows](/blog/qr-codes-for-trade-shows).
+We wrote separately about [QR codes for instruction manuals](/blog/qr-code-for-instruction-manuals), where codes have to keep working for the life of the product, and about QR codes for trade shows. Both are on the [iShortn blog](/blog).
 
 ## How to set it up in iShortn
 
