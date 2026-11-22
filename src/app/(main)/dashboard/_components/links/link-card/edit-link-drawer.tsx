@@ -66,6 +66,8 @@ import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
 
+import { applyLoadedGeoRules, geoRulesToFormValues } from "./edit-link-form";
+
 import type { MilestoneEntry } from "@/app/(main)/dashboard/_components/milestone-form";
 
 const log = clientLogger.child({ component: "edit-link-drawer" });
@@ -168,15 +170,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
       utmParams: linkData.utmParams ?? undefined,
       cloaking: linkData.cloaking ?? false,
       verifiedClicksEnabled: linkData.verifiedClicksEnabled ?? false,
-      geoRules:
-        geoRules?.map((rule) => ({
-          type: rule.type,
-          condition: rule.condition,
-          values: rule.values,
-          action: rule.action,
-          destination: rule.destination ?? undefined,
-          blockMessage: rule.blockMessage ?? undefined,
-        })) ?? [],
+      geoRules: geoRulesToFormValues(geoRules),
     };
   };
 
@@ -187,7 +181,11 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
 
   useEffect(() => {
     if (open) form.reset(getFormDefaults(link, existingGeoRules));
-  }, [open, link, existingGeoRules]);
+  }, [open, link]);
+
+  useEffect(() => {
+    if (open) applyLoadedGeoRules(form, existingGeoRules);
+  }, [existingGeoRules]);
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
