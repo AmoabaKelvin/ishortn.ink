@@ -7,6 +7,7 @@ import {
   checkIfUserCanCreateMoreQRCodes,
   qrCodeFileName,
   qrCodeStyleFrom,
+  savedQrCodePngState,
   savedQrCodeSvgState,
   SVG_EFFECTS_NOTE,
   SVG_LEGACY_NOTE,
@@ -56,7 +57,7 @@ describe("qrCodeFileName", () => {
   });
 });
 
-describe("SVG download state", () => {
+describe("download state", () => {
   const link = { domain: "ishortn.ink", alias: "menu26" };
   const style = qrCodeStyleFrom(
     {
@@ -123,5 +124,19 @@ describe("SVG download state", () => {
     });
     expect(svgNoteFor({ style: null })).toBe(SVG_LEGACY_NOTE);
     expect(savedQrCodeSvgState({ style: null, color: "#ff0000", link: null })).toBeNull();
+  });
+
+  test("redraws the PNG only for codes saved with a style", () => {
+    expect(savedQrCodePngState({ style, color: "#1d4ed8", link })).toEqual(
+      savedQrCodeSvgState({ style, color: "#1d4ed8", link }),
+    );
+    expect(savedQrCodePngState({ style, color: "#1d4ed8", link })).toMatchObject({
+      text: "https://ishortn.ink/menu26",
+      scale: 20,
+      effect: style.effect,
+    });
+    // Without a style, only the stored image matches what the user created.
+    expect(savedQrCodePngState({ style: null, color: "#ff0000", link })).toBeNull();
+    expect(savedQrCodePngState({ style, color: "#ff0000", link: null })).toBeNull();
   });
 });
