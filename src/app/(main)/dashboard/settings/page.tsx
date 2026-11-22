@@ -4,6 +4,9 @@ import { withProductUtm } from "@/lib/attribution/referral";
 import { getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/server";
 
+import { AnnualSwitchCard } from "../_components/annual-switch-card";
+import { annualSwitchOffer } from "../_components/annual-switch-state";
+import { getDashboardGraceNotice } from "../_lib/get-subscription";
 import { SettingsNav } from "./_components/settings-nav";
 import Billing from "./billing/billing";
 import { CheckoutAcquisitionPrompt } from "./billing/checkout-acquisition-prompt";
@@ -25,16 +28,34 @@ interface Props {
 }
 
 async function SettingsPage(props: Props) {
-  const [userSettings, userDomains, subscriptions, tokens, apiAccess, userProfile, workspace] =
-    await Promise.all([
-      api.siteSettings.get.query(),
-      api.customDomain.list.query(),
-      api.subscriptions.get.query(),
-      api.token.list.query(),
-      api.token.access.query(),
-      api.user.getProfile.query(),
-      api.team.currentWorkspace.query(),
-    ]);
+  const [
+    userSettings,
+    userDomains,
+    subscriptions,
+    tokens,
+    apiAccess,
+    userProfile,
+    workspace,
+    graceNotice,
+  ] = await Promise.all([
+    api.siteSettings.get.query(),
+    api.customDomain.list.query(),
+    api.subscriptions.get.query(),
+    api.token.list.query(),
+    api.token.access.query(),
+    api.user.getProfile.query(),
+    api.team.currentWorkspace.query(),
+    getDashboardGraceNotice(),
+  ]);
+  // Dismissal is read on the client (annual-switch-card.tsx).
+  const annualOffer = annualSwitchOffer({
+    subscription: subscriptions.subscriptions ?? null,
+    isTeamWorkspace: subscriptions.isTeamWorkspace,
+    restricted: subscriptions.isRestricted,
+    graceActive: !!graceNotice,
+    otherBannerShown: false,
+    dismissedAt: null,
+  });
   // Set by the checkout redirect (lemonsqueezy.procedure.ts).
   const { checkout } = await props.searchParams;
 
@@ -114,6 +135,9 @@ async function SettingsPage(props: Props) {
               Subscription and payment details
             </p>
             <div className="mt-4">
+              {annualOffer && (
+                <AnnualSwitchCard offer={annualOffer} source="billing" className="mb-4" />
+              )}
               <Billing subscriptions={subscriptions} />
               {checkout === "success" && <CheckoutAcquisitionPrompt />}
             </div>

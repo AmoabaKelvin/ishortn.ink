@@ -6,3 +6,8 @@ import { api } from "@/trpc/server";
 export const getDashboardSubscription = cache(() =>
   api.subscriptions.get.query().catch(() => null),
 );
+
+// The layout's grace banner and the Settings billing offer share one lookup per request.
+export const getDashboardGraceNotice = cache(() =>
+  api.subscriptions.entitlementNotice.query().catch(() => undefined),
+);
