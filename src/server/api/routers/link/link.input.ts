@@ -105,7 +105,8 @@ export const geoRuleInputSchema = z
 export const createLinkSchema = z.object({
   url: destinationUrlSchema,
   name: z.string().optional(),
-  alias: z.string().optional(),
+  // Link.alias is varchar(255).
+  alias: z.string().max(255, "Aliases can be at most 255 characters").optional(),
   disableLinkAfterClicks: z.number().optional(),
   disableLinkAfterDate: z.date().optional(),
   activateAt: z.date().nullable().optional(),

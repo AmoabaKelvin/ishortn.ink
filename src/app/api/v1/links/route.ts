@@ -155,7 +155,8 @@ const shortenLinkSchema = z.object({
   expiresAt: z.string().optional(),
   activatesAt: z.string().datetime({ offset: true }).optional(),
   expiresAfter: z.number().optional(),
-  alias: z.string().optional(),
+  // Link.alias is varchar(255).
+  alias: z.string().max(255, "Aliases can be at most 255 characters").optional(),
   password: z.string().optional(),
   domain: z.string().optional(),
   utmParams: z

@@ -31,7 +31,7 @@ describe.skipIf(!testDatabaseUrl)("token service (MySQL)", () => {
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values({ id: USER_ID });
+    await db.insert(schema.user).values({ id: USER_ID, email: `${USER_ID}@example.com` });
   });
 
   afterAll(async () => {

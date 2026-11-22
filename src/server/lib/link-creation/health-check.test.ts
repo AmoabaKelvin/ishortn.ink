@@ -32,7 +32,11 @@ describe.skipIf(!testDatabaseUrl)("runLinkCreationHealthCheck (MySQL)", () => {
   afterAll(clear);
 
   test("flags signups without links and a server-side failure spike", async () => {
-    await db.insert(schema.user).values(USER_IDS.map((id) => ({ id, createdAt: minutesAgo(120) })));
+    await db
+      .insert(schema.user)
+      .values(
+        USER_IDS.map((id) => ({ id, email: `${id}@example.com`, createdAt: minutesAgo(120) })),
+      );
     await db.insert(schema.linkCreationFailure).values([
       ...Array.from({ length: 4 }, () => ({
         source: "dashboard" as const,
@@ -65,7 +69,11 @@ describe.skipIf(!testDatabaseUrl)("runLinkCreationHealthCheck (MySQL)", () => {
   });
 
   test("stays quiet once a new account creates a link", async () => {
-    await db.insert(schema.user).values(USER_IDS.map((id) => ({ id, createdAt: minutesAgo(120) })));
+    await db
+      .insert(schema.user)
+      .values(
+        USER_IDS.map((id) => ({ id, email: `${id}@example.com`, createdAt: minutesAgo(120) })),
+      );
     await db.insert(schema.link).values(
       Array.from({ length: 10 }, (_, i) => ({
         url: "https://example.com",

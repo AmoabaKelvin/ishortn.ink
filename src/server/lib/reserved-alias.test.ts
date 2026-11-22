@@ -30,7 +30,15 @@ describe.skipIf(!testDatabaseUrl)("alias tombstones (MySQL)", () => {
   const PURGED = "reserved_alias_purged";
   const USERS = [OWNER, OTHER, PURGED];
   const CUSTOM_DOMAIN = "go.reserved-alias.test";
-  const ALIASES = ["tomb-single", "tomb-bulk-1", "tomb-bulk-2", "tomb-qr", "tomb-purged"];
+  const LONG_ALIAS = "tomb-thirty-character-alias-01";
+  const ALIASES = [
+    "tomb-single",
+    "tomb-bulk-1",
+    "tomb-bulk-2",
+    "tomb-qr",
+    "tomb-purged",
+    LONG_ALIAS,
+  ];
 
   function workspaceCtx(userId: string): WorkspaceTRPCContext {
     // SAFETY: the services under test read only db, auth.userId, restrictedAt
@@ -117,6 +125,21 @@ describe.skipIf(!testDatabaseUrl)("alias tombstones (MySQL)", () => {
 
     // Reserved per domain: the same alias on another platform domain is untouched.
     expect(await isAliasReserved(db, "tomb-single", "isht.app")).toBe(false);
+  });
+
+  // The tombstone is written with INSERT IGNORE, which truncates instead of failing when the
+  // alias is longer than ReservedAlias.alias, reserving a prefix instead of the alias.
+  test("a deleted alias longer than 20 characters is reserved in full", async () => {
+    expect(LONG_ALIAS).toHaveLength(30);
+    await deleteLink(workspaceCtx(OWNER), { id: await insertLink(LONG_ALIAS) });
+
+    const rows = await db
+      .select({ alias: schema.reservedAlias.alias })
+      .from(schema.reservedAlias)
+      .where(inArray(schema.reservedAlias.alias, [LONG_ALIAS, LONG_ALIAS.slice(0, 20)]));
+    expect(rows).toEqual([{ alias: LONG_ALIAS }]);
+    await expectTaken(LONG_ALIAS);
+    expect(await isAliasReserved(db, LONG_ALIAS.slice(0, 20), "ishortn.ink")).toBe(false);
   });
 
   test("a bulk delete reserves every deleted alias", async () => {

@@ -30,6 +30,14 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
 
   let pageId = 0;
 
+  // LinkVisit's browser, os and city are NOT NULL; these tests only group by country and device.
+  const visit = (row: { linkId: number; country: string; device: string; createdAt?: Date }) => ({
+    browser: "Chrome",
+    os: "macOS",
+    city: "Unknown",
+    ...row,
+  });
+
   function ctx(plan: Plan) {
     // SAFETY: mirrors what workspaceProcedure resolves for a personal workspace.
     return {
@@ -60,7 +68,7 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values({ id: USER_ID });
+    await db.insert(schema.user).values({ id: USER_ID, email: `${USER_ID}@example.com` });
     const [inserted] = await db.insert(schema.bioPage).values({ userId: USER_ID, slug: SLUG });
     pageId = Number(inserted.insertId);
     await db.insert(schema.bioBlock).values([
@@ -94,16 +102,18 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
   });
 
   test("groups clicks across link blocks, with Unknown buckets", async () => {
-    await db.insert(schema.linkVisit).values([
-      { linkId: LINK_A, country: "Ghana", device: "mobile" },
-      { linkId: LINK_A, country: "Ghana", device: "Mobile" },
-      { linkId: LINK_A, country: "Ghana", device: "Desktop" },
-      { linkId: LINK_B, country: "United States", device: "tablet" },
-      { linkId: LINK_B, country: null, device: null },
-      { linkId: LINK_B, country: "", device: "" },
-      // Not on this page: must not count.
-      { linkId: FOREIGN_LINK, country: "France", device: "Desktop" },
-    ]);
+    await db.insert(schema.linkVisit).values(
+      [
+        { linkId: LINK_A, country: "Ghana", device: "mobile" },
+        { linkId: LINK_A, country: "Ghana", device: "Mobile" },
+        { linkId: LINK_A, country: "Ghana", device: "Desktop" },
+        { linkId: LINK_B, country: "United States", device: "tablet" },
+        { linkId: LINK_B, country: "Unknown", device: "Unknown" },
+        { linkId: LINK_B, country: "", device: "" },
+        // Not on this page: must not count.
+        { linkId: FOREIGN_LINK, country: "France", device: "Desktop" },
+      ].map(visit),
+    );
 
     const result = await getBioPageAnalytics(ctx("pro"), { id: pageId, range: "7d" });
     const { countries, devices } = result.clickBreakdowns;
@@ -188,21 +198,23 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
 
   test("breakdowns follow the selected range and the plan's history cap", async () => {
     const now = Date.now();
-    await db.insert(schema.linkVisit).values([
-      { linkId: LINK_A, country: "Ghana", device: "Mobile", createdAt: new Date(now - DAY_MS) },
-      {
-        linkId: LINK_B,
-        country: "Kenya",
-        device: "Desktop",
-        createdAt: new Date(now - 20 * DAY_MS),
-      },
-      {
-        linkId: LINK_B,
-        country: "Kenya",
-        device: "Desktop",
-        createdAt: new Date(now - 200 * DAY_MS),
-      },
-    ]);
+    await db.insert(schema.linkVisit).values(
+      [
+        { linkId: LINK_A, country: "Ghana", device: "Mobile", createdAt: new Date(now - DAY_MS) },
+        {
+          linkId: LINK_B,
+          country: "Kenya",
+          device: "Desktop",
+          createdAt: new Date(now - 20 * DAY_MS),
+        },
+        {
+          linkId: LINK_B,
+          country: "Kenya",
+          device: "Desktop",
+          createdAt: new Date(now - 200 * DAY_MS),
+        },
+      ].map(visit),
+    );
 
     await db.insert(schema.bioPageView).values([
       { bioPageId: pageId, referer: "instagram.com", createdAt: new Date(now - DAY_MS) },

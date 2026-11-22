@@ -21,16 +21,19 @@ export const clerkUserEventSchema = z.object({
 
 type ClerkUserEvent = z.infer<typeof clerkUserEventSchema>;
 
+/** The User columns from a Clerk user event; null when the user has no email address. */
 export function getUserInfo(payload: ClerkUserEvent) {
   const data = payload.data;
   // The primary address, so a changed email (user.updated) replaces the stored one.
-  const emailData =
-    data.email_addresses.find((e) => e.id === data.primary_email_address_id) ??
-    data.email_addresses[0];
+  const email =
+    data.email_addresses.find((e) => e.id === data.primary_email_address_id)?.email_address ??
+    data.email_addresses[0]?.email_address;
+  // User.email is NOT NULL, so a user without one cannot get a row.
+  if (!email) return null;
 
   return {
     name: storedName(data.first_name, data.last_name),
-    email: emailData?.email_address,
+    email,
     avatarUrl: data.image_url,
   };
 }

@@ -49,7 +49,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/bio/view (MySQL)", () => {
   beforeEach(async () => {
     pending = [];
     await cleanup();
-    await db.insert(schema.user).values({ id: USER_ID });
+    await db.insert(schema.user).values({ id: USER_ID, email: `${USER_ID}@example.com` });
     const [inserted] = await db
       .insert(schema.bioPage)
       .values({ userId: USER_ID, slug: SLUG, isPublished: true });

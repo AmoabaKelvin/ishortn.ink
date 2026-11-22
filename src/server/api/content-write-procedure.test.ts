@@ -103,6 +103,7 @@ describe.skipIf(!testDatabaseUrl)("restricted account write paths (MySQL)", () =
     await cleanup();
     await db.insert(schema.user).values({
       id: USER_ID,
+      email: `${USER_ID}@example.com`,
       restrictedAt: new Date(),
       restrictedReason: "test",
     });
