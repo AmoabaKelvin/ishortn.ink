@@ -1,4 +1,4 @@
 [test]
 preload = ["./test/setup.ts"]
-# The Raycast extension runs its own tests with node --test.
+# The integrations (Raycast, n8n) run their own tests with node --test.
 pathIgnorePatterns = ["integrations/**"]

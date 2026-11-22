@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-ishortn.iShortnTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Marketing & Content", "Productivity"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://ishortn.ink/docs/integrations/n8n#create-an-api-key"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://ishortn.ink/docs/integrations/n8n"
+			}
+		]
+	}
+}
