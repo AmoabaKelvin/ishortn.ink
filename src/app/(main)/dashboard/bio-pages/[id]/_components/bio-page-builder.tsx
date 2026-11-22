@@ -107,10 +107,12 @@ export function BioPageBuilder({
   pageId,
   initialData,
   plan,
+  initialTab = "content",
 }: {
   pageId: number;
   initialData: BioPageData;
   plan: Plan;
+  initialTab?: "content" | "design" | "analytics";
 }) {
   const utils = api.useUtils();
   const router = useRouter();
@@ -299,7 +301,7 @@ export function BioPageBuilder({
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         {/* Editor — takes the remaining width; the preview is a fixed right rail */}
         <div className="min-w-0 flex-1">
-          <Tabs defaultValue="content">
+          <Tabs defaultValue={initialTab}>
             <TabsList>
               <TabsTrigger value="content">Content</TabsTrigger>
               <TabsTrigger value="design">Design</TabsTrigger>

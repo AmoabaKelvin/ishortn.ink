@@ -12,6 +12,7 @@ import {
   getPlanCaps,
 } from "@/lib/billing/plans";
 import { isPlatformDomain } from "@/lib/constants/domains";
+import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import {
   bioBlock,
   bioPage,
@@ -34,7 +35,10 @@ import { requirePermission, workspaceFilter, workspaceOwnership } from "@/server
 import { assertDomainAllowed } from "../link/utils";
 import {
   assertSlugAllowed,
+  buildClickBreakdown,
   checkBioPageLimit,
+  countryLabel,
+  deviceLabel,
   lockBioLinkBlockCapacity,
   pageBelongsToWorkspace,
   rethrowBioDuplicate,
@@ -51,6 +55,7 @@ import type {
 } from "./bio-page.input";
 import type { BioBlock, BioPageTheme, BioSocialLink } from "@/server/db/schema";
 import type { ImageType } from "@/server/lib/storage/types";
+import type { MySqlColumn } from "drizzle-orm/mysql-core";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -742,13 +747,27 @@ export async function getBioPageAnalytics(
   const linkBlocks = blocks.filter((b) => b.type === "link" && b.linkId);
   const linkIds = linkBlocks.map((b) => b.linkId!);
 
-  const clickRows = linkIds.length
-    ? await ctx.db
-        .select({ linkId: linkVisit.linkId, count: count() })
-        .from(linkVisit)
-        .where(and(inArray(linkVisit.linkId, linkIds), gte(linkVisit.createdAt, start)))
-        .groupBy(linkVisit.linkId)
-    : [];
+  // Per-block counts plus country/device/referrer breakdowns, all grouped over
+  // the same visits so every breakdown sums to totalClicks.
+  const clickFilter = and(inArray(linkVisit.linkId, linkIds), gte(linkVisit.createdAt, start));
+  const groupClicksBy = (column: MySqlColumn) =>
+    ctx.db
+      .select({ value: sql<string | null>`${column}`, count: count() })
+      .from(linkVisit)
+      .where(clickFilter)
+      .groupBy(column);
+  const [clickRows, countryRows, deviceRows, referrerRows] = linkIds.length
+    ? await Promise.all([
+        ctx.db
+          .select({ linkId: linkVisit.linkId, count: count() })
+          .from(linkVisit)
+          .where(clickFilter)
+          .groupBy(linkVisit.linkId),
+        groupClicksBy(linkVisit.country),
+        groupClicksBy(linkVisit.device),
+        groupClicksBy(linkVisit.referer),
+      ])
+    : [[], [], [], []];
   const clickMap = new Map(clickRows.map((r) => [r.linkId, Number(r.count)]));
 
   const perBlock = linkBlocks
@@ -772,6 +791,11 @@ export async function getBioPageAnalytics(
     totalClicks,
     ctr: views > 0 ? totalClicks / views : 0,
     perBlock,
+    breakdowns: {
+      countries: buildClickBreakdown(countryRows, countryLabel),
+      devices: buildClickBreakdown(deviceRows, deviceLabel),
+      referrers: buildClickBreakdown(referrerRows, formatReferrerLabel),
+    },
     viewsPerDay,
     rangeDays,
     isProPlan: ctx.workspace.plan !== "free",

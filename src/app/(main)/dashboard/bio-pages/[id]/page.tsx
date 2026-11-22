@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import { api } from "@/trpc/server";
 
@@ -11,10 +12,16 @@ export const metadata: Metadata = { title: "Edit Bio Page" };
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+// `?tab=analytics` deep-links to a tab; anything else opens the editor.
+const tabSchema = z.enum(["content", "design", "analytics"]).catch("content");
 
 export default async function BioPageBuilderPage(props: Props) {
-  const { id: idParam } = await props.params;
+  const [{ id: idParam }, searchParams] = await Promise.all([props.params, props.searchParams]);
   const id = Number(idParam);
   if (!Number.isFinite(id)) notFound();
 
@@ -27,5 +34,12 @@ export default async function BioPageBuilderPage(props: Props) {
 
   const sub = await api.subscriptions.get.query();
 
-  return <BioPageBuilder pageId={id} initialData={page} plan={sub.plan} />;
+  return (
+    <BioPageBuilder
+      pageId={id}
+      initialData={page}
+      plan={sub.plan}
+      initialTab={tabSchema.parse(searchParams.tab)}
+    />
+  );
 }
