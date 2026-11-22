@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { formatAudienceFeedbackLabel } from "@/lib/audience-feedback/labels";
 import { cn } from "@/lib/utils";
+import { displayName } from "@/lib/utils/user-name";
 import {
   audienceFeedbackAcquisitionChannelValues,
   audienceFeedbackPriorToolValues,
@@ -289,10 +290,11 @@ type SubmissionItem = {
 };
 
 function SubmissionCard({ item }: { item: SubmissionItem }) {
+  const name = displayName(item.user?.name);
   const userLabel =
-    item.user?.name && item.user?.email
-      ? `${item.user.name} (${item.user.email})`
-      : (item.user?.email ?? item.user?.name ?? "Unknown user");
+    name && item.user?.email
+      ? `${name} (${item.user.email})`
+      : (item.user?.email ?? name ?? "Unknown user");
 
   return (
     <div className="rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card p-4">
@@ -353,7 +355,7 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
               href={`mailto:${item.user.email}?subject=${encodeURIComponent(
                 "Quick follow-up from iShortn",
               )}&body=${encodeURIComponent(
-                `Hi ${item.user.name ?? "there"},\n\nThanks for filling out the survey. I had a quick follow-up question:\n\n`,
+                `Hi ${name ?? "there"},\n\nThanks for filling out the survey. I had a quick follow-up question:\n\n`,
               )}`}
             >
               <IconMail size={14} />

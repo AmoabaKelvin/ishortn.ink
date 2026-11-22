@@ -1,6 +1,7 @@
 import { Text } from "@react-email/components";
 
 import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
+import { displayName } from "@/lib/utils/user-name";
 
 import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
@@ -45,7 +46,7 @@ export const EventUsageAlertEmail = ({
       }
       notificationSettingsUrl={notificationSettingsUrl}
     >
-      <Text style={text}>Hi {userName || "there"},</Text>
+      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
 
       {capReached ? (
         <>

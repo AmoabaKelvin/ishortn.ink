@@ -1,5 +1,7 @@
 import { Link, Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import { EmailButton, EmailLayout, link, text } from "./_components/layout";
 
 type FirstLinkNudgeEmailProps = {
@@ -20,7 +22,7 @@ export const FirstLinkNudgeEmail = ({
       preview="Paste a long URL and get a short link, a QR code and click counts."
       notificationSettingsUrl={notificationSettingsUrl}
     >
-      <Text style={text}>Hi {userName || "there"},</Text>
+      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
 
       <Text style={text}>
         Paste a long URL and iShortn gives you a short link to share, a QR code for it, and click

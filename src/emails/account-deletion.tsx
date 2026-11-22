@@ -1,6 +1,7 @@
 import { Text } from "@react-email/components";
 
 import { SUPPORT_EMAIL } from "@/lib/constants/app";
+import { displayName } from "@/lib/utils/user-name";
 
 import { EmailButton, EmailLayout, text } from "./_components/layout";
 
@@ -17,7 +18,7 @@ export const AccountDeletionEmail = ({
 }: AccountDeletionEmailProps) => {
   return (
     <EmailLayout preview="Your iShortn account is scheduled for deletion">
-      <Text style={text}>Hi {userName || "there"},</Text>
+      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
 
       <Text style={text}>
         Your iShortn account has been scheduled for deletion. Your short links and bio pages have

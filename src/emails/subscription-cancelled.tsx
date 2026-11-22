@@ -1,5 +1,7 @@
 import { Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
 
 type SubscriptionCancelledEmailProps = {
@@ -18,7 +20,7 @@ export const SubscriptionCancelledEmail = ({
 }: SubscriptionCancelledEmailProps) => {
   return (
     <EmailLayout preview={`Your iShortn ${planName} subscription has been cancelled`}>
-      <Text style={text}>Hi {userName || "there"},</Text>
+      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
 
       <Text style={text}>
         Your iShortn {planName} subscription has been cancelled and won&apos;t renew.{" "}

@@ -19,7 +19,7 @@ export function sendWelcomeEmail({ userId, email, name }: BillingRecipient, plan
     to: email,
     essential: true,
     subject: `Welcome to iShortn ${PLAN_NAMES[plan]}`,
-    react: WelcomeEmail({ userName: name ?? "there", plan }),
+    react: WelcomeEmail({ userName: name, plan }),
     context: { plan },
   });
 }

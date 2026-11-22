@@ -9,6 +9,7 @@ import { getPlanCaps } from "@/lib/billing/plans";
 import { getAppBaseDomain } from "@/lib/constants/domains";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { runBackgroundTask } from "@/lib/utils/background";
+import { displayName } from "@/lib/utils/user-name";
 import {
   accountTransfer,
   bioPage,
@@ -482,7 +483,7 @@ export async function initiateAccountTransfer(
     toUserId: validation.targetUserId!,
     toName: targetUser?.name,
     fromEmail: sourceUser?.email ?? "unknown",
-    fromName: sourceUser?.name ?? "A user",
+    fromName: displayName(sourceUser?.name) ?? "A user",
     acceptUrl,
     resourceCounts: validation.resourceCounts,
   });
@@ -522,7 +523,7 @@ export async function getTransferByToken(ctx: ProtectedTRPCContext, token: strin
   return {
     id: transfer.id,
     fromUser: {
-      name: transfer.fromUser.name,
+      name: displayName(transfer.fromUser.name),
       email: transfer.fromUser.email,
     },
     status: transfer.status,
@@ -682,7 +683,7 @@ export async function acceptAccountTransfer(
         toEmail: sourceUser.email,
         toUserId: transfer.fromUserId,
         toName: sourceUser.name,
-        recipientName: currentUser?.name ?? "the recipient",
+        recipientName: displayName(currentUser?.name) ?? "the recipient",
         recipientEmail: currentUser?.email ?? transfer.toEmail,
         resourceCounts: {
           links: transfer.linksCount,
@@ -1106,7 +1107,7 @@ export async function declineAccountTransfer(ctx: ProtectedTRPCContext, input: {
         toEmail: sourceUser.email,
         toUserId: transfer.fromUserId,
         toName: sourceUser.name,
-        recipientName: currentUser?.name ?? "the recipient",
+        recipientName: displayName(currentUser?.name) ?? "the recipient",
         recipientEmail: currentUser?.email ?? transfer.toEmail,
       }),
     );

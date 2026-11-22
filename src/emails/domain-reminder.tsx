@@ -1,5 +1,7 @@
 import { Section, Text } from "@react-email/components";
 
+import { displayName } from "@/lib/utils/user-name";
+
 import {
   CodeBlock,
   EmailButton,
@@ -40,7 +42,7 @@ export const DomainReminderEmail = ({
       preview={`${domain} needs configuration on iShortn`}
       notificationSettingsUrl={notificationSettingsUrl}
     >
-      <Text style={text}>Hi {recipientName || "there"},</Text>
+      <Text style={text}>Hi {displayName(recipientName) ?? "there"},</Text>
 
       <Text style={text}>
         Your custom domain <strong>{domain}</strong> has been waiting for DNS configuration for{" "}

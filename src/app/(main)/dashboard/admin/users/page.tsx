@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { displayName } from "@/lib/utils/user-name";
 import { api } from "@/trpc/react";
 
 import { DateRangePicker } from "../_components/date-range-picker";
@@ -278,7 +279,7 @@ export default function AdminUsersPage() {
                   <tr key={u.id} className="hover:bg-neutral-50/50 dark:hover:bg-accent/50">
                     <td className="px-4 py-3">
                       <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
-                        {u.name ?? "Unnamed"}
+                        {displayName(u.name) ?? "Unnamed"}
                       </p>
                       <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                         {u.email}
@@ -436,7 +437,7 @@ export default function AdminUsersPage() {
           <DialogBody className="space-y-4">
             <div className="rounded-lg bg-neutral-50 dark:bg-accent/50 p-3">
               <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                {pending?.user.name ?? "Unnamed"}
+                {displayName(pending?.user.name) ?? "Unnamed"}
               </p>
               <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
                 {pending?.user.email}

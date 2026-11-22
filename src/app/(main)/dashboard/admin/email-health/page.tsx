@@ -1,5 +1,6 @@
 import { IconMailCheck } from "@tabler/icons-react";
 
+import { displayName } from "@/lib/utils/user-name";
 import { EMAIL_SUPPRESSION_RECENT_LIMIT } from "@/server/api/routers/admin/admin.service";
 import { api } from "@/trpc/server";
 
@@ -83,7 +84,7 @@ export default async function AdminEmailHealthPage() {
                         {row.email}
                       </p>
                       <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
-                        {row.userId ? (row.userName ?? row.userId) : "No account"}
+                        {row.userId ? (displayName(row.userName) ?? row.userId) : "No account"}
                         {row.detail && ` · ${row.detail}`}
                       </p>
                       <p className="text-[11px] text-neutral-400 dark:text-neutral-500 md:hidden">

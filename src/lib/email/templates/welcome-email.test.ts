@@ -9,7 +9,7 @@ const UTM = "utm_source=email&amp;utm_medium=lifecycle&amp;utm_campaign=welcome"
 
 describe("welcome email", () => {
   test("leads with creating the first link", async () => {
-    const html = await render(createElement(WelcomeEmail, { userFirstname: "Ada" }));
+    const html = await render(createElement(WelcomeEmail, { userName: "Ada Lovelace" }));
 
     expect(html).toContain("Hi <!-- -->Ada<!-- -->,");
     expect(html).toContain("Welcome to iShortn!");
@@ -22,7 +22,7 @@ describe("welcome email", () => {
   });
 
   test("links each next step to its docs page", async () => {
-    const html = await render(createElement(WelcomeEmail, { userFirstname: "Ada" }));
+    const html = await render(createElement(WelcomeEmail, { userName: "Ada Lovelace" }));
 
     for (const slug of ["qr-codes", "custom-domains", "bio-pages"]) {
       expect(html).toContain(`href="https://ishortn.ink/docs/${slug}?${UTM}"`);
@@ -31,7 +31,7 @@ describe("welcome email", () => {
   });
 
   test("fixes the footer typo and keeps the rest of it", async () => {
-    const html = await render(createElement(WelcomeEmail, { userFirstname: "" }));
+    const html = await render(createElement(WelcomeEmail, { userName: "" }));
 
     expect(html).toContain("Hi <!-- -->there<!-- -->,");
     expect(html).not.toMatch(/incase/i);
@@ -39,8 +39,17 @@ describe("welcome email", () => {
     expect(html).toContain('href="https://kelvinamoaba.com"');
   });
 
+  test("greets users without a real name as there", async () => {
+    for (const userName of [null, "null null", "null"]) {
+      const html = await render(createElement(WelcomeEmail, { userName }));
+
+      expect(html).toContain("Hi <!-- -->there<!-- -->,");
+      expect(html).not.toContain("null");
+    }
+  });
+
   test("plain-text version carries the same copy", async () => {
-    const text = await render(createElement(WelcomeEmail, { userFirstname: "Ada" }), {
+    const text = await render(createElement(WelcomeEmail, { userName: "Ada Lovelace" }), {
       plainText: true,
     });
 

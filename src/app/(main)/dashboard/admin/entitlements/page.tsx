@@ -1,6 +1,7 @@
 import { IconCircleCheck } from "@tabler/icons-react";
 
 import { PLAN_NAMES } from "@/lib/billing/entitlements";
+import { displayName } from "@/lib/utils/user-name";
 import { api } from "@/trpc/server";
 
 import type { Plan } from "@/lib/billing/plans";
@@ -152,7 +153,7 @@ export default async function AdminEntitlementsPage() {
                     <tr key={account.userId} className="align-top">
                       <td className="px-4 py-3">
                         <p className="break-words text-[13px] font-medium text-neutral-900 dark:text-foreground">
-                          {account.name ?? "Unnamed"}
+                          {displayName(account.name) ?? "Unnamed"}
                         </p>
                         <p className="break-all text-[11px] text-neutral-400 dark:text-neutral-500">
                           {account.email ?? account.userId}

@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { timeAgo } from "@/lib/utils";
+import { displayName } from "@/lib/utils/user-name";
 import { api } from "@/trpc/react";
 
 import { ActivityChart } from "./_components/daily-activity-chart";
@@ -158,12 +159,12 @@ export default function AdminPage() {
                       />
                     ) : (
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-muted text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-                        {(u.name ?? u.email ?? "?").charAt(0).toUpperCase()}
+                        {(displayName(u.name) ?? u.email ?? "?").charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                        {u.name ?? "Unnamed"}
+                        {displayName(u.name) ?? "Unnamed"}
                       </p>
                       <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
                         {u.email}

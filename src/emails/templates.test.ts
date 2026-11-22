@@ -50,4 +50,27 @@ describe("first link nudge", () => {
     expect(html).toContain("The iShortn team");
     expect(html).toContain("Manage notifications");
   });
+
+  test("greets users stored without a real name as there", async () => {
+    for (const userName of [null, "null null"]) {
+      const html = await render(
+        createElement(FirstLinkNudgeEmail, { ...FirstLinkNudgeEmail.PreviewProps, userName }),
+      );
+
+      expect(html).toContain("Hi <!-- -->there<!-- -->,");
+      expect(html).not.toContain("null");
+    }
+  });
+
+  test("drops a literal null part from the greeting", async () => {
+    const html = await render(
+      createElement(FirstLinkNudgeEmail, {
+        ...FirstLinkNudgeEmail.PreviewProps,
+        userName: "Ama null",
+      }),
+    );
+
+    expect(html).toContain("Hi <!-- -->Ama<!-- -->,");
+    expect(html).not.toContain("null");
+  });
 });
