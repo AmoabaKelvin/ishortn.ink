@@ -114,6 +114,7 @@ describe("card copy", () => {
     qrCodeGenerator: "qr-code-generator/page.tsx",
     utmBuilder: "utm-builder/page.tsx",
     whatsappLinkGenerator: "whatsapp-link-generator/page.tsx",
+    whatsappLinkGeneratorPtBr: "gerador-de-link-whatsapp/page.tsx",
   } satisfies Record<keyof typeof pageCards, string>;
 
   for (const [key, file] of Object.entries(sources)) {

@@ -2,29 +2,42 @@ import { Paths } from "@/lib/constants/app";
 
 import { MAX_URL_LENGTH } from "../_lib/parse-url";
 
-const TOOL_UTM = "utm_source=ishortn&utm_medium=tool&utm_campaign=whatsapp-link";
+const DEFAULT_CAMPAIGN = "whatsapp-link";
 
-export const FEATURES_SIGNUP_HREF = `${Paths.Signup}?${TOOL_UTM}&utm_content=features`;
+const toolUtm = (campaign: string) =>
+  `utm_source=ishortn&utm_medium=tool&utm_campaign=${encodeURIComponent(campaign)}`;
+
+export const featuresSignupHref = (campaign = DEFAULT_CAMPAIGN) =>
+  `${Paths.Signup}?${toolUtm(campaign)}&utm_content=features`;
+
+export const FEATURES_SIGNUP_HREF = featuresSignupHref();
 
 // E.164 allows at most 15 digits; nothing real is shorter than 8 with its country code.
 const MIN_DIGITS = 8;
 const MAX_DIGITS = 15;
 
-export type PhoneResult =
-  | { ok: true; digits: string; display: string; notes: string[] }
-  | { ok: false; error: string };
+// Codes rather than text, so each page shows them in its own language (copy.ts).
+export type PhoneError = "too_short" | "too_long" | "invalid_chars" | "no_country";
+export type PhoneNote =
+  | { code: "dial_already_included"; dial: string }
+  | { code: "argentina_mobile" };
 
-const international = (digits: string, notes: string[] = []): PhoneResult => {
-  if (digits.length < MIN_DIGITS) {
-    return { ok: false, error: "That number looks too short. Check the country code and number." };
-  }
-  if (digits.length > MAX_DIGITS) {
-    return {
-      ok: false,
-      error: "That number is too long. International numbers have at most 15 digits.",
-    };
-  }
+export type PhoneResult =
+  | { ok: true; digits: string; display: string; notes: PhoneNote[] }
+  | { ok: false; error: PhoneError };
+
+const international = (digits: string, notes: PhoneNote[] = []): PhoneResult => {
+  if (digits.length < MIN_DIGITS) return { ok: false, error: "too_short" };
+  if (digits.length > MAX_DIGITS) return { ok: false, error: "too_long" };
   return { ok: true, digits, display: `+${digits}`, notes };
+};
+
+// Brazil's country code 55 is also an area code (DDD) in Rio Grande do Sul, so a national number
+// can start with it. National numbers are 10 or 11 digits (DDD + number); with 55 in front, 12 or 13.
+const includesDial = (compact: string, dial: string) => {
+  if (!compact.startsWith(dial)) return false;
+  if (dial === "55") return compact.length === 12 || compact.length === 13;
+  return compact.length >= 11;
 };
 
 /**
@@ -38,17 +51,17 @@ export const normalizePhone = (input: string, dial: string): PhoneResult => {
 
   const compact = trimmed.replace(/[\s\-.()/]/g, "");
   if (!/^\+?\d*$/.test(compact)) {
-    return { ok: false, error: "Use digits only, like +44 7700 900123." };
+    return { ok: false, error: "invalid_chars" };
   }
   if (compact.startsWith("+")) return international(compact.slice(1));
   if (compact.startsWith("00")) return international(compact.slice(2));
-  if (!dial) return { ok: false, error: "Choose a country or start the number with +." };
+  if (!dial) return { ok: false, error: "no_country" };
 
-  const notes: string[] = [];
+  const notes: PhoneNote[] = [];
   let digits: string;
-  if (compact.startsWith(dial) && compact.length >= 11) {
+  if (includesDial(compact, dial)) {
     digits = compact;
-    notes.push(`This number already starts with +${dial}, so we didn't add it again.`);
+    notes.push({ code: "dial_already_included", dial });
   } else if (dial === "7") {
     // Russia and Kazakhstan dial a national 8 instead of 0.
     digits = dial + (compact.length === 11 && compact.startsWith("8") ? compact.slice(1) : compact);
@@ -60,7 +73,7 @@ export const normalizePhone = (input: string, dial: string): PhoneResult => {
   }
 
   if (dial === "54" && !digits.startsWith("549")) {
-    notes.push("WhatsApp numbers for Argentine mobiles usually start with +54 9.");
+    notes.push({ code: "argentina_mobile" });
   }
   return international(digits, notes);
 };
@@ -84,9 +97,13 @@ export const buildWhatsAppLink = (digits: string, message: string): string | nul
  * tool's own UTM params only. The link (it holds a phone number) rides in the shorten-intent
  * cookie set on click, so it never sits in an href that analytics records.
  */
-export const getShortenHref = (output: string | null, signedIn: boolean | null): string => {
+export const getShortenHref = (
+  output: string | null,
+  signedIn: boolean | null,
+  campaign = DEFAULT_CAMPAIGN,
+): string => {
   if (signedIn) {
     return output ? `/dashboard/link/new?url=${encodeURIComponent(output)}` : "/dashboard/link/new";
   }
-  return `${Paths.Signup}?${TOOL_UTM}`;
+  return `${Paths.Signup}?${toolUtm(campaign)}`;
 };

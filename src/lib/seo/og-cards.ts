@@ -92,6 +92,13 @@ export const pageCards = {
     visual: "links",
     visualLabel: "wa.me/447700900123?text=Hi%2C%20I%27d%20like%20to%20order",
   }),
+  whatsappLinkGeneratorPtBr: card({
+    eyebrow: "Ferramenta grátis",
+    title: "Gerador de link do WhatsApp grátis",
+    subtitle: "Crie um link wa.me com a mensagem já escrita e um QR code para imprimir.",
+    visual: "links",
+    visualLabel: "wa.me/5511912345678?text=Ol%C3%A1!%20Quero%20fazer%20um%20pedido.",
+  }),
 } satisfies Record<string, OgCard>;
 
 export function solutionCard(solution: Solution): OgCard {

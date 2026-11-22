@@ -9,12 +9,22 @@ type FaqEntry = { q: string; a: string };
 // Same source as the homepage FAQ JSON-LD, so the schema matches what's on the page.
 const defaultFaqs: FaqEntry[] = landingPageCopy.faq.map((f) => ({ q: f.question, a: f.answer }));
 
-export const Faq = ({ faqs = defaultFaqs }: { faqs?: FaqEntry[] }) => (
+export const Faq = ({
+  faqs = defaultFaqs,
+  eyebrow = "FAQ",
+  title = "Frequently asked questions",
+  subtitle = "These are the questions we hear most.",
+}: {
+  faqs?: FaqEntry[];
+  eyebrow?: string;
+  title?: string;
+  subtitle?: string;
+}) => (
   <Section id="help">
     <SectionHeading
-      eyebrow={<Eyebrow icon={<IconHelpCircleFilled aria-hidden="true" />}>FAQ</Eyebrow>}
-      title="Frequently asked questions"
-      subtitle="These are the questions we hear most."
+      eyebrow={<Eyebrow icon={<IconHelpCircleFilled aria-hidden="true" />}>{eyebrow}</Eyebrow>}
+      title={title}
+      subtitle={subtitle}
     />
 
     <div className="mx-auto mt-14 max-w-4xl border-t border-neutral-950/[0.07]">

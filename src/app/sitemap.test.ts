@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
+import { resolveSitemap } from "next/dist/build/webpack/loaders/metadata/resolve-route-data";
+
 import { getChangelogEntries } from "@/lib/changelog";
 import { competitors } from "@/lib/seo/competitors";
 import { solutionList } from "@/lib/seo/solutions";
@@ -33,9 +35,23 @@ describe("sitemap", () => {
     expect(urls).toContain("https://ishortn.ink/utm-builder");
   });
 
-  it("lists the WhatsApp link generator", async () => {
-    const urls = (await sitemap()).map((entry) => entry.url);
-    expect(urls).toContain("https://ishortn.ink/whatsapp-link-generator");
+  it("lists the WhatsApp link generator in English and Portuguese, each with both alternates", async () => {
+    const entries = await sitemap();
+    const languages = {
+      en: "https://ishortn.ink/whatsapp-link-generator",
+      "pt-BR": "https://ishortn.ink/gerador-de-link-whatsapp",
+    };
+    for (const url of Object.values(languages)) {
+      const entry = entries.find((e) => e.url === url);
+      expect(entry?.alternates?.languages).toEqual(languages);
+    }
+
+    // What Next.js serves as /sitemap.xml.
+    const xml = resolveSitemap(entries);
+    expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
+    for (const [language, href] of Object.entries(languages)) {
+      expect(xml).toContain(`<xhtml:link rel="alternate" hreflang="${language}" href="${href}" />`);
+    }
   });
 
   it("lists the solutions hub and dates each solution page by its last copy update", async () => {

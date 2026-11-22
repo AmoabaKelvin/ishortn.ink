@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test";
 
-import { buildWhatsAppLink, getShortenHref, normalizePhone } from "./utils";
+import {
+  buildWhatsAppLink,
+  FEATURES_SIGNUP_HREF,
+  featuresSignupHref,
+  getShortenHref,
+  normalizePhone,
+} from "./utils";
 
 const digitsOf = (input: string, dial: string) => {
   const result = normalizePhone(input, dial);
@@ -40,7 +46,7 @@ describe("normalizePhone", () => {
       ok: true,
       digits: "447700900123",
       display: "+447700900123",
-      notes: ["This number already starts with +44, so we didn't add it again."],
+      notes: [{ code: "dial_already_included", dial: "44" }],
     });
   });
 
@@ -50,28 +56,48 @@ describe("normalizePhone", () => {
       ok: true,
       digits: "541123456789",
       display: "+541123456789",
-      notes: ["WhatsApp numbers for Argentine mobiles usually start with +54 9."],
+      notes: [{ code: "argentina_mobile" }],
     });
     expect(normalizePhone("9 11 2345 6789", "54")).toMatchObject({ notes: [] });
   });
 
   it("asks for a country when the number has no international prefix", () => {
-    expect(errorOf("7700 900123", "")).toBe("Choose a country or start the number with +.");
+    expect(errorOf("7700 900123", "")).toBe("no_country");
   });
 
   it("rejects numbers that are too short or too long", () => {
-    expect(errorOf("12345", "44")).toBe(
-      "That number looks too short. Check the country code and number.",
-    );
-    expect(errorOf(`+${"1".repeat(16)}`, "")).toBe(
-      "That number is too long. International numbers have at most 15 digits.",
-    );
+    expect(errorOf("12345", "44")).toBe("too_short");
+    expect(errorOf(`+${"1".repeat(16)}`, "")).toBe("too_long");
     expect(digitsOf(`+${"1".repeat(15)}`, "")).toBe("1".repeat(15));
   });
 
   it("rejects anything but digits, separators and a leading +", () => {
-    expect(errorOf("+44 7700 9001ab", "")).toBe("Use digits only, like +44 7700 900123.");
-    expect(errorOf("44+7700900123", "44")).toBe("Use digits only, like +44 7700 900123.");
+    expect(errorOf("+44 7700 9001ab", "")).toBe("invalid_chars");
+    expect(errorOf("44+7700900123", "44")).toBe("invalid_chars");
+  });
+
+  // 55 is both Brazil's country code and the DDD (area code) of Rio Grande do Sul.
+  it("adds 55 to 10- and 11-digit Brazilian numbers, even when the DDD is 55", () => {
+    expect(normalizePhone("(55) 99123-4567", "55")).toEqual({
+      ok: true,
+      digits: "5555991234567",
+      display: "+5555991234567",
+      notes: [],
+    });
+    expect(digitsOf("(55) 3222-1234", "55")).toBe("555532221234");
+    expect(digitsOf("11 91234-5678", "55")).toBe("5511912345678");
+    expect(digitsOf("011 91234-5678", "55")).toBe("5511912345678");
+  });
+
+  it("reads 12- and 13-digit Brazilian numbers starting with 55 as international", () => {
+    expect(normalizePhone("55 11 91234-5678", "55")).toEqual({
+      ok: true,
+      digits: "5511912345678",
+      display: "+5511912345678",
+      notes: [{ code: "dial_already_included", dial: "55" }],
+    });
+    expect(digitsOf("55 55 99123-4567", "55")).toBe("5555991234567");
+    expect(digitsOf("55 11 3222-1234", "55")).toBe("551132221234");
   });
 
   it("returns an empty result without an error for empty input", () => {
@@ -128,10 +154,27 @@ describe("getShortenHref", () => {
     expect(getShortenHref(link, null)).toBe(href.pathname + href.search);
   });
 
+  it("tags sign-ups with the page's campaign", () => {
+    expect(getShortenHref(null, false, "whatsapp-link-pt")).toContain(
+      "utm_campaign=whatsapp-link-pt",
+    );
+  });
+
   it("sends signed-in visitors to the link editor with the exact link", () => {
     const href = new URL(getShortenHref(link, true), "https://ishortn.ink");
     expect(href.pathname).toBe("/dashboard/link/new");
     expect(href.searchParams.get("url")).toBe(link);
     expect(getShortenHref(null, true)).toBe("/dashboard/link/new");
+  });
+});
+
+describe("featuresSignupHref", () => {
+  it("keeps the English page's link and tags other pages with their campaign", () => {
+    expect(FEATURES_SIGNUP_HREF).toBe(
+      "/auth/sign-up?utm_source=ishortn&utm_medium=tool&utm_campaign=whatsapp-link&utm_content=features",
+    );
+    expect(featuresSignupHref("whatsapp-link-pt")).toBe(
+      "/auth/sign-up?utm_source=ishortn&utm_medium=tool&utm_campaign=whatsapp-link-pt&utm_content=features",
+    );
   });
 });
