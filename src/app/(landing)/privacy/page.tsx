@@ -1,6 +1,5 @@
 import { IconShieldCheckFilled } from "@tabler/icons-react";
 
-import { socialImages } from "@/lib/seo/og-image";
 import { cn } from "@/lib/utils";
 import "@/styles/site-content.css";
 
@@ -17,7 +16,6 @@ export const metadata: Metadata = {
     title: "Privacy Policy - iShortn",
     description: "Learn how iShortn collects, uses, and protects your personal information.",
     type: "website",
-    images: socialImages(),
   },
 };
 

@@ -11,8 +11,7 @@ import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/seo/json-ld";
 import { isPostLive } from "@/lib/blog";
 import { Paths } from "@/lib/constants/app";
-import { comparisonTitle, competitors, type Competitor } from "@/lib/seo/competitors";
-import { socialImages } from "@/lib/seo/og-image";
+import { comparisonTitle, competitors, getCompetitor } from "@/lib/seo/competitors";
 import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
@@ -50,10 +49,6 @@ function formatCheckedDate(iso: string) {
   });
 }
 
-function getCompetitor(slug: string): Competitor | undefined {
-  return Object.values(competitors).find((c) => c.slug === slug);
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -78,7 +73,7 @@ export async function generateMetadata({
       "best url shortener",
       "link shortener alternative",
     ],
-    openGraph: { title, description, type: "website", images: socialImages() },
+    openGraph: { title, description, type: "website" },
   };
 }
 
