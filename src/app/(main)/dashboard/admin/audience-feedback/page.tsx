@@ -25,6 +25,7 @@ import { api } from "@/trpc/react";
 import { useCursorPages } from "../_components/use-cursor-pages";
 
 import type { Plan } from "@/lib/billing/plans";
+import type { AudienceFeedbackResponseFilter } from "@/server/api/routers/audience-feedback/audience-feedback.input";
 
 type PlanFilter = Plan | "all";
 type ChannelFilter = (typeof audienceFeedbackAcquisitionChannelValues)[number] | "all";
@@ -32,6 +33,12 @@ type PriorToolFilter = (typeof audienceFeedbackPriorToolValues)[number] | "all";
 type RoleFilter = (typeof audienceFeedbackRoleValues)[number] | "all";
 
 const planFilterOptions: PlanFilter[] = ["all", "free", "pro", "ultra"];
+
+const responseFilterOptions: Array<{ value: AudienceFeedbackResponseFilter; label: string }> = [
+  { value: "all", label: "All responses" },
+  { value: "survey", label: "Full survey" },
+  { value: "acquisition", label: "Acquisition prompt" },
+];
 
 const PLAN_BADGE_CLASSES = {
   ultra: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400",
@@ -50,6 +57,7 @@ function withAllOption<T extends string>(
 }
 
 export default function AdminAudienceFeedbackPage() {
+  const [response, setResponse] = useState<AudienceFeedbackResponseFilter>("all");
   const [plan, setPlan] = useState<PlanFilter>("all");
   const [channel, setChannel] = useState<ChannelFilter>("all");
   const [priorTool, setPriorTool] = useState<PriorToolFilter>("all");
@@ -57,9 +65,12 @@ export default function AdminAudienceFeedbackPage() {
   const pages = useCursorPages();
   const { cursor } = pages;
 
-  const { data: stats, isLoading: statsLoading } = api.audienceFeedback.stats.useQuery();
+  const { data: stats, isLoading: statsLoading } = api.audienceFeedback.stats.useQuery({
+    response,
+  });
 
   const { data, isLoading } = api.audienceFeedback.list.useQuery({
+    response,
     plan: plan === "all" ? undefined : plan,
     acquisitionChannel: channel === "all" ? undefined : channel,
     priorTool: priorTool === "all" ? undefined : priorTool,
@@ -75,13 +86,22 @@ export default function AdminAudienceFeedbackPage() {
           Audience Feedback
         </h1>
         <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-          Survey responses on who&apos;s using iShortn and how they got here
+          Survey and acquisition prompt answers on who&apos;s using iShortn and how they got here
         </p>
       </div>
 
       <StatsGrid stats={stats} isLoading={statsLoading} />
 
       <div className="mt-8 mb-6 flex flex-wrap items-center gap-2">
+        <FilterSelect
+          label="Response"
+          value={response}
+          onChange={(v) => {
+            setResponse(v);
+            pages.reset();
+          }}
+          options={responseFilterOptions}
+        />
         <FilterSelect
           label="Plan"
           value={plan}
@@ -139,7 +159,7 @@ export default function AdminAudienceFeedbackPage() {
             className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600"
           />
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
-            No submissions match these filters
+            No responses match these filters
           </p>
         </div>
       )}
@@ -212,9 +232,9 @@ function StatsGrid({ stats, isLoading }: { stats: StatsData | undefined; isLoadi
           />
         </div>
         <div>
-          <p className="text-[12px] text-neutral-500 dark:text-neutral-400">Total submissions</p>
-          <p className="text-lg font-semibold text-neutral-900 dark:text-foreground">
-            {stats.total}
+          <p className="text-[12px] text-neutral-500 dark:text-neutral-400">Total responses</p>
+          <p className="text-lg font-semibold tabular-nums text-neutral-900 dark:text-foreground">
+            {stats.total.toLocaleString("en-US")}
           </p>
         </div>
       </div>
@@ -286,6 +306,7 @@ type SubmissionItem = {
   improvementWish: string | null;
   planSnapshot: Plan | null;
   submittedAt: Date | null;
+  acquisitionAnsweredAt: Date | null;
   user?: { name: string | null; email: string | null; imageUrl: string | null } | null;
 };
 
@@ -295,12 +316,15 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
     name && item.user?.email
       ? `${name} (${item.user.email})`
       : (item.user?.email ?? name ?? "Unknown user");
+  // Acquisition-only rows answered just channel, detail and use case.
+  const isFullSurvey = Boolean(item.submittedAt);
+  const answeredAt = item.submittedAt ?? item.acquisitionAnsweredAt;
 
   return (
     <div className="rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
@@ -309,11 +333,18 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
             >
               {formatAudienceFeedbackLabel(item.planSnapshot)}
             </span>
-            <span className="text-[12px] text-neutral-500 dark:text-neutral-400">{userLabel}</span>
+            {item.acquisitionAnsweredAt && (
+              <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-700 dark:bg-muted dark:text-neutral-300">
+                Acquisition prompt
+              </span>
+            )}
+            <span className="min-w-0 break-all text-[12px] text-neutral-500 dark:text-neutral-400">
+              {userLabel}
+            </span>
             <span className="text-[11px] text-neutral-400 dark:text-neutral-500">·</span>
             <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-              {item.submittedAt
-                ? new Date(item.submittedAt).toLocaleDateString("en-US", {
+              {answeredAt
+                ? new Date(answeredAt).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
@@ -323,12 +354,16 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
           </div>
 
           <div className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-            <Field label="Role" value={item.role} />
-            <Field label="Use case" value={item.useCase} />
-            <Field label="Monthly links" value={item.monthlyVolume} />
             <Field label="Channel" value={item.acquisitionChannel} />
-            <Field label="Prior tool" value={item.priorTool} />
-            <Field label="Loved feature" value={item.magicFeature} />
+            <Field label="Use case" value={item.useCase} />
+            {isFullSurvey && (
+              <>
+                <Field label="Role" value={item.role} />
+                <Field label="Monthly links" value={item.monthlyVolume} />
+                <Field label="Prior tool" value={item.priorTool} />
+                <Field label="Loved feature" value={item.magicFeature} />
+              </>
+            )}
             {item.upgradeReason && <Field label="Upgrade reason" value={item.upgradeReason} />}
           </div>
 

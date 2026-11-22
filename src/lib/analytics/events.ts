@@ -46,6 +46,11 @@ export const POSTHOG_EVENTS = {
   PLAN_LIMIT_REACHED: "plan_limit_reached",
   UPGRADE_PROMPT_CLICKED: "upgrade_prompt_clicked",
   PAYMENT_UPDATE_CLICKED: "payment_update_clicked",
+
+  // "How did you find iShortn?" prompt for paid accounts
+  ACQUISITION_PROMPT_SHOWN: "acquisition_prompt_shown",
+  ACQUISITION_PROMPT_SUBMITTED: "acquisition_prompt_submitted",
+  ACQUISITION_PROMPT_DISMISSED: "acquisition_prompt_dismissed",
 } as const;
 
 type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];

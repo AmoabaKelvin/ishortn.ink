@@ -1296,12 +1296,18 @@ export const audienceFeedback = mysqlTable(
     submittedAt: timestamp("submittedAt"),
     dismissedAt: timestamp("dismissedAt"),
     dismissCount: int("dismissCount").notNull().default(0),
+    // The short "how did you find us" prompt for paid accounts. Kept apart from
+    // submittedAt/dismissedAt so the full survey can still be offered afterwards.
+    acquisitionAnsweredAt: timestamp("acquisitionAnsweredAt"),
+    acquisitionDismissedAt: timestamp("acquisitionDismissedAt"),
+    acquisitionDismissCount: int("acquisitionDismissCount").notNull().default(0),
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     submittedAtIdx: index("submittedAt_idx").on(table.submittedAt),
+    acquisitionAnsweredAtIdx: index("acquisitionAnsweredAt_idx").on(table.acquisitionAnsweredAt),
   }),
 );
 
