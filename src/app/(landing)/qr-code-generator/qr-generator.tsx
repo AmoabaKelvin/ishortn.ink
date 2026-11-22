@@ -1,8 +1,8 @@
 "use client";
 
 import { IconAlertCircle, IconDownload, IconQrcode } from "@tabler/icons-react";
-import { QRCodeCanvas } from "qrcode.react";
-import { useId, useRef, useState } from "react";
+import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 
 import { Paths } from "@/lib/constants/app";
 import { cn } from "@/lib/utils";
@@ -16,29 +16,50 @@ import {
   h3Class,
   wellClass,
 } from "../_components/site-primitives";
-import { parseQrUrl } from "./utils";
+import { parseQrUrl, qrUrlFromSearch, toSvgFile } from "./utils";
 
 const SIGNUP_HREF = `${Paths.Signup}?utm_source=ishortn_site&utm_medium=landing&utm_campaign=qr-code-generator`;
 
 // Drawn at print resolution and scaled down with CSS, so the download is crisp.
 const QR_EXPORT_SIZE = 1024;
+const QR_LEVEL = "M";
+
+const subscribeToNothing = () => () => {};
+const readUrlParam = () => qrUrlFromSearch(window.location.search);
 
 export function QrGenerator() {
-  const [value, setValue] = useState("https://ishortn.ink");
+  // The page is static, so `?url=` is read from the URL on the client (the server snapshot is the
+  // default) rather than through useSearchParams, which would need a Suspense boundary.
+  const urlParam = useSyncExternalStore(subscribeToNothing, readUrlParam, () => null);
+  const [typed, setTyped] = useState<string | null>(null);
+  const value = typed ?? urlParam ?? "https://ishortn.ink";
   const previewRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<HTMLDivElement>(null);
   const inputId = useId();
   const messageId = useId();
 
   const result = parseQrUrl(value);
   const isEmpty = value.trim() === "";
 
-  const download = () => {
+  const downloadPng = () => {
     const canvas = previewRef.current?.querySelector("canvas");
     if (!canvas) return;
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
     a.download = "qr-code.png";
     a.click();
+  };
+
+  const downloadSvg = () => {
+    const svg = svgRef.current?.querySelector("svg");
+    if (!svg) return;
+    const markup = toSvgFile(new XMLSerializer().serializeToString(svg));
+    const href = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" }));
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = "qr-code.svg";
+    a.click();
+    URL.revokeObjectURL(href);
   };
 
   return (
@@ -57,7 +78,7 @@ export function QrGenerator() {
             spellCheck={false}
             placeholder="https://example.com"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => setTyped(e.target.value)}
             aria-invalid={!result.ok && !isEmpty}
             aria-describedby={messageId}
             className={fieldClass}
@@ -93,12 +114,21 @@ export function QrGenerator() {
                 <QRCodeCanvas
                   value={result.url}
                   size={QR_EXPORT_SIZE}
-                  level="M"
+                  level={QR_LEVEL}
                   includeMargin
                   aria-hidden="true"
                   // The library sets width/height inline from `size`; override to fit the tile.
                   style={{ width: "100%", height: "auto" }}
                 />
+                {/* Source for the SVG download; same value, level and quiet zone as the PNG */}
+                <div ref={svgRef} hidden>
+                  <QRCodeSVG
+                    value={result.url}
+                    size={QR_EXPORT_SIZE}
+                    level={QR_LEVEL}
+                    includeMargin
+                  />
+                </div>
               </>
             ) : (
               <div className="flex flex-col items-center gap-2 px-6 text-center text-neutral-500">
@@ -107,15 +137,26 @@ export function QrGenerator() {
               </div>
             )}
           </div>
-          <button
-            type="button"
-            onClick={download}
-            disabled={!result.ok}
-            className={cn(buttonClass({ variant: "secondary" }), "w-full max-w-60 gap-1.5")}
-          >
-            <IconDownload aria-hidden="true" className="size-4 shrink-0" />
-            Download PNG
-          </button>
+          <div className="flex w-full max-w-60 flex-col gap-2">
+            <button
+              type="button"
+              onClick={downloadPng}
+              disabled={!result.ok}
+              className={cn(buttonClass({ variant: "secondary" }), "w-full gap-1.5")}
+            >
+              <IconDownload aria-hidden="true" className="size-4 shrink-0" />
+              Download PNG
+            </button>
+            <button
+              type="button"
+              onClick={downloadSvg}
+              disabled={!result.ok}
+              className={cn(buttonClass({ variant: "secondary" }), "w-full gap-1.5")}
+            >
+              <IconDownload aria-hidden="true" className="size-4 shrink-0" />
+              Download SVG
+            </button>
+          </div>
         </div>
 
         {/* Upgrade path: directly under the preview on mobile */}

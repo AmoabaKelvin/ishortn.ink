@@ -65,7 +65,7 @@ Creating a QR code is straightforward. Here is the process from start to finish.
 1. **Choose a QR code generator.** Look for a tool that supports dynamic codes with built-in analytics. A free QR code generator like iShortn lets you create codes without upfront costs.
 2. **Enter your destination URL.** This is the page, menu, form, or file you want the code to link to.
 3. **Customize the design.** Adjust colors, add a logo, or change the shape of the pattern. Keep scannability as your top priority.
-4. **Download the QR code.** Export a high-resolution PNG, or an SVG for large-format print and engraving. iShortn's no-signup generator downloads print-resolution PNGs; codes made in a free iShortn account can also download as SVG, which scales to any size. For large-format print, test a proof at the final size before the full run.
+4. **Download the QR code.** Export a high-resolution PNG, or an SVG for large-format print and engraving. iShortn's no-signup generator and codes made in a free iShortn account both download as a print-resolution PNG or an SVG, which scales to any size. For large-format print, test a proof at the final size before the full run.
 5. **Test before publishing.** Scan with at least two different devices to verify it works. Check that the destination loads properly on mobile.
 6. **Place and distribute.** Add the QR code to menus, packaging, signage, flyers, or digital channels.
 

@@ -11,7 +11,11 @@ import {
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT as FREE_DYNAMIC_QR_CODES } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
-import { createBreadcrumbSchema, createFaqSchema } from "@/lib/seo/structured-data";
+import {
+  createBreadcrumbSchema,
+  createFaqSchema,
+  createWebApplicationSchema,
+} from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
 import { CTA } from "../_components/cta";
@@ -36,7 +40,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 const description =
-  "Create a free QR code in your browser, no sign-up needed. Need a code you can edit after printing and track? iShortn Free includes 5 dynamic QR codes that never expire.";
+  "Create a free QR code in your browser and download it as a PNG or SVG, no sign-up needed. Need a code you can edit after printing and track? iShortn Free includes 5 dynamic QR codes that never expire.";
 
 export const metadata: Metadata = {
   title: "Free QR Code Generator That Doesn't Expire",
@@ -47,6 +51,7 @@ export const metadata: Metadata = {
     "free qr code generator no expiration",
     "dynamic qr code",
     "qr code with analytics",
+    "free svg qr code generator",
   ],
   alternates: { canonical: "/qr-code-generator" },
   openGraph: {
@@ -66,6 +71,7 @@ const comparison: { title: string; summary: string; points: string[] }[] = [
     points: [
       "The URL is encoded directly in the pattern",
       "Works for as long as the URL works",
+      "Downloads as a PNG or a vector SVG",
       "Can't be changed once printed",
       "No scan counts or analytics",
     ],
@@ -124,8 +130,12 @@ const qrFaqs = [
     a: `Create a dynamic code in your iShortn dashboard. Every scan is recorded with its date, country, and device. Free includes a ${free.analyticsRangeLimitDays}-day analytics window and ${(free.eventsLimit ?? 0).toLocaleString()} tracked events a month.`,
   },
   {
+    q: "Can I download the QR code as an SVG?",
+    a: "Yes. Codes from this page download as a PNG or an SVG. The PNG is 1024 pixels square, which suits screens and everyday print. The SVG is a vector file that stays sharp at any size, so use it for signs, banners, stickers, engraving, or when a printer asks for a vector file.",
+  },
+  {
     q: "Is anything stored when I use this generator?",
-    a: "No. The code is drawn in your browser. The URL you type is never sent to our servers, and you don't need an account.",
+    a: "No. The code and both downloads are made in your browser. The URL you type is never sent to our servers, and you don't need an account.",
   },
   {
     q: "Do dynamic QR codes count toward my link limit?",
@@ -143,6 +153,13 @@ export default function QrCodeGeneratorPage() {
         ])}
       />
       <JsonLd data={createFaqSchema(qrFaqs.map((f) => ({ question: f.q, answer: f.a })))} />
+      <JsonLd
+        data={createWebApplicationSchema({
+          name: "QR Code Generator",
+          url: "https://ishortn.ink/qr-code-generator",
+          description,
+        })}
+      />
       <Header />
 
       {/* Hero + generator */}

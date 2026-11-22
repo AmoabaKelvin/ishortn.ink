@@ -54,7 +54,7 @@ A static code is fine when the link will never change, for example a page on you
 
 ### Option A: a static code (no account)
 
-Paste your link into our [free QR code generator](/qr-code-generator) and download the PNG. There's no sign-up, no watermark and no expiry. The download is 1024 pixels square, which prints sharply up to about 8.5 cm (3.4 inches) wide at 300 dpi. That covers handouts and most flyers. For a bigger code, print a test copy first, or use Option B: codes made in a free account also download as SVG, which scales to any size.
+Paste your link into our [free QR code generator](/qr-code-generator) and download the PNG. There's no sign-up, no watermark and no expiry. The download is 1024 pixels square, which prints sharply up to about 8.5 cm (3.4 inches) wide at 300 dpi. That covers handouts and most flyers. For a bigger code, download the SVG instead: it's a vector file that scales to any size.
 
 ### Option B: a dynamic code you can edit and track
 
