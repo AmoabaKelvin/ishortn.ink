@@ -31,12 +31,19 @@ function isHttpUrl(value: string): boolean {
  * our own keys must never be treated as a bucket object.
  */
 export function isOwnedR2Url(workspace: WorkspaceContext, imageUrl: string): boolean {
-  const publicUrl = env.R2_PUBLIC_URL;
+  return isR2UrlOwnedBy(workspaceOwnership(workspace), imageUrl);
+}
+
+/** `isOwnedR2Url` for a row's own `userId`/`teamId` columns. */
+export function isR2UrlOwnedBy(
+  owner: { userId: string; teamId: number | null },
+  imageUrl: string,
+  publicUrl = env.R2_PUBLIC_URL,
+): boolean {
   if (!publicUrl || !imageUrl.startsWith(`${publicUrl}/`)) return false;
 
   // Mirrors the key layout generateKey builds in ./r2.
-  const ownership = workspaceOwnership(workspace);
-  const prefix = ownership.teamId ? `teams/${ownership.teamId}/` : `users/${ownership.userId}/`;
+  const prefix = owner.teamId ? `teams/${owner.teamId}/` : `users/${owner.userId}/`;
 
   return imageUrl.slice(publicUrl.length + 1).startsWith(prefix);
 }

@@ -8,7 +8,7 @@ import { MarkerFrames, PixelStyles } from "@/lib/qr-generator/types";
 import * as schema from "@/server/db/schema";
 
 import { qrcodeInput } from "./qrcode.input";
-import { toLegacyQrStyles } from "./utils";
+import { storedQrImageSource, toLegacyQrStyles } from "./utils";
 
 describe("toLegacyQrStyles", () => {
   test.each(PixelStyles)("pixel style %s maps to a legacy pattern style", (pixelStyle) => {
@@ -44,6 +44,57 @@ describe("qrcodeInput", () => {
       patternStyle: "hexagon",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("storedQrImageSource", () => {
+  const bucket = "https://pub-example.r2.dev";
+  const personal = { userId: "user_abc", teamId: null };
+  const team = { userId: "user_abc", teamId: 42 };
+
+  test("serves the uploaded object from the code's own workspace prefix", () => {
+    const url = `${bucket}/users/user_abc/qr-code/7.png`;
+    expect(storedQrImageSource({ ...personal, qrCode: url }, bucket)).toEqual({
+      type: "bucket",
+      url,
+    });
+    const teamUrl = `${bucket}/teams/42/qr-code/7.png`;
+    expect(storedQrImageSource({ ...team, qrCode: teamUrl }, bucket)).toEqual({
+      type: "bucket",
+      url: teamUrl,
+    });
+  });
+
+  test("decodes a data URI saved before the upload finished", () => {
+    const source = storedQrImageSource(
+      { ...personal, qrCode: "data:image/png;base64,iVBORw0KGgo=" },
+      bucket,
+    );
+    expect(source).toMatchObject({ type: "inline", contentType: "image/png" });
+    expect(source?.type === "inline" && [...source.bytes.subarray(0, 4)]).toEqual([
+      0x89, 0x50, 0x4e, 0x47,
+    ]);
+  });
+
+  test("never fetches a URL outside the code's workspace prefix", () => {
+    for (const qrCode of [
+      `${bucket}/users/user_other/qr-code/7.png`,
+      `${bucket}/teams/42/qr-code/7.png`,
+      `${bucket}/users/user_abc/../user_other/qr-code/7.png`,
+      `${bucket}/users/user_abc/%2e%2e/user_other/qr-code/7.png`,
+      "https://attacker.example/qr.png",
+      "http://169.254.169.254/latest/meta-data",
+    ]) {
+      expect(storedQrImageSource({ ...personal, qrCode }, bucket)).toBeNull();
+    }
+    expect(
+      storedQrImageSource({ ...team, qrCode: `${bucket}/users/user_abc/qr-code/7.png` }, bucket),
+    ).toBeNull();
+  });
+
+  test("returns null without a stored image", () => {
+    expect(storedQrImageSource({ ...personal, qrCode: null }, bucket)).toBeNull();
+    expect(storedQrImageSource({ ...personal, qrCode: "" }, bucket)).toBeNull();
   });
 });
 
