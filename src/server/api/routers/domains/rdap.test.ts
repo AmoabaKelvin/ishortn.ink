@@ -32,7 +32,7 @@ describe("reviewNewDomain", () => {
     expect(calls).toEqual(["acmme-corp.co.uk"]);
     expect(review).toEqual({
       reviewStatus: "held",
-      reviewReason: "Account 1 days old; domain registered 21 days ago",
+      reviewReason: "Account 1 day old; domain registered 21 days ago",
       registrableDomainRegisteredAt: daysAgo(21),
       registrar: "NameCheap, Inc.",
       rdapLookupFailed: false,

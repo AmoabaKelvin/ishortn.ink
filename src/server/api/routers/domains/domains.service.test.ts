@@ -9,6 +9,7 @@ import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import * as schema from "@/server/db/schema";
 
 import { approveHeldDomain, getHeldDomains, rejectHeldDomain } from "../admin/admin.service";
+import { cleanupExpiredData } from "../cleanup/expired-data-cleanup.service";
 import { shortenLinkWithAutoAlias } from "../link/link.service";
 import { assertDomainOwned } from "../link/utils";
 import {
@@ -264,7 +265,7 @@ describe.skipIf(!testDatabaseUrl)("domains service (MySQL)", () => {
         domain: HELD_DOMAIN,
         status: "pending",
         reviewStatus: "held",
-        reviewReason: "Account 1 days old; domain registered 21 days ago",
+        reviewReason: "Account 1 day old; domain registered 21 days ago",
         registrableDomainRegisteredAt: new Date("2026-11-01T00:00:00Z"),
         registrar: "NameCheap, Inc.",
       });
@@ -357,6 +358,57 @@ describe.skipIf(!testDatabaseUrl)("domains service (MySQL)", () => {
           checkDomainStatus(personalCtx(OWNER), HELD_DOMAIN, { lookupHostname: activeHostname }),
         ),
       ).toBe("FORBIDDEN");
+    });
+
+    test("a rejected domain survives the invalid-domain cleanup and can't be deleted by its owner", async () => {
+      const { id } = await heldRow();
+      await rejectHeldDomain(adminCtx(), { id, reason: "Lookalike of a bank" }, { removeHostname });
+      await db
+        .update(schema.customDomain)
+        .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+        .where(inArray(schema.customDomain.domain, [HELD_DOMAIN, FOREIGN_DOMAIN]));
+      await db
+        .update(schema.customDomain)
+        .set({ status: "invalid" })
+        .where(eq(schema.customDomain.domain, FOREIGN_DOMAIN));
+
+      await cleanupExpiredData();
+
+      const row = await heldRow();
+      expect(row.reviewStatus).toBe("rejected");
+      expect(row.reviewReason).toBe("Lookalike of a bank");
+      // An ordinary invalid domain past retention still goes
+      expect(
+        await db.query.customDomain.findFirst({
+          where: eq(schema.customDomain.domain, FOREIGN_DOMAIN),
+        }),
+      ).toBeUndefined();
+
+      expect(
+        await errorCode(deleteDomainAndAssociatedLinks(personalCtx(OWNER), id, { removeHostname })),
+      ).toBe("FORBIDDEN");
+      expect((await heldRow()).id).toBe(id);
+    });
+
+    test("approving fails if another admin rejected the domain meanwhile", async () => {
+      const { id } = await heldRow();
+      const code = await errorCode(
+        approveHeldDomain(
+          adminCtx(),
+          { id },
+          {
+            lookupHostname: async (hostname) => {
+              await rejectHeldDomain(adminCtx(), { id, reason: "Lookalike" }, { removeHostname });
+              return activeHostname(hostname);
+            },
+          },
+        ),
+      );
+
+      const row = await heldRow();
+      expect(code).toBe("NOT_FOUND");
+      expect(row.reviewStatus).toBe("rejected");
+      expect(row.status).toBe("invalid");
     });
 
     test("only held domains can be approved or rejected", async () => {

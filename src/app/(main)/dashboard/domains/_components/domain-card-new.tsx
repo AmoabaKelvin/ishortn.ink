@@ -1,6 +1,12 @@
 "use client";
 
-import { IconChevronDown, IconClock, IconLink, IconTrash } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconClock,
+  IconInfoCircle,
+  IconLink,
+  IconTrash,
+} from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -70,11 +76,13 @@ const REVIEW_CONFIG = {
   in_review: {
     color: "bg-amber-500",
     label: "In review",
+    icon: IconClock,
     message: "We're reviewing this domain. It usually goes live within 24 hours.",
   },
   rejected: {
     color: "bg-red-500",
     label: "Not approved",
+    icon: IconInfoCircle,
     message: "This domain can't be connected. Contact support if you think this is a mistake.",
   },
 };
@@ -124,6 +132,8 @@ export function DomainCardNew({ domain, index, canManageDomains }: DomainCardPro
   const review = domain.review ? REVIEW_CONFIG[domain.review] : null;
   // DNS can be set up while a review runs, but a rejected domain has nothing left to configure
   const canExpand = (status === "pending" || status === "invalid") && domain.review !== "rejected";
+  // A rejected domain stays listed: its record is what keeps it from being added again
+  const canDelete = canManageDomains && domain.review !== "rejected";
   const linkCount = stats?.linkCount ?? 0;
   const linkCountLabel = `${linkCount.toLocaleString()} ${linkCount === 1 ? "link" : "links"}`;
   const deleteSummary = !stats
@@ -168,7 +178,7 @@ export function DomainCardNew({ domain, index, canManageDomains }: DomainCardPro
 
             {review && (
               <p className="mt-1.5 flex items-start gap-1.5 text-[12px] text-neutral-500 dark:text-neutral-400">
-                <IconClock size={14} stroke={1.5} className="mt-px shrink-0" />
+                <review.icon size={14} stroke={1.5} className="mt-px shrink-0" />
                 {review.message}
               </p>
             )}
@@ -192,7 +202,7 @@ export function DomainCardNew({ domain, index, canManageDomains }: DomainCardPro
               </button>
             )}
 
-            {canManageDomains && (
+            {canDelete && (
               // Hover-revealed only where hover exists; always shown on touch screens
               <button
                 type="button"

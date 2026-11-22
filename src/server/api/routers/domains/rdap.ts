@@ -60,6 +60,8 @@ export type DomainReviewFields = {
   rdapLookupFailed: boolean;
 };
 
+const days = (count: number) => `${count} ${count === 1 ? "day" : "days"}`;
+
 const NOT_REVIEWED: DomainReviewFields = {
   reviewStatus: null,
   reviewReason: null,
@@ -94,7 +96,7 @@ export async function reviewNewDomain(
   return {
     reviewStatus: held ? "held" : null,
     reviewReason: held
-      ? `Account ${differenceInDays(now, accountCreatedAt)} days old; domain registered ${differenceInDays(now, registration.registeredAt)} days ago`
+      ? `Account ${days(differenceInDays(now, accountCreatedAt))} old; domain registered ${days(differenceInDays(now, registration.registeredAt))} ago`
       : null,
     registrableDomainRegisteredAt: registration.registeredAt,
     registrar: registration.registrar,

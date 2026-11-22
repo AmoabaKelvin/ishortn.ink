@@ -65,6 +65,11 @@ export async function isHostnameActive(domain: string, hostname: CloudflareCusto
   return (hostname !== null && mapStatus(hostname) === "active") || wwwFallbackActive(domain);
 }
 
+export const notRejectedDomain = or(
+  isNull(customDomain.reviewStatus),
+  ne(customDomain.reviewStatus, "rejected"),
+);
+
 /**
  * Rows allowed to become "active". Every write that activates a domain adds
  * this to its WHERE clause, so a domain held for review (or rejected) never
@@ -128,7 +133,14 @@ export async function addDomainToUserAccount(
     const existingDomainsCount = await ctx.db
       .select({ count: count() })
       .from(customDomain)
-      .where(workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId));
+      // A rejected domain can't be deleted (its row blocks re-adding it), so it
+      // doesn't take up a slot either
+      .where(
+        and(
+          workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
+          notRejectedDomain,
+        ),
+      );
 
     const existingCount = existingDomainsCount[0]?.count ?? 0;
 
@@ -288,6 +300,11 @@ export async function deleteDomainAndAssociatedLinks(
       code: "NOT_FOUND",
       message: "Domain not found or you don't have permission to delete it",
     });
+  }
+
+  // The rejected row is what stops the domain from being added again
+  if (domain.reviewStatus === "rejected") {
+    throw new TRPCError({ code: "FORBIDDEN", message: DOMAIN_REJECTED_MESSAGE });
   }
 
   const domainName = domain.domain;

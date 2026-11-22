@@ -42,7 +42,7 @@ import {
   isApexHostname,
   mapStatus,
 } from "../domains/cloudflare";
-import { domainCanGoLive, isHostnameActive } from "../domains/domains.service";
+import { domainCanGoLive, isHostnameActive, notRejectedDomain } from "../domains/domains.service";
 import { RESTRICTED_LINK_REASON } from "../link/utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
@@ -78,11 +78,6 @@ import type {
 } from "./admin.input";
 
 const log = logger.child({ component: "admin.service" });
-
-const notRejected = or(
-  isNull(customDomain.reviewStatus),
-  ne(customDomain.reviewStatus, "rejected"),
-);
 
 export async function getStats(ctx: ProtectedTRPCContext) {
   const today = new Date();
@@ -489,7 +484,7 @@ export async function restrictUser(ctx: ProtectedTRPCContext, input: RestrictUse
   await ctx.db
     .update(customDomain)
     .set({ status: "pending" })
-    .where(and(eq(customDomain.userId, input.userId), notRejected));
+    .where(and(eq(customDomain.userId, input.userId), notRejectedDomain));
 
   const results = await Promise.allSettled(
     toRelease.map(async (hostname) => {
@@ -664,14 +659,15 @@ export async function getHeldDomains(ctx: ProtectedTRPCContext, now: Date = new 
   }));
 }
 
+const notHeldError = () =>
+  new TRPCError({ code: "NOT_FOUND", message: "This domain is no longer held for review" });
+
 async function findHeldDomain(ctx: ProtectedTRPCContext, id: number) {
   const record = await ctx.db.query.customDomain.findFirst({
     where: and(eq(customDomain.id, id), eq(customDomain.reviewStatus, "held")),
     columns: { id: true, domain: true },
   });
-  if (!record?.domain) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "This domain is no longer held for review" });
-  }
+  if (!record?.domain) throw notHeldError();
   return { id: record.id, domain: record.domain };
 }
 
@@ -698,10 +694,12 @@ export async function approveHeldDomain(
   }
 
   const status = active ? ("active" as const) : ("pending" as const);
-  await ctx.db
+  const [result] = await ctx.db
     .update(customDomain)
     .set({ reviewStatus: "approved", reviewedAt: new Date(), status })
     .where(and(eq(customDomain.id, record.id), eq(customDomain.reviewStatus, "held")));
+  // Another admin decided first
+  if (result.affectedRows === 0) throw notHeldError();
 
   return { status };
 }
@@ -719,7 +717,7 @@ export async function rejectHeldDomain(
 ) {
   const record = await findHeldDomain(ctx, input.id);
 
-  await ctx.db
+  const [result] = await ctx.db
     .update(customDomain)
     .set({
       status: "invalid",
@@ -728,9 +726,15 @@ export async function rejectHeldDomain(
       reviewedAt: new Date(),
     })
     .where(and(eq(customDomain.id, record.id), eq(customDomain.reviewStatus, "held")));
+  // Another admin decided first; an approved domain must keep its hostname
+  if (result.affectedRows === 0) throw notHeldError();
 
   const otherClaim = await ctx.db.query.customDomain.findFirst({
-    where: and(eq(customDomain.domain, record.domain), ne(customDomain.id, record.id), notRejected),
+    where: and(
+      eq(customDomain.domain, record.domain),
+      ne(customDomain.id, record.id),
+      notRejectedDomain,
+    ),
     columns: { id: true },
   });
   if (otherClaim) return { hostnameReleased: false };
