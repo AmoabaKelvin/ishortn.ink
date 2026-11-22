@@ -210,6 +210,10 @@ export const solutions = {
         label: "QR code for a restaurant menu, static vs dynamic",
       },
       { href: "/whatsapp-link-generator", label: "Free WhatsApp link and QR code generator" },
+      {
+        href: "/blog/whatsapp-link-with-message",
+        label: "How to create a WhatsApp link with a pre-filled message",
+      },
       { href: "/blog/qr-code-for-google-reviews", label: "Make a QR code for Google reviews" },
       { href: "/blog/qr-code-stopped-working", label: "Why QR codes stop working" },
       { href: "/docs/qr-codes", label: "QR codes in the docs" },
@@ -357,6 +361,10 @@ export const solutions = {
       },
       { href: "/qr-code-generator", label: "Free QR code generator" },
       { href: "/whatsapp-link-generator", label: "Free WhatsApp link and QR code generator" },
+      {
+        href: "/blog/whatsapp-link-with-message",
+        label: "How to create a WhatsApp link with a pre-filled message",
+      },
       { href: "/docs/qr-codes", label: "QR codes in the docs" },
     ],
     ctaTitle: "Make your first shop code",
