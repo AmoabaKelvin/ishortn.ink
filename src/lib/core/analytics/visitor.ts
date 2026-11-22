@@ -90,14 +90,38 @@ export function parseReferrer(referrer: string | null): string {
   }
 }
 
+/**
+ * The referrer, or null when it is empty or points at `ownHost` (reloads and
+ * in-page navigation are direct visits, not a source).
+ */
+export function externalReferrer(
+  referrer: string | null | undefined,
+  ownHost: string | null,
+): string | null {
+  if (!referrer) return null;
+  const bare = (host: string) =>
+    host
+      .split(":")[0]!
+      .toLowerCase()
+      .replace(/^www\./, "");
+  try {
+    if (ownHost && bare(new URL(referrer).hostname) === bare(ownHost)) return null;
+  } catch {
+    // Unparseable: parseReferrer records it as "unknown".
+  }
+  return referrer;
+}
+
 /** Visitor fields for a click or view event; null for bots. */
 export async function describeVisitor(opts: {
   headers: Headers;
   ip: string;
   country: string;
   city: string;
+  /** Replaces the request's Referer header when the caller knows the real source. */
+  referrer?: string | null;
 }): Promise<Visitor | null> {
-  const { headers, ip, country, city } = opts;
+  const { headers, ip, country, city, referrer = headers.get("referer") } = opts;
   const userAgent = headers.get("user-agent") ?? "";
   if (userAgent && isBot(userAgent)) return null;
 
@@ -107,7 +131,7 @@ export async function describeVisitor(opts: {
   return {
     ipHash: hashIp(ip && ip !== "undefined" ? ip : "localhost-dev"),
     ...deviceDetails,
-    referer: parseReferrer(headers.get("referer")),
+    referer: parseReferrer(referrer),
     country: countryName,
     city: cityName,
     continent: continentName,

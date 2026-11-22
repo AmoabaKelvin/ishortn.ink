@@ -15,7 +15,9 @@ export function BioPageViewBeacon({ bioPageId }: { bioPageId: number }) {
     void fetch("/api/bio/view", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ bioPageId }),
+      // This request's Referer is the bio page itself; the visitor's source
+      // is the page's own referrer. Capped to the endpoint's limit.
+      body: JSON.stringify({ bioPageId, referrer: document.referrer.slice(0, 2048) || null }),
       keepalive: true,
     }).catch(() => {});
   }, [bioPageId]);

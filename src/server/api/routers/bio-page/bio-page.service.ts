@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -11,7 +11,9 @@ import {
   canUseBioCustomThemes,
   getPlanCaps,
 } from "@/lib/billing/plans";
-import { isPlatformDomain } from "@/lib/constants/domains";
+import { getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
+import { fillClickSeries } from "@/lib/core/analytics";
+import { baseDomain } from "@/lib/core/analytics/referrer";
 import {
   bioBlock,
   bioPage,
@@ -705,6 +707,8 @@ const RANGE_DAYS = {
   all: 3650,
 } satisfies Record<"7d" | "30d" | "90d" | "all", number>;
 
+const APP_HOST_REFERRER = baseDomain(getAppBaseDomain());
+
 function resolveRangeDays(range: keyof typeof RANGE_DAYS, capDays?: number): number {
   const base = RANGE_DAYS[range];
   return capDays !== undefined ? Math.min(base, capDays) : base;
@@ -723,6 +727,7 @@ export async function getBioPageAnalytics(
   // loads). Referrers come from page views because link blocks open with
   // rel="noreferrer", so link clicks never carry the visitor's source.
   const viewFilter = and(eq(bioPageView.bioPageId, page.id), gte(bioPageView.createdAt, start));
+  const viewDay = sql<string>`DATE_FORMAT(${bioPageView.createdAt}, '%Y-%m-%d')`;
   const [viewsAgg, uniqueAgg, viewsByDay, referrerRows] = await Promise.all([
     ctx.db.select({ count: count() }).from(bioPageView).where(viewFilter),
     ctx.db
@@ -732,17 +737,23 @@ export async function getBioPageAnalytics(
         and(eq(uniqueBioPageView.bioPageId, page.id), gte(uniqueBioPageView.createdAt, start)),
       ),
     ctx.db
-      .select({
-        date: sql<string>`DATE(${bioPageView.createdAt})`,
-        count: count(),
-      })
+      .select({ date: viewDay, count: count() })
       .from(bioPageView)
       .where(viewFilter)
-      .groupBy(sql`DATE(${bioPageView.createdAt})`),
+      .groupBy(viewDay),
     ctx.db
       .select({ value: bioPageView.referer, count: count() })
       .from(bioPageView)
-      .where(viewFilter)
+      .where(
+        and(
+          viewFilter,
+          // Views recorded before the beacon sent document.referrer all hold the
+          // app host (the beacon request's own Referer). Pages on the app host
+          // now record same-host visits as direct, so this value carries no
+          // source information and is left out.
+          or(isNull(bioPageView.referer), ne(bioPageView.referer, APP_HOST_REFERRER)),
+        ),
+      )
       .groupBy(bioPageView.referer),
   ]);
 
@@ -788,8 +799,13 @@ export async function getBioPageAnalytics(
   const views = Number(viewsAgg[0]?.count ?? 0);
   const uniqueViews = Number(uniqueAgg[0]?.count ?? 0);
 
+  // Zero-filled across the range so a single day of views still plots.
   const viewsPerDay: Record<string, number> = {};
   for (const row of viewsByDay) viewsPerDay[row.date] = Number(row.count);
+  const viewsSeries = fillClickSeries(
+    { clicksPerDate: viewsPerDay },
+    { from: rangeDays === RANGE_DAYS.all ? null : start, to: new Date(), granularity: "day" },
+  ).map((point) => ({ date: point.date, views: point.clicks }));
 
   return {
     views,
@@ -802,7 +818,7 @@ export async function getBioPageAnalytics(
       devices: buildBreakdown(deviceRows, deviceLabel),
     },
     viewReferrers: buildBreakdown(referrerRows, referrerHostLabel),
-    viewsPerDay,
+    viewsSeries,
     rangeDays,
     isProPlan: ctx.workspace.plan !== "free",
   };
