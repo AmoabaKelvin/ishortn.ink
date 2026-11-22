@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 
 import { subDays } from "date-fns";
-import { eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 
@@ -24,10 +24,12 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
   const GOOD = "reminder_test_good";
   const USERS = [RESTRICTED, BANNED, GOOD];
   const TEAM_SLUG = "domain-reminder-test";
+  const GOOD_TEAM_SLUG = "domain-reminder-test-good";
 
   const RESTRICTED_DOMAIN = "links.restricted-reminder.test";
   const BANNED_DOMAIN = "links.banned-reminder.test";
   const RESTRICTED_TEAM_DOMAIN = "go.restricted-reminder.test";
+  const RESTRICTED_MEMBER_DOMAIN = "member.good-reminder.test";
   const HEALTHY_DOMAIN = "links.good-reminder.test";
   const BROKEN_DOMAIN = "go.good-reminder.test";
   const HELD_DOMAIN = "login.good-reminder.test";
@@ -35,6 +37,7 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
     RESTRICTED_DOMAIN,
     BANNED_DOMAIN,
     RESTRICTED_TEAM_DOMAIN,
+    RESTRICTED_MEMBER_DOMAIN,
     HEALTHY_DOMAIN,
     BROKEN_DOMAIN,
     HELD_DOMAIN,
@@ -42,10 +45,13 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
   const HOOK_TIMEOUT_MS = 30_000;
 
   async function cleanup() {
-    const existing = await db.query.team.findFirst({ where: eq(schema.team.slug, TEAM_SLUG) });
-    if (existing) {
-      await db.delete(schema.teamMember).where(eq(schema.teamMember.teamId, existing.id));
-      await db.delete(schema.team).where(eq(schema.team.id, existing.id));
+    const existing = await db.query.team.findMany({
+      where: inArray(schema.team.slug, [TEAM_SLUG, GOOD_TEAM_SLUG]),
+    });
+    const teamIds = existing.map((row) => row.id);
+    if (teamIds.length > 0) {
+      await db.delete(schema.teamMember).where(inArray(schema.teamMember.teamId, teamIds));
+      await db.delete(schema.team).where(inArray(schema.team.id, teamIds));
     }
     await db.delete(schema.customDomain).where(inArray(schema.customDomain.userId, USERS));
     await db.delete(schema.user).where(inArray(schema.user.id, USERS));
@@ -67,7 +73,15 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
       .insert(schema.team)
       .values({ name: "Restricted", slug: TEAM_SLUG, ownerId: RESTRICTED });
     const teamId = Number(inserted.insertId);
-    await db.insert(schema.teamMember).values({ teamId, userId: RESTRICTED, role: "owner" });
+    const [insertedGood] = await db
+      .insert(schema.team)
+      .values({ name: "Good", slug: GOOD_TEAM_SLUG, ownerId: GOOD });
+    const goodTeamId = Number(insertedGood.insertId);
+    await db.insert(schema.teamMember).values([
+      { teamId, userId: RESTRICTED, role: "owner" },
+      { teamId: goodTeamId, userId: GOOD, role: "owner" },
+      { teamId: goodTeamId, userId: RESTRICTED, role: "admin" },
+    ]);
 
     // Past the pending grace period, so every domain is due a reminder
     const createdAt = subDays(new Date(), 10);
@@ -75,6 +89,14 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
       { userId: RESTRICTED, domain: RESTRICTED_DOMAIN, status: "pending", createdAt },
       { userId: BANNED, domain: BANNED_DOMAIN, status: "pending", createdAt },
       { userId: RESTRICTED, teamId, domain: RESTRICTED_TEAM_DOMAIN, status: "pending", createdAt },
+      // Added by a restricted member to a team whose owner is in good standing
+      {
+        userId: RESTRICTED,
+        teamId: goodTeamId,
+        domain: RESTRICTED_MEMBER_DOMAIN,
+        status: "pending",
+        createdAt,
+      },
       { userId: GOOD, domain: HEALTHY_DOMAIN, status: "pending", createdAt },
       { userId: GOOD, domain: BROKEN_DOMAIN, status: "invalid", createdAt },
       { userId: GOOD, domain: HELD_DOMAIN, status: "pending", reviewStatus: "held", createdAt },
@@ -86,7 +108,7 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
     await pool.end();
   });
 
-  test("skips restricted and banned owners and held domains, and still handles everyone else", async () => {
+  test("skips domains of restricted and banned accounts and held domains, and still handles everyone else", async () => {
     const checked: string[] = [];
     const emailed: string[] = [];
 
@@ -117,7 +139,13 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
     const status = Object.fromEntries(rows.map((row) => [row.domain, row.status]));
     const reminded = rows.filter((row) => row.lastReminderSentAt).map((row) => row.domain);
 
-    for (const domain of [RESTRICTED_DOMAIN, BANNED_DOMAIN, RESTRICTED_TEAM_DOMAIN, HELD_DOMAIN]) {
+    for (const domain of [
+      RESTRICTED_DOMAIN,
+      BANNED_DOMAIN,
+      RESTRICTED_TEAM_DOMAIN,
+      RESTRICTED_MEMBER_DOMAIN,
+      HELD_DOMAIN,
+    ]) {
       expect(status[domain]).toBe("pending");
       expect(checked).not.toContain(domain);
       expect(emailed).not.toContain(domain);

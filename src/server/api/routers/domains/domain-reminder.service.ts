@@ -85,7 +85,7 @@ function needsReminder(now: Date) {
   );
 }
 
-// Each domain joins one owner row; the unmatched join reads as null and passes.
+// An unmatched left join reads as null and passes.
 function notModerated(account: { restrictedAt: MySqlColumn; banned: MySqlColumn }) {
   return and(isNull(account.restrictedAt), or(isNull(account.banned), eq(account.banned, false)));
 }
@@ -111,6 +111,7 @@ export async function sendDomainConfigurationReminders({
   };
 
   const teamOwner = alias(user, "teamOwner");
+  const addedBy = alias(user, "addedBy");
 
   const domains = await db
     .select({
@@ -130,13 +131,16 @@ export async function sendDomainConfigurationReminders({
     .leftJoin(team, eq(customDomain.teamId, team.id))
     .leftJoin(user, and(isNull(customDomain.teamId), eq(customDomain.userId, user.id)))
     .leftJoin(teamOwner, eq(team.ownerId, teamOwner.id))
+    .leftJoin(addedBy, eq(customDomain.userId, addedBy.id))
     .where(
       and(
         needsReminder(new Date()),
         or(isNull(customDomain.teamId), isNull(team.deletedAt)),
         // Restricting released these hostnames and only unrestrictUser restores
-        // them, so don't mark them active or nag a restricted or banned owner.
-        notModerated(user),
+        // them, so don't mark them active or nag about them. That covers team
+        // domains added by a restricted member, since restricting releases
+        // every domain the user added.
+        notModerated(addedBy),
         notModerated(teamOwner),
       ),
     );

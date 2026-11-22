@@ -428,15 +428,16 @@ export async function checkDomainStatus(
       domain: customDomain.domain,
       status: customDomain.status,
       reviewStatus: customDomain.reviewStatus,
-      // Personal domains belong to the user who added them, team domains to the team owner
-      ownerRestrictedAt: user.restrictedAt,
-      ownerBanned: user.banned,
+      // Restricting releases every domain a user added, team domains included,
+      // so check the user who added it as well as the team owner
+      addedByRestrictedAt: user.restrictedAt,
+      addedByBanned: user.banned,
       teamOwnerRestrictedAt: teamOwner.restrictedAt,
       teamOwnerBanned: teamOwner.banned,
     })
     .from(customDomain)
     .leftJoin(team, eq(customDomain.teamId, team.id))
-    .leftJoin(user, and(isNull(customDomain.teamId), eq(customDomain.userId, user.id)))
+    .leftJoin(user, eq(customDomain.userId, user.id))
     .leftJoin(teamOwner, eq(team.ownerId, teamOwner.id))
     .where(
       and(
@@ -457,8 +458,8 @@ export async function checkDomainStatus(
   // Restricting released this hostname; a check must not flip it back to active
   // while Cloudflare still reports it live. Only unrestrictUser restores it.
   if (
-    record.ownerRestrictedAt ||
-    record.ownerBanned ||
+    record.addedByRestrictedAt ||
+    record.addedByBanned ||
     record.teamOwnerRestrictedAt ||
     record.teamOwnerBanned
   ) {

@@ -294,6 +294,25 @@ describe.skipIf(!testDatabaseUrl)("domains service (MySQL)", () => {
       expect(lookups).toEqual([]);
     });
 
+    test("keeps a team domain pending when the restricted member who added it checks it", async () => {
+      const MEMBER_DOMAIN = "member.acme-test.co.uk";
+      await db
+        .insert(schema.customDomain)
+        .values({ userId: ADMIN, teamId, domain: MEMBER_DOMAIN, status: "pending" });
+      await db
+        .update(schema.user)
+        .set({ restrictedAt: new Date(), restrictedReason: "test" })
+        .where(eq(schema.user.id, ADMIN));
+
+      const result = await checkDomainStatus(await teamCtx(ADMIN, "admin"), MEMBER_DOMAIN, {
+        lookupHostname: liveHostname,
+      });
+
+      expect(result).toEqual({ status: "pending", message: ACCOUNT_RESTRICTED_MESSAGE });
+      expect(await domainStatus(MEMBER_DOMAIN)).toBe("pending");
+      expect(lookups).toEqual([]);
+    });
+
     test("still activates a domain whose owner is in good standing", async () => {
       const result = await checkDomainStatus(personalCtx(OWNER), DOMAIN, {
         lookupHostname: liveHostname,
