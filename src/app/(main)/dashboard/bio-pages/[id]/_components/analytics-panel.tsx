@@ -40,7 +40,7 @@ const RANGES = [
 
 type Range = (typeof RANGES)[number]["value"];
 
-const BREAKDOWNS = [
+const CLICK_BREAKDOWNS = [
   {
     key: "countries",
     title: "Clicks by country",
@@ -52,12 +52,6 @@ const BREAKDOWNS = [
     title: "Clicks by device",
     description: "Devices visitors clicked from",
     color: "green",
-  },
-  {
-    key: "referrers",
-    title: "Clicks by referrer",
-    description: "Sites that sent visitors to this page",
-    color: "red",
   },
 ] as const;
 
@@ -144,8 +138,9 @@ export function AnalyticsPanel({ pageId, plan }: { pageId: number; plan: Plan })
         <div className={cn("space-y-5 transition-opacity", isFetching && "opacity-60")}>
           <StatCards data={data} />
           <ViewsChart viewsPerDay={data.viewsPerDay} />
+          <ViewReferrers referrers={data.viewReferrers} views={data.views} />
           <TopLinks perBlock={data.perBlock} />
-          <ClickBreakdowns breakdowns={data.breakdowns} totalClicks={data.totalClicks} />
+          <ClickBreakdowns breakdowns={data.clickBreakdowns} totalClicks={data.totalClicks} />
         </div>
       )}
     </div>
@@ -281,11 +276,35 @@ function TopLinks({ perBlock }: { perBlock: Analytics["perBlock"] }) {
   );
 }
 
+function ViewReferrers({
+  referrers,
+  views,
+}: {
+  referrers: Analytics["viewReferrers"];
+  views: number;
+}) {
+  return (
+    <BarList.BarListTitle
+      title="Where visitors came from"
+      description="Sites that sent visitors to this page"
+      unit="Views"
+    >
+      {views === 0 ? (
+        <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+          No views in this range yet.
+        </p>
+      ) : (
+        <BarList records={referrers} totalClicks={views} color="red" />
+      )}
+    </BarList.BarListTitle>
+  );
+}
+
 function ClickBreakdowns({
   breakdowns,
   totalClicks,
 }: {
-  breakdowns: Analytics["breakdowns"];
+  breakdowns: Analytics["clickBreakdowns"];
   totalClicks: number;
 }) {
   if (totalClicks === 0) {
@@ -298,18 +317,22 @@ function ClickBreakdowns({
           No clicks to break down yet
         </p>
         <p className="mt-1 max-w-xs text-[13px] text-neutral-500 dark:text-neutral-400">
-          Country, device and referrer breakdowns appear once visitors click a link on this page.
+          Country and device breakdowns appear once visitors click a link on this page.
         </p>
       </div>
     );
   }
 
+  // Side by side only when the editor column is wide: from lg the preview rail
+  // takes 360px, so the column is too narrow for two cards until xl.
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-10">
-      {BREAKDOWNS.map((b) => (
-        <BarList.BarListTitle key={b.key} title={b.title} description={b.description}>
-          <BarList records={breakdowns[b.key]} totalClicks={totalClicks} color={b.color} />
-        </BarList.BarListTitle>
+    <div className="flex flex-col gap-3 md:flex-row lg:flex-col xl:flex-row">
+      {CLICK_BREAKDOWNS.map((b) => (
+        <div key={b.key} className="min-w-0 flex-1">
+          <BarList.BarListTitle title={b.title} description={b.description}>
+            <BarList records={breakdowns[b.key]} totalClicks={totalClicks} color={b.color} />
+          </BarList.BarListTitle>
+        </div>
       ))}
     </div>
   );
@@ -324,10 +347,14 @@ function AnalyticsSkeleton() {
         ))}
       </div>
       <Skeleton className="h-72 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
       <Skeleton className="h-40 rounded-xl" />
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Skeleton className="h-64 rounded-xl" />
-        <Skeleton className="h-64 rounded-xl" />
+      <div className="flex flex-col gap-3 md:flex-row lg:flex-col xl:flex-row">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="min-w-0 flex-1">
+            <Skeleton className="h-64 rounded-xl" />
+          </div>
+        ))}
       </div>
     </div>
   );

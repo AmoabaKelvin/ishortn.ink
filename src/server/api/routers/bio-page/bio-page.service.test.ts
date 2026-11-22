@@ -49,13 +49,10 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
   async function cleanup() {
     await db.delete(schema.linkVisit).where(inArray(schema.linkVisit.linkId, LINK_IDS));
     const pages = await db.query.bioPage.findMany({ where: eq(schema.bioPage.userId, USER_ID) });
-    if (pages.length) {
-      await db.delete(schema.bioBlock).where(
-        inArray(
-          schema.bioBlock.bioPageId,
-          pages.map((p) => p.id),
-        ),
-      );
+    const pageIds = pages.map((p) => p.id);
+    if (pageIds.length) {
+      await db.delete(schema.bioBlock).where(inArray(schema.bioBlock.bioPageId, pageIds));
+      await db.delete(schema.bioPageView).where(inArray(schema.bioPageView.bioPageId, pageIds));
     }
     await db.delete(schema.bioPage).where(eq(schema.bioPage.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
@@ -82,7 +79,9 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
     const result = await getBioPageAnalytics(ctx("pro"), { id: pageId, range: "7d" });
 
     expect(result.totalClicks).toBe(0);
-    expect(result.breakdowns).toEqual({ countries: [], devices: [], referrers: [] });
+    expect(result.views).toBe(0);
+    expect(result.clickBreakdowns).toEqual({ countries: [], devices: [] });
+    expect(result.viewReferrers).toEqual([]);
   });
 
   test("page without link blocks returns empty breakdowns", async () => {
@@ -91,23 +90,23 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
     const result = await getBioPageAnalytics(ctx("pro"), { id: pageId, range: "all" });
 
     expect(result.perBlock).toEqual([]);
-    expect(result.breakdowns).toEqual({ countries: [], devices: [], referrers: [] });
+    expect(result.clickBreakdowns).toEqual({ countries: [], devices: [] });
   });
 
-  test("groups clicks across link blocks, with Unknown and Direct buckets", async () => {
+  test("groups clicks across link blocks, with Unknown buckets", async () => {
     await db.insert(schema.linkVisit).values([
-      { linkId: LINK_A, country: "Ghana", device: "mobile", referer: "instagram.com" },
-      { linkId: LINK_A, country: "Ghana", device: "Mobile", referer: "instagram.com" },
-      { linkId: LINK_A, country: "Ghana", device: "Desktop", referer: null },
-      { linkId: LINK_B, country: "United States", device: "tablet", referer: "" },
-      { linkId: LINK_B, country: null, device: null, referer: "direct" },
-      { linkId: LINK_B, country: "", device: "", referer: "twitter" },
+      { linkId: LINK_A, country: "Ghana", device: "mobile" },
+      { linkId: LINK_A, country: "Ghana", device: "Mobile" },
+      { linkId: LINK_A, country: "Ghana", device: "Desktop" },
+      { linkId: LINK_B, country: "United States", device: "tablet" },
+      { linkId: LINK_B, country: null, device: null },
+      { linkId: LINK_B, country: "", device: "" },
       // Not on this page: must not count.
-      { linkId: FOREIGN_LINK, country: "France", device: "Desktop", referer: "google.com" },
+      { linkId: FOREIGN_LINK, country: "France", device: "Desktop" },
     ]);
 
     const result = await getBioPageAnalytics(ctx("pro"), { id: pageId, range: "7d" });
-    const { countries, devices, referrers } = result.breakdowns;
+    const { countries, devices } = result.clickBreakdowns;
 
     expect(result.totalClicks).toBe(6);
     expect(countries).toEqual([
@@ -121,14 +120,32 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
       { name: "Desktop", clicks: 1 },
       { name: "Tablet", clicks: 1 },
     ]);
-    expect(referrers).toEqual([
+    for (const rows of [countries, devices]) {
+      expect(rows.reduce((sum, r) => sum + r.clicks, 0)).toBe(result.totalClicks);
+    }
+  });
+
+  test("groups page views by referrer host, with a Direct bucket", async () => {
+    const [other] = await db.insert(schema.bioPage).values({ userId: USER_ID, slug: `${SLUG}-2` });
+    await db.insert(schema.bioPageView).values([
+      { bioPageId: pageId, referer: "instagram.com" },
+      { bioPageId: pageId, referer: "https://l.instagram.com/?u=abc" },
+      { bioPageId: pageId, referer: "direct" },
+      { bioPageId: pageId, referer: null },
+      { bioPageId: pageId, referer: "" },
+      { bioPageId: pageId, referer: "twitter" },
+      // Another page's view: must not count.
+      { bioPageId: Number(other.insertId), referer: "google.com" },
+    ]);
+
+    const result = await getBioPageAnalytics(ctx("pro"), { id: pageId, range: "7d" });
+
+    expect(result.views).toBe(6);
+    expect(result.viewReferrers).toEqual([
       { name: "Direct", clicks: 3 },
       { name: "instagram.com", clicks: 2 },
       { name: "Twitter", clicks: 1 },
     ]);
-    for (const rows of [countries, devices, referrers]) {
-      expect(rows.reduce((sum, r) => sum + r.clicks, 0)).toBe(result.totalClicks);
-    }
   });
 
   test("breakdowns follow the selected range and the plan's history cap", async () => {
@@ -149,23 +166,46 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
       },
     ]);
 
-    const countryTotals = async (plan: Plan, range: "7d" | "30d" | "all") => {
+    await db.insert(schema.bioPageView).values([
+      { bioPageId: pageId, referer: "instagram.com", createdAt: new Date(now - DAY_MS) },
+      { bioPageId: pageId, referer: "tiktok.com", createdAt: new Date(now - 20 * DAY_MS) },
+      { bioPageId: pageId, referer: "tiktok.com", createdAt: new Date(now - 200 * DAY_MS) },
+    ]);
+
+    const totalsFor = async (plan: Plan, range: "7d" | "30d" | "all") => {
       const result = await getBioPageAnalytics(ctx(plan), { id: pageId, range });
-      const sum = result.breakdowns.countries.reduce((s, r) => s + r.clicks, 0);
-      expect(sum).toBe(result.totalClicks);
-      return result.breakdowns.countries;
+      const { countries } = result.clickBreakdowns;
+      expect(countries.reduce((s, r) => s + r.clicks, 0)).toBe(result.totalClicks);
+      expect(result.viewReferrers.reduce((s, r) => s + r.clicks, 0)).toBe(result.views);
+      return { countries, referrers: result.viewReferrers };
     };
 
-    expect(await countryTotals("pro", "7d")).toEqual([{ name: "Ghana", clicks: 1 }]);
-    expect(await countryTotals("pro", "30d")).toEqual([
-      { name: "Ghana", clicks: 1 },
-      { name: "Kenya", clicks: 1 },
-    ]);
-    expect(await countryTotals("pro", "all")).toEqual([
-      { name: "Kenya", clicks: 2 },
-      { name: "Ghana", clicks: 1 },
-    ]);
+    const lastWeek = {
+      countries: [{ name: "Ghana", clicks: 1 }],
+      referrers: [{ name: "instagram.com", clicks: 1 }],
+    };
+    expect(await totalsFor("pro", "7d")).toEqual(lastWeek);
+    expect(await totalsFor("pro", "30d")).toEqual({
+      countries: [
+        { name: "Ghana", clicks: 1 },
+        { name: "Kenya", clicks: 1 },
+      ],
+      referrers: [
+        { name: "instagram.com", clicks: 1 },
+        { name: "tiktok.com", clicks: 1 },
+      ],
+    });
+    expect(await totalsFor("pro", "all")).toEqual({
+      countries: [
+        { name: "Kenya", clicks: 2 },
+        { name: "Ghana", clicks: 1 },
+      ],
+      referrers: [
+        { name: "tiktok.com", clicks: 2 },
+        { name: "instagram.com", clicks: 1 },
+      ],
+    });
     // Free plans are capped at 7 days whatever range is requested.
-    expect(await countryTotals("free", "all")).toEqual([{ name: "Ghana", clicks: 1 }]);
+    expect(await totalsFor("free", "all")).toEqual(lastWeek);
   });
 });

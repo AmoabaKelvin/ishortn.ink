@@ -1,6 +1,12 @@
 "use client";
 
-import { IconExternalLink, IconLayoutList, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconChartBar,
+  IconExternalLink,
+  IconLayoutList,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
@@ -132,6 +138,14 @@ export function BioPagesList({ pages, plan, bioPageLimit }: BioPagesListProps) {
               </Link>
 
               <div className="flex shrink-0 items-center gap-1">
+                <Link
+                  href={`/dashboard/bio-pages/${page.id}?tab=analytics`}
+                  aria-label="View analytics"
+                  className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-muted"
+                  title="View analytics"
+                >
+                  <IconChartBar size={16} stroke={1.5} />
+                </Link>
                 {page.isPublished && (
                   <a
                     href={`/p/${page.slug}`}
