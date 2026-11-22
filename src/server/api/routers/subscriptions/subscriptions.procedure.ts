@@ -185,6 +185,8 @@ export const subscriptionsRouter = createTRPCRouter({
       subscriptionMode: getSubscriptionMode(userRecord.subscriptions ?? null),
       // Whether the user can create teams (based on personal subscription, not workspace)
       canCreateTeam: personalPlan === "ultra",
+      // Read from the auth context (no query); hides billing offers on moderated accounts.
+      isRestricted: ctx.restrictedAt !== null,
     };
   }),
 });

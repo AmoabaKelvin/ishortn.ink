@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/utils/user-name";
 import { ensureUser } from "@/server/lib/ensure-user";
 import { hasBouncedEmail } from "@/server/lib/notifications/suppression";
-import { api } from "@/trpc/server";
 
+import { AnnualSwitchCard } from "./_components/annual-switch-card";
+import { annualSwitchOffer } from "./_components/annual-switch-state";
 import { AttributionRecorder } from "./_components/attribution-recorder";
 import { BouncedEmailBanner } from "./_components/bounced-email-banner";
 import { DomainMigrationGate } from "./_components/domain-migration-gate";
@@ -22,7 +23,7 @@ import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
 import { trackingPausedBannerState } from "./_components/tracking-paused";
 import { TrackingPausedBanner } from "./_components/tracking-paused-banner";
-import { getDashboardSubscription } from "./_lib/get-subscription";
+import { getDashboardGraceNotice, getDashboardSubscription } from "./_lib/get-subscription";
 
 interface Props {
   children: React.ReactNode;
@@ -146,15 +147,21 @@ export default async function DashboardLayout({ children }: Props) {
   // cache() entry, so the paused-tracking banner adds no query. The grace notice is fetched
   // alongside so its banner is in the first render instead of shifting the page after hydration.
   const [subscription, graceNotice] = session?.userId
-    ? await Promise.all([
-        getDashboardSubscription(),
-        api.subscriptions.entitlementNotice.query().catch(() => undefined),
-      ])
+    ? await Promise.all([getDashboardSubscription(), getDashboardGraceNotice()])
     : [null, undefined];
   const trackingPaused = trackingPausedBannerState(subscription);
   const promo = promoBannerState({
     subscription,
     otherBannerShown: isRestricted || emailBounced || !!trackingPaused || !!graceNotice,
+  });
+  // Dismissal is read on the client (annual-switch-card.tsx).
+  const annualOffer = annualSwitchOffer({
+    subscription: subscription?.subscriptions ?? null,
+    isTeamWorkspace: subscription?.isTeamWorkspace ?? false,
+    restricted: isRestricted,
+    graceActive: !!graceNotice,
+    otherBannerShown: emailBounced || !!trackingPaused || !!promo,
+    dismissedAt: null,
   });
 
   return (
@@ -183,6 +190,9 @@ export default async function DashboardLayout({ children }: Props) {
           {emailBounced && <BouncedEmailBanner />}
           {trackingPaused && <TrackingPausedBanner {...trackingPaused} />}
           {promo && <PromoBanner promo={promo} />}
+          {annualOffer && (
+            <AnnualSwitchCard offer={annualOffer} source="dashboard" className="mt-6" />
+          )}
           <div className="mt-7 py-4">
             <PlanGraceBanner initialNotice={graceNotice} />
             {children}
