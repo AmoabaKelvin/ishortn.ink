@@ -20,8 +20,9 @@ function event(firstName: string | null, lastName: string | null) {
 }
 
 describe("getUserInfo", () => {
-  test("stores no name when both parts are null", () => {
-    expect(getUserInfo(event(null, null)).name).toBeNull();
+  // User.name is NOT NULL in production, so a null here fails the insert.
+  test("stores an empty name, not null, when both parts are null", () => {
+    expect(getUserInfo(event(null, null)).name).toBe("");
   });
 
   test("stores only the part that is set", () => {

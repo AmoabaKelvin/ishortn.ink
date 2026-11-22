@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { fullName } from "@/lib/utils/user-name";
+import { storedName } from "@/lib/utils/user-name";
 
 export const clerkUserDeletedEventSchema = z.object({
   type: z.literal("user.deleted"),
@@ -29,7 +29,7 @@ export function getUserInfo(payload: ClerkUserEvent) {
     data.email_addresses[0];
 
   return {
-    name: fullName(data.first_name, data.last_name),
+    name: storedName(data.first_name, data.last_name),
     email: emailData?.email_address,
     avatarUrl: data.image_url,
   };

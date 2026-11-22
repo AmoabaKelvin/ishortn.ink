@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { displayName, firstName, fullName } from "./user-name";
+import { displayName, firstName, fullName, storedName } from "./user-name";
 
 describe("fullName", () => {
   test("joins the parts that are set", () => {
@@ -12,6 +12,22 @@ describe("fullName", () => {
   test("returns null when no part is set", () => {
     expect(fullName(null, null)).toBeNull();
     expect(fullName(undefined, "")).toBeNull();
+  });
+});
+
+describe("storedName", () => {
+  test("joins the parts that are set", () => {
+    expect(storedName("Ama", "Mensah")).toBe("Ama Mensah");
+    expect(storedName("Ama", null)).toBe("Ama");
+  });
+
+  test("returns an empty string, never null, when no part is set", () => {
+    expect(storedName(null, null)).toBe("");
+    expect(storedName(undefined, "")).toBe("");
+  });
+
+  test("reads back as no name", () => {
+    expect(displayName(storedName(null, null))).toBeNull();
   });
 });
 
