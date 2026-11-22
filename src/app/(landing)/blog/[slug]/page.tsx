@@ -2,8 +2,13 @@ import { IconArticleFilled, IconChevronLeft } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 import { notFound } from "next/navigation";
 
+import { JsonLd } from "@/components/seo/json-ld";
 import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog";
-import { createArticleSchema, createBreadcrumbSchema } from "@/lib/seo/structured-data";
+import {
+  createArticleSchema,
+  createBreadcrumbSchema,
+  createFaqSchema,
+} from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 import "@/styles/site-content.css";
 
@@ -74,6 +79,8 @@ function formatDate(dateString: string): string {
     year: "numeric",
     month: "long",
     day: "numeric",
+    // Frontmatter dates are UTC days; a server west of UTC would otherwise show the day before.
+    timeZone: "UTC",
   });
 }
 
@@ -87,6 +94,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const relatedPosts = await getRelatedPosts(slug, 3);
   const primaryTag = post.tags[0];
+  // Both are YYYY-MM-DD, so string order is date order.
+  const updated = post.updated !== undefined && post.updated > post.date ? post.updated : null;
 
   const articleSchema = createArticleSchema({
     title: post.title,
@@ -108,14 +117,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <main>
       <Header />
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
+      {post.faqs.length >= 2 && <JsonLd data={createFaqSchema(post.faqs)} />}
 
       <Section className="py-16 sm:py-24">
         <div className="flex flex-col items-center text-center">
@@ -125,7 +129,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <p className="mt-6 text-base text-neutral-600 sm:text-sm">
             {post.author}
             <span aria-hidden="true"> · </span>
-            <time dateTime={post.date}>{formatDate(post.date)}</time>
+            {updated ? (
+              <time dateTime={updated} title={`Published ${formatDate(post.date)}`}>
+                Updated {formatDate(updated)}
+              </time>
+            ) : (
+              <time dateTime={post.date}>{formatDate(post.date)}</time>
+            )}
             <span aria-hidden="true"> · </span>
             {post.readingTime} min read
           </p>
