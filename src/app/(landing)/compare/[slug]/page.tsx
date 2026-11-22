@@ -9,6 +9,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
+import { PLAN_CAPS } from "@/lib/billing/plans";
 import { isPostLive } from "@/lib/blog";
 import { Paths } from "@/lib/constants/app";
 import { comparisonTitle, competitors, getCompetitor } from "@/lib/seo/competitors";
@@ -105,6 +106,19 @@ const featureRows: FeatureRow[] = [
   { label: "Pricing", competitorKey: "pricing" },
 ];
 
+// Link-in-bio comparisons put iShortn's bio page limits next to the competitor's bio page instead
+// of the short-link quota. Numbers come from PLAN_CAPS so a plan change can't leave stale copy.
+const countLabel = (limit: number | undefined, noun: string) =>
+  limit === undefined ? `unlimited ${noun}s` : `${limit} ${limit === 1 ? noun : `${noun}s`}`;
+
+const freeCaps = PLAN_CAPS.free;
+const proCaps = PLAN_CAPS.pro;
+
+const bioLinksLabel = "Links on the bio page";
+const ishortnBioLinks = `Up to ${countLabel(freeCaps.bioLinkBlocksPerPageLimit, "link block")} per page on Free (${countLabel(freeCaps.bioPageLimit, "page")}); no limit on Pro (${countLabel(proCaps.bioPageLimit, "page")}) and Ultra. Plus ${freeCaps.linksLimit} short links/month on Free.`;
+const freeBioPlanLine = `${countLabel(freeCaps.bioPageLimit, "bio page")} with up to ${countLabel(freeCaps.bioLinkBlocksPerPageLimit, "link block")}.`;
+const proBioPlanLine = `${countLabel(proCaps.bioPageLimit, "bio page")} on your own domain, no iShortn badge.`;
+
 const guideLinkClass =
   "font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900";
 
@@ -112,6 +126,14 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const competitor = getCompetitor(slug);
   if (!competitor) return notFound();
+
+  const isLinkInBio = competitor.category === "link in bio";
+  const rows = isLinkInBio
+    ? featureRows.map((row) =>
+        row.competitorKey === "freeLinks" ? { ...row, label: bioLinksLabel } : row,
+      )
+    : featureRows;
+  const ishortnValues = isLinkInBio ? { ...ishortn, freeLinks: ishortnBioLinks } : ishortn;
 
   const guide =
     "guide" in competitor && isPostLive(competitor.guide.slug) ? competitor.guide : null;
@@ -158,7 +180,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-950/[0.07]">
-              {featureRows.map((row) => (
+              {rows.map((row) => (
                 <tr key={row.label}>
                   <th scope="row" className="px-6 py-4 align-top font-medium text-neutral-900">
                     {row.label}
@@ -167,7 +189,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                     {competitor[row.competitorKey]}
                   </td>
                   <td className="bg-neutral-50 px-6 py-4 align-top text-neutral-900">
-                    {ishortn[row.competitorKey]}
+                    {ishortnValues[row.competitorKey]}
                   </td>
                 </tr>
               ))}
@@ -235,6 +257,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                   <dt className="inline font-medium text-neutral-900">Free: </dt>
                   <dd className={cn(bodyClass, "inline")}>
                     30 links/month, 1,000 tracked events, 7-day analytics, 5 dynamic QR codes.
+                    {isLinkInBio && ` ${freeBioPlanLine}`}
                   </dd>
                 </div>
                 <div>
@@ -242,6 +265,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                   <dd className={cn(bodyClass, "inline")}>
                     1,000 links/month, 10,000 tracked events, unlimited analytics history, 3 custom
                     domains, branded + dynamic QR codes, REST API.
+                    {isLinkInBio && ` ${proBioPlanLine}`}
                   </dd>
                 </div>
                 <div>
