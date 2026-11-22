@@ -37,15 +37,7 @@ import { generateQRCodeSvg, toDataUri } from "@/lib/qr-generator/svg";
 import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../../revalidate-homepage";
-import {
-  qrCodeFileName,
-  renderQrCodePng,
-  savedQrCodePngState,
-  savedQrCodeSvgState,
-  saveBlob,
-  saveSvg,
-  svgNoteFor,
-} from "../utils";
+import { qrCodeFileName, savedQrCodeSvgState, saveBlob, saveSvg, svgNoteFor } from "../utils";
 import { EditQRCodeDrawer } from "./edit-qrcode-drawer";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -92,35 +84,23 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
 
   const handleDownload = async () => {
     const image = qr.qrCode;
-    const state = savedQrCodePngState(qr);
-    // The stored image is cross-origin without CORS headers, so it can be neither fetched nor
-    // saved with `download`. Redraw it from the saved style when there is one.
-    const loadPng = state
-      ? () => renderQrCodePng(state)
-      : image
-        ? async () => {
-            const response = await fetch(image);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.blob();
-          }
-        : null;
-    if (!loadPng) {
+    if (!image) {
       toast.error("QR code image is not available for download.");
       return;
     }
     trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED, { format: "png" });
+    // The stored R2 image is cross-origin without CORS headers, so neither `fetch` nor `download`
+    // works on it directly; the same-origin route serves the stored file instead.
     try {
-      saveBlob(await loadPng(), qrCodeFileName(qr.title));
+      const response = await fetch(`/api/qr-codes/${qr.id}/png`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      saveBlob(await response.blob(), qrCodeFileName(qr.title));
     } catch (error) {
       clientLogger.warn(
         { err: error instanceof Error ? error : String(error), qrCodeId: qr.id },
-        "QR code PNG download failed",
+        "QR code download fell back to opening",
       );
-      if (image) {
-        window.open(image, "_blank", "noopener,noreferrer");
-      } else {
-        toast.error("Couldn't create the PNG. Please try again.");
-      }
+      window.open(image, "_blank", "noopener,noreferrer");
     }
   };
 

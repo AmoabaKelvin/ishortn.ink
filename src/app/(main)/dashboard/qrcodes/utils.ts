@@ -1,4 +1,3 @@
-import { generateQRCode } from "@/lib/qr-generator/generate";
 import { defaultGeneratorState } from "@/lib/qr-generator/state";
 import { logoImageSchema } from "@/server/api/routers/qrcode/qrcode.input";
 
@@ -61,24 +60,6 @@ export function savedQrCodeSvgState(qr: SavedQrCode): QRCodeGeneratorState | nul
     return { ...base, seed: 0, pixelStyle: "square", markerFrame: "square", darkColor };
   }
   return { ...base, ...qr.style, logoImage: qr.style.logoImage ?? undefined };
-}
-
-/**
- * Generator state that redraws a saved code's PNG exactly as it was created: the saved style at the
- * creation scale. Null for codes saved without a style, whose stored image is the only faithful copy.
- */
-export function savedQrCodePngState(qr: SavedQrCode): QRCodeGeneratorState | null {
-  if (!qr.style) return null;
-  return savedQrCodeSvgState(qr);
-}
-
-/** Draws a code on an offscreen canvas and exports it as a PNG blob. */
-export async function renderQrCodePng(state: QRCodeGeneratorState): Promise<Blob> {
-  const canvas = document.createElement("canvas");
-  await generateQRCode(canvas, state);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-  if (!blob) throw new Error("Canvas PNG export failed");
-  return blob;
 }
 
 export function svgNoteFor(qr: Pick<SavedQrCode, "style">) {
