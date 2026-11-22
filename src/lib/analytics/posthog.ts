@@ -4,7 +4,7 @@ import { clientLogger } from "@/lib/logger/client";
 
 import { createDeferredClient } from "./deferred-client";
 
-import type { PostHog } from "posthog-js";
+import type { PostHog } from "posthog-js/dist/module.slim";
 
 // Inlined at build time. Read here rather than through @/env.mjs, which would put zod and
 // t3-env in the client bundle of every page that loads analytics.
@@ -61,8 +61,12 @@ function importPostHog() {
   if (importStarted || !POSTHOG_KEY) return;
   importStarted = true;
   for (const type of INTERACTION_EVENTS) window.removeEventListener(type, startWhenFree, true);
-  import("posthog-js")
-    .then(({ default: posthog }) => {
+  // The slim build has no extensions of its own. It gets the analytics ones (autocapture,
+  // heatmaps, dead clicks, web vitals; each still switched on by PostHog's remote config) and the
+  // toolbar, which shows heatmaps on the site. Leaving out replay, surveys, feature flags and
+  // error tracking halves the download, and surveys.js is no longer fetched on every page.
+  import("./posthog-slim")
+    .then(({ posthog, AnalyticsExtensions, ToolbarExtensions }) => {
       posthog.init(POSTHOG_KEY, {
         api_host: POSTHOG_HOST,
         person_profiles: "always",
@@ -70,6 +74,7 @@ function importPostHog() {
         // otherwise follow capture_pageview off.
         capture_pageview: false,
         capture_pageleave: true,
+        __extensionClasses: { ...AnalyticsExtensions, ...ToolbarExtensions },
       });
       deferred.ready(posthog);
     })
