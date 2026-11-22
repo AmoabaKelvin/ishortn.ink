@@ -61,4 +61,6 @@ export const homeGuideSlugs = [
   "how-to-track-qr-code-scans",
   "free-qr-code-generator-guide",
   "bitly-alternatives",
+  "best-free-url-shorteners",
+  "url-shortener-vs-link-management-platform",
 ] as const;
