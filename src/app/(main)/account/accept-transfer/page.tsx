@@ -21,6 +21,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { toast } from "sonner";
 
+import { Wordmark } from "@/app/(landing)/_components/site-primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -479,7 +480,7 @@ export default function AcceptTransferPage() {
           className="mb-10 animate-in fade-in slide-in-from-top-4 duration-500"
           style={{ animationFillMode: "backwards" }}
         >
-          <span className="text-3xl font-bold text-neutral-900 tracking-tight">iShortn</span>
+          <Wordmark className="text-3xl [&>svg]:size-8" />
         </div>
 
         {/* Main content */}
