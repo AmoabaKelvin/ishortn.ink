@@ -11,6 +11,7 @@ import {
   IconUserFilled,
   IconWorldFilled,
 } from "@tabler/icons-react";
+import { Link } from "next-view-transitions";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
@@ -33,17 +34,17 @@ import {
   Eyebrow,
   h1Class,
   h3Class,
-  IconPlate,
   leadClass,
   Section,
   SectionHeading,
   StepChip,
 } from "../_components/site-primitives";
+import { IconCardGrid } from "./icon-card-grid";
 import { FEATURES_SIGNUP_HREF } from "./utils";
 import { WhatsAppLinkGenerator } from "./whatsapp-link-generator";
 
+import type { IconCard } from "./icon-card-grid";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 
 const description =
   "Create a WhatsApp click-to-chat link with a pre-filled message, plus a QR code (PNG or SVG). Free, in your browser, no sign-up. Then track clicks with iShortn.";
@@ -59,7 +60,14 @@ export const metadata: Metadata = {
     "whatsapp click to chat link",
     "create whatsapp link",
   ],
-  alternates: { canonical: "/whatsapp-link-generator" },
+  alternates: {
+    canonical: "/whatsapp-link-generator",
+    languages: {
+      en: "/whatsapp-link-generator",
+      "pt-BR": "/gerador-de-link-whatsapp",
+      "x-default": "/whatsapp-link-generator",
+    },
+  },
   openGraph: {
     title: "Free WhatsApp Link Generator | iShortn",
     description,
@@ -67,8 +75,6 @@ export const metadata: Metadata = {
     url: "/whatsapp-link-generator",
   },
 };
-
-type IconCard = { title: string; body: string; icon: ReactNode };
 
 const steps: { title: string; body: string }[] = [
   {
@@ -178,18 +184,6 @@ const whatsappFaqs = [
   },
 ];
 
-const IconCardGrid = ({ items }: { items: IconCard[] }) => (
-  <dl className="mx-auto mt-14 grid max-w-4xl gap-4 sm:grid-cols-2">
-    {items.map((item) => (
-      <div key={item.title} className={cn(cardClass, "p-6 sm:p-8")}>
-        <IconPlate>{item.icon}</IconPlate>
-        <dt className={cn(h3Class, "mt-6")}>{item.title}</dt>
-        <dd className={cn(bodyClass, "mt-2 sm:text-sm")}>{item.body}</dd>
-      </div>
-    ))}
-  </dl>
-);
-
 export default function WhatsAppLinkGeneratorPage() {
   return (
     <main>
@@ -226,6 +220,16 @@ export default function WhatsAppLinkGeneratorPage() {
           <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-sm text-neutral-500">
             WhatsApp is a trademark of WhatsApp LLC. iShortn isn&apos;t affiliated with or endorsed
             by WhatsApp or Meta.
+          </p>
+          <p className="mx-auto mt-2 max-w-4xl text-center text-sm text-neutral-500">
+            <Link
+              href="/gerador-de-link-whatsapp"
+              hrefLang="pt-BR"
+              lang="pt-BR"
+              className="underline decoration-neutral-300 underline-offset-4 hover:text-neutral-900 hover:decoration-neutral-900"
+            >
+              Em português
+            </Link>
           </p>
         </div>
       </Section>

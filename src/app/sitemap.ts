@@ -15,6 +15,11 @@ const SITE_LASTMOD_FLOOR = "2026-09-19";
 // Bump when the docs pages change.
 const DOCS_LASTMOD = "2026-11-21";
 const compareList = Object.values(competitors);
+// The WhatsApp link generator in each language; both entries list both (hreflang).
+const WHATSAPP_TOOL_LANGUAGES = {
+  en: absoluteUrl("/whatsapp-link-generator"),
+  "pt-BR": absoluteUrl("/gerador-de-link-whatsapp"),
+};
 const maxDate = (a: string, b: string) => (a > b ? a : b);
 
 // Rebuild hourly so posts scheduled with a future `date` appear on that day without a deploy.
@@ -81,6 +86,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: "2026-11-22",
       changeFrequency: "monthly",
       priority: 0.9,
+      alternates: { languages: WHATSAPP_TOOL_LANGUAGES },
+    },
+    {
+      url: absoluteUrl("/gerador-de-link-whatsapp"),
+      lastModified: "2026-11-22",
+      changeFrequency: "monthly",
+      priority: 0.8,
+      alternates: { languages: WHATSAPP_TOOL_LANGUAGES },
     },
     {
       url: absoluteUrl("/blog"),

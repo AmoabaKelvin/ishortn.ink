@@ -34,10 +34,12 @@ import {
 import { MAX_URL_LENGTH } from "../_lib/parse-url";
 import { toSvgFile } from "../_lib/qr-export";
 import { useCopy } from "../_lib/use-copy";
+import { phoneNoteText, whatsappToolCopy } from "./copy";
 import { COUNTRY_CODES } from "./country-codes";
 import { formatWhatsAppLink, getShortenHref, normalizePhone } from "./utils";
 
 import type { CopyState } from "../_lib/use-copy";
+import type { WhatsAppToolLocale } from "./copy";
 import type { CountryCode } from "./country-codes";
 import type { ReactNode } from "react";
 
@@ -54,13 +56,6 @@ const focusRing =
 // 44px tall on touch screens, the regular button height from sm up.
 const touchTarget = "min-h-11 sm:min-h-0";
 
-const QUICK_FILLS = [
-  { label: "Order", text: "Hi! I'd like to place an order." },
-  { label: "Booking", text: "Hi! I'd like to book a table for 2 on Friday at 7pm." },
-  { label: "Question", text: "Hi! I have a question about " },
-  { label: "Quote", text: "Hi! Could you send me a quote for " },
-] as const;
-
 type CountryOption = CountryCode & { name: string };
 
 const subscribeToNothing = () => () => {};
@@ -69,15 +64,18 @@ const subscribeToNothing = () => () => {};
 // (the server snapshot is empty): server and browser ICU versions name some regions differently,
 // which would otherwise be a hydration mismatch.
 const NO_COUNTRIES: CountryOption[] = [];
-let countryOptions: CountryOption[] | null = null;
-const readCountryOptions = () => {
-  if (!countryOptions) {
-    const names = new Intl.DisplayNames(["en"], { type: "region" });
-    countryOptions = COUNTRY_CODES.map((c) => ({ ...c, name: names.of(c.iso2) ?? c.iso2 })).sort(
-      (a, b) => a.name.localeCompare(b.name, "en"),
+// Cached per locale so useSyncExternalStore gets the same array back on every read.
+const countryOptions = new Map<WhatsAppToolLocale, CountryOption[]>();
+const readCountryOptions = (locale: WhatsAppToolLocale) => {
+  let options = countryOptions.get(locale);
+  if (!options) {
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    options = COUNTRY_CODES.map((c) => ({ ...c, name: names.of(c.iso2) ?? c.iso2 })).sort((a, b) =>
+      a.name.localeCompare(b.name, locale),
     );
+    countryOptions.set(locale, options);
   }
-  return countryOptions;
+  return options;
 };
 
 const readBrowserRegion = () => {
@@ -89,10 +87,21 @@ const readBrowserRegion = () => {
   }
 };
 
-export function WhatsAppLinkGenerator() {
+export function WhatsAppLinkGenerator({
+  locale = "en",
+  defaultRegion = "",
+  campaign = "whatsapp-link",
+}: {
+  locale?: WhatsAppToolLocale;
+  /** ISO 3166 region preselected when the browser's language names none we support. */
+  defaultRegion?: string;
+  /** utm_campaign on the sign-up links, so each page's sign-ups are attributed to it. */
+  campaign?: string;
+}) {
+  const copy = whatsappToolCopy[locale];
   const countries = useSyncExternalStore(
     subscribeToNothing,
-    readCountryOptions,
+    () => readCountryOptions(locale),
     () => NO_COUNTRIES,
   );
   const browserRegion = useSyncExternalStore(subscribeToNothing, readBrowserRegion, () => "");
@@ -119,7 +128,7 @@ export function WhatsAppLinkGenerator() {
 
   const copier = useCopy(() => outputRef.current?.select());
 
-  const region = pickedRegion ?? browserRegion;
+  const region = pickedRegion ?? (browserRegion || defaultRegion);
   const country = countries.find((c) => c.iso2 === region);
   const phoneResult = normalizePhone(phone, country?.dial ?? "");
   const digits = phoneResult.ok ? phoneResult.digits : "";
@@ -149,7 +158,7 @@ export function WhatsAppLinkGenerator() {
     if (!canvas) return;
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
-    a.download = "whatsapp-qr-code.png";
+    a.download = copy.pngFileName;
     a.click();
   };
 
@@ -160,7 +169,7 @@ export function WhatsAppLinkGenerator() {
     const href = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" }));
     const a = document.createElement("a");
     a.href = href;
-    a.download = "whatsapp-qr-code.svg";
+    a.download = copy.svgFileName;
     a.click();
     URL.revokeObjectURL(href);
   };
@@ -174,7 +183,7 @@ export function WhatsAppLinkGenerator() {
         <div className="flex min-w-0 flex-col gap-6 p-4 sm:p-6">
           <div>
             <label htmlFor={ids.phone} className={labelClass}>
-              WhatsApp number
+              {copy.phoneLabel}
             </label>
             <div className="mt-2 flex flex-wrap gap-2">
               {/* The native select sits invisibly over a compact "GB +44" face, so the full
@@ -186,7 +195,7 @@ export function WhatsAppLinkGenerator() {
                 )}
               >
                 <label htmlFor={ids.country} className="sr-only">
-                  Country code
+                  {copy.countryCodeLabel}
                 </label>
                 <select
                   id={ids.country}
@@ -194,7 +203,7 @@ export function WhatsAppLinkGenerator() {
                   onChange={(e) => update(() => setPickedRegion(e.target.value))}
                   className="absolute inset-0 cursor-pointer appearance-none rounded-[10px] text-base opacity-0"
                 >
-                  <option value="">Number includes country code</option>
+                  <option value="">{copy.includesCountryCodeOption}</option>
                   {countries.map((c) => (
                     <option key={c.iso2} value={c.iso2}>
                       {c.name} (+{c.dial})
@@ -207,7 +216,7 @@ export function WhatsAppLinkGenerator() {
                   </span>
                 ) : (
                   <span aria-hidden="true" className="truncate text-neutral-500">
-                    Country
+                    {copy.countryPlaceholder}
                   </span>
                 )}
                 <IconChevronDown
@@ -220,7 +229,7 @@ export function WhatsAppLinkGenerator() {
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
-                placeholder="7700 900123"
+                placeholder={copy.phonePlaceholder}
                 value={phone}
                 onChange={(e) => update(() => setPhone(e.target.value))}
                 aria-invalid={!phoneResult.ok}
@@ -229,21 +238,20 @@ export function WhatsAppLinkGenerator() {
               />
             </div>
             <p id={ids.phoneHint} className={hintClass}>
-              Type the number the way you&apos;d dial it. We remove spaces, dashes and the leading
-              0.
+              {copy.phoneHint}
             </p>
             <div id={ids.phoneMessage} aria-live="polite">
               {!phoneResult.ok ? (
-                <ErrorText className="mt-1.5">{phoneResult.error}</ErrorText>
+                <ErrorText className="mt-1.5">{copy.errors[phoneResult.error]}</ErrorText>
               ) : phoneResult.digits ? (
                 <>
                   <p className="mt-1.5 break-all text-sm text-neutral-900">
-                    Link opens a chat with{" "}
+                    {copy.opensChatWith}{" "}
                     <span className="font-medium tabular-nums">{phoneResult.display}</span>
                   </p>
                   {phoneResult.notes.map((note) => (
-                    <p key={note} className={hintClass}>
-                      {note}
+                    <p key={note.code} className={hintClass}>
+                      {phoneNoteText(copy, note)}
                     </p>
                   ))}
                 </>
@@ -253,11 +261,12 @@ export function WhatsAppLinkGenerator() {
 
           <div>
             <label htmlFor={ids.message} className={labelClass}>
-              Message <span className="font-normal text-neutral-600">(optional)</span>
+              {copy.messageLabel}{" "}
+              <span className="font-normal text-neutral-600">{copy.messageOptional}</span>
             </label>
             <fieldset className="mt-2 flex flex-wrap gap-x-2 gap-y-3 sm:gap-2">
-              <legend className="sr-only">Quick fill</legend>
-              {QUICK_FILLS.map((fill) => (
+              <legend className="sr-only">{copy.quickFillLegend}</legend>
+              {copy.quickFills.map((fill) => (
                 <button
                   key={fill.label}
                   type="button"
@@ -280,7 +289,7 @@ export function WhatsAppLinkGenerator() {
               ref={messageRef}
               id={ids.message}
               rows={4}
-              placeholder="Hi! I'd like to place an order."
+              placeholder={copy.messagePlaceholder}
               value={message}
               onChange={(e) => update(() => setMessage(e.target.value))}
               aria-invalid={tooLong}
@@ -288,27 +297,21 @@ export function WhatsAppLinkGenerator() {
               className={cn(fieldClass, "resize-y")}
             />
             <p id={ids.messageHint} className={hintClass}>
-              People see this typed in when the chat opens. They can edit it before sending.
+              {copy.messageHint}
             </p>
             <div id={ids.messageStatus} aria-live="polite">
               {message.length > SHOW_COUNTER_AFTER && (
                 <p className={cn(hintClass, "tabular-nums")}>
-                  {message.length.toLocaleString()} characters
+                  {copy.characters(message.length.toLocaleString(locale))}
                 </p>
               )}
-              {tooLong && (
-                <ErrorText className="mt-1.5">
-                  Your message is too long for a link. Keep it under about 600 characters.
-                </ErrorText>
-              )}
+              {tooLong && <ErrorText className="mt-1.5">{copy.messageTooLong}</ErrorText>}
             </div>
           </div>
 
           <div>
             <label htmlFor={ids.output} aria-live="polite" className={labelClass}>
-              {isShareLink
-                ? "Share link: people choose who to send your message to"
-                : "Your WhatsApp link"}
+              {isShareLink ? copy.shareLinkLabel : copy.outputLabel}
             </label>
             <textarea
               ref={outputRef}
@@ -316,11 +319,7 @@ export function WhatsAppLinkGenerator() {
               readOnly
               rows={3}
               value={output ?? ""}
-              placeholder={
-                tooLong
-                  ? "Shorten your message to see your link."
-                  : "Add your WhatsApp number to see your link."
-              }
+              placeholder={tooLong ? copy.outputTooLong : copy.outputEmpty}
               className={cn(fieldClass, "resize-none break-all font-mono sm:text-sm")}
             />
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -335,7 +334,7 @@ export function WhatsAppLinkGenerator() {
                 ) : (
                   <IconCopy aria-hidden="true" className="size-4 shrink-0" />
                 )}
-                {copier.state === "copied" ? "Copied" : "Copy link"}
+                {copier.state === "copied" ? copy.copied : copy.copyLink}
               </button>
               {output ? (
                 <a
@@ -345,8 +344,8 @@ export function WhatsAppLinkGenerator() {
                   className={cn(buttonClass({ variant: "secondary" }), touchTarget, "gap-1.5")}
                 >
                   <IconExternalLink aria-hidden="true" className="size-4 shrink-0" />
-                  Open in WhatsApp
-                  <span className="sr-only"> (opens in a new tab)</span>
+                  {copy.openInWhatsApp}
+                  <span className="sr-only">{copy.opensInNewTab}</span>
                 </a>
               ) : (
                 <button
@@ -355,18 +354,18 @@ export function WhatsAppLinkGenerator() {
                   className={cn(buttonClass({ variant: "secondary" }), touchTarget, "gap-1.5")}
                 >
                   <IconExternalLink aria-hidden="true" className="size-4 shrink-0" />
-                  Open in WhatsApp
+                  {copy.openInWhatsApp}
                 </button>
               )}
             </div>
-            <CopyStatus state={copier.state} />
+            <CopyStatus state={copier.state} copied={copy.copied} fallback={copy.copyFallback} />
           </div>
 
           {hasMessage && (
             <div className={cn(wellClass, "p-4")}>
               <p className="flex items-center gap-1.5 text-sm font-medium text-neutral-600">
                 <IconMessageCircle aria-hidden="true" className="size-4 shrink-0" stroke={1.5} />
-                What they&apos;ll see
+                {copy.previewLabel}
               </p>
               <div className="mt-3 flex justify-end pl-12">
                 <p className="max-h-60 min-w-0 overflow-y-auto whitespace-pre-wrap break-words rounded-xl rounded-br-sm bg-white px-3 py-2 text-base text-neutral-900 shadow-site-card sm:text-sm">
@@ -390,7 +389,7 @@ export function WhatsAppLinkGenerator() {
           >
             {output ? (
               <>
-                <span className="sr-only">QR code for {output}</span>
+                <span className="sr-only">{copy.qrCodeFor(output)}</span>
                 <QRCodeCanvas
                   value={output}
                   size={QR_EXPORT_SIZE}
@@ -408,7 +407,7 @@ export function WhatsAppLinkGenerator() {
             ) : (
               <div className="flex flex-col items-center gap-2 px-6 text-center text-neutral-500">
                 <IconQrcode aria-hidden="true" className="size-8" stroke={1.5} />
-                <span className="text-sm">Your QR code appears here</span>
+                <span className="text-sm">{copy.qrPlaceholder}</span>
               </div>
             )}
           </div>
@@ -420,7 +419,7 @@ export function WhatsAppLinkGenerator() {
               className={cn(buttonClass({ variant: "secondary" }), touchTarget, "w-full gap-1.5")}
             >
               <IconDownload aria-hidden="true" className="size-4 shrink-0" />
-              Download PNG
+              {copy.downloadPng}
             </button>
             <button
               type="button"
@@ -429,19 +428,15 @@ export function WhatsAppLinkGenerator() {
               className={cn(buttonClass({ variant: "secondary" }), touchTarget, "w-full gap-1.5")}
             >
               <IconDownload aria-hidden="true" className="size-4 shrink-0" />
-              Download SVG
+              {copy.downloadSvg}
             </button>
           </div>
           <div className="w-full max-w-60 space-y-2 text-sm">
-            <p className="text-neutral-600">
-              Scan it with your phone&apos;s camera. WhatsApp&apos;s in-app scanner only reads
-              WhatsApp&apos;s own codes.
-            </p>
+            <p className="text-neutral-600">{copy.scanHint}</p>
             {output && output.length > DENSE_QR_LENGTH && (
               <p className="flex items-start gap-1.5 text-amber-700">
                 <IconAlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                Long messages make a dense code that&apos;s harder to scan from a distance. Shorten
-                the link to keep the code simple.
+                {copy.denseCodeWarning}
               </p>
             )}
           </div>
@@ -451,18 +446,14 @@ export function WhatsAppLinkGenerator() {
         <div
           className={cn(wellClass, "p-5 md:col-start-1 md:row-start-2 md:m-6 md:mt-0 md:self-end")}
         >
-          <h2 className={cn(h3Class, "text-lg")}>Printing it? Make it a code you can change</h2>
+          <h2 className={cn(h3Class, "text-lg")}>{copy.upgradeHeading}</h2>
           <p className={cn(bodyClass, "mt-2 sm:text-sm")}>
-            This code has your number and message built in. If your number changes, every printed
-            code still opens the old chat, and you can&apos;t see how many people scan or tap it.
-            Shorten it with iShortn to get a short link and a dynamic QR code you can point
-            somewhere new at any time, with clicks by day, country and device. Free accounts get{" "}
-            {PLAN_CAPS.free.linksLimit} links a month and {FREE_QR_CODE_LIMIT} dynamic QR codes.
+            {copy.upgradeBody(PLAN_CAPS.free.linksLimit ?? 0, FREE_QR_CODE_LIMIT)}
           </p>
           {/* Signed out, the link goes in a cookie set on click, not the href. No prefetch: the
               sign-up page reads that cookie when it renders, so it must load after the click. */}
           <ButtonLink
-            href={getShortenHref(output, signedIn)}
+            href={getShortenHref(output, signedIn, campaign)}
             prefetch={false}
             onClick={() => {
               if (signedIn) return;
@@ -473,18 +464,21 @@ export function WhatsAppLinkGenerator() {
             }}
             className={cn("mt-4 whitespace-normal", touchTarget)}
           >
-            {signedIn ? "Shorten this link" : "Shorten and track this link, free"}
+            {signedIn ? copy.shortenSignedIn : copy.shortenSignedOut}
           </ButtonLink>
           <p className="mt-3 text-sm text-neutral-600">
-            On{" "}
+            {copy.pro.before}
             <Link
               href="/pricing"
               className="font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
             >
-              Pro
+              {copy.pro.link}
             </Link>
-            , use your own domain, like chat.yourshop.com.
+            {copy.pro.after}
           </p>
+          {copy.dashboardNote && (
+            <p className="mt-3 text-sm text-neutral-600">{copy.dashboardNote}</p>
+          )}
         </div>
       </div>
     </div>
@@ -498,9 +492,17 @@ const ErrorText = ({ children, className }: { children: ReactNode; className?: s
   </p>
 );
 
-const CopyStatus = ({ state }: { state: CopyState }) => (
+const CopyStatus = ({
+  state,
+  copied,
+  fallback,
+}: {
+  state: CopyState;
+  copied: string;
+  fallback: string;
+}) => (
   <p aria-live="polite" className={cn("text-sm text-neutral-600", state === "failed" && "mt-2")}>
-    {state === "copied" && <span className="sr-only">Copied</span>}
-    {state === "failed" && "Press Ctrl+C or ⌘C to copy"}
+    {state === "copied" && <span className="sr-only">{copied}</span>}
+    {state === "failed" && fallback}
   </p>
 );
