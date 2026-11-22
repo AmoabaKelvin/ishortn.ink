@@ -12,6 +12,7 @@ import { Link } from "next-view-transitions";
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT as FREE_DYNAMIC_QR_CODES } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
+import { livePostLinks } from "@/lib/seo/related-links";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
@@ -23,6 +24,7 @@ import { CTA } from "../_components/cta";
 import { Faq } from "../_components/faq";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
+import { RelatedReading } from "../_components/related-reading";
 import {
   bodyClass,
   ButtonLink,
@@ -42,6 +44,9 @@ import type { ReactNode } from "react";
 
 const description =
   "Create a free QR code in your browser and download it as a PNG or SVG, no sign-up needed. Need a code you can edit after printing and track? iShortn Free includes 5 dynamic QR codes that never expire.";
+
+// Hourly, so a related blog post scheduled for a future date shows up on that day.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Free QR Code Generator That Doesn't Expire",
@@ -261,6 +266,10 @@ export default function QrCodeGeneratorPage() {
       </Section>
 
       <Faq faqs={qrFaqs} />
+
+      <RelatedReading
+        links={livePostLinks(["how-to-track-qr-code-scans", "qr-code-stopped-working"])}
+      />
 
       <CTA />
       <Footer />
