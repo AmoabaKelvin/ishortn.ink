@@ -1,5 +1,5 @@
 import "@/styles/globals.css";
-import { Bricolage_Grotesque, DM_Sans, Eagle_Lake, Instrument_Serif } from "next/font/google";
+import { Bricolage_Grotesque, DM_Sans, Instrument_Serif } from "next/font/google";
 
 // None of these render on marketing, docs or auth pages, so they aren't preloaded: the browser
 // fetches a face only once text on the page uses it.
@@ -23,11 +23,4 @@ export const fontHeading = Bricolage_Grotesque({
   variable: "--font-heading",
   preload: false,
   weight: ["400", "600", "700", "800"],
-});
-
-export const fontLogo = Eagle_Lake({
-  subsets: ["latin"],
-  variable: "--font-logo",
-  preload: false,
-  weight: ["400"],
 });

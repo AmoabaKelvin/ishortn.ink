@@ -19,6 +19,7 @@ interface DomainStatusCheckerProps {
 }
 
 const PENDING_FEEDBACK = "Records not detected yet. DNS changes can take up to 48 hours.";
+const IN_REVIEW_FEEDBACK = "This domain is being reviewed. It usually goes live within 24 hours.";
 
 export default function DomainStatusChecker({ domain, onResult }: DomainStatusCheckerProps) {
   // Only shown after a manual check; the 30s background poll stays silent
@@ -47,7 +48,10 @@ export default function DomainStatusChecker({ domain, onResult }: DomainStatusCh
     } else if (data.message) {
       setFeedback({ tone: "error", message: data.message });
     } else if (data.status !== "active") {
-      setFeedback({ tone: "pending", message: PENDING_FEEDBACK });
+      setFeedback({
+        tone: "pending",
+        message: data.status === "in_review" ? IN_REVIEW_FEEDBACK : PENDING_FEEDBACK,
+      });
     }
   };
 

@@ -27,7 +27,8 @@ describe("email templates", () => {
       const html = await render(createElement(Template, Template.PreviewProps));
 
       // Logo and footer from EmailLayout
-      expect(html).toContain(">iShortn</a>");
+      expect(html).toContain('alt="iShortn"');
+      expect(html).toContain('src="https://ishortn.ink/email/logo@2x.png"');
       expect(html).toContain("mailto:support@ishortn.ink");
       expect(html).toContain("https://ishortn.ink/dashboard");
       // No fixed widths that could overflow a 390px screen

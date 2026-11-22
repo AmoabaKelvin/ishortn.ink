@@ -28,6 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/trpc/react";
 
+import { HeldDomains } from "./_components/held-domains";
+
 export default function AdminDomainsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newDomain, setNewDomain] = useState("");
@@ -66,18 +68,29 @@ export default function AdminDomainsPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
-            Blocked Domains
-          </h1>
-          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+      <div className="mb-8">
+        <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
+          Domains
+        </h1>
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+          Review held custom domains and manage the link destination blocklist.
+        </p>
+      </div>
+
+      <HeldDomains />
+
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+            Blocked domains
+          </h2>
+          <p className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-400">
             {domains
-              ? `${domains.length} ${domains.length === 1 ? "domain" : "domains"} blocked`
+              ? `${domains.length.toLocaleString()} ${domains.length === 1 ? "domain" : "domains"} blocked`
               : "URLs from these domains will be rejected during link creation"}
           </p>
         </div>
-        <Button onClick={() => setIsAddOpen(true)}>
+        <Button className="shrink-0" onClick={() => setIsAddOpen(true)}>
           <IconPlus size={16} />
           Add Domain
         </Button>

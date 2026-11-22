@@ -4,7 +4,7 @@ import { ViewTransitions } from "next-view-transitions";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { APP_TITLE } from "@/lib/constants/app";
-import { fontDisplay, fontHeading, fontLogo, fontSans } from "@/lib/fonts";
+import { fontDisplay, fontHeading, fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { fontTitle, inter } from "@/styles/fonts";
 
@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description:
     "Free URL shortener with powerful analytics. Create custom short links, track clicks, locations, and devices. QR codes, custom domains, and API included.",
   icons: [
+    // favicon.ico is added by Next from src/app; modern browsers prefer the vector.
+    { rel: "icon", url: "/icon.svg", type: "image/svg+xml" },
     { rel: "icon", url: "/icon.png", type: "image/png", sizes: "512x512" },
     { rel: "apple-touch-icon", url: "/apple-icon.png", sizes: "180x180" },
   ],
@@ -55,7 +57,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             fontSans.variable,
             fontDisplay.variable,
             fontHeading.variable,
-            fontLogo.variable,
             fontTitle.variable,
             inter.variable,
           )}

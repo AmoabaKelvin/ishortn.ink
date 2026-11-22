@@ -30,12 +30,14 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
   const RESTRICTED_TEAM_DOMAIN = "go.restricted-reminder.test";
   const HEALTHY_DOMAIN = "links.good-reminder.test";
   const BROKEN_DOMAIN = "go.good-reminder.test";
+  const HELD_DOMAIN = "login.good-reminder.test";
   const TEST_DOMAINS = [
     RESTRICTED_DOMAIN,
     BANNED_DOMAIN,
     RESTRICTED_TEAM_DOMAIN,
     HEALTHY_DOMAIN,
     BROKEN_DOMAIN,
+    HELD_DOMAIN,
   ];
   const HOOK_TIMEOUT_MS = 30_000;
 
@@ -75,6 +77,7 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
       { userId: RESTRICTED, teamId, domain: RESTRICTED_TEAM_DOMAIN, status: "pending", createdAt },
       { userId: GOOD, domain: HEALTHY_DOMAIN, status: "pending", createdAt },
       { userId: GOOD, domain: BROKEN_DOMAIN, status: "invalid", createdAt },
+      { userId: GOOD, domain: HELD_DOMAIN, status: "pending", reviewStatus: "held", createdAt },
     ]);
   }, HOOK_TIMEOUT_MS);
 
@@ -83,7 +86,7 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
     await pool.end();
   });
 
-  test("skips restricted and banned owners and still handles everyone else", async () => {
+  test("skips restricted and banned owners and held domains, and still handles everyone else", async () => {
     const checked: string[] = [];
     const emailed: string[] = [];
 
@@ -114,7 +117,7 @@ describe.skipIf(!testDatabaseUrl)("domain reminder cron (MySQL)", () => {
     const status = Object.fromEntries(rows.map((row) => [row.domain, row.status]));
     const reminded = rows.filter((row) => row.lastReminderSentAt).map((row) => row.domain);
 
-    for (const domain of [RESTRICTED_DOMAIN, BANNED_DOMAIN, RESTRICTED_TEAM_DOMAIN]) {
+    for (const domain of [RESTRICTED_DOMAIN, BANNED_DOMAIN, RESTRICTED_TEAM_DOMAIN, HELD_DOMAIN]) {
       expect(status[domain]).toBe("pending");
       expect(checked).not.toContain(domain);
       expect(emailed).not.toContain(domain);

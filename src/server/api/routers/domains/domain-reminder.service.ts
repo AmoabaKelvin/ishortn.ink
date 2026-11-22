@@ -13,6 +13,7 @@ import {
   mapStatus,
   wwwFallbackActive,
 } from "./cloudflare";
+import { domainCanGoLive } from "./domains.service";
 
 import type { CloudflareCustomHostname } from "./cloudflare";
 import type { MySqlColumn } from "drizzle-orm/mysql-core";
@@ -62,11 +63,14 @@ function calculateDaysSince(date: Date): number {
 /**
  * Domains that should get a reminder: 'invalid' ones, and 'pending' ones older
  * than PENDING_GRACE_DAYS (setup is still in progress before that), skipping
- * any reminded in the last REMINDER_INTERVAL_DAYS.
+ * any reminded in the last REMINDER_INTERVAL_DAYS. Domains held for review or
+ * rejected are skipped: their state isn't about DNS, and the health check below
+ * would otherwise activate them.
  */
 function needsReminder(now: Date) {
   const reminderCutoff = subDays(now, REMINDER_INTERVAL_DAYS);
   return and(
+    domainCanGoLive,
     or(
       eq(customDomain.status, "invalid"),
       and(
@@ -157,7 +161,7 @@ export async function sendDomainConfigurationReminders({
         await db
           .update(customDomain)
           .set({ status: "active" })
-          .where(eq(customDomain.id, domainRecord.id));
+          .where(and(eq(customDomain.id, domainRecord.id), domainCanGoLive));
 
         result.domainsUpdatedToActive++;
         log.info({ domain: domainName }, "domain now valid, updated status to 'active'");
