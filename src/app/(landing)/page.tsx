@@ -19,8 +19,12 @@ import { Hero } from "./_components/hero";
 import { HowItWorks } from "./_components/how-it-works";
 import { Pricing } from "./_components/pricing";
 import { QRSection } from "./_components/qr-section";
+import { FreeTools, Guides } from "./_components/resources";
 
 import type { Metadata } from "next";
+
+// Hourly, so a curated guide scheduled for a future date shows up on that day.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: {
@@ -70,6 +74,8 @@ export default function HomePage() {
       <DashboardPreview />
       <QRSection />
       <Pricing />
+      <FreeTools />
+      <Guides />
       <Faq />
       <CTA />
       <Footer />

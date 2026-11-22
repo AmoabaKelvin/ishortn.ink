@@ -84,6 +84,20 @@ export function isPostLive(slug: string, now: Date = new Date()): boolean {
   return isPostVisible(blogPostFrontmatterSchema.parse(matter(source).data), now);
 }
 
+// Slug and title of each live post in `slugs`, in the given order, for pages that link to a
+// curated list of posts. Scheduled, unpublished and unknown slugs are left out.
+export function getLivePosts(
+  slugs: readonly string[],
+  now: Date = new Date(),
+): { slug: string; title: string }[] {
+  return slugs.flatMap((slug) => {
+    const source = blogSources.get(slug);
+    if (source === undefined) return [];
+    const frontmatter = blogPostFrontmatterSchema.parse(matter(source).data);
+    return isPostVisible(frontmatter, now) ? [{ slug, title: frontmatter.title }] : [];
+  });
+}
+
 // Every published post, scheduled ones included, from frontmatter alone. For build-time assets
 // (social cards) that must already exist when a scheduled post goes live between deploys.
 export function getPublishedPostsFrontmatter(): (BlogPostFrontmatter & { slug: string })[] {

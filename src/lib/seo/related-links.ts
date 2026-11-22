@@ -1,4 +1,4 @@
-import { isPostLive } from "@/lib/blog";
+import { getLivePosts, isPostLive } from "@/lib/blog";
 
 const BLOG_PREFIX = "/blog/";
 
@@ -9,3 +9,10 @@ export const visibleRelatedLinks = <T extends { href: string }>(links: T[], now 
     (link) =>
       !link.href.startsWith(BLOG_PREFIX) || isPostLive(link.href.slice(BLOG_PREFIX.length), now),
   );
+
+// Links to the live posts among `slugs`, in order, labelled with each post's title.
+export const livePostLinks = (slugs: readonly string[], now = new Date()) =>
+  getLivePosts(slugs, now).map((post) => ({
+    href: `${BLOG_PREFIX}${post.slug}`,
+    label: post.title,
+  }));

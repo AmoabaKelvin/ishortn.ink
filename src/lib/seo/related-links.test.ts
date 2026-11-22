@@ -4,7 +4,7 @@ import path from "path";
 
 import matter from "gray-matter";
 
-import { visibleRelatedLinks } from "./related-links";
+import { livePostLinks, visibleRelatedLinks } from "./related-links";
 
 const slug = "qr-code-for-restaurant-menu";
 const { date } = matter(
@@ -30,6 +30,27 @@ describe("visibleRelatedLinks", () => {
     expect(visibleRelatedLinks(links, onTheDay).map((l) => l.href)).toEqual([
       `/blog/${slug}`,
       "/docs/qr-codes",
+    ]);
+  });
+});
+
+describe("livePostLinks", () => {
+  // The /utm-builder related posts: utm-naming-convention is scheduled for 2026-12-04.
+  const slugs = ["how-to-track-link-clicks", "utm-naming-convention", "no-such-post"];
+
+  it("links live posts by title, in order, and leaves out scheduled and unknown ones", () => {
+    expect(livePostLinks(slugs, new Date("2026-12-03T23:59:59Z"))).toEqual([
+      {
+        href: "/blog/how-to-track-link-clicks",
+        label: "How to Track Link Clicks: The Complete Guide to Link Analytics",
+      },
+    ]);
+  });
+
+  it("adds a scheduled post on its UTC publish day", () => {
+    expect(livePostLinks(slugs, new Date("2026-12-04T00:00:00Z")).map((l) => l.href)).toEqual([
+      "/blog/how-to-track-link-clicks",
+      "/blog/utm-naming-convention",
     ]);
   });
 });

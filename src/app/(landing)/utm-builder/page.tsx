@@ -11,6 +11,7 @@ import {
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
+import { livePostLinks } from "@/lib/seo/related-links";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
@@ -22,6 +23,7 @@ import { CTA } from "../_components/cta";
 import { Faq } from "../_components/faq";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
+import { RelatedReading } from "../_components/related-reading";
 import {
   bodyClass,
   ButtonLink,
@@ -43,6 +45,9 @@ import type { ReactNode } from "react";
 
 const description =
   "Build UTM-tagged campaign URLs for Google Analytics 4, one link or a thousand. Free, in your browser, no sign-up. Then shorten and track them with iShortn.";
+
+// Hourly, so a related blog post scheduled for a future date shows up on that day.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Free UTM Builder: Campaign URL Builder for GA4",
@@ -272,6 +277,10 @@ export default function UtmBuilderPage() {
       </Section>
 
       <Faq faqs={utmFaqs} />
+
+      <RelatedReading
+        links={livePostLinks(["how-to-track-link-clicks", "utm-naming-convention"])}
+      />
 
       <CTA />
       <Footer />

@@ -51,3 +51,14 @@ export const landingPageCopy = {
     },
   ],
 };
+
+// Posts the homepage links to, in display order. Each appears only once it is live, so a scheduled
+// post never becomes a 404 link.
+export const homeGuideSlugs = [
+  "what-is-a-url-shortener",
+  "url-shortener-api-guide",
+  "how-to-track-link-clicks",
+  "how-to-track-qr-code-scans",
+  "free-qr-code-generator-guide",
+  "bitly-alternatives",
+] as const;

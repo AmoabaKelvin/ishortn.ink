@@ -5,7 +5,7 @@ import { solutionList } from "@/lib/seo/solutions";
 
 import { Section, Wordmark } from "./site-primitives";
 
-const columns = [
+const columns: { title: string; links: { label: string; href: string; lang?: string }[] }[] = [
   {
     title: "Product",
     links: [
@@ -13,6 +13,11 @@ const columns = [
       { label: "QR code generator", href: "/qr-code-generator" },
       { label: "UTM builder", href: "/utm-builder" },
       { label: "WhatsApp link generator", href: "/whatsapp-link-generator" },
+      {
+        label: "Gerador de link WhatsApp (PT-BR)",
+        href: "/gerador-de-link-whatsapp",
+        lang: "pt-BR",
+      },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },
       { label: "API docs", href: "/docs/api" },
@@ -138,6 +143,8 @@ export const Footer = () => {
                       ) : (
                         <Link
                           href={link.href}
+                          hrefLang={link.lang}
+                          lang={link.lang}
                           className="text-base font-normal text-neutral-700 hover:text-neutral-900 sm:text-[0.9375rem]"
                         >
                           {link.label}

@@ -16,6 +16,7 @@ import { Link } from "next-view-transitions";
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
+import { livePostLinks } from "@/lib/seo/related-links";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
@@ -27,6 +28,7 @@ import { CTA } from "../_components/cta";
 import { Faq } from "../_components/faq";
 import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
+import { RelatedReading } from "../_components/related-reading";
 import {
   bodyClass,
   ButtonLink,
@@ -48,6 +50,9 @@ import type { Metadata } from "next";
 
 const description =
   "Create a WhatsApp click-to-chat link with a pre-filled message, plus a QR code (PNG or SVG). Free, in your browser, no sign-up. Then track clicks with iShortn.";
+
+// Hourly, so a related blog post scheduled for a future date shows up on that day.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "WhatsApp Link Generator with Message and QR Code",
@@ -280,6 +285,8 @@ export default function WhatsAppLinkGeneratorPage() {
       </Section>
 
       <Faq faqs={whatsappFaqs} />
+
+      <RelatedReading links={livePostLinks(["whatsapp-link-with-message"])} />
 
       <CTA />
       <Footer />
