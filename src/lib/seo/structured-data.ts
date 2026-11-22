@@ -1,5 +1,5 @@
 import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
-import { defaultOgImage } from "@/lib/seo/og-image";
+import { ROOT_OG_IMAGE_URL } from "@/lib/seo/og-image";
 
 export type JsonLdValue =
   | string
@@ -150,6 +150,6 @@ export function createArticleSchema(article: {
       },
     },
     // Google's Article guidelines expect an image; posts without a cover use the site card.
-    image: article.image ? new URL(article.image, "https://ishortn.ink").href : defaultOgImage.url,
+    image: article.image ? new URL(article.image, "https://ishortn.ink").href : ROOT_OG_IMAGE_URL,
   };
 }

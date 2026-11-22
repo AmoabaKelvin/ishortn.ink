@@ -11,7 +11,6 @@ import {
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT as FREE_DYNAMIC_QR_CODES } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
-import { socialImages } from "@/lib/seo/og-image";
 import { createBreadcrumbSchema, createFaqSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +54,6 @@ export const metadata: Metadata = {
     description,
     type: "website",
     url: "/qr-code-generator",
-    images: socialImages(),
   },
 };
 

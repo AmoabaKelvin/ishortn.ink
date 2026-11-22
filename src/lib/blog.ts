@@ -84,6 +84,15 @@ export function isPostLive(slug: string, now: Date = new Date()): boolean {
   return isPostVisible(blogPostFrontmatterSchema.parse(matter(source).data), now);
 }
 
+// Every published post, scheduled ones included, from frontmatter alone. For build-time assets
+// (social cards) that must already exist when a scheduled post goes live between deploys.
+export function getPublishedPostsFrontmatter(): (BlogPostFrontmatter & { slug: string })[] {
+  return [...blogSources].flatMap(([slug, source]) => {
+    const frontmatter = blogPostFrontmatterSchema.parse(matter(source).data);
+    return frontmatter.published ? [{ ...frontmatter, slug }] : [];
+  });
+}
+
 const BLOG_POST_PATH = /^\/blog\/([^/]+)\/?$/;
 
 // A post linking to a scheduled one would otherwise render a link to a 404 until that post's date.

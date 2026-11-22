@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { defaultOgImage } from "./og-image";
+import { ROOT_OG_IMAGE_URL } from "./og-image";
 import { createArticleSchema } from "./structured-data";
 
 const article = {
@@ -14,8 +14,8 @@ const article = {
 
 describe("createArticleSchema", () => {
   it("falls back to the default OG image when the post has no cover", () => {
-    expect(createArticleSchema(article).image).toBe(defaultOgImage.url);
-    expect(createArticleSchema({ ...article, image: "" }).image).toBe(defaultOgImage.url);
+    expect(createArticleSchema(article).image).toBe(ROOT_OG_IMAGE_URL);
+    expect(createArticleSchema({ ...article, image: "" }).image).toBe(ROOT_OG_IMAGE_URL);
   });
 
   it("uses the post's cover as an absolute URL", () => {

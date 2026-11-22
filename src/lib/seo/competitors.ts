@@ -228,5 +228,9 @@ export const competitors = {
 
 export type Competitor = (typeof competitors)[keyof typeof competitors];
 
+export function getCompetitor(slug: string): Competitor | undefined {
+  return Object.values(competitors).find((c) => c.slug === slug);
+}
+
 export const comparisonTitle = (competitor: Competitor) =>
   `${competitor.name} vs iShortn: ${competitor.category} comparison`;

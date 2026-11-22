@@ -9,7 +9,6 @@ import { Link } from "next-view-transitions";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
-import { socialImages } from "@/lib/seo/og-image";
 import { visibleRelatedLinks } from "@/lib/seo/related-links";
 import { getSolution, signUpHref, solutionList } from "@/lib/seo/solutions";
 import { createBreadcrumbSchema, createFaqSchema } from "@/lib/seo/structured-data";
@@ -62,7 +61,6 @@ export async function generateMetadata({
       description: solution.metaDescription,
       type: "website",
       url: `https://ishortn.ink/solutions/${solution.slug}`,
-      images: socialImages(),
     },
   };
 }
