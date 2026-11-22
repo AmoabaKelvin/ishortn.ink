@@ -2,7 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
-import { fullName } from "@/lib/utils/user-name";
+import { storedName } from "@/lib/utils/user-name";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 
@@ -16,6 +16,26 @@ export type UserAccess = {
   deletedAt: Date | null;
   name: string | null;
 };
+
+type ClerkProfile = {
+  firstName: string | null;
+  lastName: string | null;
+  imageUrl: string;
+  primaryEmailAddressId: string | null;
+  emailAddresses: { id: string; emailAddress: string }[];
+};
+
+/** The User columns ensureUser writes from a Clerk profile. */
+export function profileValues(profile: ClerkProfile) {
+  const email =
+    profile.emailAddresses.find((e) => e.id === profile.primaryEmailAddressId)?.emailAddress ??
+    profile.emailAddresses[0]?.emailAddress;
+  return {
+    name: storedName(profile.firstName, profile.lastName),
+    email,
+    imageUrl: profile.imageUrl,
+  };
+}
 
 /**
  * Access columns for the signed-in user, creating the User row from the Clerk
@@ -39,23 +59,20 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
   const profile = await currentUser();
   if (!profile || profile.id !== userId) return undefined;
 
-  const primaryEmail =
-    profile.emailAddresses.find((e) => e.id === profile.primaryEmailAddressId)?.emailAddress ??
-    profile.emailAddresses[0]?.emailAddress;
-  const name = fullName(profile.firstName, profile.lastName);
+  const values = profileValues(profile);
 
   // Upsert: the webhook may insert the same row concurrently.
-  await db
-    .insert(user)
-    // New accounts have nothing above their plan to check (see ensurePlanChecked).
-    .values({
-      id: userId,
-      name,
-      email: primaryEmail,
-      imageUrl: profile.imageUrl,
-      planCheckedAt: new Date(),
-    })
-    .onDuplicateKeyUpdate({ set: { name, email: primaryEmail, imageUrl: profile.imageUrl } });
+  try {
+    await db
+      .insert(user)
+      // New accounts have nothing above their plan to check (see ensurePlanChecked).
+      .values({ id: userId, ...values, planCheckedAt: new Date() })
+      .onDuplicateKeyUpdate({ set: values });
+  } catch (err) {
+    // Every dashboard route depends on this row, so a failure here is a site-wide 500 for the user.
+    log.error({ err, userId }, "failed to provision user row from Clerk profile");
+    throw err;
+  }
   log.info({ userId }, "provisioned user row from Clerk profile");
 
   return {
@@ -64,6 +81,6 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
     restrictedAt: null,
     isAdmin: false,
     deletedAt: null,
-    name,
+    name: values.name,
   };
 }

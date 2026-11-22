@@ -7,6 +7,14 @@ export function fullName(...parts: (string | null | undefined)[]): string | null
   return parts.filter(Boolean).join(" ") || null;
 }
 
+/**
+ * The value to write to User.name: production's column is NOT NULL, so "no name" is stored as "".
+ * Reads go through displayName(), which treats "" as no name.
+ */
+export function storedName(...parts: (string | null | undefined)[]): string {
+  return fullName(...parts) ?? "";
+}
+
 /** The user's name without literal "null"/"undefined" parts, or null when nothing real is left. */
 export function displayName(name: string | null | undefined): string | null {
   if (!name) return null;
