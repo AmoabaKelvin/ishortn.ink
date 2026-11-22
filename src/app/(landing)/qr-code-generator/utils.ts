@@ -2,6 +2,8 @@ import { MAX_URL_LENGTH, parseUrl } from "../_lib/parse-url";
 
 import type { ParsedUrlResult } from "../_lib/parse-url";
 
+export { toSvgFile } from "../_lib/qr-export";
+
 export const MAX_QR_URL_LENGTH = MAX_URL_LENGTH;
 
 export type QrUrlResult = ParsedUrlResult;
@@ -19,17 +21,4 @@ export const qrUrlFromSearch = (search: string): string | null => {
   if (raw === null) return null;
   const result = parseQrUrl(raw);
   return result.ok ? result.url : null;
-};
-
-const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-
-/**
- * A standalone .svg file from the markup of an inline `<svg>`. Inline SVG in HTML doesn't need the
- * namespace, but a file without it opens as plain XML instead of an image.
- */
-export const toSvgFile = (markup: string): string => {
-  const svg = /^<svg\b[^>]*\sxmlns=/.test(markup)
-    ? markup
-    : markup.replace(/^<svg\b/, `<svg xmlns="${SVG_NAMESPACE}"`);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${svg}`;
 };

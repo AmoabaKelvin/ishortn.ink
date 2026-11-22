@@ -9,7 +9,7 @@ import {
   IconDownload,
   IconExternalLink,
 } from "@tabler/icons-react";
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useId, useMemo, useRef, useState } from "react";
 
 import { serializeShortenIntentCookie } from "@/lib/auth/shorten-intent";
 import { PLAN_CAPS } from "@/lib/billing/plans";
@@ -26,6 +26,7 @@ import {
   wellClass,
 } from "../_components/site-primitives";
 import { parseUrl } from "../_lib/parse-url";
+import { useCopy } from "../_lib/use-copy";
 import {
   buildBulk,
   buildTaggedUrl,
@@ -40,6 +41,7 @@ import {
   UTM_FIELDS,
 } from "./utils";
 
+import type { CopyState } from "../_lib/use-copy";
 import type { UtmField, UtmValues } from "./utils";
 import type { ReactNode } from "react";
 
@@ -89,28 +91,6 @@ const PRESETS = [
   { label: "Google Ads", source: "google", medium: "cpc" },
   { label: "QR code", source: "qr", medium: "print" },
 ] as const;
-
-type CopyState = "idle" | "copied" | "failed";
-
-/** Copy with a 2 s "Copied" label; when the clipboard API is refused, select the text instead. */
-const useCopy = (selectFallback: () => void) => {
-  const [state, setState] = useState<CopyState>("idle");
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  const copy = async (text: string) => {
-    clearTimeout(timer.current);
-    try {
-      await navigator.clipboard.writeText(text);
-      setState("copied");
-      timer.current = setTimeout(() => setState("idle"), 2000);
-    } catch {
-      selectFallback();
-      setState("failed");
-    }
-  };
-  return { state, copy, reset: () => setState("idle") };
-};
 
 export function UtmBuilder() {
   const [mode, setMode] = useState<Mode>("single");

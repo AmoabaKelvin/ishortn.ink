@@ -21,6 +21,7 @@ const MARKETING_PATHS = new Set([
   "/features",
   "/qr-code-generator",
   "/utm-builder",
+  "/whatsapp-link-generator",
   "/blog",
   "/compare",
   "/solutions",
@@ -93,6 +94,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "teams",
   "terms",
   "utm-builder",
+  "whatsapp-link-generator",
 ]);
 
 const INTERSTITIAL_PREFIXES = [

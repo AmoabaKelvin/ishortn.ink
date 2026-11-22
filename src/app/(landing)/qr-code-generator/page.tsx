@@ -7,6 +7,7 @@ import {
   IconShieldCheckFilled,
   IconSparklesFilled,
 } from "@tabler/icons-react";
+import { Link } from "next-view-transitions";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_QR_CODE_LIMIT as FREE_DYNAMIC_QR_CODES } from "@/lib/billing/entitlements";
@@ -175,6 +176,16 @@ export default function QrCodeGeneratorPage() {
         </div>
         <div className="mt-12 sm:mt-14">
           <QrGenerator />
+          <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-sm text-neutral-600">
+            Want people to message you instead? Make a{" "}
+            <Link
+              href="/whatsapp-link-generator"
+              className="font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
+            >
+              WhatsApp QR code
+            </Link>{" "}
+            with your message already typed in.
+          </p>
         </div>
       </Section>
 

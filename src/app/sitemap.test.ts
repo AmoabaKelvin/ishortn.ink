@@ -33,6 +33,11 @@ describe("sitemap", () => {
     expect(urls).toContain("https://ishortn.ink/utm-builder");
   });
 
+  it("lists the WhatsApp link generator", async () => {
+    const urls = (await sitemap()).map((entry) => entry.url);
+    expect(urls).toContain("https://ishortn.ink/whatsapp-link-generator");
+  });
+
   it("lists the solutions hub and dates each solution page by its last copy update", async () => {
     const entries = await sitemap();
     expect(entries.map((entry) => entry.url)).toContain("https://ishortn.ink/solutions");
