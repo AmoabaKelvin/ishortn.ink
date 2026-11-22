@@ -100,6 +100,7 @@ describe("solution copy", () => {
       ...DOCS_PAGES.map((page) => docsHref(page.slug)),
       ...Object.values(competitors).map((competitor) => `/compare/${competitor.slug}`),
       "/qr-code-generator",
+      "/whatsapp-link-generator",
     ]);
     const farFuture = new Date("2100-01-01");
     for (const { href } of solutionList.flatMap((solution) => solution.related)) {

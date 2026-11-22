@@ -12,6 +12,7 @@ const columns = [
       { label: "Features", href: "/features" },
       { label: "QR code generator", href: "/qr-code-generator" },
       { label: "UTM builder", href: "/utm-builder" },
+      { label: "WhatsApp link generator", href: "/whatsapp-link-generator" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },
       { label: "API docs", href: "/docs/api" },

@@ -77,6 +77,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: absoluteUrl("/whatsapp-link-generator"),
+      lastModified: "2026-11-22",
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
       url: absoluteUrl("/blog"),
       lastModified: latestPostDate,
       changeFrequency: "daily",

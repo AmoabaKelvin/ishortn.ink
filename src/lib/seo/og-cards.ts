@@ -85,6 +85,13 @@ export const pageCards = {
     visual: "links",
     visualLabel: "example.com/sale?utm_source=newsletter&utm_medium=email&utm_campaign=spring",
   }),
+  whatsappLinkGenerator: card({
+    eyebrow: "Free tool",
+    title: "Free WhatsApp link generator",
+    subtitle: "Make a wa.me link with your message already typed in, plus a QR code to print.",
+    visual: "links",
+    visualLabel: "wa.me/447700900123?text=Hi%2C%20I%27d%20like%20to%20order",
+  }),
 } satisfies Record<string, OgCard>;
 
 export function solutionCard(solution: Solution): OgCard {

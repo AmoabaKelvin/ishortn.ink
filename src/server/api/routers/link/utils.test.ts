@@ -217,7 +217,12 @@ describe("escapeLikePattern", () => {
 
 describe("reserved app route aliases", () => {
   test("app route names are reserved on platform domains, in any case", () => {
-    for (const alias of ["utm-builder", "qr-code-generator", "Pricing"]) {
+    for (const alias of [
+      "utm-builder",
+      "qr-code-generator",
+      "whatsapp-link-generator",
+      "Pricing",
+    ]) {
       expect(isAppRouteAlias(alias, "ishortn.ink")).toBe(true);
     }
     expect(isAppRouteAlias("my-launch", "ishortn.ink")).toBe(false);
