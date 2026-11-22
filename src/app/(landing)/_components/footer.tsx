@@ -72,7 +72,7 @@ export const Footer = () => {
   return (
     <footer>
       <Section className="py-16 sm:py-20">
-        <div className="grid gap-x-8 gap-y-14 xl:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid gap-x-8 gap-y-14 xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">
           <div>
             <Link href="/" aria-label="Homepage">
               <Wordmark className="text-2xl" />
