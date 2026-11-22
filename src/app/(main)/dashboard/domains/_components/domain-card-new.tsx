@@ -125,7 +125,7 @@ export function DomainCardNew({ domain, index, canManageDomains }: DomainCardPro
     }
     // "in_review" keeps the domain pending until the review finishes
     setStatus("pending");
-    setLiveChallenges(result.verificationChallenges);
+    if (result.verificationChallenges) setLiveChallenges(result.verificationChallenges);
   };
 
   const daysSinceCreation = daysSinceDate(new Date(domain.createdAt!));

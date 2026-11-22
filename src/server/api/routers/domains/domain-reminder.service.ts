@@ -16,6 +16,7 @@ import {
 import { domainCanGoLive } from "./domains.service";
 
 import type { CloudflareCustomHostname } from "./cloudflare";
+import type { MySqlColumn } from "drizzle-orm/mysql-core";
 
 const log = logger.child({ component: "domain-reminder" });
 
@@ -84,13 +85,24 @@ function needsReminder(now: Date) {
   );
 }
 
+// An unmatched left join reads as null and passes.
+function notModerated(account: { restrictedAt: MySqlColumn; banned: MySqlColumn }) {
+  return and(isNull(account.restrictedAt), or(isNull(account.banned), eq(account.banned, false)));
+}
+
 /**
  * Send configuration reminder emails for domains that still aren't set up.
  *
  * For personal workspaces: sends to the user who owns the domain
  * For team workspaces: sends to the team owner, linking to the team's workspace
  */
-export async function sendDomainConfigurationReminders(): Promise<ReminderResult> {
+export async function sendDomainConfigurationReminders({
+  checkHealth = checkDomainHealth,
+  sendReminder = sendDomainReminderEmail,
+}: {
+  checkHealth?: typeof checkDomainHealth;
+  sendReminder?: typeof sendDomainReminderEmail;
+} = {}): Promise<ReminderResult> {
   const result: ReminderResult = {
     domainsChecked: 0,
     remindersSent: 0,
@@ -99,6 +111,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
   };
 
   const teamOwner = alias(user, "teamOwner");
+  const addedBy = alias(user, "addedBy");
 
   const domains = await db
     .select({
@@ -118,7 +131,19 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
     .leftJoin(team, eq(customDomain.teamId, team.id))
     .leftJoin(user, and(isNull(customDomain.teamId), eq(customDomain.userId, user.id)))
     .leftJoin(teamOwner, eq(team.ownerId, teamOwner.id))
-    .where(and(needsReminder(new Date()), or(isNull(customDomain.teamId), isNull(team.deletedAt))));
+    .leftJoin(addedBy, eq(customDomain.userId, addedBy.id))
+    .where(
+      and(
+        needsReminder(new Date()),
+        or(isNull(customDomain.teamId), isNull(team.deletedAt)),
+        // Restricting released these hostnames and only unrestrictUser restores
+        // them, so don't mark them active or nag about them. That covers team
+        // domains added by a restricted member, since restricting releases
+        // every domain the user added.
+        notModerated(addedBy),
+        notModerated(teamOwner),
+      ),
+    );
 
   result.domainsChecked = domains.length;
 
@@ -133,7 +158,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
     try {
       // First, verify the domain is actually unhealthy. This prevents sending
       // emails to users who have already fixed their domain configuration
-      const { healthy, hostname } = await checkDomainHealth(domainName);
+      const { healthy, hostname } = await checkHealth(domainName);
 
       if (healthy) {
         // Domain is now valid, update our database and skip sending email
@@ -168,7 +193,7 @@ export async function sendDomainConfigurationReminders(): Promise<ReminderResult
         ? calculateDaysSince(new Date(domainRecord.createdAt))
         : 0;
 
-      const sent = await sendDomainReminderEmail({
+      const sent = await sendReminder({
         userId: recipientId,
         email: recipientEmail,
         recipientName: domainRecord.recipientName,

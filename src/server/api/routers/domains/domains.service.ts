@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, isNull, lt, ne, or, sum } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 import { getDomain } from "tldts";
 
 import { getPlanCaps } from "@/lib/billing/plans";
@@ -417,15 +418,34 @@ export async function checkDomainStatus(
     lookupHostname = getLiveCustomHostname,
   }: { lookupHostname?: typeof getLiveCustomHostname } = {},
 ) {
+  const teamOwner = alias(user, "teamOwner");
+
   // Look the domain up in the caller's workspace first: the Cloudflare call
   // below can re-arm validation, which must not run on someone else's hostname
-  const record = await ctx.db.query.customDomain.findFirst({
-    where: and(
-      eq(customDomain.domain, domainName),
-      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
-    ),
-    columns: { id: true, domain: true, reviewStatus: true },
-  });
+  const [record] = await ctx.db
+    .select({
+      id: customDomain.id,
+      domain: customDomain.domain,
+      status: customDomain.status,
+      reviewStatus: customDomain.reviewStatus,
+      // Restricting releases every domain a user added, team domains included,
+      // so check the user who added it as well as the team owner
+      addedByRestrictedAt: user.restrictedAt,
+      addedByBanned: user.banned,
+      teamOwnerRestrictedAt: teamOwner.restrictedAt,
+      teamOwnerBanned: teamOwner.banned,
+    })
+    .from(customDomain)
+    .leftJoin(team, eq(customDomain.teamId, team.id))
+    .leftJoin(user, eq(customDomain.userId, user.id))
+    .leftJoin(teamOwner, eq(team.ownerId, teamOwner.id))
+    .where(
+      and(
+        eq(customDomain.domain, domainName),
+        workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
+      ),
+    )
+    .limit(1);
 
   if (!record?.domain) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Domain not found" });
@@ -433,6 +453,17 @@ export async function checkDomainStatus(
 
   if (record.reviewStatus === "rejected") {
     throw new TRPCError({ code: "FORBIDDEN", message: DOMAIN_REJECTED_MESSAGE });
+  }
+
+  // Restricting released this hostname; a check must not flip it back to active
+  // while Cloudflare still reports it live. Only unrestrictUser restores it.
+  if (
+    record.addedByRestrictedAt ||
+    record.addedByBanned ||
+    record.teamOwnerRestrictedAt ||
+    record.teamOwnerBanned
+  ) {
+    return { status: record.status ?? "pending", message: ACCOUNT_RESTRICTED_MESSAGE };
   }
 
   const domain = record.domain;

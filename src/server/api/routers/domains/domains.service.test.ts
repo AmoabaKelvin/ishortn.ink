@@ -6,6 +6,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import * as schema from "@/server/db/schema";
 
 import { approveHeldDomain, getHeldDomains, rejectHeldDomain } from "../admin/admin.service";
@@ -228,6 +229,99 @@ describe.skipIf(!testDatabaseUrl)("domains service (MySQL)", () => {
     expect(await errorCode(checkDomainStatus(await teamCtx(OWNER, "owner"), DOMAIN))).toBe(
       "NOT_FOUND",
     );
+  });
+
+  describe("checkStatus for a moderated owner", () => {
+    const lookups: string[] = [];
+    const liveHostname = async (hostname: string): Promise<CloudflareCustomHostname> => {
+      lookups.push(hostname);
+      return { id: "id", hostname, status: "active", ssl: { status: "active" } };
+    };
+
+    async function domainStatus(domain: string) {
+      const row = await db.query.customDomain.findFirst({
+        where: eq(schema.customDomain.domain, domain),
+      });
+      return row?.status;
+    }
+
+    beforeEach(async () => {
+      lookups.length = 0;
+      await db
+        .update(schema.customDomain)
+        .set({ status: "pending" })
+        .where(inArray(schema.customDomain.domain, [DOMAIN, TEAM_DOMAIN]));
+    });
+
+    test("leaves a restricted owner's domain pending without asking Cloudflare", async () => {
+      await db
+        .update(schema.user)
+        .set({ restrictedAt: new Date(), restrictedReason: "test" })
+        .where(eq(schema.user.id, OWNER));
+
+      const result = await checkDomainStatus(personalCtx(OWNER), DOMAIN, {
+        lookupHostname: liveHostname,
+      });
+
+      expect(result).toEqual({ status: "pending", message: ACCOUNT_RESTRICTED_MESSAGE });
+      expect(await domainStatus(DOMAIN)).toBe("pending");
+      expect(lookups).toEqual([]);
+    });
+
+    test("leaves a banned owner's domain pending without asking Cloudflare", async () => {
+      await db.update(schema.user).set({ banned: true }).where(eq(schema.user.id, OWNER));
+
+      const result = await checkDomainStatus(personalCtx(OWNER), DOMAIN, {
+        lookupHostname: liveHostname,
+      });
+
+      expect(result.status).toBe("pending");
+      expect(await domainStatus(DOMAIN)).toBe("pending");
+      expect(lookups).toEqual([]);
+    });
+
+    test("keeps a restricted team owner's domain pending when a teammate checks it", async () => {
+      await db
+        .update(schema.user)
+        .set({ restrictedAt: new Date(), restrictedReason: "test" })
+        .where(eq(schema.user.id, OWNER));
+
+      await checkDomainStatus(await teamCtx(ADMIN, "admin"), TEAM_DOMAIN, {
+        lookupHostname: liveHostname,
+      });
+
+      expect(await domainStatus(TEAM_DOMAIN)).toBe("pending");
+      expect(lookups).toEqual([]);
+    });
+
+    test("keeps a team domain pending when the restricted member who added it checks it", async () => {
+      const MEMBER_DOMAIN = "member.acme-test.co.uk";
+      await db
+        .insert(schema.customDomain)
+        .values({ userId: ADMIN, teamId, domain: MEMBER_DOMAIN, status: "pending" });
+      await db
+        .update(schema.user)
+        .set({ restrictedAt: new Date(), restrictedReason: "test" })
+        .where(eq(schema.user.id, ADMIN));
+
+      const result = await checkDomainStatus(await teamCtx(ADMIN, "admin"), MEMBER_DOMAIN, {
+        lookupHostname: liveHostname,
+      });
+
+      expect(result).toEqual({ status: "pending", message: ACCOUNT_RESTRICTED_MESSAGE });
+      expect(await domainStatus(MEMBER_DOMAIN)).toBe("pending");
+      expect(lookups).toEqual([]);
+    });
+
+    test("still activates a domain whose owner is in good standing", async () => {
+      const result = await checkDomainStatus(personalCtx(OWNER), DOMAIN, {
+        lookupHostname: liveHostname,
+      });
+
+      expect(result).toEqual({ status: "active" });
+      expect(await domainStatus(DOMAIN)).toBe("active");
+      expect(lookups).toEqual([DOMAIN]);
+    });
   });
 
   describe("review hold", () => {

@@ -160,7 +160,7 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
       return;
     }
 
-    setFeedback(PENDING_FEEDBACK);
+    setFeedback(result.message ?? PENDING_FEEDBACK);
   };
 
   const isVerifying = checkStatus.isFetching;
