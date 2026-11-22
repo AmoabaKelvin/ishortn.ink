@@ -469,7 +469,7 @@ export const solutions = {
       },
       {
         question: "Can I see which links people click?",
-        answer: `Yes. Each bio page counts views, and each link block counts clicks with the country, city, device and referrer. Free shows the last ${freeDays} days. Pro and Ultra keep the full history.`,
+        answer: `Yes. Each bio page counts views, and each link block counts clicks with the country, device and referrer. Free shows the last ${freeDays} days. Pro and Ultra keep the full history.`,
       },
       {
         question: "Do bio page links count toward my monthly links?",
