@@ -2,29 +2,81 @@
 // pricesCheckedOn is the ISO date the competitor's plans and prices were last verified on their
 // live pricing page; it is shown on the comparison page, so bump it whenever the data is re-checked.
 // guide is an optional blog post slug linked from the comparison page once the post is live.
+// Optional, filled per competitor: metaDescription replaces the generated meta description;
+// migrationSteps renders an ordered "How to move" list; faqs renders an FAQ section with FAQPage
+// JSON-LD; relatedGuides renders a "Related reading" list (blog links appear once the post is live).
 export const competitors = {
   bitly: {
     name: "Bitly",
     slug: "bitly",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-21",
+    pricesCheckedOn: "2026-11-22",
     tagline: "The most popular URL shortener",
     description:
-      "Bitly is the most well-known URL shortener, but its free plan has become extremely restrictive. See how iShortn compares.",
+      "Bitly Free allows 5 links and 2 QR codes a month, with no click data and an ad page before each link opens. Here's how iShortn compares, and how to move your Bitly links.",
+    metaDescription:
+      "Bitly vs iShortn on free links, click analytics, custom domains and price, checked November 2026, plus how to move your Bitly links without breaking them.",
     freeLinks: "5/month",
-    freeAnalytics: "No analytics history",
+    freeAnalytics: "None on Free; 30 days of history on Core",
     customDomains: "Growth ($29/mo) and up",
     qrCodes: "2/month on free",
     apiAccess: "1,000 requests/month on free",
     teamFeatures: "Enterprise only",
-    passwordProtection: "Paid only",
-    pricing: "Free, Core $10/mo (billed annually only), Growth $29/mo",
+    passwordProtection: "Not listed on Bitly's pricing page",
+    pricing:
+      "Free, Core $10/mo (billed annually only), Growth $29/mo billed annually or $35 monthly, Premium $199/mo billed annually or $300 monthly",
     whySwitch: [
-      "Bitly's free plan only allows 5 links per month — iShortn gives you 30",
-      "Bitly free links may show interstitial ad pages before redirecting",
-      "Bitly Core is $10/month billed annually, and custom domains need Growth at $29/month — iShortn Pro is $8/month with 3 custom domains",
+      "Bitly Free allows 5 links a month, and QR codes count toward them. iShortn Free gives you 30",
+      "Bitly Free shows an ad page before each link opens. iShortn has no ad page on any plan",
+      "Bitly Free has no click data. iShortn Free shows location, device and referrer for the last 7 days",
+      "Bitly Core is $10/month billed annually, and custom domains need Growth at $29/month billed annually. iShortn Pro is $8/month with 3 custom domains",
+      "You can change a link's destination on every iShortn plan. Bitly Free allows no edits and Core allows 5 a month",
       "iShortn Free includes 5 dynamic QR codes: edit the destination anytime, they never expire, and there are no ads",
-      "iShortn adds password protection on Pro and Ultra",
+    ],
+    migrationSteps: [
+      "Check where your links live. Links on bit.ly stay with Bitly, because Bitly owns that domain. Links on your own domain, such as go.yourbrand.com, keep their exact addresses.",
+      "In Bitly, open Links, click Export and download the CSV from the email Bitly sends. Bitly lists export on Growth and higher.",
+      "Add the same domain in iShortn under Domains, then replace Bitly's DNS records with the ones iShortn shows.",
+      "Upload Bitly's CSV unchanged with Upload CSV. Custom back-halves become aliases, and Bitly's random codes can keep working too.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel Bitly.",
+    ],
+    faqs: [
+      {
+        question: "Is iShortn a good alternative to Bitly?",
+        answer:
+          "For small businesses, creators and freelancers, usually yes. iShortn Free gives you 30 links a month with location, device and referrer stats and no ad page, while Bitly Free allows 5 links with no click data. iShortn Pro is $8 a month with 3 custom domains; Bitly's custom domains start on Growth at $29 a month billed annually. Bitly is the better fit if you need SSO, an uptime SLA or API access on a free plan.",
+      },
+      {
+        question: "Can I move my Bitly links to iShortn without breaking them?",
+        answer:
+          "Links on your own domain keep their exact addresses: export them from Bitly, point the domain to iShortn and upload Bitly's CSV unchanged. Printed QR codes that open your domain keep working. Links on bit.ly can't move, because Bitly owns that domain, so the import creates a new short link for each one.",
+      },
+      {
+        question: "Which Bitly plan do I need to export my links?",
+        answer:
+          "Bitly lists data export on Growth, Premium and Enterprise. Free and Core don't include a custom domain, so their links are all on bit.ly and couldn't keep their addresses anyway.",
+      },
+      {
+        question: "Does iShortn have an API like Bitly?",
+        answer:
+          "Yes. iShortn has a REST API for creating links and reading analytics on Pro and Ultra. iShortn Free has no API access, while Bitly Free includes 1,000 API requests a month.",
+      },
+      {
+        question: "Does iShortn show ads before links open?",
+        answer:
+          "No, on any plan. Bitly Free shows a page with an ad before each link opens, and Bitly's paid plans remove it.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/docs/migrate-from-bitly", label: "Move your links from Bitly, step by step" },
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
+      { href: "/blog/bitly-free-plan-limits", label: "Bitly free plan limits in 2026" },
+      { href: "/blog/bitly-alternatives", label: "The best Bitly alternatives, free and paid" },
+      { href: "/blog/best-free-url-shorteners", label: "The best free URL shorteners compared" },
+      {
+        href: "/blog/url-shortener-vs-link-management-platform",
+        label: "URL shortener vs link management platform",
+      },
     ],
     migrationGuide: {
       href: "/docs/migrate-from-bitly",

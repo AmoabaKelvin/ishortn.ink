@@ -4,6 +4,7 @@ import {
   IconScaleFilled,
   IconSparklesFilled,
   IconTagFilled,
+  IconTruckFilled,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,12 +14,15 @@ import { PLAN_CAPS } from "@/lib/billing/plans";
 import { isPostLive } from "@/lib/blog";
 import { Paths } from "@/lib/constants/app";
 import { comparisonTitle, competitors, getCompetitor } from "@/lib/seo/competitors";
-import { createBreadcrumbSchema } from "@/lib/seo/structured-data";
+import { visibleRelatedLinks } from "@/lib/seo/related-links";
+import { createBreadcrumbSchema, createFaqSchema } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils";
 
 import { CTA } from "../../_components/cta";
+import { Faq } from "../../_components/faq";
 import { Footer } from "../../_components/footer";
 import { Header } from "../../_components/header";
+import { RelatedReading } from "../../_components/related-reading";
 import {
   bodyClass,
   ButtonLink,
@@ -29,6 +33,7 @@ import {
   leadClass,
   Section,
   SectionHeading,
+  StepChip,
 } from "../../_components/site-primitives";
 
 import type { Metadata } from "next";
@@ -61,7 +66,10 @@ export async function generateMetadata({
 
   // Absolute so the root "| iShortn" template doesn't repeat the brand already in the title.
   const title = comparisonTitle(competitor);
-  const description = `Compare ${competitor.name} and iShortn in a side-by-side ${competitor.category} comparison. See features, pricing, and why creators and small teams pick iShortn.`;
+  const description =
+    "metaDescription" in competitor
+      ? competitor.metaDescription
+      : `Compare ${competitor.name} and iShortn in a side-by-side ${competitor.category} comparison. See features, pricing, and why creators and small teams pick iShortn.`;
 
   return {
     title: { absolute: title },
@@ -137,6 +145,10 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
 
   const guide =
     "guide" in competitor && isPostLive(competitor.guide.slug) ? competitor.guide : null;
+  // With migration steps, the migration guide link sits under the steps instead of "Why switch".
+  const migrationSteps = "migrationSteps" in competitor ? competitor.migrationSteps : null;
+  const migrationGuide = "migrationGuide" in competitor ? competitor.migrationGuide : null;
+  const whySwitchMigrationGuide = migrationSteps ? null : migrationGuide;
 
   return (
     <main>
@@ -149,6 +161,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
           },
         ])}
       />
+      {"faqs" in competitor && <JsonLd data={createFaqSchema([...competitor.faqs])} />}
       <Header />
 
       <Section className="py-16 sm:py-24">
@@ -218,21 +231,52 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             </li>
           ))}
         </ul>
-        {"migrationGuide" in competitor && (
+        {whySwitchMigrationGuide && (
           <p className={cn(bodyClass, "mt-8")}>
-            <Link href={competitor.migrationGuide.href} className={guideLinkClass}>
-              {competitor.migrationGuide.label}
+            <Link href={whySwitchMigrationGuide.href} className={guideLinkClass}>
+              {whySwitchMigrationGuide.label}
             </Link>
           </p>
         )}
         {guide && (
-          <p className={cn(bodyClass, "migrationGuide" in competitor ? "mt-3" : "mt-8")}>
+          <p className={cn(bodyClass, whySwitchMigrationGuide ? "mt-3" : "mt-8")}>
             <Link href={`/blog/${guide.slug}`} className={guideLinkClass}>
               {guide.label}
             </Link>
           </p>
         )}
       </Section>
+
+      {migrationSteps && (
+        <Section>
+          <SectionHeading
+            eyebrow={<Eyebrow icon={<IconTruckFilled aria-hidden="true" />}>Migration</Eyebrow>}
+            title={`How to move from ${competitor.name}`}
+          />
+          <ol className="mx-auto mt-14 max-w-4xl space-y-4">
+            {migrationSteps.map((step, i) => (
+              <li key={step} className={cn(cardClass, "flex items-start gap-4 p-6")}>
+                <StepChip>{String(i + 1).padStart(2, "0")}</StepChip>
+                <span className={bodyClass}>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mx-auto mt-8 max-w-4xl space-y-3">
+            {migrationGuide && (
+              <p className={bodyClass}>
+                <Link href={migrationGuide.href} className={guideLinkClass}>
+                  {migrationGuide.label}
+                </Link>
+              </p>
+            )}
+            <p className={bodyClass}>
+              <Link href="/docs/bulk-import" className={guideLinkClass}>
+                CSV bulk import
+              </Link>
+            </p>
+          </div>
+        </Section>
+      )}
 
       <Section>
         <SectionHeading
@@ -285,6 +329,18 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
       </Section>
+
+      {"faqs" in competitor && (
+        <Faq
+          faqs={competitor.faqs.map((f) => ({ q: f.question, a: f.answer }))}
+          title={`${competitor.name} vs iShortn: common questions`}
+          subtitle="Answers use each company's own pricing page."
+        />
+      )}
+
+      {"relatedGuides" in competitor && (
+        <RelatedReading links={visibleRelatedLinks([...competitor.relatedGuides])} />
+      )}
 
       <CTA />
       <Footer />
