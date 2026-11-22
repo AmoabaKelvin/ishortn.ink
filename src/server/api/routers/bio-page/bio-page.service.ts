@@ -34,9 +34,13 @@ import { requirePermission, workspaceFilter, workspaceOwnership } from "@/server
 import { assertDomainAllowed } from "../link/utils";
 import {
   assertSlugAllowed,
+  buildBreakdown,
   checkBioPageLimit,
+  countryLabel,
+  deviceLabel,
   lockBioLinkBlockCapacity,
   pageBelongsToWorkspace,
+  referrerHostLabel,
   rethrowBioDuplicate,
   sameBioTheme,
 } from "./utils";
@@ -51,6 +55,7 @@ import type {
 } from "./bio-page.input";
 import type { BioBlock, BioPageTheme, BioSocialLink } from "@/server/db/schema";
 import type { ImageType } from "@/server/lib/storage/types";
+import type { MySqlColumn } from "drizzle-orm/mysql-core";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -714,9 +719,11 @@ export async function getBioPageAnalytics(
   const rangeDays = resolveRangeDays(input.range, caps.analyticsRangeLimitDays);
   const start = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
 
-  // Page views + unique views (grouped aggregates, not row loads).
+  // Page views, unique views and view referrers (grouped aggregates, not row
+  // loads). Referrers come from page views because link blocks open with
+  // rel="noreferrer", so link clicks never carry the visitor's source.
   const viewFilter = and(eq(bioPageView.bioPageId, page.id), gte(bioPageView.createdAt, start));
-  const [viewsAgg, uniqueAgg, viewsByDay] = await Promise.all([
+  const [viewsAgg, uniqueAgg, viewsByDay, referrerRows] = await Promise.all([
     ctx.db.select({ count: count() }).from(bioPageView).where(viewFilter),
     ctx.db
       .select({ count: count() })
@@ -732,6 +739,11 @@ export async function getBioPageAnalytics(
       .from(bioPageView)
       .where(viewFilter)
       .groupBy(sql`DATE(${bioPageView.createdAt})`),
+    ctx.db
+      .select({ value: bioPageView.referer, count: count() })
+      .from(bioPageView)
+      .where(viewFilter)
+      .groupBy(bioPageView.referer),
   ]);
 
   // Per-block clicks: one grouped query over all backing links for this page.
@@ -742,13 +754,26 @@ export async function getBioPageAnalytics(
   const linkBlocks = blocks.filter((b) => b.type === "link" && b.linkId);
   const linkIds = linkBlocks.map((b) => b.linkId!);
 
-  const clickRows = linkIds.length
-    ? await ctx.db
-        .select({ linkId: linkVisit.linkId, count: count() })
-        .from(linkVisit)
-        .where(and(inArray(linkVisit.linkId, linkIds), gte(linkVisit.createdAt, start)))
-        .groupBy(linkVisit.linkId)
-    : [];
+  // Per-block counts plus country/device breakdowns, all grouped over the same
+  // visits so every breakdown sums to totalClicks.
+  const clickFilter = and(inArray(linkVisit.linkId, linkIds), gte(linkVisit.createdAt, start));
+  const groupClicksBy = (column: MySqlColumn) =>
+    ctx.db
+      .select({ value: sql<string | null>`${column}`, count: count() })
+      .from(linkVisit)
+      .where(clickFilter)
+      .groupBy(column);
+  const [clickRows, countryRows, deviceRows] = linkIds.length
+    ? await Promise.all([
+        ctx.db
+          .select({ linkId: linkVisit.linkId, count: count() })
+          .from(linkVisit)
+          .where(clickFilter)
+          .groupBy(linkVisit.linkId),
+        groupClicksBy(linkVisit.country),
+        groupClicksBy(linkVisit.device),
+      ])
+    : [[], [], []];
   const clickMap = new Map(clickRows.map((r) => [r.linkId, Number(r.count)]));
 
   const perBlock = linkBlocks
@@ -772,6 +797,11 @@ export async function getBioPageAnalytics(
     totalClicks,
     ctr: views > 0 ? totalClicks / views : 0,
     perBlock,
+    clickBreakdowns: {
+      countries: buildBreakdown(countryRows, countryLabel),
+      devices: buildBreakdown(deviceRows, deviceLabel),
+    },
+    viewReferrers: buildBreakdown(referrerRows, referrerHostLabel),
     viewsPerDay,
     rangeDays,
     isProPlan: ctx.workspace.plan !== "free",

@@ -5,7 +5,11 @@ import { bioBlock, bioPage } from "@/server/db/schema";
 import {
   assertBioLinkBlockCapacity,
   assertSlugAllowed,
+  buildBreakdown,
+  countryLabel,
+  deviceLabel,
   lockBioLinkBlockCapacity,
+  referrerHostLabel,
   RESERVED_BIO_SLUGS,
   sameBioTheme,
 } from "./utils";
@@ -160,5 +164,81 @@ describe("sameBioTheme", () => {
       false,
     );
     expect(sameBioTheme(theme, null)).toBe(false);
+  });
+});
+
+describe("breakdowns", () => {
+  test("returns nothing for no clicks", () => {
+    expect(buildBreakdown([], countryLabel)).toEqual([]);
+  });
+
+  test("merges values that share a label", () => {
+    expect(
+      buildBreakdown(
+        [
+          { value: null, count: 2 },
+          { value: "", count: 1 },
+          { value: "Ghana", count: 1 },
+        ],
+        countryLabel,
+      ),
+    ).toEqual([
+      { name: "Unknown", clicks: 3 },
+      { name: "Ghana", clicks: 1 },
+    ]);
+    expect(
+      buildBreakdown(
+        [
+          { value: "mobile", count: 1 },
+          { value: "Mobile", count: 1 },
+          { value: null, count: 1 },
+        ],
+        deviceLabel,
+      ),
+    ).toEqual([
+      { name: "Mobile", clicks: 2 },
+      { name: "Unknown", clicks: 1 },
+    ]);
+    expect(
+      buildBreakdown(
+        [
+          { value: null, count: 1 },
+          { value: "", count: 1 },
+          { value: "null", count: 1 },
+          { value: "direct", count: 1 },
+          { value: "https://www.instagram.com/p/abc", count: 1 },
+          { value: "https://l.instagram.com/?u=x", count: 1 },
+          { value: "instagram.com", count: 1 },
+          { value: "twitter", count: 1 },
+        ],
+        referrerHostLabel,
+      ),
+    ).toEqual([
+      { name: "Direct", clicks: 4 },
+      { name: "instagram.com", clicks: 3 },
+      { name: "Twitter", clicks: 1 },
+    ]);
+  });
+
+  test("keeps the top ten and folds the rest into Other", () => {
+    const rows = Array.from({ length: 13 }, (_, i) => ({ value: `Country ${i}`, count: 20 - i }));
+    const breakdown = buildBreakdown(rows, countryLabel);
+
+    expect(breakdown).toHaveLength(11);
+    expect(breakdown[0]).toEqual({ name: "Country 0", clicks: 20 });
+    expect(breakdown.at(-1)).toEqual({ name: "Other", clicks: 8 + 9 + 10 });
+    const total = rows.reduce((sum, r) => sum + r.count, 0);
+    expect(breakdown.reduce((sum, r) => sum + r.clicks, 0)).toBe(total);
+  });
+
+  test("adds the remainder to a real Other row instead of duplicating it", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => ({ value: `Source ${i}`, count: 20 - i }));
+    rows.push({ value: "other", count: 15 });
+    const breakdown = buildBreakdown(rows, referrerHostLabel);
+
+    expect(breakdown.filter((r) => r.name === "Other")).toEqual([
+      { name: "Other", clicks: 15 + 9 + 10 + 11 },
+    ]);
+    expect(breakdown).toHaveLength(10);
   });
 });

@@ -66,10 +66,11 @@ export function BarList({ records, totalClicks, color = "blue" }: BarListProps) 
 type BarListTitleProps = {
   title: string;
   description: string;
+  unit?: string;
   children: React.ReactNode;
 };
 
-function BarListTitle({ title, description, children }: BarListTitleProps) {
+function BarListTitle({ title, description, unit = "Clicks", children }: BarListTitleProps) {
   return (
     <Card className="flex h-full flex-col rounded-xl border-neutral-200 dark:border-border p-5 shadow-none md:col-span-5">
       {/* Header */}
@@ -81,7 +82,7 @@ function BarListTitle({ title, description, children }: BarListTitleProps) {
           <p className="text-[12px] text-neutral-400 dark:text-neutral-500">{description}</p>
         </div>
         <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300 dark:text-neutral-500">
-          Clicks
+          {unit}
         </span>
       </div>
 

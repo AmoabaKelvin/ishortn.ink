@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, count, eq } from "drizzle-orm";
 
 import { getBioLinkBlockLimit, getBioPageLimit } from "@/lib/billing/plans";
+import { baseDomain, formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { bioBlock, bioPage } from "@/server/db/schema";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { workspaceFilter } from "@/server/lib/workspace";
@@ -202,4 +203,55 @@ export function sameBioTheme(a: BioPageTheme, b: BioPageTheme | null): boolean {
     a.buttonStyle === b.buttonStyle &&
     a.font === b.font
   );
+}
+
+// `clicks` is the row's count (clicks or views); it matches BarList's record shape.
+export type BreakdownRow = { name: string; clicks: number };
+
+const BREAKDOWN_LIMIT = 10;
+
+export const countryLabel = (value: string) => value.trim() || "Unknown";
+
+// ua-parser-js reports "mobile"/"tablet" while the fallback writes "Mobile"/"Desktop".
+export const deviceLabel = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : "Unknown";
+};
+
+// New rows already hold the registrable domain (`parseReferrer`), but older rows
+// may hold a full URL, so subdomains like l.instagram.com still need folding.
+export const referrerHostLabel = (value: string) => {
+  const label = formatReferrerLabel(value);
+  return label.includes(".") ? baseDomain(label) : label;
+};
+
+/**
+ * Turn grouped visit counts into the top rows of a breakdown. Several stored
+ * values can share a label (null and "" are both Unknown, "null" and "direct"
+ * are both Direct), so labels are merged before the cut, and the remainder is
+ * folded into "Other" so the rows always sum to the total.
+ */
+export function buildBreakdown(
+  rows: { value: string | null; count: number }[],
+  label: (value: string) => string,
+): BreakdownRow[] {
+  const merged = new Map<string, number>();
+  for (const row of rows) {
+    const name = label(row.value ?? "");
+    merged.set(name, (merged.get(name) ?? 0) + Number(row.count));
+  }
+  const sorted = [...merged]
+    .map(([name, clicks]) => ({ name, clicks }))
+    .filter((r) => r.clicks > 0)
+    .sort((a, b) => b.clicks - a.clicks || a.name.localeCompare(b.name));
+  if (sorted.length <= BREAKDOWN_LIMIT) return sorted;
+
+  const top = sorted.slice(0, BREAKDOWN_LIMIT);
+  const rest = sorted.slice(BREAKDOWN_LIMIT).reduce((sum, r) => sum + r.clicks, 0);
+  const other = top.find((r) => r.name === "Other");
+  if (other) {
+    other.clicks += rest;
+    return top.sort((a, b) => b.clicks - a.clicks || a.name.localeCompare(b.name));
+  }
+  return [...top, { name: "Other", clicks: rest }];
 }

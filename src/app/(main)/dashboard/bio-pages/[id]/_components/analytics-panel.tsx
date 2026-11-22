@@ -2,6 +2,7 @@
 
 import {
   IconAlertTriangle,
+  IconChartBar,
   IconClick,
   IconEye,
   IconTrendingUp,
@@ -22,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatChartDate } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
+import { BarList } from "../../../analytics/[alias]/_components/bar-list";
 import { QuickInfoCard } from "../../../analytics/[alias]/_components/quick-info-card";
 
 import type { Plan } from "@/lib/billing/plans";
@@ -37,6 +39,21 @@ const RANGES = [
 ] as const;
 
 type Range = (typeof RANGES)[number]["value"];
+
+const CLICK_BREAKDOWNS = [
+  {
+    key: "countries",
+    title: "Clicks by country",
+    description: "Where link clicks came from",
+    color: "blue",
+  },
+  {
+    key: "devices",
+    title: "Clicks by device",
+    description: "Devices visitors clicked from",
+    color: "green",
+  },
+] as const;
 
 const chartConfig = {
   views: { label: "Views", color: "#2563eb" },
@@ -121,7 +138,9 @@ export function AnalyticsPanel({ pageId, plan }: { pageId: number; plan: Plan })
         <div className={cn("space-y-5 transition-opacity", isFetching && "opacity-60")}>
           <StatCards data={data} />
           <ViewsChart viewsPerDay={data.viewsPerDay} />
+          <ViewReferrers referrers={data.viewReferrers} views={data.views} />
           <TopLinks perBlock={data.perBlock} />
+          <ClickBreakdowns breakdowns={data.clickBreakdowns} totalClicks={data.totalClicks} />
         </div>
       )}
     </div>
@@ -257,6 +276,68 @@ function TopLinks({ perBlock }: { perBlock: Analytics["perBlock"] }) {
   );
 }
 
+function ViewReferrers({
+  referrers,
+  views,
+}: {
+  referrers: Analytics["viewReferrers"];
+  views: number;
+}) {
+  return (
+    <BarList.BarListTitle
+      title="Where visitors came from"
+      description="Sites that sent visitors to this page"
+      unit="Views"
+    >
+      {views === 0 ? (
+        <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+          No views in this range yet.
+        </p>
+      ) : (
+        <BarList records={referrers} totalClicks={views} color="red" />
+      )}
+    </BarList.BarListTitle>
+  );
+}
+
+function ClickBreakdowns({
+  breakdowns,
+  totalClicks,
+}: {
+  breakdowns: Analytics["clickBreakdowns"];
+  totalClicks: number;
+}) {
+  if (totalClicks === 0) {
+    return (
+      <div className="flex flex-col items-center rounded-lg border border-dashed border-neutral-200 px-4 py-10 text-center dark:border-border">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 dark:bg-muted dark:text-neutral-500">
+          <IconChartBar size={16} stroke={1.5} />
+        </span>
+        <p className="mt-3 text-[14px] font-medium text-neutral-900 dark:text-foreground">
+          No clicks to break down yet
+        </p>
+        <p className="mt-1 max-w-xs text-[13px] text-neutral-500 dark:text-neutral-400">
+          Country and device breakdowns appear once visitors click a link on this page.
+        </p>
+      </div>
+    );
+  }
+
+  // Side by side only when the editor column is wide: from lg the preview rail
+  // takes 360px, so the column is too narrow for two cards until xl.
+  return (
+    <div className="flex flex-col gap-3 md:flex-row lg:flex-col xl:flex-row">
+      {CLICK_BREAKDOWNS.map((b) => (
+        <div key={b.key} className="min-w-0 flex-1">
+          <BarList.BarListTitle title={b.title} description={b.description}>
+            <BarList records={breakdowns[b.key]} totalClicks={totalClicks} color={b.color} />
+          </BarList.BarListTitle>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AnalyticsSkeleton() {
   return (
     <div className="space-y-5">
@@ -266,7 +347,15 @@ function AnalyticsSkeleton() {
         ))}
       </div>
       <Skeleton className="h-72 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
       <Skeleton className="h-40 rounded-xl" />
+      <div className="flex flex-col gap-3 md:flex-row lg:flex-col xl:flex-row">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="min-w-0 flex-1">
+            <Skeleton className="h-64 rounded-xl" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
