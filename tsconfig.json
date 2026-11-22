@@ -50,7 +50,7 @@
     "node_modules",
     ".open-next",
     "tools",
-    // Self-contained Raycast extension with its own toolchain.
+    // Self-contained integrations (Raycast, n8n) with their own toolchains.
     "integrations",
     "**/*.test.ts",
     "test",

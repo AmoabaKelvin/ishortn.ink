@@ -1,0 +1,91 @@
+---
+title: n8n nodes
+description: Create, update and delete short links, read their analytics and start workflows when a link is created, with the iShortn community nodes for n8n.
+---
+
+The iShortn community nodes for [n8n](https://n8n.io) let your workflows shorten URLs, manage links and read click analytics, and start a workflow whenever a link is created. They use the [iShortn API](/docs/api), so they need an API key, and API keys need a **Pro** or **Ultra** plan.
+
+The package is `n8n-nodes-ishortn`. It adds two nodes:
+
+- **iShortn**: create, get, list, update and delete links, and get a link's analytics.
+- **iShortn Trigger**: starts a workflow when a new link is created.
+
+## Install
+
+In n8n, as an instance owner or admin:
+
+1. Open **Settings** → **Community Nodes**.
+2. Click **Install**.
+3. Enter `n8n-nodes-ishortn`, confirm that you understand the risks of installing community nodes, and click **Install**.
+
+The nodes then show up when you search for **iShortn** in the nodes panel. To install them on a self-hosted instance without the UI (for example in queue mode), run `npm install n8n-nodes-ishortn` in `~/.n8n/nodes` and restart n8n. See n8n's guide to [installing community nodes](https://docs.n8n.io/integrations/community-nodes/installation/).
+
+## Create an API key
+
+1. Open [Settings](/dashboard/settings#api-keys) in the dashboard and scroll to **API Keys**.
+2. Click **Create API Key** and copy the key from the dialog. It's shown once.
+
+The key works in your personal workspace: links created from n8n are added there, and the other operations only find links in it. See [Which links the API can reach](/docs/api#which-links-the-api-can-reach).
+
+## Connect n8n
+
+1. Add an **iShortn** node to a workflow and open **Credential to connect with** → **Create new credential**.
+2. Paste the key into **API Key**.
+3. Leave **Base URL** as `https://ishortn.ink`. Change it only if you [host iShortn yourself](/docs/self-hosting).
+4. Click **Save**. n8n tests the key with [Get your account](/docs/api/get-me) and shows **Connection tested successfully**.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| API Key | Yes | The key from [Settings](/dashboard/settings#api-keys). Sent in the `x-api-key` header. |
+| Base URL | No | Where iShortn runs. Defaults to `https://ishortn.ink`. |
+
+## Operations
+
+| Resource | Operation | What it does | API endpoint |
+| --- | --- | --- | --- |
+| Link | **Create** | Shortens a URL. Optional fields: alias, domain, expiry date, click limit, activation date, password and UTM parameters. | [`POST /api/v1/links`](/docs/api/create-link) |
+| Link | **Get** | Gets a link by its alias and domain. | [`GET /api/v1/links/{alias}`](/docs/api/get-link) |
+| Link | **Get Many** | Lists your links, newest first. Turn on **Return All** to fetch every page, or set **Limit** (up to 100). Filter by domain. | [`GET /api/v1/links`](/docs/api/list-links) |
+| Link | **Update** | Changes a link's destination, alias, expiry date, click limit or activation date. **Clear Settings** removes an expiry date, click limit or activation date. | [`PATCH /api/v1/links/{alias}`](/docs/api/update-link) |
+| Link | **Delete** | Deletes a link. Returns `{ "deleted": true }`. | [`DELETE /api/v1/links/{alias}`](/docs/api/delete-link) |
+| Analytics | **Get** | Gets a link's total clicks, daily clicks and breakdowns by country, city, device, browser, OS and referrer. | [`GET /api/v1/analytics/{alias}`](/docs/api/link-analytics) |
+
+A link is identified by its **alias** and **domain**. Leave **Domain** empty to use the default domain from [Settings → General](/dashboard/settings#general), or `isht.app`. See [Domains](/docs/api#domains).
+
+Dates you pick in **Expires At** and **Activates At** are read in the workflow's time zone. Plan rules are the same as in the dashboard: activation dates and passwords need Pro or Ultra, UTM parameters need Ultra, and links created from n8n count toward your monthly link limit. See [Plans and limits](/docs/api#plans-and-limits).
+
+## Trigger on new links
+
+The **iShortn Trigger** node has one event, **New Link**. It checks your newest links on the schedule you set in **Poll Times** and starts the workflow once for each link created since the last check, oldest first. Each item has the same fields as [Get a link](/docs/api/get-link#response) returns, such as `shortLink`, `url` and `alias`.
+
+- It sees links created anywhere in your personal workspace: in the dashboard, through the API or from another workflow.
+- When you activate the workflow, it records the links you already have and only fires for links created after that.
+- **Fetch Test Event** returns your newest link so you can map its fields, without changing what the trigger has recorded.
+- Set **Domain** to only watch links on one domain.
+
+The API doesn't return link IDs, so the trigger recognises links by their short link. Renaming your newest link with a new alias makes it fire again as a new link.
+
+## Example: shorten every new row in Google Sheets
+
+This workflow adds a short link next to each URL added to a sheet. The sheet has a `URL` column and an empty `Short link` column.
+
+1. Add a **Google Sheets Trigger** node with the event **Row Added** and pick your document and sheet.
+2. Add an **iShortn** node with resource **Link** and operation **Create**. Set **URL** to the expression `{{ $json.URL }}`. Optionally add **Domain** under **Additional Fields**.
+3. Add a **Google Sheets** node with the operation **Update Row**. Match rows on the `URL` column with `{{ $('Google Sheets Trigger').item.json.URL }}` and set `Short link` to `{{ $json.shortLink }}`.
+4. Activate the workflow.
+
+To go the other way, start with an **iShortn Trigger** and add a **Google Sheets** node with **Append Row** to log every new link to a sheet.
+
+## Errors
+
+When a request fails, n8n shows the HTTP status as the error and the API's message under it. The most common messages:
+
+| Message | What to do |
+| --- | --- |
+| `Invalid or missing API key` | The key was mistyped or deleted. Create a new one in [Settings](/dashboard/settings#api-keys) and update the credential. |
+| `API access requires Pro` | The key's account isn't on a paid plan. See [API access by plan](/docs/api#api-access-by-plan). |
+| `Link not found` | No link with that alias on that domain in your personal workspace. Check the **Domain** field. |
+| `Domain not available for this API key` | The domain isn't a platform domain or an active custom domain in your personal workspace. |
+| `Rate limit exceeded. Retry in N seconds.` | Too many requests in a short time. Turn on **Retry On Fail** in the node's settings, or space out the workflow. See [Rate limits](/docs/api#rate-limits). |
+
+Other errors, such as an alias that's already taken, are listed in [Responses and errors](/docs/api#responses-and-errors).

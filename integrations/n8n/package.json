@@ -1,0 +1,61 @@
+{
+	"name": "n8n-nodes-ishortn",
+	"version": "0.1.0",
+	"description": "n8n nodes for iShortn: create and manage short links, read click analytics and trigger on new links.",
+	"license": "MIT",
+	"homepage": "https://ishortn.ink/docs/integrations/n8n",
+	"keywords": [
+		"n8n-community-node-package",
+		"n8n",
+		"ishortn",
+		"url-shortener",
+		"short-links"
+	],
+	"author": {
+		"name": "iShortn",
+		"email": "support@ishortn.ink",
+		"url": "https://ishortn.ink"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/AmoabaKelvin/ishortn.ink.git",
+		"directory": "integrations/n8n"
+	},
+	"bugs": {
+		"url": "https://github.com/AmoabaKelvin/ishortn.ink/issues"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'test/*.test.mjs'",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/IShortnApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/IShortn/IShortn.node.js",
+			"dist/nodes/IShortnTrigger/IShortnTrigger.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "0.57.4",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"release-it": "^21.1.0",
+		"typescript": "5.9.2"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}

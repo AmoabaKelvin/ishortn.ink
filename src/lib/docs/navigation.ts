@@ -40,7 +40,10 @@ export const DOCS_SECTIONS = [
   },
   {
     title: "Integrations",
-    pages: [{ slug: "integrations/raycast", title: "Raycast" }],
+    pages: [
+      { slug: "integrations/raycast", title: "Raycast" },
+      { slug: "integrations/n8n", title: "n8n" },
+    ],
   },
   {
     title: "Self-hosting",
