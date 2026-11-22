@@ -103,7 +103,7 @@ export function DomainCardNew({ domain, index, canManageDomains }: DomainCardPro
       return;
     }
     setStatus("pending");
-    setLiveChallenges(result.verificationChallenges);
+    if (result.verificationChallenges) setLiveChallenges(result.verificationChallenges);
   };
 
   const daysSinceCreation = daysSinceDate(new Date(domain.createdAt!));

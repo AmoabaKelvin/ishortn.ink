@@ -44,6 +44,8 @@ export default function DomainStatusChecker({ domain, onResult }: DomainStatusCh
         tone: "error",
         message: error?.message ?? "We couldn't check this domain. Please try again.",
       });
+    } else if (data.message) {
+      setFeedback({ tone: "error", message: data.message });
     } else if (data.status !== "active") {
       setFeedback({ tone: "pending", message: PENDING_FEEDBACK });
     }

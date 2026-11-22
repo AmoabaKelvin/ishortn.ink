@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, isNull, lt, ne, or, sum } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 import { getDomain } from "tldts";
 
 import { getPlanCaps } from "@/lib/billing/plans";
@@ -350,19 +351,53 @@ export async function deleteDomainAndAssociatedLinks(
   return { success: true, message: "Domain and associated links deleted successfully" };
 }
 
-export async function checkDomainStatus(ctx: WorkspaceTRPCContext, domainName: string) {
+export async function checkDomainStatus(
+  ctx: WorkspaceTRPCContext,
+  domainName: string,
+  {
+    lookupHostname = getLiveCustomHostname,
+  }: { lookupHostname?: typeof getLiveCustomHostname } = {},
+) {
+  const teamOwner = alias(user, "teamOwner");
+
   // Look the domain up in the caller's workspace first: the Cloudflare call
   // below can re-arm validation, which must not run on someone else's hostname
-  const record = await ctx.db.query.customDomain.findFirst({
-    where: and(
-      eq(customDomain.domain, domainName),
-      workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
-    ),
-    columns: { id: true, domain: true },
-  });
+  const [record] = await ctx.db
+    .select({
+      id: customDomain.id,
+      domain: customDomain.domain,
+      status: customDomain.status,
+      // Personal domains belong to the user who added them, team domains to the team owner
+      ownerRestrictedAt: user.restrictedAt,
+      ownerBanned: user.banned,
+      teamOwnerRestrictedAt: teamOwner.restrictedAt,
+      teamOwnerBanned: teamOwner.banned,
+    })
+    .from(customDomain)
+    .leftJoin(team, eq(customDomain.teamId, team.id))
+    .leftJoin(user, and(isNull(customDomain.teamId), eq(customDomain.userId, user.id)))
+    .leftJoin(teamOwner, eq(team.ownerId, teamOwner.id))
+    .where(
+      and(
+        eq(customDomain.domain, domainName),
+        workspaceFilter(ctx.workspace, customDomain.userId, customDomain.teamId),
+      ),
+    )
+    .limit(1);
 
   if (!record?.domain) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Domain not found" });
+  }
+
+  // Restricting released this hostname; a check must not flip it back to active
+  // while Cloudflare still reports it live. Only unrestrictUser restores it.
+  if (
+    record.ownerRestrictedAt ||
+    record.ownerBanned ||
+    record.teamOwnerRestrictedAt ||
+    record.teamOwnerBanned
+  ) {
+    return { status: record.status ?? "pending", message: ACCOUNT_RESTRICTED_MESSAGE };
   }
 
   const domain = record.domain;
@@ -370,7 +405,7 @@ export async function checkDomainStatus(ctx: WorkspaceTRPCContext, domainName: s
   let active: boolean;
 
   try {
-    hostname = await getLiveCustomHostname(domain);
+    hostname = await lookupHostname(domain);
     active = await isHostnameActive(domain, hostname);
   } catch (error) {
     throw toUserFacingError(
