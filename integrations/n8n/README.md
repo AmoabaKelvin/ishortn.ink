@@ -43,6 +43,21 @@ npm run lint
 npm run build
 ```
 
+## Releasing
+
+Releases are published to npm with provenance by the [`publish-n8n.yml`](https://github.com/AmoabaKelvin/ishortn.ink/blob/main/.github/workflows/publish-n8n.yml) GitHub Actions workflow. Don't run `npm publish` locally.
+
+1. Bump the version in `package.json` and `package-lock.json`: `npm version X.Y.Z --no-git-tag-version`.
+2. Add an `## X.Y.Z` entry to `CHANGELOG.md`.
+3. Merge those changes to `main`, then tag the merge commit and push the tag:
+
+   ```bash
+   git tag n8n-vX.Y.Z
+   git push origin n8n-vX.Y.Z
+   ```
+
+The workflow fails without publishing if the tag doesn't match the `package.json` version. To retry a failed release, run the workflow manually and pick the tag under **Use workflow from**.
+
 ## License
 
 [MIT](LICENSE.md)

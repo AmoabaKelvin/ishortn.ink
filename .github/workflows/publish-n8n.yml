@@ -1,0 +1,73 @@
+# Publishes integrations/n8n (n8n-nodes-ishortn) to npm with a provenance
+# statement, which n8n requires to verify community nodes. Authentication uses
+# npm Trusted Publishing (OIDC), so no npm token is stored in the repository.
+# Release steps are in integrations/n8n/README.md ("Releasing").
+
+name: Publish n8n nodes
+
+on:
+  push:
+    tags:
+      - "n8n-v*.*.*"
+  # Re-runs a release: pick the n8n-vX.Y.Z tag under "Use workflow from".
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-n8n-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/n8n
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Node 24 bundles npm 11, which trusted publishing needs (>= 11.5.1).
+      # No dependency cache: this job can mint publish credentials.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Check tag matches package.json version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [ "$REF_TYPE" != "tag" ] || [ "$TAG" != "n8n-v$version" ]; then
+            echo "::error::Ref '$TAG' does not match package.json version $version; expected tag n8n-v$version."
+            exit 1
+          fi
+
+      - name: Check npm supports trusted publishing
+        run: |
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number);
+            const ok = major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)));
+            if (!ok) { console.error("npm " + process.argv[1] + " is older than 11.5.1"); process.exit(1); }
+          ' "$(npm -v)"
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm run lint --if-present
+
+      - run: npm test
+
+      # prepublishOnly (n8n-node prerelease) refuses to publish unless RELEASE_MODE is set.
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          RELEASE_MODE: "true"
