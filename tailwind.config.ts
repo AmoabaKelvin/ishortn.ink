@@ -18,7 +18,6 @@ export default {
         sans: ["var(--font-sans)", ...fontFamily.sans],
         display: ["var(--font-display)", "Georgia", "serif"],
         heading: ["var(--font-heading)", ...fontFamily.sans],
-        logo: ["var(--font-logo)", ...fontFamily.sans],
         // Marketing + auth theme (docs/design-language.md)
         title: ["var(--font-title)", ...fontFamily.sans],
       },

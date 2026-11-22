@@ -12,19 +12,16 @@ import type { ComponentProps, ReactNode } from "react";
 
 export const Logo = ({ className }: { className?: string }) => (
   <svg
-    viewBox="0 0 32 32"
+    viewBox="-1.231 -1.231 34.462 34.462"
     fill="none"
     aria-hidden="true"
     className={cn("size-6 shrink-0", className)}
   >
-    <path
-      d="M10 6c-3 0-5 2-5 5s2 5 5 5h12c3 0 5 2 5 5s-2 5-5 5"
-      stroke="currentColor"
-      strokeWidth="2.75"
-      strokeLinecap="round"
-    />
-    <circle cx="10" cy="11" r="2.5" fill="currentColor" />
-    <circle cx="22" cy="21" r="2.5" fill="currentColor" />
+    <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 14V8a4 4 0 0 1 4-4h6" />
+      <path d="M28 18v6a4 4 0 0 1-4 4h-6" />
+    </g>
+    <rect x="11" y="11" width="10" height="10" rx="3" fill="currentColor" />
   </svg>
 );
 

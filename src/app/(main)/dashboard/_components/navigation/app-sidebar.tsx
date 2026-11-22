@@ -33,9 +33,9 @@ import { Link } from "next-view-transitions";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { Wordmark } from "@/app/(landing)/_components/site-primitives";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { APP_TITLE } from "@/lib/constants/app";
 import { cn } from "@/lib/utils";
 
 import { AudienceFeedbackPrompt } from "./audience-feedback-prompt";
@@ -45,6 +45,8 @@ import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 import type { EventUsage } from "./sidebar-stats";
+
+const sidebarWordmarkClass = "text-[17px] dark:text-foreground [&>svg]:size-5";
 
 const navigationItems = [
   { name: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
@@ -178,11 +180,8 @@ export function AppSidebar({
         >
           <IconMenu2 size={20} stroke={1.5} />
         </button>
-        <Link
-          href="/dashboard"
-          className="font-logo text-[17px] tracking-tight text-neutral-900 dark:text-foreground"
-        >
-          {APP_TITLE}
+        <Link href="/dashboard">
+          <Wordmark className={sidebarWordmarkClass} />
         </Link>
       </div>
 
@@ -197,12 +196,8 @@ export function AppSidebar({
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex h-14 shrink-0 items-center justify-between px-5">
-            <Link
-              href="/"
-              className="font-logo text-[17px] tracking-tight text-neutral-900 dark:text-foreground"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              {APP_TITLE}
+            <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
+              <Wordmark className={sidebarWordmarkClass} />
             </Link>
             <button
               ref={closeButtonRef}

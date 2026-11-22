@@ -5,6 +5,7 @@ import {
   Head,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -35,8 +36,15 @@ export function EmailLayout({ preview, children, notificationSettingsUrl }: Emai
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
-            <Link href={dashboardUrl} style={wordmark}>
-              iShortn
+            <Link href={dashboardUrl} style={logoLink}>
+              {/* PNG, not SVG: most email clients block SVG images. */}
+              <Img
+                src={getAppUrl("/email/logo@2x.png")}
+                alt="iShortn"
+                width="106"
+                height="28"
+                style={logo}
+              />
             </Link>
           </Section>
 
@@ -114,12 +122,15 @@ const header: CSSProperties = {
   padding: "0 24px",
 };
 
-const wordmark: CSSProperties = {
+const logoLink: CSSProperties = {
+  textDecoration: "none",
+};
+
+// Alt text styled like the old text wordmark for clients that block images.
+const logo: CSSProperties = {
   color: "#111827",
   fontSize: "20px",
   fontWeight: 600,
-  letterSpacing: "-0.02em",
-  textDecoration: "none",
 };
 
 const content: CSSProperties = {
