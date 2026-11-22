@@ -7,9 +7,16 @@ The iShortn extension for [Raycast](https://www.raycast.com) shortens the URL yo
 
 ## Install
 
-1. Open Raycast and run the **Store** command.
-2. Search for **iShortn** and choose **Install Extension**.
-3. Run any iShortn command. Raycast asks for your API key the first time.
+The extension isn't in the Raycast Store yet. Until it is, install it from source. You need [Raycast](https://www.raycast.com) and [Node.js](https://nodejs.org) 22.22 or later.
+
+```bash
+git clone https://github.com/AmoabaKelvin/ishortn.ink.git
+cd ishortn.ink/integrations/raycast
+npm install
+npm run dev
+```
+
+`npm run dev` imports the extension into Raycast in development mode. Run any iShortn command. Raycast asks for your API key the first time.
 
 ## Add your API key
 
