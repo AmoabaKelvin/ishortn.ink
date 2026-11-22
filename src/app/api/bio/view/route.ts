@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { externalReferrer } from "@/lib/core/analytics/visitor";
 import { setStringIfAbsent } from "@/lib/core/cache";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { runBackgroundTask } from "@/lib/utils/background";
@@ -13,14 +14,17 @@ import type { NextRequest } from "next/server";
 
 const isLocalhost = process.env.NODE_ENV === "development";
 
-const bioViewSchema = z.object({ bioPageId: z.number() });
+const bioViewSchema = z.object({
+  bioPageId: z.number(),
+  referrer: z.string().max(2048).nullish(),
+});
 
 export async function POST(request: NextRequest) {
   const input = bioViewSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) {
     return new Response(null, { status: 400 });
   }
-  const { bioPageId } = input.data;
+  const { bioPageId, referrer } = input.data;
 
   // Only record for a page that actually exists and is published.
   const page = await db.query.bioPage.findFirst({
@@ -40,6 +44,9 @@ export async function POST(request: NextRequest) {
   }
 
   const geo = getRequestGeo();
+  // The beacon is same-origin, so the request host is the bio page's host
+  // (ishortn.ink or the page's custom domain).
+  const pageHost = request.headers.get("x-forwarded-host") ?? request.nextUrl.host;
 
   void runBackgroundTask(
     recordBioPageView({
@@ -49,6 +56,7 @@ export async function POST(request: NextRequest) {
       ip: ip ?? "",
       country: geo.country ?? (isLocalhost ? "US" : ""),
       city: geo.city ?? (isLocalhost ? "San Francisco" : ""),
+      referrer: externalReferrer(referrer, pageHost),
     }),
   );
 

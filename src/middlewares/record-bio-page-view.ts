@@ -9,11 +9,16 @@ type RecordBioPageViewOptions = {
   ip: string;
   country: string;
   city: string;
+  /**
+   * The bio page's `document.referrer`, sent by the view beacon. The beacon
+   * request's own Referer header is the bio page itself.
+   */
+  referrer: string | null;
 };
 
 export async function recordBioPageView(opts: RecordBioPageViewOptions): Promise<void> {
-  const { headers, bioPageId, ownerId, ip, country, city } = opts;
-  const visitor = await describeVisitor({ headers, ip, country, city });
+  const { headers, bioPageId, ownerId, ip, country, city, referrer } = opts;
+  const visitor = await describeVisitor({ headers, ip, country, city, referrer });
   if (!visitor) return;
 
   await enqueueClickEvent({

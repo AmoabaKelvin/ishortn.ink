@@ -148,6 +148,44 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
     ]);
   });
 
+  test("leaves out views that recorded the app host as their referrer", async () => {
+    await db.insert(schema.bioPageView).values([
+      { bioPageId: pageId, referer: "ishortn.ink" },
+      { bioPageId: pageId, referer: "ishortn.ink" },
+      { bioPageId: pageId, referer: "instagram.com" },
+      { bioPageId: pageId, referer: null },
+    ]);
+
+    const result = await getBioPageAnalytics(ctx("pro"), { id: pageId, range: "7d" });
+
+    expect(result.views).toBe(4);
+    expect(result.viewReferrers).toEqual([
+      { name: "Direct", clicks: 1 },
+      { name: "instagram.com", clicks: 1 },
+    ]);
+  });
+
+  test("views over time are zero-filled across the range", async () => {
+    const now = Date.now();
+    await db.insert(schema.bioPageView).values([
+      { bioPageId: pageId, createdAt: new Date(now - 2 * DAY_MS) },
+      { bioPageId: pageId, createdAt: new Date(now - 2 * DAY_MS) },
+    ]);
+    const day = (offset: number) => new Date(now - offset * DAY_MS).toISOString().slice(0, 10);
+
+    const week = await getBioPageAnalytics(ctx("pro"), { id: pageId, range: "7d" });
+    expect(week.viewsSeries.map((p) => p.date)).toEqual([7, 6, 5, 4, 3, 2, 1, 0].map(day));
+    expect(week.viewsSeries.filter((p) => p.views > 0)).toEqual([{ date: day(2), views: 2 }]);
+
+    // All time starts at the first day with views.
+    const allTime = await getBioPageAnalytics(ctx("pro"), { id: pageId, range: "all" });
+    expect(allTime.viewsSeries).toEqual([
+      { date: day(2), views: 2 },
+      { date: day(1), views: 0 },
+      { date: day(0), views: 0 },
+    ]);
+  });
+
   test("breakdowns follow the selected range and the plan's history cap", async () => {
     const now = Date.now();
     await db.insert(schema.linkVisit).values([

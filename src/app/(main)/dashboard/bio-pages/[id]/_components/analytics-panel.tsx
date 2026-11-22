@@ -137,8 +137,8 @@ export function AnalyticsPanel({ pageId, plan }: { pageId: number; plan: Plan })
       ) : (
         <div className={cn("space-y-5 transition-opacity", isFetching && "opacity-60")}>
           <StatCards data={data} />
-          <ViewsChart viewsPerDay={data.viewsPerDay} />
-          <ViewReferrers referrers={data.viewReferrers} views={data.views} />
+          <ViewsChart series={data.viewsSeries} />
+          <ViewReferrers referrers={data.viewReferrers} />
           <TopLinks perBlock={data.perBlock} />
           <ClickBreakdowns breakdowns={data.clickBreakdowns} totalClicks={data.totalClicks} />
         </div>
@@ -170,20 +170,19 @@ function StatCards({ data }: { data: Analytics }) {
   );
 }
 
-function ViewsChart({ viewsPerDay }: { viewsPerDay: Record<string, number> }) {
+function ViewsChart({ series }: { series: Analytics["viewsSeries"] }) {
+  const hasViews = series.some((point) => point.views > 0);
   const chartData = useMemo(() => {
-    const entries = Object.entries(viewsPerDay)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, views]) => ({ date, views }));
-    // A single point renders as a flat sliver — pad with a leading zero day.
-    if (entries.length === 1 && entries[0]) {
-      const prev = new Date(new Date(entries[0].date).getTime() - 86400000)
+    // An all-time range whose only views are today is a single point, which an
+    // area chart can't draw; lead it with a zero day.
+    if (series.length === 1 && series[0]) {
+      const prev = new Date(new Date(series[0].date).getTime() - 86400000)
         .toISOString()
         .split("T")[0]!;
-      return [{ date: prev, views: 0 }, ...entries];
+      return [{ date: prev, views: 0 }, ...series];
     }
-    return entries;
-  }, [viewsPerDay]);
+    return series;
+  }, [series]);
 
   return (
     <Card className="overflow-hidden rounded-xl border-neutral-200 shadow-none dark:border-border">
@@ -196,7 +195,7 @@ function ViewsChart({ viewsPerDay }: { viewsPerDay: Record<string, number> }) {
         </p>
       </div>
       <div className="px-2 pb-5 pt-4 sm:px-5">
-        {chartData.length === 0 ? (
+        {!hasViews ? (
           <div className="flex h-56 items-center justify-center text-[13px] text-neutral-400 dark:text-neutral-500">
             No views in this range yet.
           </div>
@@ -276,25 +275,22 @@ function TopLinks({ perBlock }: { perBlock: Analytics["perBlock"] }) {
   );
 }
 
-function ViewReferrers({
-  referrers,
-  views,
-}: {
-  referrers: Analytics["viewReferrers"];
-  views: number;
-}) {
+function ViewReferrers({ referrers }: { referrers: Analytics["viewReferrers"] }) {
+  // Views recorded before sources were tracked are left out of the rows, so
+  // shares are of the views with a known source, not of all views.
+  const total = referrers.reduce((sum, r) => sum + r.clicks, 0);
   return (
     <BarList.BarListTitle
       title="Where visitors came from"
       description="Sites that sent visitors to this page"
       unit="Views"
     >
-      {views === 0 ? (
+      {total === 0 ? (
         <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
-          No views in this range yet.
+          No visitor sources in this range yet.
         </p>
       ) : (
-        <BarList records={referrers} totalClicks={views} color="red" />
+        <BarList records={referrers} totalClicks={total} color="red" />
       )}
     </BarList.BarListTitle>
   );

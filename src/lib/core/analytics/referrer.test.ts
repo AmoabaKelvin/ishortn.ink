@@ -7,7 +7,7 @@ import {
   isSearchReferrer,
   isSocialReferrer,
 } from "./referrer";
-import { parseReferrer } from "./visitor";
+import { externalReferrer, parseReferrer } from "./visitor";
 
 describe("baseDomain", () => {
   test("keeps three labels under two-part country suffixes", () => {
@@ -59,5 +59,25 @@ describe("referrer classification", () => {
       { source: "direct", name: "Direct", clicks: 5 },
       { source: "twitter", name: "Twitter", clicks: 1 },
     ]);
+  });
+});
+
+describe("externalReferrer", () => {
+  test("drops empty referrers and the page's own host", () => {
+    expect(externalReferrer(null, "ishortn.ink")).toBeNull();
+    expect(externalReferrer("", "ishortn.ink")).toBeNull();
+    expect(externalReferrer("https://ishortn.ink/p/me", "ishortn.ink")).toBeNull();
+    expect(externalReferrer("https://www.Links.example.com/", "links.example.com:443")).toBeNull();
+  });
+
+  test("keeps other hosts, including unparseable values", () => {
+    expect(externalReferrer("https://www.instagram.com/", "ishortn.ink")).toBe(
+      "https://www.instagram.com/",
+    );
+    expect(externalReferrer("https://ishortn.ink/", "links.example.com")).toBe(
+      "https://ishortn.ink/",
+    );
+    expect(externalReferrer("not a url", "ishortn.ink")).toBe("not a url");
+    expect(externalReferrer("https://instagram.com/", null)).toBe("https://instagram.com/");
   });
 });
