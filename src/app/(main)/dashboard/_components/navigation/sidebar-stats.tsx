@@ -73,6 +73,8 @@ type SidebarStatsProps = {
   eventUsage?: EventUsage;
   folderUsage?: { count: number; limit: number | null };
   plan: "free" | "pro" | "ultra";
+  /** Whether the sidebar is on screen; on mobile it stays mounted off-canvas while closed. */
+  shown: boolean;
 };
 
 export function SidebarStats({
@@ -81,6 +83,7 @@ export function SidebarStats({
   linkLimit,
   eventUsage,
   plan,
+  shown,
 }: SidebarStatsProps) {
   const linkCap = linkLimit ?? undefined;
   const linkLimitValue = linkCap ?? (userHasPaidPlan ? undefined : 30);
@@ -112,6 +115,7 @@ export function SidebarStats({
           <UpgradeCta
             requiredPlan="ultra"
             source={eventsTarget ? EVENTS_PAUSED_SOURCE : "sidebar_pro"}
+            shown={shown}
             className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
           >
             Upgrade to Ultra
@@ -167,6 +171,7 @@ export function SidebarStats({
         source={
           eventsTarget ? EVENTS_PAUSED_SOURCE : isAtLimit ? "sidebar_free_at_limit" : "sidebar_free"
         }
+        shown={shown}
         className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
       >
         Upgrade to Pro

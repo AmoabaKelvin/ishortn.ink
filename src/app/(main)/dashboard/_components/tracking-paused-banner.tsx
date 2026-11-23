@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { trackUpgradeClick, useTrackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
 import { PLAN_NAMES } from "@/lib/billing/entitlements";
 import { promoOfferLine } from "@/lib/billing/promo";
 
@@ -56,6 +56,7 @@ export function TrackingPausedBanner({ pause, target, promo }: TrackingPausedBan
   const dismissed = useSyncExternalStore(subscribeDismissed, readDismissed, readDismissedOnServer);
   // The pricing page is where the CTA leads, so the banner would only repeat it there.
   const visible = !dismissed && !pathname?.startsWith("/dashboard/pricing");
+  useTrackUpgradeShown(CTA_SOURCE, visible);
 
   useEffect(() => {
     if (!visible) return;

@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 
 import { toast } from "sonner";
 
+import * as events from "./events";
 import { notifyPlanLimit } from "./upgrade-prompt";
 
 afterEach(() => {
@@ -27,5 +28,16 @@ describe("notifyPlanLimit", () => {
       action.onClick({} as never);
     }
     expect(location.href).toBe("/dashboard/pricing?highlight=pro&source=folder_create");
+  });
+
+  test("records the limit and the prompt impression under the same source", () => {
+    const spy = spyOn(events, "trackEvent").mockImplementation(() => {});
+    notifyPlanLimit("You've reached your monthly link limit.", "link_create", "pro");
+    const calls = spy.mock.calls;
+    spy.mockRestore();
+    expect(calls).toEqual([
+      [events.POSTHOG_EVENTS.PLAN_LIMIT_REACHED, { source: "link_create" }],
+      [events.POSTHOG_EVENTS.UPGRADE_PROMPT_SHOWN, { source: "link_create" }],
+    ]);
   });
 });
