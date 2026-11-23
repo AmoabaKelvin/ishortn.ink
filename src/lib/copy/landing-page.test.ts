@@ -5,6 +5,7 @@ import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { competitors } from "@/lib/seo/competitors";
 
 import { landingPageCopy } from "./landing-page";
+import { linkOwnershipFaq } from "./link-ownership";
 
 const faqText = landingPageCopy.faq.map((f) => `${f.question} ${f.answer}`).join("\n");
 const answerTo = (question: string) =>
@@ -25,6 +26,10 @@ describe("homepage FAQ", () => {
     const growthPrice = competitors.bitly.customDomains.match(/\$\d+/)?.[0];
     expect(growthPrice).toBeDefined();
     expect(answer).toContain(`${growthPrice} a month billed annually on Bitly Growth`);
+  });
+
+  it("includes the link ownership answer shared with the pricing FAQ", () => {
+    expect(answerTo(linkOwnershipFaq.question)).toBe(linkOwnershipFaq.answer);
   });
 
   it("makes no overstated safety claims", () => {

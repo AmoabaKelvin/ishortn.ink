@@ -2,6 +2,8 @@ import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
 import { PLAN_CAPS } from "@/lib/billing/plans";
 import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
+import { linkOwnershipFaq } from "./link-ownership";
+
 const free = PLAN_CAPS.free;
 const pro = PLAN_CAPS.pro;
 const proPrice = `$${PLAN_PRICES_USD.pro} a month`;
@@ -41,6 +43,7 @@ export const landingPageCopy = {
       answer:
         "Yes. Links stay active as long as your account exists, and you can change a link's destination or alias on every plan. If you reach your monthly limit, existing links keep redirecting.",
     },
+    linkOwnershipFaq,
     {
       question: "Is there an API available?",
       answer:
