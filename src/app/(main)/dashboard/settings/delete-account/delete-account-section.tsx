@@ -1,11 +1,11 @@
 "use client";
 
-import { useClerk } from "@clerk/nextjs";
 import { IconLoader2 } from "@tabler/icons-react";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
+import { useSignOut } from "@/components/scripts/posthog-identify";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,7 +39,7 @@ import type { RequestAccountDeletionInput } from "@/server/api/routers/account-d
 type FormData = RequestAccountDeletionInput;
 
 export function DeleteAccountSection() {
-  const { signOut } = useClerk();
+  const signOut = useSignOut();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
 
