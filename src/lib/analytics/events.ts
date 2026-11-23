@@ -46,6 +46,16 @@ export const POSTHOG_EVENTS = {
   PLAN_LIMIT_REACHED: "plan_limit_reached",
   UPGRADE_PROMPT_CLICKED: "upgrade_prompt_clicked",
   PAYMENT_UPDATE_CLICKED: "payment_update_clicked",
+
+  // "How did you find iShortn?" prompt for paid accounts
+  ACQUISITION_PROMPT_SHOWN: "acquisition_prompt_shown",
+  ACQUISITION_PROMPT_SUBMITTED: "acquisition_prompt_submitted",
+  ACQUISITION_PROMPT_DISMISSED: "acquisition_prompt_dismissed",
+
+  // Monthly-to-annual billing offer (annual-switch-card.tsx)
+  ANNUAL_SWITCH_CARD_SHOWN: "annual_switch_card_shown",
+  ANNUAL_SWITCH_CARD_CLICKED: "annual_switch_card_clicked",
+  ANNUAL_SWITCH_CARD_DISMISSED: "annual_switch_card_dismissed",
 } as const;
 
 type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];

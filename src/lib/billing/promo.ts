@@ -65,3 +65,11 @@ function formatPromoEnd(iso: string): string {
 export function promoBannerText(promo: Promo): string {
   return `${promo.label}: ${promo.percentOff}% off your first year of Pro or Ultra. Applied at checkout, until ${formatPromoEnd(promo.endsAt)}.`;
 }
+
+/**
+ * One-line offer appended to the paused-tracking banner and the event-cap emails, e.g.
+ * "Black Friday: Pro is 20% off your first year until Tuesday 1 December."
+ */
+export function promoOfferLine(promo: Promo, planName: string): string {
+  return `${promo.label}: ${planName} is ${promo.percentOff}% off your first year until ${formatPromoEnd(promo.endsAt)}.`;
+}

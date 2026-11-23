@@ -136,7 +136,7 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/analytics/[alias] (MySQL)", () =>
 
     const body = await response.json();
     expect(body.totalClicks).toBe(7);
-    expect(body.clicksPerReferrer).toEqual({ Twitter: 1, Direct: 1 });
+    expect(body.clicksPerReferrer).toEqual({ X: 1, Direct: 1 });
     expect(body.window).toMatchObject({ days: null, from: null });
   });
 

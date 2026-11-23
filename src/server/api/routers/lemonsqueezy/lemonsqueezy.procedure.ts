@@ -7,7 +7,6 @@ import {
 } from "@lemonsqueezy/lemonsqueezy.js";
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
-import { z } from "zod";
 
 import { env } from "@/env.mjs";
 import {
@@ -22,11 +21,20 @@ import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { subscription } from "@/server/db/schema";
+import { recordCheckoutStart } from "@/server/lib/checkout-starts";
 import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
-import { downgradeWithFeedbackInput, downgradeReasonLabels } from "./lemonsqueezy.input";
-import { parseProviderUpdatedAt, providerErrorToClient } from "./utils";
+import {
+  createCheckoutOrUpdateInput,
+  downgradeReasonLabels,
+  downgradeWithFeedbackInput,
+} from "./lemonsqueezy.input";
+import {
+  createCheckoutWithPromoFallback,
+  parseProviderUpdatedAt,
+  providerErrorToClient,
+} from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 import type { Subscription as ProviderSubscription } from "@lemonsqueezy/lemonsqueezy.js";
@@ -107,12 +115,7 @@ async function getUserSubscription(ctx: ProtectedTRPCContext) {
 
 export const lemonsqueezyRouter = createTRPCRouter({
   createCheckoutOrUpdate: protectedProcedure
-    .input(
-      z.object({
-        plan: z.enum(["pro", "ultra"]),
-        interval: z.enum(["monthly", "annual"]).default("monthly"),
-      }),
-    )
+    .input(createCheckoutOrUpdateInput)
     .mutation(async ({ ctx, input }) => {
       configureLemonSqueezy();
 
@@ -168,27 +171,41 @@ export const lemonsqueezyRouter = createTRPCRouter({
         return { status: "updated" as const, message: "Plan updated successfully!" };
       }
 
-      const checkout = await createCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
-        checkoutOptions: {
-          embed: true,
-          media: false,
-        },
-        checkoutData: {
-          email: user?.email ?? undefined,
-          discountCode: checkoutDiscountCode(),
-          custom: {
-            user_id: userId,
-          },
-        },
-        productOptions: {
-          enabledVariants: [variantId],
-          redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings#billing`,
-          receiptButtonText: "Go to Dashboard",
-          receiptThankYouNote: `Thank you for signing up to iShortn ${
-            input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
-          }!`,
-        },
-      });
+      const promoCode = checkoutDiscountCode();
+      const { result: checkout, discountCode: sentPromoCode } =
+        await createCheckoutWithPromoFallback(
+          (discountCode) =>
+            createCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
+              checkoutOptions: {
+                // The app opens the URL as a full page; an embed checkout's close button only works
+                // inside the Lemon.js overlay.
+                embed: false,
+                media: false,
+              },
+              checkoutData: {
+                email: user?.email ?? undefined,
+                discountCode,
+                custom: {
+                  user_id: userId,
+                },
+              },
+              productOptions: {
+                enabledVariants: [variantId],
+                // The flag opens the "how did you find us" prompt (checkout-acquisition-prompt.tsx).
+                redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?checkout=success#billing`,
+                receiptButtonText: "Go to Dashboard",
+                receiptThankYouNote: `Thank you for signing up to iShortn ${
+                  input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
+                }!`,
+              },
+            }),
+          promoCode,
+          (rejected) =>
+            log.warn(
+              { userId, variantId, discountCode: promoCode, err: rejected.error },
+              "promo code rejected, retrying checkout without it",
+            ),
+        );
 
       if (checkout.error) {
         throw providerError("checkout", checkout, { userId, variantId });
@@ -199,6 +216,16 @@ export const lemonsqueezyRouter = createTRPCRouter({
         log.error({ userId, variantId }, "lemon squeezy checkout returned no url");
         throw new TRPCError(providerErrorToClient(null));
       }
+
+      void runBackgroundTask(
+        recordCheckoutStart({
+          userId,
+          plan: input.plan,
+          interval: input.interval,
+          source: input.source ?? null,
+          promoCode: sentPromoCode ?? null,
+        }),
+      );
 
       return { status: "redirect" as const, url };
     }),

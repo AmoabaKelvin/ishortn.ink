@@ -6,11 +6,11 @@ import { logger } from "@/lib/logger";
 import { normalizeAlias } from "@/lib/utils";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { removeLink } from "@/server/api/routers/link/link.service";
-import { validateAlias } from "@/server/api/routers/link/utils";
+import { checkAliasAvailability, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
+import { previousAddressCacheKeys, recordAddressChange } from "@/server/lib/link-address";
 import { assertUrlSafe } from "@/server/lib/phishing";
-import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 
 import { apiError, errorResponse, readJsonBody, validationError } from "../../errors";
 import {
@@ -40,6 +40,8 @@ const updateLinkSchema = z
         "Alias can only contain alphanumeric characters, dashes, and underscores",
       )
       .optional(),
+    // Moves the link; its old short URL keeps redirecting to it.
+    domain: z.string().trim().min(1).max(255).optional(),
     expiresAt: z.string().datetime({ offset: true }).nullable().optional(),
     activatesAt: z.string().datetime({ offset: true }).nullable().optional(),
     expiresAfter: z.number().int().positive().nullable().optional(),
@@ -49,6 +51,7 @@ const updateLinkSchema = z
 type LinkUpdate = {
   url?: string;
   alias?: string;
+  domain?: string;
   disableLinkAfterDate?: Date | null;
   activateAt?: Date | null;
   disableLinkAfterClicks?: number | null;
@@ -129,18 +132,43 @@ export const PATCH = withApiKey(
       }
       filteredUpdateData.url = parsed.data.url;
     }
+    let targetDomain = existingLink.domain;
+    if (parsed.data.domain !== undefined) {
+      // Same domains the create endpoint accepts: platform, or the key owner's
+      // verified custom domains within the plan's allowance.
+      const requestedDomain = await resolveApiDomainForUser(token.userId, {
+        domain: parsed.data.domain,
+      });
+      if (!requestedDomain) {
+        return apiError(403, "forbidden", "Domain not available for this API key");
+      }
+      const targetDomainError = await apiDomainWriteError(
+        token.userId,
+        token.graceUsagePlan,
+        requestedDomain,
+      );
+      if (targetDomainError) {
+        return apiError(403, "forbidden", targetDomainError);
+      }
+      targetDomain = requestedDomain;
+    }
+    const movesDomain = targetDomain.toLowerCase() !== existingLink.domain.toLowerCase();
+    if (movesDomain) filteredUpdateData.domain = targetDomain;
+
     const newAlias = parsed.data.alias;
     const renamed =
       newAlias !== undefined &&
       normalizeAlias(newAlias) !== normalizeAlias(existingLink.alias ?? "");
-    if (renamed) {
-      // Same rules as creating a link: format, the free-plan minimum length and
-      // case-insensitive uniqueness (including retired aliases) on the domain.
-      try {
-        await validateAlias({ db }, newAlias, existingLink.domain, token.plan !== "free");
-      } catch (error) {
-        return errorResponse(error);
+    try {
+      if (renamed) {
+        // Same rules as creating a link: format, the free-plan minimum length and
+        // case-insensitive uniqueness (including retired aliases) on the domain.
+        await validateAlias({ db }, newAlias, targetDomain, token.plan !== "free", existingLink.id);
+      } else if (movesDomain && existingLink.alias) {
+        await checkAliasAvailability({ db }, existingLink.alias, targetDomain, existingLink.id);
       }
+    } catch (error) {
+      return errorResponse(error);
     }
     if (newAlias !== undefined) filteredUpdateData.alias = newAlias;
     if (parsed.data.expiresAt !== undefined) {
@@ -176,10 +204,14 @@ export const PATCH = withApiKey(
     }
 
     try {
-      if (renamed) {
-        // A rename frees the old alias just like a delete does.
+      if ((renamed || movesDomain) && existingLink.alias) {
         await db.transaction(async (tx) => {
-          await reserveLinkAliases(tx, eq(link.id, existingLink.id), "deleted");
+          await recordAddressChange(
+            tx,
+            existingLink.id,
+            { domain: existingLink.domain, alias: existingLink.alias ?? "" },
+            { domain: targetDomain, alias: newAlias ?? existingLink.alias ?? "" },
+          );
           await tx.update(link).set(filteredUpdateData).where(eq(link.id, existingLink.id));
         });
       } else {
@@ -194,12 +226,17 @@ export const PATCH = withApiKey(
         return apiError(500, "internal_error", "Failed to retrieve updated link");
       }
 
-      // The redirect path serves from KV for 24h; drop the stale entry (and the
-      // old alias key if it was renamed) so the change takes effect now.
-      await deleteFromCache(buildCacheKey(existingLink.domain, existingLink.alias ?? ""));
-      if (updatedLink.alias !== existingLink.alias) {
-        await deleteFromCache(buildCacheKey(updatedLink.domain, updatedLink.alias ?? ""));
+      // The redirect path serves from KV for 24h; drop the stale entries (old
+      // addresses of a moved link, and the new address, which may hold one of
+      // them) so the change takes effect now.
+      const staleKeys = [
+        buildCacheKey(existingLink.domain, existingLink.alias ?? ""),
+        ...(await previousAddressCacheKeys(db, existingLink.id)),
+      ];
+      if (updatedLink.alias !== existingLink.alias || updatedLink.domain !== existingLink.domain) {
+        staleKeys.push(buildCacheKey(updatedLink.domain, updatedLink.alias ?? ""));
       }
+      await Promise.all(staleKeys.map((key) => deleteFromCache(key)));
 
       return Response.json(toApiLink(updatedLink));
     } catch (error) {
@@ -216,7 +253,7 @@ export const PATCH = withApiKey(
             ("code" in failure && failure.code === "ER_DUP_ENTRY")),
       );
 
-      if (isDuplicateKey && filteredUpdateData.alias) {
+      if (isDuplicateKey && (filteredUpdateData.alias || filteredUpdateData.domain)) {
         return apiError(409, "conflict", "Alias already exists for this domain");
       }
 

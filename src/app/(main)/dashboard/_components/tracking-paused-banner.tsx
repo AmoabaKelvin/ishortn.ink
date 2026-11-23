@@ -7,6 +7,8 @@ import { useEffect, useSyncExternalStore } from "react";
 
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { PLAN_NAMES } from "@/lib/billing/entitlements";
+import { promoOfferLine } from "@/lib/billing/promo";
 
 import { formatResetDay, isDismissalActive, pricingHighlightHref } from "./tracking-paused";
 
@@ -49,7 +51,7 @@ const dismiss = () => {
 
 type TrackingPausedBannerProps = NonNullable<ReturnType<typeof trackingPausedBannerState>>;
 
-export function TrackingPausedBanner({ pause, target }: TrackingPausedBannerProps) {
+export function TrackingPausedBanner({ pause, target, promo }: TrackingPausedBannerProps) {
   const pathname = usePathname();
   const dismissed = useSyncExternalStore(subscribeDismissed, readDismissed, readDismissedOnServer);
   // The pricing page is where the CTA leads, so the banner would only repeat it there.
@@ -78,9 +80,20 @@ export function TrackingPausedBanner({ pause, target }: TrackingPausedBannerProp
           {pause.dropped === 1 ? "visit" : "visits"} went through but{" "}
           {pause.dropped === 1 ? "wasn't" : "weren't"} recorded. Resets{" "}
           {formatResetDay(pause.resetsAt)}.
+          {promo && (
+            <>
+              {" "}
+              {promoOfferLine(promo, PLAN_NAMES[target.plan])} Upgrading resumes tracking straight
+              away.
+            </>
+          )}
         </p>
         <Link
-          href={pricingHighlightHref(target.plan, CTA_SOURCE)}
+          href={pricingHighlightHref(
+            target.plan,
+            CTA_SOURCE,
+            promo ? { utm_campaign: promo.utmCampaign } : {},
+          )}
           onClick={() => trackUpgradeClick(CTA_SOURCE)}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white transition-[background-color,transform] hover:bg-blue-700 active:scale-[0.97]"
         >

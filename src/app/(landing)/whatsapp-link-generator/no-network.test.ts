@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 // The page promises the number and message never leave the browser. Guard the tool's own source
 // and the shared landing modules it pulls in against network calls, storage and server code.
 const DIR = import.meta.dir;
-const ENTRY_FILES = ["whatsapp-link-generator.tsx", "utils.ts", "country-codes.ts"];
+const ENTRY_FILES = ["whatsapp-link-generator.tsx", "utils.ts", "copy.ts", "country-codes.ts"];
 const FORBIDDEN = [
   "fetch(",
   "XMLHttpRequest",

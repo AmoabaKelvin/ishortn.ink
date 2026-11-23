@@ -36,7 +36,7 @@ TinyURL's paid plans start with Pro, which is $9 a month billed annually ($108 a
 |---|---|---|---|---|---|
 | **iShortn** | 30 a month | Yes, 1,000 events a month, 7-day view | Yes | No | Pro, $8/month |
 | **Short.io** | 1,000 in total | Yes, 50,000 clicks a month | Yes | Yes, up to 5 | Hobby |
-| **Rebrandly** | 10 a month | 100 clicks a month in detail | No | 1 branded `.bio` domain | Essentials |
+| **Rebrandly** | 10 a month | 100 clicks a month in detail | No | 1 custom domain (your own or a free `.bio` domain) | Essentials |
 | **Bitly** | 5 a month | No | No | No | Core, $10/month billed annually |
 | **TinyURL** | 30 a month | No | No | No | Pro, $9/month billed annually |
 
@@ -68,7 +68,7 @@ Free links use our `isht.app` short domain. Every QR code uses one of your 30 mo
 
 ## 3. Rebrandly: branded links with a small free plan
 
-[Rebrandly](https://www.rebrandly.com/pricing) Free includes 10 links and 10 QR codes a month, unlimited clicks and scans, custom back-halves, one link gallery and one branded `.bio` domain. Detailed analytics covers 100 clicks a month. Free QR codes and the link gallery carry a Rebrandly watermark, and changing a link's destination starts on Essentials, with 10 edits a month.
+[Rebrandly](https://www.rebrandly.com/pricing) Free includes 10 links and 10 QR codes a month, unlimited clicks and scans, custom back-halves, one link gallery and 1 custom domain, which can be a domain you already own or a free `.bio` domain from Rebrandly. Detailed analytics covers 100 clicks a month. Free QR codes and the link gallery carry a Rebrandly watermark, and changing a link's destination starts on Essentials, with 10 edits a month.
 
 **Watch for:** 100 clicks of detailed data runs out fast on anything you promote. 10 links a month is a third of TinyURL Free.
 

@@ -1,11 +1,9 @@
 import {
-  IconBookFilled,
   IconBulbFilled,
   IconChevronDown,
   IconSparklesFilled,
   IconTagFilled,
 } from "@tabler/icons-react";
-import { Link } from "next-view-transitions";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
@@ -18,6 +16,7 @@ import { CheckList, CTA } from "../../_components/cta";
 import { Faq } from "../../_components/faq";
 import { Footer } from "../../_components/footer";
 import { Header } from "../../_components/header";
+import { RelatedReading } from "../../_components/related-reading";
 import {
   bodyClass,
   ButtonLink,
@@ -71,8 +70,6 @@ export default async function SolutionPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const solution = getSolution(slug);
   if (!solution) return notFound();
-
-  const related = visibleRelatedLinks(solution.related);
 
   return (
     <main>
@@ -180,27 +177,7 @@ export default async function SolutionPage({ params }: { params: Promise<{ slug:
 
       <Faq faqs={solution.faqs.map((faq) => ({ q: faq.question, a: faq.answer }))} />
 
-      {related.length > 0 && (
-        <Section>
-          <SectionHeading
-            align="left"
-            eyebrow={<Eyebrow icon={<IconBookFilled aria-hidden="true" />}>Guides</Eyebrow>}
-            title="Related reading"
-          />
-          <ul className="mt-10 space-y-3">
-            {related.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="text-pretty text-base font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+      <RelatedReading links={visibleRelatedLinks(solution.related)} />
 
       <CTA
         title={solution.ctaTitle}

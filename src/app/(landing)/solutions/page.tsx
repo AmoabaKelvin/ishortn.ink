@@ -1,4 +1,5 @@
 import { IconStackFilled } from "@tabler/icons-react";
+import { Link } from "next-view-transitions";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { solutionsHubTitle } from "@/lib/seo/solutions";
@@ -15,6 +16,9 @@ import type { Metadata } from "next";
 
 const description =
   "How shops, creators, restaurants, agencies, churches, event organisers and real estate agents use iShortn for QR codes, short links and bio pages.";
+
+const inlineLinkClass =
+  "font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900";
 
 export const metadata: Metadata = {
   title: { absolute: solutionsHubTitle },
@@ -53,6 +57,17 @@ export default function SolutionsHubPage() {
 
       <Section>
         <SolutionCards />
+        <p className="mx-auto mt-10 max-w-4xl text-pretty text-center text-base text-neutral-600 sm:text-sm">
+          Weighing up other tools? See{" "}
+          <Link href="/compare" className={inlineLinkClass}>
+            how iShortn compares
+          </Link>{" "}
+          with Bitly, TinyURL and others, or read our{" "}
+          <Link href="/blog" className={inlineLinkClass}>
+            guides
+          </Link>
+          .
+        </p>
       </Section>
 
       <CTA />

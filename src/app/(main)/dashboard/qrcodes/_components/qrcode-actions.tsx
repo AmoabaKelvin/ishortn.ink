@@ -89,9 +89,10 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
       return;
     }
     trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED, { format: "png" });
-    // `download` is ignored on cross-origin URLs (the stored R2 image), so fetch it as a blob.
+    // The stored R2 image is cross-origin without CORS headers, so neither `fetch` nor `download`
+    // works on it directly; the same-origin route serves the stored file instead.
     try {
-      const response = await fetch(image);
+      const response = await fetch(`/api/qr-codes/${qr.id}/png`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       saveBlob(await response.blob(), qrCodeFileName(qr.title));
     } catch (error) {

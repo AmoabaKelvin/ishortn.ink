@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 
 import { assertUrlSafe } from "@/server/lib/phishing";
 
-import { updateLink } from "./link.service";
+import { getAllUserAnalytics, updateLink } from "./link.service";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { Mock } from "bun:test";
@@ -101,5 +101,53 @@ describe("updateLink phishing check", () => {
       updateLink(ctx, { id: 1, url: EXISTING_URL, name: "Renamed" }),
     ).rejects.toBeInstanceOf(ReachedWrite);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("analytics range plan gating", () => {
+  // SAFETY: with no links in the workspace getAllUserAnalytics returns after
+  // ctx.db.query.link.findMany, so only that and ctx.workspace are read.
+  const contextFor = (plan: "free" | "pro" | "ultra") =>
+    ({
+      db: { query: { link: { findMany: async () => [] } } },
+      workspace: {
+        type: "personal",
+        userId: "user_1",
+        teamId: null,
+        teamSlug: null,
+        role: "owner",
+        plan,
+      },
+    }) as WorkspaceTRPCContext;
+
+  const custom = { range: "custom", from: "2026-10-05", to: "2026-10-12" } as const;
+
+  test("free plans asking for last month or a custom range get the last 7 days", async () => {
+    for (const input of [{ range: "last_month" } as const, custom]) {
+      const result = await getAllUserAnalytics(contextFor("free"), {
+        ...input,
+        filterType: "all",
+      });
+      expect(result.range).toBe("7d");
+      expect(result.custom).toBeNull();
+    }
+  });
+
+  test("paid plans get the custom range they asked for", async () => {
+    for (const plan of ["pro", "ultra"] as const) {
+      const result = await getAllUserAnalytics(contextFor(plan), { ...custom, filterType: "all" });
+      expect(result.range).toBe("custom");
+      expect(result.custom).toEqual({ from: "2026-10-05", to: "2026-10-12" });
+      expect(result.window.from).toEqual(new Date("2026-10-05T00:00:00Z"));
+      expect(result.window.to).toEqual(new Date("2026-10-12T23:59:59.999Z"));
+    }
+  });
+
+  test("paid plans get last month", async () => {
+    const result = await getAllUserAnalytics(contextFor("pro"), {
+      range: "last_month",
+      filterType: "all",
+    });
+    expect(result.range).toBe("last_month");
   });
 });

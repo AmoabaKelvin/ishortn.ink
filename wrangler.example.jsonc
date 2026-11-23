@@ -76,10 +76,13 @@
       "0 0 * * *",
       "0 2 * * SUN",
       "0 4 * * *",
+      "0 5 * * *",
+      "25 * * * *",
       "30 */6 * * *",
       "5,20,35,50 * * * *",
       "10 * * * *",
       "40 * * * *",
+      "0 9-17 * * MON",
     ],
   },
   // Needs the Workers Paid plan; only the phishing rescan comes close to it.

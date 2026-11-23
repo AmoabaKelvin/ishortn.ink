@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import { ACTIVE_PROMO } from "@/lib/billing/promo";
+
 import {
   eventsUpgradeTarget,
   formatResetDay,
@@ -75,20 +77,45 @@ describe("trackingPausedBannerState", () => {
     resetsAt: new Date(Date.UTC(2026, 11, 1)),
   };
   const subscription = (
-    overrides: Partial<{ plan: "free" | "pro" | "ultra"; isTeamWorkspace: boolean }> = {},
+    overrides: Partial<{
+      plan: "free" | "pro" | "ultra";
+      isTeamWorkspace: boolean;
+      subscriptionMode: "checkout" | "update" | "resume";
+    }> = {},
     paused: typeof pause | null = pause,
   ) => ({
     plan: "free" as const,
     isTeamWorkspace: false,
+    subscriptionMode: "checkout" as const,
     ...overrides,
     usage: { events: { paused } },
   });
+  const beforePromo = new Date("2026-11-21T12:00:00Z");
+  const inPromo = new Date("2026-11-27T10:00:00Z");
+  const afterPromo = new Date("2026-12-02T00:00:00Z");
 
   test("shows the Pro CTA to a paused free account", () => {
-    expect(trackingPausedBannerState(subscription())).toEqual({
+    expect(trackingPausedBannerState(subscription(), beforePromo)).toEqual({
       pause,
       target: { plan: "pro", label: "Upgrade to Pro" },
+      promo: null,
     });
+  });
+
+  test("carries the promo for a free checkout only inside the promo window", () => {
+    expect(trackingPausedBannerState(subscription(), inPromo)?.promo).toBe(ACTIVE_PROMO);
+    expect(trackingPausedBannerState(subscription(), beforePromo)?.promo).toBeNull();
+    expect(trackingPausedBannerState(subscription(), afterPromo)?.promo).toBeNull();
+  });
+
+  test("no promo when the upgrade isn't a new checkout", () => {
+    expect(
+      trackingPausedBannerState(subscription({ plan: "pro", subscriptionMode: "update" }), inPromo)
+        ?.promo,
+    ).toBeNull();
+    expect(
+      trackingPausedBannerState(subscription({ subscriptionMode: "resume" }), inPromo)?.promo,
+    ).toBeNull();
   });
 
   test("shows the Ultra CTA to a paused Pro account", () => {

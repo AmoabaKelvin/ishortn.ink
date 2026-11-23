@@ -8,6 +8,7 @@ ALTER TABLE `Link` MODIFY `userId` varchar(32) NOT NULL;--> statement-breakpoint
 ALTER TABLE `Token` MODIFY `userId` varchar(32) NOT NULL;--> statement-breakpoint
 ALTER TABLE `Subscription` MODIFY `userId` varchar(32) NOT NULL;--> statement-breakpoint
 ALTER TABLE `ReservedAlias` MODIFY `alias` varchar(255) NOT NULL;--> statement-breakpoint
+ALTER TABLE `LinkPreviousAddress` MODIFY `alias` varchar(255) NOT NULL;--> statement-breakpoint
 ALTER TABLE `BioBlock` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `BioPageView` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `BlockedDomain` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
@@ -22,6 +23,10 @@ ALTER TABLE `Subscription` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unic
 ALTER TABLE `Tag` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `UniqueBioPageView` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `UtmTemplate` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
+-- Created by 0091/0093/0094 after the drift audit; small, so pin them to the same collation too.
+ALTER TABLE `LinkPreviousAddress` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
+ALTER TABLE `CheckoutStart` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
+ALTER TABLE `WeeklySummaryEmail` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 -- Table default only: no string column differs, and this avoids rebuilding UniqueLinkVisit.
 ALTER TABLE `LinkTag` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `LinkVisitDailySummary` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint

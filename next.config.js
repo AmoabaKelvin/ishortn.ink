@@ -83,6 +83,11 @@ const config = {
           },
         ],
       },
+      // The only non-English page; the root layout's <html lang="en"> can't vary per route.
+      {
+        source: "/gerador-de-link-whatsapp",
+        headers: [{ key: "Content-Language", value: "pt-BR" }],
+      },
     ];
   },
 };

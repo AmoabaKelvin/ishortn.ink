@@ -153,8 +153,8 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
     expect(result.views).toBe(6);
     expect(result.viewReferrers).toEqual([
       { name: "Direct", clicks: 3 },
-      { name: "instagram.com", clicks: 2 },
-      { name: "Twitter", clicks: 1 },
+      { name: "Instagram", clicks: 2 },
+      { name: "X", clicks: 1 },
     ]);
   });
 
@@ -171,7 +171,7 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
     expect(result.views).toBe(4);
     expect(result.viewReferrers).toEqual([
       { name: "Direct", clicks: 1 },
-      { name: "instagram.com", clicks: 1 },
+      { name: "Instagram", clicks: 1 },
     ]);
   });
 
@@ -232,7 +232,7 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
 
     const lastWeek = {
       countries: [{ name: "Ghana", clicks: 1 }],
-      referrers: [{ name: "instagram.com", clicks: 1 }],
+      referrers: [{ name: "Instagram", clicks: 1 }],
     };
     expect(await totalsFor("pro", "7d")).toEqual(lastWeek);
     expect(await totalsFor("pro", "30d")).toEqual({
@@ -241,7 +241,7 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
         { name: "Kenya", clicks: 1 },
       ],
       referrers: [
-        { name: "instagram.com", clicks: 1 },
+        { name: "Instagram", clicks: 1 },
         { name: "tiktok.com", clicks: 1 },
       ],
     });
@@ -252,7 +252,7 @@ describe.skipIf(!testDatabaseUrl)("bio page analytics (MySQL)", () => {
       ],
       referrers: [
         { name: "tiktok.com", clicks: 2 },
-        { name: "instagram.com", clicks: 1 },
+        { name: "Instagram", clicks: 1 },
       ],
     });
     // Free plans are capped at 7 days whatever range is requested.

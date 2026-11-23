@@ -41,14 +41,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { UpgradeCta } from "@/components/upgrade-cta";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
@@ -58,13 +50,21 @@ import {
   linkEditLimitSource,
   requiredPlanForLimit,
 } from "@/lib/billing/required-plan";
-import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { clientLogger } from "@/lib/logger/client";
 import { cn } from "@/lib/utils";
 import { normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
+
+import {
+  geoRulesToFormValues,
+  geoRulesToSubmit,
+  mergeMilestones,
+  selectLinkDomain,
+  useEditLinkFormSync,
+} from "./edit-link-form";
+import { LinkDomainSelect } from "./link-domain-select";
 
 import type { MilestoneEntry } from "@/app/(main)/dashboard/_components/milestone-form";
 
@@ -100,6 +100,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   const [isVerifiedClicksOpen, setIsVerifiedClicksOpen] = useState(false);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   const [milestones, setMilestones] = useState<MilestoneEntry[]>([]);
+  const [milestonesEdited, setMilestonesEdited] = useState(false);
 
   const { data: userTags } = api.tag.list.useQuery();
   const userSubscription = api.subscriptions.get.useQuery();
@@ -117,13 +118,9 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   const [syncedOpen, setSyncedOpen] = useState(open);
   const shouldReduceMotion = useReducedMotion();
 
-  const resetMilestones = () =>
-    setMilestones(
-      (existingMilestones ?? []).map((m) => ({
-        threshold: m.threshold,
-        notifiedAt: m.notifiedAt,
-      })),
-    );
+  const toMilestoneEntries = (saved: typeof existingMilestones): MilestoneEntry[] =>
+    (saved ?? []).map((m) => ({ threshold: m.threshold, notifiedAt: m.notifiedAt }));
+  const resetMilestones = () => setMilestones(toMilestoneEntries(existingMilestones));
 
   // Reopening starts from the saved link, not from edits that were abandoned.
   if (syncedOpen !== open) {
@@ -131,6 +128,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     if (open) {
       setTags(link.tags);
       setTagInput("");
+      setMilestonesEdited(false);
       resetMilestones();
     }
   }
@@ -138,9 +136,15 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     setSyncedLink(link);
     setTags(link.tags);
   }
+  // Milestones load after the dialog opens: thresholds added meanwhile are kept, alongside the
+  // saved ones, and a later refetch doesn't overwrite edits.
   if (syncedMilestones !== existingMilestones) {
     setSyncedMilestones(existingMilestones);
-    resetMilestones();
+    if (!milestonesEdited) {
+      resetMilestones();
+    } else if (syncedMilestones === undefined) {
+      setMilestones(mergeMilestones(toMilestoneEntries(existingMilestones), milestones));
+    }
   }
 
   const utils = api.useUtils();
@@ -155,6 +159,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
       name: linkData.name ?? "",
       url: linkData.url ?? "",
       alias: linkData.alias ?? "",
+      domain: linkData.domain,
       note: linkData.note ?? undefined,
       disableLinkAfterClicks: linkData.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: linkData.disableLinkAfterDate ?? undefined,
@@ -168,15 +173,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
       utmParams: linkData.utmParams ?? undefined,
       cloaking: linkData.cloaking ?? false,
       verifiedClicksEnabled: linkData.verifiedClicksEnabled ?? false,
-      geoRules:
-        geoRules?.map((rule) => ({
-          type: rule.type,
-          condition: rule.condition,
-          values: rule.values,
-          action: rule.action,
-          destination: rule.destination ?? undefined,
-          blockMessage: rule.blockMessage ?? undefined,
-        })) ?? [],
+      geoRules: geoRulesToFormValues(geoRules),
     };
   };
 
@@ -185,9 +182,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
     defaultValues: getFormDefaults(link, existingGeoRules),
   });
 
-  useEffect(() => {
-    if (open) form.reset(getFormDefaults(link, existingGeoRules));
-  }, [open, link, existingGeoRules]);
+  useEditLinkFormSync(form, { open, link, geoRules: existingGeoRules }, getFormDefaults);
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
@@ -228,16 +223,28 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
 
   async function onSubmit(values: z.infer<typeof updateLinkSchema>) {
     values.tags = tags;
-    const thresholds = milestones.map((m) => m.threshold);
     const wasEnabled = link.verifiedClicksEnabled ?? false;
     const isEnabled = values.verifiedClicksEnabled ?? false;
-    const savedThresholds = (existingMilestones ?? []).map((m) => m.threshold);
-    const milestonesChanged =
-      thresholds.length !== savedThresholds.length ||
-      thresholds.some((threshold) => !savedThresholds.includes(threshold));
     // Milestones are optional and plan-gated, so they are only saved when they changed, and
     // only after the link saved; the list refreshes either way.
     const save = async () => {
+      values.geoRules = await geoRulesToSubmit(values.geoRules, existingGeoRules, () =>
+        utils.geoRules.getByLinkId.fetch({ linkId: link.id }),
+      );
+      // Saved before the milestones loaded: the list holds only thresholds added since opening.
+      const savedMilestones =
+        existingMilestones === undefined && milestones.length > 0
+          ? await utils.linkMilestone.getByLinkId.fetch({ linkId: link.id })
+          : existingMilestones;
+      const thresholds = (
+        existingMilestones === undefined
+          ? mergeMilestones(toMilestoneEntries(savedMilestones), milestones)
+          : milestones
+      ).map((m) => m.threshold);
+      const savedThresholds = (savedMilestones ?? []).map((m) => m.threshold);
+      const milestonesChanged =
+        thresholds.length !== savedThresholds.length ||
+        thresholds.some((threshold) => !savedThresholds.includes(threshold));
       await formUpdateMutation.mutateAsync(values);
       try {
         if (milestonesChanged) {
@@ -295,6 +302,10 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
   const resolvedPlan = userSubscription?.data?.plan ?? "free";
   const isUltraUser = resolvedPlan === "ultra";
   const isProOrUltraUser = resolvedPlan !== "free";
+
+  const selectedDomain = useWatch({ control: form.control, name: "domain" });
+  const movesDomain =
+    !!selectedDomain && selectedDomain.toLowerCase() !== link.domain.toLowerCase();
 
   // Watch the URL field for debouncing
   const watchedUrl = useWatch({ control: form.control, name: "url" });
@@ -476,22 +487,12 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                               </FormLabel>
                               <FormControl>
                                 <div className="flex h-9 w-full items-center overflow-hidden rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors focus-within:ring-2 focus-within:ring-neutral-300">
-                                  <Select>
-                                    <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:text-neutral-900 focus:ring-0">
-                                      <SelectValue
-                                        placeholder={link.domain || DEFAULT_PLATFORM_DOMAIN}
-                                      />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectGroup>
-                                        {PLATFORM_DOMAINS.map((domain) => (
-                                          <SelectItem key={domain} value={domain}>
-                                            {domain}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectGroup>
-                                    </SelectContent>
-                                  </Select>
+                                  <LinkDomainSelect
+                                    value={selectedDomain ?? link.domain}
+                                    onValueChange={(domain) => selectLinkDomain(form, domain)}
+                                    currentDomain={link.domain}
+                                    triggerClassName="h-full w-max min-w-0 max-w-52 shrink-0 gap-1 rounded-none border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:bg-transparent hover:text-neutral-900 focus:ring-0 dark:bg-transparent dark:text-neutral-400 dark:hover:bg-transparent dark:hover:text-foreground"
+                                  />
                                   <div className="h-4 w-px bg-neutral-200 dark:bg-border" />
                                   <input
                                     placeholder="short-link"
@@ -500,6 +501,11 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   />
                                 </div>
                               </FormControl>
+                              {movesDomain && (
+                                <FormDescription className="break-all text-[12px] text-neutral-400 dark:text-neutral-500">
+                                  {link.domain}/{link.alias} will keep redirecting to this link.
+                                </FormDescription>
+                              )}
                               <FormMessage />
                             </FormItem>
                           )}
@@ -836,7 +842,10 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                       >
                         <MilestoneEditor
                           milestones={milestones}
-                          onChange={setMilestones}
+                          onChange={(next) => {
+                            setMilestones(next);
+                            setMilestonesEdited(true);
+                          }}
                           disabled={!isProOrUltraUser}
                         />
                         {!isProOrUltraUser && (

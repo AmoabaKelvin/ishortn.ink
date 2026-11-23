@@ -49,7 +49,7 @@ Stay if you need several custom domains and don't want to pay, if you make fewer
 | | Free plan | Cheapest plan with your own domain | More than one user |
 |---|---|---|---|
 | **iShortn** | 30 links/mo, 1,000 tracked events/mo, 5 dynamic QR codes | Pro, $8/mo (3 domains) | Ultra, $15/mo (team workspaces) |
-| **Rebrandly** | 10 links/mo, detailed data on 100 clicks/mo | Free lists 1 domain; Essentials $11/mo billed yearly has 2 | Professional, $32/mo billed yearly |
+| **Rebrandly** | 10 links/mo, detailed data on 100 clicks/mo, 1 custom domain | Free (1 domain); Essentials, $11/mo billed yearly, has 2 | Professional, $32/mo billed yearly |
 | **Bitly** | 5 links and 2 QR codes/mo | Growth, $29/mo billed yearly | Teams, custom pricing |
 | **TinyURL** | 30 links/mo, no click stats | Pro, $9/mo billed yearly (3 domains) | Not listed on Pro |
 | **Dub** | 25 links/mo, 1,000 tracked events/mo, 3 domains | Free | Not on Free (1 user) |

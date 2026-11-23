@@ -10,11 +10,13 @@ import { AudienceFeedbackModal } from "./navigation/audience-feedback-modal";
 
 type AudienceFeedbackCardProps = {
   hasLinks: boolean;
+  // Hidden while another feedback prompt is on the page.
+  suppressed?: boolean;
 };
 
 const CARD_EASE = [0.32, 0.72, 0, 1] as const;
 
-export function AudienceFeedbackCard({ hasLinks }: AudienceFeedbackCardProps) {
+export function AudienceFeedbackCard({ hasLinks, suppressed = false }: AudienceFeedbackCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const utils = api.useUtils();
 
@@ -37,7 +39,11 @@ export function AudienceFeedbackCard({ hasLinks }: AudienceFeedbackCardProps) {
   });
 
   const shouldShow =
-    hasLinks && status !== undefined && !status.hasSubmitted && status.shouldAutoPrompt;
+    !suppressed &&
+    hasLinks &&
+    status !== undefined &&
+    !status.hasSubmitted &&
+    status.shouldAutoPrompt;
 
   return (
     <>

@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { loadMarkdownSources } from "./markdown-sources";
 
-import type { Parent, Root } from "mdast";
+import type { Nodes, Parent, Root } from "mdast";
 
 const blogSources = loadMarkdownSources("content/blog", () =>
   import.meta.glob("/content/blog/*.md", { eager: true, query: "?raw" }),
@@ -52,6 +52,12 @@ export interface BlogPost extends BlogPostFrontmatter {
   content: string;
   htmlContent: string;
   readingTime: number;
+  faqs: Faq[];
+}
+
+export interface Faq {
+  question: string;
+  answer: string;
 }
 
 function estimateReadingTime(content: string): number {
@@ -82,6 +88,20 @@ export function isPostLive(slug: string, now: Date = new Date()): boolean {
   const source = blogSources.get(slug);
   if (source === undefined) return false;
   return isPostVisible(blogPostFrontmatterSchema.parse(matter(source).data), now);
+}
+
+// Slug and title of each live post in `slugs`, in the given order, for pages that link to a
+// curated list of posts. Scheduled, unpublished and unknown slugs are left out.
+export function getLivePosts(
+  slugs: readonly string[],
+  now: Date = new Date(),
+): { slug: string; title: string }[] {
+  return slugs.flatMap((slug) => {
+    const source = blogSources.get(slug);
+    if (source === undefined) return [];
+    const frontmatter = blogPostFrontmatterSchema.parse(matter(source).data);
+    return isPostVisible(frontmatter, now) ? [{ slug, title: frontmatter.title }] : [];
+  });
 }
 
 // Every published post, scheduled ones included, from frontmatter alone. For build-time assets
@@ -123,6 +143,64 @@ export async function renderPostBody(content: string, now: Date = new Date()): P
   return processed.toString();
 }
 
+// Containers whose children are separate blocks (list items, cells), so their text gets a space
+// between children. Everything else is phrasing and concatenates as written.
+const BLOCK_CONTAINERS = new Set(["list", "listItem", "blockquote", "table", "tableRow"]);
+
+// Visible text only: link and emphasis children are kept, URLs, raw HTML and images are dropped.
+function plainText(node: Nodes): string {
+  if (node.type === "text" || node.type === "inlineCode") return node.value;
+  if (node.type === "break") return " ";
+  if (!("children" in node)) return "";
+  const separator = BLOCK_CONTAINERS.has(node.type) ? " " : "";
+  return node.children.map((child) => plainText(child)).join(separator);
+}
+
+const collapseWhitespace = (text: string) => text.replace(/\s+/g, " ").trim();
+
+function isFaqHeading(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return (
+    normalized === "faq" ||
+    normalized === "faqs" ||
+    normalized === "frequently asked questions" ||
+    normalized.startsWith("common questions")
+  );
+}
+
+// Question/answer pairs from the post's FAQ section: the first `##` heading named like an FAQ,
+// with each `###` under it a question and the blocks below it, up to the next heading, its answer.
+export function extractFaqs(content: string): Faq[] {
+  const tree = remark().use(gfm).parse(content);
+  const start = tree.children.findIndex(
+    (node) =>
+      node.type === "heading" &&
+      node.depth === 2 &&
+      isFaqHeading(collapseWhitespace(plainText(node))),
+  );
+  if (start === -1) return [];
+
+  const faqs: Faq[] = [];
+  let current: { question: string; blocks: string[] } | null = null;
+  const flush = () => {
+    if (current === null) return;
+    const answer = collapseWhitespace(current.blocks.join(" "));
+    if (answer !== "") faqs.push({ question: current.question, answer });
+  };
+
+  for (const node of tree.children.slice(start + 1)) {
+    if (node.type === "heading" && node.depth <= 2) break;
+    if (node.type === "heading" && node.depth === 3) {
+      flush();
+      current = { question: collapseWhitespace(plainText(node)), blocks: [] };
+      continue;
+    }
+    current?.blocks.push(plainText(node));
+  }
+  flush();
+  return faqs;
+}
+
 export async function getAllPosts(): Promise<BlogPost[]> {
   const posts = await Promise.all([...blogSources.keys()].map(getPostBySlug));
 
@@ -152,6 +230,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     content,
     htmlContent,
     readingTime: estimateReadingTime(content),
+    faqs: extractFaqs(content),
   };
 }
 

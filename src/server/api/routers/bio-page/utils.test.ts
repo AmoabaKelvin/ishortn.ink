@@ -215,8 +215,8 @@ describe("breakdowns", () => {
       ),
     ).toEqual([
       { name: "Direct", clicks: 4 },
-      { name: "instagram.com", clicks: 3 },
-      { name: "Twitter", clicks: 1 },
+      { name: "Instagram", clicks: 3 },
+      { name: "X", clicks: 1 },
     ]);
   });
 

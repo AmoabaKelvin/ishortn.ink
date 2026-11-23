@@ -19,19 +19,67 @@ export function baseDomain(hostname: string): string {
   return parts.slice(-keep).join(".");
 }
 
+// One platform reaches us under several names: older rows hold the source label
+// ("twitter"), the registrable domain ("twitter.com", "x.com") or a full URL from
+// a redirector host ("l.facebook.com"). Each maps to one canonical source.
+const SOURCE_ALIASES = {
+  twitter: "x",
+  "twitter.com": "x",
+  "x.com": "x",
+  "t.co": "x",
+  "facebook.com": "facebook",
+  "fb.com": "facebook",
+  "fb.me": "facebook",
+  "instagram.com": "instagram",
+  "linkedin.com": "linkedin",
+  "lnkd.in": "linkedin",
+  "youtube.com": "youtube",
+  "youtu.be": "youtube",
+  "reddit.com": "reddit",
+  "redd.it": "reddit",
+  "whatsapp.com": "whatsapp",
+  "whatsapp.net": "whatsapp",
+  "wa.me": "whatsapp",
+  // Android app referrers (android-app://com.facebook.katana), stored by registrable domain.
+  "facebook.katana": "facebook",
+  "instagram.android": "instagram",
+  "twitter.android": "x",
+  "linkedin.android": "linkedin",
+  "reddit.frontpage": "reddit",
+  "com.whatsapp": "whatsapp",
+};
+
+/**
+ * Canonical source for a referrer source label or hostname: known aliases of a
+ * platform collapse to one name ("t.co", "x.com" → "x"), Google's country
+ * domains included. Anything else is returned unchanged.
+ */
+export function canonicalReferrer(source: string): string {
+  const value = source.toLowerCase();
+  const exact = lookup(SOURCE_ALIASES, value);
+  if (exact) return exact;
+  if (!value.includes(".")) return value;
+  const base = baseDomain(value);
+  if (base.split(".")[0] === "google") return "google";
+  return lookup(SOURCE_ALIASES, base) ?? value;
+}
+
 /** Canonical source key for a stored referrer value. */
 export function normalizeReferrer(stored: string): string {
   if (!stored || stored === "null") return "direct";
   try {
-    return new URL(stored).hostname.replace(/^www\./, "");
+    return canonicalReferrer(new URL(stored).hostname.replace(/^www\./, ""));
   } catch {
-    return stored.toLowerCase();
+    return canonicalReferrer(stored);
   }
 }
 
 const SOURCE_LABELS = {
   direct: "Direct",
+  x: "X",
   linkedin: "LinkedIn",
+  youtube: "YouTube",
+  whatsapp: "WhatsApp",
   vkontakte: "VK",
 };
 
@@ -43,19 +91,14 @@ export function formatReferrerLabel(stored: string): string {
 }
 
 const SOCIAL_SOURCES = new Set([
-  "twitter",
+  "x",
   "facebook",
+  "instagram",
   "linkedin",
   "reddit",
+  "youtube",
   "vkontakte",
-  "x.com",
-  "twitter.com",
-  "facebook.com",
-  "instagram.com",
-  "linkedin.com",
-  "reddit.com",
   "pinterest.com",
-  "youtube.com",
   "tiktok.com",
   "threads.net",
   "bsky.app",
@@ -77,6 +120,7 @@ export function isSocialReferrer(stored: string): boolean {
 
 export function isSearchReferrer(stored: string): boolean {
   const source = normalizeReferrer(stored);
+  if (source === "google") return true;
   return source.includes(".") && SEARCH_ENGINES.has(baseDomain(source).split(".")[0] ?? "");
 }
 

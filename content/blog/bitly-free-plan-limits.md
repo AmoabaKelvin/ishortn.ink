@@ -10,7 +10,7 @@ published: true
 
 Bitly's free plan is a lot smaller than it used to be. If you've just hit a "monthly limit reached" message, or you're wondering why your Bitly QR code has no scan numbers, this guide lists every limit on Bitly Free today, what happens when you reach one, and what to use if the free plan no longer works for you.
 
-We make iShortn, one of the alternatives below. Every Bitly fact here comes from Bitly's own [pricing page](https://bitly.com/pages/pricing), [help center](https://support.bitly.com) and [blog](https://bitly.com/blog/bitly-free-plan/), checked on 21 November 2026. Bitly changes its plans often, so check those pages before you decide.
+We make iShortn, one of the alternatives below. Every Bitly fact here comes from Bitly's own [pricing page](https://bitly.com/pages/pricing), [help center](https://support.bitly.com) and [blog](https://bitly.com/blog/bitly-free-plan/), checked on 22 November 2026. Bitly changes its plans often, so check those pages before you decide.
 
 ## Bitly free plan limits at a glance
 
@@ -47,7 +47,7 @@ That last point catches small businesses the most. A menu, a flyer or a shop win
 
 ## The ad page on free links
 
-People who open a link made on a free Bitly account see a Bitly page first. It previews the destination and shows an ad, and the visitor has to continue from there. Bitly's help article ["Why are there ads on my links?"](https://support.bitly.com/hc/en-us/articles/32874287800333-Why-are-there-ads-on-my-links), updated 12 January 2026, says ads fund the free plan and that paid plans remove them.
+People who open a link made on a free Bitly account see a Bitly page first. It previews the destination and shows an ad, and the visitor has to continue from there. Bitly's help article ["Why are there ads on my links?"](https://support.bitly.com/hc/en-us/articles/32874287800333-Why-are-there-ads-on-my-links), updated 31 August 2026, says ads fund the free plan and that paid plans remove them.
 
 For a personal link that's a small annoyance. For a business, it means the first thing a customer sees after tapping your link is someone else's ad.
 
@@ -64,16 +64,16 @@ From Bitly's help center:
 | Plan | Price | Links a month | QR codes a month | Click history | Custom domain |
 |---|---|---|---|---|---|
 | Core | $10/month, billed annually only ($120/year) | 100 | 5 | 30 days | No |
-| Growth | $29/month ($348/year) | 500 | 10 | 120 days | Yes, one complimentary |
-| Premium | $199/month ($2,388/year) | 3,000 | 200 | 1 year | Yes |
+| Growth | $29/month billed annually ($348/year), or $35 monthly | 500 | 10 | 120 days | Yes, one complimentary |
+| Premium | $199/month billed annually ($2,388/year), or $300 monthly | 3,000 | 200 | 1 year | Yes |
 
-Source: [Bitly pricing](https://bitly.com/pages/pricing), 21 November 2026.
+Source: [Bitly pricing](https://bitly.com/pages/pricing), 22 November 2026. Bitly lists link data export on Growth and higher only.
 
 Core is the cheapest way to remove the ads and get click data. It's a year-long commitment, though, and it still has no custom domain.
 
 ## What to use instead
 
-Which alternative fits depends on why Bitly Free stopped working for you. Our longer guide to [Bitly alternatives](/blog/bitly-alternatives) covers more tools. These are the three fixes people ask about most.
+Which alternative fits depends on why Bitly Free stopped working for you. Our longer guide to [Bitly alternatives](/blog/bitly-alternatives) covers more tools, and [the best free URL shorteners](/blog/best-free-url-shorteners) compares free plans side by side. These are the three fixes people ask about most.
 
 ### If you need more than 5 links a month
 
@@ -110,9 +110,18 @@ Bitly is a good product, and for some people it's the right one:
 - **You need a big company's extras.** Bitly's higher tiers add mobile deep linking, SSO and an uptime SLA, and iShortn doesn't offer those.
 - **Your organisation already standardises on Bitly.** Switching costs time, and links on bit.ly can't move with you.
 
-That last point is worth thinking about before you switch. Links on `bit.ly` belong to Bitly's domain, so you can't move them anywhere. They'll keep working, but new links will live elsewhere. If you switch, it's also a good moment to put future links on your own domain, so you never get stuck like this again. Links on your own branded domain are different. They can move with their exact addresses, so printed QR codes keep working, and [Move your links from Bitly](/docs/migrate-from-bitly) shows how.
+That last point is worth thinking about before you switch. Links on `bit.ly` belong to Bitly's domain, so you can't move them anywhere. They'll keep working, but new links will live elsewhere. If you switch, it's also a good moment to put future links on your own domain, so you never get stuck like this again. Links on your own branded domain are different. They can move with their exact addresses, so printed QR codes keep working, and [Move your links from Bitly](/docs/migrate-from-bitly) shows how. [CSV bulk import](/docs/bulk-import) covers file sizes and limits.
 
 For a side-by-side of every feature, see [Bitly vs iShortn](/compare/bitly).
+
+## Your links stay yours
+
+Before you pick any shortener, check what happens to a link after you stop using it. Here's what iShortn does:
+
+- **Deleted links are never reassigned.** When you delete or rename a short link on iShortn's shared domains, its old address is retired. No other account can claim it, so an old printed or shared link can't start pointing somewhere new.
+- **QR codes never expire.** They keep redirecting on every plan, including after a paid plan ends. A code only switches off if you set an expiry date or scan limit yourself.
+- **You can check a link before you open it.** Add `!` to the end of any iShortn short link, such as `isht.app/spring-sale!`, to see where it goes.
+- **On your own custom domain, the links are yours.** Only your workspaces can create links on it, and because you own the domain, its addresses go with you.
 
 ## FAQ
 
@@ -130,7 +139,7 @@ Bitly says links made on the free plan don't expire. They do show an ad page bef
 
 ### Can I edit a Bitly link on the free plan?
 
-You can't change where a link points on Bitly Free. Changing destinations, which Bitly calls redirects, starts on Core.
+You can't change where a link points on Bitly Free. Changing destinations, which Bitly calls redirects, starts on Core, with 5 a month.
 
 ### What's the cheapest Bitly plan with analytics?
 

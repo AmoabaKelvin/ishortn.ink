@@ -22,10 +22,17 @@ describe("getMarketingRedirectUrl", () => {
     expect(getMarketingRedirectUrl("acme.ishortn.ink", "/sitemap.xml", "")).toBe(
       "https://ishortn.ink/sitemap.xml",
     );
+    expect(getMarketingRedirectUrl("www.ishortn.ink", "/llms.txt", "")).toBe(
+      "https://ishortn.ink/llms.txt",
+    );
+    expect(getMarketingRedirectUrl("isht.app", "/llms.txt", "")).toBe(
+      "https://ishortn.ink/llms.txt",
+    );
   });
 
   test("leaves the app domain, short links, app routes and other hosts alone", () => {
     expect(getMarketingRedirectUrl("ishortn.ink", "/pricing", "")).toBeNull();
+    expect(getMarketingRedirectUrl("ishortn.ink", "/llms.txt", "")).toBeNull();
     expect(getMarketingRedirectUrl("isht.ink", "/abc123", "")).toBeNull();
     expect(getMarketingRedirectUrl("www.ishortn.ink", "/abc123", "")).toBeNull();
     expect(getMarketingRedirectUrl("isht.app", "/blogpost", "")).toBeNull();
@@ -55,6 +62,7 @@ describe("isShortLinkPath", () => {
     }
     expect(isShortLinkPath("/robots.txt")).toBe(false);
     expect(isShortLinkPath("/sitemap.xml")).toBe(false);
+    expect(isShortLinkPath("/llms.txt")).toBe(false);
   });
 
   test("knows every top-level route under src/app", () => {

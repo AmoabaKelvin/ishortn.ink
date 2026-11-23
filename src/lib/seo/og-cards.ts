@@ -41,8 +41,8 @@ export const pageCards = {
   }),
   compare: card({
     eyebrow: "Compare",
-    title: "iShortn vs other link shorteners",
-    subtitle: "See how iShortn stacks up on features, free plan limits, and pricing.",
+    title: "Link shorteners compared: free plans and prices",
+    subtitle: "Free-plan limits, custom domains, QR codes and prices, side by side.",
   }),
   changelog: card({
     eyebrow: "Changelog",
@@ -91,6 +91,13 @@ export const pageCards = {
     subtitle: "Make a wa.me link with your message already typed in, plus a QR code to print.",
     visual: "links",
     visualLabel: "wa.me/447700900123?text=Hi%2C%20I%27d%20like%20to%20order",
+  }),
+  whatsappLinkGeneratorPtBr: card({
+    eyebrow: "Ferramenta grátis",
+    title: "Gerador de link do WhatsApp grátis",
+    subtitle: "Crie um link wa.me com a mensagem já escrita e um QR code para imprimir.",
+    visual: "links",
+    visualLabel: "wa.me/5511912345678?text=Ol%C3%A1!%20Quero%20fazer%20um%20pedido.",
   }),
 } satisfies Record<string, OgCard>;
 

@@ -5,7 +5,8 @@ import { eq, inArray } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 import { env } from "@/env.mjs";
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
+import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
+import { resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
@@ -23,7 +24,12 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
   const OTHER_ALIAS = "alias-route-other";
   const CREATED_AT = new Date(Date.UTC(2026, 10, 1, 12, 30));
 
+  // OpenNext reads the request context from this global; resolveLink fills the
+  // link cache through waitUntil. Without a KV binding the cache is a no-op.
+  const CLOUDFLARE_CONTEXT = Symbol.for("__cloudflare-context__");
+
   beforeAll(() => {
+    Reflect.set(globalThis, CLOUDFLARE_CONTEXT, { env: {}, cf: {}, ctx: { waitUntil: () => {} } });
     // Another test file replaces @/env.mjs with a partial object for the whole
     // run, dropping DATABASE_URL; the app's db client reads it on first use.
     if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
@@ -32,6 +38,9 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
   const users = [USER_ID, OTHER_USER_ID];
 
   async function cleanup() {
+    await db
+      .delete(schema.linkPreviousAddress)
+      .where(inArray(schema.linkPreviousAddress.alias, [ALIAS, OTHER_ALIAS]));
     await db.delete(schema.link).where(inArray(schema.link.userId, users));
     await db.delete(schema.token).where(inArray(schema.token.userId, users));
     await db.delete(schema.user).where(inArray(schema.user.id, users));
@@ -64,7 +73,10 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
     ]);
   });
 
-  afterAll(cleanup);
+  afterAll(async () => {
+    await cleanup();
+    Reflect.deleteProperty(globalThis, CLOUDFLARE_CONTEXT);
+  });
 
   const request = (alias: string, init: { method: string; body?: string }) =>
     [
@@ -136,6 +148,40 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
       activatesAt: null,
       expiresAfter: null,
     });
+  });
+
+  const OTHER_PLATFORM_DOMAIN = PLATFORM_DOMAINS.find((d) => d !== DEFAULT_PLATFORM_DOMAIN)!;
+
+  test("PATCH moves the link to another domain and keeps the old short URL", async () => {
+    const id = (await findLink(ALIAS))?.id;
+    const response = await patch(ALIAS, JSON.stringify({ domain: OTHER_PLATFORM_DOMAIN }));
+    expect(response.status).toBe(200);
+    expect((await response.json()).shortLink).toBe(`https://${OTHER_PLATFORM_DOMAIN}/${ALIAS}`);
+
+    expect((await resolveLink(OTHER_PLATFORM_DOMAIN, ALIAS))?.id).toBe(id);
+    expect((await resolveLink(DEFAULT_PLATFORM_DOMAIN, ALIAS))?.id).toBe(id);
+  });
+
+  test("PATCH rejects a move onto a domain where the alias is taken", async () => {
+    await db.insert(schema.link).values({
+      url: "https://example.com",
+      alias: ALIAS,
+      domain: OTHER_PLATFORM_DOMAIN,
+      userId: OTHER_USER_ID,
+    });
+    const response = await patch(ALIAS, JSON.stringify({ domain: OTHER_PLATFORM_DOMAIN }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatchObject({
+      code: "conflict",
+      message: "Alias already exists",
+    });
+    expect((await findLink(ALIAS))?.domain).toBe(DEFAULT_PLATFORM_DOMAIN);
+  });
+
+  test("PATCH rejects a move onto a domain the key can't use", async () => {
+    const response = await patch(ALIAS, JSON.stringify({ domain: "not-owned.example" }));
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.code).toBe("forbidden");
   });
 
   test("PATCH answers bad input with JSON errors", async () => {

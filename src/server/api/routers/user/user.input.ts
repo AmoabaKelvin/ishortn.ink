@@ -6,9 +6,15 @@ export const updateUserProfileSchema = z.object({
 
 export type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;
 
-export const updateNotificationPreferencesSchema = z.object({
-  productEmailsEnabled: z.boolean(),
-});
+export const updateNotificationPreferencesSchema = z
+  .object({
+    productEmailsEnabled: z.boolean().optional(),
+    weeklySummaryEnabled: z.boolean().optional(),
+  })
+  .refine(
+    (input) => input.productEmailsEnabled !== undefined || input.weeklySummaryEnabled !== undefined,
+    { message: "Choose a notification setting to change" },
+  );
 
 export type UpdateNotificationPreferencesInput = z.infer<
   typeof updateNotificationPreferencesSchema

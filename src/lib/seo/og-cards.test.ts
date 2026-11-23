@@ -114,6 +114,7 @@ describe("card copy", () => {
     qrCodeGenerator: "qr-code-generator/page.tsx",
     utmBuilder: "utm-builder/page.tsx",
     whatsappLinkGenerator: "whatsapp-link-generator/page.tsx",
+    whatsappLinkGeneratorPtBr: "gerador-de-link-whatsapp/page.tsx",
   } satisfies Record<keyof typeof pageCards, string>;
 
   for (const [key, file] of Object.entries(sources)) {
@@ -122,8 +123,11 @@ describe("card copy", () => {
       const card = pageCards[key as keyof typeof pageCards];
       const source = landing(file);
       expect(source).toContain(`>${card.title}<`);
-      // Home and pricing write a card-length subtitle of their own.
-      if (key !== "home" && key !== "pricing") expect(source).toContain(card.subtitle);
+      // Home, pricing and compare write a card-length subtitle of their own (compare's lead is
+      // built from the plan constants, so it isn't a literal in the page source).
+      if (key !== "home" && key !== "pricing" && key !== "compare") {
+        expect(source).toContain(card.subtitle);
+      }
     });
   }
 });

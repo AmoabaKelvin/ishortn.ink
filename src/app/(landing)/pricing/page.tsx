@@ -1,7 +1,10 @@
 import { IconTagFilled } from "@tabler/icons-react";
 
 import { JsonLd } from "@/components/seo/json-ld";
+import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
+import { PLAN_CAPS } from "@/lib/billing/plans";
 import { getActivePromo } from "@/lib/billing/promo";
+import { linkOwnershipFaq } from "@/lib/copy/link-ownership";
 import {
   createBreadcrumbSchema,
   createFaqSchema,
@@ -60,6 +63,15 @@ const pricingFaqs = [
   {
     q: "Do I get a custom domain on the free plan?",
     a: "Custom domains are on Pro (up to 3) and Ultra (unlimited). Free uses isht.app/your-slug.",
+  },
+  {
+    q: "Do QR codes on the Free plan expire?",
+    a: `No. Free includes ${FREE_QR_CODE_LIMIT} dynamic QR codes. You can edit where they point at any time, they never expire, and scanning them shows no ads. Pro and Ultra add branded QR codes.`,
+  },
+  { q: linkOwnershipFaq.question, a: linkOwnershipFaq.answer },
+  {
+    q: "Can my link-in-bio page use my own domain?",
+    a: `Yes, from Pro. Pro includes ${PLAN_CAPS.pro.bioPageLimit} bio pages on your custom domain with no iShortn branding, and Ultra has unlimited pages. Free includes one page on isht.app with up to ${PLAN_CAPS.free.bioLinkBlocksPerPageLimit} link blocks.`,
   },
   {
     q: "Is the API available on every plan?",

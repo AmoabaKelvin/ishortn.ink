@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseProviderUpdatedAt, providerErrorToClient } from "./utils";
+import {
+  createCheckoutWithPromoFallback,
+  parseProviderUpdatedAt,
+  providerErrorToClient,
+} from "./utils";
 
 describe("providerErrorToClient", () => {
   test("missing subscription maps to NOT_FOUND", () => {
@@ -35,5 +39,62 @@ describe("parseProviderUpdatedAt", () => {
 
   test.each([null, undefined, "", "not a date"])("%p is null", (value) => {
     expect(parseProviderUpdatedAt(value)).toBeNull();
+  });
+});
+
+describe("createCheckoutWithPromoFallback", () => {
+  type Result = { error: Error | null; statusCode: number | null; url?: string };
+
+  function recorder(results: Result[]) {
+    const calls: (string | undefined)[] = [];
+    const create = async (discountCode?: string) => {
+      calls.push(discountCode);
+      return results[calls.length - 1]!;
+    };
+    return { calls, create };
+  }
+
+  const ok: Result = { error: null, statusCode: 201, url: "https://checkout/1" };
+  const rejected: Result = { error: new Error("code does not exist"), statusCode: 422 };
+
+  test("without a code it calls once and never retries", async () => {
+    const { calls, create } = recorder([rejected]);
+    expect(await createCheckoutWithPromoFallback(create)).toEqual({
+      result: rejected,
+      discountCode: undefined,
+    });
+    expect(calls).toEqual([undefined]);
+  });
+
+  test("a code that applies is sent once", async () => {
+    const { calls, create } = recorder([ok]);
+    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20");
+    expect(result).toBe(ok);
+    expect(discountCode).toBe("BFCM20");
+    expect(calls).toEqual(["BFCM20"]);
+  });
+
+  test("a rejected code retries once without it and returns the retry", async () => {
+    const retried: Result = { error: null, statusCode: 201, url: "https://checkout/2" };
+    const { calls, create } = recorder([rejected, retried]);
+    const onPromoRejected: Result[] = [];
+
+    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20", (r) =>
+      onPromoRejected.push(r),
+    );
+
+    expect(result).toBe(retried);
+    expect(discountCode).toBeUndefined();
+    expect(calls).toEqual(["BFCM20", undefined]);
+    expect(onPromoRejected).toEqual([rejected]);
+  });
+
+  test.each([500, 429, null])("a %p failure is returned without a retry", async (statusCode) => {
+    const failed: Result = { error: new Error("boom"), statusCode };
+    const { calls, create } = recorder([failed]);
+    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20");
+    expect(result).toBe(failed);
+    expect(discountCode).toBe("BFCM20");
+    expect(calls).toEqual(["BFCM20"]);
   });
 });

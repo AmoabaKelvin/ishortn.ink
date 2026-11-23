@@ -13,10 +13,13 @@ import { api } from "@/trpc/react";
 import { PlanSwitcher } from "./plan-switcher";
 import { ResumeSubscriptionButton } from "./resume-subscription-button";
 
+import type { Promo } from "@/lib/billing/promo";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type BillingProps = {
   subscriptions: RouterOutputs["subscriptions"]["get"];
+  /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
+  promo: Promo | null;
 };
 
 type SubscriptionRow = NonNullable<RouterOutputs["subscriptions"]["get"]["subscriptions"]>;
@@ -75,7 +78,7 @@ function getStatusDisplay(subscription: SubscriptionRow): StatusDisplay {
 
 const proLinksLimit = PLAN_CAPS.pro.linksLimit?.toLocaleString() ?? "more";
 
-export default function Billing({ subscriptions }: BillingProps) {
+export default function Billing({ subscriptions, promo }: BillingProps) {
   const [loadingTarget, setLoadingTarget] = useState<"portal" | "payment" | null>(null);
 
   const subscription = subscriptions?.subscriptions;
@@ -205,6 +208,7 @@ export default function Billing({ subscriptions }: BillingProps) {
           currentInterval={currentInterval}
           subscriptionMode={subscriptionMode}
           renewsAt={subscription?.renewsAt ?? null}
+          promo={promo}
         />
       </div>
     </div>

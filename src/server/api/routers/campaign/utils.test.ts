@@ -5,6 +5,7 @@ import {
   mergeCampaignUtm,
   normalizeCampaignSlug,
   normalizeUtmValue,
+  referrerBreakdown,
 } from "./utils";
 
 describe("normalizeCampaignSlug", () => {
@@ -143,5 +144,26 @@ describe("getCampaignDisplayState", () => {
         now,
       ),
     ).toBe("active");
+  });
+});
+
+describe("referrerBreakdown", () => {
+  test("merges legacy and canonical keys under one formatted label", () => {
+    expect(
+      referrerBreakdown([
+        { value: "twitter", count: 5 },
+        { value: "x.com", count: 3 },
+        { value: "https://t.co/abc", count: 1 },
+        { value: "facebook", count: 4 },
+        { value: "facebook.com", count: 2 },
+        { value: "null", count: 2 },
+        { value: null, count: 1 },
+        { value: "example.org", count: 1 },
+      ]),
+    ).toEqual({ X: 9, Facebook: 6, Direct: 3, "example.org": 1 });
+  });
+
+  test("returns an empty record when there are no clicks", () => {
+    expect(referrerBreakdown([])).toEqual({});
   });
 });

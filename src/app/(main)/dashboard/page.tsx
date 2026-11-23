@@ -12,6 +12,7 @@ import {
 } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
 
+import { AcquisitionPromptCard } from "./_components/acquisition-prompt/acquisition-prompt-card";
 import { AudienceFeedbackCard } from "./_components/audience-feedback-card";
 import { BulkLinkActions } from "./_components/bulk-actions/bulk-actions";
 import { Links } from "./_components/links/links";
@@ -43,20 +44,24 @@ export default async function DashboardPage(props: Props) {
   const { page, orderBy, orderDirection, tag, campaign, archivedFilter, search } =
     dashboardSearchParamsSchema.parse(await props.searchParams);
 
-  const [{ links, totalLinks, totalPages, currentPage, workspaceHasLinks }, tags] =
-    await Promise.all([
-      api.link.list.query({
-        page,
-        pageSize: 10,
-        orderBy,
-        orderDirection,
-        tag,
-        campaignId: campaign,
-        archivedFilter,
-        search,
-      }),
-      api.tag.list.query(),
-    ]);
+  const [
+    { links, totalLinks, totalPages, currentPage, workspaceHasLinks },
+    tags,
+    acquisitionPrompt,
+  ] = await Promise.all([
+    api.link.list.query({
+      page,
+      pageSize: 10,
+      orderBy,
+      orderDirection,
+      tag,
+      campaignId: campaign,
+      archivedFilter,
+      search,
+    }),
+    api.tag.list.query(),
+    api.audienceFeedback.acquisitionPrompt.query(),
+  ]);
 
   // Deleting or archiving the last links on the last page leaves the URL past
   // the end; send the user to the new last page instead of an empty list.
@@ -96,6 +101,8 @@ export default async function DashboardPage(props: Props) {
         </div>
       </div>
 
+      {acquisitionPrompt.showOnDashboard && <AcquisitionPromptCard plan={acquisitionPrompt.plan} />}
+
       <Links
         links={links}
         totalPages={totalPages}
@@ -104,7 +111,11 @@ export default async function DashboardPage(props: Props) {
         tags={tags.map((tag) => tag.name)}
       />
 
-      <AudienceFeedbackCard hasLinks={totalLinks > 0} />
+      {/* One feedback prompt per visit: the acquisition question goes first */}
+      <AudienceFeedbackCard
+        hasLinks={totalLinks > 0}
+        suppressed={acquisitionPrompt.showOnDashboard}
+      />
     </div>
   );
 }

@@ -3,13 +3,13 @@ title: "Dub.co Alternatives in 2026: Free and Cheaper Options"
 seoTitle: "Dub.co Alternatives in 2026: Free and Cheaper"
 description: "Dub's free plan allows 25 new links a month and paid plans start at $30/month. Compare cheaper Dub alternatives for small teams, and how to move your links."
 date: "2026-11-20"
-updated: "2026-11-21"
+updated: "2026-11-22"
 author: "Kelvin Amoaba"
 tags: ["dub alternative", "url shortener", "comparison", "link management"]
 published: true
 ---
 
-Dub built a well-designed, open-source link shortener. Its free plan still exists but is small: 25 new links and 1,000 tracked events a month, 30 days of analytics history and 3 custom domains for one user. Paid Links plans start with Pro at $30 a month ($27 a month billed yearly) for 1,000 new links, and Business is $90 a month ([Dub Links pricing](https://dub.co/pricing/links), checked 21 November 2026). Dub's main [pricing page](https://dub.co/pricing) now leads with its Partners plans, which start at $90 a month.
+Dub built a well-designed, open-source link shortener. Its free plan still exists but is small: 25 new links and 1,000 tracked events a month, 30 days of analytics history and 3 custom domains for one user. Paid Links plans start with Pro at $30 a month ($27 a month billed yearly) for 1,000 new links, and Business is $90 a month ([Dub Links pricing](https://dub.co/pricing/links), prices checked 22 November 2026). Dub's main [pricing page](https://dub.co/pricing) now leads with its Partners plans, which start at $90 a month.
 
 For a company running an affiliate or partner program, that may still be good value. Dub's recent [changelog](https://dub.co/changelog) is mostly partner and affiliate features, and that's clearly where the product is heading. If you're a freelancer, creator or small business who just wants branded short links, QR codes and click stats, 25 links a month runs out fast, and $30 a month is a lot to pay for the next step.
 
@@ -33,7 +33,7 @@ Fewer people used Dub's newer features: conversion and revenue attribution, and 
 |---|---|---|---|
 | **iShortn** | 30 links/mo, 1,000 tracked events/mo, 5 dynamic QR codes, 1 bio page | Pro, $8/mo (3 domains) | Small businesses and creators who want links, QR codes and analytics cheaply |
 | **Short.io** | 1,000 links total, 50,000 tracked clicks/mo, 5 custom domains | Free | People who need a custom domain at no cost |
-| **Rebrandly** | 10 links/mo, 100 tracked clicks/mo, watermarked QR codes | Free (1 custom domain) | Brands that need compliance features at higher tiers |
+| **Rebrandly** | 10 links/mo, 100 tracked clicks/mo, watermarked QR codes, 1 custom domain | Free (1 domain); Essentials, $11/mo billed yearly, has 2 | Brands that need compliance features at higher tiers |
 | **Bitly** | 5 links and 2 QR codes/mo, no analytics history | Growth, $29/mo | Teams that want the best-known name |
 | **Self-hosted Dub** | Free software, you pay for hosting | Yours | Developers who want Dub itself and can run it |
 | **Dub** (for reference) | 25 new links/mo, 1,000 tracked events/mo, 3 custom domains | Free (3 domains); paid from Pro, $30/mo | Developers, partner programs and conversion attribution |
@@ -72,7 +72,7 @@ Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https
 
 ## 3. Rebrandly: branded links with an enterprise path
 
-[Rebrandly](https://www.rebrandly.com/pricing) has been doing branded links for a long time. Its free plan is now small: 10 links a month and 100 tracked clicks a month, with one custom domain and watermarked QR codes. Clicks above the tracking limit still redirect, but you won't see them in your stats. Paid plans start with Essentials; check the pricing page for current monthly and annual prices, as they differ a lot.
+[Rebrandly](https://www.rebrandly.com/pricing) has been doing branded links for a long time. Its free plan is now small: 10 links a month and 100 tracked clicks a month, with watermarked QR codes and 1 custom domain, which can be a domain you already own or a free `.bio` domain from Rebrandly. Clicks above the tracking limit still redirect, but you won't see them in your stats. Paid plans start with Essentials at $11 a month billed yearly, which includes 2 custom domains; monthly billing costs more, so check the pricing page before you decide.
 
 **Watch for:** the 100 tracked clicks on Free means you'll stop seeing data almost immediately on any real campaign.
 
@@ -124,7 +124,7 @@ Links on a domain Dub owns can't be moved, because only Dub controls where they 
 
 ## When to stay with Dub
 
-To be fair to Dub: if you run a partner or affiliate program, need conversion and revenue attribution per link, or need hundreds of domains and long data retention, Dub's Business plan is built for that and the alternatives above (including iShortn) don't fully replace it. $90 a month can be cheap if links drive your revenue.
+To be fair to Dub: if you run a partner or affiliate program, need conversion and revenue attribution per link, or need up to 100 custom domains and three years of analytics retention, Dub's Business plan is built for that and the alternatives above (including iShortn) don't fully replace it. $90 a month can be cheap if links drive your revenue.
 
 If your use is simpler (branded links, QR codes, honest click stats), you don't need to pay for a platform built for affiliate programs.
 

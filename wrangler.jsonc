@@ -60,6 +60,7 @@
       "5,20,35,50 * * * *",
       "10 * * * *",
       "40 * * * *",
+      "0 9-17 * * MON",
     ],
   },
   // The phishing rescan streams ~1.2M feed lines in one invocation; this is a ceiling, not a cost.

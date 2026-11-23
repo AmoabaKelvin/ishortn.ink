@@ -3,8 +3,8 @@
 import {
   IconBug,
   IconCheck,
+  IconCornerUpLeft,
   IconExternalLink,
-  IconMail,
   IconMessage,
   IconSparkles,
   IconX,
@@ -17,6 +17,7 @@ import { displayName } from "@/lib/utils/user-name";
 import { api } from "@/trpc/react";
 
 import { useCursorPages } from "../_components/use-cursor-pages";
+import { ReplyFeedbackDialog } from "./_components/reply-feedback-dialog";
 
 type StatusFilter = "open" | "resolved" | "dismissed" | undefined;
 
@@ -47,6 +48,11 @@ const typeConfig = {
 
 export default function AdminFeedbackPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
+  const [replyTarget, setReplyTarget] = useState<{
+    id: number;
+    message: string;
+    email: string;
+  } | null>(null);
   const pages = useCursorPages();
   const { cursor } = pages;
 
@@ -55,6 +61,12 @@ export default function AdminFeedbackPage() {
     cursor,
     limit: 20,
   });
+
+  const refetchPage = async () => {
+    const { data: fresh } = await refetch();
+    // Resolving every item on a later page empties it; step back instead of stranding there.
+    if (fresh?.items.length === 0 && pages.hasPrevious) pages.previous();
+  };
 
   const updateStatusMutation = api.feedback.updateStatus.useMutation({
     onSuccess: async (_, variables) => {
@@ -65,9 +77,7 @@ export default function AdminFeedbackPage() {
             ? "Feedback dismissed"
             : "Reopened",
       );
-      const { data: fresh } = await refetch();
-      // Resolving every item on a later page empties it; step back instead of stranding there.
-      if (fresh?.items.length === 0 && pages.hasPrevious) pages.previous();
+      await refetchPage();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -135,13 +145,14 @@ export default function AdminFeedbackPage() {
             {data.items.map((item) => {
               const config = typeConfig[item.type];
               const TypeIcon = config.icon;
+              const email = item.user?.email;
 
               return (
                 <div
                   key={item.id}
                   className="rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card p-4 transition-colors hover:border-neutral-300 dark:hover:border-border"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span
@@ -163,9 +174,26 @@ export default function AdminFeedbackPage() {
                         </span>
                       </div>
 
-                      <p className="mt-2 text-[13px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+                      <p className="mt-2 text-[13px] leading-relaxed break-words whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">
                         {item.message}
                       </p>
+
+                      {item.replyMessage && (
+                        <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2 dark:bg-blue-500/10">
+                          <p className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                            We replied
+                            {item.repliedAt &&
+                              ` · ${new Date(item.repliedAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}`}
+                          </p>
+                          <p className="mt-1 text-[13px] leading-relaxed break-words whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">
+                            {item.replyMessage}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Image thumbnails */}
                       {item.imageUrls && item.imageUrls.length > 0 && (
@@ -195,14 +223,14 @@ export default function AdminFeedbackPage() {
                         </div>
                       )}
 
-                      <div className="mt-2 flex items-center gap-2 text-[11px] text-neutral-400 dark:text-neutral-500">
-                        <span>
+                      <div className="mt-2 flex min-w-0 items-center gap-2 text-[11px] text-neutral-400 dark:text-neutral-500">
+                        <span className="min-w-0 truncate">
                           {displayName(item.user?.name) && item.user?.email
                             ? `${displayName(item.user.name)} (${item.user.email})`
                             : (item.user?.email ?? displayName(item.user?.name) ?? "Unknown user")}
                         </span>
                         <span>·</span>
-                        <span>
+                        <span className="shrink-0">
                           {item.createdAt
                             ? new Date(item.createdAt).toLocaleDateString("en-US", {
                                 month: "short",
@@ -214,15 +242,19 @@ export default function AdminFeedbackPage() {
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 gap-2">
-                      {item.user?.email && (
-                        <Button variant="outline" size="sm" className="h-8 text-[12px]" asChild>
-                          <a
-                            href={`mailto:${item.user.email}?subject=${encodeURIComponent(`Re: Your ${config.label.toLowerCase()} on iShortn`)}&body=${encodeURIComponent(`Hi ${displayName(item.user.name) ?? "there"},\n\nRegarding your feedback:\n"${item.message.slice(0, 200)}${item.message.length > 200 ? "..." : ""}"\n\n`)}`}
-                          >
-                            <IconMail size={14} />
-                            Reply
-                          </a>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {email && !item.repliedAt && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-[12px]"
+                          onClick={() =>
+                            setReplyTarget({ id: item.id, message: item.message, email })
+                          }
+                        >
+                          <IconCornerUpLeft size={14} stroke={1.5} />
+                          Reply
                         </Button>
                       )}
                       {item.status === "open" && (
@@ -291,6 +323,12 @@ export default function AdminFeedbackPage() {
           )}
         </>
       )}
+
+      <ReplyFeedbackDialog
+        feedback={replyTarget}
+        onOpenChange={(open) => !open && setReplyTarget(null)}
+        onReplied={() => void refetchPage()}
+      />
     </div>
   );
 }

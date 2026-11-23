@@ -24,14 +24,14 @@ From [Rebrandly's pricing page](https://www.rebrandly.com/pricing):
 | Price (billed monthly) | $0 | $16/mo | $39/mo | $179/mo |
 | New links a month | 10 | 250 | 1,500 | 3,500 |
 | New QR codes a month | 10 (watermarked) | 250 | 1,500 | 3,500 |
-| Domains | 1 | 2 | 3 | 10 |
+| Custom domains | 1 | 2 | 3 | 10 |
 | Destination edits a month | None | 10 | 50 | 150 |
 | Clicks with detailed stats a month | 100 | 10,000 | 25,000 | 150,000 |
 | Teammates | None | None | 2+ | 5+ |
 
 A few things are worth knowing:
 
-- **Check the free domain.** Rebrandly's free plan card lists "1 Free Domain (Rebrand.ly)" and "1 Custom Domains (yourbrand.bio)". If you need links on a domain you already own, confirm in your account that Free lets you connect it.
+- **Free includes one custom domain.** The plan comparison lists 1 domain on Free and ticks "Connect domains you already own". That slot can hold a domain you own or a free `.bio` domain from Rebrandly (the plan card's "Yourbrand.bio"), not both. Links on the `rebrand.ly` domain are included as well. A second custom domain starts on Essentials.
 - **Clicks still redirect past 100.** The free plan lists unlimited clicks and scans. The 100 limit is on clicks you get detailed stats for.
 - **Edits are limited.** Free has none, and each paid plan has a monthly allowance. On Essentials that's 10 edits a month across all your links and QR codes. A code you can't edit is a problem when a page moves or a promotion ends.
 - **The prices may differ for you.** The pricing page's code also contains a second set of prices (for example Essentials at $8 a month annually), which suggests Rebrandly is testing prices. We've listed what the page showed us.
@@ -47,7 +47,7 @@ A banner on the same page says Rebrandly and IntelligenceBank have merged to for
 | **Short.io** | 1,000 links total, 50,000 tracked clicks/mo, 5 domains | Free | Yes, on Free |
 | **Bitly** | 5 links and 2 QR codes/mo, no analytics history | Growth, $29/mo billed annually | Not on Free |
 | **TinyURL** | 30 links/mo, no click stats | Pro, from $9/mo billed annually | Not on Free |
-| **Rebrandly** (for reference) | 10 links/mo, 100 clicks with stats/mo | Free lists 1 domain; Essentials ($11/mo) has 2 | From Essentials, 10/mo |
+| **Rebrandly** (for reference) | 10 links/mo, 100 clicks with stats/mo, 1 custom domain | Free (1 domain); Essentials, $11/mo billed annually, has 2 | From Essentials, 10/mo |
 
 Sources: [Short.io pricing](https://short.io/pricing), [Bitly pricing](https://bitly.com/pages/pricing), [TinyURL pricing](https://tinyurl.com/app/pricing), [Rebrandly pricing](https://www.rebrandly.com/pricing).
 

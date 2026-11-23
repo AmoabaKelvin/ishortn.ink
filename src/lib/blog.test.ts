@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import {
+  extractFaqs,
   getAllPosts,
   getPostBySlug,
   getRelatedPosts,
@@ -78,6 +79,69 @@ describe("renderPostBody", () => {
     expect(body).toContain('<a href="/docs/api">b</a>');
     expect(body).toContain('<a href="/blog">c</a>');
     expect(body).toContain('<a href="#faq">d</a>');
+  });
+});
+
+describe("extractFaqs", () => {
+  it("reads questions and answers from a ## FAQ section", () => {
+    const faqs = extractFaqs(
+      "## Intro\n\nText.\n\n## FAQ\n\n### Is it free?\n\nYes, *mostly*.\n\n### Can I export?\n\n**Yes.**\n",
+    );
+    expect(faqs).toEqual([
+      { question: "Is it free?", answer: "Yes, mostly." },
+      { question: "Can I export?", answer: "Yes." },
+    ]);
+  });
+
+  it("matches Common questions about X and Frequently asked questions", () => {
+    const body = "\n\n### Q one?\n\nA one.\n\n### Q two?\n\nA two.\n";
+    for (const heading of [
+      "Common questions about Bitly alternatives",
+      "Frequently Asked Questions",
+    ]) {
+      expect(extractFaqs(`## ${heading}${body}`)).toEqual([
+        { question: "Q one?", answer: "A one." },
+        { question: "Q two?", answer: "A two." },
+      ]);
+    }
+  });
+
+  it("ends answers at the next ### and the section at the next ##", () => {
+    const faqs = extractFaqs(
+      [
+        "## FAQs",
+        "### First?",
+        "See [our docs](https://example.com/docs) for `curl` usage.",
+        "It takes a minute.",
+        "- one\n- two",
+        "### Second?",
+        "Short.",
+        "## Conclusion",
+        "Not an answer.",
+        "### Not a question?",
+        "Nope.",
+      ].join("\n\n"),
+    );
+    expect(faqs).toEqual([
+      { question: "First?", answer: "See our docs for curl usage. It takes a minute. one two" },
+      { question: "Second?", answer: "Short." },
+    ]);
+  });
+
+  it("skips empty answers and ignores non-FAQ sections", () => {
+    expect(extractFaqs("## FAQ\n\n### Empty?\n\n### Full?\n\nYes.")).toEqual([
+      { question: "Full?", answer: "Yes." },
+    ]);
+    expect(extractFaqs("## Common mistakes\n\n### Using HTTP\n\nDon't.")).toEqual([]);
+    expect(extractFaqs("No headings at all.")).toEqual([]);
+  });
+
+  it("extracts the FAQ sections of real posts", async () => {
+    const bitly = await getPostBySlug("bitly-alternatives");
+    expect(bitly!.faqs.length).toBeGreaterThanOrEqual(4);
+    expect(bitly!.faqs[0]!.question).toBe("Is there a free alternative to Bitly?");
+    const whatIs = await getPostBySlug("what-is-a-url-shortener");
+    expect(whatIs!.faqs.length).toBeGreaterThanOrEqual(2);
   });
 });
 

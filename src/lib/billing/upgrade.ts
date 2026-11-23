@@ -19,6 +19,7 @@ export function nextPlanFor(plan: Plan): UpgradePlan {
 // becomes the highlighted plan's name. Unknown sources show no line.
 const UPGRADE_REASONS = new Map(
   Object.entries({
+    analytics_export: "Exporting clicks to CSV is on {plan}",
     analytics_range: "Your full analytics history is on {plan}",
     api_access: "API access is on {plan}",
     bio_branding: "Removing iShortn branding is on {plan}",
@@ -81,4 +82,16 @@ export function resolveAutoUpgradePlan(
   if (plan !== "pro" && plan !== "ultra") return null;
   if (subscriptionMode === "resume" || PLAN_ORDER[plan] <= PLAN_ORDER[currentPlan]) return null;
   return plan;
+}
+
+/**
+ * Query string for the pricing page entry a hosted checkout returns to on Back: `?plan=` and
+ * `?interval=` dropped so it never starts another checkout, the plan kept preselected.
+ */
+export function checkoutReturnSearch(search: string, plan: UpgradePlan): string {
+  const params = new URLSearchParams(search);
+  params.delete("plan");
+  params.delete("interval");
+  params.set("highlight", plan);
+  return `?${params.toString()}`;
 }

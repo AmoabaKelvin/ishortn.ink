@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "252f7a15-d51f-4e8d-8cbb-cfb03e4941f0",
+  "id": "8e27bcfd-8e79-41dc-9bc2-759bed0bb925",
   "prevId": "5ee93486-b699-499b-b92a-54ea63f7d47c",
   "tables": {
     "AccountDeletion": {
@@ -436,6 +436,28 @@
           "autoincrement": false,
           "default": 0
         },
+        "acquisitionAnsweredAt": {
+          "name": "acquisitionAnsweredAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "acquisitionDismissedAt": {
+          "name": "acquisitionDismissedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "acquisitionDismissCount": {
+          "name": "acquisitionDismissCount",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -465,6 +487,13 @@
           "name": "submittedAt_idx",
           "columns": [
             "submittedAt"
+          ],
+          "isUnique": false
+        },
+        "acquisitionAnsweredAt_idx": {
+          "name": "acquisitionAnsweredAt_idx",
+          "columns": [
+            "acquisitionAnsweredAt"
           ],
           "isUnique": false
         }
@@ -1925,7 +1954,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "int",
+          "type": "serial",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
@@ -1941,14 +1970,14 @@
           "name": "url",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "alias": {
           "name": "alias",
-          "type": "varchar(255)",
+          "type": "varchar(20)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "domain": {
@@ -1961,11 +1990,11 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "datetime(3)",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP(3)"
+          "default": "(now())"
         },
         "disableLinkAfterClicks": {
           "name": "disableLinkAfterClicks",
@@ -1983,7 +2012,7 @@
         },
         "disableLinkAfterDate": {
           "name": "disableLinkAfterDate",
-          "type": "datetime(3)",
+          "type": "datetime",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1999,7 +2028,7 @@
           "name": "disabled",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
           "default": false
         },
@@ -2007,7 +2036,7 @@
           "name": "publicStats",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
           "default": false
         },
@@ -2164,14 +2193,6 @@
           "name": "aliasDomain_idx",
           "columns": [
             "alias",
-            "domain"
-          ],
-          "isUnique": false
-        },
-        "idx_lower_alias_domain": {
-          "name": "idx_lower_alias_domain",
-          "columns": [
-            "(lower(`alias`))",
             "domain"
           ],
           "isUnique": false
@@ -2450,7 +2471,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "int",
+          "type": "serial",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
@@ -2464,30 +2485,30 @@
         },
         "device": {
           "name": "device",
-          "type": "varchar(191)",
+          "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "browser": {
           "name": "browser",
-          "type": "varchar(191)",
+          "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "os": {
           "name": "os",
-          "type": "varchar(191)",
+          "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "model": {
           "name": "model",
-          "type": "varchar(191)",
+          "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
           "default": "''"
         },
@@ -2500,16 +2521,16 @@
         },
         "country": {
           "name": "country",
-          "type": "varchar(191)",
+          "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "city": {
           "name": "city",
-          "type": "varchar(191)",
+          "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "continent": {
@@ -2543,11 +2564,11 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "datetime(3)",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP(3)"
+          "default": "(now())"
         }
       },
       "indexes": {
@@ -3071,7 +3092,7 @@
         },
         "alias": {
           "name": "alias",
-          "type": "varchar(255)",
+          "type": "varchar(20)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -3748,7 +3769,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "int",
+          "type": "serial",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": true
@@ -3783,11 +3804,11 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "datetime(3)",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP(3)"
+          "default": "(now())"
         },
         "userId": {
           "name": "userId",
@@ -3950,13 +3971,6 @@
             "createdAt"
           ],
           "isUnique": false
-        },
-        "createdAt_idx": {
-          "name": "createdAt_idx",
-          "columns": [
-            "createdAt"
-          ],
-          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -3993,24 +4007,23 @@
           "name": "name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "''"
+          "notNull": false,
+          "autoincrement": false
         },
         "email": {
           "name": "email",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "datetime(3)",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP(3)"
+          "default": "(now())"
         },
         "imageUrl": {
           "name": "imageUrl",
@@ -4247,8 +4260,8 @@
         }
       },
       "uniqueConstraints": {
-        "User_email_key": {
-          "name": "User_email_key",
+        "User_email_unique": {
+          "name": "User_email_unique",
           "columns": [
             "email"
           ]
@@ -4486,14 +4499,6 @@
   },
   "internal": {
     "tables": {},
-    "indexes": {
-      "idx_lower_alias_domain": {
-        "columns": {
-          "(lower(`alias`))": {
-            "isExpression": true
-          }
-        }
-      }
-    }
+    "indexes": {}
   }
 }

@@ -27,9 +27,20 @@
   <a href="https://github.com/AmoabaKelvin/ishortn.ink/issues">
     <img src="https://img.shields.io/github/issues/AmoabaKelvin/ishortn.ink" alt="Issues" />
   </a>
+  <a href="https://www.opensourcealternatives.to">
+    <img src="https://www.opensourcealternatives.to/badge-osa.svg" alt="As seen on Open Source Alternatives" />
+  </a>
 </p>
 
 <br />
+
+> **Self-hosting at a glance**
+>
+> - Runs as one Cloudflare Worker and needs the [Workers Paid plan](https://developers.cloudflare.com/workers/platform/pricing/) (KV, Hyperdrive, Queues and a raised CPU limit).
+> - Needs a MySQL 8 database Cloudflare can reach, and a Clerk application for sign-in.
+> - There is no Docker image (`compose.yaml` is only for local development); you deploy from a clone with `bun run deploy`.
+>
+> Full steps: [self-hosting guide](./docs/self-hosting.md).
 
 ## About
 
@@ -161,7 +172,7 @@ In production a Worker (`custom-worker.ts`) calls the `/api/cron/*` routes on a 
 click batches to `/api/queue/clicks`. Locally, trigger a cron the same way the Worker does:
 
 ```bash
-bun run cron cleanup-expired   # also: domain-reminders, cleanup-teams, cleanup-analytics
+bun run cron cleanup-expired   # or any route in CRON_ROUTES, such as entitlements
 ```
 
 Under `bun dev` clicks are written inline instead of queued, so analytics update immediately.

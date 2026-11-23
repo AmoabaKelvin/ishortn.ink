@@ -20,6 +20,9 @@ export const env = createEnv({
     RESEND_API_KEY: z.string().optional(),
     // Sender for transactional email; must be on a domain verified in Resend
     EMAIL_FROM: z.string().optional(),
+    // Sender for lifecycle email (weekly summary), on a separate sending subdomain from EMAIL_FROM.
+    // Unset: the weekly summary job sends nothing.
+    EMAIL_FROM_LIFECYCLE: z.string().optional(),
     WEBHOOK_SECRET: z.string().optional(),
     // Resend webhook signing secret (svix whsec_…) for /api/webhooks/resend
     RESEND_WEBHOOK_SECRET: z.string().optional(),
@@ -112,6 +115,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,
+    EMAIL_FROM_LIFECYCLE: process.env.EMAIL_FROM_LIFECYCLE,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
     RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,

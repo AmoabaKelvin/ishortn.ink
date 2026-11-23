@@ -33,8 +33,11 @@ export type SendEmailInput = {
    * (lifecycle, plan notices, recurring reports) skip addresses that hard-bounced or complained.
    */
   essential: boolean;
+  /** Defaults to the transactional sender, EMAIL_FROM. */
+  from?: string;
   subject: string;
   react: ReactElement;
+  reply_to?: string;
   headers?: UnsubscribeHeaders;
   /** Extra fields for the failure log line. */
   context?: Context;
@@ -47,7 +50,7 @@ export type SendEmailInput = {
 export async function deliverEmail(
   client: EmailClient | null,
   log: EmailLog,
-  { template, recipientId, context, essential, ...payload }: SendEmailInput,
+  { template, recipientId, context, essential, from = EMAIL_FROM, ...payload }: SendEmailInput,
   isSuppressed: SuppressionCheck,
 ): Promise<boolean> {
   if (!client) return false;
@@ -68,7 +71,7 @@ export async function deliverEmail(
   }
 
   try {
-    const { error } = await client.emails.send({ from: EMAIL_FROM, ...payload });
+    const { error } = await client.emails.send({ from, ...payload });
     if (!error) return true;
     log.error(
       { ...context, template, recipientId, err: { name: error.name, message: error.message } },

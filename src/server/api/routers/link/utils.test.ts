@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { db } from "@/server/db";
 
 import {
+  clicksToCsv,
   countsTowardMonthlyLinkQuota,
   escapeLikePattern,
   isAppRouteAlias,
@@ -221,6 +222,7 @@ describe("reserved app route aliases", () => {
       "utm-builder",
       "qr-code-generator",
       "whatsapp-link-generator",
+      "gerador-de-link-whatsapp",
       "Pricing",
     ]) {
       expect(isAppRouteAlias(alias, "ishortn.ink")).toBe(true);
@@ -237,5 +239,44 @@ describe("reserved app route aliases", () => {
     expect(() => validateAlias({ db }, "utm-builder", "ishortn.ink", true)).toThrow(
       "This alias is reserved. Choose another one.",
     );
+  });
+});
+
+describe("clicksToCsv", () => {
+  const row = {
+    createdAt: new Date("2026-11-23T14:05:09.123Z"),
+    domain: "ishortn.ink",
+    alias: "launch",
+    url: "https://example.com/?a=1,2",
+    country: "GH",
+    city: null,
+    device: "Mobile",
+    browser: "Chrome",
+    os: "Android",
+    referer: "twitter",
+  };
+
+  test("writes the header and one quoted line per click", () => {
+    expect(clicksToCsv([row])).toBe(
+      "Timestamp (UTC),Short link,Destination,Country,City,Device,Browser,OS,Referrer\r\n" +
+        '"2026-11-23 14:05:09","https://ishortn.ink/launch","https://example.com/?a=1,2","GH","","Mobile","Chrome","Android","X"\r\n',
+    );
+  });
+
+  test("labels missing referrers as Direct", () => {
+    expect(clicksToCsv([{ ...row, referer: null }])).toEndWith('"Direct"\r\n');
+  });
+
+  test("escapes quotes and neutralises spreadsheet formulas", () => {
+    const csv = clicksToCsv([{ ...row, url: '=HYPERLINK("x")', city: "-1+1" }]);
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`);
+    expect(csv).toContain(`"'-1+1"`);
+  });
+
+  test("an empty export is just the header", () => {
+    expect(clicksToCsv([]).split("\r\n")).toEqual([
+      "Timestamp (UTC),Short link,Destination,Country,City,Device,Browser,OS,Referrer",
+      "",
+    ]);
   });
 });

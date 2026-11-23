@@ -175,9 +175,12 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
-    // Milestone, usage-alert, domain-reminder and first-link nudge emails. Account, billing and
-    // team emails ignore it.
+    // Milestone, usage-alert, domain-reminder, first-link nudge and weekly summary emails. Account,
+    // billing and team emails ignore it.
     productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
+    // Weekly click summary (see src/server/lib/weekly-summary.ts); sent only while
+    // productEmailsEnabled is also on.
+    weeklySummaryEnabled: boolean("weeklySummaryEnabled").notNull().default(true),
     // Account transfer deletion tracking
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period
     // Platform admin
@@ -203,6 +206,9 @@ export const user = mysqlTable(
     // First-link nudge (see src/server/lib/first-link-nudge.ts): set when the one reminder to
     // create a first link was sent, so an account never gets a second.
     firstLinkNudgeSentAt: timestamp("firstLinkNudgeSentAt"),
+    // Paused-tracking promo notice (see src/server/lib/promo-paused-notice.ts): the promo code
+    // whose one notice this account was sent, so it gets at most one per promo.
+    promoNoticeSentFor: varchar("promoNoticeSentFor", { length: 32 }),
     // Restriction: can sign in and pay, but can't create or edit links, domains, bio pages or QR codes
     restrictedAt: timestamp("restrictedAt"),
     restrictedReason: varchar("restrictedReason", { length: 255 }),
@@ -211,6 +217,7 @@ export const user = mysqlTable(
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),
     planGraceEndsAtIdx: index("planGraceEndsAt_idx").on(table.planGraceEndsAt),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
+    eventTrackingPausedAtIdx: index("eventTrackingPausedAt_idx").on(table.eventTrackingPausedAt),
   }),
 );
 
@@ -362,6 +369,24 @@ export const reservedAlias = mysqlTable(
   }),
 );
 
+// Addresses a link answered on before it moved to another domain. The redirect lookup
+// matches them alongside Link.domain/alias, so old printed and shared URLs keep working,
+// and the address stays reserved (for every account) after the link is deleted.
+export const linkPreviousAddress = mysqlTable(
+  "LinkPreviousAddress",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    domain: varchar("domain", { length: 255 }).notNull(), // lowercase
+    alias: varchar("alias", { length: 255 }).notNull(), // normalizeAlias()d
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    domainAliasIdx: unique("linkPreviousAddress_domain_alias").on(table.domain, table.alias),
+    linkIdIdx: index("linkPreviousAddress_linkId_idx").on(table.linkId),
+  }),
+);
+
 // Targeting rules for links: route or block by visitor location or device
 export const geoRule = mysqlTable(
   "GeoRule",
@@ -453,6 +478,24 @@ export const linkVisitDailySummaryRelations = relations(linkVisitDailySummary, (
     references: [link.id],
   }),
 }));
+
+// One row per account per summarised week (weekStart is the Monday, UTC). Inserted before the
+// weekly summary email goes out, so a retried or overlapping run never sends the week twice;
+// sentAt is set once Resend accepts it, and the row is removed if the send is rejected.
+export const weeklySummaryEmail = mysqlTable(
+  "WeeklySummaryEmail",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    weekStart: date("weekStart", { mode: "string" }).notNull(),
+    clicks: int("clicks").notNull(),
+    sentAt: timestamp("sentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    weekUserUnique: unique("weeklySummaryEmail_week_user").on(table.weekStart, table.userId),
+  }),
+);
 
 export const linkMilestone = mysqlTable(
   "LinkMilestone",
@@ -1271,6 +1314,8 @@ export const feedback = mysqlTable(
     status: mysqlEnum("feedbackStatus", ["open", "resolved", "dismissed"])
       .notNull()
       .default("open"),
+    replyMessage: text("replyMessage"),
+    repliedAt: timestamp("repliedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
@@ -1309,12 +1354,18 @@ export const audienceFeedback = mysqlTable(
     submittedAt: timestamp("submittedAt"),
     dismissedAt: timestamp("dismissedAt"),
     dismissCount: int("dismissCount").notNull().default(0),
+    // The short "how did you find us" prompt for paid accounts. Kept apart from
+    // submittedAt/dismissedAt so the full survey can still be offered afterwards.
+    acquisitionAnsweredAt: timestamp("acquisitionAnsweredAt"),
+    acquisitionDismissedAt: timestamp("acquisitionDismissedAt"),
+    acquisitionDismissCount: int("acquisitionDismissCount").notNull().default(0),
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").onUpdateNow(),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     submittedAtIdx: index("submittedAt_idx").on(table.submittedAt),
+    acquisitionAnsweredAtIdx: index("acquisitionAnsweredAt_idx").on(table.acquisitionAnsweredAt),
   }),
 );
 
@@ -1561,3 +1612,25 @@ export const planLimitHit = mysqlTable(
 );
 
 export type PlanLimitHit = typeof planLimitHit.$inferSelect;
+
+/** One row per hosted checkout handed to a user, so the funnel from checkout to payment can be measured. */
+export const checkoutStart = mysqlTable(
+  "CheckoutStart",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    plan: mysqlEnum("plan", ["pro", "ultra"]).notNull(),
+    interval: mysqlEnum("interval", ["monthly", "annual"]).notNull(),
+    // Pricing-page `source` param, `auto_signup` or `settings_billing`; null when none was given.
+    source: varchar("source", { length: 64 }),
+    // The discount code the checkout was created with; null when none was sent or the provider rejected it.
+    promoCode: varchar("promoCode", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("checkoutStart_createdAt_idx").on(table.createdAt),
+    userIdIdx: index("checkoutStart_userId_idx").on(table.userId),
+  }),
+);
+
+export type CheckoutStart = typeof checkoutStart.$inferSelect;
