@@ -18,11 +18,14 @@ describe("competitor guides", () => {
 
   it("list related guides that exist", () => {
     const docsHrefs = new Set(DOCS_PAGES.map((page) => docsHref(page.slug)));
+    const compareHrefs = new Set(Object.values(competitors).map((c) => `/compare/${c.slug}`));
     for (const competitor of Object.values(competitors)) {
       if (!("relatedGuides" in competitor)) continue;
       for (const { href } of competitor.relatedGuides) {
         if (href.startsWith("/blog/")) {
           expect(isPostLive(href.slice("/blog/".length), farFuture)).toBe(true);
+        } else if (href.startsWith("/compare/")) {
+          expect(compareHrefs).toContain(href);
         } else {
           expect(docsHrefs).toContain(href);
         }

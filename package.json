@@ -123,6 +123,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^21.0.4",
     "@mdx-js/loader": "^3.1.1",
     "@next/mdx": "16.4.6",
     "@oxlint/plugins": "1.81.0",

@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { trackUpgradeClick, useTrackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { clientLogger } from "@/lib/logger/client";
 import { api } from "@/trpc/react";
@@ -31,6 +31,7 @@ const proPlanBenefits = PLAN_FEATURES.pro.features;
 
 export function UpgradeToPro() {
   const upgradeMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation();
+  useTrackUpgradeShown("upgrade_modal");
 
   const handleUpgrade = async () => {
     try {

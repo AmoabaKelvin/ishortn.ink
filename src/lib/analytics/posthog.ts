@@ -3,6 +3,7 @@
 import { clientLogger } from "@/lib/logger/client";
 
 import { createDeferredClient } from "./deferred-client";
+import { createIdentityTracker, createPageviewTracker } from "./posthog-tracking";
 
 import type { PostHog } from "posthog-js/dist/module.slim";
 
@@ -21,6 +22,8 @@ let loadStarted = false;
 let importStarted = false;
 let holds = 0;
 let resumeAfterHolds: (() => void) | null = null;
+const capturePageview = createPageviewTracker(deferred.run);
+const syncIdentity = createIdentityTracker(deferred.run);
 
 function whenIdle(callback: () => void) {
   if ("requestIdleCallback" in window) {
@@ -70,8 +73,8 @@ function importPostHog() {
       posthog.init(POSTHOG_KEY, {
         api_host: POSTHOG_HOST,
         person_profiles: "always",
-        // Sent from loadPostHog with the URL of the page it was loaded on. Page leaves would
-        // otherwise follow capture_pageview off.
+        // Sent by capturePageview, on load and on each client-side navigation, with the URL each
+        // was for. Page leaves would otherwise follow capture_pageview off.
         capture_pageview: false,
         capture_pageleave: true,
         __extensionClasses: { ...AnalyticsExtensions, ...ToolbarExtensions },
@@ -103,23 +106,42 @@ function startWhenFree() {
 export function loadPostHog() {
   if (!POSTHOG_KEY || loadStarted) return;
   loadStarted = true;
-
-  // Taken now: by the time PostHog loads, a client-side navigation may have changed the URL.
-  // Not the title: posthog-js sets it from document.title when it sends a $pageview.
-  const { href, host, pathname } = window.location;
-  const timestamp = new Date();
-  deferred.run((posthog) =>
-    posthog.capture(
-      "$pageview",
-      { $current_url: href, $host: host, $pathname: pathname },
-      { timestamp },
-    ),
-  );
+  capturePageview(window.location);
 
   for (const type of INTERACTION_EVENTS) {
     window.addEventListener(type, startWhenFree, { capture: true, once: true, passive: true });
   }
   whenIdle(startWhenFree);
+}
+
+/**
+ * Records a page view for the current URL after a client-side navigation. The first call on a
+ * document loads PostHog instead, which records it; repeats for the same path are ignored.
+ */
+export function trackPageview() {
+  if (!POSTHOG_KEY) return;
+  if (loadStarted) capturePageview(window.location);
+  else loadPostHog();
+}
+
+/** Identifies the signed-in user (by id only), or resets PostHog's identity when signed out. */
+export function identifyUser(userId: string | null) {
+  if (POSTHOG_KEY) syncIdentity(userId);
+}
+
+// Long enough for posthog-js to load on a typical connection, short enough not to stall sign-out.
+const SIGN_OUT_RESET_TIMEOUT_MS = 1000;
+
+/**
+ * Resets PostHog's identity for a sign-out the app starts. Clerk only reports the signed-out state
+ * after it has navigated to the after-sign-out page, where PostHogIdentify isn't mounted, so the
+ * reset has to happen first. Resolves once it has run (loading posthog-js now if needed) or after
+ * a second.
+ */
+export function resetPostHogIdentity() {
+  if (!POSTHOG_KEY) return Promise.resolve();
+  syncIdentity(null);
+  return withPostHogNow(() => {}, SIGN_OUT_RESET_TIMEOUT_MS);
 }
 
 /**

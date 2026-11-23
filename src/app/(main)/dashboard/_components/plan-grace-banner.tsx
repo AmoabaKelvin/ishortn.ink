@@ -3,13 +3,15 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { trackUpgradeClick, useTrackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
 import { PLAN_NAMES, updatePaymentPath } from "@/lib/billing/entitlements";
 import { api } from "@/trpc/react";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
 type GraceNotice = RouterOutputs["subscriptions"]["entitlementNotice"];
+
+const GRACE_SOURCE = "plan_grace_banner";
 
 // Grace periods end at an instant stored in UTC; render the day in UTC so server
 // and client output match.
@@ -22,6 +24,11 @@ export function PlanGraceBanner({ initialNotice }: { initialNotice?: GraceNotice
     initialData: initialNotice,
     staleTime: 5 * 60 * 1000,
   });
+  // Mirrors the branches below: the Upgrade link shows unless the notice asks for a payment
+  // update, and on team notices only to the owner.
+  const upgradeShown =
+    !!notice && notice.action !== "update_payment" && (notice.type !== "team" || notice.isOwner);
+  useTrackUpgradeShown(GRACE_SOURCE, upgradeShown);
 
   if (!notice) return null;
 
@@ -64,7 +71,7 @@ export function PlanGraceBanner({ initialNotice }: { initialNotice?: GraceNotice
               href={updatePayment ? updatePaymentPath("banner") : "/dashboard/pricing"}
               // The payment page fetches a signed Lemon Squeezy URL; don't run it on prefetch.
               prefetch={updatePayment ? false : undefined}
-              onClick={updatePayment ? undefined : () => trackUpgradeClick("plan_grace_banner")}
+              onClick={updatePayment ? undefined : () => trackUpgradeClick(GRACE_SOURCE)}
               className="font-medium underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300"
             >
               {updatePayment ? "Update payment method" : "Upgrade"}

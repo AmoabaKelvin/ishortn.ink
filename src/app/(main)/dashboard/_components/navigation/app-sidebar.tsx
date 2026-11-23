@@ -1,6 +1,6 @@
 "use client";
 
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import {
   IconBan,
   IconChartBar,
@@ -34,8 +34,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Wordmark } from "@/app/(landing)/_components/site-primitives";
+import { useSignOut } from "@/components/scripts/posthog-identify";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { AudienceFeedbackPrompt } from "./audience-feedback-prompt";
@@ -143,10 +145,12 @@ export function AppSidebar({
   const [menuOpenPath, setMenuOpenPath] = useState<string | null>(null);
   const isMobileMenuOpen = menuOpenPath === pathname;
   const setIsMobileMenuOpen = (open: boolean) => setMenuOpenPath(open ? pathname : null);
+  // Below lg the sidebar stays mounted off-canvas while the menu is closed.
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const signOut = useSignOut();
   const openButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   // The DB name is what settings edits; Clerk's name and the email are only fallbacks.
@@ -339,6 +343,7 @@ export function AppSidebar({
                   eventUsage={eventUsage}
                   folderUsage={folderUsage}
                   plan={plan}
+                  shown={isDesktop || isMobileMenuOpen}
                 />
               </div>
             )}
@@ -421,7 +426,7 @@ export function AppSidebar({
                     <div className="my-1 h-px bg-neutral-100 dark:bg-border/50" />
                     <button
                       onClick={() => {
-                        signOut();
+                        void signOut();
                         setIsUserMenuOpen(false);
                         setIsMobileMenuOpen(false);
                       }}

@@ -48,6 +48,11 @@
       },
     ],
   },
+  // Plain, non-secret config. Secrets stay in `wrangler secret put`; a name can't be both.
+  "vars": {
+    // Lifecycle email (weekly summary, upgrade nudge) sender, on its own sending subdomain.
+    "EMAIL_FROM_LIFECYCLE": "iShortn <hello@updates.ishortn.ink>",
+  },
   "triggers": {
     "crons": [
       "0 9 * * *",

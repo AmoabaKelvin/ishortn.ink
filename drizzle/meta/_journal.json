@@ -670,8 +670,15 @@
     {
       "idx": 95,
       "version": "5",
-      "when": 1795425344464,
-      "tag": "0095_align_production_schema",
+      "when": 1795465477813,
+      "tag": "0095_user_upgrade_nudge",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "5",
+      "when": 1795472271395,
+      "tag": "0096_align_production_schema",
       "breakpoints": true
     }
   ]

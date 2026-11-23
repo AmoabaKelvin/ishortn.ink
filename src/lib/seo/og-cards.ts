@@ -18,7 +18,7 @@ const lowestPaidPrice = Math.min(...PAID_PLANS.map((plan) => PLAN_PRICES_USD[pla
 // (og-cards.test.ts keeps them in sync with the page source).
 export const pageCards = {
   home: card({
-    title: "The better way to share your links",
+    title: "Free URL shortener with click tracking",
     subtitle: "Short links, branded domains, QR codes, bio pages, analytics and team workspaces.",
     visual: "links",
   }),

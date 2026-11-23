@@ -116,7 +116,7 @@ The Clerk variables aren't in `src/env.mjs`; the Clerk SDK reads them directly.
 | Feature | Variables |
 | --- | --- |
 | Image uploads (Cloudflare R2) | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`. `R2_ENDPOINT` is only for a local S3 stand-in. |
-| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (an address on a domain verified in Resend), `EMAIL_FROM_LIFECYCLE` (optional sender for the weekly click summary, ideally on its own sending subdomain; unset disables it), `RESEND_WEBHOOK_SECRET` (bounce and complaint webhook), `EMAIL_UNSUBSCRIBE_SECRET` (random, at least 32 characters, for one-click unsubscribe links) |
+| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (an address on a domain verified in Resend), `EMAIL_FROM_LIFECYCLE` (optional sender for the weekly click summary and the upgrade nudge, ideally on its own sending subdomain; unset disables both), `RESEND_WEBHOOK_SECRET` (bounce and complaint webhook), `EMAIL_UNSUBSCRIBE_SECRET` (random, at least 32 characters, for one-click unsubscribe links) |
 | Billing (Lemon Squeezy) | `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET` |
 | Custom domains for users (Cloudflare for SaaS) | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_SAAS_ZONE_ID`, `CUSTOM_DOMAIN_CNAME_TARGET`, and `NEXT_PUBLIC_DOMAIN_MIGRATION_DEADLINE` (only shown in a notice about moving existing domains) |
 | AI alias suggestions and phishing classification | `OPENAI_API_KEY` |
@@ -217,10 +217,11 @@ Some text still names the hosted service and doesn't come from configuration: th
 | `10 * * * *` | `/api/cron/api-access-sunset` | Starts the notice period for API keys on accounts without a paid plan and emails their owners | Drop: it exists for keys created before API access became a paid feature |
 | `10 * * * *` | `/api/cron/first-link-nudge` | Emails accounts that signed up 24 to 72 hours ago and haven't created a link yet, once | Only with email |
 | `10 * * * *` | `/api/cron/promo-paused-notice` | While a promo in `src/lib/billing/promo.ts` runs, emails Free accounts whose analytics tracking is paused this month, once per promo | Only with email and billing |
+| `10 * * * *` | `/api/cron/upgrade-nudge` | Emails Free accounts 4 to 10 days old that show use (3+ links, 25+ clicks or a plan limit hit) what Pro adds, once | Only with email, billing and `EMAIL_FROM_LIFECYCLE` |
 | `40 * * * *` | `/api/cron/link-creation-health` | Posts to `DISCORD_WEBHOOK_URL` when link creation starts failing | Only with `DISCORD_WEBHOOK_URL` |
 | `0 9-17 * * MON` | `/api/cron/weekly-summary` | Emails accounts whose links got at least 5 clicks last week (Monday to Sunday) a summary, once per week; the later hourly runs finish large lists and retry failed sends | Only with email and `EMAIL_FROM_LIFECYCLE` |
 
-One expression can run several routes: `10 * * * *` runs `api-access-sunset`, `first-link-nudge` and `promo-paused-notice`. To drop a job that shares its expression, remove its route from `CRON_ROUTES`; otherwise remove the expression from `triggers.crons`. An expression missing from `CRON_ROUTES` only logs an error. To run a job by hand:
+One expression can run several routes: `10 * * * *` runs `api-access-sunset`, `first-link-nudge`, `promo-paused-notice` and `upgrade-nudge`. To drop a job that shares its expression, remove its route from `CRON_ROUTES`; otherwise remove the expression from `triggers.crons`. An expression missing from `CRON_ROUTES` only logs an error. To run a job by hand:
 
 ```bash
 CRON_SECRET='...' bun run cron cleanup-teams --url https://links.example.com

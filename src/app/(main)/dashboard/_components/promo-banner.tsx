@@ -5,7 +5,7 @@ import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { trackUpgradeClick, useTrackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
 
 import { promoBannerHref, promoDismissKey } from "./promo-banner-state";
 
@@ -43,7 +43,9 @@ export function PromoBanner({ promo }: { promo: Promo }) {
     readDismissedOnServer,
   );
   // The pricing page shows the offer above the plans, so the strip would only repeat it there.
-  if (dismissed || pathname?.startsWith("/dashboard/pricing")) return null;
+  const visible = !dismissed && !pathname?.startsWith("/dashboard/pricing");
+  useTrackUpgradeShown(CTA_SOURCE, visible);
+  if (!visible) return null;
 
   const dismiss = () => {
     try {

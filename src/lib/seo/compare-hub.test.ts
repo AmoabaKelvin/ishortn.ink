@@ -60,9 +60,9 @@ describe("compare hub", () => {
     const claims = [
       {
         faq: 0,
-        says: "(1,000 total)",
+        says: "(1,000 in total)",
         field: competitors["short-io"].freeLinks,
-        has: "1,000 total",
+        has: "1,000 in total",
       },
       {
         faq: 0,

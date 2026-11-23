@@ -22,7 +22,12 @@ const CRON_ROUTES = new Map([
   ["5,20,35,50 * * * *", ["/api/cron/phishing-rescan?backlog=1"]],
   [
     "10 * * * *",
-    ["/api/cron/api-access-sunset", "/api/cron/first-link-nudge", "/api/cron/promo-paused-notice"],
+    [
+      "/api/cron/api-access-sunset",
+      "/api/cron/first-link-nudge",
+      "/api/cron/promo-paused-notice",
+      "/api/cron/upgrade-nudge",
+    ],
   ],
   ["40 * * * *", ["/api/cron/link-creation-health"]],
   ["0 9-17 * * MON", ["/api/cron/weekly-summary"]],

@@ -2,7 +2,7 @@
 
 import { IconCheck, IconCopy, IconDownload } from "@tabler/icons-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { trackUpgradeClick, trackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
+import { buildUpgradeUrl } from "@/lib/billing/upgrade";
 import { copyToClipboard } from "@/lib/utils";
+import { api } from "@/trpc/react";
 
 import { downloadQRCodePng, renderQRCodePreview } from "./link-card/qrcode-export";
+import { LINK_READY_SOURCE, linkReadyOffer } from "./link-ready-offer";
 
 export type CreatedLink = { alias: string; domain: string };
 
@@ -32,6 +36,21 @@ export function LinkReadyDialog({ link, onDone, onCreateAnother }: LinkReadyDial
   const [shownLink, setShownLink] = useState(link);
   if (link && link !== shownLink) setShownLink(link);
   const shortUrl = shownLink ? `https://${shownLink.domain}/${shownLink.alias}` : "";
+
+  // Both create paths already load this query, so the dialog reads it from the cache.
+  const { data: subscription } = api.subscriptions.get.useQuery(undefined, {
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const offer = linkReadyOffer({ subscription: subscription ?? null });
+
+  // One impression per opened dialog, sent once the offer line is actually on screen.
+  const trackedLink = useRef<CreatedLink | null>(null);
+  useEffect(() => {
+    if (!link || !offer || trackedLink.current === link) return;
+    trackedLink.current = link;
+    trackUpgradeShown(LINK_READY_SOURCE);
+  }, [link, offer]);
 
   useEffect(() => {
     if (!copied) return;
@@ -116,6 +135,20 @@ export function LinkReadyDialog({ link, onDone, onCreateAnother }: LinkReadyDial
                 </div>
               </div>
             </div>
+
+            {/* Plan offer (Free personal workspaces only) */}
+            {offer && (
+              <p className="border-t border-neutral-100 pt-4 text-[12px] text-neutral-500 dark:border-border/50 dark:text-neutral-400">
+                {offer}{" "}
+                <Link
+                  href={buildUpgradeUrl("pro", LINK_READY_SOURCE)}
+                  onClick={() => trackUpgradeClick(LINK_READY_SOURCE)}
+                  className="whitespace-nowrap font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  See plans
+                </Link>
+              </p>
+            )}
           </DialogBody>
         )}
 

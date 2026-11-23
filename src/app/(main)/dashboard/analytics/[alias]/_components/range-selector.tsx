@@ -251,6 +251,7 @@ export const RangeSelector = ({
           <UpgradeCta
             requiredPlan="pro"
             source="analytics_range"
+            shown={lockedPicked}
             tabIndex={lockedPicked ? undefined : -1}
             className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
           >
