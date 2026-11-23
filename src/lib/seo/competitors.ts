@@ -1,4 +1,6 @@
 // category is the product type the comparison is framed as, used in the page title and description.
+// seoTitle, when present, replaces the generated comparison title in the page <title> and the
+// Open Graph title.
 // pricesCheckedOn is the ISO date the competitor's plans and prices were last verified on their
 // live pricing page; it is shown on the comparison page, so bump it whenever the data is re-checked.
 // guide is an optional blog post slug linked from the comparison page once the post is live.
@@ -94,10 +96,13 @@ export const competitors = {
     name: "TinyURL",
     slug: "tinyurl",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-21",
+    seoTitle: "TinyURL vs iShortn: Free Click Tracking and Pricing (2026)",
+    pricesCheckedOn: "2026-11-23",
     tagline: "The original URL shortener",
     description:
-      "TinyURL was one of the first URL shorteners, but it lacks analytics and modern features. See how iShortn compares.",
+      "TinyURL Free gives you 30 links a month but no click data. iShortn Free also gives you 30, and shows where every click came from. Here's how the two compare, and how to move your links.",
+    metaDescription:
+      "TinyURL Free gives 30 links a month with no click stats. iShortn Free gives 30 with country, device and referrer data. Prices checked November 2026.",
     freeLinks: "30/month (no cap without an account)",
     freeAnalytics: "None",
     customDomains: "Paid only",
@@ -105,12 +110,51 @@ export const competitors = {
     apiAccess: "Yes (free account)",
     teamFeatures: "None",
     passwordProtection: "None",
-    pricing: "Free, Pro from $9/mo (billed annually), Bulk from $69/mo (billed annually)",
+    pricing:
+      "Free, Pro $9/mo billed annually ($11 monthly) for 125 links a month, Bulk 50K $69/mo billed annually ($83 monthly)",
     whySwitch: [
-      "TinyURL offers zero analytics on the free plan — iShortn tracks every click with detailed data",
+      "TinyURL Free has no click stats. iShortn Free records the country, city, device, browser and referrer of up to 1,000 clicks and scans a month",
       "No custom domains or password protection on TinyURL free",
       "TinyURL Pro starts at $9/month (billed annually) for 125 links a month — iShortn Pro is $8/month for 1,000 links",
       "iShortn includes AI-powered link safety scanning on all plans",
+      "TinyURL is the better fit if you only need a quick link without an account. iShortn needs a free account to create links",
+    ],
+    linksStayYours: true,
+    migrationSteps: [
+      "Check where your links live. Links on your own domain, such as go.yourbrand.com, can keep their exact addresses. Links on tinyurl.com stay with TinyURL, because TinyURL owns that domain.",
+      "Get a list of your TinyURL links and their destinations as a CSV file.",
+      "Name the columns iShortn reads: url for the destination, alias for the back-half and domain for your own domain. Other columns are ignored.",
+      "On Pro, add the same domain in iShortn under Domains, then replace TinyURL's DNS records with the ones iShortn shows.",
+      "Upload the file with Upload CSV in the dashboard. On Pro, rows on your custom domain use a one-time 5,000-link import allowance instead of the monthly limit.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel TinyURL.",
+    ],
+    faqs: [
+      {
+        question: "Does TinyURL show click stats on the free plan?",
+        answer:
+          "No. TinyURL's pricing table marks tracked clicks, the analytics dashboard and analytics history as not included on Free. iShortn Free records the country, city, device, browser and referrer for up to 1,000 clicks and scans a month and keeps 7 days of history.",
+      },
+      {
+        question: "How much does TinyURL cost?",
+        answer:
+          "TinyURL Pro lists at $9 a month billed annually ($108 a year) or $11 billed monthly, for 125 links a month. Bulk 50K lists at $69 a month billed annually or $83 monthly. iShortn Pro is $8 a month, or $80 a year, for 1,000 links a month. TinyURL prices from tinyurl.com/app/pricing, checked 23 November 2026.",
+      },
+      {
+        question: "Is iShortn a good alternative to TinyURL?",
+        answer:
+          "If you want to see who clicks your links, yes. Both free plans give you 30 links a month, but only iShortn's shows click data, and you can change a link's destination on every iShortn plan. TinyURL is quicker for a one-off link, because it doesn't need an account.",
+      },
+      {
+        question: "Can I use my own domain on TinyURL's free plan?",
+        answer:
+          "No. TinyURL lists bringing your own domain on paid plans only. On iShortn, custom domains start on Pro at $8 a month, with up to 3 domains.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/blog/tinyurl-alternatives", label: "TinyURL alternatives with free click stats" },
+      { href: "/blog/how-to-track-link-clicks", label: "How to track link clicks" },
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
+      { href: "/compare/bitly", label: "Bitly vs iShortn" },
     ],
     guide: {
       slug: "tinyurl-alternatives",
@@ -288,4 +332,6 @@ export function getCompetitor(slug: string): Competitor | undefined {
 }
 
 export const comparisonTitle = (competitor: Competitor) =>
-  `${competitor.name} vs iShortn: ${competitor.category} comparison`;
+  "seoTitle" in competitor
+    ? competitor.seoTitle
+    : `${competitor.name} vs iShortn: ${competitor.category} comparison`;
