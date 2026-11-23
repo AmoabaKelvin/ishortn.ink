@@ -3,6 +3,7 @@ import { endOfMonth, endOfYear, startOfMonth, startOfYear, subDays, subMonths } 
 import { and, count, eq } from "drizzle-orm";
 
 import { getCampaignLimit } from "@/lib/billing/plans";
+import { groupReferrers } from "@/lib/core/analytics/referrer";
 import { campaign } from "@/server/db/schema";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { workspaceFilter } from "@/server/lib/workspace";
@@ -164,4 +165,19 @@ export function resolveRangeWindow(range: RangeEnum): RangeWindow {
     default:
       return { start: subDays(now, 7), end: now };
   }
+}
+
+/**
+ * Referrer counts keyed by display label, with aliases of one source merged the
+ * way link and overview analytics merge them ("twitter" + "x.com" → "X").
+ */
+export function referrerBreakdown(
+  rows: { value: string | null; count: number }[],
+): Record<string, number> {
+  const stored: Record<string, number> = {};
+  for (const row of rows) {
+    const key = row.value ?? "null";
+    stored[key] = (stored[key] ?? 0) + Number(row.count);
+  }
+  return Object.fromEntries(groupReferrers(stored).map((row) => [row.name, row.clicks]));
 }

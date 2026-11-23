@@ -2,9 +2,14 @@ import { IconClick, IconShieldCheck, IconShieldHalf, IconUsers } from "@tabler/i
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
-import { aggregateVisits, fillClickSeries, mergeArchivedClicks } from "@/lib/core/analytics";
+import {
+  aggregateVisits,
+  fillClickSeries,
+  mergeArchivedClicks,
+  parseCustomRange,
+} from "@/lib/core/analytics";
 import { cn } from "@/lib/utils";
-import { rangeEnum } from "@/server/api/routers/link/link.input";
+import { analyticsRangeEnum } from "@/server/api/routers/link/link.input";
 import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
@@ -41,8 +46,10 @@ type LinksAnalyticsPageProps = {
 // Search params are user-controlled: fall back to defaults rather than error.
 // A missing domain resolves to the workspace's default domain on the server.
 const analyticsSearchParamsSchema = z.object({
-  range: rangeEnum.catch("7d"),
+  range: analyticsRangeEnum.catch("7d"),
   domain: z.string().min(1).optional().catch(undefined),
+  from: z.string().optional().catch(undefined),
+  to: z.string().optional().catch(undefined),
 });
 
 // Null when prior is 0 — a 0→N change has no meaningful ratio, so hide the pill
@@ -55,8 +62,12 @@ const percentGrowth = (current: number, prior: number | undefined | null) => {
 export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const { range: requestedRange, domain: requestedDomain } =
-    analyticsSearchParamsSchema.parse(searchParams);
+  const {
+    range: requestedRange,
+    domain: requestedDomain,
+    from,
+    to,
+  } = analyticsSearchParamsSchema.parse(searchParams);
 
   let visits: RouterOutputs["link"]["linkVisits"];
   try {
@@ -64,6 +75,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
       id: params.alias,
       domain: requestedDomain,
       range: requestedRange,
+      ...parseCustomRange(from, to),
     });
   } catch (error) {
     // Only a missing link becomes a 404; auth/server errors must surface.
@@ -80,6 +92,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     archived,
     domain,
     range,
+    custom,
     window,
   } = visits;
 
@@ -96,7 +109,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
   const verifiedRate = totalVisits.length > 0 ? (verifiedVisits / totalVisits.length) * 100 : 0;
 
   return (
-    <RangeTransitionProvider range={range}>
+    <RangeTransitionProvider range={range} custom={custom}>
       <AnalyticsTracker alias={params.alias} domain={domain} />
       <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
         <div className="flex min-w-0 flex-col gap-1">
@@ -117,6 +130,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
             isProPlan={isProPlan}
             query={{
               range: requestedRange,
+              ...parseCustomRange(from, to),
               filterType: "all",
               link: { alias: params.alias, domain },
             }}

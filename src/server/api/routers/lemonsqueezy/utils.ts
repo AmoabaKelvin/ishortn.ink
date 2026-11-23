@@ -48,16 +48,17 @@ type ProviderResult = { error: unknown; statusCode: number | null };
 /**
  * Runs a checkout create with the promo code and, when the provider rejects the code (422: expired,
  * redemption cap reached, disabled or unknown), once more without it, so a dead promo code never
- * blocks upgrades. Any other failure is returned as-is.
+ * blocks upgrades. Any other failure is returned as-is. `discountCode` is the code the returned
+ * result was created with.
  */
 export async function createCheckoutWithPromoFallback<T extends ProviderResult>(
   create: (discountCode?: string) => Promise<T>,
   discountCode?: string,
   onPromoRejected?: (result: T) => void,
-): Promise<T> {
+): Promise<{ result: T; discountCode?: string }> {
   const result = await create(discountCode);
-  if (!discountCode || !result.error || result.statusCode !== 422) return result;
+  if (!discountCode || !result.error || result.statusCode !== 422) return { result, discountCode };
 
   onPromoRejected?.(result);
-  return create(undefined);
+  return { result: await create(undefined), discountCode: undefined };
 }

@@ -46,30 +46,9 @@ export const linkRouter = createTRPCRouter({
       return services.shortenLinkWithAutoAlias(ctx, input);
     }),
 
-  linkVisits: workspaceProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        // Omitted: the workspace's default domain.
-        domain: z.string().optional(),
-        range: z
-          .enum([
-            "24h",
-            "7d",
-            "30d",
-            "90d",
-            "this_month",
-            "last_month",
-            "this_year",
-            "last_year",
-            "all",
-          ])
-          .default("7d"),
-      }),
-    )
-    .query(({ ctx, input }) => {
-      return services.getLinkVisits(ctx, input);
-    }),
+  linkVisits: workspaceProcedure.input(inputs.linkVisitsSchema).query(({ ctx, input }) => {
+    return services.getLinkVisits(ctx, input);
+  }),
 
   allAnalytics: workspaceProcedure.input(inputs.allAnalyticsSchema).query(({ ctx, input }) => {
     return services.getAllUserAnalytics(ctx, input);

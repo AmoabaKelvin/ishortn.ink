@@ -6,6 +6,8 @@ import {
   bucketKey,
   fillClickSeries,
   mergeArchivedClicks,
+  parseCustomRange,
+  resolveAnalyticsRange,
   resolveRangeWindow,
   summarizeArchived,
 } from ".";
@@ -23,6 +25,53 @@ describe("analyticsWindow", () => {
 
   test("an uncapped plan gets all time", () => {
     expect(analyticsWindow(undefined, now)).toEqual({ days: null, from: null, to: now });
+  });
+});
+
+describe("parseCustomRange", () => {
+  test("accepts ordered, real calendar days", () => {
+    expect(parseCustomRange("2026-10-05", "2026-10-12")).toEqual({
+      from: "2026-10-05",
+      to: "2026-10-12",
+    });
+    expect(parseCustomRange("2026-10-05", "2026-10-05")).not.toBeNull();
+  });
+
+  test("rejects missing, malformed, impossible and reversed days", () => {
+    expect(parseCustomRange(undefined, "2026-10-12")).toBeNull();
+    expect(parseCustomRange("2026-10-5", "2026-10-12")).toBeNull();
+    expect(parseCustomRange("2026-02-30", "2026-03-02")).toBeNull();
+    expect(parseCustomRange("2026-10-12", "2026-10-05")).toBeNull();
+  });
+});
+
+describe("resolveAnalyticsRange", () => {
+  const custom = { range: "custom", from: "2026-10-05", to: "2026-10-12" };
+
+  test("free plans keep 24h and 7d and fall back to 7d for everything else", () => {
+    expect(resolveAnalyticsRange({ range: "24h" }, false)).toEqual({ range: "24h", custom: null });
+    for (const range of ["30d", "last_month", "all"]) {
+      expect(resolveAnalyticsRange({ range }, false)).toEqual({ range: "7d", custom: null });
+    }
+    expect(resolveAnalyticsRange(custom, false)).toEqual({ range: "7d", custom: null });
+  });
+
+  test("paid plans get last month and custom ranges", () => {
+    expect(resolveAnalyticsRange({ range: "last_month" }, true)).toEqual({
+      range: "last_month",
+      custom: null,
+    });
+    expect(resolveAnalyticsRange(custom, true)).toEqual({
+      range: "custom",
+      custom: { from: "2026-10-05", to: "2026-10-12" },
+    });
+  });
+
+  test("a custom range without valid days falls back to 7d", () => {
+    expect(resolveAnalyticsRange({ range: "custom", from: "2026-10-12" }, true)).toEqual({
+      range: "7d",
+      custom: null,
+    });
   });
 });
 
@@ -53,6 +102,24 @@ describe("resolveRangeWindow", () => {
       to: new Date("2026-10-31T23:59:59.999Z"),
       granularity: "day",
     });
+  });
+
+  test("custom ranges cover whole UTC days and stop at now", () => {
+    expect(resolveRangeWindow("custom", now, { from: "2026-10-05", to: "2026-10-12" })).toEqual({
+      from: new Date("2026-10-05T00:00:00Z"),
+      to: new Date("2026-10-12T23:59:59.999Z"),
+      granularity: "day",
+    });
+    expect(resolveRangeWindow("custom", now, { from: "2026-11-10", to: "2026-11-20" }).to).toEqual(
+      now,
+    );
+  });
+
+  test("a one-day custom range plots by hour; a missing one falls back to 7d", () => {
+    expect(
+      resolveRangeWindow("custom", now, { from: "2026-11-02", to: "2026-11-02" }).granularity,
+    ).toBe("hour");
+    expect(resolveRangeWindow("custom", now, null)).toEqual(resolveRangeWindow("7d", now));
   });
 
   test("all time has no start; unknown ranges fall back to 7d", () => {

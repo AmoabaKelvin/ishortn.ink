@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
+import { canonicalReferrer } from "@/lib/core/analytics/referrer";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
@@ -110,7 +111,7 @@ async function insertLinkVisits(tx: DbClient, events: LinkClickEvent[]): Promise
         browser: e.browser,
         os: e.os,
         model: e.model,
-        referer: e.referer,
+        referer: canonicalReferrer(e.referer),
         country: e.country,
         city: e.city,
         continent: e.continent,
@@ -143,7 +144,7 @@ async function insertBioViews(tx: DbClient, events: BioViewEvent[]): Promise<voi
         browser: e.browser,
         os: e.os,
         model: e.model,
-        referer: e.referer,
+        referer: canonicalReferrer(e.referer),
         country: e.country,
         city: e.city,
         continent: e.continent,

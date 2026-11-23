@@ -155,6 +155,46 @@ export const analyticsWindow = (limitDays: number | undefined, now: Date) => ({
   to: now,
 });
 
+/** Ranges every plan may view; the rest (including custom ranges) are Pro and Ultra only. */
+export const FREE_ANALYTICS_RANGES: readonly string[] = ["24h", "7d"];
+
+/** A custom range: inclusive UTC calendar days as "YYYY-MM-DD". */
+export type CustomRange = { from: string; to: string };
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+// Date.parse rolls impossible days over ("2026-02-30" → 2 March), so round-trip it.
+const isIsoDay = (value: string) => {
+  if (!ISO_DAY.test(value)) return false;
+  const time = Date.parse(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(time) && new Date(time).toISOString().startsWith(value);
+};
+
+/** The custom range in `from`/`to`, or null when either day is invalid or they are reversed. */
+export const parseCustomRange = (
+  from: string | null | undefined,
+  to: string | null | undefined,
+): CustomRange | null =>
+  from && to && isIsoDay(from) && isIsoDay(to) && from <= to ? { from, to } : null;
+
+/**
+ * The range a request may actually see. Free plans are held to the last 7 days
+ * whatever they ask for, and a custom range without valid days falls back too.
+ */
+export type AnalyticsRange = { range: string; custom: CustomRange | null };
+
+export const resolveAnalyticsRange = (
+  input: { range: string; from?: string | null; to?: string | null },
+  isPaidPlan: boolean,
+): AnalyticsRange => {
+  if (!isPaidPlan && !FREE_ANALYTICS_RANGES.includes(input.range)) {
+    return { range: "7d", custom: null };
+  }
+  if (input.range !== "custom") return { range: input.range, custom: null };
+  const custom = parseCustomRange(input.from, input.to);
+  return custom ? { range: "custom", custom } : { range: "7d", custom: null };
+};
+
 export type RangeWindow = {
   /** Null for all time. */
   from: Date | null;
@@ -170,7 +210,11 @@ const DAY_MS = 86_400_000;
  * bucket on the chart is complete except the current one: "7d" is today plus
  * the six days before it, "24h" is the current hour plus the 23 before it.
  */
-export const resolveRangeWindow = (range: string, now: Date): RangeWindow => {
+export const resolveRangeWindow = (
+  range: string,
+  now: Date,
+  custom?: CustomRange | null,
+): RangeWindow => {
   const y = now.getUTCFullYear();
   const m = now.getUTCMonth();
   const today = Date.UTC(y, m, now.getUTCDate());
@@ -209,6 +253,17 @@ export const resolveRangeWindow = (range: string, now: Date): RangeWindow => {
       };
     case "all":
       return { from: null, to: now, granularity: "day" };
+    case "custom": {
+      if (!custom) return days(7);
+      const end = Date.parse(`${custom.to}T00:00:00.000Z`) + DAY_MS - 1;
+      return {
+        from: new Date(`${custom.from}T00:00:00.000Z`),
+        // A range ending today stops at now, like the other ranges.
+        to: new Date(Math.min(end, now.getTime())),
+        // A single day plots by hour so the chart has more than one point.
+        granularity: custom.from === custom.to ? "hour" : "day",
+      };
+    }
     default:
       return days(7);
   }

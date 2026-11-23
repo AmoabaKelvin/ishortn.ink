@@ -1,6 +1,7 @@
 import { Link } from "next-view-transitions";
 
 import { withProductUtm } from "@/lib/attribution/referral";
+import { getActivePromo } from "@/lib/billing/promo";
 import { getAppBaseDomain } from "@/lib/constants/domains";
 import { api } from "@/trpc/server";
 
@@ -56,6 +57,8 @@ async function SettingsPage(props: Props) {
     otherBannerShown: false,
     dismissedAt: null,
   });
+  // The discount code only rides on new checkouts; plan changes for subscribers are not discounted.
+  const promo = subscriptions.subscriptionMode === "checkout" ? getActivePromo() : null;
   // Set by the checkout redirect (lemonsqueezy.procedure.ts).
   const { checkout } = await props.searchParams;
 
@@ -141,7 +144,7 @@ async function SettingsPage(props: Props) {
               {annualOffer && (
                 <AnnualSwitchCard offer={annualOffer} source="billing" className="mb-4" />
               )}
-              <Billing subscriptions={subscriptions} />
+              <Billing subscriptions={subscriptions} promo={promo} />
               {checkout === "success" && <CheckoutAcquisitionPrompt />}
             </div>
           </section>

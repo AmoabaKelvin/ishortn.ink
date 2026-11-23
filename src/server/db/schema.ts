@@ -1599,3 +1599,25 @@ export const planLimitHit = mysqlTable(
 );
 
 export type PlanLimitHit = typeof planLimitHit.$inferSelect;
+
+/** One row per hosted checkout handed to a user, so the funnel from checkout to payment can be measured. */
+export const checkoutStart = mysqlTable(
+  "CheckoutStart",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    plan: mysqlEnum("plan", ["pro", "ultra"]).notNull(),
+    interval: mysqlEnum("interval", ["monthly", "annual"]).notNull(),
+    // Pricing-page `source` param, `auto_signup` or `settings_billing`; null when none was given.
+    source: varchar("source", { length: 64 }),
+    // The discount code the checkout was created with; null when none was sent or the provider rejected it.
+    promoCode: varchar("promoCode", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("checkoutStart_createdAt_idx").on(table.createdAt),
+    userIdIdx: index("checkoutStart_userId_idx").on(table.userId),
+  }),
+);
+
+export type CheckoutStart = typeof checkoutStart.$inferSelect;

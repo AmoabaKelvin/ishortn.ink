@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 } from "../../pricing/_components/plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
+import type { Promo } from "@/lib/billing/promo";
 
 const PLANS: { id: Plan; name: string }[] = [
   { id: "free", name: "Free" },
@@ -31,6 +32,8 @@ type PlanSwitcherProps = {
   currentInterval: BillingInterval;
   subscriptionMode: SubscriptionMode;
   renewsAt: Date | null;
+  /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
+  promo: Promo | null;
 };
 
 export function PlanSwitcher({
@@ -38,6 +41,7 @@ export function PlanSwitcher({
   currentInterval,
   subscriptionMode,
   renewsAt,
+  promo,
 }: PlanSwitcherProps) {
   const [interval, setIntervalState] = useState<BillingInterval>(() =>
     resolveBillingInterval(null, currentPlan, currentInterval),
@@ -55,7 +59,7 @@ export function PlanSwitcher({
   const createCheckoutOrUpdate = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
     onSuccess: (data) => {
       if (data.status === "redirect") {
-        window.location.href = data.url;
+        window.location.assign(data.url);
         return;
       }
       if (data.status === "updated") {
@@ -75,9 +79,18 @@ export function PlanSwitcher({
     },
   });
 
+  // Back from the hosted checkout can restore this page from the bfcache with the spinner still on.
+  useEffect(() => {
+    const resetOnRestore = (event: PageTransitionEvent) => {
+      if (event.persisted) setLoadingPlan(null);
+    };
+    window.addEventListener("pageshow", resetOnRestore);
+    return () => window.removeEventListener("pageshow", resetOnRestore);
+  }, []);
+
   const runUpgrade = (plan: Exclude<Plan, "free">) => {
     setLoadingPlan(plan);
-    createCheckoutOrUpdate.mutate({ plan, interval });
+    createCheckoutOrUpdate.mutate({ plan, interval, source: "settings_billing" });
   };
 
   const requestUpgrade = (plan: Plan, kind: "switch" | "upgrade") => {
@@ -156,7 +169,7 @@ export function PlanSwitcher({
           const isUpgrade = !isResumable && planOrder[plan.id] > planOrder[currentPlan];
           const isDowngrade = canChangeInPlace && planOrder[plan.id] < planOrder[currentPlan];
 
-          const price = planPriceDisplay(plan.id, interval);
+          const price = planPriceDisplay(plan.id, interval, promo);
 
           return (
             <div
