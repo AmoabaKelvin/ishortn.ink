@@ -15,6 +15,7 @@ import { api } from "@/trpc/server";
 
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
+import { ExportClicksButton } from "../_components/export-clicks-button";
 import { RangePendingContent, RangeTransitionProvider } from "../_components/range-transition";
 import { BarChart } from "./_components/bar-chart";
 import { CountriesAndCitiesStats } from "./_components/countries-and-cities-stats";
@@ -110,7 +111,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
   return (
     <RangeTransitionProvider range={range} custom={custom}>
       <AnalyticsTracker alias={params.alias} domain={domain} />
-      <div className="flex flex-col items-center justify-between md:flex-row">
+      <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="break-all text-xl font-semibold leading-tight tracking-tight text-neutral-900 dark:text-foreground md:text-2xl">
             {domain}/{params.alias}
@@ -123,7 +124,18 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
           )}
         </div>
 
-        <RangeSelectorWrapper isProPlan={isProPlan} />
+        <div className="flex flex-wrap items-center gap-2">
+          <RangeSelectorWrapper isProPlan={isProPlan} />
+          <ExportClicksButton
+            isProPlan={isProPlan}
+            query={{
+              range: requestedRange,
+              filterType: "all",
+              link: { alias: params.alias, domain },
+            }}
+            fileName={`clicks-${params.alias}-${range}`}
+          />
+        </div>
       </div>
 
       <RangePendingContent>

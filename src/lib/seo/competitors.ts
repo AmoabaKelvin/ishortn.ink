@@ -4,7 +4,8 @@
 // guide is an optional blog post slug linked from the comparison page once the post is live.
 // Optional, filled per competitor: metaDescription replaces the generated meta description;
 // migrationSteps renders an ordered "How to move" list; faqs renders an FAQ section with FAQPage
-// JSON-LD; relatedGuides renders a "Related reading" list (blog links appear once the post is live).
+// JSON-LD; relatedGuides renders a "Related reading" list (blog links appear once the post is live);
+// linksStayYours renders the "Your links stay yours" section from src/lib/copy/link-ownership.ts.
 export const competitors = {
   bitly: {
     name: "Bitly",
@@ -33,6 +34,7 @@ export const competitors = {
       "You can change a link's destination on every iShortn plan. Bitly Free allows no edits and Core allows 5 a month",
       "iShortn Free includes 5 dynamic QR codes: edit the destination anytime, they never expire, and there are no ads",
     ],
+    linksStayYours: true,
     migrationSteps: [
       "Check where your links live. Links on bit.ly stay with Bitly, because Bitly owns that domain. Links on your own domain, such as go.yourbrand.com, keep their exact addresses.",
       "In Bitly, open Links, click Export and download the CSV from the email Bitly sends. Bitly lists export on Growth and higher.",

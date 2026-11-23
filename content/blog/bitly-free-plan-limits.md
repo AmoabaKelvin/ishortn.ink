@@ -114,6 +114,15 @@ That last point is worth thinking about before you switch. Links on `bit.ly` bel
 
 For a side-by-side of every feature, see [Bitly vs iShortn](/compare/bitly).
 
+## Your links stay yours
+
+Before you pick any shortener, check what happens to a link after you stop using it. Here's what iShortn does:
+
+- **Deleted links are never reassigned.** When you delete or rename a short link on iShortn's shared domains, its old address is retired. No other account can claim it, so an old printed or shared link can't start pointing somewhere new.
+- **QR codes never expire.** They keep redirecting on every plan, including after a paid plan ends. A code only switches off if you set an expiry date or scan limit yourself.
+- **You can check a link before you open it.** Add `!` to the end of any iShortn short link, such as `isht.app/spring-sale!`, to see where it goes.
+- **On your own custom domain, the links are yours.** Only your workspaces can create links on it, and because you own the domain, its addresses go with you.
+
 ## FAQ
 
 ### How many links can I make on Bitly for free?
