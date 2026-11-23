@@ -21,7 +21,7 @@ We make iShortn, so treat our pick with that in mind. Every competitor price and
 | TinyURL | 30 links a month with an account, no click stats | Pro, $9/month billed annually ($11 monthly) | Pro (3 branded domains) |
 | Short.io | 1,000 links in total, 50,000 tracked clicks a month | Hobby, $5/month | Free (5 domains) |
 | Rebrandly | 10 links a month, detailed data on 100 clicks a month | Essentials, $11/month billed annually ($16 monthly) | Free gets 1 yourbrand.bio domain |
-| Dub | Listed on its separate links pricing page | Business, $90/month on its main pricing page | Business (100 domains) |
+| Dub | 25 links a month, 1,000 tracked events a month, 30-day analytics | Pro, $30/month ($27/month billed yearly) | Free (3 domains) |
 | YOURLS, Kutt, Shlink | Free software, you pay for the server | None | Any domain you own |
 | Bitly, for reference | 5 links and 2 QR codes a month, no click stats, ad page | Core, $10/month, annual only | Growth, $29/month billed annually |
 
@@ -77,7 +77,7 @@ It suits marketing teams that care most about branded domains. See [iShortn vs R
 
 ### 5. Dub
 
-Dub's code is public on GitHub, and it's popular with developers. Its [pricing page](https://dub.co/pricing) is now built around affiliate and partner programs. It lists Business at $90 a month (10,000 new links and 250,000 tracked events a month, 100 custom domains, 10 users), Advanced at $300 a month, and Enterprise with SAML SSO and audit logs. Paid plans have a 14-day trial. Dub also lists plans for short links only, including a free plan, on a separate [links pricing page](https://dub.co/pricing/links). That page blocked our checks on 22 November, so we haven't quoted its numbers.
+Dub's code is public on GitHub, and it's popular with developers. Its [pricing page](https://dub.co/pricing) is now built around affiliate and partner programs. It lists Business at $90 a month (10,000 new links and 250,000 tracked events a month, 100 custom domains, 10 users), Advanced at $300 a month, and Enterprise with SAML SSO and audit logs. Paid plans have a 14-day trial. Dub also lists plans for short links only on a separate [links pricing page](https://dub.co/pricing/links). Free allows 25 new links and 1,000 tracked events a month, 3 custom domains, 30 days of analytics, 1 user and API access. Pro is $30 a month, or $27 a month billed yearly, for 1,000 new links and 50,000 tracked events a month, 10 custom domains, a year of analytics and 3 users. Business is $90 a month, or $81 billed yearly.
 
 It makes sense for software companies that want link tracking tied to referral or affiliate programs. If you only need short links, compare its links plans with the others here before you commit. See [iShortn vs Dub](/compare/dub) and [Dub alternatives](/blog/dub-alternatives).
 
@@ -100,6 +100,7 @@ If the free plan is the only thing you care about, this is what each tool gives 
 | TinyURL | 30 a month with an account | None | One per link | No |
 | Short.io | 1,000 in total | 50,000 tracked clicks a month | Yes | Yes |
 | Rebrandly | 10 a month | Detailed data on 100 clicks a month | 10 a month, watermarked | No |
+| Dub | 25 a month | 1,000 tracked events a month; 30 days | Yes | Yes |
 
 Bitly also shows an ad page before a free link opens.
 
@@ -116,6 +117,7 @@ Bitly's cheapest way to see clicks is Core at $120 a year. Here's what tracking 
 | TinyURL | Pro, $9/month billed annually | 125 links a month, 3 branded domains |
 | Bitly | Core, $10/month billed annually | 100 links a month, 30 days of history |
 | Rebrandly | Essentials, $11/month billed annually | 250 links a month, detailed data on 10,000 clicks, 2 domains |
+| Dub | Free, or Pro at $30/month ($27/month billed yearly) | Free: 30 days of history, 3 custom domains. Pro: 1 year of history, 10 custom domains |
 
 Short.io Hobby is the cheapest paid plan in this list. iShortn Pro is the cheapest with full analytics history and your own domain. Prices change, so check the pricing page before you switch.
 
@@ -161,7 +163,7 @@ If you're comparing free plans in general rather than leaving Bitly, our [best f
 
 ### Is there a free alternative to Bitly?
 
-Yes. iShortn, TinyURL, Short.io and Rebrandly all have free plans that give you more links than Bitly's 5 a month. iShortn Free allows 30 new links a month with location and device stats and no ad page. Short.io Free allows 1,000 links in total with 5 custom domains. TinyURL lets you shorten links without an account.
+Yes. iShortn, TinyURL, Short.io, Rebrandly and Dub all have free plans that give you more links than Bitly's 5 a month. iShortn Free allows 30 new links a month with location and device stats and no ad page. Short.io Free allows 1,000 links in total with 5 custom domains. TinyURL lets you shorten links without an account.
 
 ### What website is similar to Bitly?
 
