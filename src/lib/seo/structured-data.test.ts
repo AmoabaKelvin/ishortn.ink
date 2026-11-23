@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import { ROOT_OG_IMAGE_URL } from "./og-image";
-import { createArticleSchema } from "./structured-data";
+import { createArticleSchema, createItemListSchema } from "./structured-data";
 
 const article = {
   title: "Bitly alternatives",
@@ -32,6 +32,23 @@ describe("createArticleSchema", () => {
       "@type": "Person",
       name: "Kelvin Amoaba",
       url: "https://ishortn.ink",
+    });
+  });
+});
+
+describe("createItemListSchema", () => {
+  it("numbers items from 1", () => {
+    const schema = createItemListSchema([
+      { name: "iShortn vs Bitly", url: "https://ishortn.ink/compare/bitly" },
+      { name: "iShortn vs Dub.co", url: "https://ishortn.ink/compare/dub" },
+    ]);
+    expect(schema["@type"]).toBe("ItemList");
+    expect(schema.numberOfItems).toBe(2);
+    expect(schema.itemListElement[1]).toEqual({
+      "@type": "ListItem",
+      position: 2,
+      name: "iShortn vs Dub.co",
+      url: "https://ishortn.ink/compare/dub",
     });
   });
 });

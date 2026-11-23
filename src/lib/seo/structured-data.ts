@@ -121,6 +121,20 @@ export function createBreadcrumbSchema(items: { name: string; url: string }[]) {
   };
 }
 
+export function createItemListSchema(items: { name: string; url: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      url: item.url,
+    })),
+  };
+}
+
 export function createArticleSchema(article: {
   title: string;
   description: string;
