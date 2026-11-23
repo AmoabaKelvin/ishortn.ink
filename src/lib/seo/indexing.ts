@@ -31,6 +31,7 @@ const MARKETING_PATHS = new Set([
   "/privacy",
   "/terms",
   "/sitemap.xml",
+  "/llms.txt",
 ]);
 const MARKETING_PREFIXES = ["/blog/", "/compare/", "/solutions/"];
 
@@ -83,6 +84,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "gerador-de-link-whatsapp",
   "icon.png",
   "fonts",
+  "llms.txt",
   "manifest.webmanifest",
   "opengraph-image",
   "p",
