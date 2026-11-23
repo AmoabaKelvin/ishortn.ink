@@ -259,7 +259,7 @@ describe("clicksToCsv", () => {
   test("writes the header and one quoted line per click", () => {
     expect(clicksToCsv([row])).toBe(
       "Timestamp (UTC),Short link,Destination,Country,City,Device,Browser,OS,Referrer\r\n" +
-        '"2026-11-23 14:05:09","https://ishortn.ink/launch","https://example.com/?a=1,2","GH","","Mobile","Chrome","Android","Twitter"\r\n',
+        '"2026-11-23 14:05:09","https://ishortn.ink/launch","https://example.com/?a=1,2","GH","","Mobile","Chrome","Android","X"\r\n',
     );
   });
 

@@ -26,8 +26,13 @@ import {
   isUnlimitedGeoRules,
 } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
-import { bucketKey, resolveRangeWindow, summarizeArchived } from "@/lib/core/analytics";
-import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
+import {
+  bucketKey,
+  resolveAnalyticsRange,
+  resolveRangeWindow,
+  summarizeArchived,
+} from "@/lib/core/analytics";
+import { groupReferrers } from "@/lib/core/analytics/referrer";
 import { parseDeviceDetails } from "@/lib/core/analytics/visitor";
 import {
   buildCacheKey,
@@ -117,10 +122,12 @@ import {
 
 import type { PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type {
+  AllAnalyticsInput,
   BulkArchiveLinksInput,
   BulkToggleLinkStatusInput,
   CreateLinkInput,
   GetLinkInput,
+  LinkVisitsInput,
   ListLinksInput,
   QuickLinkShorteningInput,
   RetrieveOriginalUrlInput,
@@ -1241,10 +1248,14 @@ const shortenLinkSteps = async (
   };
 };
 
-export const getLinkVisits = async (
-  ctx: WorkspaceTRPCContext,
-  input: { id: string; domain?: string; range: string },
-) => {
+// Ranked after grouping so aliases of one source ("twitter", "x.com") count together.
+const topReferrerName = (referers: Record<string, number>) =>
+  groupReferrers(referers).reduce<{ name: string; clicks: number } | null>(
+    (top, row) => (top && top.clicks >= row.clicks ? top : row),
+    null,
+  )?.name ?? "Direct";
+
+export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisitsInput) => {
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
@@ -1264,14 +1275,8 @@ export const getLinkVisits = async (
     throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
   }
 
-  let range = input.range;
-
-  // Enforce 7-day limit for free users
-  if (!userHasPaidPlan && !["24h", "7d"].includes(range)) {
-    range = "7d";
-  }
-
-  const window = resolveRangeWindow(range, new Date());
+  const { range, custom } = resolveAnalyticsRange(input, userHasPaidPlan);
+  const window = resolveRangeWindow(range, new Date(), custom);
   const startDate = window.from ?? new Date(0);
   const now = window.to;
 
@@ -1383,6 +1388,7 @@ export const getLinkVisits = async (
       archived,
       domain,
       range,
+      custom,
       window,
     };
   }
@@ -1406,41 +1412,31 @@ export const getLinkVisits = async (
     }
     return acc;
   }, {});
-  const topReferrer = Object.entries(referrerVisits).reduce(
-    (a, b) => (a[1] > b[1] ? a : b),
-    ["", 0],
-  )[0];
 
   return {
     totalVisits,
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: formatReferrerLabel(topReferrer),
+    topReferrer: topReferrerName(referrerVisits),
     isProPlan: userHasPaidPlan,
     geoRules: linkGeoRules,
     previous,
     archived,
     domain,
     range,
+    custom,
     window,
   };
 };
 
-export const getAllUserAnalytics = async (
-  ctx: WorkspaceTRPCContext,
-  input: {
-    range: string;
-    filterType: "all" | "folder" | "domain" | "link" | "campaign";
-    filterId?: string | number;
-  },
-) => {
+export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllAnalyticsInput) => {
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
   const userHasPaidPlan = plan !== "free";
 
-  const range = !userHasPaidPlan && !["24h", "7d"].includes(input.range) ? "7d" : input.range;
-  const window = resolveRangeWindow(range, new Date());
+  const { range, custom } = resolveAnalyticsRange(input, userHasPaidPlan);
+  const window = resolveRangeWindow(range, new Date(), custom);
   const startDate = window.from ?? new Date(0);
   const now = window.to;
   const empty = {
@@ -1454,6 +1450,7 @@ export const getAllUserAnalytics = async (
     clicksByDestination: {},
     archived: summarizeArchived([]),
     range,
+    custom,
     window,
   };
 
@@ -1549,22 +1546,19 @@ export const getAllUserAnalytics = async (
     acc[ref] = (acc[ref] ?? 0) + 1;
     return acc;
   }, {});
-  const topReferrer =
-    Object.entries(referrerVisits).length > 0
-      ? Object.entries(referrerVisits).reduce((a, b) => (a[1] > b[1] ? a : b))[0]
-      : "null";
 
   return {
     totalVisits,
     uniqueVisits,
     topCountry,
     referers: referrerVisits,
-    topReferrer: formatReferrerLabel(topReferrer),
+    topReferrer: topReferrerName(referrerVisits),
     isProPlan: userHasPaidPlan,
     clicksByLink,
     clicksByDestination,
     archived,
     range,
+    custom,
     window,
   };
 };
