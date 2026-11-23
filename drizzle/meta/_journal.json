@@ -652,6 +652,13 @@
       "when": 1795422313555,
       "tag": "0092_user_promo_notice",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "5",
+      "when": 1795423310437,
+      "tag": "0093_checkout_start",
+      "breakpoints": true
     }
   ]
 }

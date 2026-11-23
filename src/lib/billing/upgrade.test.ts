@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   buildUpgradeUrl,
+  checkoutReturnSearch,
   getUpgradeReason,
   nextPlanFor,
   resolveAutoUpgradePlan,
@@ -73,5 +74,21 @@ describe("resolveAutoUpgradePlan", () => {
     expect(resolveAutoUpgradePlan(new URLSearchParams("plan=ultra"), "pro", "resume")).toBeNull();
     expect(resolveAutoUpgradePlan(new URLSearchParams("plan=free"), "free", "checkout")).toBeNull();
     expect(resolveAutoUpgradePlan(null, "free", "checkout")).toBeNull();
+  });
+});
+
+describe("checkoutReturnSearch", () => {
+  test("the sign-up entry no longer starts a checkout and keeps the plan preselected", () => {
+    const search = checkoutReturnSearch("?plan=pro&interval=monthly", "pro");
+    expect(search).toBe("?highlight=pro");
+    const params = new URLSearchParams(search);
+    expect(resolveAutoUpgradePlan(params, "free", "checkout")).toBeNull();
+    expect(resolveHighlightPlan(params.get("highlight"), "free")).toBe("pro");
+  });
+
+  test("keeps the upgrade source and other params", () => {
+    expect(checkoutReturnSearch("?highlight=pro&source=folders&utm_source=app", "ultra")).toBe(
+      "?highlight=ultra&source=folders&utm_source=app",
+    );
   });
 });

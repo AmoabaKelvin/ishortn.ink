@@ -59,13 +59,18 @@ describe("createCheckoutWithPromoFallback", () => {
 
   test("without a code it calls once and never retries", async () => {
     const { calls, create } = recorder([rejected]);
-    expect(await createCheckoutWithPromoFallback(create)).toBe(rejected);
+    expect(await createCheckoutWithPromoFallback(create)).toEqual({
+      result: rejected,
+      discountCode: undefined,
+    });
     expect(calls).toEqual([undefined]);
   });
 
   test("a code that applies is sent once", async () => {
     const { calls, create } = recorder([ok]);
-    expect(await createCheckoutWithPromoFallback(create, "BFCM20")).toBe(ok);
+    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20");
+    expect(result).toBe(ok);
+    expect(discountCode).toBe("BFCM20");
     expect(calls).toEqual(["BFCM20"]);
   });
 
@@ -74,11 +79,12 @@ describe("createCheckoutWithPromoFallback", () => {
     const { calls, create } = recorder([rejected, retried]);
     const onPromoRejected: Result[] = [];
 
-    const result = await createCheckoutWithPromoFallback(create, "BFCM20", (r) =>
+    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20", (r) =>
       onPromoRejected.push(r),
     );
 
     expect(result).toBe(retried);
+    expect(discountCode).toBeUndefined();
     expect(calls).toEqual(["BFCM20", undefined]);
     expect(onPromoRejected).toEqual([rejected]);
   });
@@ -86,7 +92,9 @@ describe("createCheckoutWithPromoFallback", () => {
   test.each([500, 429, null])("a %p failure is returned without a retry", async (statusCode) => {
     const failed: Result = { error: new Error("boom"), statusCode };
     const { calls, create } = recorder([failed]);
-    expect(await createCheckoutWithPromoFallback(create, "BFCM20")).toBe(failed);
+    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20");
+    expect(result).toBe(failed);
+    expect(discountCode).toBe("BFCM20");
     expect(calls).toEqual(["BFCM20"]);
   });
 });
