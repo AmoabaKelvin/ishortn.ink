@@ -1,5 +1,6 @@
 import { IconChartAreaLineFilled, IconChevronDown } from "@tabler/icons-react";
 
+import { PLAN_CAPS } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
 import { ButtonLink, Eyebrow, panelClass, Section, SectionHeading } from "./site-primitives";
@@ -88,7 +89,7 @@ export const DashboardPreview = () => (
             <Eyebrow icon={<IconChartAreaLineFilled aria-hidden="true" />}>Analytics</Eyebrow>
           }
           title="Know who clicked, where, and when"
-          subtitle="Every short link comes with its own dashboard. No extra setup."
+          subtitle={`Every short link and QR code gets its own dashboard: clicks over time, country, city, device, browser and referrer, with bots filtered out. Free keeps ${PLAN_CAPS.free.analyticsRangeLimitDays} days of history; Pro and Ultra keep all of it and export clicks to CSV.`}
           actions={
             <ButtonLink variant="secondary" href="/features">
               See all features

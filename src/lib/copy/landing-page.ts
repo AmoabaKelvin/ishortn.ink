@@ -36,7 +36,7 @@ export const landingPageCopy = {
     },
     {
       question: "Can I track the performance of my links?",
-      answer: `Yes. Each click or scan records the country, city, device, browser and referrer. Bots and link scanners are filtered out. Free keeps ${free.analyticsRangeLimitDays} days of history, and Pro and Ultra keep it without a time limit.`,
+      answer: `Yes. Each click or scan records the country, city, device, browser and referrer. Bots and link scanners are filtered out. Free keeps ${free.analyticsRangeLimitDays} days of history, and Pro and Ultra keep it without a time limit. Pro and Ultra can also export the clicks for any date range as a CSV file for your own reports.`,
     },
     {
       question: "Are the shortened URLs permanent?",
