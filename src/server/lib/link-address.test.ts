@@ -5,6 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import { resolveLink } from "@/middlewares/record-click";
+import { deleteDomainAndAssociatedLinks } from "@/server/api/routers/domains/domains.service";
 import { deleteLink, updateLink } from "@/server/api/routers/link/link.service";
 import { checkAliasAvailability } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
@@ -92,6 +93,7 @@ describe.skipIf(!testDatabaseUrl)("moving a link to another domain (MySQL)", () 
       );
     }
     await db.delete(schema.reservedAlias).where(inArray(schema.reservedAlias.alias, ALIASES));
+    await db.delete(schema.customDomain).where(inArray(schema.customDomain.userId, USERS));
     await db.delete(schema.link).where(inArray(schema.link.userId, USERS));
     await db.delete(schema.user).where(inArray(schema.user.id, USERS));
   }
@@ -193,5 +195,24 @@ describe.skipIf(!testDatabaseUrl)("moving a link to another domain (MySQL)", () 
 
     expect((await resolveLink("ishortn.ink", "move-renamed"))?.id).toBe(id);
     expect((await resolveLink("isht.ink", "move-me"))?.id).toBe(id);
+  });
+
+  test("removing the old domain frees its previous addresses for the next owner", async () => {
+    const [domain] = await db
+      .insert(schema.customDomain)
+      .values({ userId: OWNER, domain: CUSTOM_DOMAIN, status: "active" });
+    const id = await insertLink("move-me", CUSTOM_DOMAIN);
+    await updateLink(workspaceCtx(OWNER), { id, domain: "ishortn.ink" });
+    expect((await resolveLink(CUSTOM_DOMAIN, "move-me"))?.id).toBe(id);
+
+    await deleteDomainAndAssociatedLinks(workspaceCtx(OWNER), Number(domain.insertId), {
+      removeHostname: async () => {},
+    });
+
+    // The link itself lives on, but the removed hostname no longer answers for it
+    // (cache included) and the alias is open to whoever adds the domain next.
+    expect((await resolveLink("ishortn.ink", "move-me"))?.id).toBe(id);
+    expect(await resolveLink(CUSTOM_DOMAIN, "move-me")).toBeNull();
+    expect(await isAliasReserved(db, "move-me", CUSTOM_DOMAIN)).toBe(false);
   });
 });

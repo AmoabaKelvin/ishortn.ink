@@ -1,4 +1,4 @@
-import { and, eq, getTableColumns, sql } from "drizzle-orm";
+import { and, eq, getTableColumns, inArray, isNull, or, sql } from "drizzle-orm";
 import { unionAll } from "drizzle-orm/mysql-core";
 
 import { buildCacheKey } from "@/lib/core/cache";
@@ -9,6 +9,7 @@ import { reserveLinkAliases } from "./reserved-alias";
 
 import type { db } from "@/server/db";
 import type { Link } from "@/server/db/schema";
+import type { SQL } from "drizzle-orm";
 
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type DbClient = typeof db | TransactionClient;
@@ -112,4 +113,38 @@ export async function recordAddressChange(
   } else {
     await reserveLinkAliases(tx, eq(link.id, linkId), "deleted");
   }
+}
+
+/**
+ * Frees the previous addresses on a custom domain that its workspace is removing:
+ * those of the workspace's links (`ownedBy`, a filter on `link`) and of links
+ * already deleted. Otherwise whoever adds the hostname next would find those
+ * aliases taken and redirecting to the old owner's links. Returns the cache keys
+ * to evict once the transaction commits.
+ */
+export async function releasePreviousAddressesOnDomain(
+  tx: DbClient,
+  domain: string,
+  ownedBy: SQL | undefined,
+): Promise<string[]> {
+  const rows = await tx
+    .select({
+      id: linkPreviousAddress.id,
+      domain: linkPreviousAddress.domain,
+      alias: linkPreviousAddress.alias,
+    })
+    .from(linkPreviousAddress)
+    .leftJoin(link, eq(link.id, linkPreviousAddress.linkId))
+    .where(
+      and(eq(linkPreviousAddress.domain, normalizeDomain(domain)), or(isNull(link.id), ownedBy)),
+    );
+  if (rows.length === 0) return [];
+
+  await tx.delete(linkPreviousAddress).where(
+    inArray(
+      linkPreviousAddress.id,
+      rows.map((row) => row.id),
+    ),
+  );
+  return rows.map((row) => buildCacheKey(row.domain, row.alias));
 }
