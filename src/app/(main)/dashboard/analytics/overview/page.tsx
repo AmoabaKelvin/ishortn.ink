@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { RangeSelectorWrapper } from "../[alias]/_components/range-selector-wrapper";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
+import { ExportClicksButton } from "../_components/export-clicks-button";
 import { RangePendingContent, RangeTransitionProvider } from "../_components/range-transition";
 import { AnalyticsFilter } from "./_components/analytics-filter";
 import { DestinationUrlsCard } from "./_components/destination-urls-card";
@@ -92,6 +93,11 @@ export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPage
         <div className="flex flex-wrap items-center gap-2">
           <AnalyticsFilter />
           <RangeSelectorWrapper isProPlan={isProPlan} />
+          <ExportClicksButton
+            isProPlan={isProPlan}
+            query={{ range: requestedRange, filterType, filterId }}
+            fileName={`clicks-${range}`}
+          />
         </div>
       </div>
 

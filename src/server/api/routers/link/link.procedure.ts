@@ -6,6 +6,7 @@ import {
   contentWriteProcedure,
   workspaceProcedure,
 } from "../../trpc";
+import * as clickExportServices from "./click-export.service";
 import * as inputs from "./link.input";
 import * as services from "./link.service";
 import * as transferServices from "./transfer.service";
@@ -72,6 +73,11 @@ export const linkRouter = createTRPCRouter({
 
   allAnalytics: workspaceProcedure.input(inputs.allAnalyticsSchema).query(({ ctx, input }) => {
     return services.getAllUserAnalytics(ctx, input);
+  }),
+
+  // A mutation so the export runs on click, not on every analytics render.
+  exportClicks: workspaceProcedure.input(inputs.exportClicksSchema).mutation(({ ctx, input }) => {
+    return clickExportServices.exportClicks(ctx, input);
   }),
 
   toggleLinkStatus: contentWriteProcedure.input(inputs.getLinkSchema).mutation(({ ctx, input }) => {
