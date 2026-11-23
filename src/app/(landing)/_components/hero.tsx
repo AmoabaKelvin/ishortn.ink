@@ -168,7 +168,9 @@ export const Hero = () => {
             <IconChevronRight aria-hidden="true" className="size-4 shrink-0 opacity-70" />
           </Link>
 
-          <h1 className={cn(h1Class, "mt-6 max-w-[14ch]")}>The better way to share your links</h1>
+          <h1 className={cn(h1Class, "mt-6 max-w-[14ch]")}>
+            Free URL shortener with click tracking
+          </h1>
           <p className={cn(leadClass, "mt-5 max-w-[48ch]")}>
             Short links, QR codes, and link-in-bio pages with analytics built in. Made for creators,
             marketers, and teams who want to know what works.

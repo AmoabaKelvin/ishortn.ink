@@ -30,10 +30,10 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: {
-    absolute: "iShortn: Free URL Shortener with Analytics and QR Codes",
+    absolute: "Free URL Shortener with Click Tracking & Analytics | iShortn",
   },
   description:
-    "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
+    "Shorten links for free and track every click by country, city, device and referrer. Make dynamic QR codes and use your own domain on Pro. No card needed.",
   keywords: [
     "url shortener",
     "free url shortener",
@@ -45,19 +45,22 @@ export const metadata: Metadata = {
     "qr code generator",
     "branded links",
     "url shortener free",
+    "click tracking free",
+    "url shortener with analytics",
+    "link tracker",
   ],
   openGraph: {
-    title: "iShortn: Free URL Shortener with Analytics and QR Codes",
+    title: "Free URL Shortener with Click Tracking & Analytics | iShortn",
     description:
-      "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
+      "Shorten links for free and track every click by country, city, device and referrer. Make dynamic QR codes and use your own domain on Pro. No card needed.",
     type: "website",
     images: socialImages(ROOT_OG_IMAGE_URL, pageCards.home.alt),
   },
   twitter: {
     card: "summary_large_image",
-    title: "iShortn — The better way to share your links. Free URL shortener with analytics",
+    title: "Free URL Shortener with Click Tracking & Analytics | iShortn",
     description:
-      "Shorten URLs for free with iShortn. Create branded short links, track clicks and engagement, generate QR codes, and use custom domains.",
+      "Shorten links for free and track every click by country, city, device and referrer. Make dynamic QR codes and use your own domain on Pro. No card needed.",
     images: socialImages(ROOT_OG_IMAGE_URL, pageCards.home.alt),
   },
 };
