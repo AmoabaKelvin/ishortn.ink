@@ -165,23 +165,64 @@ export const competitors = {
     name: "Rebrandly",
     slug: "rebrandly",
     category: "URL shortener",
+    seoTitle: "Rebrandly vs iShortn: Free Plan and Custom Domains (2026)",
     pricesCheckedOn: "2026-11-23",
     tagline: "Branded link management platform",
     description:
       "Rebrandly focuses on branded links, with a free tier that includes one custom domain, but iShortn delivers more links and analytics at a lower price.",
+    metaDescription:
+      "Rebrandly Free gives 10 links a month and detailed stats on 100 clicks. iShortn Free gives 30 links and stats on 1,000; Pro adds 3 custom domains for $8/mo.",
     freeLinks: "10/month",
-    freeAnalytics: "100 tracked clicks/month",
+    freeAnalytics: "Detailed stats on 100 clicks/month (clicks themselves unlimited)",
     customDomains: "1 on Free (your own or a free .bio domain); 2 on Essentials",
-    qrCodes: "Watermarked on free",
+    qrCodes: "10/month on Free, with a watermark",
     apiAccess: "Yes (100 calls/min on free)",
     teamFeatures: "Paid only",
     passwordProtection: "Paid only",
     pricing: "Free, paid plans from Essentials",
     whySwitch: [
-      "Rebrandly free gives 10 links and 100 tracked clicks a month — iShortn gives 30 links and 1,000 tracked events",
+      "Rebrandly Free gives 10 links a month and detailed stats on 100 clicks. iShortn Free gives 30 links a month and stats on up to 1,000 clicks and scans",
       "Rebrandly Free includes 1 custom domain and 10 links a month. iShortn Pro includes 3 custom domains, 1,000 links a month and 10,000 tracked events for $8/month",
       "Rebrandly QR codes have watermarks on free — iShortn QR codes are clean on all plans",
       "iShortn Pro adds geo and device targeting for $8/month, and AI-powered phishing detection checks links on every plan",
+      "Rebrandly is the better fit if you want a custom domain on a free plan: Rebrandly Free includes one, and iShortn's start on Pro",
+    ],
+    linksStayYours: true,
+    migrationSteps: [
+      "Check where your links live. Links on your own domain, such as go.yourbrand.com, can keep their exact addresses. Links on rebrand.ly stay with Rebrandly, because Rebrandly owns that domain.",
+      "Get a list of your Rebrandly links and their destinations as a CSV file.",
+      "Name the columns iShortn reads: url for the destination, alias for the back-half and domain for your own domain. Other columns are ignored.",
+      "On Pro, add the same domain in iShortn under Domains, then replace Rebrandly's DNS records with the ones iShortn shows.",
+      "Upload the file with Upload CSV in the dashboard. On Pro, rows on your custom domain use a one-time 5,000-link import allowance instead of the monthly limit.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel Rebrandly.",
+    ],
+    faqs: [
+      {
+        question: "Is iShortn a good alternative to Rebrandly?",
+        answer:
+          "If you need more than 10 links a month or more than 100 clicks of detailed stats, yes. iShortn Free gives you 30 links a month with stats on up to 1,000 clicks and scans, and Pro adds 1,000 links a month and 3 custom domains for $8 a month. Rebrandly is the better fit if you want a custom domain without paying, because Rebrandly Free includes one.",
+      },
+      {
+        question: "What does Rebrandly's free plan include?",
+        answer:
+          "Rebrandly Free includes 10 links and 10 QR codes a month, one custom domain (your own or a .bio domain) plus the rebrand.ly domain, and unlimited clicks with detailed stats on 100 of them a month. Free QR codes carry a Rebrandly watermark. From rebrandly.com/pricing, checked 23 November 2026.",
+      },
+      {
+        question: "How does Rebrandly compare with Short.io?",
+        answer:
+          "On the free plans, Short.io gives 1,000 links in total, 5 custom domains and 50,000 tracked clicks a month. Rebrandly gives 10 links a month, one custom domain and detailed stats on 100 clicks a month. iShortn Free sits between them: 30 links every month and stats on 1,000 clicks, with custom domains from Pro at $8 a month. Our Short.io comparison is at ishortn.ink/compare/short-io.",
+      },
+      {
+        question: "Can I move my Rebrandly links to iShortn without breaking them?",
+        answer:
+          "Links on your own domain can keep their exact addresses: upload a CSV of them to iShortn and point the domain's DNS to iShortn. Custom domains are on Pro and Ultra. Links on rebrand.ly can't move, because Rebrandly owns that domain, so the import gives each one a new short link.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/blog/rebrandly-alternatives", label: "Rebrandly alternatives compared" },
+      { href: "/compare/short-io", label: "Short.io vs iShortn" },
+      { href: "/docs/custom-domains", label: "Connect your own domain" },
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
     ],
     guide: {
       slug: "rebrandly-alternatives",

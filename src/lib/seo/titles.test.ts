@@ -57,6 +57,9 @@ describe("page titles", () => {
     expect(comparisonTitle(competitors.tinyurl)).toBe(
       "TinyURL vs iShortn: Free Click Tracking and Pricing (2026)",
     );
+    expect(comparisonTitle(competitors.rebrandly)).toBe(
+      "Rebrandly vs iShortn: Free Plan and Custom Domains (2026)",
+    );
   });
 
   it("keeps blog post titles short with the brand once", () => {
