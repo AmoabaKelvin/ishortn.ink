@@ -44,6 +44,7 @@ export const POSTHOG_EVENTS = {
 
   // Upgrade prompt events
   PLAN_LIMIT_REACHED: "plan_limit_reached",
+  UPGRADE_PROMPT_SHOWN: "upgrade_prompt_shown",
   UPGRADE_PROMPT_CLICKED: "upgrade_prompt_clicked",
   PAYMENT_UPDATE_CLICKED: "payment_update_clicked",
 
