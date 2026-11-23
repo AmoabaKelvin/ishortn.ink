@@ -26,7 +26,11 @@ import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/di
 
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
 import { downgradeWithFeedbackInput, downgradeReasonLabels } from "./lemonsqueezy.input";
-import { parseProviderUpdatedAt, providerErrorToClient } from "./utils";
+import {
+  createCheckoutWithPromoFallback,
+  parseProviderUpdatedAt,
+  providerErrorToClient,
+} from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 import type { Subscription as ProviderSubscription } from "@lemonsqueezy/lemonsqueezy.js";
@@ -168,28 +172,38 @@ export const lemonsqueezyRouter = createTRPCRouter({
         return { status: "updated" as const, message: "Plan updated successfully!" };
       }
 
-      const checkout = await createCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
-        checkoutOptions: {
-          embed: true,
-          media: false,
-        },
-        checkoutData: {
-          email: user?.email ?? undefined,
-          discountCode: checkoutDiscountCode(),
-          custom: {
-            user_id: userId,
-          },
-        },
-        productOptions: {
-          enabledVariants: [variantId],
-          // The flag opens the "how did you find us" prompt (checkout-acquisition-prompt.tsx).
-          redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?checkout=success#billing`,
-          receiptButtonText: "Go to Dashboard",
-          receiptThankYouNote: `Thank you for signing up to iShortn ${
-            input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
-          }!`,
-        },
-      });
+      const promoCode = checkoutDiscountCode();
+      const checkout = await createCheckoutWithPromoFallback(
+        (discountCode) =>
+          createCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
+            checkoutOptions: {
+              embed: true,
+              media: false,
+            },
+            checkoutData: {
+              email: user?.email ?? undefined,
+              discountCode,
+              custom: {
+                user_id: userId,
+              },
+            },
+            productOptions: {
+              enabledVariants: [variantId],
+              // The flag opens the "how did you find us" prompt (checkout-acquisition-prompt.tsx).
+              redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?checkout=success#billing`,
+              receiptButtonText: "Go to Dashboard",
+              receiptThankYouNote: `Thank you for signing up to iShortn ${
+                input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
+              }!`,
+            },
+          }),
+        promoCode,
+        (rejected) =>
+          log.warn(
+            { userId, variantId, discountCode: promoCode, err: rejected.error },
+            "promo code rejected, retrying checkout without it",
+          ),
+      );
 
       if (checkout.error) {
         throw providerError("checkout", checkout, { userId, variantId });

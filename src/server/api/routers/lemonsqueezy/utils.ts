@@ -42,3 +42,22 @@ export function parseProviderUpdatedAt(updatedAt: string | null | undefined): Da
   const parsed = new Date(updatedAt);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
+
+type ProviderResult = { error: unknown; statusCode: number | null };
+
+/**
+ * Runs a checkout create with the promo code and, when the provider rejects the code (422: expired,
+ * redemption cap reached, disabled or unknown), once more without it, so a dead promo code never
+ * blocks upgrades. Any other failure is returned as-is.
+ */
+export async function createCheckoutWithPromoFallback<T extends ProviderResult>(
+  create: (discountCode?: string) => Promise<T>,
+  discountCode?: string,
+  onPromoRejected?: (result: T) => void,
+): Promise<T> {
+  const result = await create(discountCode);
+  if (!discountCode || !result.error || result.statusCode !== 422) return result;
+
+  onPromoRejected?.(result);
+  return create(undefined);
+}
