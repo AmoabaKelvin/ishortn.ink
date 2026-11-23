@@ -247,6 +247,9 @@ export const subscription = mysqlTable(
     // can arrive out of order or be replayed, so events older than this are
     // dropped instead of overwriting current state.
     providerUpdatedAt: datetime("providerUpdatedAt"),
+    // When a paused subscription starts billing again (the provider's pause.resumes_at); null
+    // when not paused.
+    pausedUntil: datetime("pausedUntil"),
 
     // details about the payment to show in the dashboard
     cardBrand: varchar("cardBrand", { length: 255 }).default(""),
@@ -1625,3 +1628,30 @@ export const checkoutStart = mysqlTable(
 );
 
 export type CheckoutStart = typeof checkoutStart.$inferSelect;
+
+// One row per in-app cancel flow submission (cancel, downgrade or pause instead), for churn analysis.
+export const subscriptionCancellation = mysqlTable(
+  "SubscriptionCancellation",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    subscriptionId: int("subscriptionId").notNull(),
+    fromPlan: mysqlEnum("fromPlan", ["free", "pro", "ultra"]).notNull(),
+    toPlan: mysqlEnum("toPlan", ["free", "pro", "ultra"]).notNull(),
+    billingInterval: mysqlEnum("billingInterval", ["monthly", "annual"]).notNull(),
+    variantId: int("variantId"),
+    reason: varchar("reason", { length: 64 }).notNull(),
+    feedback: text("feedback"),
+    // Whether the flow offered a billing pause before cancelling.
+    offerShown: mysqlEnum("offerShown", ["pause", "none"]).notNull(),
+    outcome: mysqlEnum("outcome", ["cancelled", "paused", "downgraded"]).notNull(),
+    pauseMonths: int("pauseMonths"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("subscriptionCancellation_createdAt_idx").on(table.createdAt),
+    userIdIdx: index("subscriptionCancellation_userId_idx").on(table.userId),
+  }),
+);
+
+export type SubscriptionCancellation = typeof subscriptionCancellation.$inferSelect;

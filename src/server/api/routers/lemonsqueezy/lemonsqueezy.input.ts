@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { PAUSE_MONTH_OPTIONS } from "@/lib/billing/plans";
+
 export const createCheckoutOrUpdateInput = z.object({
   plan: z.enum(["pro", "ultra"]),
   interval: z.enum(["monthly", "annual"]).default("monthly"),
@@ -34,3 +36,16 @@ export const downgradeWithFeedbackInput = z.object({
 });
 
 export type DowngradeWithFeedbackInput = z.infer<typeof downgradeWithFeedbackInput>;
+
+export const pauseSubscriptionInput = z.object({
+  months: z
+    .number()
+    .int()
+    .refine((months) => PAUSE_MONTH_OPTIONS.some((option) => option === months), {
+      message: "Choose a pause of 1 to 3 months",
+    }),
+  reason: z.enum(DOWNGRADE_REASONS),
+  feedback: z.string().max(1000).optional(),
+});
+
+export type PauseSubscriptionInput = z.infer<typeof pauseSubscriptionInput>;

@@ -41,6 +41,9 @@ export const POSTHOG_EVENTS = {
   // Subscription events
   SUBSCRIPTION_UPGRADED: "subscription_upgraded",
   SUBSCRIPTION_DOWNGRADED: "subscription_downgraded",
+  // Pause offered in the cancel flow (downgrade-feedback-modal.tsx)
+  CANCEL_OFFER_SHOWN: "cancel_offer_shown",
+  SUBSCRIPTION_PAUSED: "subscription_paused",
 
   // Upgrade prompt events
   PLAN_LIMIT_REACHED: "plan_limit_reached",

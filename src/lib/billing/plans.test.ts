@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { getSubscriptionMode, isSubscriptionEntitled, resolvePlan } from "./plans";
+import {
+  canOfferPause,
+  getSubscriptionMode,
+  isSubscriptionEntitled,
+  pauseResumesAt,
+  resolvePlan,
+} from "./plans";
 
 import type { Subscription } from "@/server/db/schema";
 
@@ -24,6 +30,7 @@ function sub(overrides: Partial<Subscription>): Subscription {
     variantId: PRO_MONTHLY_VARIANT_ID,
     productId: 0,
     providerUpdatedAt: null,
+    pausedUntil: null,
     cardBrand: "visa",
     cardLastFour: "4242",
     ...overrides,
@@ -116,5 +123,37 @@ describe("getSubscriptionMode", () => {
   test("a row without a provider subscription id cannot be updated", () => {
     expect(getSubscriptionMode(sub({ subscriptionId: 0 }))).toBe("checkout");
     expect(getSubscriptionMode(sub({ subscriptionId: null }))).toBe("checkout");
+  });
+
+  test("paused must be resumed, never checked out again", () => {
+    expect(resolvePlan(sub({ status: "paused" }))).toBe("free");
+    expect(getSubscriptionMode(sub({ status: "paused" }))).toBe("resume");
+  });
+});
+
+describe("canOfferPause", () => {
+  test("an active monthly subscription is offered a pause", () => {
+    expect(canOfferPause(sub({}))).toBe(true);
+    expect(canOfferPause(sub({ variantId: 441105 }))).toBe(true);
+  });
+
+  test.each(["on_trial", "past_due", "cancelled", "paused"])("%s is not", (status) => {
+    expect(canOfferPause(sub({ status }))).toBe(false);
+  });
+
+  test("annual subscriptions and rows without a provider id are not", () => {
+    expect(canOfferPause(sub({ variantId: 1809620 }))).toBe(false);
+    expect(canOfferPause(sub({ subscriptionId: 0 }))).toBe(false);
+    expect(canOfferPause(null)).toBe(false);
+  });
+});
+
+describe("pauseResumesAt", () => {
+  test.each([
+    [1, "2026-12-23T10:00:00.000Z"],
+    [2, "2027-01-23T10:00:00.000Z"],
+    [3, "2027-02-23T10:00:00.000Z"],
+  ])("%p months", (months, expected) => {
+    expect(pauseResumesAt(months, new Date("2026-11-23T10:00:00Z")).toISOString()).toBe(expected);
   });
 });
