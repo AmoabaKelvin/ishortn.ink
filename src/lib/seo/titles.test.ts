@@ -54,6 +54,9 @@ describe("page titles", () => {
     expect(comparisonTitle(competitors.dub)).toBe(
       "Dub.co vs iShortn: Pricing and Free Plan Compared (2026)",
     );
+    expect(comparisonTitle(competitors.tinyurl)).toBe(
+      "TinyURL vs iShortn: Free Click Tracking and Pricing (2026)",
+    );
   });
 
   it("keeps blog post titles short with the brand once", () => {
