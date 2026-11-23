@@ -1,4 +1,5 @@
 import { JsonLd } from "@/components/seo/json-ld";
+import { getActivePromo } from "@/lib/billing/promo";
 import { landingPageCopy } from "@/lib/copy/landing-page";
 import { pageCards } from "@/lib/seo/og-cards";
 import { ROOT_OG_IMAGE_URL, socialImages } from "@/lib/seo/og-image";
@@ -23,8 +24,9 @@ import { FreeTools, Guides } from "./_components/resources";
 
 import type { Metadata } from "next";
 
-// Hourly, so a curated guide scheduled for a future date shows up on that day.
-export const revalidate = 3600;
+// Every 5 minutes, so a time-boxed promo in the pricing section appears and disappears close to its
+// window edges, and a curated guide scheduled for a future date shows up on that day.
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: {
@@ -73,7 +75,7 @@ export default function HomePage() {
       <Features />
       <DashboardPreview />
       <QRSection />
-      <Pricing />
+      <Pricing promo={getActivePromo()} />
       <FreeTools />
       <Guides />
       <Faq />
