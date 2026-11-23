@@ -71,7 +71,8 @@ describe("generateQRCodeSvg", () => {
         }
       }
     }
-  });
+    // Renders every style combination (~3s alone); the default 5s times out on a busy runner.
+  }, 20_000);
 
   test("dot style draws one circle per dark module", () => {
     const state = stateFor({ pixelStyle: "dot" });

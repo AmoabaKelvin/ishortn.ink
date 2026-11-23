@@ -37,6 +37,7 @@ import { Wordmark } from "@/app/(landing)/_components/site-primitives";
 import { useSignOut } from "@/components/scripts/posthog-identify";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { AudienceFeedbackPrompt } from "./audience-feedback-prompt";
@@ -144,6 +145,8 @@ export function AppSidebar({
   const [menuOpenPath, setMenuOpenPath] = useState<string | null>(null);
   const isMobileMenuOpen = menuOpenPath === pathname;
   const setIsMobileMenuOpen = (open: boolean) => setMenuOpenPath(open ? pathname : null);
+  // Below lg the sidebar stays mounted off-canvas while the menu is closed.
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const { user } = useUser();
@@ -340,6 +343,7 @@ export function AppSidebar({
                   eventUsage={eventUsage}
                   folderUsage={folderUsage}
                   plan={plan}
+                  shown={isDesktop || isMobileMenuOpen}
                 />
               </div>
             )}

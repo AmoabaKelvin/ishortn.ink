@@ -14,8 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { trackUpgradeClick } from "@/lib/analytics/upgrade-prompt";
+import { trackUpgradeClick, trackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
 import { buildUpgradeUrl } from "@/lib/billing/upgrade";
 import { copyToClipboard } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -50,7 +49,7 @@ export function LinkReadyDialog({ link, onDone, onCreateAnother }: LinkReadyDial
   useEffect(() => {
     if (!link || !offer || trackedLink.current === link) return;
     trackedLink.current = link;
-    trackEvent(POSTHOG_EVENTS.UPGRADE_PROMPT_SHOWN, { source: LINK_READY_SOURCE });
+    trackUpgradeShown(LINK_READY_SOURCE);
   }, [link, offer]);
 
   useEffect(() => {
