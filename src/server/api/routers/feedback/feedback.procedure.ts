@@ -7,6 +7,8 @@ import { sendFeedbackNotification } from "@/server/lib/notifications/discord";
 import { isR2Configured, r2UploadImage } from "@/server/lib/storage/r2";
 
 import { adminProcedure, createTRPCRouter, protectedProcedure } from "../../trpc";
+import { replyToFeedbackInput } from "./feedback.input";
+import { replyToFeedback } from "./feedback.service";
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_IMAGES = 3;
@@ -154,4 +156,9 @@ export const feedbackRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  // Admin: email a reply to the submitter and resolve the item
+  reply: adminProcedure
+    .input(replyToFeedbackInput)
+    .mutation(({ ctx, input }) => replyToFeedback(ctx, input)),
 });

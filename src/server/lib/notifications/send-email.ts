@@ -35,6 +35,7 @@ export type SendEmailInput = {
   essential: boolean;
   subject: string;
   react: ReactElement;
+  reply_to?: string;
   headers?: UnsubscribeHeaders;
   /** Extra fields for the failure log line. */
   context?: Context;
