@@ -8,6 +8,8 @@ import { startTransition, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { clientLogger } from "@/lib/logger/client";
 
+import { FeedbackModal } from "./_components/navigation/feedback-modal";
+
 // The boundary remounts when a retry throws again, so component state can't
 // remember the retry; a module-level timestamp does.
 const RETRY_WINDOW_MS = 10_000;
@@ -22,6 +24,7 @@ export default function DashboardError({
 }) {
   const router = useRouter();
   const [retryFailed] = useState(() => Date.now() - lastRetryAt < RETRY_WINDOW_MS);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   useEffect(() => {
     clientLogger.error(
@@ -49,8 +52,16 @@ export default function DashboardError({
       </p>
       <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400">
         {retryFailed
-          ? "This page still isn't loading. Head back to the dashboard, or contact support if it keeps happening."
-          : "We couldn't load this page. Try again, or contact support if the problem persists."}
+          ? "This page still isn't loading. Head back to the dashboard, or "
+          : "We couldn't load this page. Try again, or "}
+        <button
+          type="button"
+          onClick={() => setIsFeedbackOpen(true)}
+          className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+        >
+          contact support
+        </button>
+        {retryFailed ? " if it keeps happening." : " if the problem persists."}
       </p>
       {error.digest && (
         <p className="mt-2 font-mono text-[11px] break-all text-neutral-400 dark:text-neutral-500">
@@ -92,6 +103,7 @@ export default function DashboardError({
           </>
         )}
       </div>
+      <FeedbackModal open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
     </div>
   );
 }

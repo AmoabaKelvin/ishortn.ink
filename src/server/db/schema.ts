@@ -1258,6 +1258,8 @@ export const feedback = mysqlTable(
     status: mysqlEnum("feedbackStatus", ["open", "resolved", "dismissed"])
       .notNull()
       .default("open"),
+    replyMessage: text("replyMessage"),
+    repliedAt: timestamp("repliedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => ({
