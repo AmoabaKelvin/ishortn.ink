@@ -48,7 +48,7 @@ function scan(links: ScanLink[], source: RescanSource, kind: FeedKind, feed: str
     .map(parse)
     .flatMap((entry) => (entry ? matchFeedEntry(index, source, kind, entry) : []))
     .concat(shortLinkMatches(index, links))
-    .map((m) => decideMatch(m, index.ownHosts));
+    .flatMap((m) => decideMatch(m, index.ownHosts) ?? []);
   return mergeDecisions(decisions);
 }
 
@@ -201,30 +201,36 @@ describe("block vs flag decisions", () => {
     expect(decisions.map((d) => [d.linkId, d.action])).toEqual([[1, "block"]]);
   });
 
-  test("a listed home page of a major or platform host only flags", () => {
-    const links = [link(1, "https://notion.so/"), link(2, "https://weebly.com")];
-    const feed = "https://notion.so\nhttps://www.weebly.com/";
-    const decisions = scan(links, "phishing-database-links", "url", feed);
-    expect(decisions.map((d) => [d.linkId, d.action])).toEqual([
-      [1, "flag"],
-      [2, "flag"],
-    ]);
+  test("a listed home page of a major or platform host is skipped", () => {
+    const links = [
+      link(1, "https://notion.so/"),
+      link(2, "https://weebly.com"),
+      link(3, "https://www.amazon.com/"),
+    ];
+    const feed = "https://notion.so\nhttps://www.weebly.com/\nhttps://amazon.com";
+    expect(scan(links, "phishing-database-links", "url", feed)).toEqual([]);
   });
 
-  test("a domain listing on a shared host flags and never blocklists the host", () => {
+  test("a domain listing on a shared host is skipped and never blocklists the host", () => {
     const links = [
       link(1, "https://dfgjs.weebly.com/page"),
       link(2, "https://docs.google.com/document/d/abc"),
+      link(3, "https://sites.google.com/view/shop"),
+      link(4, "https://telegra.ph/Notice-11-20"),
+      link(5, "https://bit.ly/3abc"),
+      link(6, "https://pastebin.com/raw/xyz"),
     ];
-    const decisions = scan(
-      links,
-      "phishing-database-domains",
-      "domain",
-      "dfgjs.weebly.com\ndocs.google.com",
-    );
-    expect(decisions.map((d) => [d.linkId, d.action, d.blockDomain])).toEqual([
-      [1, "flag", undefined],
-      [2, "flag", undefined],
+    const feed =
+      "dfgjs.weebly.com\ndocs.google.com\nsites.google.com\ntelegra.ph\nbit.ly\npastebin.com";
+    expect(scan(links, "phishing-database-domains", "domain", feed)).toEqual([]);
+  });
+
+  test("an exact URL listing on a shared host still blocks, without blocklisting the host", () => {
+    const links = [link(1, "https://telegra.ph/Login-11-20"), link(2, "https://telegra.ph/Ok")];
+    const domains = scan(links, "phishing-database-domains", "domain", "telegra.ph");
+    const urls = scan(links, "openphish", "url", "https://telegra.ph/Login-11-20");
+    expect([...domains, ...urls].map((d) => [d.linkId, d.action, d.blockDomain])).toEqual([
+      [1, "block", undefined],
     ]);
   });
 
@@ -395,7 +401,7 @@ describe("geo rule destinations", () => {
     const matches = matchFeedEntry(index, "openphish", "url", "https://dfgjs.weebly.com/");
     expect(matches.map((m) => [m.linkId, m.kind])).toEqual([[1, "url"]]);
     expect(index.byUrl.get("safe.example")).toBe(1);
-    expect(decideMatch(matches[0]!, index.ownHosts).action).toBe("block");
+    expect(decideMatch(matches[0]!, index.ownHosts)?.action).toBe("block");
   });
 });
 
@@ -508,7 +514,7 @@ describe("backlog of blocks over the cap", () => {
     const live = matches.filter((m) => !blocked.has(m.linkId));
     const fresh = mergeDecisions(
       withoutResolvedLinks(
-        live.map((m) => decideMatch(m, ownHosts)),
+        live.flatMap((m) => decideMatch(m, ownHosts) ?? []),
         flags.filter((f) => live.some((m) => m.linkId === f.linkId)),
       ),
     );
@@ -625,8 +631,8 @@ describe("backlog of blocks over the cap", () => {
   });
 
   test("an admin dismissing a paying-account flag covers the same evidence later", () => {
-    const [flag] = flagPayingAccounts([decideMatch(threat(1), ownHosts)], new Set([1]));
+    const [flag] = flagPayingAccounts([decideMatch(threat(1), ownHosts)!], new Set([1]));
     const dismissed: ExistingFlag = { id: 1, linkId: 1, status: "dismissed", ...flag! };
-    expect(withoutResolvedLinks([decideMatch(threat(1), ownHosts)], [dismissed])).toEqual([]);
+    expect(withoutResolvedLinks([decideMatch(threat(1), ownHosts)!], [dismissed])).toEqual([]);
   });
 });

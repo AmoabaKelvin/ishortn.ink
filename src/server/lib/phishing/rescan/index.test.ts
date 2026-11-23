@@ -113,4 +113,42 @@ describe.skipIf(!testDatabaseUrl)("phishing rescan backlog (MySQL)", () => {
       .where(eq(schema.link.blocked, true));
     expect(blocked.filter((l) => linkIds.includes(l.id))).toHaveLength(0);
   });
+
+  test("dismisses pending flags left by matches without URL-level evidence", async () => {
+    const legacy = [
+      "Destination host listed in feed, on a shared host: sites.google.com",
+      "Feed lists the home page of a shared or major host: https://www.amazon.com/",
+    ];
+    await db.insert(schema.flaggedLink).values(
+      legacy.map((details) => ({
+        linkId: linkIds[1]!,
+        reason: "phishing-rescan: phishing-database-domains",
+        details,
+      })),
+    );
+    const pendingLegacy = async () =>
+      (
+        await db
+          .select()
+          .from(schema.flaggedLink)
+          .where(inArray(schema.flaggedLink.linkId, linkIds))
+      ).filter((f) => f.status === "pending" && legacy.includes(f.details ?? ""));
+
+    await runPhishingRescan({ dryRun: true, backlogOnly: true });
+    expect(await pendingLegacy()).toHaveLength(2);
+
+    await runPhishingRescan({ dryRun: false, backlogOnly: true });
+    expect(await pendingLegacy()).toHaveLength(0);
+    const dismissed = await db
+      .select()
+      .from(schema.flaggedLink)
+      .where(eq(schema.flaggedLink.status, "dismissed"));
+    expect(dismissed.filter((f) => legacy.includes(f.details ?? ""))).toHaveLength(2);
+
+    // The backlog is untouched by the cleanup.
+    expect(await runPhishingRescan({ dryRun: false, backlogOnly: true })).toMatchObject({
+      blocked: 51,
+      backlog: 0,
+    });
+  });
 });

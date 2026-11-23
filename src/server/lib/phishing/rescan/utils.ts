@@ -166,7 +166,7 @@ const SHARED_HOST_SUFFIXES = [
 ];
 
 // Large sites that the feeds list as whole domains or bare home pages (docs.google.com,
-// sites.google.com, notion.so, gravatar.com, ...). Matches on these only ever raise a flag.
+// sites.google.com, notion.so, gravatar.com, ...). Such listings never act on a link.
 const MAJOR_SITE_SUFFIXES = [
   "1drv.ms",
   "adobe.com",
@@ -453,7 +453,25 @@ export function shortLinkMatches(
   });
 }
 
-export function decideMatch(match: RescanMatch, ownHosts: ReadonlySet<string>): RescanDecision {
+/**
+ * Details of flags earlier versions raised with no evidence about the link itself: a domains feed
+ * listing a shared host, or a links feed listing a major host's home page. Those matches are now
+ * skipped, and pending flags with these details are dismissed by the rescan.
+ */
+export const LEGACY_FLAG_DETAILS = [
+  "Destination host listed in feed, on a shared host: ",
+  "Feed lists the home page of a shared or major host: ",
+] as const;
+
+/**
+ * Null when the match says nothing about the link's own page: a host-level listing of a shared
+ * host, or a listed home page of a major host. Links there are still blocked on URL-level
+ * evidence (an exact URL listing, a Safe Browsing threat or a listed short link).
+ */
+export function decideMatch(
+  match: RescanMatch,
+  ownHosts: ReadonlySet<string>,
+): RescanDecision | null {
   const reason = `${RESCAN_REASON_PREFIX} ${match.source}`;
   const base = { linkId: match.linkId, source: match.source, reason };
 
@@ -464,23 +482,11 @@ export function decideMatch(match: RescanMatch, ownHosts: ReadonlySet<string>): 
       return { ...base, action: "block", details: `Short link listed in feed: ${match.entry}` };
     case "url": {
       const key = normalizeUrl(match.entry) ?? "";
-      if (isHomePageKey(key) && isProtectedHost(match.host, ownHosts)) {
-        return {
-          ...base,
-          action: "flag",
-          details: `Feed lists the home page of a shared or major host: ${match.entry}`,
-        };
-      }
+      if (isHomePageKey(key) && isProtectedHost(match.host, ownHosts)) return null;
       return { ...base, action: "block", details: `Destination listed in feed: ${match.entry}` };
     }
     case "domain":
-      if (isSharedHost(match.host, ownHosts)) {
-        return {
-          ...base,
-          action: "flag",
-          details: `Destination host listed in feed, on a shared host: ${match.entry}`,
-        };
-      }
+      if (isSharedHost(match.host, ownHosts)) return null;
       return {
         ...base,
         action: "block",
