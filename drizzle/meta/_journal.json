@@ -666,6 +666,13 @@
       "when": 1795424595145,
       "tag": "0094_weekly_summary_email",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "5",
+      "when": 1795465477813,
+      "tag": "0095_user_upgrade_nudge",
+      "breakpoints": true
     }
   ]
 }

@@ -5,12 +5,21 @@ import path from "node:path";
 import { render } from "@react-email/components";
 import { createElement, type FunctionComponent } from "react";
 
+import { env } from "@/env.mjs";
+import { PLAN_CAPS } from "@/lib/billing/plans";
 import { ACTIVE_PROMO } from "@/lib/billing/promo";
+import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { promoPausedNoticeUrl } from "@/server/lib/notifications/promo-paused-notice";
+import { upgradeNudgeEmailProps } from "@/server/lib/notifications/upgrade-nudge";
 import { weeklySummaryEmailProps } from "@/server/lib/notifications/weekly-summary";
 
 import FirstLinkNudgeEmail from "./first-link-nudge";
 import PromoPausedNoticeEmail from "./promo-paused-notice";
+import UpgradeNudgeEmail, {
+  UPGRADE_NUDGE_PREVIEWS,
+  upgradeNudgeSubject,
+  type UpgradeNudgeEmailProps,
+} from "./upgrade-nudge";
 import WeeklySummaryEmail, { compareWeeks } from "./weekly-summary";
 
 type Template = FunctionComponent<object> & { PreviewProps?: object };
@@ -21,7 +30,7 @@ const files = readdirSync(import.meta.dir).filter(
 
 describe("email templates", () => {
   test("every template is covered", () => {
-    expect(files.length).toBe(19);
+    expect(files.length).toBe(20);
   });
 
   for (const file of files) {
@@ -185,5 +194,148 @@ describe("weekly summary", () => {
     expect(compareWeeks(5, 10)).toBe("Down 50% from 10 clicks the week before.");
     expect(compareWeeks(1_001, 1_000)).toBe("Up less than 1% from 1,000 clicks the week before.");
     expect(compareWeeks(30, 1)).toBe("Up 2,900% from 1 click the week before.");
+  });
+});
+
+describe("upgrade nudge", () => {
+  // Plain text wraps at 80 columns; collapse it so sentences can be matched whole.
+  const plain = async (props: UpgradeNudgeEmailProps) =>
+    (await render(createElement(UpgradeNudgeEmail, props), { plainText: true })).replace(
+      /\s+/g,
+      " ",
+    );
+  const html = (props: UpgradeNudgeEmailProps) => render(createElement(UpgradeNudgeEmail, props));
+
+  const expected = {
+    limit_hit: {
+      subject: "Custom domains is part of Pro",
+      paragraph:
+        "On 21 November you tried custom domains. That comes with Pro, along with the rest of the list below.",
+    },
+    events: {
+      subject: "Your links are on pace to pass 1,000 clicks this month",
+      paragraph:
+        "Free records 1,000 clicks a month. Your links are at 640, so at this pace they'll pass it around 27 November. After that your links keep working, but new clicks stop showing in your analytics until the count resets on 1 December.",
+    },
+    links: {
+      subject: "You've used 18 of your 30 free links this month",
+      paragraph:
+        "Free includes 30 new links a month and you've used 18. Your count resets on 1 December.",
+    },
+    analytics: {
+      subject: "Your first clicks are leaving the 7-day view",
+      paragraph:
+        "Free shows the last 7 days of clicks. Your first clicks came in on 19 November, so they drop out of your dashboard on 26 November. Pro shows all of them.",
+    },
+    domain: {
+      subject: "Your links could be on your own domain",
+      paragraph:
+        "With Pro your links can use your own domain, like go.yourbrand.com, instead of ours. You can connect up to 3.",
+    },
+  };
+
+  for (const props of Object.values(UPGRADE_NUDGE_PREVIEWS)) {
+    test(`${props.angle.reason}: subject, angle paragraph, preview text and the plan summary`, async () => {
+      const want = expected[props.angle.reason];
+      const text = await plain(props);
+
+      expect(upgradeNudgeSubject(props.angle)).toBe(want.subject);
+      expect(text).toContain(want.paragraph);
+      // The preview text is the paragraph's first sentence, so it leads the plain-text body.
+      expect(text.trimStart()).toStartWith(
+        want.paragraph.slice(0, want.paragraph.indexOf(".") + 1),
+      );
+      expect(text).toContain("Hi Ama,");
+      expect(text).toContain(
+        `Pro is $${PLAN_PRICES_USD.pro} a month, or $${PLAN_PRICES_ANNUAL_USD.pro} a year.`,
+      );
+      expect(text).toContain(
+        `${PLAN_CAPS.pro.linksLimit?.toLocaleString("en-US")} links and ${PLAN_CAPS.pro.eventsLimit?.toLocaleString("en-US")} tracked clicks a month`,
+      );
+      expect(text).toContain(`${PLAN_CAPS.pro.domainLimit} custom domains`);
+      expect(text).toContain("Compare plans");
+      expect(text).toContain("we won't send you this email again.");
+      expect(text).not.toContain("isht.ink");
+    });
+  }
+
+  test("the analytics angle once the first clicks are out of view", async () => {
+    const props = UPGRADE_NUDGE_PREVIEWS.analytics;
+    const angle = { ...props.angle, ended: true };
+
+    expect(upgradeNudgeSubject(angle)).toBe("Your first clicks are outside the 7-day view");
+    expect(await plain({ ...props, angle })).toContain(
+      "Free shows the last 7 days of clicks, so your clicks from before 16 November are already out of view. Pro shows all of them.",
+    );
+  });
+
+  const content = {
+    name: "Ama",
+    signupDate: "18 November",
+    linkCount: 1,
+    clickCount: 1,
+    angle: { reason: "domain" as const },
+  };
+  const beforePromo = new Date("2026-11-23T12:00:00Z");
+
+  test("states links and clicks, and leaves clicks out when there are none", async () => {
+    expect(await plain(upgradeNudgeEmailProps("user_1", content, beforePromo))).toContain(
+      "You've made 1 link since you joined iShortn on 18 November, and they've had 1 click so far.",
+    );
+    expect(
+      await plain(
+        upgradeNudgeEmailProps(
+          "user_1",
+          { ...content, linkCount: 1_204, clickCount: 25_310 },
+          beforePromo,
+        ),
+      ),
+    ).toContain(
+      "You've made 1,204 links since you joined iShortn on 18 November, and they've had 25,310 clicks so far.",
+    );
+    const none = await plain(
+      upgradeNudgeEmailProps("user_1", { ...content, clickCount: 0 }, beforePromo),
+    );
+    expect(none).toContain("You've made 1 link since you joined iShortn on 18 November.");
+    expect(none).not.toContain("so far");
+  });
+
+  test("shows the promo line only inside the promo window", async () => {
+    const at = (iso: string) => plain(upgradeNudgeEmailProps("user_1", content, new Date(iso)));
+
+    expect(await at("2026-11-26T12:00:00Z")).toContain(
+      "Black Friday: Pro is 20% off your first year until Tuesday 1 December. The discount is applied at checkout.",
+    );
+    expect(await at("2026-11-23T12:00:00Z")).not.toContain("Black Friday");
+    expect(await at("2026-12-02T00:00:00Z")).not.toContain("Black Friday");
+  });
+
+  test("the CTA carries the campaign UTMs and source, and the footer unsubscribes", async () => {
+    const secret = env.EMAIL_UNSUBSCRIBE_SECRET;
+    Object.assign(env, { EMAIL_UNSUBSCRIBE_SECRET: "u".repeat(32) });
+    try {
+      const props = upgradeNudgeEmailProps(
+        "user_1",
+        { ...content, angle: { reason: "links", monthlyLinkCount: 16, resetDate: "1 December" } },
+        beforePromo,
+      );
+      const rendered = await html(props);
+
+      expect(props.upgradeUrl).toBe(
+        "https://ishortn.ink/dashboard/pricing?highlight=pro&source=upgrade_nudge&utm_source=lifecycle&utm_medium=email&utm_campaign=upgrade_nudge&utm_content=links",
+      );
+      expect(rendered).toContain(props.upgradeUrl.replaceAll("&", "&amp;"));
+      expect(props.unsubscribeUrl).toStartWith(
+        "https://ishortn.ink/api/email/unsubscribe?token=user_1.",
+      );
+      expect(rendered).toContain(">Unsubscribe</a>");
+      expect(rendered).toContain("Manage notifications");
+      expect(rendered).toContain(
+        "You&#x27;re getting this one-time email because you have an iShortn account with product emails turned on.",
+      );
+      expect(rendered).not.toContain("isht.ink");
+    } finally {
+      Object.assign(env, { EMAIL_UNSUBSCRIBE_SECRET: secret });
+    }
   });
 });
