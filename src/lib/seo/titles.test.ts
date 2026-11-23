@@ -47,6 +47,10 @@ describe("page titles", () => {
   });
 
   it("uses a competitor's seoTitle when it has one", () => {
+    expect(comparisonTitle(competitors["short-io"])).toBe(
+      "Short.io vs iShortn: Pricing and Free Plan Compared (2026)",
+    );
+    expect(comparisonTitle(competitors.bitly)).toBe("Bitly vs iShortn: URL shortener comparison");
     expect(comparisonTitle(competitors.dub)).toBe(
       "Dub.co vs iShortn: Pricing and Free Plan Compared (2026)",
     );
