@@ -56,9 +56,14 @@ const MONTHS = [
 
 // Built by hand rather than with toLocaleDateString: the banner renders on the server and
 // hydrates in the browser, and ICU punctuation differs between runtimes ("Tuesday, 1 December").
+/** "27 November", in UTC. */
+export function formatDayMonth(date: Date): string {
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+}
+
 function formatPromoEnd(iso: string): string {
   const date = new Date(iso);
-  return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+  return `${WEEKDAYS[date.getUTCDay()]} ${formatDayMonth(date)}`;
 }
 
 /** One-line announcement shown above the plan cards while the promo runs. */

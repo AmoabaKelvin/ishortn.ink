@@ -70,8 +70,8 @@
   },
   // Plain, non-secret config. Secrets stay in `wrangler secret put`; a name can't be both.
   "vars": {
-    // Sender for lifecycle email (weekly summary); use a separate sending
-    // subdomain from EMAIL_FROM. Remove it to turn the weekly summary off.
+    // Sender for lifecycle email (weekly summary, upgrade nudge); use a separate
+    // sending subdomain from EMAIL_FROM. Remove it to turn both off.
     "EMAIL_FROM_LIFECYCLE": "Example Links <updates@mail.example.com>",
   },
   // Each expression maps to a route in CRON_ROUTES (custom-worker.ts). Remove

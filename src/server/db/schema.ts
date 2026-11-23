@@ -173,8 +173,8 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
-    // Milestone, usage-alert, domain-reminder, first-link nudge and weekly summary emails. Account,
-    // billing and team emails ignore it.
+    // Milestone, usage-alert, domain-reminder, first-link nudge, upgrade nudge and weekly summary
+    // emails. Account, billing and team emails ignore it.
     productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
     // Weekly click summary (see src/server/lib/weekly-summary.ts); sent only while
     // productEmailsEnabled is also on.
@@ -207,6 +207,10 @@ export const user = mysqlTable(
     // Paused-tracking promo notice (see src/server/lib/promo-paused-notice.ts): the promo code
     // whose one notice this account was sent, so it gets at most one per promo.
     promoNoticeSentFor: varchar("promoNoticeSentFor", { length: 32 }),
+    // Upgrade nudge (see src/server/lib/upgrade-nudge.ts): when the one email offering Pro to an
+    // active Free account went out, and the angle it led with, so an account never gets a second.
+    upgradeNudgeSentAt: timestamp("upgradeNudgeSentAt"),
+    upgradeNudgeReason: varchar("upgradeNudgeReason", { length: 32 }),
     // Restriction: can sign in and pay, but can't create or edit links, domains, bio pages or QR codes
     restrictedAt: timestamp("restrictedAt"),
     restrictedReason: varchar("restrictedReason", { length: 255 }),
