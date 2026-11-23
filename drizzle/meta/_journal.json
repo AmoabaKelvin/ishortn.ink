@@ -659,6 +659,13 @@
       "when": 1795423310437,
       "tag": "0093_checkout_start",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "5",
+      "when": 1795424595145,
+      "tag": "0094_weekly_summary_email",
+      "breakpoints": true
     }
   ]
 }

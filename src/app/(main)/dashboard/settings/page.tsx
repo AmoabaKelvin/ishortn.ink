@@ -125,7 +125,10 @@ async function SettingsPage(props: Props) {
               Emails we send about your links and domains
             </p>
             <div className="mt-4">
-              <NotificationSettings productEmailsEnabled={userProfile.productEmailsEnabled} />
+              <NotificationSettings
+                productEmailsEnabled={userProfile.productEmailsEnabled}
+                weeklySummaryEnabled={userProfile.weeklySummaryEnabled}
+              />
             </div>
           </section>
 
