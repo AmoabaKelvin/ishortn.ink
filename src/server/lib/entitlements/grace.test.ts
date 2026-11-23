@@ -1,13 +1,24 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 
 import { render } from "@react-email/components";
+import { eq } from "drizzle-orm";
 import { createElement } from "react";
 
 import PlanGraceEmail from "@/emails/plan-grace";
+import { env } from "@/env.mjs";
 import { EMPTY_USAGE } from "@/lib/billing/entitlements";
+import { db } from "@/server/db";
+import * as schema from "@/server/db/schema";
 
-import { accountGraceEmail, overPlanGrace, teamGraceEmail } from "./grace";
+import {
+  accountGraceEmail,
+  overPlanGrace,
+  paymentUpdateEmailAllowed,
+  syncFailedPaymentSubscriptions,
+  teamGraceEmail,
+} from "./grace";
 
+import type { ProviderSubscriptionState } from "./provider-status";
 import type { PlanUsage } from "@/lib/billing/entitlements";
 import type { Plan } from "@/lib/billing/plans";
 import type { Subscription } from "@/server/db/schema";
@@ -182,4 +193,146 @@ describe("overPlanGrace", () => {
       });
     },
   );
+});
+
+const providerState = (status: string): ProviderSubscriptionState => ({
+  status,
+  endsAt: new Date("2026-05-14T00:00:00Z"),
+  updatedAt: new Date("2026-05-14T00:00:00Z"),
+});
+
+describe("paymentUpdateEmailAllowed", () => {
+  const unpaid = { ...ownerSubscription("unpaid"), userId: "u1", subscriptionId: 42 };
+
+  function check(provider: ProviderSubscriptionState | Error) {
+    const synced: ProviderSubscriptionState[] = [];
+    return {
+      synced,
+      check: {
+        lookup: async () => {
+          if (provider instanceof Error) throw provider;
+          return provider;
+        },
+        sync: async (_: Subscription, state: ProviderSubscriptionState) => {
+          synced.push(state);
+          return true;
+        },
+      },
+    };
+  }
+
+  test("skips the card-update email for a subscription the provider has expired", async () => {
+    const { check: expired, synced } = check(providerState("expired"));
+    expect(await paymentUpdateEmailAllowed(unpaid, NOW, expired)).toBe(false);
+    expect(synced.map((state) => state.status)).toEqual(["expired"]);
+  });
+
+  test("skips it for a subscription the provider has cancelled", async () => {
+    const { check: cancelled, synced } = check(providerState("cancelled"));
+    expect(await paymentUpdateEmailAllowed(unpaid, NOW, cancelled)).toBe(false);
+    expect(synced).toHaveLength(1);
+  });
+
+  test.each(["past_due", "unpaid"])("sends it while the provider reports %s", async (status) => {
+    const { check: failing, synced } = check(providerState(status));
+    expect(await paymentUpdateEmailAllowed(unpaid, NOW, failing)).toBe(true);
+    expect(synced).toHaveLength(0);
+  });
+
+  test("defers it when the provider can't be reached", async () => {
+    const { check: down } = check(new Error("provider down"));
+    expect(await paymentUpdateEmailAllowed(unpaid, NOW, down)).toBe(false);
+  });
+
+  test("sends it for a row without a subscription id, which can't be checked", async () => {
+    const { check: unused } = check(new Error("not called"));
+    expect(await paymentUpdateEmailAllowed({ ...unpaid, subscriptionId: 0 }, NOW, unused)).toBe(
+      true,
+    );
+  });
+});
+
+// Runs against a disposable MySQL with the schema pushed (test/setup.ts points
+// the app's db client at it); see CONTRIBUTING.md, "Database tests".
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+
+describe.skipIf(!testDatabaseUrl)("syncFailedPaymentSubscriptions (MySQL)", () => {
+  const USERS = ["grace_sync_expired", "grace_sync_unpaid", "grace_sync_active"] as const;
+  const SUBSCRIPTION_IDS = {
+    grace_sync_expired: 962001,
+    grace_sync_unpaid: 962002,
+    grace_sync_active: 962003,
+  };
+  const LAPSE_ENDED = new Date("2026-03-20T00:00:00Z");
+
+  beforeAll(() => {
+    // Another test file replaces @/env.mjs with a partial object for the whole
+    // run, dropping DATABASE_URL; the app's db client reads it on first use.
+    if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
+  });
+
+  async function clean() {
+    for (const id of USERS) {
+      await db.delete(schema.subscription).where(eq(schema.subscription.userId, id));
+      await db.delete(schema.user).where(eq(schema.user.id, id));
+    }
+  }
+
+  beforeEach(async () => {
+    await clean();
+    for (const id of USERS) {
+      // A lapse grace that already ran out, as the failed payment left it.
+      await db.insert(schema.user).values({
+        id,
+        email: `${id}@example.com`,
+        planGracePlan: "pro",
+        planGraceEndsAt: LAPSE_ENDED,
+        planGraceReason: "lapsed",
+        planGraceEmailStage: 3,
+      });
+      await db.insert(schema.subscription).values({
+        userId: id,
+        subscriptionId: SUBSCRIPTION_IDS[id],
+        status: id === "grace_sync_active" ? "active" : "unpaid",
+        plan: "pro",
+        variantId: PRO_VARIANT,
+        providerUpdatedAt: new Date("2026-03-13T00:00:00Z"),
+      });
+    }
+  });
+
+  afterAll(clean);
+
+  const stored = (id: string) =>
+    db.query.subscription.findFirst({ where: eq(schema.subscription.userId, id) });
+
+  test("syncs only the rows the provider has ended", async () => {
+    const looked: number[] = [];
+    const synced = await syncFailedPaymentSubscriptions(NOW, async (subscriptionId) => {
+      looked.push(subscriptionId);
+      return providerState(
+        subscriptionId === SUBSCRIPTION_IDS.grace_sync_expired ? "expired" : "unpaid",
+      );
+    });
+    expect(synced).toBe(1);
+    expect(looked).not.toContain(SUBSCRIPTION_IDS.grace_sync_active);
+
+    const expired = await stored("grace_sync_expired");
+    expect(expired?.status).toBe("expired");
+    expect(expired?.plan).toBe("free");
+    expect(expired?.variantId).toBe(0);
+    expect(expired?.endsAt).toEqual(new Date("2026-05-14T00:00:00Z"));
+    expect(expired?.providerUpdatedAt).toEqual(new Date("2026-05-14T00:00:00Z"));
+    expect((await stored("grace_sync_unpaid"))?.status).toBe("unpaid");
+    expect((await stored("grace_sync_active"))?.status).toBe("active");
+
+    // The passed lapse grace is kept, so no second one starts and no email goes out.
+    const account = await db.query.user.findFirst({
+      where: eq(schema.user.id, "grace_sync_expired"),
+    });
+    expect(account?.planGraceEndsAt).toEqual(LAPSE_ENDED);
+
+    // A later run checks only the row still unpaid.
+    expect(await syncFailedPaymentSubscriptions(NOW, async () => providerState("expired"))).toBe(1);
+  });
 });
