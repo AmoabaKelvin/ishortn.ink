@@ -1,6 +1,7 @@
 import { Text } from "@react-email/components";
 
 import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
+import { promoOfferLine, type Promo } from "@/lib/billing/promo";
 import { displayName } from "@/lib/utils/user-name";
 
 import { EmailButton, EmailLayout, Signoff, text } from "./_components/layout";
@@ -14,6 +15,8 @@ type EventUsageAlertEmailProps = {
   resetDate: string;
   /** The next plan up; its event allowance is read from PLAN_CAPS. */
   upgrade: { plan: Exclude<Plan, "free">; label: string; url: string };
+  /** Running offer, only passed when the upgrade would be a new checkout. */
+  promo?: Promo | null;
   notificationSettingsUrl: string;
 };
 
@@ -27,6 +30,7 @@ export const EventUsageAlertEmail = ({
   plan,
   resetDate,
   upgrade,
+  promo,
   notificationSettingsUrl,
 }: EventUsageAlertEmailProps) => {
   const capReached = threshold >= 100;
@@ -69,6 +73,13 @@ export const EventUsageAlertEmail = ({
             aren&apos;t recorded until it resets on {resetDate}. {upgradeOffer}
           </Text>
         </>
+      )}
+
+      {promo && (
+        <Text style={text}>
+          {promoOfferLine(promo, PLAN_NAMES[upgrade.plan])} Upgrading resumes tracking straight
+          away.
+        </Text>
       )}
 
       <EmailButton href={upgrade.url}>{upgrade.label}</EmailButton>

@@ -645,6 +645,13 @@
       "when": 1795417288244,
       "tag": "0091_link_previous_address",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "5",
+      "when": 1795422313555,
+      "tag": "0092_user_promo_notice",
+      "breakpoints": true
     }
   ]
 }

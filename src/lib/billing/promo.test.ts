@@ -7,6 +7,7 @@ import {
   checkoutDiscountCode,
   getActivePromo,
   promoBannerText,
+  promoOfferLine,
   promoPrice,
 } from "./promo";
 
@@ -55,6 +56,14 @@ describe("promoBannerText", () => {
   test("names the end as a UTC date", () => {
     expect(promoBannerText(ACTIVE_PROMO)).toBe(
       "Black Friday: 20% off your first year of Pro or Ultra. Applied at checkout, until Tuesday 1 December.",
+    );
+  });
+});
+
+describe("promoOfferLine", () => {
+  test("names the plan, the discount and the last day", () => {
+    expect(promoOfferLine(ACTIVE_PROMO, "Pro")).toBe(
+      "Black Friday: Pro is 20% off your first year until Tuesday 1 December.",
     );
   });
 });

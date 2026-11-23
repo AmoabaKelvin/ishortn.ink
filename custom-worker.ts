@@ -20,7 +20,10 @@ const CRON_ROUTES = new Map([
   ["25 * * * *", ["/api/cron/entitlements?emails=1"]],
   ["30 */6 * * *", ["/api/cron/phishing-rescan"]],
   ["5,20,35,50 * * * *", ["/api/cron/phishing-rescan?backlog=1"]],
-  ["10 * * * *", ["/api/cron/api-access-sunset", "/api/cron/first-link-nudge"]],
+  [
+    "10 * * * *",
+    ["/api/cron/api-access-sunset", "/api/cron/first-link-nudge", "/api/cron/promo-paused-notice"],
+  ],
   ["40 * * * *", ["/api/cron/link-creation-health"]],
 ]);
 

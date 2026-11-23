@@ -5,11 +5,12 @@ import { createElement } from "react";
 
 import EventUsageAlertEmail from "@/emails/event-usage-alert";
 import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
+import { ACTIVE_PROMO, type Promo } from "@/lib/billing/promo";
 
-import { eventUsageUpgrade } from "./event-usage";
+import { eventUsagePromo, eventUsageUpgrade } from "./event-usage";
 
-const renderAlert = async (plan: Plan, threshold: number) => {
-  const upgrade = eventUsageUpgrade(plan, threshold);
+const renderAlert = async (plan: Plan, threshold: number, promo: Promo | null = null) => {
+  const upgrade = eventUsageUpgrade(plan, threshold, promo);
   if (!upgrade) throw new Error(`no upgrade for ${plan}`);
   const limit = PLAN_CAPS[plan].eventsLimit ?? 0;
   const html = await render(
@@ -20,6 +21,7 @@ const renderAlert = async (plan: Plan, threshold: number) => {
       limit,
       currentCount: Math.round((limit * threshold) / 100),
       upgrade,
+      promo,
     }),
   );
   const href = html.match(/href="([^"]*\/dashboard\/pricing[^"]*)"/)?.[1]?.replaceAll("&amp;", "&");
@@ -55,5 +57,32 @@ describe("event usage alert email", () => {
 
   test("Ultra has no cap, so there is no upgrade to offer", () => {
     expect(eventUsageUpgrade("ultra", 100)).toBeNull();
+  });
+
+  test("no promo line outside a promo", async () => {
+    const { html } = await renderAlert("free", 100);
+    expect(html).not.toContain("Black Friday");
+  });
+
+  test("a Free user inside the promo gets the offer and the promo campaign", async () => {
+    const { html, url } = await renderAlert("free", 90, ACTIVE_PROMO);
+    expect(html).toContain(
+      "Black Friday: Pro is 20% off your first year until Tuesday 1 December.",
+    );
+    expect(html).toContain("Upgrading resumes tracking straight away.");
+    expect(url.searchParams.get("source")).toBe("events_email_90");
+    expect(url.searchParams.get("utm_campaign")).toBe(ACTIVE_PROMO.utmCampaign);
+  });
+});
+
+describe("eventUsagePromo", () => {
+  const inside = new Date("2026-11-27T10:00:00Z");
+
+  test("only Free accounts starting a new checkout get the promo, only inside the window", () => {
+    expect(eventUsagePromo("free", "checkout", inside)).toBe(ACTIVE_PROMO);
+    expect(eventUsagePromo("free", "checkout", new Date("2026-11-24T10:00:00Z"))).toBeNull();
+    expect(eventUsagePromo("free", "checkout", new Date("2026-12-02T10:00:00Z"))).toBeNull();
+    expect(eventUsagePromo("free", "resume", inside)).toBeNull();
+    expect(eventUsagePromo("pro", "update", inside)).toBeNull();
   });
 });

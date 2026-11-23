@@ -201,6 +201,9 @@ export const user = mysqlTable(
     // First-link nudge (see src/server/lib/first-link-nudge.ts): set when the one reminder to
     // create a first link was sent, so an account never gets a second.
     firstLinkNudgeSentAt: timestamp("firstLinkNudgeSentAt"),
+    // Paused-tracking promo notice (see src/server/lib/promo-paused-notice.ts): the promo code
+    // whose one notice this account was sent, so it gets at most one per promo.
+    promoNoticeSentFor: varchar("promoNoticeSentFor", { length: 32 }),
     // Restriction: can sign in and pay, but can't create or edit links, domains, bio pages or QR codes
     restrictedAt: timestamp("restrictedAt"),
     restrictedReason: varchar("restrictedReason", { length: 255 }),
@@ -209,6 +212,7 @@ export const user = mysqlTable(
     deletedAtIdx: index("deletedAt_idx").on(table.deletedAt),
     planGraceEndsAtIdx: index("planGraceEndsAt_idx").on(table.planGraceEndsAt),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
+    eventTrackingPausedAtIdx: index("eventTrackingPausedAt_idx").on(table.eventTrackingPausedAt),
   }),
 );
 
