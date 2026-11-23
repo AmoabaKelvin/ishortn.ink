@@ -4,7 +4,13 @@ import { QRCodeSVG } from "qrcode.react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { MAX_QR_URL_LENGTH, parseQrUrl, qrUrlFromSearch, toSvgFile } from "./utils";
+import {
+  getQrSignupHref,
+  MAX_QR_URL_LENGTH,
+  parseQrUrl,
+  qrUrlFromSearch,
+  toSvgFile,
+} from "./utils";
 
 describe("parseQrUrl", () => {
   it("keeps a full https URL as typed", () => {
@@ -99,5 +105,34 @@ describe("toSvgFile", () => {
   it("keeps an existing namespace", () => {
     const withNamespace = markup.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
     expect(toSvgFile(withNamespace).match(/xmlns=/g)).toHaveLength(1);
+  });
+});
+
+describe("getQrSignupHref", () => {
+  const url = "https://example.com/menu?table=4&lang=en#specials";
+
+  it("sends signed-out visitors to sign-up with the tool's UTM params only", () => {
+    const href = new URL(getQrSignupHref(url, false), "https://ishortn.ink");
+    expect(href.pathname).toBe("/auth/sign-up");
+    expect(href.hash).toBe("");
+    expect(Object.fromEntries(href.searchParams)).toEqual({
+      utm_source: "ishortn_site",
+      utm_medium: "landing",
+      utm_campaign: "qr-code-generator",
+    });
+    expect(getQrSignupHref(url, null)).toBe(href.pathname + href.search);
+    expect(getQrSignupHref(null, false)).toBe(href.pathname + href.search);
+  });
+
+  it("opens the link editor with the URL, query string and fragment intact when signed in", () => {
+    const href = new URL(getQrSignupHref(url, true), "https://ishortn.ink");
+    expect(href.pathname).toBe("/dashboard/link/new");
+    expect(href.hash).toBe("");
+    expect([...href.searchParams.keys()]).toEqual(["url"]);
+    expect(href.searchParams.get("url")).toBe(url);
+  });
+
+  it("opens an empty link editor when signed in without a URL", () => {
+    expect(getQrSignupHref(null, true)).toBe("/dashboard/link/new");
   });
 });
