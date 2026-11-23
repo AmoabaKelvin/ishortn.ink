@@ -3,7 +3,7 @@ import { getActivePromo } from "@/lib/billing/promo";
 import type { Plan, SubscriptionMode } from "@/lib/billing/plans";
 import type { Promo } from "@/lib/billing/promo";
 
-type PromoBannerInput = {
+export type PromoBannerInput = {
   subscription: {
     plan: Plan;
     isTeamWorkspace: boolean;
@@ -13,6 +13,15 @@ type PromoBannerInput = {
   otherBannerShown: boolean;
   now?: Date;
 };
+
+/** Whether upgrading would start a new checkout: a Free account in its personal workspace. */
+export function canStartCheckout(subscription: NonNullable<PromoBannerInput["subscription"]>) {
+  return (
+    subscription.plan === "free" &&
+    !subscription.isTeamWorkspace &&
+    subscription.subscriptionMode === "checkout"
+  );
+}
 
 /**
  * The promo the dashboard strip advertises, or null when it is hidden: outside the promo window,
@@ -25,8 +34,7 @@ export function promoBannerState({
   now = new Date(),
 }: PromoBannerInput): Promo | null {
   if (!subscription || otherBannerShown) return null;
-  if (subscription.plan !== "free" || subscription.isTeamWorkspace) return null;
-  if (subscription.subscriptionMode !== "checkout") return null;
+  if (!canStartCheckout(subscription)) return null;
   return getActivePromo(now);
 }
 

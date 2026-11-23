@@ -39,6 +39,7 @@ const UPGRADE_REASONS = new Map(
     geo_rules: "Targeting rules are on {plan}",
     link_create: "More links each month are on {plan}",
     link_password: "Password-protected links are on {plan}",
+    link_ready: "Custom domains and full click history are on {plan}",
     link_schedule: "Scheduled links are on {plan}",
     milestones: "Click milestone notifications are on {plan}",
     qr_create_limit: "More QR codes are on {plan}",
