@@ -21,7 +21,7 @@ export function providerErrorToClient(statusCode: number | null): ClientBillingE
     return {
       code: "BAD_REQUEST",
       message:
-        "Our payment provider couldn't apply this change. Check your payment method under Manage Subscription and try again.",
+        "Our payment provider couldn't apply this change. Check your payment method under Invoices & payment method in Settings → Billing and try again.",
     };
   }
   if (statusCode === 429) {
@@ -61,4 +61,17 @@ export async function createCheckoutWithPromoFallback<T extends ProviderResult>(
 
   onPromoRejected?.(result);
   return { result: await create(undefined), discountCode: undefined };
+}
+
+/**
+ * Pauses payment collection until `resumesAt`. `void` skips the invoices in between, so nothing
+ * is owed for the paused months.
+ */
+export function pauseUpdate(resumesAt: Date) {
+  return { pause: { mode: "void" as const, resumesAt: resumesAt.toISOString() } };
+}
+
+/** The provider change that resumes a paused or a cancelled subscription. */
+export function resumeUpdate(status: string | null | undefined) {
+  return status === "paused" ? { pause: null } : { cancelled: false };
 }

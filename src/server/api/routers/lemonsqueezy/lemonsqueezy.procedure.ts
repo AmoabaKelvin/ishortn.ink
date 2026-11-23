@@ -10,17 +10,19 @@ import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import {
+  canOfferPause,
   getIntervalFromVariantId,
   getPlanFromIds,
   getSubscriptionMode,
   getVariantId,
+  pauseResumesAt,
   resolvePlan,
 } from "@/lib/billing/plans";
 import { checkoutDiscountCode } from "@/lib/billing/promo";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
-import { subscription } from "@/server/db/schema";
+import { subscription, subscriptionCancellation } from "@/server/db/schema";
 import { recordCheckoutStart } from "@/server/lib/checkout-starts";
 import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 
@@ -29,19 +31,25 @@ import {
   createCheckoutOrUpdateInput,
   downgradeReasonLabels,
   downgradeWithFeedbackInput,
+  pauseSubscriptionInput,
 } from "./lemonsqueezy.input";
 import {
   createCheckoutWithPromoFallback,
   parseProviderUpdatedAt,
+  pauseUpdate,
   providerErrorToClient,
+  resumeUpdate,
 } from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
+import type { Plan } from "@/lib/billing/plans";
+import type { Subscription } from "@/server/db/schema";
 import type { Subscription as ProviderSubscription } from "@lemonsqueezy/lemonsqueezy.js";
 
 const log = logger.child({ component: "billing.lemonsqueezy" });
 
-const RESUME_FIRST_MESSAGE = "Your subscription is cancelled. Resume it before changing plans.";
+const resumeFirstMessage = (status: string | null | undefined) =>
+  `Your subscription is ${status === "paused" ? "paused" : "cancelled"}. Resume it before changing plans.`;
 
 type ProviderErrorContext = {
   userId: string;
@@ -91,6 +99,7 @@ async function applyProviderState(
       status: attributes.status,
       endsAt: attributes.ends_at ? new Date(attributes.ends_at) : null,
       renewsAt: attributes.renews_at ? new Date(attributes.renews_at) : null,
+      pausedUntil: attributes.pause?.resumes_at ? new Date(attributes.pause.resumes_at) : null,
       ...(providerUpdatedAt && { providerUpdatedAt }),
     })
     .where(
@@ -105,6 +114,35 @@ async function applyProviderState(
           : undefined,
       ),
     );
+}
+
+type CancellationRecord = Pick<
+  typeof subscriptionCancellation.$inferInsert,
+  "toPlan" | "reason" | "feedback" | "offerShown" | "outcome" | "pauseMonths"
+>;
+
+/** Logged rather than thrown: the provider has already applied the change by now. */
+async function recordCancellation(
+  ctx: ProtectedTRPCContext,
+  userSubscription: Subscription,
+  fromPlan: Plan,
+  record: CancellationRecord,
+) {
+  try {
+    await ctx.db.insert(subscriptionCancellation).values({
+      userId: ctx.auth.userId,
+      subscriptionId: userSubscription.subscriptionId ?? 0,
+      fromPlan,
+      billingInterval: getIntervalFromVariantId(userSubscription.variantId),
+      variantId: userSubscription.variantId,
+      ...record,
+    });
+  } catch (err) {
+    log.error(
+      { err, userId: ctx.auth.userId, outcome: record.outcome },
+      "failed to record subscription cancellation",
+    );
+  }
 }
 
 async function getUserSubscription(ctx: ProtectedTRPCContext) {
@@ -133,7 +171,10 @@ export const lemonsqueezyRouter = createTRPCRouter({
       const mode = getSubscriptionMode(userSubscription);
 
       if (mode === "resume") {
-        throw new TRPCError({ code: "CONFLICT", message: RESUME_FIRST_MESSAGE });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: resumeFirstMessage(userSubscription?.status),
+        });
       }
 
       if (mode === "update" && userSubscription?.subscriptionId) {
@@ -238,7 +279,13 @@ export const lemonsqueezyRouter = createTRPCRouter({
     const mode = getSubscriptionMode(userSubscription);
 
     if (mode === "resume") {
-      throw new TRPCError({ code: "CONFLICT", message: "Your subscription is already cancelled." });
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          userSubscription?.status === "paused"
+            ? resumeFirstMessage("paused")
+            : "Your subscription is already cancelled.",
+      });
     }
     if (mode !== "update" || !userSubscription?.subscriptionId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "No active subscription found" });
@@ -267,12 +314,15 @@ export const lemonsqueezyRouter = createTRPCRouter({
     if (getSubscriptionMode(userSubscription) !== "resume" || !userSubscription?.subscriptionId) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "There is no cancelled subscription to resume.",
+        message: "There is no cancelled or paused subscription to resume.",
       });
     }
 
     const subscriptionId = userSubscription.subscriptionId;
-    const resumedSub = await updateSubscription(subscriptionId, { cancelled: false });
+    const resumedSub = await updateSubscription(
+      subscriptionId,
+      resumeUpdate(userSubscription.status),
+    );
 
     if (resumedSub.error) {
       throw providerError("resume", resumedSub, { userId, subscriptionId });
@@ -372,9 +422,9 @@ export const lemonsqueezyRouter = createTRPCRouter({
         throw new TRPCError({
           code: "CONFLICT",
           message:
-            targetPlan === "free"
+            targetPlan === "free" && userSubscription?.status !== "paused"
               ? "Your subscription is already cancelled."
-              : RESUME_FIRST_MESSAGE,
+              : resumeFirstMessage(userSubscription?.status),
         });
       }
       if (mode !== "update" || !userSubscription?.subscriptionId) {
@@ -392,6 +442,14 @@ export const lemonsqueezyRouter = createTRPCRouter({
           message: "Invalid downgrade request - target plan is not lower than current plan",
         });
       }
+
+      const cancellation = {
+        toPlan: targetPlan,
+        reason,
+        feedback: additionalFeedback || null,
+        // The modal offers a pause before every cancellation canOfferPause allows.
+        offerShown: targetPlan === "free" && canOfferPause(userSubscription) ? "pause" : "none",
+      } as const;
 
       // Send feedback notification (fire and forget — waitUntil keeps the
       // Worker alive until the Discord webhook completes).
@@ -418,6 +476,10 @@ export const lemonsqueezyRouter = createTRPCRouter({
         // Keep plan/variant: access is retained until endsAt, and
         // resolvePlan() drops the user to free once that date passes.
         await applyProviderState(ctx, subscriptionId, attributes);
+        await recordCancellation(ctx, userSubscription, currentPlan, {
+          ...cancellation,
+          outcome: "cancelled",
+        });
 
         return {
           status: "cancelled" as const,
@@ -449,10 +511,72 @@ export const lemonsqueezyRouter = createTRPCRouter({
         variantId: attributes.variant_id,
         productId: attributes.product_id,
       });
+      await recordCancellation(ctx, userSubscription, currentPlan, {
+        ...cancellation,
+        outcome: "downgraded",
+      });
 
       return {
         status: "downgraded" as const,
         message: "You're now on Pro. Credit for unused Ultra time goes toward your next invoice.",
+      };
+    }),
+
+  // Offered in place of cancelling to Free (downgrade-feedback-modal.tsx).
+  pauseSubscription: protectedProcedure
+    .input(pauseSubscriptionInput)
+    .mutation(async ({ ctx, input }) => {
+      configureLemonSqueezy();
+
+      const userId = ctx.auth.userId;
+      const [userRecord, userSubscription] = await Promise.all([
+        ctx.db.query.user.findFirst({ where: (table, { eq }) => eq(table.id, userId) }),
+        getUserSubscription(ctx),
+      ]);
+
+      if (!userSubscription?.subscriptionId || !canOfferPause(userSubscription)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only an active monthly subscription can be paused.",
+        });
+      }
+
+      const subscriptionId = userSubscription.subscriptionId;
+      const currentPlan = resolvePlan(userSubscription);
+      const resumesAt = pauseResumesAt(input.months);
+
+      const pausedSub = await updateSubscription(subscriptionId, pauseUpdate(resumesAt));
+      if (pausedSub.error) {
+        throw providerError("pause", pausedSub, { userId, subscriptionId });
+      }
+
+      const attributes = pausedSub.data.data.attributes;
+      await applyProviderState(ctx, subscriptionId, attributes);
+      await recordCancellation(ctx, userSubscription, currentPlan, {
+        toPlan: "free",
+        reason: input.reason,
+        feedback: input.feedback || null,
+        offerShown: "pause",
+        outcome: "paused",
+        pauseMonths: input.months,
+      });
+
+      void runBackgroundTask(
+        sendDowngradeFeedbackNotification({
+          userEmail: userRecord?.email ?? "unknown",
+          userName: userRecord?.name,
+          fromPlan: currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1),
+          toPlan: `Paused for ${input.months} ${input.months === 1 ? "month" : "months"}`,
+          reason: downgradeReasonLabels[input.reason],
+          additionalFeedback: input.feedback,
+        }),
+      );
+
+      const restartsAt = attributes.pause?.resumes_at
+        ? new Date(attributes.pause.resumes_at)
+        : resumesAt;
+      return {
+        message: `Billing is paused. It restarts on ${formatDate(restartsAt)}.`,
       };
     }),
 });

@@ -29,6 +29,7 @@ import { buildPlanChangeCopy, PlanChangeConfirmDialog } from "./plan-change-conf
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 import type { Promo } from "@/lib/billing/promo";
+import type { ComponentProps } from "react";
 
 type PricingCardsProps = {
   currentPlan: Plan;
@@ -37,6 +38,7 @@ type PricingCardsProps = {
   renewsAt: Date | null;
   /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
   promo: Promo | null;
+  subscription: ComponentProps<typeof DowngradeFeedbackModal>["subscription"];
 };
 
 type PricingPlanSpec = {
@@ -103,6 +105,7 @@ export function PricingCards({
   subscriptionMode,
   renewsAt,
   promo,
+  subscription,
 }: PricingCardsProps) {
   const searchParams = useSearchParams();
   const [interval, setIntervalState] = useState<BillingInterval>(
@@ -493,6 +496,7 @@ export function PricingCards({
             plans.find((p) => p.id === targetDowngradePlan)?.name ?? targetDowngradePlan
           }
           renewsAt={renewsAt}
+          subscription={subscription}
         />
       )}
 

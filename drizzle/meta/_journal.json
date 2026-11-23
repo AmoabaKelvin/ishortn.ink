@@ -673,6 +673,13 @@
       "when": 1795465477813,
       "tag": "0095_user_upgrade_nudge",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "5",
+      "when": 1795476473905,
+      "tag": "0096_subscription_cancellation",
+      "breakpoints": true
     }
   ]
 }

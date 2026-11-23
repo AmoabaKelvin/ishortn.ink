@@ -12,6 +12,7 @@ import {
   graceChangeAfterBillingEvent,
   higherPlan,
   isGraceActive,
+  isPausedSubscription,
   lapseEndedByPayment,
   NO_GRACE,
   overPlanGraceFeatures,
@@ -144,13 +145,14 @@ export async function ensurePlanChecked(
 
   // A failed renewal gets its lapse grace, as the reconcile would give it, not
   // an over-plan one. Otherwise usage is held to the base plan without any grace.
-  const grace =
-    failedPaymentGrace(sub, now) ??
-    overPlanGrace(
-      (await getPlanUsageByUser(db, [account.id], now)).get(account.id) ?? EMPTY_USAGE,
-      effectivePlan(sub, NO_GRACE, now),
-      now,
-    );
+  const grace = isPausedSubscription(sub)
+    ? null
+    : (failedPaymentGrace(sub, now) ??
+      overPlanGrace(
+        (await getPlanUsageByUser(db, [account.id], now)).get(account.id) ?? EMPTY_USAGE,
+        effectivePlan(sub, NO_GRACE, now),
+        now,
+      ));
   if (!grace) {
     await db.update(user).set({ planCheckedAt: now }).where(eq(user.id, account.id));
     return account;
@@ -447,6 +449,7 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
       with: { subscriptions: true },
     });
     for (const account of accounts) {
+      if (isPausedSubscription(account.subscriptions)) continue;
       const grace = overPlanGrace(
         usage.get(account.id) ?? EMPTY_USAGE,
         paidPlan(account.subscriptions, now),
@@ -658,7 +661,7 @@ export async function sendDueGraceEmails(options: {
   });
   const due = accounts.flatMap((account) => {
     const { email, planGraceEndsAt: endsAt, planGracePlan: gracePlan } = account;
-    if (!email || !endsAt || !gracePlan) return [];
+    if (!email || !endsAt || !gracePlan || isPausedSubscription(account.subscriptions)) return [];
     const reason = account.planGraceReason ?? "lapsed";
     const kind = dueGraceEmail({ reason, endsAt, stage: account.planGraceEmailStage ?? 0, now });
     return kind ? [{ account, email, endsAt, gracePlan, reason, kind }] : [];
@@ -727,7 +730,7 @@ export async function sendDueGraceEmails(options: {
         ),
       );
     for (const row of teams) {
-      if (!row.ownerEmail || !row.endsAt) continue;
+      if (!row.ownerEmail || !row.endsAt || isPausedSubscription(row.ownerSubscription)) continue;
       const kind = dueGraceEmail({
         reason: "over_plan",
         endsAt: row.endsAt,
