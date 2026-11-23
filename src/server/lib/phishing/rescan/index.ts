@@ -28,6 +28,7 @@ import {
   decideMatch,
   type ExistingFlag,
   flagPayingAccounts,
+  LEGACY_FLAG_DETAILS,
   type LinkIndex,
   mergeDecisions,
   type RescanDecision,
@@ -111,10 +112,11 @@ export async function runPhishingRescan({
   // Read after the scan, which takes minutes, so a backlog-only run in between isn't repeated.
   const backlog = await loadBacklog(MAX_AUTO_BLOCKS_PER_RUN, now);
 
+  const legacyDismissed = dryRun ? 0 : await dismissLegacyFlags(now);
   // Earlier rulings are applied per decision before merging, so evidence an admin already
   // dismissed can't hide a different source's match on the same link.
   const existing = await loadExistingFlags([...new Set(matches.map((m) => m.linkId))]);
-  const candidates = matches.map((m) => decideMatch(m, scan.ownHosts));
+  const candidates = matches.flatMap((m) => decideMatch(m, scan.ownHosts) ?? []);
   const merged = mergeDecisions(candidates);
   const fresh = mergeDecisions(withoutResolvedLinks(candidates, existing));
   const held = mergeDecisions([...backlogDecisions(backlog.flags), ...fresh]);
@@ -153,7 +155,7 @@ export async function runPhishingRescan({
     sources,
     decisions: dryRun ? decisions : undefined,
   };
-  log.info({ ...summary, decisions: undefined }, "phishing rescan complete");
+  log.info({ ...summary, decisions: undefined, legacyDismissed }, "phishing rescan complete");
   return summary;
 }
 
@@ -401,6 +403,26 @@ async function loadPayingLinkIds(linkIds: number[]): Promise<Set<number>> {
     for (const o of personal) if (paid.has(o.userId)) paying.add(o.id);
   }
   return paying;
+}
+
+/**
+ * Dismisses pending flags from match types that are now skipped (see `LEGACY_FLAG_DETAILS`).
+ * Once none are left this is a no-op, so it is safe on every run.
+ */
+async function dismissLegacyFlags(now: Date): Promise<number> {
+  const [result] = await db
+    .update(flaggedLink)
+    .set({ status: "dismissed", resolvedAt: now })
+    .where(
+      and(
+        eq(flaggedLink.status, "pending"),
+        like(flaggedLink.reason, `${RESCAN_REASON_PREFIX}%`),
+        or(...LEGACY_FLAG_DETAILS.map((details) => like(flaggedLink.details, `${details}%`))),
+      ),
+    );
+  const dismissed = result.affectedRows;
+  if (dismissed > 0) log.info({ dismissed }, "dismissed pending flags without URL-level evidence");
+  return dismissed;
 }
 
 async function loadExistingFlags(linkIds: number[]): Promise<ExistingFlag[]> {
