@@ -9,7 +9,6 @@ import { noIndexMetadata } from "@/lib/seo/indexing";
 import { getLinkStateRoute, resolveShortLink } from "@/middlewares/resolve-link";
 import { findLinkByAlias } from "@/server/api/routers/link/link.service";
 import { toPublicLink } from "@/server/api/routers/link/utils";
-import { db } from "@/server/db";
 
 import CloakedPage from "../cloaked/[url]/page";
 import VerifiedRedirectPage from "../verified-redirect/[alias]/page";
@@ -49,7 +48,7 @@ export async function generateMetadata(props: LinkRedirectionPageProps): Promise
     return noIndexMetadata;
   }
 
-  const link = await findLinkByAlias(db, {
+  const link = await findLinkByAlias({
     alias: cleanAlias(params.linkAlias),
     domain: cleanUrl(domain),
   });
@@ -99,7 +98,7 @@ const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
   if (isSocialMediaAgent(userAgent) || params.linkAlias.endsWith("!")) {
     // Called directly rather than through the public tRPC router: the full row
     // (destination, password hash) must stay on the server.
-    const link = await findLinkByAlias(db, { alias, domain });
+    const link = await findLinkByAlias({ alias, domain });
 
     if (!link) return notFound();
     // Same access policy as the redirect below (state, click cap, geo rules),

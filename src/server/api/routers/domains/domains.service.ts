@@ -19,6 +19,7 @@ import {
   teamMember,
   user,
 } from "@/server/db/schema";
+import { releasePreviousAddressesOnDomain } from "@/server/lib/link-address";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import {
   hasPermission,
@@ -309,6 +310,7 @@ export async function deleteDomainAndAssociatedLinks(
   }
 
   const domainName = domain.domain;
+  let releasedCacheKeys: string[] = [];
 
   try {
     // Start a transaction to ensure all operations succeed or fail together
@@ -340,6 +342,12 @@ export async function deleteDomainAndAssociatedLinks(
             workspaceFilter(ctx.workspace, link.userId, link.teamId),
           ),
         );
+
+      releasedCacheKeys = await releasePreviousAddressesOnDomain(
+        tx,
+        domainName,
+        workspaceFilter(ctx.workspace, link.userId, link.teamId),
+      );
 
       // Point the workspace default back at the platform domain, or quick
       // links would keep landing on a domain that no longer serves them
@@ -402,11 +410,14 @@ export async function deleteDomainAndAssociatedLinks(
   }
 
   // After the commit, so a concurrent read can't cache the old default again
-  await deleteFromCache(
-    domain.teamId === null
-      ? `user_settings_domain:${domain.userId}`
-      : `team_default_domain:${domain.teamId}`,
-  );
+  await Promise.all([
+    deleteFromCache(
+      domain.teamId === null
+        ? `user_settings_domain:${domain.userId}`
+        : `team_default_domain:${domain.teamId}`,
+    ),
+    ...releasedCacheKeys.map((key) => deleteFromCache(key)),
+  ]);
 
   return { success: true, message: "Domain and associated links deleted successfully" };
 }

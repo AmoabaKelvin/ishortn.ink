@@ -355,6 +355,24 @@ export const reservedAlias = mysqlTable(
   }),
 );
 
+// Addresses a link answered on before it moved to another domain. The redirect lookup
+// matches them alongside Link.domain/alias, so old printed and shared URLs keep working,
+// and the address stays reserved (for every account) after the link is deleted.
+export const linkPreviousAddress = mysqlTable(
+  "LinkPreviousAddress",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    domain: varchar("domain", { length: 255 }).notNull(), // lowercase
+    alias: varchar("alias", { length: 20 }).notNull(), // normalizeAlias()d
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    domainAliasIdx: unique("linkPreviousAddress_domain_alias").on(table.domain, table.alias),
+    linkIdIdx: index("linkPreviousAddress_linkId_idx").on(table.linkId),
+  }),
+);
+
 // Targeting rules for links: route or block by visitor location or device
 export const geoRule = mysqlTable(
   "GeoRule",

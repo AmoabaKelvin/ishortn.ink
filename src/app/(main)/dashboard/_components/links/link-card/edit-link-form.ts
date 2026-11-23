@@ -35,6 +35,26 @@ type EditLinkFormSyncState<TLink> = {
 
 type EditLinkForm = Pick<UseFormReturn<UpdateLinkInput>, "reset" | "setValue" | "getValues">;
 
+type CustomDomain = Pick<RouterOutputs["customDomain"]["list"][number], "domain" | "status">;
+
+// Domains a link can move to: the shared ones, then the workspace's verified ones. The link's
+// current domain is always listed so the picker can show it, even if it is no longer verified.
+export const linkDomainOptions = (
+  platformDomains: readonly string[],
+  customDomains: CustomDomain[],
+  currentDomain: string,
+) => {
+  const custom = customDomains.flatMap((domain) =>
+    domain.status === "active" && domain.domain ? [domain.domain] : [],
+  );
+  const known = new Set([...platformDomains, ...custom].map((d) => d.toLowerCase()));
+  if (!known.has(currentDomain.toLowerCase())) custom.unshift(currentDomain);
+  return { shared: [...platformDomains], custom };
+};
+
+export const selectLinkDomain = (form: Pick<EditLinkForm, "setValue">, domain: string) =>
+  form.setValue("domain", domain, { shouldDirty: true });
+
 // Opening the dialog, or a different link, resets the whole form to the saved link. The geo rules
 // query resolves after the dialog opens, so its result only touches `geoRules`: a URL typed while
 // it loaded stays, and so do rules the user already added or edited.

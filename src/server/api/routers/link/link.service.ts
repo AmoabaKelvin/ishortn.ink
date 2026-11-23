@@ -33,7 +33,6 @@ import {
   buildCacheKey,
   deleteFromCache,
   deleteGeoRulesFromCache,
-  getFromCache,
   getStringFromCache,
   setInCache,
   setStringInCache,
@@ -46,7 +45,7 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { displayName } from "@/lib/utils/user-name";
-import { recordClick } from "@/middlewares/record-click";
+import { recordClick, resolveLink } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
 import {
   campaign,
@@ -62,6 +61,7 @@ import {
   uniqueLinkVisit,
   user,
 } from "@/server/db/schema";
+import { previousAddressCacheKeys, recordAddressChange } from "@/server/lib/link-address";
 import {
   classifyLinkCreationError,
   recordLinkCreationFailures,
@@ -70,11 +70,7 @@ import {
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
-import {
-  generateUnreservedAlias,
-  isAliasReserved,
-  reserveLinkAliases,
-} from "@/server/lib/reserved-alias";
+import { generateUnreservedAlias, reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   assertCanEnableVerifiedClicks,
@@ -691,12 +687,23 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   }
 
   // If alias is being changed, validate it
-  if (input.alias && input.alias !== existingLink.alias) {
-    const domain = input.domain ?? existingLink.domain;
-    await validateAlias(ctx, input.alias, domain, isPaidUser);
-  } else if (input.domain && input.domain !== existingLink.domain && existingLink.alias) {
-    // Moving the alias to another domain claims it there.
-    await assertAliasAvailable(ctx, existingLink.alias, input.domain);
+  const targetDomain = input.domain ?? existingLink.domain;
+  const movesDomain = targetDomain.toLowerCase() !== existingLink.domain.toLowerCase();
+  try {
+    if (input.alias && input.alias !== existingLink.alias) {
+      await validateAlias(ctx, input.alias, targetDomain, isPaidUser, existingLink.id);
+    } else if (movesDomain && existingLink.alias) {
+      // Moving the alias to another domain claims it there.
+      await assertAliasAvailable(ctx, existingLink.alias, targetDomain, existingLink.id);
+    }
+  } catch (error) {
+    if (movesDomain && error instanceof TRPCError && error.code === "CONFLICT") {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `"${input.alias || existingLink.alias}" is already taken on ${targetDomain}. Choose a different alias or domain.`,
+      });
+    }
+    throw error;
   }
 
   // Paid-only settings can't be added or changed without the plan, but forms
@@ -856,16 +863,17 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     eq(link.id, input.id),
     workspaceFilter(ctx.workspace, link.userId, link.teamId),
   );
-  const freesOldAlias =
-    (!!input.alias && normalizeAlias(input.alias) !== normalizeAlias(existingLink.alias ?? "")) ||
-    (!!input.domain && input.domain.toLowerCase() !== existingLink.domain.toLowerCase());
 
   // One transaction: tags are replaced by delete-then-insert, so a failure
   // part-way must not leave the link without its previous tags.
   await ctx.db.transaction(async (tx) => {
-    // A rename frees the old alias just like a delete does.
-    if (freesOldAlias) {
-      await reserveLinkAliases(tx, linkWhere, "deleted");
+    if (existingLink.alias) {
+      await recordAddressChange(
+        tx,
+        existingLink.id,
+        { domain: existingLink.domain, alias: existingLink.alias },
+        { domain: targetDomain, alias: input.alias || existingLink.alias },
+      );
     }
     await tx.update(link).set(linkData).where(linkWhere);
 
@@ -912,10 +920,13 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
     tags: tagRecords.map((tagRecord) => tagRecord.name),
   };
 
-  // If alias or domain changed, delete the OLD cache key (existingLink has the old values)
+  // If alias or domain changed, delete the OLD cache key (existingLink has the old values).
+  // Old addresses of a moved link cache the row too.
+  const staleKeys = await previousAddressCacheKeys(ctx.db, input.id);
   if (existingLink.alias !== updatedLink.alias || existingLink.domain !== updatedLink.domain) {
-    await deleteFromCache(buildCacheKey(existingLink.domain, existingLink.alias!));
+    staleKeys.push(buildCacheKey(existingLink.domain, existingLink.alias!));
   }
+  await Promise.all(staleKeys.map((key) => deleteFromCache(key)));
   // Always set the new cache entry with updated values
   await setInCache(buildCacheKey(updatedLink.domain, updatedLink.alias!), updatedLinkWithTags);
 };
@@ -962,8 +973,12 @@ export const removeLink = async (
     eq(link.id, linkToDelete.id),
     workspaceFilter(workspace, link.userId, link.teamId),
   );
+  const cacheKeys = [
+    buildCacheKey(linkToDelete.domain, linkToDelete.alias!),
+    ...(await previousAddressCacheKeys(db, linkToDelete.id)),
+  ];
   await Promise.all([
-    deleteFromCache(buildCacheKey(linkToDelete.domain, linkToDelete.alias!)),
+    ...cacheKeys.map((key) => deleteFromCache(key)),
     db.transaction(async (tx) => {
       await reserveLinkAliases(tx, where, "deleted");
       await tx.delete(link).where(where);
@@ -1147,28 +1162,18 @@ export const bulkToggleLinkStatus = async (
  * from a public procedure as-is (see `retrieveOriginalUrl`).
  */
 export const findLinkByAlias = async (
-  db: PublicTRPCContext["db"],
   input: Pick<RetrieveOriginalUrlInput, "alias" | "domain">,
 ) => {
-  const { alias, domain } = input;
-  const cached = await getFromCache(buildCacheKey(domain, alias));
-  if (cached?.alias) return cached;
-
-  const found = await db.query.link.findFirst({
-    where: (table, { eq, and, sql }) =>
-      and(sql`lower(${table.alias}) = lower(${alias})`, eq(table.domain, domain)),
-  });
-  if (!found) return null;
-
-  await setInCache(buildCacheKey(found.domain, found.alias!), found);
-  return found;
+  // The same lookup as the redirect, so previews and metadata also follow moved links.
+  const found = await resolveLink(input.domain, input.alias);
+  return found?.alias ? found : null;
 };
 
 export const retrieveOriginalUrl = async (
   ctx: PublicTRPCContext,
   input: RetrieveOriginalUrlInput,
 ) => {
-  const found = await findLinkByAlias(ctx.db, input);
+  const found = await findLinkByAlias(input);
   return found ? toPublicLink(found) : null;
 };
 
@@ -1775,16 +1780,15 @@ export const checkAliasAvailability = async (
   ctx: PublicTRPCContext,
   input: { alias: string; domain: string },
 ) => {
-  const [existingLink, reserved] = await Promise.all([
-    ctx.db.query.link.findFirst({
-      columns: { id: true },
-      where: (table, { eq, and }) =>
-        and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
-    }),
-    isAliasReserved(ctx.db, input.alias, input.domain),
-  ]);
-
-  return { isAvailable: !existingLink && !reserved };
+  // Same check as link creation, so the preview can't say "available" for an
+  // alias that create will then reject.
+  try {
+    await assertAliasAvailable(ctx, input.alias, input.domain);
+    return { isAvailable: true };
+  } catch (error) {
+    if (error instanceof TRPCError && error.code === "CONFLICT") return { isAvailable: false };
+    throw error;
+  }
 };
 
 // Alias checks, URL scans and inserts each hold a db connection or an outbound
