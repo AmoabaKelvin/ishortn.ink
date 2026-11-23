@@ -112,7 +112,7 @@ export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPage
           <RangeSelectorWrapper isProPlan={isProPlan} />
           <ExportClicksButton
             isProPlan={isProPlan}
-            query={{ range: requestedRange, filterType, filterId }}
+            query={{ range: requestedRange, ...parseCustomRange(from, to), filterType, filterId }}
             fileName={`clicks-${range}`}
           />
         </div>

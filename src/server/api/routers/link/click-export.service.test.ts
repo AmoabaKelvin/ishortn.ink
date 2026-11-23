@@ -130,7 +130,7 @@ describe.skipIf(!testDatabaseUrl)("exportClicks (MySQL)", () => {
     expect(line).toContain(
       `"https://${DOMAIN}/click-export-a","https://example.com/click-export-a","GH","Accra"`,
     );
-    expect(line).toEndWith('"Twitter"');
+    expect(line).toEndWith('"X"');
 
     const month = await exportClicks(ctxFor(OWNER, "pro"), {
       range: "30d",
@@ -142,6 +142,30 @@ describe.skipIf(!testDatabaseUrl)("exportClicks (MySQL)", () => {
     expect(lines[0]).toContain('"GH"');
     expect(lines[1]).toContain('"US"');
     expect(lines[1]).toEndWith('"Direct"');
+  });
+
+  test("a custom range exports exactly the selected days", async () => {
+    const day = (offset: number) => subDays(new Date(), offset).toISOString().slice(0, 10);
+    // Only the click 20 days ago falls in [21, 19] days ago; the 7d clicks don't.
+    const result = await exportClicks(ctxFor(OWNER, "pro"), {
+      range: "custom",
+      from: day(21),
+      to: day(19),
+      filterType: "all",
+    });
+    expect(result.rowCount).toBe(1);
+    expect(result.csv).toContain('"US"');
+
+    // The window ends at the end of `to`: a range ending 3 days ago includes that day's click.
+    const toDay = await exportClicks(ctxFor(OWNER, "pro"), {
+      range: "custom",
+      from: day(3),
+      to: day(3),
+      filterType: "all",
+      link: { alias: "click-export-b", domain: DOMAIN },
+    });
+    expect(toDay.rowCount).toBe(1);
+    expect(toDay.csv).toContain('"DE"');
   });
 
   test("overview exports only the workspace's short links in range", async () => {

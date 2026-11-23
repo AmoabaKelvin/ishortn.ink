@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 
-import { resolveRangeWindow } from "@/lib/core/analytics";
+import { parseCustomRange, resolveRangeWindow } from "@/lib/core/analytics";
 import { link, linkVisit } from "@/server/db/schema";
 import { workspaceFilter } from "@/server/lib/workspace";
 
@@ -41,7 +41,11 @@ export const exportClicks = async (ctx: WorkspaceTRPCContext, input: ExportClick
     linkScope = overviewLinkConditions(ctx.workspace, input);
   }
 
-  const window = resolveRangeWindow(input.range, new Date());
+  const window = resolveRangeWindow(
+    input.range,
+    new Date(),
+    parseCustomRange(input.from, input.to),
+  );
   const rows = await ctx.db
     .select({
       createdAt: linkVisit.createdAt,

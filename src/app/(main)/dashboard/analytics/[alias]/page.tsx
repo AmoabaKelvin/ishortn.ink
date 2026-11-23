@@ -130,6 +130,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
             isProPlan={isProPlan}
             query={{
               range: requestedRange,
+              ...parseCustomRange(from, to),
               filterType: "all",
               link: { alias: params.alias, domain },
             }}

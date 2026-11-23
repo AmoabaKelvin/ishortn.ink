@@ -86,7 +86,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/bio/view (MySQL)", () => {
 
   test("records the referrer from the body, not the beacon's Referer header", async () => {
     expect(await recordView("ishortn.ink", { referrer: "https://www.instagram.com/" })).toEqual([
-      "instagram.com",
+      "instagram",
     ]);
   });
 
@@ -103,10 +103,10 @@ describe.skipIf(!testDatabaseUrl)("POST /api/bio/view (MySQL)", () => {
 
   test("custom-domain pages use the body referrer and treat their own host as direct", async () => {
     const views = await recordView("links.example.com", { referrer: "https://t.co/abc" });
-    expect(views).toEqual(["twitter"]);
+    expect(views).toEqual(["x"]);
     expect(
       await recordView("links.example.com", { referrer: "https://www.links.example.com/" }),
-    ).toEqual(["twitter", "direct"]);
+    ).toEqual(["x", "direct"]);
   });
 
   test("rejects an oversized referrer", async () => {

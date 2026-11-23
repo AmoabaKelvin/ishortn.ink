@@ -18,6 +18,7 @@ import {
   mergeCampaignUtm,
   normalizeCampaignSlug,
   normalizeUtmValue,
+  referrerBreakdown,
   resolveRangeWindow,
   rethrowCampaignDuplicate,
   utmParamsEqual,
@@ -704,7 +705,7 @@ export async function getCampaignAnalytics(
     channels,
     countries: toRecord(countryRows),
     devices: toRecord(deviceRows),
-    referrers: toRecord(refererRows),
+    referrers: referrerBreakdown(refererRows),
     range,
     isProPlan,
   };
