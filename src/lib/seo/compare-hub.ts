@@ -134,7 +134,7 @@ export function compareFaqs({ caps, prices, freeQrCodes }: BillingFacts = liveBi
   return [
     {
       question: "What is the best free Bitly alternative?",
-      answer: `It depends on what you need from the free plan. Short.io gives the most free links (1,000 total) and 5 custom domains. Dub gives 25 links a month with 3 custom domains. iShortn gives ${amount(caps.free.linksLimit)} links a month, ${amount(caps.free.analyticsRangeLimitDays)} days of click analytics, ${bioPage} and ${freeQrCodes} dynamic QR codes that never expire, with no ad page before links open. Bitly Free allows 5 links a month with no click data.`,
+      answer: `It depends on what you need from the free plan. Short.io gives the most free links (1,000 in total) and 5 custom domains. Dub gives 25 links a month with 3 custom domains. iShortn gives ${amount(caps.free.linksLimit)} links a month, ${amount(caps.free.analyticsRangeLimitDays)} days of click analytics, ${bioPage} and ${freeQrCodes} dynamic QR codes that never expire, with no ad page before links open. Bitly Free allows 5 links a month with no click data.`,
     },
     {
       question: "What is the cheapest URL shortener with a custom domain?",

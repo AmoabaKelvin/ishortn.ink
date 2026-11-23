@@ -2,11 +2,12 @@
 // pricesCheckedOn is the ISO date the competitor's plans and prices were last verified on their
 // live pricing page; it is shown on the comparison page, so bump it whenever the data is re-checked.
 // guide is an optional blog post slug linked from the comparison page once the post is live.
-// Optional, filled per competitor: metaDescription replaces the generated meta description;
+// Optional, filled per competitor: seoTitle replaces the generated comparison title in the page
+// <title> and Open Graph title (keep it under 60 characters, with the brand once); metaDescription
+// replaces the generated meta description;
 // migrationSteps renders an ordered "How to move" list; faqs renders an FAQ section with FAQPage
 // JSON-LD; relatedGuides renders a "Related reading" list (blog links appear once the post is live);
-// linksStayYours renders the "Your links stay yours" section from src/lib/copy/link-ownership.ts;
-// seoTitle replaces the generated search title (keep it within 60 characters).
+// linksStayYours renders the "Your links stay yours" section from src/lib/copy/link-ownership.ts.
 export const competitors = {
   bitly: {
     name: "Bitly",
@@ -95,10 +96,13 @@ export const competitors = {
     name: "TinyURL",
     slug: "tinyurl",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-21",
+    seoTitle: "TinyURL vs iShortn: Free Click Tracking and Pricing (2026)",
+    pricesCheckedOn: "2026-11-23",
     tagline: "The original URL shortener",
     description:
-      "TinyURL was one of the first URL shorteners, but it lacks analytics and modern features. See how iShortn compares.",
+      "TinyURL Free gives you 30 links a month but no click data. iShortn Free also gives you 30, and shows where every click came from. Here's how the two compare, and how to move your links.",
+    metaDescription:
+      "TinyURL Free gives 30 links a month with no click stats. iShortn Free gives 30 with country, device and referrer data. Prices checked November 2026.",
     freeLinks: "30/month (no cap without an account)",
     freeAnalytics: "None",
     customDomains: "Paid only",
@@ -106,12 +110,51 @@ export const competitors = {
     apiAccess: "Yes (free account)",
     teamFeatures: "None",
     passwordProtection: "None",
-    pricing: "Free, Pro from $9/mo (billed annually), Bulk from $69/mo (billed annually)",
+    pricing:
+      "Free, Pro $9/mo billed annually ($11 monthly) for 125 links a month, Bulk 50K $69/mo billed annually ($83 monthly)",
     whySwitch: [
-      "TinyURL offers zero analytics on the free plan — iShortn tracks every click with detailed data",
+      "TinyURL Free has no click stats. iShortn Free records the country, city, device, browser and referrer of up to 1,000 clicks and scans a month",
       "No custom domains or password protection on TinyURL free",
       "TinyURL Pro starts at $9/month (billed annually) for 125 links a month — iShortn Pro is $8/month for 1,000 links",
       "iShortn includes AI-powered link safety scanning on all plans",
+      "TinyURL is the better fit if you only need a quick link without an account. iShortn needs a free account to create links",
+    ],
+    linksStayYours: true,
+    migrationSteps: [
+      "Check where your links live. Links on your own domain, such as go.yourbrand.com, can keep their exact addresses. Links on tinyurl.com stay with TinyURL, because TinyURL owns that domain.",
+      "Get a list of your TinyURL links and their destinations as a CSV file.",
+      "Name the columns iShortn reads: url for the destination, alias for the back-half and domain for your own domain. Other columns are ignored.",
+      "On Pro, add the same domain in iShortn under Domains, then replace TinyURL's DNS records with the ones iShortn shows.",
+      "Upload the file with Upload CSV in the dashboard. On Pro, rows on your custom domain use a one-time 5,000-link import allowance instead of the monthly limit.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel TinyURL.",
+    ],
+    faqs: [
+      {
+        question: "Does TinyURL show click stats on the free plan?",
+        answer:
+          "No. TinyURL's pricing table marks tracked clicks, the analytics dashboard and analytics history as not included on Free. iShortn Free records the country, city, device, browser and referrer for up to 1,000 clicks and scans a month and keeps 7 days of history.",
+      },
+      {
+        question: "How much does TinyURL cost?",
+        answer:
+          "TinyURL Pro lists at $9 a month billed annually ($108 a year) or $11 billed monthly, for 125 links a month. Bulk 50K lists at $69 a month billed annually or $83 monthly. iShortn Pro is $8 a month, or $80 a year, for 1,000 links a month. TinyURL prices from tinyurl.com/app/pricing, checked 23 November 2026.",
+      },
+      {
+        question: "Is iShortn a good alternative to TinyURL?",
+        answer:
+          "If you want to see who clicks your links, yes. Both free plans give you 30 links a month, but only iShortn's shows click data, and you can change a link's destination on every iShortn plan. TinyURL is quicker for a one-off link, because it doesn't need an account.",
+      },
+      {
+        question: "Can I use my own domain on TinyURL's free plan?",
+        answer:
+          "No. TinyURL lists bringing your own domain on paid plans only. On iShortn, custom domains start on Pro at $8 a month, with up to 3 domains.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/blog/tinyurl-alternatives", label: "TinyURL alternatives with free click stats" },
+      { href: "/blog/how-to-track-link-clicks", label: "How to track link clicks" },
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
+      { href: "/compare/bitly", label: "Bitly vs iShortn" },
     ],
     guide: {
       slug: "tinyurl-alternatives",
@@ -190,22 +233,64 @@ export const competitors = {
     name: "Short.io",
     slug: "short-io",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-20",
+    seoTitle: "Short.io vs iShortn: Pricing and Free Plan Compared (2026)",
+    pricesCheckedOn: "2026-11-23",
     tagline: "White-label link shortener",
     description:
       "Short.io is a solid link shortener focused on custom domains, but iShortn offers a more complete feature set at a better price.",
-    freeLinks: "1,000 total",
+    metaDescription:
+      "Short.io Free gives 1,000 links in total; iShortn Free gives 30 every month. Compare prices, custom domains and click analytics, checked November 2026.",
+    freeLinks: "1,000 in total (not per month)",
     freeAnalytics: "50,000 tracked clicks/month",
     customDomains: "5 on free plan",
     qrCodes: "Yes",
     apiAccess: "Yes (1,000 API links)",
     teamFeatures: "Paid only",
     passwordProtection: "Paid only",
-    pricing: "Free, Hobby $5/mo, Pro $18/mo, Team $48/mo",
+    pricing:
+      "Free, Hobby $5/mo, Pro $18/mo, Team $48/mo, Enterprise $148/mo (about 17% less billed annually)",
     whySwitch: [
-      "Short.io free gives 1,000 links total lifetime — iShortn gives fresh links every month",
+      "Short.io Free gives 1,000 links in total, and they don't reset. iShortn Free gives 30 new links every month",
       "Short.io Pro is $18/month and Team is $48/month — iShortn Pro is just $8/month",
       "iShortn Pro ($8/month) includes password protection, and AI-powered phishing detection checks links on every plan",
+      "Short.io is the better fit if you need custom domains for free: Short.io Free includes 5, while iShortn's start on Pro",
+    ],
+    linksStayYours: true,
+    migrationSteps: [
+      "Check where your links live. Links on your own domain, such as go.yourbrand.com, can keep their exact addresses. Links on Short.io's shared domains stay with Short.io, because Short.io owns those domains.",
+      "Get a list of your Short.io links and their destinations as a CSV file.",
+      "Name the columns iShortn reads: url for the destination, alias for the back-half and domain for your own domain. Other columns are ignored.",
+      "On Pro, add the same domain in iShortn under Domains, then replace Short.io's DNS records with the ones iShortn shows.",
+      "Upload the file with Upload CSV in the dashboard. On Pro, rows on your custom domain use a one-time 5,000-link import allowance instead of the monthly limit.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel Short.io.",
+    ],
+    faqs: [
+      {
+        question: "Is iShortn a good alternative to Short.io?",
+        answer:
+          "If you need fresh links every month and a cheaper paid plan, yes. iShortn Free gives you 30 new links a month with location, device and referrer stats, and Pro is $8 a month for 1,000 links a month and 3 custom domains. Short.io Pro is $18 a month. Short.io is the better fit if you want custom domains without paying: Short.io Free includes 5, and iShortn's custom domains start on Pro.",
+      },
+      {
+        question: "How much does Short.io cost?",
+        answer:
+          "Short.io lists Free, Hobby at $5 a month, Pro at $18, Team at $48 and Enterprise at $148. Billed annually they cost $50, $180, $480 and $1,480 a year. Prices from short.io/pricing, checked 23 November 2026.",
+      },
+      {
+        question: "Is the Short.io free plan 1,000 links a month?",
+        answer:
+          "No. Short.io's pricing table lists 1,000 branded links in total on Free, with 50,000 tracked clicks a month and 5 custom domains. iShortn Free resets every month: 30 links and 1,000 tracked clicks and scans, with 7 days of analytics.",
+      },
+      {
+        question: "Can I move my Short.io links to iShortn without breaking them?",
+        answer:
+          "Links on your own domain can keep their exact addresses: upload a CSV of them to iShortn and point the domain's DNS to iShortn. Custom domains are on Pro and Ultra. Links on Short.io's shared domains can't move, because Short.io owns those domains, so the import gives each one a new short link.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
+      { href: "/docs/custom-domains", label: "Connect your own domain" },
+      { href: "/blog/short-io-alternatives", label: "Short.io alternatives compared" },
+      { href: "/compare/rebrandly", label: "Rebrandly vs iShortn" },
     ],
     guide: {
       slug: "short-io-alternatives",
@@ -216,10 +301,13 @@ export const competitors = {
     name: "Dub.co",
     slug: "dub",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-22",
+    seoTitle: "Dub.co vs iShortn: Pricing and Free Plan Compared (2026)",
+    pricesCheckedOn: "2026-11-23",
     tagline: "Open-source link management",
     description:
       "Dub.co is an open-source link management platform popular with developers. See how iShortn compares on features and pricing.",
+    metaDescription:
+      "Dub Free allows 25 new links a month and Pro starts at $30/month. iShortn Free allows 30, and Pro is $8/month with 3 custom domains. Checked Nov 2026.",
     freeLinks: "25 new links/month",
     freeAnalytics: "Yes (30-day history, 1K events/mo)",
     customDomains: "3 on Free, more on paid plans",
@@ -227,16 +315,55 @@ export const competitors = {
     apiAccess: "Yes",
     teamFeatures: "Paid only",
     passwordProtection: "Paid only",
-    pricing: "Free; Pro from $30/mo ($27/mo yearly); Business $90/mo",
+    pricing:
+      "Free; Pro $30/mo ($27/mo billed yearly) for 1,000 new links a month; Business $90/mo ($81/mo billed yearly)",
     whySwitch: [
       "Dub Free allows 25 new links a month; iShortn Free allows 30 and includes 5 dynamic QR codes",
       "Dub's paid plans start at $30/month; iShortn Pro is $8/month with 3 custom domains",
       "iShortn Pro unlocks unlimited analytics history for $8/month",
       "iShortn includes password protection and geo-targeting on the Pro plan",
+      "Dub is the better fit if you run an affiliate or partner program (Dub Partners), or want 30 days of analytics and 3 custom domains on a free plan",
+    ],
+    linksStayYours: true,
+    migrationSteps: [
+      "Check where your links live. Links on your own domain, such as go.yourbrand.com, can keep their exact addresses. Links on Dub's shared domains stay with Dub, because Dub owns those domains.",
+      "Get a list of your Dub links and their destinations as a CSV file.",
+      "Name the columns iShortn reads: url for the destination, alias for the back-half and domain for your own domain. Other columns are ignored.",
+      "On Pro, add the same domain in iShortn under Domains, then replace Dub's DNS records with the ones iShortn shows.",
+      "Upload the file with Upload CSV in the dashboard. On Pro, rows on your custom domain use a one-time 5,000-link import allowance instead of the monthly limit.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel Dub.",
+    ],
+    faqs: [
+      {
+        question: "Is iShortn a cheaper alternative to Dub?",
+        answer:
+          "Yes, for short links with click analytics. iShortn Pro is $8 a month with 1,000 links a month and 3 custom domains. Dub's paid plans start at Pro, $30 a month or $27 billed yearly. Dub is the better fit if you run an affiliate or partner program, which iShortn doesn't offer.",
+      },
+      {
+        question: "What does Dub's free plan include?",
+        answer:
+          "Dub Free includes 25 new links a month, 1,000 tracked events, 30 days of analytics and 3 custom domains for 1 user. iShortn Free includes 30 links a month, 1,000 tracked clicks and scans, 7 days of analytics and 5 dynamic QR codes; custom domains start on Pro. Dub figures from dub.co/pricing/links, checked 23 November 2026.",
+      },
+      {
+        question: "What are the best Dub.co alternatives?",
+        answer:
+          "It depends on what you use Dub for. For branded short links and click analytics at a lower price, look at iShortn, Short.io and Rebrandly. Our guide compares them on free plans and prices: ishortn.ink/blog/dub-alternatives.",
+      },
+      {
+        question: "Are Dub and iShortn both open source?",
+        answer:
+          "Yes. iShortn's code is MIT-licensed and you can self-host it on Cloudflare Workers with a MySQL database, using the self-hosting guide at ishortn.ink/docs/self-hosting. Dub's code is public too.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/blog/dub-alternatives", label: "Dub.co alternatives: free and cheaper options" },
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
+      { href: "/docs/self-hosting", label: "Self-hosting iShortn" },
+      { href: "/compare/short-io", label: "Short.io vs iShortn" },
     ],
     guide: {
       slug: "dub-alternatives",
-      label: "Weighing other options? Read our guide to Dub.co alternatives.",
+      label: "Looking at more options? Read our guide to Dub.co alternatives.",
     },
   },
   linktree: {
