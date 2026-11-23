@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test";
 import { isPostLive } from "@/lib/blog";
 import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
 
-import { competitors } from "./competitors";
+import { competitors, getCompetitor } from "./competitors";
 
 const farFuture = new Date("2100-01-01T00:00:00Z");
 
@@ -23,6 +23,8 @@ describe("competitor guides", () => {
       for (const { href } of competitor.relatedGuides) {
         if (href.startsWith("/blog/")) {
           expect(isPostLive(href.slice("/blog/".length), farFuture)).toBe(true);
+        } else if (href.startsWith("/compare/")) {
+          expect(getCompetitor(href.slice("/compare/".length))).toBeDefined();
         } else {
           expect(docsHrefs).toContain(href);
         }

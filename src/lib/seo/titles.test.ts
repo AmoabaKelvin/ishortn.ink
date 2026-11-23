@@ -46,6 +46,13 @@ describe("page titles", () => {
     expect(comparisonTitle(competitors.bitly)).toBe("Bitly vs iShortn: URL shortener comparison");
   });
 
+  it("uses a competitor's seoTitle when it has one", () => {
+    expect(comparisonTitle(competitors["short-io"])).toBe(
+      "Short.io vs iShortn: Pricing and Free Plan Compared (2026)",
+    );
+    expect(comparisonTitle(competitors.bitly)).toBe("Bitly vs iShortn: URL shortener comparison");
+  });
+
   it("keeps blog post titles short with the brand once", () => {
     // Reads frontmatter only: getAllPosts renders every post's markdown, which is too slow here.
     const blogDirectory = path.join(process.cwd(), "content/blog");

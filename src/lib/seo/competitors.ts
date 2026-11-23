@@ -2,7 +2,8 @@
 // pricesCheckedOn is the ISO date the competitor's plans and prices were last verified on their
 // live pricing page; it is shown on the comparison page, so bump it whenever the data is re-checked.
 // guide is an optional blog post slug linked from the comparison page once the post is live.
-// Optional, filled per competitor: metaDescription replaces the generated meta description;
+// Optional, filled per competitor: seoTitle replaces the generated comparison title in the page
+// <title> and Open Graph title; metaDescription replaces the generated meta description;
 // migrationSteps renders an ordered "How to move" list; faqs renders an FAQ section with FAQPage
 // JSON-LD; relatedGuides renders a "Related reading" list (blog links appear once the post is live);
 // linksStayYours renders the "Your links stay yours" section from src/lib/copy/link-ownership.ts.
@@ -148,22 +149,64 @@ export const competitors = {
     name: "Short.io",
     slug: "short-io",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-20",
+    seoTitle: "Short.io vs iShortn: Pricing and Free Plan Compared (2026)",
+    pricesCheckedOn: "2026-11-23",
     tagline: "White-label link shortener",
     description:
       "Short.io is a solid link shortener focused on custom domains, but iShortn offers a more complete feature set at a better price.",
-    freeLinks: "1,000 total",
+    metaDescription:
+      "Short.io Free gives 1,000 links in total; iShortn Free gives 30 every month. Compare prices, custom domains and click analytics, checked November 2026.",
+    freeLinks: "1,000 in total (not per month)",
     freeAnalytics: "50,000 tracked clicks/month",
     customDomains: "5 on free plan",
     qrCodes: "Yes",
     apiAccess: "Yes (1,000 API links)",
     teamFeatures: "Paid only",
     passwordProtection: "Paid only",
-    pricing: "Free, Hobby $5/mo, Pro $18/mo, Team $48/mo",
+    pricing:
+      "Free, Hobby $5/mo, Pro $18/mo, Team $48/mo, Enterprise $148/mo (about 17% less billed annually)",
     whySwitch: [
-      "Short.io free gives 1,000 links total lifetime — iShortn gives fresh links every month",
+      "Short.io Free gives 1,000 links in total, and they don't reset. iShortn Free gives 30 new links every month",
       "Short.io Pro is $18/month and Team is $48/month — iShortn Pro is just $8/month",
       "iShortn Pro ($8/month) includes password protection, and AI-powered phishing detection checks links on every plan",
+      "Short.io is the better fit if you need custom domains for free: Short.io Free includes 5, while iShortn's start on Pro",
+    ],
+    linksStayYours: true,
+    migrationSteps: [
+      "Check where your links live. Links on your own domain, such as go.yourbrand.com, can keep their exact addresses. Links on Short.io's shared domains stay with Short.io, because Short.io owns those domains.",
+      "Get a list of your Short.io links and their destinations as a CSV file.",
+      "Name the columns iShortn reads: url for the destination, alias for the back-half and domain for your own domain. Other columns are ignored.",
+      "On Pro, add the same domain in iShortn under Domains, then replace Short.io's DNS records with the ones iShortn shows.",
+      "Upload the file with Upload CSV in the dashboard. On Pro, rows on your custom domain use a one-time 5,000-link import allowance instead of the monthly limit.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel Short.io.",
+    ],
+    faqs: [
+      {
+        question: "Is iShortn a good alternative to Short.io?",
+        answer:
+          "If you need fresh links every month and a cheaper paid plan, yes. iShortn Free gives you 30 new links a month with location, device and referrer stats, and Pro is $8 a month for 1,000 links a month and 3 custom domains. Short.io Pro is $18 a month. Short.io is the better fit if you want custom domains without paying: Short.io Free includes 5, and iShortn's custom domains start on Pro.",
+      },
+      {
+        question: "How much does Short.io cost?",
+        answer:
+          "Short.io lists Free, Hobby at $5 a month, Pro at $18, Team at $48 and Enterprise at $148. Billed annually they cost $50, $180, $480 and $1,480 a year. Prices from short.io/pricing, checked 23 November 2026.",
+      },
+      {
+        question: "Is the Short.io free plan 1,000 links a month?",
+        answer:
+          "No. Short.io's pricing table lists 1,000 branded links in total on Free, with 50,000 tracked clicks a month and 5 custom domains. iShortn Free resets every month: 30 links and 1,000 tracked clicks and scans, with 7 days of analytics.",
+      },
+      {
+        question: "Can I move my Short.io links to iShortn without breaking them?",
+        answer:
+          "Links on your own domain can keep their exact addresses: upload a CSV of them to iShortn and point the domain's DNS to iShortn. Custom domains are on Pro and Ultra. Links on Short.io's shared domains can't move, because Short.io owns those domains, so the import gives each one a new short link.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
+      { href: "/docs/custom-domains", label: "Connect your own domain" },
+      { href: "/blog/short-io-alternatives", label: "Short.io alternatives compared" },
+      { href: "/compare/rebrandly", label: "Rebrandly vs iShortn" },
     ],
     guide: {
       slug: "short-io-alternatives",
@@ -288,4 +331,6 @@ export function getCompetitor(slug: string): Competitor | undefined {
 }
 
 export const comparisonTitle = (competitor: Competitor) =>
-  `${competitor.name} vs iShortn: ${competitor.category} comparison`;
+  "seoTitle" in competitor
+    ? competitor.seoTitle
+    : `${competitor.name} vs iShortn: ${competitor.category} comparison`;
