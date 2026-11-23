@@ -34,6 +34,11 @@ describe("page titles", () => {
     expect(new Set(titles).size).toBe(titles.length);
   });
 
+  it("keeps the compare hub title short", () => {
+    const title = templated("Link shortener comparison: free plans and prices");
+    expect(title.length).toBeLessThanOrEqual(MAX_TITLE_LENGTH);
+  });
+
   it("frames link-in-bio competitors as a link in bio comparison", () => {
     expect(comparisonTitle(competitors.linktree)).toBe(
       "Linktree vs iShortn: link in bio comparison",

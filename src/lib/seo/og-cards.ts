@@ -41,8 +41,8 @@ export const pageCards = {
   }),
   compare: card({
     eyebrow: "Compare",
-    title: "iShortn vs other link shorteners",
-    subtitle: "See how iShortn stacks up on features, free plan limits, and pricing.",
+    title: "Link shorteners compared: free plans and prices",
+    subtitle: "Free-plan limits, custom domains, QR codes and prices, side by side.",
   }),
   changelog: card({
     eyebrow: "Changelog",
