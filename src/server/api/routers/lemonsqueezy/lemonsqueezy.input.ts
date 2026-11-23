@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const createCheckoutOrUpdateInput = z.object({
+  plan: z.enum(["pro", "ultra"]),
+  interval: z.enum(["monthly", "annual"]).default("monthly"),
+  /** Where the checkout was started from, logged to `CheckoutStart`. */
+  source: z.string().max(64).optional(),
+});
+
+export type CreateCheckoutOrUpdateInput = z.infer<typeof createCheckoutOrUpdateInput>;
+
 export const DOWNGRADE_REASONS = [
   "too_expensive",
   "not_using_features",

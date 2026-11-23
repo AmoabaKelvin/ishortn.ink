@@ -83,3 +83,15 @@ export function resolveAutoUpgradePlan(
   if (subscriptionMode === "resume" || PLAN_ORDER[plan] <= PLAN_ORDER[currentPlan]) return null;
   return plan;
 }
+
+/**
+ * Query string for the pricing page entry a hosted checkout returns to on Back: `?plan=` and
+ * `?interval=` dropped so it never starts another checkout, the plan kept preselected.
+ */
+export function checkoutReturnSearch(search: string, plan: UpgradePlan): string {
+  const params = new URLSearchParams(search);
+  params.delete("plan");
+  params.delete("interval");
+  params.set("highlight", plan);
+  return `?${params.toString()}`;
+}

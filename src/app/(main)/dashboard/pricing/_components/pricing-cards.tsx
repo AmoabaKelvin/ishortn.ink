@@ -14,6 +14,7 @@ import { getPlanCaps } from "@/lib/billing/plans";
 import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
 import { promoBannerText } from "@/lib/billing/promo";
 import {
+  checkoutReturnSearch,
   getUpgradeReason,
   resolveAutoUpgradePlan,
   resolveHighlightPlan,
@@ -88,6 +89,12 @@ const PLAN_ORDER = { free: 0, pro: 1, ultra: 2 } satisfies Record<Plan, number>;
 
 const paidPlans = plans.filter((plan): plan is PaidPricingPlan => plan.id !== "free");
 
+// Back from the hosted checkout returns to the current history entry. Rewriting it in place means
+// the ?plan= sign-up entry can't start another checkout on Back.
+function replaceWithCheckoutReturn(plan: PaidPricingPlan["id"]) {
+  window.history.replaceState(null, "", checkoutReturnSearch(window.location.search, plan));
+}
+
 const PRO_EVENTS_LIMIT = getPlanCaps("pro").eventsLimit ?? 0;
 
 export function PricingCards({
@@ -111,10 +118,9 @@ export function PricingCards({
   // Arriving from an in-app upgrade prompt (?highlight=pro|ultra&source=…)
   // only preselects the plan that removes the limit; it never starts checkout.
   const highlightPlan = resolveHighlightPlan(searchParams?.get("highlight"), currentPlan);
-  const highlightReason = highlightPlan
-    ? getUpgradeReason(searchParams?.get("source"), highlightPlan)
-    : null;
-  const fromEventsCap = searchParams?.get("source")?.startsWith("events_") ?? false;
+  const source = searchParams?.get("source") ?? null;
+  const highlightReason = highlightPlan ? getUpgradeReason(source, highlightPlan) : null;
+  const fromEventsCap = source?.startsWith("events_") ?? false;
   const autoCheckout = autoUpgrade && subscriptionMode === "checkout" ? autoUpgrade : null;
   const autoCheckoutFired = useRef(false);
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(autoCheckout?.id ?? null);
@@ -128,9 +134,10 @@ export function PricingCards({
   );
 
   const createCheckoutOrUpdateMutation = api.lemonsqueezy.createCheckoutOrUpdate.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       if (data.status === "redirect") {
-        window.location.href = data.url;
+        replaceWithCheckoutReturn(variables.plan);
+        window.location.assign(data.url);
       } else if (data.status === "updated") {
         trackEvent(POSTHOG_EVENTS.SUBSCRIPTION_UPGRADED, {
           from_plan: currentPlan,
@@ -164,7 +171,11 @@ export function PricingCards({
 
   const runUpgrade = (plan: PaidPricingPlan) => {
     setLoadingPlan(plan.id);
-    createCheckoutOrUpdateMutation.mutate({ plan: plan.id, interval });
+    createCheckoutOrUpdateMutation.mutate({
+      plan: plan.id,
+      interval,
+      source: source?.slice(0, 64),
+    });
   };
 
   const requestUpgrade = (plan: PricingPlan, kind: "switch" | "upgrade") => {
@@ -195,7 +206,8 @@ export function PricingCards({
   useEffect(() => {
     if (!autoCheckout || autoCheckoutFired.current) return;
     autoCheckoutFired.current = true;
-    createCheckoutOrUpdate({ plan: autoCheckout.id, interval });
+    replaceWithCheckoutReturn(autoCheckout.id);
+    createCheckoutOrUpdate({ plan: autoCheckout.id, interval, source: "auto_signup" });
   }, [autoCheckout, createCheckoutOrUpdate, interval]);
 
   const confirmCopy = pendingChange
