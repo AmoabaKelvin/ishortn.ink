@@ -4,9 +4,10 @@ import { IconAlertCircle, IconDownload, IconQrcode } from "@tabler/icons-react";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 
-import { Paths } from "@/lib/constants/app";
+import { serializeShortenIntentCookie } from "@/lib/auth/shorten-intent";
 import { cn } from "@/lib/utils";
 
+import { useSignedIn } from "../_components/header";
 import {
   bodyClass,
   ButtonLink,
@@ -16,9 +17,7 @@ import {
   h3Class,
   wellClass,
 } from "../_components/site-primitives";
-import { parseQrUrl, qrUrlFromSearch, toSvgFile } from "./utils";
-
-const SIGNUP_HREF = `${Paths.Signup}?utm_source=ishortn_site&utm_medium=landing&utm_campaign=qr-code-generator`;
+import { getQrSignupHref, parseQrUrl, qrUrlFromSearch, toSvgFile } from "./utils";
 
 // Drawn at print resolution and scaled down with CSS, so the download is crisp.
 const QR_EXPORT_SIZE = 1024;
@@ -40,6 +39,9 @@ export function QrGenerator() {
 
   const result = parseQrUrl(value);
   const isEmpty = value.trim() === "";
+  // The sample URL shown before any input isn't the visitor's, so it isn't carried into sign-up.
+  const enteredUrl = (typed !== null || urlParam !== null) && result.ok ? result.url : null;
+  const signedIn = useSignedIn();
 
   const downloadPng = () => {
     const canvas = previewRef.current?.querySelector("canvas");
@@ -169,8 +171,21 @@ export function QrGenerator() {
             printing, and you can&apos;t see how many people scan it. A free iShortn account gives
             you dynamic codes you can edit and track.
           </p>
-          <ButtonLink href={SIGNUP_HREF} className="mt-4 whitespace-normal">
-            Make it dynamic and trackable, free
+          {/* Signed out, the URL goes in a cookie set on click, not the href. No prefetch: the
+              sign-up page reads that cookie when it renders, so it must load after the click. */}
+          <ButtonLink
+            href={getQrSignupHref(enteredUrl, signedIn)}
+            prefetch={false}
+            onClick={() => {
+              if (signedIn) return;
+              document.cookie = serializeShortenIntentCookie(
+                enteredUrl,
+                window.location.protocol === "https:",
+              );
+            }}
+            className="mt-4 whitespace-normal"
+          >
+            {`${enteredUrl ? "Track scans of this code" : "Make it dynamic and trackable"}${signedIn ? "" : ", free"}`}
           </ButtonLink>
         </div>
       </div>
