@@ -194,6 +194,14 @@ export const allAnalyticsSchema = z.object({
 
 export type AllAnalyticsInput = z.infer<typeof allAnalyticsSchema>;
 
+// With `link`, the clicks of that one link (per-link analytics); without it,
+// the overview's links narrowed by `filterType`/`filterId`.
+export const exportClicksSchema = allAnalyticsSchema.extend({
+  link: z.object({ alias: z.string().min(1), domain: z.string().min(1) }).optional(),
+});
+
+export type ExportClicksInput = z.infer<typeof exportClicksSchema>;
+
 // ============================================================================
 // TRANSFER LINKS SCHEMAS
 // ============================================================================
