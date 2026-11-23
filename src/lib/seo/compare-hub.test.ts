@@ -53,6 +53,90 @@ describe("compare hub", () => {
     expect(bitly?.checkedOn).toBe(competitors.bitly.pricesCheckedOn);
   });
 
+  // The FAQ quotes competitor figures in prose. Each claim pairs the FAQ wording with the
+  // competitors.ts field it restates, so editing either side without the other fails here.
+  it("quotes competitor figures that match competitors.ts", () => {
+    const faqs = compareFaqs(billing);
+    const claims = [
+      {
+        faq: 0,
+        says: "(1,000 total)",
+        field: competitors["short-io"].freeLinks,
+        has: "1,000 total",
+      },
+      {
+        faq: 0,
+        says: "and 5 custom domains",
+        field: competitors["short-io"].customDomains,
+        has: "5 on free",
+      },
+      {
+        faq: 0,
+        says: "Dub gives 25 links a month",
+        field: competitors.dub.freeLinks,
+        has: "25 new links/month",
+      },
+      {
+        faq: 0,
+        says: "with 3 custom domains",
+        field: competitors.dub.customDomains,
+        has: "3 on Free",
+      },
+      {
+        faq: 0,
+        says: "Bitly Free allows 5 links a month",
+        field: competitors.bitly.freeLinks,
+        has: "5/month",
+      },
+      {
+        faq: 0,
+        says: "with no click data",
+        field: competitors.bitly.freeAnalytics,
+        has: "None on Free",
+      },
+      {
+        faq: 1,
+        says: "Short.io and Dub include custom domains",
+        field: competitors.dub.customDomains,
+        has: "on Free",
+      },
+      {
+        faq: 1,
+        says: "Bitly Growth at $29 a month billed annually",
+        field: competitors.bitly.pricing,
+        has: "Growth $29/mo billed annually",
+      },
+      {
+        faq: 2,
+        says: "Linktree doesn't offer custom domains on any plan",
+        field: competitors.linktree.customDomains,
+        has: "Not available on any plan",
+      },
+      {
+        faq: 2,
+        says: "Pro Standard plan at $19 a year",
+        field: competitors.carrd.pricing,
+        has: "Pro Standard $19/yr",
+      },
+      {
+        faq: 2,
+        says: "Pro Standard plan at $19 a year",
+        field: competitors.carrd.customDomains,
+        has: "$19/yr (Pro Standard)",
+      },
+    ];
+    for (const claim of claims) {
+      expect(faqs[claim.faq]?.answer).toContain(claim.says);
+      expect(claim.field).toContain(claim.has);
+    }
+  });
+
+  it("highlights only the iShortn row", () => {
+    for (const table of compareTables(billing)) {
+      expect(table.rows.map((row) => row.isOwn)).toEqual(table.rows.map((_, i) => i === 0));
+    }
+  });
+
   it("has five FAQs", () => {
     expect(compareFaqs(billing)).toHaveLength(5);
   });

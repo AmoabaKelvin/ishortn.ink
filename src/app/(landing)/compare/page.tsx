@@ -96,7 +96,7 @@ function ComparisonTable({ table }: { table: CompareTable }) {
           </thead>
           <tbody className="divide-y divide-neutral-950/[0.07]">
             {table.rows.map((row) => {
-              const isIshortn = row.checkedOn === null;
+              const isIshortn = row.isOwn;
               const cellClass = cn(
                 "px-4 py-4 sm:px-5 align-top",
                 isIshortn ? "bg-neutral-50 text-neutral-900" : "text-neutral-600",

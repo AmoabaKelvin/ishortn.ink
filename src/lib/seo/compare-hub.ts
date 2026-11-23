@@ -16,6 +16,8 @@ export type CompareRow = {
   customDomains: string;
   qrCodes: string;
   pricing: string;
+  /** True for iShortn's own row, which the table highlights. */
+  isOwn: boolean;
   /** ISO date the vendor's pricing page was last checked; null for iShortn's live prices. */
   checkedOn: string | null;
 };
@@ -53,6 +55,7 @@ export function ishortnRows({ caps, prices, freeQrCodes }: BillingFacts = liveBi
     freeAnalytics: `${amount(caps.free.analyticsRangeLimitDays)} days on Free, unlimited history on Pro`,
     qrCodes: `${freeQrCodes} dynamic on Free, never expire`,
     pricing: `Pro ${pro}, Ultra $${prices.ultra}/mo`,
+    isOwn: true,
     checkedOn: null,
   };
   const shortener: CompareRow = {
@@ -76,6 +79,7 @@ const competitorRow = (competitor: Competitor): CompareRow => ({
   customDomains: competitor.customDomains,
   qrCodes: competitor.qrCodes,
   pricing: competitor.pricing,
+  isOwn: false,
   checkedOn: competitor.pricesCheckedOn,
 });
 
