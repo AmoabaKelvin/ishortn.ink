@@ -13,6 +13,7 @@ const CRON_ROUTES = [
   "phishing-rescan",
   "api-access-sunset",
   "first-link-nudge",
+  "promo-paused-notice",
   "link-creation-health",
 ];
 

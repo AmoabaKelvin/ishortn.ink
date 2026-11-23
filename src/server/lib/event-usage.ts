@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 
+import { getSubscriptionMode } from "@/lib/billing/plans";
 import { user } from "@/server/db/schema";
 
 import { type DbClient, getUserPlanContext, normalizeMonthlyEventCount } from "./user-plan";
@@ -109,6 +110,7 @@ export async function reserveEventUsage(
           limit,
           currentCount: newCount,
           plan,
+          subscriptionMode: getSubscriptionMode(ctx.subscription),
           email: ctx.userRecord.email,
           name: ctx.userRecord.name,
         }

@@ -216,9 +216,10 @@ Some text still names the hosted service and doesn't come from configuration: th
 | `5,20,35,50 * * * *` | `/api/cron/phishing-rescan?backlog=1` | Works through blocks the full rescan held back | Drop with the rescan |
 | `10 * * * *` | `/api/cron/api-access-sunset` | Starts the notice period for API keys on accounts without a paid plan and emails their owners | Drop: it exists for keys created before API access became a paid feature |
 | `10 * * * *` | `/api/cron/first-link-nudge` | Emails accounts that signed up 24 to 72 hours ago and haven't created a link yet, once | Only with email |
+| `10 * * * *` | `/api/cron/promo-paused-notice` | While a promo in `src/lib/billing/promo.ts` runs, emails Free accounts whose analytics tracking is paused this month, once per promo | Only with email and billing |
 | `40 * * * *` | `/api/cron/link-creation-health` | Posts to `DISCORD_WEBHOOK_URL` when link creation starts failing | Only with `DISCORD_WEBHOOK_URL` |
 
-One expression can run several routes: `10 * * * *` runs both `api-access-sunset` and `first-link-nudge`. To drop a job that shares its expression, remove its route from `CRON_ROUTES`; otherwise remove the expression from `triggers.crons`. An expression missing from `CRON_ROUTES` only logs an error. To run a job by hand:
+One expression can run several routes: `10 * * * *` runs `api-access-sunset`, `first-link-nudge` and `promo-paused-notice`. To drop a job that shares its expression, remove its route from `CRON_ROUTES`; otherwise remove the expression from `triggers.crons`. An expression missing from `CRON_ROUTES` only logs an error. To run a job by hand:
 
 ```bash
 CRON_SECRET='...' bun run cron cleanup-teams --url https://links.example.com
