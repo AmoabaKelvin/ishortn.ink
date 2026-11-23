@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 
 import { AnalyticsProviders } from "@/components/analytics-providers";
+import { PostHogIdentify } from "@/components/scripts/posthog-identify";
 import { clerkLocalization } from "@/lib/auth/clerk-localization";
 import { TRPCReactProvider } from "@/trpc/react";
 
@@ -14,7 +15,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ClerkProvider localization={clerkLocalization}>
       <TRPCReactProvider>
-        <AnalyticsProviders>{children}</AnalyticsProviders>
+        <AnalyticsProviders>
+          <PostHogIdentify />
+          {children}
+        </AnalyticsProviders>
       </TRPCReactProvider>
     </ClerkProvider>
   );

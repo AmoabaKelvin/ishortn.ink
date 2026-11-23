@@ -1,0 +1,113 @@
+import { describe, expect, test } from "bun:test";
+
+import { createIdentityTracker, createPageviewTracker } from "./posthog-tracking";
+
+function page(pathname: string, search = "") {
+  return { href: `https://ishortn.ink${pathname}${search}`, host: "ishortn.ink", pathname };
+}
+
+function fakePostHog(distinctId = "anon-1", userState = "anonymous") {
+  const calls: string[] = [];
+  const client = {
+    distinctId,
+    userState,
+    capture: (event: string, properties: Record<string, string>) =>
+      calls.push(`${event} ${properties.$pathname}`),
+    identify: (id: string) => {
+      calls.push(`identify ${id}`);
+      client.distinctId = id;
+      client.userState = "identified";
+    },
+    reset: () => {
+      calls.push("reset");
+      client.distinctId = "anon-2";
+      client.userState = "anonymous";
+    },
+    get_distinct_id: () => client.distinctId,
+    get_property: (name: string) => (name === "$user_state" ? client.userState : undefined),
+  };
+  return { client, calls };
+}
+
+describe("createPageviewTracker", () => {
+  test("counts the initial page once and each client-side navigation after it", () => {
+    const { client, calls } = fakePostHog();
+    const track = createPageviewTracker((call) => call(client));
+
+    // loadPostHog, then the route effect's first run, report the same page.
+    track(page("/"));
+    track(page("/"));
+    track(page("/pricing"));
+    track(page("/pricing", "?highlight=pro"));
+    track(page("/auth/sign-up"));
+    track(page("/"));
+
+    expect(calls).toEqual([
+      "$pageview /",
+      "$pageview /pricing",
+      "$pageview /auth/sign-up",
+      "$pageview /",
+    ]);
+  });
+
+  test("keeps the URL and time of the navigation while PostHog is still loading", () => {
+    const queued: ((client: { capture: (...args: unknown[]) => void }) => void)[] = [];
+    const track = createPageviewTracker((call) => queued.push(call));
+    track(page("/pricing", "?highlight=pro"));
+
+    const sent: unknown[][] = [];
+    for (const call of queued) call({ capture: (...args) => sent.push(args) });
+    expect(sent).toHaveLength(1);
+    const [event, properties, options] = sent[0] ?? [];
+    expect(event).toBe("$pageview");
+    expect(properties).toEqual({
+      $current_url: "https://ishortn.ink/pricing?highlight=pro",
+      $host: "ishortn.ink",
+      $pathname: "/pricing",
+    });
+    expect(options).toEqual({ timestamp: expect.any(Date) });
+  });
+});
+
+describe("createIdentityTracker", () => {
+  test("identifies each user id once", () => {
+    const { client, calls } = fakePostHog();
+    const sync = createIdentityTracker((call) => call(client));
+
+    sync("user_1");
+    sync("user_1");
+    sync("user_1");
+
+    expect(calls).toEqual(["identify user_1"]);
+  });
+
+  test("resets on sign-out and identifies the next user", () => {
+    const { client, calls } = fakePostHog();
+    const sync = createIdentityTracker((call) => call(client));
+
+    sync("user_1");
+    sync(null);
+    sync(null);
+    sync("user_2");
+
+    expect(calls).toEqual(["identify user_1", "reset", "identify user_2"]);
+  });
+
+  test("resets an identity left over from a previous page load when signed out", () => {
+    const { client, calls } = fakePostHog("user_1", "identified");
+    createIdentityTracker((call) => call(client))(null);
+    expect(calls).toEqual(["reset"]);
+  });
+
+  test("does nothing for an anonymous visitor who is signed out", () => {
+    const { client, calls } = fakePostHog();
+    createIdentityTracker((call) => call(client))(null);
+    expect(calls).toEqual([]);
+  });
+
+  test("switches to a different account without merging it into the previous one", () => {
+    const { client, calls } = fakePostHog("user_1", "identified");
+    createIdentityTracker((call) => call(client))("user_2");
+    expect(calls).toEqual(["reset", "identify user_2"]);
+  });
+});
