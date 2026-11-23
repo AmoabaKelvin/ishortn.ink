@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test";
 import { isPostLive } from "@/lib/blog";
 import { DOCS_PAGES, docsHref } from "@/lib/docs/navigation";
 
-import { competitors, getCompetitor } from "./competitors";
+import { competitors } from "./competitors";
 
 const farFuture = new Date("2100-01-01T00:00:00Z");
 
@@ -18,13 +18,14 @@ describe("competitor guides", () => {
 
   it("list related guides that exist", () => {
     const docsHrefs = new Set(DOCS_PAGES.map((page) => docsHref(page.slug)));
+    const compareHrefs = new Set(Object.values(competitors).map((c) => `/compare/${c.slug}`));
     for (const competitor of Object.values(competitors)) {
       if (!("relatedGuides" in competitor)) continue;
       for (const { href } of competitor.relatedGuides) {
         if (href.startsWith("/blog/")) {
           expect(isPostLive(href.slice("/blog/".length), farFuture)).toBe(true);
         } else if (href.startsWith("/compare/")) {
-          expect(getCompetitor(href.slice("/compare/".length))).toBeDefined();
+          expect(compareHrefs).toContain(href);
         } else {
           expect(docsHrefs).toContain(href);
         }

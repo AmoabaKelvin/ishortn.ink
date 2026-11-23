@@ -51,6 +51,9 @@ describe("page titles", () => {
       "Short.io vs iShortn: Pricing and Free Plan Compared (2026)",
     );
     expect(comparisonTitle(competitors.bitly)).toBe("Bitly vs iShortn: URL shortener comparison");
+    expect(comparisonTitle(competitors.dub)).toBe(
+      "Dub.co vs iShortn: Pricing and Free Plan Compared (2026)",
+    );
   });
 
   it("keeps blog post titles short with the brand once", () => {
