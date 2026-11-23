@@ -110,15 +110,15 @@ Before you pick one, check these things on the company's own pricing page and do
 
 | Question | Dub | iShortn |
 | --- | --- | --- |
-| How many new links does the free plan allow? | See Dub's [links pricing page](https://dub.co/pricing/links) | 30 a month |
-| How long does the free plan keep analytics? | See the same page | 7 days |
-| Can you use your own domain? | Yes, 100 domains on Business | Yes, 3 on Pro, unlimited on Ultra |
-| What does the main pricing page start at? | Business, $90/month | Pro, $8/month |
-| Is there an API, and on which plan? | Listed on Business, Advanced and Enterprise | Pro and Ultra |
+| How many new links does the free plan allow? | 25 a month ([links pricing page](https://dub.co/pricing/links)) | 30 a month |
+| How long does the free plan keep analytics? | 30 days | 7 days |
+| Can you use your own domain? | Yes, 3 on Free, 10 on Pro, 100 on Business | Yes, 3 on Pro, unlimited on Ultra |
+| What does the cheapest paid plan cost? | Pro, $30/month ($27/month billed yearly) | Pro, $8/month |
+| Is there an API, and on which plan? | Every plan, including Free | Pro and Ultra |
 | Is SSO available? | Enterprise | No |
 | Can you export your links if you leave? | Not listed on the pricing page | Yes, CSV or JSON export on every plan |
 
-Dub's main pricing page is built around affiliate and partner programs, with its short-link plans on a separate page that blocked our checks on 22 November. It suits software companies running referral programs more than a café printing QR codes. Two more things to check that pricing pages rarely spell out. First, what happens to links on your own domain if you cancel? Second, can you import links from your current tool without breaking them? [iShortn vs Dub](/compare/dub) goes into more detail.
+Dub's main pricing page is built around affiliate and partner programs, with its short-link plans on a separate page. It suits software companies running referral programs more than a café printing QR codes. Two more things to check that pricing pages rarely spell out. First, what happens to links on your own domain if you cancel? Second, can you import links from your current tool without breaking them? [iShortn vs Dub](/compare/dub) goes into more detail.
 
 ## The hidden costs of free shorteners
 
@@ -151,7 +151,7 @@ The free plan has 30 links a month, 1,000 tracked events and 7 days of analytics
 These pages compare iShortn with one tool at a time, using each company's own pricing page:
 
 - [iShortn vs Bitly](/compare/bitly): Bitly Free allows 5 links a month, and custom domains start at $29 a month billed annually.
-- [iShortn vs Dub](/compare/dub): Dub's main pricing page leads with partner-program plans from $90 a month. Our [Dub alternatives](/blog/dub-alternatives) guide covers cheaper options.
+- [iShortn vs Dub](/compare/dub): Dub Free allows 25 new links a month with 30 days of analytics, and its link plans start at $30 a month. Our [Dub alternatives](/blog/dub-alternatives) guide covers cheaper options.
 - [iShortn vs Short.io](/compare/short-io): Short.io gives 5 free custom domains and 1,000 links in total, with paid plans from $5 a month.
 - [iShortn vs Rebrandly](/compare/rebrandly): Rebrandly Free allows 10 links a month, with detailed data on 100 clicks.
 
