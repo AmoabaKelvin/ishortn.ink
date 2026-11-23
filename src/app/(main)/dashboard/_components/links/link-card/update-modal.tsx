@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
+import { selectLinkDomain } from "./edit-link-form";
 import { LinkDomainSelect } from "./link-domain-select";
 
 import type { LinkCardLink } from "./types";
@@ -235,9 +236,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                 <section className="flex items-center">
                                   <LinkDomainSelect
                                     value={selectedDomain ?? link.domain}
-                                    onValueChange={(domain) =>
-                                      form.setValue("domain", domain, { shouldDirty: true })
-                                    }
+                                    onValueChange={(domain) => selectLinkDomain(form, domain)}
                                     currentDomain={link.domain}
                                     triggerClassName="h-9 w-max min-w-0 max-w-52 shrink-0 gap-1 rounded-r-none border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 text-[13px]"
                                   />

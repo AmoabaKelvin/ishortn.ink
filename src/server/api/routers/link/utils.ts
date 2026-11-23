@@ -1,10 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { CsvError, parse } from "csv-parse/sync";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { getBioLinkBlockLimit, getPlanCaps } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
+import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
 import { APP_TOP_LEVEL_SEGMENTS } from "@/lib/seo/indexing";
 import { normalizeAlias } from "@/lib/utils";
@@ -19,6 +20,7 @@ import {
 import { requireFolderAccess, workspaceFilter, workspaceUsagePlan } from "@/server/lib/workspace";
 
 import type { ProtectedTRPCContext, WorkspaceTRPCContext } from "../../trpc";
+import type { AllAnalyticsInput } from "./link.input";
 import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 import type { SQL } from "drizzle-orm";
@@ -744,4 +746,90 @@ export const settleWithConcurrency = async <T, R>(
   };
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return results;
+};
+
+/**
+ * Links the analytics overview counts: the workspace's short links (no QR codes
+ * or bio links), narrowed by the overview filter. The click export uses the
+ * same conditions so its rows match the overview.
+ */
+export const overviewLinkConditions = (
+  workspace: WorkspaceTRPCContext["workspace"],
+  input: Pick<AllAnalyticsInput, "filterType" | "filterId">,
+): SQL[] => {
+  const conditions = [
+    workspaceFilter(workspace, link.userId, link.teamId),
+    eq(link.isQrCode, false),
+    eq(link.isBioLink, false),
+  ];
+  if (input.filterType === "folder" && input.filterId !== undefined) {
+    conditions.push(
+      input.filterId === "null" ? isNull(link.folderId) : eq(link.folderId, Number(input.filterId)),
+    );
+  } else if (input.filterType === "domain" && input.filterId) {
+    conditions.push(eq(link.domain, String(input.filterId)));
+  } else if (input.filterType === "link" && input.filterId) {
+    conditions.push(eq(link.id, Number(input.filterId)));
+  } else if (input.filterType === "campaign" && input.filterId) {
+    conditions.push(eq(link.campaignId, Number(input.filterId)));
+  }
+  return conditions;
+};
+
+export const MAX_CLICK_EXPORT_ROWS = 100_000;
+
+export type ClickExportRow = {
+  createdAt: Date | null;
+  domain: string;
+  alias: string | null;
+  url: string | null;
+  country: string | null;
+  city: string | null;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
+  referer: string | null;
+};
+
+const CLICK_CSV_HEADER = [
+  "Timestamp (UTC)",
+  "Short link",
+  "Destination",
+  "Country",
+  "City",
+  "Device",
+  "Browser",
+  "OS",
+  "Referrer",
+];
+
+// Quote every field, and prefix formula-trigger characters so spreadsheets
+// treat user-controlled values (destinations, referrers) as text.
+const csvField = (value: string | null) => {
+  const text = value ?? "";
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replaceAll('"', '""')}"`;
+};
+
+/** `2026-11-23 14:05:09`: ISO in UTC, in the form spreadsheets parse as a date-time. */
+const formatUtcTimestamp = (date: Date | null) =>
+  date ? date.toISOString().slice(0, 19).replace("T", " ") : "";
+
+export const clicksToCsv = (rows: ClickExportRow[]) => {
+  const lines = rows.map((row) =>
+    [
+      formatUtcTimestamp(row.createdAt),
+      `https://${row.domain}/${row.alias ?? ""}`,
+      row.url,
+      row.country,
+      row.city,
+      row.device,
+      row.browser,
+      row.os,
+      formatReferrerLabel(row.referer ?? "null"),
+    ]
+      .map(csvField)
+      .join(","),
+  );
+  return [CLICK_CSV_HEADER.join(","), ...lines].join("\r\n") + "\r\n";
 };

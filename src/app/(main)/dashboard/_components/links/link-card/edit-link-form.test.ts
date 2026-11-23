@@ -5,7 +5,9 @@ import { createFormControl } from "react-hook-form";
 import {
   geoRulesToFormValues,
   geoRulesToSubmit,
+  linkDomainOptions,
   mergeMilestones,
+  selectLinkDomain,
   syncEditLinkForm,
 } from "./edit-link-form";
 
@@ -182,5 +184,51 @@ describe("mergeMilestones", () => {
       { threshold: 500, notifiedAt: null },
       { threshold: 1000, notifiedAt: null },
     ]);
+  });
+});
+
+describe("domain picker", () => {
+  const shared = ["ishortn.ink", "isht.ink"];
+
+  test("lists the shared domains and only the workspace's verified custom domains", () => {
+    expect(
+      linkDomainOptions(
+        shared,
+        [
+          { domain: "go.acme.com", status: "active" },
+          { domain: "pending.acme.com", status: "pending" },
+          { domain: "broken.acme.com", status: "invalid" },
+          { domain: null, status: "active" },
+        ],
+        "isht.ink",
+      ),
+    ).toEqual({ shared, custom: ["go.acme.com"] });
+  });
+
+  test("keeps the link's current domain listed after it stops being verified", () => {
+    expect(
+      linkDomainOptions(shared, [{ domain: "go.acme.com", status: "active" }], "old.acme.com"),
+    ).toEqual({ shared, custom: ["old.acme.com", "go.acme.com"] });
+  });
+
+  test("picking a domain updates the form and the submitted values carry it", async () => {
+    const form = createFormControl<UpdateLinkInput>();
+    // Opening the dialog resets the form to the saved link (syncEditLinkForm).
+    form.reset({ id: 7, url: "https://example.com", alias: "promo", domain: "isht.ink" });
+
+    selectLinkDomain(form, "go.acme.com");
+
+    expect(form.getValues("domain")).toBe("go.acme.com");
+
+    let submitted: UpdateLinkInput | undefined;
+    await form.handleSubmit((values) => {
+      submitted = values;
+    })();
+    expect(submitted).toEqual({
+      id: 7,
+      url: "https://example.com",
+      alias: "promo",
+      domain: "go.acme.com",
+    });
   });
 });

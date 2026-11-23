@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "c14ba071-4d9a-4429-b394-37a91b1a1822",
+  "id": "2e1a457b-6a5f-42e9-ab1f-62d430e9e759",
   "prevId": "8e27bcfd-8e79-41dc-9bc2-759bed0bb925",
   "tables": {
     "AccountDeletion": {
@@ -1570,6 +1570,20 @@
           "autoincrement": false,
           "default": "'open'"
         },
+        "replyMessage": {
+          "name": "replyMessage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "repliedAt": {
+          "name": "repliedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -2413,75 +2427,6 @@
           "columns": [
             "linkId",
             "threshold"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
-    "LinkPreviousAddress": {
-      "name": "LinkPreviousAddress",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "linkId": {
-          "name": "linkId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "domain": {
-          "name": "domain",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "alias": {
-          "name": "alias",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "linkPreviousAddress_linkId_idx": {
-          "name": "linkPreviousAddress_linkId_idx",
-          "columns": [
-            "linkId"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "LinkPreviousAddress_id": {
-          "name": "LinkPreviousAddress_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "linkPreviousAddress_domain_alias": {
-          "name": "linkPreviousAddress_domain_alias",
-          "columns": [
-            "domain",
-            "alias"
           ]
         }
       },

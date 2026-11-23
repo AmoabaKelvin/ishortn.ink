@@ -61,6 +61,7 @@ import {
   geoRulesToFormValues,
   geoRulesToSubmit,
   mergeMilestones,
+  selectLinkDomain,
   useEditLinkFormSync,
 } from "./edit-link-form";
 import { LinkDomainSelect } from "./link-domain-select";
@@ -488,9 +489,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                 <div className="flex h-9 w-full items-center overflow-hidden rounded-md border border-neutral-200 dark:border-border bg-white dark:bg-card transition-colors focus-within:ring-2 focus-within:ring-neutral-300">
                                   <LinkDomainSelect
                                     value={selectedDomain ?? link.domain}
-                                    onValueChange={(domain) =>
-                                      form.setValue("domain", domain, { shouldDirty: true })
-                                    }
+                                    onValueChange={(domain) => selectLinkDomain(form, domain)}
                                     currentDomain={link.domain}
                                     triggerClassName="h-full w-max min-w-0 max-w-52 shrink-0 gap-1 rounded-none border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:bg-transparent hover:text-neutral-900 focus:ring-0 dark:bg-transparent dark:text-neutral-400 dark:hover:bg-transparent dark:hover:text-foreground"
                                   />

@@ -2,6 +2,7 @@ import {
   IconCheck,
   IconLayoutGridFilled,
   IconScaleFilled,
+  IconShieldCheckFilled,
   IconSparklesFilled,
   IconTagFilled,
   IconTruckFilled,
@@ -13,6 +14,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { PLAN_CAPS } from "@/lib/billing/plans";
 import { isPostLive } from "@/lib/blog";
 import { Paths } from "@/lib/constants/app";
+import { linkOwnershipPoints } from "@/lib/copy/link-ownership";
 import { comparisonTitle, competitors, getCompetitor } from "@/lib/seo/competitors";
 import { visibleRelatedLinks } from "@/lib/seo/related-links";
 import { createBreadcrumbSchema, createFaqSchema } from "@/lib/seo/structured-data";
@@ -246,6 +248,25 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
           </p>
         )}
       </Section>
+
+      {"linksStayYours" in competitor && (
+        <Section>
+          <SectionHeading
+            eyebrow={
+              <Eyebrow icon={<IconShieldCheckFilled aria-hidden="true" />}>Ownership</Eyebrow>
+            }
+            title="Your links stay yours"
+          />
+          <ul className="mt-14 grid gap-4 md:grid-cols-2">
+            {linkOwnershipPoints.map((point) => (
+              <li key={point} className={cn(cardClass, "flex items-start gap-3 p-6")}>
+                <IconCheck aria-hidden="true" className="mt-1 size-4 shrink-0 text-neutral-900" />
+                <span className={bodyClass}>{point}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       {migrationSteps && (
         <Section>

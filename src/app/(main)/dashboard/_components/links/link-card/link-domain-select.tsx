@@ -12,6 +12,8 @@ import {
 import { PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { api } from "@/trpc/react";
 
+import { linkDomainOptions } from "./edit-link-form";
+
 type LinkDomainSelectProps = {
   value: string;
   onValueChange: (domain: string) => void;
@@ -28,11 +30,11 @@ export function LinkDomainSelect({
   triggerClassName,
 }: LinkDomainSelectProps) {
   const customDomainsQuery = api.customDomain.list.useQuery();
-  const customDomains = (customDomainsQuery.data ?? []).flatMap((domain) =>
-    domain.status === "active" && domain.domain ? [domain.domain] : [],
+  const { shared, custom: customDomains } = linkDomainOptions(
+    PLATFORM_DOMAINS,
+    customDomainsQuery.data ?? [],
+    currentDomain,
   );
-  const known = new Set([...PLATFORM_DOMAINS, ...customDomains].map((d) => d.toLowerCase()));
-  if (!known.has(currentDomain.toLowerCase())) customDomains.unshift(currentDomain);
 
   return (
     <Select value={value} onValueChange={onValueChange}>
@@ -44,7 +46,7 @@ export function LinkDomainSelect({
           <SelectLabel className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
             Shared domains
           </SelectLabel>
-          {PLATFORM_DOMAINS.map((domain) => (
+          {shared.map((domain) => (
             <SelectItem key={domain} value={domain}>
               {domain}
             </SelectItem>

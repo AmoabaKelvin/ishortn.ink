@@ -19,6 +19,7 @@ export function nextPlanFor(plan: Plan): UpgradePlan {
 // becomes the highlighted plan's name. Unknown sources show no line.
 const UPGRADE_REASONS = new Map(
   Object.entries({
+    analytics_export: "Exporting clicks to CSV is on {plan}",
     analytics_range: "Your full analytics history is on {plan}",
     api_access: "API access is on {plan}",
     bio_branding: "Removing iShortn branding is on {plan}",

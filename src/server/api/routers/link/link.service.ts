@@ -99,6 +99,7 @@ import {
   hasUtmValues,
   incrementCustomDomainImportCount,
   incrementWorkspaceLinkCount,
+  overviewLinkConditions,
   parseLinkCsv,
   PASSWORD_ATTEMPTS_PER_IP,
   PASSWORD_ATTEMPTS_PER_LINK,
@@ -1458,30 +1459,7 @@ export const getAllUserAnalytics = async (
 
   // Fetch workspace links with optional filtering
   const userLinks = await ctx.db.query.link.findMany({
-    where: (table, { eq, and, isNull }) => {
-      const conditions = [
-        workspaceFilter(ctx.workspace, table.userId, table.teamId),
-        eq(table.isQrCode, false),
-        eq(table.isBioLink, false),
-      ];
-
-      // Apply filter based on type
-      if (input.filterType === "folder" && input.filterId !== undefined) {
-        if (input.filterId === "null" || input.filterId === null) {
-          conditions.push(isNull(table.folderId));
-        } else {
-          conditions.push(eq(table.folderId, Number(input.filterId)));
-        }
-      } else if (input.filterType === "domain" && input.filterId) {
-        conditions.push(eq(table.domain, String(input.filterId)));
-      } else if (input.filterType === "link" && input.filterId) {
-        conditions.push(eq(table.id, Number(input.filterId)));
-      } else if (input.filterType === "campaign" && input.filterId) {
-        conditions.push(eq(table.campaignId, Number(input.filterId)));
-      }
-
-      return and(...conditions);
-    },
+    where: and(...overviewLinkConditions(ctx.workspace, input)),
   });
 
   if (userLinks.length === 0) {

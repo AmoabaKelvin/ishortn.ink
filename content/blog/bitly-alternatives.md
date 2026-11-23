@@ -149,6 +149,15 @@ To move links on your own domain to iShortn:
 
 Expect a few minutes of downtime between the DNS change and the import. [Move your links from Bitly](/docs/migrate-from-bitly) has every step, including apex domains and GoDaddy, and [CSV bulk import](/docs/bulk-import) covers file limits. CSV import and custom domains are on iShortn Pro and Ultra.
 
+## Your links stay yours
+
+Before you pick any shortener, check what happens to a link after you stop using it. Here's what iShortn does:
+
+- **Deleted links are never reassigned.** When you delete or rename a short link on iShortn's shared domains, its old address is retired. No other account can claim it, so an old printed or shared link can't start pointing somewhere new.
+- **QR codes never expire.** They keep redirecting on every plan, including after a paid plan ends. A code only switches off if you set an expiry date or scan limit yourself.
+- **You can check a link before you open it.** Add `!` to the end of any iShortn short link, such as `isht.app/spring-sale!`, to see where it goes.
+- **On your own custom domain, the links are yours.** Only your workspaces can create links on it, and because you own the domain, its addresses go with you.
+
 ## How to choose
 
 - **You want click stats for free:** iShortn.
