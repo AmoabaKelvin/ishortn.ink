@@ -3,6 +3,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 
+import { buildCacheKey } from "@/lib/core/cache";
+
 import { linkRouter } from "./link.procedure";
 import {
   PASSWORD_ATTEMPT_WINDOW_MS,
@@ -69,7 +71,8 @@ function publicCaller(ip = "203.0.113.7") {
     },
   };
   // SAFETY: the public link procedures only read ctx.db.query.link.findFirst and
-  // ctx.headers on the paths exercised here (lookup, wrong password, rate limit).
+  // ctx.headers on the paths exercised here (wrong password, rate limit); the
+  // alias lookup is served from the KV stub below.
   const ctx = {
     db,
     headers: new Headers({ "cf-connecting-ip": ip }),
@@ -106,6 +109,8 @@ beforeEach(() => {
 
 describe("public link lookup", () => {
   test("a password-protected link exposes no destination, hash, owner or note fields", async () => {
+    // The lookup is cache-first, so the cached row is what the procedure reads.
+    kvStore.set(buildCacheKey("ishortn.ink", "launch"), JSON.stringify(protectedLink));
     const result = await publicCaller().retrieveOriginalUrl({
       alias: "launch",
       domain: "ishortn.ink",

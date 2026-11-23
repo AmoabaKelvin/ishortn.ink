@@ -5,7 +5,7 @@ import { IconCalendar, IconChevronDown, IconDiamond, IconX } from "@tabler/icons
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { UtmParamsForm } from "@/app/(main)/dashboard/_components/utm-params-form";
@@ -33,18 +33,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { cn } from "@/lib/utils";
 import { updateLinkSchema } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
+
+import { LinkDomainSelect } from "./link-domain-select";
 
 import type { LinkCardLink } from "./types";
 import type { z } from "zod";
@@ -85,6 +78,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
       name: link.name!,
       url: link.url!,
       alias: link.alias!,
+      domain: link.domain,
       note: link.note ?? undefined,
       disableLinkAfterClicks: link.disableLinkAfterClicks ?? undefined,
       disableLinkAfterDate: link.disableLinkAfterDate ?? undefined,
@@ -93,6 +87,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
     },
   });
   form.setValue("id", link.id);
+  const selectedDomain = useWatch({ control: form.control, name: "domain" });
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
@@ -238,20 +233,14 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                               </FormLabel>
                               <FormControl>
                                 <section className="flex items-center">
-                                  <Select>
-                                    <SelectTrigger className="h-9 w-max rounded-r-none border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 text-[13px]">
-                                      <SelectValue placeholder={DEFAULT_PLATFORM_DOMAIN} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectGroup>
-                                        {PLATFORM_DOMAINS.map((domain) => (
-                                          <SelectItem key={domain} value={domain}>
-                                            {domain}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectGroup>
-                                    </SelectContent>
-                                  </Select>
+                                  <LinkDomainSelect
+                                    value={selectedDomain ?? link.domain}
+                                    onValueChange={(domain) =>
+                                      form.setValue("domain", domain, { shouldDirty: true })
+                                    }
+                                    currentDomain={link.domain}
+                                    triggerClassName="h-9 w-max min-w-0 max-w-52 shrink-0 gap-1 rounded-r-none border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 text-[13px]"
+                                  />
                                   <Input
                                     placeholder="short-link"
                                     className="h-9 flex-grow rounded-l-none border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
@@ -259,6 +248,12 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                   />
                                 </section>
                               </FormControl>
+                              {selectedDomain &&
+                                selectedDomain.toLowerCase() !== link.domain.toLowerCase() && (
+                                  <FormDescription className="break-all text-[12px] text-neutral-400 dark:text-neutral-500">
+                                    {link.domain}/{link.alias} will keep redirecting to this link.
+                                  </FormDescription>
+                                )}
                               <FormMessage />
                             </FormItem>
                           )}

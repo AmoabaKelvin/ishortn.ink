@@ -1,9 +1,9 @@
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 
 import { isPlatformDomain, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { generateShortLink } from "@/lib/core/links";
 import { normalizeAlias } from "@/lib/utils";
-import { link, reservedAlias } from "@/server/db/schema";
+import { link, linkPreviousAddress, reservedAlias } from "@/server/db/schema";
 
 import type { db } from "@/server/db";
 import type { SQL } from "drizzle-orm";
@@ -34,25 +34,46 @@ export async function reserveLinkAliases(
   `);
 }
 
+/**
+ * Whether alias is unavailable on domain: tombstoned (platform domains only), or
+ * a previous address of a link that moved, which keeps redirecting to it. A
+ * link's own previous addresses (`ownLinkId`) stay open to it, so it can move back.
+ */
 export async function isAliasReserved(
   dbClient: DbClient,
   alias: string,
   domain: string,
+  ownLinkId?: number,
 ): Promise<boolean> {
   const normalizedDomain = domain.trim().toLowerCase();
-  if (!isPlatformDomain(normalizedDomain)) return false;
+  const normalizedAlias = normalizeAlias(alias);
 
-  const [row] = await dbClient
-    .select({ id: reservedAlias.id })
-    .from(reservedAlias)
-    .where(
-      and(
-        eq(reservedAlias.domain, normalizedDomain),
-        eq(reservedAlias.alias, normalizeAlias(alias)),
-      ),
-    )
-    .limit(1);
-  return !!row;
+  const [tombstoned, previous] = await Promise.all([
+    isPlatformDomain(normalizedDomain)
+      ? dbClient
+          .select({ id: reservedAlias.id })
+          .from(reservedAlias)
+          .where(
+            and(
+              eq(reservedAlias.domain, normalizedDomain),
+              eq(reservedAlias.alias, normalizedAlias),
+            ),
+          )
+          .limit(1)
+      : [],
+    dbClient
+      .select({ id: linkPreviousAddress.id })
+      .from(linkPreviousAddress)
+      .where(
+        and(
+          eq(linkPreviousAddress.domain, normalizedDomain),
+          eq(linkPreviousAddress.alias, normalizedAlias),
+          ownLinkId === undefined ? undefined : ne(linkPreviousAddress.linkId, ownLinkId),
+        ),
+      )
+      .limit(1),
+  ]);
+  return tombstoned.length > 0 || previous.length > 0;
 }
 
 const MAX_ALIAS_ATTEMPTS = 5;

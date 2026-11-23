@@ -424,6 +424,7 @@ export const validateAlias = (
   alias: string,
   domain: string,
   isPaidUser = false,
+  ownLinkId?: number,
 ): Promise<void> => {
   const aliasRegex = /^[a-zA-Z0-9-_]+$/;
 
@@ -453,13 +454,15 @@ export const validateAlias = (
     });
   }
 
-  return checkAliasAvailability(ctx, alias, domain);
+  return checkAliasAvailability(ctx, alias, domain, ownLinkId);
 };
 
+/** `ownLinkId`: the link taking the alias, which may reclaim its own previous addresses. */
 export const checkAliasAvailability = async (
   ctx: Pick<ProtectedTRPCContext, "db">,
   alias: string,
   domain: string,
+  ownLinkId?: number,
 ): Promise<void> => {
   const normalizedAlias = normalizeAlias(alias);
   const [aliasExists, reserved] = await Promise.all([
@@ -468,7 +471,7 @@ export const checkAliasAvailability = async (
       .from(link)
       .where(and(sql`lower(${link.alias}) = ${normalizedAlias}`, eq(link.domain, domain)))
       .limit(1),
-    isAliasReserved(ctx.db, alias, domain),
+    isAliasReserved(ctx.db, alias, domain, ownLinkId),
   ]);
 
   // Same message for a tombstoned alias, so callers can't probe deleted links.

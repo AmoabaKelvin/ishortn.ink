@@ -180,7 +180,9 @@ describe.skipIf(!testDatabaseUrl)("alias tombstones (MySQL)", () => {
     } catch (caught) {
       error = caught;
     }
-    expect(error instanceof TRPCError && error.message).toBe("Alias already exists");
+    expect(error instanceof TRPCError && error.message).toBe(
+      '"tomb-single" is already taken on ishortn.ink. Choose a different alias or domain.',
+    );
   });
 
   test("custom-domain aliases stay reusable by the domain's owner", async () => {
