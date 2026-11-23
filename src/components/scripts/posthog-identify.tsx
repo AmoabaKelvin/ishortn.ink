@@ -1,9 +1,9 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/nextjs";
 import { useEffect } from "react";
 
-import { identifyUser } from "@/lib/analytics/posthog";
+import { identifyUser, resetPostHogIdentity } from "@/lib/analytics/posthog";
 
 // Separate from posthog.tsx so marketing pages, which have no ClerkProvider, don't ship Clerk.
 export function PostHogIdentify() {
@@ -12,4 +12,13 @@ export function PostHogIdentify() {
     if (isLoaded) identifyUser(userId ?? null);
   }, [isLoaded, userId]);
   return null;
+}
+
+/** Clerk's signOut, with PostHog's identity reset first (see resetPostHogIdentity). */
+export function useSignOut() {
+  const { signOut } = useClerk();
+  return async (options?: { redirectUrl?: string }) => {
+    await resetPostHogIdentity();
+    await signOut(options);
+  };
 }

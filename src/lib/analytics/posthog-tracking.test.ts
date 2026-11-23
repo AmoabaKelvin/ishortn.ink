@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { createDeferredClient } from "./deferred-client";
 import { createIdentityTracker, createPageviewTracker } from "./posthog-tracking";
 
 function page(pathname: string, search = "") {
@@ -109,5 +110,25 @@ describe("createIdentityTracker", () => {
     const { client, calls } = fakePostHog("user_1", "identified");
     createIdentityTracker((call) => call(client))("user_2");
     expect(calls).toEqual(["reset", "identify user_2"]);
+  });
+
+  test("a sign-out reset before Clerk navigates runs before the sign-out continues", async () => {
+    // Mirrors resetPostHogIdentity: Clerk reports the signed-out state only after it has left the
+    // app, so the sign-out buttons reset first and wait for it.
+    const { client, calls } = fakePostHog();
+    const deferred = createDeferredClient<typeof client>(10);
+    const sync = createIdentityTracker(deferred.run);
+    sync("user_1");
+
+    const reset = (() => {
+      sync(null);
+      return deferred.runWithin(() => {}, 1000);
+    })();
+    deferred.ready(client);
+    await reset;
+    calls.push("clerk signOut");
+
+    expect(calls).toEqual(["identify user_1", "reset", "clerk signOut"]);
+    expect(client.distinctId).toBe("anon-2");
   });
 });

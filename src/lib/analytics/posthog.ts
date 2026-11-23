@@ -129,6 +129,21 @@ export function identifyUser(userId: string | null) {
   if (POSTHOG_KEY) syncIdentity(userId);
 }
 
+// Long enough for posthog-js to load on a typical connection, short enough not to stall sign-out.
+const SIGN_OUT_RESET_TIMEOUT_MS = 1000;
+
+/**
+ * Resets PostHog's identity for a sign-out the app starts. Clerk only reports the signed-out state
+ * after it has navigated to the after-sign-out page, where PostHogIdentify isn't mounted, so the
+ * reset has to happen first. Resolves once it has run (loading posthog-js now if needed) or after
+ * a second.
+ */
+export function resetPostHogIdentity() {
+  if (!POSTHOG_KEY) return Promise.resolve();
+  syncIdentity(null);
+  return withPostHogNow(() => {}, SIGN_OUT_RESET_TIMEOUT_MS);
+}
+
 /**
  * Loads posthog-js straight away, skipping the idle wait and any hold, and runs `call` with it.
  * Resolves once `call` has run or after `timeoutMs`, whichever is first. For events sent just
