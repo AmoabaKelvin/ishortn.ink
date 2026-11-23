@@ -122,10 +122,10 @@ export const competitors = {
     pricesCheckedOn: "2026-11-22",
     tagline: "Branded link management platform",
     description:
-      "Rebrandly focuses on branded links, with a free tier that includes a yourbrand.bio domain, but iShortn delivers more analytics at a lower price.",
+      "Rebrandly focuses on branded links, with a free tier that includes one custom domain, but iShortn delivers more analytics at a lower price.",
     freeLinks: "10/month",
     freeAnalytics: "100 tracked clicks/month",
-    customDomains: "1 yourbrand.bio domain on Free; 2 on Essentials",
+    customDomains: "1 on Free (a domain you own or a free .bio domain); 2 on Essentials",
     qrCodes: "Watermarked on free",
     apiAccess: "Yes (100 calls/min on free)",
     teamFeatures: "Paid only",
@@ -133,7 +133,7 @@ export const competitors = {
     pricing: "Free, paid plans from Essentials",
     whySwitch: [
       "Rebrandly free gives 10 links and 100 tracked clicks a month — iShortn gives 30 links and 1,000 tracked events",
-      "Rebrandly Free's branded domain is a yourbrand.bio address, with 100 tracked clicks a month. iShortn Pro connects 3 domains you own and includes 10,000 tracked events for $8/month",
+      "Rebrandly Free includes 1 custom domain (your own or a free .bio domain) and 100 tracked clicks a month. iShortn Pro includes 3 custom domains and 10,000 tracked events for $8/month",
       "Rebrandly QR codes have watermarks on free — iShortn QR codes are clean on all plans",
       "iShortn Pro adds geo and device targeting for $8/month, and AI-powered phishing detection checks links on every plan",
     ],

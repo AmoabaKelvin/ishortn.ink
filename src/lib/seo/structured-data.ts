@@ -1,3 +1,5 @@
+import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
+import { PLAN_CAPS } from "@/lib/billing/plans";
 import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { ROOT_OG_IMAGE_URL } from "@/lib/seo/og-image";
 
@@ -13,6 +15,15 @@ export type JsonLdValue =
 /** A schema.org node as embedded by `<JsonLd>`. */
 export type JsonLdNode = { readonly [key: string]: JsonLdValue };
 
+/** Plan limit as written in copy ("1,000"); undefined (unlimited) never reaches these. */
+export const formatCount = (n: number | undefined) => (n ?? 0).toLocaleString("en-US");
+export const pluralize = (n: number | undefined, word: string) =>
+  `${formatCount(n)} ${word}${n === 1 ? "" : "s"}`;
+
+const SITE_DESCRIPTION = `URL shortener with click analytics, custom domains, dynamic QR codes and link-in-bio pages. Free plan; Pro $${PLAN_PRICES_USD.pro} a month.`;
+const PRICING_URL = "https://ishortn.ink/pricing";
+const { free, pro } = PLAN_CAPS;
+
 export const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -20,7 +31,7 @@ export const organizationSchema = {
   url: "https://ishortn.ink",
   logo: "https://ishortn.ink/icon.png",
   sameAs: ["https://twitter.com/kelamoaba", "https://github.com/AmoabaKelvin/ishortn.ink"],
-  description: "Free URL shortener with powerful analytics, custom domains, and QR codes.",
+  description: SITE_DESCRIPTION,
 };
 
 export const softwareApplicationSchema = {
@@ -29,29 +40,46 @@ export const softwareApplicationSchema = {
   name: "iShortn",
   url: "https://ishortn.ink",
   applicationCategory: "BusinessApplication",
+  applicationSubCategory: "URL shortener",
   operatingSystem: "Web",
-  // Prices derive from the pricing source of truth so the JSON-LD can't drift.
+  description: SITE_DESCRIPTION,
+  featureList: [
+    "Short links with custom aliases",
+    "Click analytics: countries, cities, devices, referrers",
+    "Custom domains",
+    "Dynamic QR codes that never expire",
+    "Link-in-bio pages",
+    "Geo and device targeting",
+    "Password-protected and expiring links",
+    "Bulk CSV import, including Bitly exports",
+    "REST API",
+    "Team workspaces",
+  ],
+  // Prices and limits derive from the billing source of truth so the JSON-LD can't drift.
   offers: [
     {
       "@type": "Offer",
       price: String(PLAN_PRICES_USD.free),
       priceCurrency: "USD",
       name: "Free",
-      description: "30 links per month with basic analytics",
+      url: PRICING_URL,
+      description: `${formatCount(free.linksLimit)} links a month, ${free.analyticsRangeLimitDays}-day analytics, ${FREE_QR_CODE_LIMIT} dynamic QR codes that never expire, ${pluralize(free.bioPageLimit, "link-in-bio page")}`,
     },
     {
       "@type": "Offer",
       price: String(PLAN_PRICES_USD.pro),
       priceCurrency: "USD",
       name: "Pro",
-      description: "1,000 links per month with full analytics and custom domains",
+      url: PRICING_URL,
+      description: `${formatCount(pro.linksLimit)} links a month, unlimited analytics history, ${pluralize(pro.domainLimit, "custom domain")}, link-in-bio on your domain, REST API`,
     },
     {
       "@type": "Offer",
       price: String(PLAN_PRICES_USD.ultra),
       priceCurrency: "USD",
       name: "Ultra",
-      description: "Unlimited links with team collaboration",
+      url: PRICING_URL,
+      description: "Unlimited links, events and custom domains, team workspaces",
     },
   ],
 };

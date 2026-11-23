@@ -1,7 +1,16 @@
 import { describe, expect, it } from "bun:test";
 
+import { FREE_QR_CODE_LIMIT } from "@/lib/billing/entitlements";
+import { PLAN_CAPS } from "@/lib/billing/plans";
+import { PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+
 import { ROOT_OG_IMAGE_URL } from "./og-image";
-import { createArticleSchema, createItemListSchema } from "./structured-data";
+import {
+  createArticleSchema,
+  createItemListSchema,
+  organizationSchema,
+  softwareApplicationSchema,
+} from "./structured-data";
 
 const article = {
   title: "Bitly alternatives",
@@ -50,5 +59,23 @@ describe("createItemListSchema", () => {
       name: "iShortn vs Dub.co",
       url: "https://ishortn.ink/compare/dub",
     });
+  });
+});
+
+describe("softwareApplicationSchema", () => {
+  it("describes each offer from the plan caps", () => {
+    expect(softwareApplicationSchema.offers.map((offer) => offer.description)).toEqual([
+      `${PLAN_CAPS.free.linksLimit} links a month, ${PLAN_CAPS.free.analyticsRangeLimitDays}-day analytics, ${FREE_QR_CODE_LIMIT} dynamic QR codes that never expire, 1 link-in-bio page`,
+      `${PLAN_CAPS.pro.linksLimit?.toLocaleString("en-US")} links a month, unlimited analytics history, ${PLAN_CAPS.pro.domainLimit} custom domains, link-in-bio on your domain, REST API`,
+      "Unlimited links, events and custom domains, team workspaces",
+    ]);
+    for (const offer of softwareApplicationSchema.offers) {
+      expect(offer.url).toBe("https://ishortn.ink/pricing");
+    }
+  });
+
+  it("shares the Organization description, priced from the pricing constants", () => {
+    expect(softwareApplicationSchema.description).toBe(organizationSchema.description);
+    expect(organizationSchema.description).toContain(`Pro $${PLAN_PRICES_USD.pro} a month`);
   });
 });
