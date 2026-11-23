@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, sql } from "drizzle-orm";
 
 import { runBackgroundTask } from "@/lib/utils/background";
-import { flaggedLink, link } from "@/server/db/schema";
+import { flaggedLink } from "@/server/db/schema";
+import { findLinkByAddress } from "@/server/lib/link-address";
 import { sendAbuseReportNotification } from "@/server/lib/notifications/discord";
 
 import { createTRPCRouter, publicProcedure } from "../../trpc";
@@ -38,13 +38,9 @@ export const abuseRouter = createTRPCRouter({
       });
     }
 
-    const reportedLink = await ctx.db.query.link.findFirst({
-      where: and(
-        sql`lower(${link.alias}) = lower(${parsed.alias})`,
-        eq(link.domain, parsed.domain),
-      ),
-      columns: { id: true, url: true, domain: true, alias: true },
-    });
+    // Reports often cite the address that was shared, which may be one the link
+    // has since moved away from; it still redirects, so it must stay reportable.
+    const reportedLink = await findLinkByAddress(ctx.db, parsed.domain, parsed.alias);
 
     if (!reportedLink) {
       throw new TRPCError({

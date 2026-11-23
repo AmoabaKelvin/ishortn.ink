@@ -70,11 +70,7 @@ import {
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
-import {
-  generateUnreservedAlias,
-  isAliasReserved,
-  reserveLinkAliases,
-} from "@/server/lib/reserved-alias";
+import { generateUnreservedAlias, reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import {
   assertCanEnableVerifiedClicks,
@@ -1806,16 +1802,15 @@ export const checkAliasAvailability = async (
   ctx: PublicTRPCContext,
   input: { alias: string; domain: string },
 ) => {
-  const [existingLink, reserved] = await Promise.all([
-    ctx.db.query.link.findFirst({
-      columns: { id: true },
-      where: (table, { eq, and }) =>
-        and(eq(table.alias, input.alias), eq(table.domain, input.domain)),
-    }),
-    isAliasReserved(ctx.db, input.alias, input.domain),
-  ]);
-
-  return { isAvailable: !existingLink && !reserved };
+  // Same check as link creation, so the preview can't say "available" for an
+  // alias that create will then reject.
+  try {
+    await assertAliasAvailable(ctx, input.alias, input.domain);
+    return { isAvailable: true };
+  } catch (error) {
+    if (error instanceof TRPCError && error.code === "CONFLICT") return { isAvailable: false };
+    throw error;
+  }
 };
 
 // Alias checks, URL scans and inserts each hold a db connection or an outbound

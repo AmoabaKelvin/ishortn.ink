@@ -5,8 +5,13 @@ import { eq, inArray } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import { resolveLink } from "@/middlewares/record-click";
+import { abuseRouter } from "@/server/api/routers/abuse/abuse.procedure";
 import { deleteDomainAndAssociatedLinks } from "@/server/api/routers/domains/domains.service";
-import { deleteLink, updateLink } from "@/server/api/routers/link/link.service";
+import {
+  checkAliasAvailability as previewAliasAvailability,
+  deleteLink,
+  updateLink,
+} from "@/server/api/routers/link/link.service";
 import { checkAliasAvailability } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
@@ -15,7 +20,7 @@ import { stubCloudflareContext } from "../../../test/cloudflare-context";
 import { isPreviousAddressOf } from "./link-address";
 import { isAliasReserved } from "./reserved-alias";
 
-import type { WorkspaceTRPCContext } from "@/server/api/trpc";
+import type { TRPCContext, WorkspaceTRPCContext } from "@/server/api/trpc";
 
 describe("isPreviousAddressOf", () => {
   const moved = { domain: "ishortn.ink", alias: "Launch" };
@@ -85,6 +90,12 @@ describe.skipIf(!testDatabaseUrl)("moving a link to another domain (MySQL)", () 
       .delete(schema.linkPreviousAddress)
       .where(inArray(schema.linkPreviousAddress.alias, ALIASES));
     if (links.length > 0) {
+      await db.delete(schema.flaggedLink).where(
+        inArray(
+          schema.flaggedLink.linkId,
+          links.map((l) => l.id),
+        ),
+      );
       await db.delete(schema.linkPreviousAddress).where(
         inArray(
           schema.linkPreviousAddress.linkId,
@@ -214,5 +225,32 @@ describe.skipIf(!testDatabaseUrl)("moving a link to another domain (MySQL)", () 
     expect((await resolveLink("ishortn.ink", "move-me"))?.id).toBe(id);
     expect(await resolveLink(CUSTOM_DOMAIN, "move-me")).toBeNull();
     expect(await isAliasReserved(db, "move-me", CUSTOM_DOMAIN)).toBe(false);
+  });
+
+  test("a moved link's old short URL can still be reported for abuse", async () => {
+    const id = await insertLink("move-me", "isht.ink");
+    await updateLink(workspaceCtx(OWNER), { id, domain: "ishortn.ink" });
+
+    // SAFETY: the report procedure reads only ctx.db.
+    const caller = abuseRouter.createCaller({ db } as TRPCContext);
+    await caller.report({ shortUrl: "https://isht.ink/Move-Me", category: "phishing" });
+
+    const flags = await db
+      .select({ linkId: schema.flaggedLink.linkId })
+      .from(schema.flaggedLink)
+      .where(eq(schema.flaggedLink.linkId, id));
+    expect(flags).toEqual([{ linkId: id }]);
+  });
+
+  test("the create-page alias preview matches the alias check create uses", async () => {
+    const id = await insertLink("move-me", "isht.ink");
+    await updateLink(workspaceCtx(OWNER), { id, domain: "ishortn.ink" });
+
+    // Taken in another case, and kept by a moved link.
+    const preview = (alias: string, domain: string) =>
+      previewAliasAvailability({ db, headers: new Headers() }, { alias, domain });
+    expect(await preview("MOVE-ME", "ishortn.ink")).toEqual({ isAvailable: false });
+    expect(await preview("move-me", "isht.ink")).toEqual({ isAvailable: false });
+    expect(await preview("move-me", "isht.app")).toEqual({ isAvailable: true });
   });
 });
