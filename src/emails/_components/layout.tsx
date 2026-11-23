@@ -22,9 +22,19 @@ type EmailLayoutProps = {
   children: ReactNode;
   /** Set on recurring notifications so the footer offers a way to turn them off. */
   notificationSettingsUrl?: string;
+  /** Why the recipient got it, shown before the footer links; defaults to product notifications. */
+  footerReason?: string;
+  /** One-click unsubscribe page for this email alone. */
+  unsubscribeUrl?: string | null;
 };
 
-export function EmailLayout({ preview, children, notificationSettingsUrl }: EmailLayoutProps) {
+export function EmailLayout({
+  preview,
+  children,
+  notificationSettingsUrl,
+  footerReason = "You received this because product notification emails are on for your account.",
+  unsubscribeUrl,
+}: EmailLayoutProps) {
   const dashboardUrl = getAppUrl("/dashboard");
 
   return (
@@ -65,7 +75,15 @@ export function EmailLayout({ preview, children, notificationSettingsUrl }: Emai
             </Text>
             {notificationSettingsUrl && (
               <Text style={footerText}>
-                You received this because product notification emails are on for your account.{" "}
+                {footerReason}{" "}
+                {unsubscribeUrl && (
+                  <>
+                    <Link href={unsubscribeUrl} style={footerLink}>
+                      Unsubscribe
+                    </Link>{" "}
+                    &middot;{" "}
+                  </>
+                )}
                 <Link href={notificationSettingsUrl} style={footerLink}>
                   Manage notifications
                 </Link>

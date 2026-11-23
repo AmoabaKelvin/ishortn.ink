@@ -173,9 +173,12 @@ export const user = mysqlTable(
     droppedEventCount: int("droppedEventCount").default(0),
     eventTrackingPausedAt: timestamp("eventTrackingPausedAt"),
     lastViewedChangelogSlug: varchar("lastViewedChangelogSlug", { length: 100 }),
-    // Milestone, usage-alert, domain-reminder and first-link nudge emails. Account, billing and
-    // team emails ignore it.
+    // Milestone, usage-alert, domain-reminder, first-link nudge and weekly summary emails. Account,
+    // billing and team emails ignore it.
     productEmailsEnabled: boolean("productEmailsEnabled").notNull().default(true),
+    // Weekly click summary (see src/server/lib/weekly-summary.ts); sent only while
+    // productEmailsEnabled is also on.
+    weeklySummaryEnabled: boolean("weeklySummaryEnabled").notNull().default(true),
     // Account transfer deletion tracking
     deletedAt: timestamp("deletedAt"), // Soft delete timestamp for account transfer grace period
     // Platform admin
@@ -464,6 +467,24 @@ export const linkVisitDailySummaryRelations = relations(linkVisitDailySummary, (
     references: [link.id],
   }),
 }));
+
+// One row per account per summarised week (weekStart is the Monday, UTC). Inserted before the
+// weekly summary email goes out, so a retried or overlapping run never sends the week twice;
+// sentAt is set once Resend accepts it, and the row is removed if the send is rejected.
+export const weeklySummaryEmail = mysqlTable(
+  "WeeklySummaryEmail",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    weekStart: date("weekStart", { mode: "string" }).notNull(),
+    clicks: int("clicks").notNull(),
+    sentAt: timestamp("sentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    weekUserUnique: unique("weeklySummaryEmail_week_user").on(table.weekStart, table.userId),
+  }),
+);
 
 export const linkMilestone = mysqlTable(
   "LinkMilestone",

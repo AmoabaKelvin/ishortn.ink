@@ -17,6 +17,7 @@ export async function getUserProfile(ctx: ProtectedTRPCContext) {
       imageUrl: true,
       isAdmin: true,
       productEmailsEnabled: true,
+      weeklySummaryEnabled: true,
     },
   });
 
@@ -42,8 +43,11 @@ export async function updateNotificationPreferences(
 ) {
   await ctx.db
     .update(user)
-    .set({ productEmailsEnabled: input.productEmailsEnabled })
+    .set({
+      productEmailsEnabled: input.productEmailsEnabled,
+      weeklySummaryEnabled: input.weeklySummaryEnabled,
+    })
     .where(eq(user.id, ctx.auth.userId));
 
-  return { productEmailsEnabled: input.productEmailsEnabled };
+  return input;
 }

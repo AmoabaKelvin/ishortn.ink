@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test";
 import {
   buildUnsubscribeHeaders,
   createUnsubscribeToken,
+  parseUnsubscribeList,
+  unsubscribeUrl,
   verifyUnsubscribeToken,
 } from "./unsubscribe";
 
@@ -26,6 +28,28 @@ describe("unsubscribe tokens", () => {
     expect(verifyUnsubscribeToken("", secret)).toBeNull();
     expect(verifyUnsubscribeToken("no-signature", secret)).toBeNull();
     expect(verifyUnsubscribeToken(".abc", secret)).toBeNull();
+  });
+});
+
+describe("weekly summary unsubscribe", () => {
+  test("a weekly-summary token only verifies for that list", () => {
+    const token = createUnsubscribeToken("user_1", secret, "weekly-summary");
+    expect(verifyUnsubscribeToken(token, secret, "weekly-summary")).toBe("user_1");
+    expect(verifyUnsubscribeToken(token, secret)).toBeNull();
+    expect(
+      verifyUnsubscribeToken(createUnsubscribeToken("user_1", secret), secret, "weekly-summary"),
+    ).toBeNull();
+  });
+
+  test("the URL names the list, and unknown lists fall back to product notifications", () => {
+    const token = encodeURIComponent(createUnsubscribeToken("user_1", secret, "weekly-summary"));
+    expect(unsubscribeUrl("user_1", secret, "weekly-summary")).toBe(
+      `https://ishortn.ink/api/email/unsubscribe?token=${token}&list=weekly-summary`,
+    );
+    expect(unsubscribeUrl("user_1", undefined, "weekly-summary")).toBeNull();
+    expect(parseUnsubscribeList("weekly-summary")).toBe("weekly-summary");
+    expect(parseUnsubscribeList("anything")).toBe("product-notifications");
+    expect(parseUnsubscribeList(null)).toBe("product-notifications");
   });
 });
 

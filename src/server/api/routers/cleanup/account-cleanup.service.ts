@@ -37,6 +37,7 @@ import {
   user,
   userAttribution,
   utmTemplate,
+  weeklySummaryEmail,
 } from "@/server/db/schema";
 import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 
@@ -199,6 +200,7 @@ async function purgeAccount(
     await tx.delete(subscription).where(eq(subscription.userId, userId));
     await tx.delete(audienceFeedback).where(eq(audienceFeedback.userId, userId));
     await tx.delete(userAttribution).where(eq(userAttribution.userId, userId));
+    await tx.delete(weeklySummaryEmail).where(eq(weeklySummaryEmail.userId, userId));
     await tx.delete(feedback).where(eq(feedback.userId, userId));
     await tx.delete(teamMember).where(eq(teamMember.userId, userId));
     await tx

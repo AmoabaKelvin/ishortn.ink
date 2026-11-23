@@ -93,6 +93,16 @@ describe("deliverEmail", () => {
     expect(client.sent[0]).not.toHaveProperty("template");
   });
 
+  test("sends from the given sender when one is set", async () => {
+    const client = clientReturning({ data: { id: "email_1" }, error: null });
+    const from = "iShortn <updates@mail.example.com>";
+
+    expect(await deliverEmail(client, recordingLog(), { ...input, from }, notSuppressed)).toBe(
+      true,
+    );
+    expect(client.sent[0]?.from).toBe(from);
+  });
+
   test("reports failure when no client is configured", async () => {
     expect(await deliverEmail(null, recordingLog(), input, notSuppressed)).toBe(false);
   });
