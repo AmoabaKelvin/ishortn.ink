@@ -20,7 +20,7 @@ We make iShortn, so treat our pick with that in mind. Every competitor price and
 | iShortn | 30 links a month, 7-day analytics, 5 dynamic QR codes | Pro, $8/month | Pro, $8/month (3 domains) |
 | TinyURL | 30 links a month with an account, no click stats | Pro, $9/month billed annually ($11 monthly) | Pro (3 branded domains) |
 | Short.io | 1,000 links in total, 50,000 tracked clicks a month | Hobby, $5/month | Free (5 domains) |
-| Rebrandly | 10 links a month, detailed data on 100 clicks a month | Essentials, $11/month billed annually ($16 monthly) | Free gets 1 yourbrand.bio domain |
+| Rebrandly | 10 links a month, detailed data on 100 clicks a month | Essentials, $11/month billed annually ($16 monthly) | Free gets 1 custom domain (your own or a free `.bio` domain) |
 | Dub | Listed on its separate links pricing page | Business, $90/month on its main pricing page | Business (100 domains) |
 | YOURLS, Kutt, Shlink | Free software, you pay for the server | None | Any domain you own |
 | Bitly, for reference | 5 links and 2 QR codes a month, no click stats, ad page | Core, $10/month, annual only | Growth, $29/month billed annually |
@@ -69,7 +69,7 @@ It's a good fit if you already own a domain and want it on your links from day o
 
 ### 4. Rebrandly
 
-Rebrandly focuses on branded links for marketing teams. The free plan includes 10 links and 10 QR codes a month (the QR codes carry a watermark), the API, and one free domain on `yourbrand.bio`. Clicks are unlimited, but detailed analytics cover only 100 clicks a month. You can't edit destinations on Free.
+Rebrandly focuses on branded links for marketing teams. The free plan includes 10 links and 10 QR codes a month (the QR codes carry a watermark), the API, and 1 custom domain, which can be a domain you already own or a free `.bio` domain from Rebrandly. Clicks are unlimited, but detailed analytics cover only 100 clicks a month. You can't edit destinations on Free.
 
 Essentials was $11 a month billed annually, or $16 monthly, when we checked. Rebrandly appears to show different prices to different visitors, so check [Rebrandly's pricing page](https://www.rebrandly.com/pricing) yourself. Its Enterprise plan lists SAML single sign-on and SCIM user provisioning.
 

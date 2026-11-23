@@ -40,7 +40,7 @@ If you're tracking a handful of links, you may not need to pay anything.
 | Short.io | 1,000 in total | 50,000 a month | Not listed | 5 |
 | Cutt.ly | 30 a month | Yes | 30 days | 1 |
 | Dub | 25 a month | 1,000 events a month | 30 days | 3 |
-| Rebrandly | 10 a month | Detailed data on 100 clicks a month | Not listed | 1 (listed as "yourbrand.bio") |
+| Rebrandly | 10 a month | Detailed data on 100 clicks a month | Not listed | 1 (your own or a free `.bio` domain) |
 | Bitly | 5 a month | No click data listed | None | No |
 | TinyURL | 30 a month | None | None | No |
 
@@ -70,7 +70,7 @@ Going over a tracking limit doesn't break your links on these three plans. What 
 
 ### The price of your own domain
 
-If you want links on `go.yourbrand.com`, the cheapest plan with tracking may not be the cheapest plan with a domain. Bitly Core has no custom domain, and Bitly's pricing page lists it from Growth at $29 a month billed yearly ($35 monthly). Short.io, Cutt.ly and Dub include a custom domain on Free. Rebrandly Free's branded domain is a `yourbrand.bio` address, and your own domain starts on Essentials at $11 a month billed yearly. iShortn includes 3 from Pro at $8. Our guide to [custom short links for your brand](/blog/custom-short-links-for-your-brand) explains the setup.
+If you want links on `go.yourbrand.com`, the cheapest plan with tracking may not be the cheapest plan with a domain. Bitly Core has no custom domain, and Bitly's pricing page lists it from Growth at $29 a month billed yearly ($35 monthly). Short.io, Cutt.ly, Dub and Rebrandly include a custom domain on Free, though Rebrandly Free allows only 10 new links a month. iShortn includes 3 from Pro at $8. Our guide to [custom short links for your brand](/blog/custom-short-links-for-your-brand) explains the setup.
 
 ### Whether you can change a link after sharing it
 

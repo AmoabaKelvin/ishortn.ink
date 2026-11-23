@@ -31,7 +31,7 @@ We make iShortn, so weigh our view accordingly. Every competitor limit below com
 | New links | 30 a month | 1,000 in total | 30 a month with an account | 10 a month | 5 a month |
 | Click analytics | Location, device, browser, referrer; 7 days | 50,000 tracked clicks a month | None | Detailed data on 100 clicks a month | None |
 | Edit a link's destination | Yes | Yes | No | No | No |
-| Custom domain | Pro ($8/month) | 5 free | Pro | 1 free yourbrand.bio domain | Growth ($29/month billed annually) |
+| Custom domain | Pro ($8/month) | 5 free | Pro | 1 free (your own or a free `.bio` domain) | Growth ($29/month billed annually) |
 | QR codes | 5 dynamic | Yes | One per link | 10 a month, watermarked | 2 a month |
 | API | Pro | Yes | Yes | Yes | 1,000 requests a month |
 
@@ -59,7 +59,7 @@ There's no click tracking on the free plan and you can't edit a link once it's m
 
 ### Rebrandly
 
-Rebrandly's free plan includes 10 links and 10 QR codes a month, the API and a free `yourbrand.bio` domain. Clicks are unlimited, but detailed analytics cover only 100 clicks a month, and the QR codes carry a watermark. You can't edit destinations on Free.
+Rebrandly's free plan includes 10 links and 10 QR codes a month, the API and 1 custom domain, which can be a domain you already own or a free `.bio` domain from Rebrandly. Clicks are unlimited, but detailed analytics cover only 100 clicks a month, and the QR codes carry a watermark. You can't edit destinations on Free.
 
 Essentials was $11 a month billed annually when we checked. Rebrandly seems to show different prices to different visitors ([Rebrandly pricing](https://www.rebrandly.com/pricing)). See [iShortn vs Rebrandly](/compare/rebrandly).
 

@@ -33,7 +33,7 @@ Fewer people used Dub's newer features: conversion and revenue attribution, and 
 |---|---|---|---|
 | **iShortn** | 30 links/mo, 1,000 tracked events/mo, 5 dynamic QR codes, 1 bio page | Pro, $8/mo (3 domains) | Small businesses and creators who want links, QR codes and analytics cheaply |
 | **Short.io** | 1,000 links total, 50,000 tracked clicks/mo, 5 custom domains | Free | People who need a custom domain at no cost |
-| **Rebrandly** | 10 links/mo, 100 tracked clicks/mo, watermarked QR codes, a `yourbrand.bio` domain | Essentials, $11/mo billed yearly (2 domains) | Brands that need compliance features at higher tiers |
+| **Rebrandly** | 10 links/mo, 100 tracked clicks/mo, watermarked QR codes, 1 custom domain | Essentials, $11/mo billed yearly (2 domains) | Brands that need compliance features at higher tiers |
 | **Bitly** | 5 links and 2 QR codes/mo, no analytics history | Growth, $29/mo | Teams that want the best-known name |
 | **Self-hosted Dub** | Free software, you pay for hosting | Yours | Developers who want Dub itself and can run it |
 | **Dub** (for reference) | 25 new links/mo, 1,000 tracked events/mo, 3 custom domains | Free (3 domains); paid from Pro, $30/mo | Developers, partner programs and conversion attribution |
@@ -72,7 +72,7 @@ Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https
 
 ## 3. Rebrandly: branded links with an enterprise path
 
-[Rebrandly](https://www.rebrandly.com/pricing) has been doing branded links for a long time. Its free plan is now small: 10 links a month and 100 tracked clicks a month, with watermarked QR codes and a branded domain on `yourbrand.bio` rather than a domain you own. Clicks above the tracking limit still redirect, but you won't see them in your stats. Paid plans start with Essentials at $11 a month billed yearly, which includes 2 custom domains; monthly billing costs more, so check the pricing page before you decide.
+[Rebrandly](https://www.rebrandly.com/pricing) has been doing branded links for a long time. Its free plan is now small: 10 links a month and 100 tracked clicks a month, with watermarked QR codes and 1 custom domain, which can be a domain you already own or a free `.bio` domain from Rebrandly. Clicks above the tracking limit still redirect, but you won't see them in your stats. Paid plans start with Essentials at $11 a month billed yearly, which includes 2 custom domains; monthly billing costs more, so check the pricing page before you decide.
 
 **Watch for:** the 100 tracked clicks on Free means you'll stop seeing data almost immediately on any real campaign.
 
