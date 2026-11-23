@@ -1,11 +1,17 @@
 import { IconClick, IconTrendingUp, IconUsers, IconWorld } from "@tabler/icons-react";
+import { z } from "zod";
 
 import { QuickInfoCard } from "@/app/(main)/dashboard/analytics/[alias]/_components/quick-info-card";
-import { aggregateVisits, fillClickSeries, mergeArchivedClicks } from "@/lib/core/analytics";
+import {
+  aggregateVisits,
+  fillClickSeries,
+  mergeArchivedClicks,
+  parseCustomRange,
+} from "@/lib/core/analytics";
 import {
   allAnalyticsSchema,
   analyticsFilterTypeEnum,
-  rangeEnum,
+  analyticsRangeEnum,
 } from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/server";
 
@@ -30,9 +36,14 @@ export const metadata: Metadata = { title: "Analytics" };
 // Search params are user-controlled, so a bad value falls back to the default
 // instead of erroring the page. The tRPC input stays strict.
 const overviewSearchParamsSchema = allAnalyticsSchema.extend({
-  range: rangeEnum.catch("7d"),
+  range: analyticsRangeEnum.catch("7d"),
   filterType: analyticsFilterTypeEnum.catch("all"),
+  from: z.string().optional().catch(undefined),
+  to: z.string().optional().catch(undefined),
 });
+
+const firstParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
 
 type AnalyticsOverviewPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -44,8 +55,12 @@ export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPage
     range: requestedRange,
     filterType,
     filterId,
+    from,
+    to,
   } = overviewSearchParamsSchema.parse({
     range: searchParams?.range,
+    from: firstParam(searchParams?.from),
+    to: firstParam(searchParams?.to),
     filterType: searchParams?.filterType,
     filterId: Array.isArray(searchParams?.filterId)
       ? searchParams.filterId[0]
@@ -62,9 +77,11 @@ export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPage
     clicksByDestination,
     archived,
     range,
+    custom,
     window,
   } = await api.link.allAnalytics.query({
     range: requestedRange,
+    ...parseCustomRange(from, to),
     filterType,
     filterId,
   });
@@ -73,7 +90,7 @@ export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPage
   const series = fillClickSeries(mergeArchivedClicks(aggregatedVisits, archived), window);
 
   return (
-    <RangeTransitionProvider range={range}>
+    <RangeTransitionProvider range={range} custom={custom}>
       <AnalyticsTracker isOverview />
       {/* Header */}
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">

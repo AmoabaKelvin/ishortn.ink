@@ -32,7 +32,7 @@ describe("foldVisitCounts", () => {
       { dim: "clicksPerReferrer", k: "https://www.instagram.com/p/abc", n: 1, v: 0 },
     ]);
 
-    expect(result.clicksPerReferrer).toEqual({ Direct: 4, Twitter: 2, "instagram.com": 5 });
+    expect(result.clicksPerReferrer).toEqual({ Direct: 4, X: 2, Instagram: 5 });
   });
 
   test("ignores unknown dimensions", () => {

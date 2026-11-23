@@ -5,10 +5,14 @@ import { createContext, useContext, useOptimistic, useTransition } from "react";
 
 import { cn } from "@/lib/utils";
 
+import type { CustomRange } from "@/lib/core/analytics";
+
 type RangeTransitionValue = {
   range: string;
+  /** The days of a custom range; null for every other range. */
+  custom: CustomRange | null;
   isPending: boolean;
-  setRange: (range: string) => void;
+  setRange: (range: string, custom?: CustomRange) => void;
 };
 
 const RangeTransitionContext = createContext<RangeTransitionValue | null>(null);
@@ -20,29 +24,38 @@ const RangeTransitionContext = createContext<RangeTransitionValue | null>(null);
  */
 export function RangeTransitionProvider({
   range,
+  custom = null,
   children,
 }: {
   range: string;
+  custom?: CustomRange | null;
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const [optimisticRange, setOptimisticRange] = useOptimistic(range);
+  const [optimistic, setOptimistic] = useOptimistic({ range, custom });
 
-  const setRange = (next: string) => {
+  const setRange = (next: string, nextCustom?: CustomRange) => {
     // Merge so filters and ?domain survive the range change.
     const params = new URLSearchParams(searchParams);
     params.set("range", next);
+    if (nextCustom) {
+      params.set("from", nextCustom.from);
+      params.set("to", nextCustom.to);
+    } else {
+      params.delete("from");
+      params.delete("to");
+    }
     startTransition(() => {
-      setOptimisticRange(next);
+      setOptimistic({ range: next, custom: nextCustom ?? null });
       router.push(`${pathname}?${params.toString()}`);
     });
   };
 
   return (
-    <RangeTransitionContext.Provider value={{ range: optimisticRange, isPending, setRange }}>
+    <RangeTransitionContext.Provider value={{ ...optimistic, isPending, setRange }}>
       {children}
     </RangeTransitionContext.Provider>
   );

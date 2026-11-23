@@ -8,7 +8,9 @@ type RangeSelectorWrapperProps = {
 };
 
 export function RangeSelectorWrapper({ isProPlan }: RangeSelectorWrapperProps) {
-  const { range, setRange } = useRangeTransition();
+  const { range, custom, setRange } = useRangeTransition();
 
-  return <RangeSelector value={range} isProPlan={isProPlan} onRangeChange={setRange} />;
+  return (
+    <RangeSelector value={range} custom={custom} isProPlan={isProPlan} onRangeChange={setRange} />
+  );
 }

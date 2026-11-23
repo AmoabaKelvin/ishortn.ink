@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   baseDomain,
+  canonicalReferrer,
   formatReferrerLabel,
   groupReferrers,
   isSearchReferrer,
@@ -29,6 +30,39 @@ describe("baseDomain", () => {
   });
 });
 
+describe("canonicalReferrer", () => {
+  test("maps each platform's aliases to one source", () => {
+    const cases = {
+      facebook: ["facebook", "facebook.com", "m.facebook.com", "l.facebook.com", "fb.me"],
+      x: ["twitter", "twitter.com", "x.com", "t.co", "mobile.twitter.com"],
+      instagram: ["instagram", "instagram.com", "l.instagram.com"],
+      linkedin: ["linkedin", "linkedin.com", "lnkd.in", "www.linkedin.com"],
+      google: ["google", "google.com", "google.co.uk", "news.google.de"],
+      youtube: ["youtube", "youtube.com", "m.youtube.com", "youtu.be"],
+      reddit: ["reddit", "reddit.com", "out.reddit.com", "redd.it"],
+      whatsapp: ["whatsapp", "whatsapp.com", "web.whatsapp.com", "wa.me", "com.whatsapp"],
+    };
+    for (const [source, aliases] of Object.entries(cases)) {
+      for (const alias of aliases) expect(canonicalReferrer(alias)).toBe(source);
+    }
+  });
+
+  test("leaves other sources and domains unchanged", () => {
+    expect(canonicalReferrer("direct")).toBe("direct");
+    expect(canonicalReferrer("gmail")).toBe("gmail");
+    expect(canonicalReferrer("news.ycombinator.com")).toBe("news.ycombinator.com");
+    expect(canonicalReferrer("bing.com")).toBe("bing.com");
+    expect(canonicalReferrer("googleusercontent.com")).toBe("googleusercontent.com");
+  });
+
+  test("display labels use the platform's name", () => {
+    expect(formatReferrerLabel("x.com")).toBe("X");
+    expect(formatReferrerLabel("youtube.com")).toBe("YouTube");
+    expect(formatReferrerLabel("wa.me")).toBe("WhatsApp");
+    expect(formatReferrerLabel("https://l.facebook.com/")).toBe("Facebook");
+  });
+});
+
 describe("referrer classification", () => {
   test("stored source labels count as social", () => {
     for (const label of ["twitter", "facebook", "linkedin", "reddit", "x.com", "instagram.com"]) {
@@ -49,16 +83,43 @@ describe("referrer classification", () => {
     expect(formatReferrerLabel("direct")).toBe("Direct");
     expect(formatReferrerLabel("null")).toBe("Direct");
     expect(formatReferrerLabel("linkedin")).toBe("LinkedIn");
-    expect(formatReferrerLabel("twitter")).toBe("Twitter");
-    expect(formatReferrerLabel("google.co.uk")).toBe("google.co.uk");
+    expect(formatReferrerLabel("twitter")).toBe("X");
+    expect(formatReferrerLabel("google.co.uk")).toBe("Google");
+    expect(formatReferrerLabel("bbc.co.uk")).toBe("bbc.co.uk");
     expect(formatReferrerLabel("https://www.example.com/page")).toBe("example.com");
   });
 
   test("groupReferrers merges legacy null with direct", () => {
     expect(groupReferrers({ null: 2, direct: 3, twitter: 1 })).toEqual([
       { source: "direct", name: "Direct", clicks: 5 },
-      { source: "twitter", name: "Twitter", clicks: 1 },
+      { source: "x", name: "X", clicks: 1 },
     ]);
+  });
+
+  test("groupReferrers gives one row per canonical source", () => {
+    expect(
+      groupReferrers({
+        facebook: 2198,
+        "facebook.com": 830,
+        "https://l.facebook.com/l.php?u=x": 4,
+        twitter: 10,
+        "twitter.com": 5,
+        "x.com": 3,
+        "google.com": 7,
+        "google.co.uk": 2,
+      }),
+    ).toEqual([
+      { source: "facebook", name: "Facebook", clicks: 3032 },
+      { source: "x", name: "X", clicks: 18 },
+      { source: "google", name: "Google", clicks: 9 },
+    ]);
+  });
+
+  test("canonical sources stay social or search", () => {
+    expect(isSocialReferrer("x")).toBe(true);
+    expect(isSocialReferrer("youtube.com")).toBe(true);
+    expect(isSearchReferrer("google")).toBe(true);
+    expect(isSearchReferrer("https://www.google.de/")).toBe(true);
   });
 });
 

@@ -171,6 +171,24 @@ export const rangeEnum = z.enum([
 
 export type RangeEnum = z.infer<typeof rangeEnum>;
 
+// Link and overview analytics also take a custom range of UTC days (`from`/`to`).
+export const analyticsRangeEnum = z.enum([...rangeEnum.options, "custom"]);
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const analyticsRangeSchema = z.object({
+  range: analyticsRangeEnum.default("7d"),
+  from: isoDay.optional(),
+  to: isoDay.optional(),
+});
+
+export const linkVisitsSchema = analyticsRangeSchema.extend({
+  id: z.string(),
+  // Omitted: the workspace's default domain.
+  domain: z.string().optional(),
+});
+
+export type LinkVisitsInput = z.infer<typeof linkVisitsSchema>;
+
 export type CreateLinkInput = z.infer<typeof createLinkSchema>;
 export type UpdateLinkInput = z.infer<typeof updateLinkSchema>;
 export type GetLinkInput = z.infer<typeof getLinkSchema>;
@@ -186,8 +204,7 @@ export type ToggleArchiveInput = z.infer<typeof ToggleArchiveInput>;
 
 export const analyticsFilterTypeEnum = z.enum(["all", "folder", "domain", "link", "campaign"]);
 
-export const allAnalyticsSchema = z.object({
-  range: rangeEnum.default("7d"),
+export const allAnalyticsSchema = analyticsRangeSchema.extend({
   filterType: analyticsFilterTypeEnum.default("all"),
   filterId: z.union([z.number(), z.string()]).optional(),
 });

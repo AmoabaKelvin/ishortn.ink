@@ -7,10 +7,16 @@ import {
 } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
-import { aggregateVisits, fillClickSeries, mergeArchivedClicks } from "@/lib/core/analytics";
-import { rangeEnum } from "@/server/api/routers/link/link.input";
+import {
+  aggregateVisits,
+  fillClickSeries,
+  mergeArchivedClicks,
+  parseCustomRange,
+} from "@/lib/core/analytics";
+import { analyticsRangeEnum } from "@/server/api/routers/link/link.input";
 import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
@@ -41,7 +47,11 @@ type QRCodeAnalyticsPageProps = {
 export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProps) {
   const params = await props.params;
   const searchParams = await props.searchParams;
-  const requestedRange = rangeEnum.catch("7d").parse(searchParams.range);
+  const requestedRange = analyticsRangeEnum.catch("7d").parse(searchParams.range);
+  const requestedCustom = parseCustomRange(
+    z.string().optional().catch(undefined).parse(searchParams.from),
+    z.string().optional().catch(undefined).parse(searchParams.to),
+  );
 
   const id = /^\d+$/.test(params.id) ? Number(params.id) : NaN;
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
@@ -92,7 +102,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
 
   // The QR code's link can be gone or outside this workspace; that is a 404, not a crash.
   const visits = await api.link.linkVisits
-    .query({ id: alias, domain, range: requestedRange })
+    .query({ id: alias, domain, range: requestedRange, ...requestedCustom })
     .catch((cause: unknown) => {
       if (isNotFoundError(cause)) notFound();
       throw cause;
@@ -107,6 +117,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
     geoRules,
     archived,
     range,
+    custom,
     window,
   } = visits;
 
@@ -115,7 +126,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
   const countryData = aggregatedVisits.clicksPerCountry;
 
   return (
-    <RangeTransitionProvider range={range}>
+    <RangeTransitionProvider range={range} custom={custom}>
       {breadcrumb}
 
       {/* QR Code Header */}
