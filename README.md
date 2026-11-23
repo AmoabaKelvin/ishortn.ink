@@ -27,6 +27,9 @@
   <a href="https://github.com/AmoabaKelvin/ishortn.ink/issues">
     <img src="https://img.shields.io/github/issues/AmoabaKelvin/ishortn.ink" alt="Issues" />
   </a>
+  <a href="https://www.opensourcealternatives.to">
+    <img src="https://www.opensourcealternatives.to/badge-osa.svg" alt="As seen on Open Source Alternatives" />
+  </a>
 </p>
 
 <br />
