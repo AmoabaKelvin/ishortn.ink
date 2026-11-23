@@ -63,6 +63,7 @@ bunx wrangler queues create ishortn-clicks-dlq
 | `HYPERDRIVE` | Connection to your MySQL database | `hyperdrive[].id` |
 | `CLICK_QUEUE` | Clicks are queued on redirect and written in batches | `queues` (by name, no ID needed) |
 | `WORKER_SELF_REFERENCE` | Lets cron jobs, the queue consumer and page revalidation call the app | `services[].service`: must equal `name` |
+| `ASSETS` | Static files from the OpenNext build | `assets` (already set, nothing to create) |
 
 If you rename the Worker (`name`), change `services[0].service` to the same name. Set `routes[0].pattern` to your domain; see [Short-link domain](#short-link-domain).
 
@@ -73,6 +74,8 @@ If you rename the Worker (`name`), change `services[0].service` to the same name
 ### Where they go
 
 Write them to `.env.production.local` in the repository root (git ignores it) before you build. The landing pages are prerendered at build time, and `NEXT_PUBLIC_*` values are compiled into the code, so the build must see them. OpenNext also bundles the file's values into the Worker as runtime defaults.
+
+OpenNext merges `.env`, `.env.production`, `.env.local` and `.env.production.local`, later files winning, so a `.env` left over from local development (`bun run setup`) is bundled too. Any variable it sets that your production file doesn't override, such as `R2_ENDPOINT` pointing at a local MinIO, ends up in the Worker. Build from a clone without a `.env`, or override every variable it sets.
 
 Secrets you'd rather not bundle can be set as Worker secrets instead, which take precedence at runtime:
 
@@ -122,8 +125,9 @@ The Clerk variables aren't in `src/env.mjs`; the Clerk SDK reads them directly.
 | Footer status badge | `STATUS_PAGE_API_URL` (OpenStatus, Better Stack or Statuspage-compatible public API). Read when the landing pages are prerendered, so it must be in the build file. |
 | Notifications | `DISCORD_WEBHOOK_URL` (feedback, downgrades and link-creation health alerts) |
 | Logging | `LOG_LEVEL` (pino level, default `info` in production) |
+| Staging host | `STAGING_DOMAIN`: a host whose short links resolve as if they were on the default platform domain, like `localhost` and `*.workers.dev` do |
 
-Leave `NODE_ENV`, `BUILD_COMMIT_SHA` (set by the build) and `API_FREE_ACCESS_SUNSET_AT` (tests only) unset.
+Leave `NODE_ENV`, `BUILD_COMMIT_SHA` (set by the build), `NEXTJS_ENV` (OpenNext's build mode, `production` by default), and `API_FREE_ACCESS_SUNSET_AT` and `TEST_DATABASE_URL` (tests only) unset.
 
 ## Database
 
@@ -206,16 +210,21 @@ Some text still names the hosted service and doesn't come from configuration: th
 | `0 0 * * *` | `/api/cron/cleanup-teams` | Deletes teams whose deletion grace period has passed | Yes |
 | `0 2 * * SUN` | `/api/cron/cleanup-analytics` | Deletes click data older than each plan's retention | Yes, or drop it to keep every click |
 | `0 4 * * *` | `/api/cron/cleanup-expired` | Removes expired team invites, custom domains invalid for 30 days and accounts past their deletion grace period | Yes |
+| `0 5 * * *` | `/api/cron/entitlements` | Reconciles plan grace periods with live subscription status and feature usage, catching missed billing webhooks, and sends the grace emails that are due | Yes: plan enforcement relies on it |
+| `25 * * * *` | `/api/cron/entitlements?emails=1` | Clears over-plan grace periods that no longer apply and sends due grace emails within the hour | Yes, with the daily reconcile |
 | `30 */6 * * *` | `/api/cron/phishing-rescan` | Re-scans live links against public phishing feeds and blocks matches | Drop on a private instance where only people you trust create links |
 | `5,20,35,50 * * * *` | `/api/cron/phishing-rescan?backlog=1` | Works through blocks the full rescan held back | Drop with the rescan |
 | `10 * * * *` | `/api/cron/api-access-sunset` | Starts the notice period for API keys on accounts without a paid plan and emails their owners | Drop: it exists for keys created before API access became a paid feature |
+| `10 * * * *` | `/api/cron/first-link-nudge` | Emails accounts that signed up 24 to 72 hours ago and haven't created a link yet, once | Only with email |
 | `40 * * * *` | `/api/cron/link-creation-health` | Posts to `DISCORD_WEBHOOK_URL` when link creation starts failing | Only with `DISCORD_WEBHOOK_URL` |
 
-To drop a job, remove its expression from `triggers.crons`. To run one by hand:
+One expression can run several routes: `10 * * * *` runs both `api-access-sunset` and `first-link-nudge`. To drop a job that shares its expression, remove its route from `CRON_ROUTES`; otherwise remove the expression from `triggers.crons`. An expression missing from `CRON_ROUTES` only logs an error. To run a job by hand:
 
 ```bash
 CRON_SECRET='...' bun run cron cleanup-teams --url https://links.example.com
 ```
+
+`--emails` and `--backlog` add `?emails=1` (entitlements) and `?backlog=1` (phishing rescan).
 
 ## Plans and billing
 
