@@ -330,10 +330,15 @@ export const link = mysqlTable(
     blocked: boolean("blocked").default(false),
     blockedAt: timestamp("blockedAt"),
     blockedReason: varchar("blockedReason", { length: 255 }),
+    // Read-only analytics page at /stats/<token>: shared while the token is set. Separate from
+    // the retired publicStats flag so legacy opt-ins never become public without a fresh one.
+    statsShareToken: varchar("statsShareToken", { length: 64 }),
+    statsSharedAt: timestamp("statsSharedAt"),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
+    statsShareTokenIdx: unique("statsShareToken_idx").on(table.statsShareToken),
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
     uniqueAliasDomainIdx: unique("unique_alias_domain").on(table.alias, table.domain), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
     folderIdIdx: index("folderId_idx").on(table.folderId),

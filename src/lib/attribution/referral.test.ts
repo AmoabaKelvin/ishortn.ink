@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { getBioReferralUrl, withProductUtm } from "./referral";
+import { getBioReferralUrl, getSharedStatsReferralUrl, withProductUtm } from "./referral";
 
 describe("getBioReferralUrl", () => {
   test("tags the homepage with the bio page slug", () => {
@@ -11,6 +11,14 @@ describe("getBioReferralUrl", () => {
 
   test("encodes the slug", () => {
     expect(getBioReferralUrl("a b&c")).toEndWith("utm_content=a+b%26c");
+  });
+});
+
+describe("getSharedStatsReferralUrl", () => {
+  test("tags the homepage as a shared stats page referral", () => {
+    expect(getSharedStatsReferralUrl()).toBe(
+      "https://ishortn.ink/?utm_source=shared_stats&utm_medium=referral&utm_campaign=made_with_ishortn",
+    );
   });
 });
 

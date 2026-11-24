@@ -1283,6 +1283,31 @@ const topReferrerName = (referers: Record<string, number>) =>
     null,
   )?.name ?? "Direct";
 
+/**
+ * A link's visits and unique visits inside a window, plus the per-day counts archived from
+ * visits past the retention window. Shared by the owner's and the shared stats pages.
+ */
+export const getLinkVisitsInWindow = (
+  db: WorkspaceTRPCContext["db"],
+  linkId: number,
+  from: Date,
+  to: Date,
+) =>
+  Promise.all([
+    db.query.linkVisit.findMany({
+      where: (visit, { eq, and, gte, lte }) =>
+        and(eq(visit.linkId, linkId), gte(visit.createdAt, from), lte(visit.createdAt, to)),
+    }),
+    db.query.uniqueLinkVisit.findMany({
+      where: (visit, { eq, and, gte, lte }) =>
+        and(eq(visit.linkId, linkId), gte(visit.createdAt, from), lte(visit.createdAt, to)),
+    }),
+    db.query.linkVisitDailySummary.findMany({
+      where: (s, { eq, and, gte, lte }) =>
+        and(eq(s.linkId, linkId), gte(s.date, bucketKey(from)), lte(s.date, bucketKey(to))),
+    }),
+  ]);
+
 export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisitsInput) => {
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
@@ -1316,24 +1341,9 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
 
-  const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
+  const [[totalVisits, uniqueVisits, summaries], linkGeoRules, prevCounts, prevSummaries] =
     await Promise.all([
-      ctx.db.query.linkVisit.findMany({
-        where: (visit, { eq, and, gte, lte }) =>
-          and(
-            eq(visit.linkId, foundLink.id),
-            gte(visit.createdAt, startDate),
-            lte(visit.createdAt, now),
-          ),
-      }),
-      ctx.db.query.uniqueLinkVisit.findMany({
-        where: (visit, { eq, and, gte, lte }) =>
-          and(
-            eq(visit.linkId, foundLink.id),
-            gte(visit.createdAt, startDate),
-            lte(visit.createdAt, now),
-          ),
-      }),
+      getLinkVisitsInWindow(ctx.db, foundLink.id, startDate, now),
       ctx.db.query.geoRule.findMany({
         where: (rule, { eq }) => eq(rule.linkId, foundLink.id),
         columns: {
@@ -1368,14 +1378,6 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
               ),
           ])
         : Promise.resolve(null),
-      ctx.db.query.linkVisitDailySummary.findMany({
-        where: (s, { eq, and, gte, lte }) =>
-          and(
-            eq(s.linkId, foundLink.id),
-            gte(s.date, bucketKey(startDate)),
-            lte(s.date, bucketKey(now)),
-          ),
-      }),
       hasPreviousPeriod
         ? ctx.db
             .select({
@@ -1405,6 +1407,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
 
   if (totalVisits.length === 0) {
     return {
+      linkId: foundLink.id,
       totalVisits: [],
       uniqueVisits: [],
       topCountry: "N/A",
@@ -1442,6 +1445,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
   }, {});
 
   return {
+    linkId: foundLink.id,
     totalVisits,
     uniqueVisits,
     topCountry,
