@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import { createDeferredClient } from "./deferred-client";
-import { createIdentityTracker, createPageviewTracker } from "./posthog-tracking";
+import {
+  createIdentityTracker,
+  createPageviewTracker,
+  pageviewProperties,
+} from "./posthog-tracking";
 
 function page(pathname: string, search = "") {
   return { href: `https://ishortn.ink${pathname}${search}`, host: "ishortn.ink", pathname };
@@ -33,7 +37,10 @@ function fakePostHog(distinctId = "anon-1", userState = "anonymous") {
 describe("createPageviewTracker", () => {
   test("counts the initial page once and each client-side navigation after it", () => {
     const { client, calls } = fakePostHog();
-    const track = createPageviewTracker((call) => call(client));
+    const track = createPageviewTracker(
+      (call) => call(client),
+      () => "",
+    );
 
     // loadPostHog, then the route effect's first run, report the same page.
     track(page("/"));
@@ -53,7 +60,10 @@ describe("createPageviewTracker", () => {
 
   test("keeps the URL and time of the navigation while PostHog is still loading", () => {
     const queued: ((client: { capture: (...args: unknown[]) => void }) => void)[] = [];
-    const track = createPageviewTracker((call) => queued.push(call));
+    const track = createPageviewTracker(
+      (call) => queued.push(call),
+      () => "",
+    );
     track(page("/pricing", "?highlight=pro"));
 
     const sent: unknown[][] = [];
@@ -67,6 +77,52 @@ describe("createPageviewTracker", () => {
       $pathname: "/pricing",
     });
     expect(options).toEqual({ timestamp: expect.any(Date) });
+  });
+
+  test("flags a sign-up page view that has a pending shorten intent, without its URL", () => {
+    const sent: unknown[] = [];
+    let cookie = "ph_x=1; ish_shorten_url=https%3A%2F%2Fexample.com%2Fsome%2Flong%2Fpage";
+    const track = createPageviewTracker(
+      (call) => call({ capture: (_event, properties) => sent.push(properties) }),
+      () => cookie,
+    );
+    track(page("/auth/sign-up"));
+    cookie = "";
+    track(page("/auth/sign-up/verify-email-address"));
+
+    expect(sent).toEqual([
+      {
+        $current_url: "https://ishortn.ink/auth/sign-up",
+        $host: "ishortn.ink",
+        $pathname: "/auth/sign-up",
+        shorten_intent: true,
+      },
+      {
+        $current_url: "https://ishortn.ink/auth/sign-up/verify-email-address",
+        $host: "ishortn.ink",
+        $pathname: "/auth/sign-up/verify-email-address",
+      },
+    ]);
+  });
+});
+
+describe("pageviewProperties", () => {
+  const intent = "ish_shorten_url=https%3A%2F%2Fexample.com";
+
+  test("sets shorten_intent on sign-up pages when the intent cookie has a value", () => {
+    expect(pageviewProperties("/auth/sign-up", intent)).toEqual({ shorten_intent: true });
+    expect(pageviewProperties("/auth/sign-up/verify-email-address", `a=1; ${intent}`)).toEqual({
+      shorten_intent: true,
+    });
+  });
+
+  test("adds nothing without the cookie, with an empty one, or off the sign-up page", () => {
+    expect(pageviewProperties("/auth/sign-up", "a=1")).toEqual({});
+    expect(pageviewProperties("/auth/sign-up", "ish_shorten_url=")).toEqual({});
+    expect(pageviewProperties("/auth/sign-up", "x_ish_shorten_url=1")).toEqual({});
+    expect(pageviewProperties("/auth/sign-in", intent)).toEqual({});
+    expect(pageviewProperties("/auth/sign-upx", intent)).toEqual({});
+    expect(pageviewProperties("/", intent)).toEqual({});
   });
 });
 

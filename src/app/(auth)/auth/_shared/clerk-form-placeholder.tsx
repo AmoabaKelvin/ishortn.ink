@@ -31,9 +31,12 @@ const pendingFill = "animate-pulse bg-neutral-950/[0.06] motion-reduce:animate-n
 export function ClerkFormPlaceholder({
   variant,
   next,
+  hideHeader = false,
 }: {
   variant: keyof typeof variants;
   next?: string;
+  // Matches the form under [data-shorten-intent], where the page renders its own heading
+  hideHeader?: boolean;
 }) {
   const { title, subtitle, fields, footerText, footerLink } = variants[variant];
   const footerHref = next
@@ -45,12 +48,14 @@ export function ClerkFormPlaceholder({
       <PostHogHold />
       {/* White card (.cl-card) */}
       <div className="-mx-px -mt-px flex flex-col gap-8 rounded-[28px] bg-white px-6 py-10 shadow-site-card sm:px-10">
-        <div className="flex flex-col gap-1 text-center">
-          <h1 className="font-title text-2xl font-semibold leading-[1.41176] tracking-[-0.035em] text-neutral-900">
-            {title}
-          </h1>
-          <p className="text-base leading-[1.38462] text-neutral-600">{subtitle}</p>
-        </div>
+        {!hideHeader && (
+          <div className="flex flex-col gap-1 text-center">
+            <h1 className="font-title text-2xl font-semibold leading-[1.41176] tracking-[-0.035em] text-neutral-900">
+              {title}
+            </h1>
+            <p className="text-base leading-[1.38462] text-neutral-600">{subtitle}</p>
+          </div>
+        )}
         <div aria-hidden="true" className="flex flex-col gap-6">
           <div className={cn("h-11 rounded-[10px]", pendingFill)} />
           <div className="flex items-center">
