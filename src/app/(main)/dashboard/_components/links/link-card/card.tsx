@@ -13,7 +13,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useTransitionRouter } from "next-view-transitions";
 import { useEffect, useState } from "react";
 
-import { cn, copyToClipboard, daysSinceDate } from "@/lib/utils";
+import { cn, daysSinceDate } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/utils/clipboard";
 
 import { useSelection } from "../selection-context";
 import { LinkActions } from "./actions";

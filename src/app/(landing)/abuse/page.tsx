@@ -1,5 +1,6 @@
 import { IconFlagFilled } from "@tabler/icons-react";
 
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { TRPCReactProvider } from "@/trpc/react";
 
@@ -43,6 +44,8 @@ export default function AbusePage() {
         <TRPCReactProvider>
           <AbuseReportForm />
         </TRPCReactProvider>
+        {/* The only marketing page that shows toasts; the root layout has no Toaster. */}
+        <Toaster dir="ltr" />
         <p className="mx-auto mt-6 max-w-xl text-pretty text-center text-base text-neutral-600 sm:text-sm">
           For urgent legal matters, you can also reach us at{" "}
           <a

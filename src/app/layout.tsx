@@ -2,7 +2,6 @@ import "@/styles/globals.css";
 import { ViewTransitions } from "next-view-transitions";
 
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
 import { APP_TITLE } from "@/lib/constants/app";
 import { fontDisplay, fontHeading, fontSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -44,9 +43,10 @@ export const viewport: Viewport = {
   ],
 };
 
-// Kept free of Clerk, tRPC and analytics: short links, interstitials and bio
-// pages render on short and custom domains, and marketing pages stay light.
-// Route-group layouts add what they need (AppProviders, AnalyticsProviders).
+// Kept free of Clerk, tRPC, analytics and the toast container: short links,
+// interstitials and bio pages render on short and custom domains, and marketing
+// and auth pages stay light. Route-group layouts add what they need
+// (AppProviders, AuthProviders, AnalyticsProviders, Toaster).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ViewTransitions>
@@ -66,9 +66,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               while it hydrates. ThemeToggle turns transitions off for the switches users make. */}
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             {children}
-            {/* Without an explicit dir, Sonner reads getComputedStyle(<html>) while hydrating, which
-                forces a style recalculation of the whole page inside that task. */}
-            <Toaster dir="ltr" />
           </ThemeProvider>
         </body>
       </html>

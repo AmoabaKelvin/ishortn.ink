@@ -1,6 +1,5 @@
 import { clsx } from "clsx";
 import { formatDistanceToNow } from "date-fns";
-import { toast } from "sonner";
 import { twMerge } from "tailwind-merge";
 
 import type { ClassValue } from "clsx";
@@ -29,17 +28,6 @@ export function formatPrice(price: number | string, options: Intl.NumberFormatOp
     notation: options.notation ?? "compact",
     ...options,
   }).format(Number(price));
-}
-
-export function showSuccessToast() {
-  toast.success("Copied to clipboard", {
-    duration: 2000,
-  });
-}
-
-export async function copyToClipboard(text: string) {
-  await navigator.clipboard.writeText(text);
-  showSuccessToast();
 }
 
 export function daysSinceDate(date: Date) {

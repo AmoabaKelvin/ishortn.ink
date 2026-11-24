@@ -11,6 +11,7 @@ import {
 import { Link } from "next-view-transitions";
 import { useState } from "react";
 
+import { serializeShortenIntentCookie } from "@/lib/auth/shorten-intent";
 import { Paths } from "@/lib/constants/app";
 import { cn } from "@/lib/utils";
 
@@ -153,7 +154,10 @@ export const Hero = () => {
     const trimmed = url.trim();
     if (!trimmed) return;
     setLoading(true);
-    window.location.assign(`${Paths.Signup}?url=${encodeURIComponent(trimmed)}`);
+    // The URL rides in the shorten-intent cookie rather than `?url=`, which middleware would
+    // strip with a 307 before the sign-up page could start loading.
+    document.cookie = serializeShortenIntentCookie(trimmed, window.location.protocol === "https:");
+    window.location.assign(Paths.Signup);
   };
 
   return (
