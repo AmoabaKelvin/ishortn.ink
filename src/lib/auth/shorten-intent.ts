@@ -1,8 +1,8 @@
 // A signed-out visitor who asks to shorten a URL (UTM builder, hero form) goes
 // through sign-up first. The URL travels in a cookie, never in the auth page's
-// address bar, where Umami, PostHog and Clarity record it and asset requests
+// address bar, where Umami and PostHog record it and asset requests
 // send it as Referer. The UTM builder sets the cookie on click so the URL is
-// not in its CTA's href either (Clarity and PostHog record clicked hrefs);
+// not in its CTA's href either (PostHog records clicked hrefs);
 // middleware moves a `?url=` on an auth page into the same cookie. The auth
 // pages read it for the post-auth redirect, and middleware clears it when that
 // redirect lands.
