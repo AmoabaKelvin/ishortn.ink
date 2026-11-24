@@ -52,6 +52,9 @@
   "vars": {
     // Lifecycle email (weekly summary, upgrade nudge) sender, on its own sending subdomain.
     "EMAIL_FROM_LIFECYCLE": "iShortn <hello@updates.ishortn.ink>",
+    // Browser extension redirect URIs allowed by /extension/connect, comma-separated. Matched
+    // exactly, trailing slash included. Chrome Web Store build:
+    "EXTENSION_REDIRECT_URIS": "https://opkikfbhepmnlnblmjnfjgjeonadekdj.chromiumapp.org/",
   },
   "triggers": {
     "crons": [
