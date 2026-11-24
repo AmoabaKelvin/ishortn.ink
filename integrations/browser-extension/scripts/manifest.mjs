@@ -16,11 +16,13 @@ const ICONS = {
 export const buildManifest = (target, { version, key }) => {
   const manifest = {
     manifest_version: 3,
-    name: "iShortn",
+    // Chrome Web Store, Edge Add-ons and AMO show `name` and `description` as the listing title
+    // and summary (limits: 75 and 132 characters).
+    name: "iShortn: URL Shortener & QR Code Generator",
     short_name: "iShortn",
     version,
     description:
-      "Shorten the page you're on, copy the link and get a QR code. Links stay editable and tracked in iShortn.",
+      "QR code for any page, no account needed. Sign in free to shorten it in one click: link copied, editable later, clicks tracked.",
     homepage_url: "https://ishortn.ink",
     icons: ICONS,
     action: {
@@ -41,7 +43,15 @@ export const buildManifest = (target, { version, key }) => {
 
   if (target === "firefox") {
     manifest.browser_specific_settings = {
-      gecko: { id: "browser-extension@ishortn.ink", strict_min_version: "115.0" },
+      gecko: {
+        id: "browser-extension@ishortn.ink",
+        // 140 (ESR) is the first desktop release that supports `data_collection_permissions`,
+        // which AMO requires for new add-ons.
+        strict_min_version: "140.0",
+        // The sign-in token, and the URL of the tab the user chooses to shorten, sent only to
+        // ishortn.ink.
+        data_collection_permissions: { required: ["authenticationInfo", "browsingActivity"] },
+      },
     };
   } else if (key) {
     manifest.key = key;

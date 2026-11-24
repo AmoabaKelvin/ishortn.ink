@@ -1,6 +1,6 @@
 # iShortn browser extension
 
-Shorten the page you're on with [iShortn](https://ishortn.ink?utm_source=browser-extension&utm_medium=integration&utm_campaign=extension_readme) from the toolbar. Works in Chrome, Edge and other Chromium browsers, and Firefox 115+.
+Shorten the page you're on with [iShortn](https://ishortn.ink?utm_source=browser-extension&utm_medium=integration&utm_campaign=extension_readme) from the toolbar. Works in Chrome, Edge and other Chromium browsers, and Firefox 140+.
 
 - **Without an account**: the popup shows a QR code for the current page, generated locally with no network request, with **Download PNG** and **Copy URL**.
 - **Connected**: one click (or automatic, see below) creates a short link, copies it to the clipboard and shows its QR code. **Customize** creates a link with your own alias and any of your domains. Free plans see their monthly usage with an upgrade link.
