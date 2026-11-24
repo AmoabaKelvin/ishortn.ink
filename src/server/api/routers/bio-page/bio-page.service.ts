@@ -23,6 +23,7 @@ import {
   linkVisit,
   uniqueBioPageView,
 } from "@/server/db/schema";
+import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { deleteImage, isOwnedR2Url, uploadImage } from "@/server/lib/storage";
 import {
   deleteHiddenTrackingLink,
@@ -455,7 +456,7 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
       name: input.title || page.title || "Bio link",
       kind: "bio",
     });
-    const id = await ctx.db.transaction(async (tx) => {
+    const { id, linkId } = await ctx.db.transaction(async (tx) => {
       await lockBioLinkBlockCapacity(tx, ctx.workspace.plan, page.id, ctx.auth.userId);
       const linkId = await insertHiddenTrackingLink(tx, ctx, prepared);
       const [res] = await tx.insert(bioBlock).values({
@@ -468,8 +469,9 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
         scheduledAt: input.scheduledAt ?? null,
         scheduledUntil: input.scheduledUntil ?? null,
       });
-      return Number(res.insertId);
+      return { id: Number(res.insertId), linkId };
     });
+    checkCampaignPatternsAfterResponse([{ linkId, url: destination }]);
     revalidateBioPath(page.slug);
     return { id };
   }

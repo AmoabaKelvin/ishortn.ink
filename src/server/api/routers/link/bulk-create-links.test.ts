@@ -94,6 +94,8 @@ function fakeContext(
         } else if (!Array.isArray(values)) {
           inserted.push(values);
         }
+        // mysql2's result shape: the header carries the new row's id.
+        return [{ insertId: inserted.length }];
       },
     }),
     update: () => ({

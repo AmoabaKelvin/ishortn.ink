@@ -160,3 +160,54 @@ export function runHeuristicChecks(url: string): HeuristicResult {
 
   return { blocked: false, reason: "" };
 }
+
+// Open redirectors phishing mail wraps its links in, so the sender's own domain is what the
+// victim's mail filter sees. Paths are matched as prefixes.
+const OPEN_REDIRECTORS: { host: RegExp; paths: string[] }[] = [
+  { host: /^(www\.)?google\.(com?\.)?[a-z]{2,3}$/, paths: ["/url", "/amp/"] },
+  { host: /^(www\.)?bing\.com$/, paths: ["/ck/"] },
+  { host: /^(www\.)?duckduckgo\.com$/, paths: ["/l/"] },
+  { host: /^(l|lm)\.facebook\.com$/, paths: ["/l.php"] },
+  { host: /^l\.instagram\.com$/, paths: ["/"] },
+  { host: /^(www\.)?youtube\.com$/, paths: ["/redirect"] },
+  { host: /^(www\.)?linkedin\.com$/, paths: ["/redir/"] },
+  { host: /^slack-redir\.net$/, paths: ["/link"] },
+];
+
+const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}/i;
+
+function decodeRepeatedly(value: string): string {
+  // Nested redirects encode the target URL (and the email in it) once per hop.
+  let decoded = value;
+  for (let i = 0; i < 3; i++) {
+    let next: string;
+    try {
+      next = decodeURIComponent(decoded);
+    } catch {
+      return decoded;
+    }
+    if (next === decoded) break;
+    decoded = next;
+  }
+  return decoded;
+}
+
+/**
+ * The email address carried in the query or fragment of an open-redirect URL
+ * (`google.com/url?q=...#x=jane@acme.com`), a tell of phishing aimed at one recipient. Null for
+ * any other URL.
+ */
+export function findEmailInRedirect(url: string): string | null {
+  // Cheap pre-check: most URLs carry no email at all, so they skip the parse.
+  if (!url.includes("@") && !/%(25)*40/i.test(url)) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase();
+  const redirector = OPEN_REDIRECTORS.find((r) => r.host.test(host));
+  if (!redirector?.paths.some((path) => parsed.pathname.startsWith(path))) return null;
+  return EMAIL_PATTERN.exec(decodeRepeatedly(`${parsed.search}${parsed.hash}`))?.[0] ?? null;
+}

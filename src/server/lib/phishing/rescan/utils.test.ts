@@ -6,11 +6,13 @@ import {
   addLinkToIndex,
   addSafeBrowsingCandidate,
   backlogDecisions,
+  campaignPatternMatches,
   CAP_NOTE_LIKE,
   capBlocks,
   createLinkIndex,
   createSafeBrowsingWindow,
   decideMatch,
+  distinctivePath,
   type FeedKind,
   flagPayingAccounts,
   hostOfUrl,
@@ -634,5 +636,91 @@ describe("backlog of blocks over the cap", () => {
     const [flag] = flagPayingAccounts([decideMatch(threat(1), ownHosts)!], new Set([1]));
     const dismissed: ExistingFlag = { id: 1, linkId: 1, status: "dismissed", ...flag! };
     expect(withoutResolvedLinks([decideMatch(threat(1), ownHosts)!], [dismissed])).toEqual([]);
+  });
+});
+
+describe("campaign patterns", () => {
+  const KIT_PATH =
+    "wp-includes-old/ratingdocumentsdocumtesdcopycodesprojectinnobb/richdocumentationandpresentationsofliddy";
+  const blockedPaths = new Set([KIT_PATH]);
+
+  test("a distinctive path is the trimmed, lowercased path", () => {
+    expect(
+      distinctivePath(
+        "https://blocked.example/wp-includes-old/RatingDocumentsDocumtesdCopycodesProjectInnobb/richdocumentationandpresentationsofliddy/",
+      ),
+    ).toBe(KIT_PATH);
+  });
+
+  test("short and common paths are not distinctive", () => {
+    for (const url of [
+      "https://example.com/",
+      "https://example.com/login",
+      "https://example.com/index.html",
+      "https://example.com/blog/post",
+      "https://example.com/wp-admin/admin-ajax.php?action=some-long-action-name",
+      "https://example.com/wp-admin/options-general-and-more-settings.php",
+      "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=x",
+      "not a url",
+    ]) {
+      expect(distinctivePath(url)).toBeNull();
+    }
+  });
+
+  test("the same distinctive path on a different host matches a blocked phishing link", () => {
+    const url = `https://compromised-site.example/${KIT_PATH}/?id=1`;
+    expect(campaignPatternMatches(7, url, blockedPaths)).toEqual([
+      { linkId: 7, source: "campaign-pattern", kind: "campaign-path", entry: url, host: "" },
+    ]);
+  });
+
+  test("other paths and normal links don't match", () => {
+    for (const url of [
+      "https://example.com/blog/post",
+      "https://example.com/login",
+      "https://example.com/",
+      `https://example.com/${KIT_PATH}-v2`,
+    ]) {
+      expect(campaignPatternMatches(7, url, blockedPaths)).toEqual([]);
+    }
+  });
+
+  test("an email in an open redirect's fragment or query matches", () => {
+    for (const url of [
+      "https://www.google.com/url?q=https://evil.example/doc&sa=D#x=jane@acme.com",
+      "https://google.co.uk/url?q=https%3A%2F%2Fevil.example%2F%3Fe%3Djane%2540acme.com",
+      "https://www.bing.com/ck/a?u=a1aHR0cHM6Ly9ldmlsLmV4YW1wbGU&e=jane@acme.com",
+    ]) {
+      expect(campaignPatternMatches(7, url, new Set())).toEqual([
+        { linkId: 7, source: "campaign-pattern", kind: "email-redirect", entry: url, host: "" },
+      ]);
+    }
+  });
+
+  test("a redirect without an email, or an email outside a redirector, doesn't match", () => {
+    for (const url of [
+      "https://www.google.com/url?q=https://example.com/page&sa=D",
+      "https://www.google.com/search?q=jane@acme.com",
+      "https://example.com/contact?email=jane@acme.com",
+      "https://notgoogle.com/url?q=x#jane@acme.com",
+    ]) {
+      expect(campaignPatternMatches(7, url, new Set())).toEqual([]);
+    }
+  });
+
+  test("matches block like other URL-level evidence, and paying accounts are flagged", () => {
+    const url = `https://compromised-site.example/${KIT_PATH}`;
+    const [match] = campaignPatternMatches(7, url, blockedPaths);
+    const decision = decideMatch(match!, new Set())!;
+    expect(decision).toMatchObject({
+      action: "block",
+      reason: "phishing-rescan: campaign-pattern",
+      details: `Same path as a link blocked for phishing: ${url}`,
+    });
+    expect(flagPayingAccounts([decision], new Set([7]))[0]?.action).toBe("flag");
+    // A held-back block of this source comes back from the backlog.
+    expect(
+      backlogDecisions([{ id: 1, linkId: 7, reason: decision.reason, details: decision.details }]),
+    ).toHaveLength(1);
   });
 });

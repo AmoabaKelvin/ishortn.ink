@@ -9,6 +9,7 @@ import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
@@ -143,6 +144,7 @@ async function createNewLink(
       .values({ ...newLinkData, ...restrictedLinkValues(userRecord.restrictedAt) });
     return newLink[0].insertId;
   });
+  checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
 
   const [retrievedLink] = await db.select().from(link).where(eq(link.id, newLinkId));
   return { ...toApiLink(retrievedLink!), isProtected: !!retrievedLink!.passwordHash };
