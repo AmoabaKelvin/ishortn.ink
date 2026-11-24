@@ -195,6 +195,7 @@ const MAJOR_SITE_SUFFIXES = [
   "live.com",
   "microsoft.com",
   "microsoft365.com",
+  "microsoftonline.com",
   "notion.so",
   "office.com",
   "outlook.com",
@@ -552,20 +553,51 @@ export function distinctivePath(url: string): string | null {
   return path;
 }
 
+/** Distinctive path (see `distinctivePath`) → hosts of the phishing-blocked links serving it. */
+export type BlockedPhishingPaths = ReadonlyMap<string, readonly string[]>;
+
 /**
- * Known campaign patterns in one destination of a link: a distinctive path shared with a link
- * blocked for phishing (`blockedPaths`, from `distinctivePath`), or an email address carried
- * through an open redirector.
+ * Indexes the destinations of links blocked for phishing by distinctive path. Destinations on a
+ * shared or major host are left out: kits copy a brand's real paths and consent phishing runs on
+ * the brand's own sign-in host, so such a path is no evidence against other links.
+ */
+export function indexBlockedPhishingPaths(
+  urls: readonly string[],
+  ownHosts: ReadonlySet<string>,
+): Map<string, string[]> {
+  const paths = new Map<string, string[]>();
+  for (const url of urls) {
+    const path = distinctivePath(url);
+    const host = path ? hostOfUrl(url) : null;
+    if (!path || !host || isSharedHost(host, ownHosts)) continue;
+    const hosts = paths.get(path);
+    if (!hosts) paths.set(path, [host]);
+    else if (!hosts.includes(host)) hosts.push(host);
+  }
+  return paths;
+}
+
+/**
+ * Known campaign patterns in one destination of a link: a distinctive path that a link blocked
+ * for phishing serves on a different host (one kit deployed across compromised sites), or an
+ * email address carried through an open redirector.
  */
 export function campaignPatternMatches(
   linkId: number,
   url: string,
-  blockedPaths: ReadonlySet<string>,
+  blockedPaths: BlockedPhishingPaths,
+  ownHosts: ReadonlySet<string>,
 ): RescanMatch[] {
   const matches: RescanMatch[] = [];
   const base = { linkId, source: "campaign-pattern" as const, entry: url, host: "" };
   const path = blockedPaths.size > 0 ? distinctivePath(url) : null;
-  if (path && blockedPaths.has(path)) matches.push({ ...base, kind: "campaign-path" });
+  const blockedHosts = path ? blockedPaths.get(path) : undefined;
+  if (blockedHosts) {
+    const host = hostOfUrl(url);
+    if (host && !blockedHosts.includes(host) && !isProtectedHost(host, ownHosts)) {
+      matches.push({ ...base, kind: "campaign-path" });
+    }
+  }
   if (findEmailInRedirect(url)) matches.push({ ...base, kind: "email-redirect" });
   return matches;
 }

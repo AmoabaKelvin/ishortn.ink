@@ -243,6 +243,20 @@ describe.skipIf(!testDatabaseUrl)("campaign patterns on link writes (MySQL)", ()
     });
   });
 
+  test("ignores paths of links blocked on host-level evidence only", async () => {
+    const feedPath = "/shared-hosting-control-panel/customer-dashboard/";
+    await insertLink(
+      "campaign-domain-feed",
+      `https://listed-host.example${feedPath}`,
+      FREE_USER,
+      "phishing-rescan: phishing-database-domains",
+    );
+    const url = `https://unrelated.example${feedPath}`;
+    const id = await insertLink("campaign-feed-path", url, FREE_USER);
+    await checkCampaignPatterns([{ linkId: id, url }], loadBlockedPhishingPaths);
+    expect(await state(id)).toEqual({ blocked: false, blockedReason: null, flags: [] });
+  });
+
   test("leaves a link that matches nothing alone", async () => {
     const url = "https://example.com/blog/a-long-post-about-shortening-links-well";
     const id = await insertLink("campaign-normal", url, FREE_USER);

@@ -1,4 +1,5 @@
 import { and, asc, countDistinct, desc, eq, gt, inArray, isNull, like, or, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { env } from "@/env.mjs";
 import { resolvePlan } from "@/lib/billing/plans";
@@ -24,6 +25,7 @@ import {
   type BacklogFlag,
   backlogDecisions,
   CAP_NOTE_LIKE,
+  type BlockedPhishingPaths,
   campaignPatternMatches,
   capBlocks,
   createLinkIndex,
@@ -32,6 +34,7 @@ import {
   distinctivePath,
   type ExistingFlag,
   flagPayingAccounts,
+  indexBlockedPhishingPaths,
   LEGACY_FLAG_DETAILS,
   type LinkIndex,
   mergeDecisions,
@@ -59,9 +62,11 @@ const SAFE_BROWSING_CURSOR_TTL = 60 * 60 * 24 * 30;
 // Blocks over the cap wait in the backlog, which every run (and the backlog-only run every 15
 // minutes, see custom-worker.ts) blocks first, so confirmed matches drain at up to ~1,000 an hour.
 const MAX_AUTO_BLOCKS_PER_RUN = 250;
-// Newest first; far more than the links ever blocked for phishing, so in practice all of them.
-const MAX_BLOCKED_PHISHING_LINKS = 20_000;
+// Newest first: a campaign's links are blocked while it runs, so recent blocks carry its paths.
+const MAX_BLOCKED_PHISHING_LINKS = 2_000;
 const BLOCKED_PATHS_TTL_MS = 10 * 60 * 1000;
+const BLOCKED_PATHS_CACHE_KEY = "phishing:blocked-paths";
+const OWN_HOSTS: ReadonlySet<string> = new Set(PLATFORM_DOMAINS);
 
 type SourceSummary = {
   entries: number;
@@ -229,7 +234,7 @@ async function scanLinks(
       const destinations = ruleDestinations.get(row.id) ?? [];
       for (const destination of destinations) addDestinationToIndex(index, row.id, destination);
       for (const url of [row.url, ...destinations]) {
-        if (url) matches.push(...campaignPatternMatches(row.id, url, blockedPaths));
+        if (url) matches.push(...campaignPatternMatches(row.id, url, blockedPaths, index.ownHosts));
       }
       if (safeBrowsingEnabled) {
         for (const url of [row.url, ...destinations]) {
@@ -278,29 +283,66 @@ async function scanLinks(
   return { linksScanned, sources, matches, ownHosts: index.ownHosts };
 }
 
-/** Distinctive paths (see `distinctivePath`) of the links blocked for phishing, newest first. */
-export async function loadBlockedPhishingPaths(): Promise<Set<string>> {
+// Blocks with URL-level phishing evidence: admin blocks naming phishing, and the URL feeds'
+// listings. Host-level feed blocks and Safe Browsing (which covers malware too) say nothing about
+// the path, so they never make one a trigger.
+const PATH_EVIDENCE_REASONS = (["phishing-database-links", "openphish"] as const).map(
+  (source) => `${RESCAN_REASON_PREFIX} ${source}`,
+);
+
+/** Distinctive paths of the latest links blocked for phishing; see `indexBlockedPhishingPaths`. */
+export async function loadBlockedPhishingPaths(): Promise<Map<string, string[]>> {
   const rows = await db
     .select({ url: link.url })
     .from(link)
-    .where(and(eq(link.blocked, true), like(link.blockedReason, "%phish%")))
+    .where(
+      and(
+        eq(link.blocked, true),
+        or(
+          inArray(link.blockedReason, PATH_EVIDENCE_REASONS),
+          and(
+            like(link.blockedReason, "%phish%"),
+            sql`${link.blockedReason} NOT LIKE ${`${RESCAN_REASON_PREFIX}%`}`,
+          ),
+        ),
+      ),
+    )
     .orderBy(desc(link.blockedAt))
     .limit(MAX_BLOCKED_PHISHING_LINKS);
-  const paths = new Set<string>();
-  for (const row of rows) {
-    const path = row.url ? distinctivePath(row.url) : null;
-    if (path) paths.add(path);
+  return indexBlockedPhishingPaths(
+    rows.flatMap((row) => (row.url ? [row.url] : [])),
+    OWN_HOSTS,
+  );
+}
+
+const blockedPathsCacheSchema = z.array(z.tuple([z.string(), z.array(z.string())]));
+
+// Shared through KV so a cold isolate reads one key instead of querying the blocked links, and
+// memoised per isolate on top so warm ones skip even that.
+async function loadCachedBlockedPhishingPaths(): Promise<Map<string, string[]>> {
+  const cached = await getStringFromCache(BLOCKED_PATHS_CACHE_KEY);
+  if (cached) {
+    try {
+      return new Map(blockedPathsCacheSchema.parse(JSON.parse(cached)));
+    } catch {
+      // Unreadable entry: rebuild it below.
+    }
   }
+  const paths = await loadBlockedPhishingPaths();
+  await setStringInCache(
+    BLOCKED_PATHS_CACHE_KEY,
+    JSON.stringify([...paths]),
+    BLOCKED_PATHS_TTL_MS / 1000,
+  );
   return paths;
 }
 
-// Per isolate, so link writes don't query every blocked link each time.
-let blockedPathsCache: { paths: Promise<Set<string>>; expiresAt: number } | null = null;
+let blockedPathsCache: { paths: Promise<BlockedPhishingPaths>; expiresAt: number } | null = null;
 
-function getBlockedPhishingPaths(): Promise<Set<string>> {
+function getBlockedPhishingPaths(): Promise<BlockedPhishingPaths> {
   const now = Date.now();
   if (!blockedPathsCache || blockedPathsCache.expiresAt <= now) {
-    const paths = loadBlockedPhishingPaths();
+    const paths = loadCachedBlockedPhishingPaths();
     blockedPathsCache = { paths, expiresAt: now + BLOCKED_PATHS_TTL_MS };
     // A failed load isn't cached, so the next write retries.
     paths.catch(() => {
@@ -320,18 +362,18 @@ export type LinkDestination = { linkId: number; url: string };
 export async function checkCampaignPatterns(
   destinations: LinkDestination[],
   // Seam for tests, which share one process and so one cache; callers use the default.
-  loadPaths: () => Promise<Set<string>> = getBlockedPhishingPaths,
+  loadPaths: () => Promise<BlockedPhishingPaths> = getBlockedPhishingPaths,
 ): Promise<void> {
   const blockedPaths = destinations.some((d) => distinctivePath(d.url))
     ? await loadPaths()
-    : new Set<string>();
+    : new Map();
   const matches = destinations.flatMap((d) =>
-    campaignPatternMatches(d.linkId, d.url, blockedPaths),
+    campaignPatternMatches(d.linkId, d.url, blockedPaths, OWN_HOSTS),
   );
   if (matches.length === 0) return;
 
   const existing = await loadExistingFlags([...new Set(matches.map((m) => m.linkId))]);
-  const candidates = matches.flatMap((m) => decideMatch(m, new Set()) ?? []);
+  const candidates = matches.flatMap((m) => decideMatch(m, OWN_HOSTS) ?? []);
   const fresh = mergeDecisions(withoutResolvedLinks(candidates, existing));
   if (fresh.length === 0) return;
   const paying = await loadPayingLinkIds(

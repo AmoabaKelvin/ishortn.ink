@@ -174,7 +174,11 @@ const OPEN_REDIRECTORS: { host: RegExp; paths: string[] }[] = [
   { host: /^slack-redir\.net$/, paths: ["/link"] },
 ];
 
-const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}/i;
+// A whole parameter value (`=` or `#` before it, `&`, `#` or the end after it) that is an email,
+// so tokens and URLs that merely contain an `@` don't count. Two-character minimums skip
+// email-shaped tokens like `x@y.co`.
+const EMAIL_VALUE_PATTERN =
+  /[=#]([a-z0-9._%+-]{2,}@[a-z0-9-]{2,}(?:\.[a-z0-9-]+)*\.[a-z]{2,})(?=$|[&#])/i;
 
 function decodeRepeatedly(value: string): string {
   // Nested redirects encode the target URL (and the email in it) once per hop.
@@ -209,5 +213,5 @@ export function findEmailInRedirect(url: string): string | null {
   const host = parsed.hostname.toLowerCase();
   const redirector = OPEN_REDIRECTORS.find((r) => r.host.test(host));
   if (!redirector?.paths.some((path) => parsed.pathname.startsWith(path))) return null;
-  return EMAIL_PATTERN.exec(decodeRepeatedly(`${parsed.search}${parsed.hash}`))?.[0] ?? null;
+  return EMAIL_VALUE_PATTERN.exec(decodeRepeatedly(`${parsed.search}${parsed.hash}`))?.[1] ?? null;
 }
