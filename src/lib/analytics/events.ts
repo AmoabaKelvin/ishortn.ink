@@ -18,6 +18,11 @@ export const POSTHOG_EVENTS = {
   // Analytics events
   ANALYTICS_VIEWED: "analytics_viewed",
   ANALYTICS_OVERVIEW_VIEWED: "analytics_overview_viewed",
+  // Shared read-only link stats (/stats/<token>)
+  STATS_SHARE_ENABLED: "stats_share_enabled",
+  STATS_SHARE_DISABLED: "stats_share_disabled",
+  STATS_SHARE_RESET: "stats_share_reset",
+  STATS_SHARE_COPIED: "stats_share_copied",
 
   // Verified clicks feature
   VERIFIED_CLICKS_ENABLED: "verified_clicks_enabled",

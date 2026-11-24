@@ -92,6 +92,15 @@ const config = {
           { key: "Referrer-Policy", value: "no-referrer" },
         ],
       },
+      // Shared link analytics: the token in the path is the credential, so never send it as
+      // Referer, and keep the pages out of search indexes.
+      {
+        source: "/stats/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
       // The only non-English page; the root layout's <html lang="en"> can't vary per route.
       {
         source: "/gerador-de-link-whatsapp",

@@ -12,6 +12,7 @@ import {
   IconPencil,
   IconQrcode,
   IconRefresh,
+  IconShare,
   IconSpeakerphone,
   IconTrash,
 } from "@tabler/icons-react";
@@ -19,6 +20,7 @@ import { useTransitionRouter } from "next-view-transitions";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ShareStatsDialog } from "@/app/(main)/dashboard/analytics/_components/share-stats-dialog";
 import { MoveToFolderModal } from "@/app/(main)/dashboard/folders/_components/move-to-folder-modal";
 import { revalidateHomepage } from "@/app/(main)/dashboard/revalidate-homepage";
 import {
@@ -62,6 +64,7 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
   const [addToCampaignModal, setAddToCampaignModal] = useState(false);
   const [transferToWorkspaceModal, setTransferToWorkspaceModal] = useState(false);
   const [resetStatsDialog, setResetStatsDialog] = useState(false);
+  const [shareStatsDialog, setShareStatsDialog] = useState(false);
   const [deleteLinkDialog, setDeleteLinkDialog] = useState(false);
   const isLinkActive = !link.disabled!;
   const router = useTransitionRouter();
@@ -140,6 +143,13 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
           >
             <IconQrcode size={15} stroke={1.5} className="mr-2 text-neutral-400" />
             QR code
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setShareStatsDialog(true)}
+            className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
+          >
+            <IconShare size={15} stroke={1.5} className="mr-2 text-neutral-400" />
+            Share stats
           </DropdownMenuItem>
 
           <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-border" />
@@ -237,6 +247,11 @@ export const LinkActions = ({ link }: LinkActionsProps) => {
         open={qrModal}
         setOpen={setQrModal}
         destinationUrl={`https://${link.domain}/${link.alias}`}
+      />
+      <ShareStatsDialog
+        linkId={link.id}
+        open={shareStatsDialog}
+        onOpenChange={setShareStatsDialog}
       />
       <ChangeLinkPasswordModal
         open={openChangePasswordModal}

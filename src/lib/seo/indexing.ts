@@ -96,6 +96,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "robots.txt",
   "sitemap.xml",
   "solutions",
+  "stats",
   "teams",
   "terms",
   "utm-builder",

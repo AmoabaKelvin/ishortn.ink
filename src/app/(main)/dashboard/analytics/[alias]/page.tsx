@@ -17,6 +17,7 @@ import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
 import { ExportClicksButton } from "../_components/export-clicks-button";
 import { RangePendingContent, RangeTransitionProvider } from "../_components/range-transition";
+import { ShareStatsButton } from "../_components/share-stats-button";
 import { BarChart } from "./_components/bar-chart";
 import { CountriesAndCitiesStats } from "./_components/countries-and-cities-stats";
 import { GeoRulesStats } from "./_components/geo-rules-stats";
@@ -83,6 +84,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     throw error;
   }
   const {
+    linkId,
     totalVisits,
     uniqueVisits,
     referers,
@@ -136,6 +138,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
             }}
             fileName={`clicks-${params.alias}-${range}`}
           />
+          <ShareStatsButton linkId={linkId} />
         </div>
       </div>
 
