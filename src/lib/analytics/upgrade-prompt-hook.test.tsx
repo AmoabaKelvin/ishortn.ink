@@ -30,7 +30,7 @@ function Prompt({
   label: string;
   promo?: string;
 }) {
-  useTrackUpgradeShown(source, enabled, promo);
+  useTrackUpgradeShown(source, enabled, promo ? { promo } : undefined);
   return <span>{label}</span>;
 }
 
@@ -102,6 +102,21 @@ describe("useTrackUpgradeShown", () => {
     expect(shown).toEqual([
       { source: "sidebar_free" },
       { source: "sidebar_free", promo: "BFCM20" },
+    ]);
+  });
+
+  test("carries extra properties such as the hidden click count", () => {
+    function Notice() {
+      useTrackUpgradeShown("link_analytics", true, { hidden_clicks: 1284, promo: "BFCM20" });
+      return null;
+    }
+    render(<Notice />);
+    render(<Notice />);
+    expect(trackEvent.mock.calls).toEqual([
+      [
+        events.POSTHOG_EVENTS.UPGRADE_PROMPT_SHOWN,
+        { source: "link_analytics", hidden_clicks: 1284, promo: "BFCM20" },
+      ],
     ]);
   });
 });

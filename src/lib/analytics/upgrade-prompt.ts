@@ -10,8 +10,11 @@ import { POSTHOG_EVENTS, trackEvent } from "./events";
 import type { Promo } from "@/lib/billing/promo";
 import type { UpgradePlan } from "@/lib/billing/upgrade";
 
-/** Extra impression/click properties: `promo` is the code of the offer the prompt showed. */
-type UpgradePromptProperties = { promo?: string };
+/**
+ * Extra impression/click properties: `promo` is the code of the offer the prompt showed,
+ * `hidden_clicks` the clicks the Free analytics window hid from an analytics page.
+ */
+export type UpgradePromptProperties = { promo?: string; hidden_clicks?: number };
 
 /**
  * Surface an actionable upgrade prompt at a real plan-limit moment.
@@ -56,11 +59,15 @@ export function trackUpgradeShown(source: string, properties?: UpgradePromptProp
  * whose `source` changes while mounted (the sidebar CTA reaching the link limit) counts once more
  * so its clicks still pair with an impression.
  */
-export function useTrackUpgradeShown(source: string, enabled = true, promo?: string) {
+export function useTrackUpgradeShown(
+  source: string,
+  enabled = true,
+  properties?: UpgradePromptProperties,
+) {
   const trackedSource = useRef<string | null>(null);
   useEffect(() => {
     if (!enabled || trackedSource.current === source) return;
     trackedSource.current = source;
-    trackUpgradeShown(source, promo ? { promo } : undefined);
-  }, [enabled, source, promo]);
+    trackUpgradeShown(source, properties);
+  }, [enabled, source, properties]);
 }

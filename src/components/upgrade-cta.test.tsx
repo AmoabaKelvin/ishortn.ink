@@ -8,6 +8,7 @@ import {
   UpgradeOfferProvider,
 } from "@/app/(main)/dashboard/_components/upgrade-offer";
 import { RangeSelector } from "@/app/(main)/dashboard/analytics/[alias]/_components/range-selector";
+import { LimitedAnalyticsNotice } from "@/app/(main)/dashboard/analytics/_components/limited-analytics-notice";
 import { EmptyStateFree } from "@/app/(main)/dashboard/folders/_components/empty-state-free";
 import UpgradeText from "@/app/(main)/dashboard/qrcodes/_components/upgrade-text";
 import {
@@ -142,5 +143,21 @@ describe("promo offer in upgrade prompts", () => {
     expect(hrefs(offer)).toEqual([
       `/dashboard/pricing?highlight=pro&source=link_analytics${utm}&utm_content=link_analytics`,
     ]);
+  });
+
+  test("the Free analytics notice names the hidden clicks, then the offer", () => {
+    const html = withPromo(<LimitedAnalyticsNotice hiddenClicks={1284} source="link_analytics" />);
+    const text = html.replace(/<[^>]+>/g, "");
+    expect(text).toBe(
+      `1,284 older clicks are hidden on Free (last 7 days shown). Upgrade to Pro to see all of them. ${offerLine}`,
+    );
+    expect(hrefs(html)).toEqual([
+      `/dashboard/pricing?highlight=pro&source=link_analytics${utm}&utm_content=link_analytics`,
+    ]);
+
+    const none = render(<LimitedAnalyticsNotice hiddenClicks={0} source="analytics_overview" />);
+    expect(none.replace(/<[^>]+>/g, "")).toBe(
+      "Viewing limited analytics (last 7 days). Upgrade to Pro for full data.",
+    );
   });
 });

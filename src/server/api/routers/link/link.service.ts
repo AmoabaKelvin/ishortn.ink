@@ -28,6 +28,7 @@ import {
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import {
   bucketKey,
+  freeAnalyticsWindowStart,
   resolveAnalyticsRange,
   resolveRangeWindow,
   summarizeArchived,
@@ -1308,6 +1309,33 @@ export const getLinkVisitsInWindow = (
     }),
   ]);
 
+/**
+ * Clicks on these links before `before`, raw visits plus archived daily summaries, in one
+ * statement: the count uses the (linkId, createdAt) index, the subquery the (linkId, date) one.
+ * Summary rows only hold whole days, and `before` is a UTC midnight, so neither side overlaps.
+ */
+export const countClicksBefore = async (
+  db: WorkspaceTRPCContext["db"],
+  linkIds: number[],
+  before: Date,
+) => {
+  if (linkIds.length === 0) return 0;
+  const archived = db
+    .select({ clicks: sql`coalesce(sum(${linkVisitDailySummary.clicks}), 0)` })
+    .from(linkVisitDailySummary)
+    .where(
+      and(
+        inArray(linkVisitDailySummary.linkId, linkIds),
+        lt(linkVisitDailySummary.date, bucketKey(before)),
+      ),
+    );
+  const [row] = await db
+    .select({ clicks: sql<number>`count(*) + (${archived})`.mapWith(Number) })
+    .from(linkVisit)
+    .where(and(inArray(linkVisit.linkId, linkIds), lt(linkVisit.createdAt, before)));
+  return row?.clicks ?? 0;
+};
+
 export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisitsInput) => {
   // Use workspace plan - team workspaces inherit Ultra features
   const plan = ctx.workspace.plan;
@@ -1341,59 +1369,67 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
 
-  const [[totalVisits, uniqueVisits, summaries], linkGeoRules, prevCounts, prevSummaries] =
-    await Promise.all([
-      getLinkVisitsInWindow(ctx.db, foundLink.id, startDate, now),
-      ctx.db.query.geoRule.findMany({
-        where: (rule, { eq }) => eq(rule.linkId, foundLink.id),
-        columns: {
-          id: true,
-          action: true,
-        },
-      }),
-      hasPreviousPeriod
-        ? Promise.all([
-            ctx.db
-              .select({
-                total: count(),
-                verified: sql<number>`SUM(CASE WHEN ${linkVisit.verifiedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
-              })
-              .from(linkVisit)
-              .where(
-                and(
-                  eq(linkVisit.linkId, foundLink.id),
-                  gte(linkVisit.createdAt, prevStart),
-                  lt(linkVisit.createdAt, prevEnd),
-                ),
-              ),
-            ctx.db
-              .select({ value: count() })
-              .from(uniqueLinkVisit)
-              .where(
-                and(
-                  eq(uniqueLinkVisit.linkId, foundLink.id),
-                  gte(uniqueLinkVisit.createdAt, prevStart),
-                  lt(uniqueLinkVisit.createdAt, prevEnd),
-                ),
-              ),
-          ])
-        : Promise.resolve(null),
-      hasPreviousPeriod
-        ? ctx.db
+  const [
+    [totalVisits, uniqueVisits, summaries],
+    linkGeoRules,
+    prevCounts,
+    prevSummaries,
+    hiddenClicks,
+  ] = await Promise.all([
+    getLinkVisitsInWindow(ctx.db, foundLink.id, startDate, now),
+    ctx.db.query.geoRule.findMany({
+      where: (rule, { eq }) => eq(rule.linkId, foundLink.id),
+      columns: {
+        id: true,
+        action: true,
+      },
+    }),
+    hasPreviousPeriod
+      ? Promise.all([
+          ctx.db
             .select({
-              clicks: sum(linkVisitDailySummary.clicks),
-              uniqueClicks: sum(linkVisitDailySummary.uniqueClicks),
+              total: count(),
+              verified: sql<number>`SUM(CASE WHEN ${linkVisit.verifiedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
             })
-            .from(linkVisitDailySummary)
+            .from(linkVisit)
             .where(
               and(
-                eq(linkVisitDailySummary.linkId, foundLink.id),
-                gte(linkVisitDailySummary.date, bucketKey(prevStart)),
-                lt(linkVisitDailySummary.date, bucketKey(prevEnd)),
+                eq(linkVisit.linkId, foundLink.id),
+                gte(linkVisit.createdAt, prevStart),
+                lt(linkVisit.createdAt, prevEnd),
               ),
-            )
-        : Promise.resolve(null),
-    ]);
+            ),
+          ctx.db
+            .select({ value: count() })
+            .from(uniqueLinkVisit)
+            .where(
+              and(
+                eq(uniqueLinkVisit.linkId, foundLink.id),
+                gte(uniqueLinkVisit.createdAt, prevStart),
+                lt(uniqueLinkVisit.createdAt, prevEnd),
+              ),
+            ),
+        ])
+      : Promise.resolve(null),
+    hasPreviousPeriod
+      ? ctx.db
+          .select({
+            clicks: sum(linkVisitDailySummary.clicks),
+            uniqueClicks: sum(linkVisitDailySummary.uniqueClicks),
+          })
+          .from(linkVisitDailySummary)
+          .where(
+            and(
+              eq(linkVisitDailySummary.linkId, foundLink.id),
+              gte(linkVisitDailySummary.date, bucketKey(prevStart)),
+              lt(linkVisitDailySummary.date, bucketKey(prevEnd)),
+            ),
+          )
+      : Promise.resolve(null),
+    userHasPaidPlan
+      ? Promise.resolve(0)
+      : countClicksBefore(ctx.db, [foundLink.id], freeAnalyticsWindowStart(now)),
+  ]);
 
   const archived = summarizeArchived(summaries);
 
@@ -1417,6 +1453,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
       geoRules: linkGeoRules,
       previous,
       archived,
+      hiddenClicks,
       domain,
       range,
       custom,
@@ -1455,6 +1492,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
     geoRules: linkGeoRules,
     previous,
     archived,
+    hiddenClicks,
     domain,
     range,
     custom,
@@ -1481,6 +1519,7 @@ export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllA
     clicksByLink: {},
     clicksByDestination: {},
     archived: summarizeArchived([]),
+    hiddenClicks: 0,
     range,
     custom,
     window,
@@ -1499,7 +1538,7 @@ export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllA
 
   // Fetch all visits for all links, plus the per-day counts archived from
   // visits past the retention window (summed in SQL, so one row per day).
-  const [totalVisits, uniqueVisits, summaries] = await Promise.all([
+  const [totalVisits, uniqueVisits, summaries, hiddenClicks] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { inArray, and, gte, lte }) =>
         and(
@@ -1531,12 +1570,15 @@ export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllA
         ),
       )
       .groupBy(linkVisitDailySummary.date),
+    userHasPaidPlan
+      ? Promise.resolve(0)
+      : countClicksBefore(ctx.db, linkIds, freeAnalyticsWindowStart(now)),
   ]);
 
   const archived = summarizeArchived(summaries);
 
   if (totalVisits.length === 0) {
-    return { ...empty, archived };
+    return { ...empty, archived, hiddenClicks };
   }
 
   // Aggregate clicks by link
@@ -1589,6 +1631,7 @@ export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllA
     clicksByLink,
     clicksByDestination,
     archived,
+    hiddenClicks,
     range,
     custom,
     window,

@@ -158,6 +158,13 @@ export const analyticsWindow = (limitDays: number | undefined, now: Date) => ({
 /** Ranges every plan may view; the rest (including custom ranges) are Pro and Ultra only. */
 export const FREE_ANALYTICS_RANGES: readonly string[] = ["24h", "7d"];
 
+/** The widest range Free may view, and what a Free request for a paid range falls back to. */
+export const FREE_ANALYTICS_RANGE = "7d";
+
+/** Start of the Free analytics window: Free accounts can't see clicks before it. */
+export const freeAnalyticsWindowStart = (now: Date) =>
+  resolveRangeWindow(FREE_ANALYTICS_RANGE, now).from ?? now;
+
 /** A custom range: inclusive UTC calendar days as "YYYY-MM-DD". */
 export type CustomRange = { from: string; to: string };
 
@@ -188,7 +195,7 @@ export const resolveAnalyticsRange = (
   isPaidPlan: boolean,
 ): AnalyticsRange => {
   if (!isPaidPlan && !FREE_ANALYTICS_RANGES.includes(input.range)) {
-    return { range: "7d", custom: null };
+    return { range: FREE_ANALYTICS_RANGE, custom: null };
   }
   if (input.range !== "custom") return { range: input.range, custom: null };
   const custom = parseCustomRange(input.from, input.to);
