@@ -74,6 +74,10 @@ import {
 } from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import {
+  checkCampaignPatternsAfterResponse,
+  type LinkDestination,
+} from "@/server/lib/phishing/rescan";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { generateUnreservedAlias, reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
@@ -421,6 +425,19 @@ async function fetchMetadataFailOpen(
   }
 }
 
+/** The URL and redirect-rule destinations of a link, for the campaign-pattern check. */
+function linkDestinations(
+  linkId: number,
+  url: string | undefined,
+  rules: { action: string; destination?: string | null }[] = [],
+): LinkDestination[] {
+  const urls = [
+    url,
+    ...rules.map((rule) => (rule.action === "redirect" ? rule.destination : null)),
+  ];
+  return urls.flatMap((u) => (u ? [{ linkId, url: u }] : []));
+}
+
 export const createLink = (
   ctx: WorkspaceTRPCContext,
   input: CreateLinkInput,
@@ -652,6 +669,7 @@ const createLinkSteps = async (
   }
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
+  checkCampaignPatternsAfterResponse(linkDestinations(linkId, input.url, geoRulesInput));
 
   return { id: linkId, alias, domain };
 };
@@ -936,6 +954,15 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   await Promise.all(staleKeys.map((key) => deleteFromCache(key)));
   // Always set the new cache entry with updated values
   await setInCache(buildCacheKey(updatedLink.domain, updatedLink.alias!), updatedLinkWithTags);
+
+  // After the cache write, so a block from the check isn't overwritten by it.
+  checkCampaignPatternsAfterResponse(
+    linkDestinations(
+      input.id,
+      input.url !== existingLink.url ? input.url : undefined,
+      geoRulesInput,
+    ),
+  );
 };
 
 export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
@@ -1240,6 +1267,7 @@ const shortenLinkSteps = async (
   });
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
+  checkCampaignPatternsAfterResponse(linkDestinations(Number(result.insertId), input.url));
 
   return {
     id: result.insertId,
@@ -2017,6 +2045,7 @@ const bulkCreateLinkRows = async (
   let importAllotted = 0;
   // Rows often share a destination, and a Bitly code always shares its row's.
   const scans = new Map<string, Promise<void>>();
+  const createdDestinations: LinkDestination[] = [];
   const createLinks = async (checks: PromiseSettledResult<PreparedLink>[]) => {
     const steps = checks.map((): LinkCreationStep => "validation");
     const usesImportAllowance = checks.map(() => false);
@@ -2055,7 +2084,7 @@ const bulkCreateLinkRows = async (
         steps[index] = "db";
         const ownership = workspaceOwnership(ctx.workspace);
         const alias = record.alias ?? (await generateUnreservedAlias(ctx.db, record.domain));
-        await ctx.db.insert(link).values({
+        const [inserted] = await ctx.db.insert(link).values({
           url: record.url,
           alias,
           name: record.name,
@@ -2066,6 +2095,7 @@ const bulkCreateLinkRows = async (
           note: record.note,
           ...restrictedLinkValues(ctx.restrictedAt),
         });
+        createdDestinations.push({ linkId: Number(inserted.insertId), url: record.url });
         return { record: { ...record, alias }, alreadyImported: false };
       },
     );
@@ -2167,6 +2197,7 @@ const bulkCreateLinkRows = async (
     await incrementWorkspaceLinkCount(ctx, currentCount, limit, created - importCreated);
   }
   await incrementCustomDomainImportCount(ctx, importCreated);
+  checkCampaignPatternsAfterResponse(createdDestinations);
 
   const importAllowanceRemaining = importAllowanceLeft - importCreated;
   const importNotice =

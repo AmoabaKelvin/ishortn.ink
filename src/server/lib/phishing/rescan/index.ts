@@ -1,4 +1,5 @@
-import { and, asc, countDistinct, eq, gt, inArray, isNull, like, or, sql } from "drizzle-orm";
+import { and, asc, countDistinct, desc, eq, gt, inArray, isNull, like, or, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { env } from "@/env.mjs";
 import { resolvePlan } from "@/lib/billing/plans";
@@ -10,10 +11,12 @@ import {
   setStringInCache,
 } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { blockedDomain, flaggedLink, geoRule, link, subscription } from "@/server/db/schema";
 
 import { checkGoogleSafeBrowsingBatch, SAFE_BROWSING_BATCH_SIZE } from "../google-safe-browsing";
+import { findEmailInRedirect } from "../heuristics";
 import { getFeeds, scanFeed } from "./feeds";
 import {
   addDestinationToIndex,
@@ -22,12 +25,16 @@ import {
   type BacklogFlag,
   backlogDecisions,
   CAP_NOTE_LIKE,
+  type BlockedPhishingPaths,
+  campaignPatternMatches,
   capBlocks,
   createLinkIndex,
   createSafeBrowsingWindow,
   decideMatch,
+  distinctivePath,
   type ExistingFlag,
   flagPayingAccounts,
+  indexBlockedPhishingPaths,
   LEGACY_FLAG_DETAILS,
   type LinkIndex,
   mergeDecisions,
@@ -55,6 +62,11 @@ const SAFE_BROWSING_CURSOR_TTL = 60 * 60 * 24 * 30;
 // Blocks over the cap wait in the backlog, which every run (and the backlog-only run every 15
 // minutes, see custom-worker.ts) blocks first, so confirmed matches drain at up to ~1,000 an hour.
 const MAX_AUTO_BLOCKS_PER_RUN = 250;
+// Newest first: a campaign's links are blocked while it runs, so recent blocks carry its paths.
+const MAX_BLOCKED_PHISHING_LINKS = 2_000;
+const BLOCKED_PATHS_TTL_MS = 10 * 60 * 1000;
+const BLOCKED_PATHS_CACHE_KEY = "phishing:blocked-paths:v2";
+const OWN_HOSTS: ReadonlySet<string> = new Set(PLATFORM_DOMAINS);
 
 type SourceSummary = {
   entries: number;
@@ -169,6 +181,8 @@ async function scanLinks(
   ownHosts: Set<string>;
 }> {
   const index = createLinkIndex(PLATFORM_DOMAINS);
+  const blockedPaths = await loadBlockedPhishingPaths();
+  const matches: RescanMatch[] = [];
   const safeBrowsingEnabled = Boolean(env.GOOGLE_SAFE_BROWSING_API_KEY);
   const safeBrowsingWindow = createSafeBrowsingWindow(
     safeBrowsingEnabled ? Number(await getStringFromCache(SAFE_BROWSING_CURSOR_KEY)) || 0 : 0,
@@ -219,6 +233,9 @@ async function scanLinks(
       addLinkToIndex(index, row);
       const destinations = ruleDestinations.get(row.id) ?? [];
       for (const destination of destinations) addDestinationToIndex(index, row.id, destination);
+      for (const url of [row.url, ...destinations]) {
+        if (url) matches.push(...campaignPatternMatches(row.id, url, blockedPaths, index.ownHosts));
+      }
       if (safeBrowsingEnabled) {
         for (const url of [row.url, ...destinations]) {
           if (url && isHttpUrl(url)) addSafeBrowsingCandidate(safeBrowsingWindow, row.id, url);
@@ -230,8 +247,9 @@ async function scanLinks(
     lastId = page[page.length - 1]!.id;
   }
 
-  const sources: RescanSummary["sources"] = {};
-  const matches: RescanMatch[] = [];
+  const sources: RescanSummary["sources"] = {
+    "campaign-pattern": { entries: blockedPaths.size, matched: 0, blocked: 0, flagged: 0 },
+  };
 
   // Sequential so only one large feed body is in flight at a time.
   for (const feed of getFeeds()) {
@@ -263,6 +281,128 @@ async function scanLinks(
   matches.push(...safeBrowsing.matches);
 
   return { linksScanned, sources, matches, ownHosts: index.ownHosts };
+}
+
+// Blocks with URL-level phishing evidence: admin blocks naming phishing, and the URL feeds'
+// listings. Host-level feed blocks and Safe Browsing (which covers malware too) say nothing about
+// the path, so they never make one a trigger.
+const PATH_EVIDENCE_REASONS = (["phishing-database-links", "openphish"] as const).map(
+  (source) => `${RESCAN_REASON_PREFIX} ${source}`,
+);
+
+/** Distinctive paths of the latest links blocked for phishing; see `indexBlockedPhishingPaths`. */
+export async function loadBlockedPhishingPaths(): Promise<Set<string>> {
+  const rows = await db
+    .select({ url: link.url })
+    .from(link)
+    .where(
+      and(
+        eq(link.blocked, true),
+        or(
+          inArray(link.blockedReason, PATH_EVIDENCE_REASONS),
+          and(
+            like(link.blockedReason, "%phish%"),
+            sql`${link.blockedReason} NOT LIKE ${`${RESCAN_REASON_PREFIX}%`}`,
+          ),
+        ),
+      ),
+    )
+    .orderBy(desc(link.blockedAt))
+    .limit(MAX_BLOCKED_PHISHING_LINKS);
+  return indexBlockedPhishingPaths(
+    rows.flatMap((row) => (row.url ? [row.url] : [])),
+    OWN_HOSTS,
+  );
+}
+
+const blockedPathsCacheSchema = z.array(z.string());
+
+// Shared through KV so a cold isolate reads one key instead of querying the blocked links, and
+// memoised per isolate on top so warm ones skip even that.
+async function loadCachedBlockedPhishingPaths(): Promise<Set<string>> {
+  const cached = await getStringFromCache(BLOCKED_PATHS_CACHE_KEY);
+  if (cached) {
+    try {
+      return new Set(blockedPathsCacheSchema.parse(JSON.parse(cached)));
+    } catch {
+      // Unreadable entry: rebuild it below.
+    }
+  }
+  const paths = await loadBlockedPhishingPaths();
+  await setStringInCache(
+    BLOCKED_PATHS_CACHE_KEY,
+    JSON.stringify([...paths]),
+    BLOCKED_PATHS_TTL_MS / 1000,
+  );
+  return paths;
+}
+
+let blockedPathsCache: { paths: Promise<BlockedPhishingPaths>; expiresAt: number } | null = null;
+
+function getBlockedPhishingPaths(): Promise<BlockedPhishingPaths> {
+  const now = Date.now();
+  if (!blockedPathsCache || blockedPathsCache.expiresAt <= now) {
+    const paths = loadCachedBlockedPhishingPaths();
+    blockedPathsCache = { paths, expiresAt: now + BLOCKED_PATHS_TTL_MS };
+    // A failed load isn't cached, so the next write retries.
+    paths.catch(() => {
+      if (blockedPathsCache?.paths === paths) blockedPathsCache = null;
+    });
+  }
+  return blockedPathsCache.paths;
+}
+
+export type LinkDestination = { linkId: number; url: string };
+
+/**
+ * Checks new or edited link destinations for known campaign patterns (see
+ * `campaignPatternMatches`) and blocks or flags the matches with the rescan's rules: free
+ * accounts are blocked, paying and team accounts flagged for review.
+ */
+export async function checkCampaignPatterns(
+  destinations: LinkDestination[],
+  // Seam for tests, which share one process and so one cache; callers use the default.
+  loadPaths: () => Promise<BlockedPhishingPaths> = getBlockedPhishingPaths,
+): Promise<void> {
+  const blockedPaths = destinations.some((d) => distinctivePath(d.url))
+    ? await loadPaths()
+    : new Set<string>();
+  const matches = destinations.flatMap((d) =>
+    campaignPatternMatches(d.linkId, d.url, blockedPaths, OWN_HOSTS),
+  );
+  if (matches.length === 0) return;
+
+  const existing = await loadExistingFlags([...new Set(matches.map((m) => m.linkId))]);
+  const candidates = matches.flatMap((m) => decideMatch(m, OWN_HOSTS) ?? []);
+  const fresh = mergeDecisions(withoutResolvedLinks(candidates, existing));
+  if (fresh.length === 0) return;
+  const paying = await loadPayingLinkIds(
+    fresh.filter((d) => d.action === "block").map((d) => d.linkId),
+  );
+  const decisions = flagPayingAccounts(fresh, paying);
+  const blocks = decisions.filter((d) => d.action === "block");
+  const flags = decisions.filter((d) => d.action === "flag");
+  await applyDecisions(blocks, flags, []);
+  log.warn(
+    { linkIds: decisions.map((d) => d.linkId), blocked: blocks.length, flagged: flags.length },
+    "link destination matches a known phishing campaign pattern",
+  );
+}
+
+/**
+ * Runs `checkCampaignPatterns` after the response, so link writes wait on nothing. Destinations
+ * that can't match (no distinctive path, no email in a redirector) never get this far.
+ */
+export function checkCampaignPatternsAfterResponse(destinations: LinkDestination[]): void {
+  const candidates = destinations.filter(
+    (d) => distinctivePath(d.url) !== null || findEmailInRedirect(d.url) !== null,
+  );
+  if (candidates.length === 0) return;
+  const task = checkCampaignPatterns(candidates).catch((err) => {
+    log.error({ err }, "campaign pattern check failed");
+  });
+  // Off-platform (tests, scripts) there is no waitUntil; the task still runs.
+  void runBackgroundTask(task).catch(() => undefined);
 }
 
 function matchedBySource(matches: RescanMatch[]): Map<RescanSource, Set<number>> {

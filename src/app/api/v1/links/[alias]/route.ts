@@ -11,6 +11,7 @@ import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { previousAddressCacheKeys, recordAddressChange } from "@/server/lib/link-address";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 
 import { apiError, errorResponse, readJsonBody, validationError } from "../../errors";
 import {
@@ -237,6 +238,11 @@ export const PATCH = withApiKey(
         staleKeys.push(buildCacheKey(updatedLink.domain, updatedLink.alias ?? ""));
       }
       await Promise.all(staleKeys.map((key) => deleteFromCache(key)));
+      if (filteredUpdateData.url && filteredUpdateData.url !== existingLink.url) {
+        checkCampaignPatternsAfterResponse([
+          { linkId: existingLink.id, url: filteredUpdateData.url },
+        ]);
+      }
 
       return Response.json(toApiLink(updatedLink));
     } catch (error) {

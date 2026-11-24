@@ -13,6 +13,7 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
+import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
@@ -108,7 +109,7 @@ export const createQrCode = userFacing(
       throw error;
     }
 
-    const { insertedQrCodeId } = await ctx.db.transaction(async (tx) => {
+    const { insertedQrCodeId, hiddenLinkId } = await ctx.db.transaction(async (tx) => {
       const hiddenLinkId = await insertHiddenTrackingLink(tx, ctx, prepared);
 
       const insertionResult = await tx.insert(qrcode).values({
@@ -122,8 +123,9 @@ export const createQrCode = userFacing(
         contentType: "link",
       });
 
-      return { insertedQrCodeId: insertionResult[0].insertId };
+      return { insertedQrCodeId: insertionResult[0].insertId, hiddenLinkId };
     });
+    checkCampaignPatternsAfterResponse([{ linkId: hiddenLinkId, url: input.content }]);
 
     return { trackingUrl: prepared.trackingUrl, id: insertedQrCodeId };
   },
