@@ -1,0 +1,38 @@
+{
+  "name": "ishortn-zapier",
+  "version": "0.1.0",
+  "description": "Zapier integration for iShortn: trigger on new short links, create, update and find links, and read click totals.",
+  "license": "MIT",
+  "private": true,
+  "main": "index.js",
+  "homepage": "https://ishortn.ink",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmoabaKelvin/ishortn.ink.git",
+    "directory": "integrations/zapier"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "jest",
+    "validate": "zapier-platform validate"
+  },
+  "dependencies": {
+    "zapier-platform-core": "19.3.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nock": "^14.0.0",
+    "zapier-platform-cli": "19.3.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/test/setup.js"
+    ],
+    "testMatch": [
+      "<rootDir>/test/**/*.test.js"
+    ]
+  }
+}
