@@ -1,6 +1,5 @@
 import Script from "next/script";
 
-import { MicrosoftClarityScript } from "@/components/scripts/clarity";
 import { PostHogScript } from "@/components/scripts/posthog";
 import { env } from "@/env.mjs";
 
@@ -16,7 +15,6 @@ export function AnalyticsProviders({ children }: { children: ReactNode }) {
       {env.UMAMI_TRACKING_ID && (
         <Script strategy="lazyOnload" src={env.UMAMI_URL} data-website-id={env.UMAMI_TRACKING_ID} />
       )}
-      <MicrosoftClarityScript />
       <PostHogScript />
       {children}
     </>

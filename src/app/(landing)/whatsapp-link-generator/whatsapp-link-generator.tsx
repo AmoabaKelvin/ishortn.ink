@@ -175,9 +175,9 @@ export function WhatsAppLinkGenerator({
   };
 
   return (
-    // The page promises the number and message never leave the browser: keep them out of the
-    // layout's session recordings (Clarity) and autocaptured events (PostHog).
-    <div data-clarity-mask="true" className={cn(cardClass, "ph-no-capture mx-auto max-w-4xl p-2")}>
+    // The page promises the number and message never leave the browser: keep them out of
+    // PostHog's autocaptured events.
+    <div className={cn(cardClass, "ph-no-capture mx-auto max-w-4xl p-2")}>
       <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] md:grid-rows-[auto_1fr]">
         {/* Inputs + link */}
         <div className="flex min-w-0 flex-col gap-6 p-4 sm:p-6">
