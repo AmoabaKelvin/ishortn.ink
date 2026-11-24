@@ -11,8 +11,8 @@ import { isInternalRequest } from "@/server/lib/internal-request";
 const log = logger.child({ job: "entitlements" });
 
 /**
- * Daily entitlements reconcile: syncs failed-payment subscriptions that Lemon
- * Squeezy has since expired or cancelled, starts and clears plan grace periods
+ * Daily entitlements reconcile: syncs paid and failed-payment subscriptions that
+ * Lemon Squeezy has since expired or cancelled, starts and clears plan grace periods
  * from live subscription status and feature usage, catching missed billing
  * webhooks, and sends the grace emails that are due. Idempotent, so it is also safe to call
  * by hand (for example right after a deploy).

@@ -33,7 +33,13 @@ import { subscription, team, user } from "@/server/db/schema";
 import { resend } from "@/server/lib/notifications/resend-client";
 import { EMAIL_FROM } from "@/server/lib/notifications/send-email";
 
-import { isEndedProviderStatus, lookupProviderSubscription } from "./provider-status";
+import {
+  FAILED_PAYMENT_STATUSES,
+  isEndedProviderStatus,
+  lookupProviderSubscription,
+  ProviderSubscriptionNotFoundError,
+  providerEndedSubscription,
+} from "./provider-status";
 import { getPlanUsageByUser } from "./usage";
 
 import type { ProviderSubscriptionLookup, ProviderSubscriptionState } from "./provider-status";
@@ -48,8 +54,11 @@ const log = logger.child({ component: "entitlements" });
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EMAIL_BATCH_SIZE = 100; // Resend's batch limit
 const LOOKUP_CHUNK = 1000;
-// Lemon Squeezy statuses for a renewal that failed: retrying, then retries exhausted.
-const FAILED_PAYMENT_STATUSES = ["past_due", "unpaid"];
+// Local statuses the daily reconcile checks against Lemon Squeezy: still paid, or retrying a renewal.
+const PROVIDER_CHECKED_STATUSES = ["active", "on_trial", ...FAILED_PAYMENT_STATUSES];
+// A subscription that ended longer ago than this gets no lapse grace or emails
+// when the reconcile finds it: the customer stopped paying long ago.
+const STALE_LAPSE_MS = 30 * DAY_MS;
 
 const chunk = <T>(items: T[], size: number): T[][] =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, i) =>
@@ -75,6 +84,7 @@ async function startUserGrace(
   grace: { plan: Plan; endsAt: Date; reason: GraceReason },
   replace: GraceReplace,
   now: Date,
+  emailStage: number = GRACE_EMAIL_STAGE.none,
 ): Promise<boolean> {
   const replaceable = {
     none: isNull(user.planGraceEndsAt),
@@ -87,7 +97,7 @@ async function startUserGrace(
       planGracePlan: grace.plan,
       planGraceEndsAt: grace.endsAt,
       planGraceReason: grace.reason,
-      planGraceEmailStage: GRACE_EMAIL_STAGE.none,
+      planGraceEmailStage: emailStage,
     })
     .where(and(eq(user.id, userId), replaceable));
   return result.affectedRows > 0;
@@ -310,18 +320,49 @@ export async function syncEntitlementsAfterBillingEvent(
 // ----------------------------------------------------------------------------
 
 /**
- * Mirrors a failed renewal that Lemon Squeezy has since ended (expired or
- * cancelled) onto the local row, for when that webhook was missed: the same
- * writes as the webhook, with the entitlement sync in the same transaction.
- * Only a row still in a failed-payment status and older than the provider's
- * state is written. Returns whether the row changed.
+ * Records the lapse of a subscription that ended long ago (see STALE_LAPSE_MS)
+ * as already run out, with its emails marked sent, and its owner's teams the
+ * same, so the account is on Free at once and no step of the reconcile starts a
+ * grace or emails it about a plan it stopped paying for long ago.
+ */
+async function recordStaleLapse(dbClient: DbClient, sub: Subscription, endedAt: Date, now: Date) {
+  const graceEndsAt = new Date(endedAt.getTime() + GRACE_PERIOD_MS);
+  const plan = subscribedPlan(sub);
+  if (plan !== "free") {
+    await startUserGrace(
+      dbClient,
+      sub.userId,
+      { plan, endsAt: graceEndsAt, reason: "lapsed" },
+      "over_plan",
+      now,
+      GRACE_EMAIL_STAGE.ended,
+    );
+  }
+  await dbClient
+    .update(team)
+    .set({ ownerPlanGraceEndsAt: graceEndsAt, ownerPlanGraceEmailStage: GRACE_EMAIL_STAGE.ended })
+    .where(
+      and(eq(team.ownerId, sub.userId), isNull(team.deletedAt), isNull(team.ownerPlanGraceEndsAt)),
+    );
+}
+
+/**
+ * Mirrors a subscription that Lemon Squeezy has ended (see
+ * providerEndedSubscription) onto the local row still holding it as paid or
+ * retrying a renewal, for when that webhook was missed: the same writes as the
+ * webhook, with the entitlement sync in the same transaction. One that ended
+ * over 30 days ago gets no grace or emails (recordStaleLapse). Only a row still
+ * in the status it was read with and older than the provider's state is
+ * written. Returns whether the row changed.
  */
 export async function syncEndedSubscription(
   sub: Subscription,
   provider: ProviderSubscriptionState,
   now = new Date(),
 ): Promise<boolean> {
-  if (!sub.subscriptionId || !isEndedProviderStatus(provider.status)) return false;
+  if (!sub.subscriptionId || !sub.status || !providerEndedSubscription(sub.status, provider, now)) {
+    return false;
+  }
   const changes =
     provider.status === "expired"
       ? {
@@ -340,7 +381,7 @@ export async function syncEndedSubscription(
         and(
           eq(subscription.id, sub.id),
           eq(subscription.subscriptionId, sub.subscriptionId ?? 0),
-          inArray(subscription.status, FAILED_PAYMENT_STATUSES),
+          eq(subscription.status, sub.status ?? ""),
           provider.updatedAt
             ? or(
                 isNull(subscription.providerUpdatedAt),
@@ -350,13 +391,22 @@ export async function syncEndedSubscription(
         ),
       );
     if (result.affectedRows === 0) return false;
-    await applyBillingEventEntitlements(tx, sub.userId, sub, now);
+    const { endsAt } = provider;
+    const stale = !!endsAt && endsAt.getTime() < now.getTime() - STALE_LAPSE_MS;
+    if (stale && endsAt) {
+      await recordStaleLapse(tx, sub, endsAt, now);
+    } else {
+      await applyBillingEventEntitlements(tx, sub.userId, sub, now);
+    }
     log.info(
       {
+        id: sub.id,
         userId: sub.userId,
         subscriptionId: sub.subscriptionId,
         from: sub.status,
         to: provider.status,
+        endsAt,
+        stale,
       },
       "synced subscription ended at provider",
     );
@@ -365,38 +415,41 @@ export async function syncEndedSubscription(
 }
 
 /**
- * Checks every subscription held locally in a failed payment against Lemon
- * Squeezy and syncs the ones it has ended, so their plan, status and notices
- * stop asking for a card update. A row that can't be checked is left for the
- * next run. Returns how many rows changed.
+ * Checks every subscription held locally as paid or in a failed payment
+ * against Lemon Squeezy and syncs the ones it has ended, so accounts the
+ * provider stopped billing lose their paid plan and failed payments stop asking
+ * for a card update. A row the provider doesn't know, or that can't be checked,
+ * is left unchanged (the latter for the next run). Returns how many rows changed.
  */
-export async function syncFailedPaymentSubscriptions(
+export async function syncProviderEndedSubscriptions(
   now = new Date(),
   lookup: ProviderSubscriptionLookup = lookupProviderSubscription,
 ): Promise<number> {
-  const failing = await db
+  const held = await db
     .select()
     .from(subscription)
     .where(
       and(
-        inArray(subscription.status, FAILED_PAYMENT_STATUSES),
+        inArray(subscription.status, PROVIDER_CHECKED_STATUSES),
         gt(subscription.subscriptionId, 0),
       ),
     );
   let synced = 0;
-  // Sequential: these are few, and it stays well inside the provider's rate limit.
-  for (const sub of failing) {
+  // Sequential: one lookup per paying account a day stays well inside the provider's rate limit.
+  for (const sub of held) {
     try {
       const provider = await lookup(sub.subscriptionId ?? 0);
       if (await syncEndedSubscription(sub, provider, now)) synced++;
     } catch (err) {
-      log.warn(
-        { err, userId: sub.userId, subscriptionId: sub.subscriptionId },
-        "could not check failed-payment subscription with provider",
-      );
+      const context = { id: sub.id, userId: sub.userId, subscriptionId: sub.subscriptionId };
+      if (err instanceof ProviderSubscriptionNotFoundError) {
+        log.warn(context, "subscription not found at provider; left unchanged");
+      } else {
+        log.warn({ err, ...context }, "could not check subscription with provider");
+      }
     }
   }
-  if (failing.length > 0) log.info({ checked: failing.length, synced }, "checked failed payments");
+  if (held.length > 0) log.info({ checked: held.length, synced }, "checked subscriptions");
   return synced;
 }
 
@@ -476,9 +529,9 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
     emailsSent: 0,
   };
 
-  // 0. Failed payments Lemon Squeezy has since ended (webhook missed), so the
-  //    steps below and the emails see the subscription's real state.
-  result.subscriptionsSynced = await syncFailedPaymentSubscriptions(now);
+  // 0. Paid or failed-payment subscriptions Lemon Squeezy has since ended
+  //    (webhook missed), so the steps below and the emails see the real state.
+  result.subscriptionsSynced = await syncProviderEndedSubscriptions(now);
 
   // 1. Grace periods the paid plan covers again (resubscribed; webhook missed).
   //    A passed lapse grace on a subscription that is paid again is cleared too.
