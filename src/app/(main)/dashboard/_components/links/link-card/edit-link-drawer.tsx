@@ -70,6 +70,8 @@ import type { MilestoneEntry } from "@/app/(main)/dashboard/_components/mileston
 
 const log = clientLogger.child({ component: "edit-link-drawer" });
 
+import { useUpgradeOffer } from "../../upgrade-offer";
+
 import type { LinkCardLink } from "./types";
 
 // `link.metadata` is an untyped JSON column; older rows may hold partial or foreign shapes.
@@ -104,6 +106,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
 
   const { data: userTags } = api.tag.list.useQuery();
   const userSubscription = api.subscriptions.get.useQuery();
+  const upgradeOffer = useUpgradeOffer();
   const { data: existingGeoRules } = api.geoRules.getByLinkId.useQuery(
     { linkId: link.id },
     { enabled: open },
@@ -291,6 +294,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
             error.message,
             linkEditLimitSource(error.message),
             requiredPlanForLimit(error.message, userSubscription?.data?.plan),
+            upgradeOffer,
           );
           return;
         }

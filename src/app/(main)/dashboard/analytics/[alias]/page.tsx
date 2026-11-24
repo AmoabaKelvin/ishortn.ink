@@ -13,6 +13,7 @@ import { analyticsRangeEnum } from "@/server/api/routers/link/link.input";
 import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
+import { PromoOfferSuffix } from "../../_components/upgrade-offer";
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
 import { ExportClicksButton } from "../_components/export-clicks-button";
@@ -122,6 +123,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
               Viewing limited analytics (last 7 days).{" "}
               <UpgradeText text="Upgrade to Pro" source="link_analytics" /> for full data.
+              <PromoOfferSuffix />
             </p>
           )}
         </div>

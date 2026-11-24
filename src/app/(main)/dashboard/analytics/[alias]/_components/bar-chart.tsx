@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/chart";
 import { cn, formatChartBucket, formatChartBucketLabel } from "@/lib/utils";
 
+import { PromoOfferSuffix } from "../../../_components/upgrade-offer";
 import UpgradeText from "../../../qrcodes/_components/upgrade-text";
 import { useChartAnimation } from "../../_components/use-chart-animation";
 import { ChartEmptyState } from "./chart-empty-state";
@@ -390,6 +391,7 @@ export function BarChart({
         <div className="px-5 pb-4 text-center text-[12px] text-neutral-400 dark:text-neutral-500">
           Showing data for the last 7 days.{" "}
           <UpgradeText text="Upgrade to Pro" source="analytics_chart" /> for full analytics.
+          <PromoOfferSuffix />
         </div>
       )}
     </Card>

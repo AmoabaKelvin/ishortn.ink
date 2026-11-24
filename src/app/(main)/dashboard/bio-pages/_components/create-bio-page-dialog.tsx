@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label";
 import { toastMutationError } from "@/lib/analytics/plan-limit-toast";
 import { api } from "@/trpc/react";
 
+import { useUpgradeOffer } from "../../_components/upgrade-offer";
+
 const MAX_SLUG_LENGTH = 100;
 
 export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
@@ -28,13 +30,14 @@ export function CreateBioPageDialog({ trigger }: { trigger: React.ReactNode }) {
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
 
+  const upgradeOffer = useUpgradeOffer();
   const create = api.bioPage.create.useMutation({
     onSuccess: (res) => {
       toast.success("Bio page created.");
       setOpen(false);
       router.push(`/dashboard/bio-pages/${res.id}`);
     },
-    onError: (error) => toastMutationError(error, "bio_page_limit"),
+    onError: (error) => toastMutationError(error, "bio_page_limit", { promo: upgradeOffer }),
   });
 
   const normalizedSlug = slug

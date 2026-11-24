@@ -17,6 +17,7 @@ import { api } from "@/trpc/server";
 
 export const dynamic = "force-dynamic";
 
+import { PromoOfferSuffix } from "../../_components/upgrade-offer";
 import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { RangeSelectorWrapper } from "../[alias]/_components/range-selector-wrapper";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
@@ -103,6 +104,7 @@ export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPage
             <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
               Viewing limited analytics (last 7 days).{" "}
               <UpgradeText text="Upgrade to Pro" source="analytics_overview" /> for full data.
+              <PromoOfferSuffix />
             </p>
           )}
         </div>

@@ -65,6 +65,7 @@ import { checkIframeable } from "../../_components/links/check-iframeable";
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
 import { LinkReadyDialog } from "../../_components/links/link-ready-dialog";
 import { PlanBadge, SectionToggle } from "../../_components/section-toggle";
+import { useUpgradeOffer } from "../../_components/upgrade-offer";
 import { UtmParamsForm } from "../../_components/utm-params-form";
 import { UtmTemplateSelector } from "../../_components/utm-template-selector";
 import { revalidateHomepage } from "../../revalidate-homepage";
@@ -240,6 +241,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
     await generateAliases(currentMetadata);
   };
 
+  const upgradeOffer = useUpgradeOffer();
   const formUpdateMutation = api.link.create.useMutation({
     onSuccess: async (created) => {
       await revalidateHomepage();
@@ -254,6 +256,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
           error.message,
           "link_create",
           requiredPlanForLimit(error.message, userSubscription.data?.plan),
+          upgradeOffer,
         );
       } else {
         toast.error(error.message);

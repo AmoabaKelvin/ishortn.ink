@@ -38,6 +38,23 @@ export function promoBannerState({
   return getActivePromo(now);
 }
 
+/**
+ * The promo in-app upgrade prompts (sidebar, inline analytics links, plan-limit toasts) carry.
+ * Unlike the strip it ignores other banners, so the offer still shows where the strip is hidden.
+ */
+export function upgradeOfferPromo({
+  subscription,
+  isRestricted,
+  now = new Date(),
+}: {
+  subscription: PromoBannerInput["subscription"];
+  isRestricted: boolean;
+  now?: Date;
+}): Promo | null {
+  if (!subscription || isRestricted || !canStartCheckout(subscription)) return null;
+  return getActivePromo(now);
+}
+
 export function promoBannerHref(promo: Promo) {
   const params = new URLSearchParams({
     utm_source: "app",

@@ -23,6 +23,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { api } from "@/trpc/react";
 
+import { useUpgradeOffer } from "../../../_components/upgrade-offer";
+
 import type { BioBlockType } from "@/server/db/schema";
 import type { RouterOutputs } from "@/trpc/shared";
 
@@ -95,11 +97,12 @@ function BlockForm({
     },
     onError: (e: { message: string }) => toast.error(e.message),
   };
+  const upgradeOffer = useUpgradeOffer();
   const addBlock = api.bioPage.addBlock.useMutation({
     ...mutationOptions,
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN" && /upgrade/i.test(error.message)) {
-        notifyPlanLimit(error.message, "bio_link_block_limit", "pro");
+        notifyPlanLimit(error.message, "bio_link_block_limit", "pro", upgradeOffer);
       } else {
         toast.error(error.message);
       }

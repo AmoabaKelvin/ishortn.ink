@@ -23,6 +23,8 @@ import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { normalizeCampaignSlug as normalizeSlug } from "@/lib/campaigns/slug";
 import { api } from "@/trpc/react";
 
+import { useUpgradeOffer } from "../../_components/upgrade-offer";
+
 export function CreateCampaignDialog({ trigger }: { trigger: React.ReactNode }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -32,6 +34,7 @@ export function CreateCampaignDialog({ trigger }: { trigger: React.ReactNode }) 
   const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState("");
 
+  const upgradeOffer = useUpgradeOffer();
   const create = api.campaign.create.useMutation({
     onSuccess: (res) => {
       toast.success("Campaign created.");
@@ -41,7 +44,12 @@ export function CreateCampaignDialog({ trigger }: { trigger: React.ReactNode }) 
     },
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN") {
-        notifyPlanLimit(error.message, "campaign_create", requiredPlanForLimit(error.message));
+        notifyPlanLimit(
+          error.message,
+          "campaign_create",
+          requiredPlanForLimit(error.message),
+          upgradeOffer,
+        );
       } else {
         toast.error(error.message);
       }

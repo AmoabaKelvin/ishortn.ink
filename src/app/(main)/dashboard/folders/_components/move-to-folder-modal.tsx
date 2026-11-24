@@ -33,6 +33,8 @@ import { toastMutationError } from "@/lib/analytics/plan-limit-toast";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
+import { useUpgradeOffer } from "../../_components/upgrade-offer";
+
 type MoveToFolderModalProps = {
   linkId?: number;
   linkIds?: number[];
@@ -66,6 +68,7 @@ export function MoveToFolderModal({
   const utils = api.useUtils();
   const router = useRouter();
 
+  const upgradeOffer = useUpgradeOffer();
   const createFolderMutation = api.folder.create.useMutation({
     onSuccess: async (newFolder) => {
       await utils.folder.list.invalidate();
@@ -82,7 +85,7 @@ export function MoveToFolderModal({
         moveLinkMutation.mutate({ linkId, folderId });
       }
     },
-    onError: (error) => toastMutationError(error, "folder_create"),
+    onError: (error) => toastMutationError(error, "folder_create", { promo: upgradeOffer }),
   });
 
   const moveLinkMutation = api.folder.moveLink.useMutation({
@@ -98,7 +101,7 @@ export function MoveToFolderModal({
       onSuccess?.();
       onOpenChange(false);
     },
-    onError: (error) => toastMutationError(error, "folder_move"),
+    onError: (error) => toastMutationError(error, "folder_move", { promo: upgradeOffer }),
   });
 
   const moveBulkLinksMutation = api.folder.moveBulkLinks.useMutation({
@@ -117,7 +120,7 @@ export function MoveToFolderModal({
       onSuccess?.();
       onOpenChange(false);
     },
-    onError: (error) => toastMutationError(error, "folder_move"),
+    onError: (error) => toastMutationError(error, "folder_move", { promo: upgradeOffer }),
   });
 
   const handleMove = () => {
