@@ -1,5 +1,6 @@
 import { AppProviders } from "@/components/app-providers";
 import { MicrosoftClarityScript } from "@/components/scripts/clarity";
+import { Toaster } from "@/components/ui/sonner";
 
 import type { ReactNode } from "react";
 
@@ -11,6 +12,9 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
       <MicrosoftClarityScript />
       {/* <rn-banner background-color="#2563eb" border-radius="0" margin="0" /> */}
       {children}
+      {/* Without an explicit dir, Sonner reads getComputedStyle(<html>) while hydrating, which
+          forces a style recalculation of the whole page inside that task. */}
+      <Toaster dir="ltr" />
     </AppProviders>
   );
 };

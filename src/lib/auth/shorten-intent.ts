@@ -1,9 +1,10 @@
 // A signed-out visitor who asks to shorten a URL (UTM builder, hero form) goes
 // through sign-up first. The URL travels in a cookie, never in the auth page's
 // address bar, where Umami and PostHog record it and asset requests
-// send it as Referer. The UTM builder sets the cookie on click so the URL is
-// not in its CTA's href either (PostHog records clicked hrefs);
-// middleware moves a `?url=` on an auth page into the same cookie. The auth
+// send it as Referer. The homepage hero and the tool CTAs set the cookie on click,
+// so the URL is not in an href either (PostHog records clicked hrefs) and the
+// auth page loads without a redirect; middleware moves a `?url=` that still
+// arrives on an auth page (older links) into the same cookie with a 307. The auth
 // pages read it for the post-auth redirect, and middleware clears it when that
 // redirect lands.
 // Edge-safe: imported by src/middleware.ts.

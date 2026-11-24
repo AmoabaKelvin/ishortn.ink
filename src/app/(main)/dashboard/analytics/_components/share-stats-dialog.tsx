@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
-import { copyToClipboard } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/utils/clipboard";
 import { api } from "@/trpc/react";
 
 type ShareStatsDialogProps = {

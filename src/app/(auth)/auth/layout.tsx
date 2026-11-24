@@ -2,8 +2,8 @@ import "@/styles/site.css";
 import "@/styles/site-auth.css";
 import { Link } from "next-view-transitions";
 
-import { AppProviders } from "@/components/app-providers";
 import { FirstTouchCapture } from "@/components/attribution/first-touch-capture";
+import { AuthProviders } from "@/components/auth-providers";
 import { getClerkScripts } from "@/lib/auth/clerk-scripts";
 
 import { Wordmark } from "../../(landing)/_components/site-primitives";
@@ -28,7 +28,7 @@ const AuthLayout = ({ children }: { children: ReactNode }) => {
           <Link href="/" aria-label="Homepage" className="mx-auto mb-8 flex w-fit">
             <Wordmark />
           </Link>
-          <AppProviders>{children}</AppProviders>
+          <AuthProviders>{children}</AuthProviders>
         </div>
       </main>
     </div>

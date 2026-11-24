@@ -4,7 +4,7 @@ import { IconCheck, IconCopy } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { copyToClipboard } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/utils/clipboard";
 
 type Challenge = {
   type: "TXT" | "A" | "CNAME";
