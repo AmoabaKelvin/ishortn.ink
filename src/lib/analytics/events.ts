@@ -65,6 +65,9 @@ export const POSTHOG_EVENTS = {
   ANNUAL_SWITCH_CARD_SHOWN: "annual_switch_card_shown",
   ANNUAL_SWITCH_CARD_CLICKED: "annual_switch_card_clicked",
   ANNUAL_SWITCH_CARD_DISMISSED: "annual_switch_card_dismissed",
+
+  // Clerk replaced the sign-up/sign-in placeholder (auth-form-ready.tsx)
+  AUTH_FORM_READY: "auth_form_ready",
 } as const;
 
 type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];

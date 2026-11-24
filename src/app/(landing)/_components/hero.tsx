@@ -183,6 +183,8 @@ export const Hero = () => {
               </label>
               <input
                 id="hero-url"
+                // Submitting goes to sign-up; ClerkWarmup starts Clerk's downloads on focus.
+                data-clerk-warmup
                 name="url"
                 required
                 inputMode="url"

@@ -36,6 +36,7 @@
     "@ai-sdk/react": "^3.0.118",
     "@aws-sdk/client-s3": "^3.1175.0",
     "@clerk/nextjs": "^7.10.7",
+    "@clerk/shared": "^4.48.3",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
