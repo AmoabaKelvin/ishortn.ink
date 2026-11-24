@@ -1,17 +1,10 @@
-import {
-  IconAppsFilled,
-  IconBookFilled,
-  IconChevronRight,
-  IconMessageCircleFilled,
-  IconQrcode,
-  IconTagFilled,
-} from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
 import { getLivePosts } from "@/lib/blog";
 import { homeGuideSlugs } from "@/lib/copy/landing-page";
 import { cn } from "@/lib/utils";
 
+import { SiteIcon } from "./site-icon";
 import {
   bodyClass,
   ButtonLink,
@@ -30,19 +23,19 @@ const tools: { href: string; title: string; body: string; icon: ReactNode }[] = 
     href: "/qr-code-generator",
     title: "QR code generator",
     body: "Make a QR code for any link and download it as a PNG or SVG.",
-    icon: <IconQrcode aria-hidden="true" />,
+    icon: <SiteIcon name="qrcode" />,
   },
   {
     href: "/utm-builder",
     title: "UTM builder",
     body: "Tag a link so Google Analytics shows which post, email or ad sent each visit.",
-    icon: <IconTagFilled aria-hidden="true" />,
+    icon: <SiteIcon name="tag-filled" />,
   },
   {
     href: "/whatsapp-link-generator",
     title: "WhatsApp link generator",
     body: "Make a wa.me link with your message already typed in, plus a QR code to print.",
-    icon: <IconMessageCircleFilled aria-hidden="true" />,
+    icon: <SiteIcon name="message-circle-filled" />,
   },
 ];
 
@@ -52,7 +45,7 @@ const focusRing =
 export const FreeTools = () => (
   <Section id="tools">
     <SectionHeading
-      eyebrow={<Eyebrow icon={<IconAppsFilled aria-hidden="true" />}>Free tools</Eyebrow>}
+      eyebrow={<Eyebrow icon={<SiteIcon name="apps-filled" />}>Free tools</Eyebrow>}
       title="Free tools, no account needed"
       subtitle="Each one runs in your browser. Sign up when you want to track clicks."
     />
@@ -68,7 +61,7 @@ export const FreeTools = () => (
             <p className={cn(bodyClass, "mt-2")}>{tool.body}</p>
             <span className="mt-auto inline-flex items-center gap-1 pt-6 text-sm font-medium text-neutral-900">
               Open tool
-              <IconChevronRight aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+              <SiteIcon name="chevron-right" className="size-4 shrink-0 opacity-70" />
             </span>
           </Link>
         </li>
@@ -84,7 +77,7 @@ export const Guides = ({ now }: { now?: Date }) => {
     <Section id="guides">
       <SectionHeading
         align="left"
-        eyebrow={<Eyebrow icon={<IconBookFilled aria-hidden="true" />}>Guides</Eyebrow>}
+        eyebrow={<Eyebrow icon={<SiteIcon name="book-filled" />}>Guides</Eyebrow>}
         title="Guides to short links and QR codes"
         subtitle="How to shorten, track and share links, from the iShortn blog."
         actions={
@@ -110,7 +103,7 @@ export const Guides = ({ now }: { now?: Date }) => {
                 <span className="text-pretty font-title text-lg font-semibold tracking-[-0.01em] text-neutral-900 underline decoration-transparent underline-offset-4 group-hover:decoration-neutral-900">
                   {post.title}
                 </span>
-                <IconChevronRight aria-hidden="true" className="size-5 shrink-0 text-neutral-600" />
+                <SiteIcon name="chevron-right" className="size-5 shrink-0 text-neutral-600" />
               </Link>
             </li>
           ))}

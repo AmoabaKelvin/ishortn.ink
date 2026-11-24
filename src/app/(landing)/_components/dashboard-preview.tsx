@@ -1,8 +1,7 @@
-import { IconChartAreaLineFilled, IconChevronDown } from "@tabler/icons-react";
-
 import { PLAN_CAPS } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
+import { SiteIcon } from "./site-icon";
 import { ButtonLink, Eyebrow, panelClass, Section, SectionHeading } from "./site-primitives";
 
 const stats = [
@@ -32,7 +31,7 @@ const AnalyticsMock = () => (
       <div className="text-sm font-semibold text-neutral-900">Analytics</div>
       <div className="flex items-center gap-2 rounded-[10px] bg-white px-3 py-1.5 text-xs font-medium text-neutral-900 shadow-site-btn">
         Last 30 days
-        <IconChevronDown className="size-4 shrink-0 text-neutral-500" />
+        <SiteIcon name="chevron-down" className="size-4 shrink-0 text-neutral-500" />
       </div>
     </div>
 
@@ -85,9 +84,7 @@ export const DashboardPreview = () => (
       <div className="lg:w-1/2 lg:pr-8">
         <SectionHeading
           align="left"
-          eyebrow={
-            <Eyebrow icon={<IconChartAreaLineFilled aria-hidden="true" />}>Analytics</Eyebrow>
-          }
+          eyebrow={<Eyebrow icon={<SiteIcon name="chart-area-line-filled" />}>Analytics</Eyebrow>}
           title="Know who clicked, where, and when"
           subtitle={`Every short link and QR code gets its own dashboard: clicks over time, country, city, device, browser and referrer, with bots filtered out. Free keeps ${PLAN_CAPS.free.analyticsRangeLimitDays} days of history; Pro and Ultra keep all of it and export clicks to CSV.`}
           actions={

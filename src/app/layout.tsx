@@ -61,14 +61,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             inter.variable,
           )}
         >
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
+          {/* No disableTransitionOnChange: next-themes also applies it on every page load, adding and
+              removing a global stylesheet that forces two style recalculations of the whole page
+              while it hydrates. ThemeToggle turns transitions off for the switches users make. */}
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             {children}
-            <Toaster />
+            {/* Without an explicit dir, Sonner reads getComputedStyle(<html>) while hydrating, which
+                forces a style recalculation of the whole page inside that task. */}
+            <Toaster dir="ltr" />
           </ThemeProvider>
         </body>
       </html>

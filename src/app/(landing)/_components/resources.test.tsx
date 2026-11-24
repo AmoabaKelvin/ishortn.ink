@@ -26,7 +26,9 @@ const render = (node: ReactNode) =>
     <AppRouterContext.Provider value={router}>{node}</AppRouterContext.Provider>,
   );
 
-const hrefs = (html: string) => [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+// Anchors only: sprite icons are <use href="/site-icons.svg#…">.
+const hrefs = (html: string) =>
+  [...html.matchAll(/<a\s[^>]*?href="([^"]+)"/g)].map((match) => match[1]);
 
 // how-to-track-qr-code-scans is dated 2026-11-20; the other curated posts are older.
 const guidesOn = (now: string) => hrefs(render(<Guides now={new Date(now)} />));

@@ -12,6 +12,17 @@ const options = [
   { value: "system", icon: IconDeviceDesktop, label: "System" },
 ] as const;
 
+// Switches the theme with transitions off, so every colour flips at once instead of each
+// transition-colors element fading. next-themes applies the class in an effect, so the override
+// stays until a frame has been drawn with the new theme.
+const switchWithoutTransitions = (switchTheme: () => void) => {
+  const style = document.createElement("style");
+  style.textContent = "*,*::before,*::after{transition:none!important}";
+  document.head.appendChild(style);
+  switchTheme();
+  requestAnimationFrame(() => requestAnimationFrame(() => style.remove()));
+};
+
 // Renders a neutral placeholder until hydration so the server markup never
 // depends on the persisted theme.
 const subscribeNever = () => () => {};
@@ -50,7 +61,7 @@ export function ThemeToggle() {
             type="button"
             key={option.value}
             aria-pressed={isActive}
-            onClick={() => setTheme(option.value)}
+            onClick={() => switchWithoutTransitions(() => setTheme(option.value))}
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors",
               isActive
