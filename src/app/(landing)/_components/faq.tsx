@@ -1,7 +1,6 @@
-import { IconHelpCircleFilled, IconPlus } from "@tabler/icons-react";
-
 import { landingPageCopy } from "@/lib/copy/landing-page";
 
+import { SiteIcon } from "./site-icon";
 import { Eyebrow, Section, SectionHeading } from "./site-primitives";
 
 type FaqEntry = { q: string; a: string };
@@ -22,7 +21,7 @@ export const Faq = ({
 }) => (
   <Section id="help">
     <SectionHeading
-      eyebrow={<Eyebrow icon={<IconHelpCircleFilled aria-hidden="true" />}>{eyebrow}</Eyebrow>}
+      eyebrow={<Eyebrow icon={<SiteIcon name="help-circle-filled" />}>{eyebrow}</Eyebrow>}
       title={title}
       subtitle={subtitle}
     />
@@ -39,8 +38,8 @@ export const Faq = ({
             <span className="font-title text-lg font-semibold tracking-[-0.01em] text-neutral-900">
               {it.q}
             </span>
-            <IconPlus
-              aria-hidden="true"
+            <SiteIcon
+              name="plus"
               className="size-5 shrink-0 text-neutral-600 transition-transform group-open:rotate-45 motion-reduce:transition-none"
             />
           </summary>

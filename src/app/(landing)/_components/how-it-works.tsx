@@ -1,18 +1,6 @@
-import {
-  IconArrowNarrowDown,
-  IconBrandInstagram,
-  IconBrandWhatsapp,
-  IconBrandX,
-  IconBulbFilled,
-  IconCopy,
-  IconLink,
-  IconMail,
-  IconQrcode,
-  IconSelector,
-} from "@tabler/icons-react";
-
 import { cn } from "@/lib/utils";
 
+import { SiteIcon, type SiteIconName } from "./site-icon";
 import {
   bodyClass,
   cardClass,
@@ -35,18 +23,18 @@ const PasteMock = () => (
       https://acme.com/blog/2026/product-launch-announcement?ref=newsletter
     </div>
     <span className="my-3 grid size-7 shrink-0 place-items-center rounded-full bg-neutral-100 text-neutral-600">
-      <IconArrowNarrowDown className="size-4" />
+      <SiteIcon name="arrow-narrow-down" className="size-4" />
     </span>
     <div className="w-full flex-1 rounded-t-xl bg-white p-4 shadow-site-card">
       <div className="flex items-center gap-2">
         <span className="grid size-5 shrink-0 place-items-center rounded-full bg-neutral-900 text-white">
-          <IconLink className="size-3" />
+          <SiteIcon name="link" className="size-3" />
         </span>
         <span className="min-w-0 truncate font-mono text-sm font-medium text-neutral-900">
           isht.app/launch
         </span>
         <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-md bg-neutral-100 px-1.5 py-1 text-xs font-medium text-neutral-700">
-          <IconCopy className="size-3.5" />
+          <SiteIcon name="copy" className="size-3.5" />
           Copy
         </span>
       </div>
@@ -99,7 +87,7 @@ const SettingsMock = () => (
         <SettingRow label="Domain">
           <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-white py-1 pl-2 pr-1 font-mono text-xs text-neutral-700 shadow-site-btn">
             <span className="truncate">isht.app</span>
-            <IconSelector className="size-3.5 shrink-0" />
+            <SiteIcon name="selector" className="size-3.5 shrink-0" />
           </span>
         </SettingRow>
         <SettingRow label="Expire after date">
@@ -121,12 +109,12 @@ const ring =
   "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-neutral-950/[0.07]";
 
 // Offsets sit on the 80px and 135px orbits. Full class strings so Tailwind can see them.
-const channels = [
-  { icon: IconBrandWhatsapp, pos: "left-[calc(50%-27px)] top-[calc(50%-75px)]" },
-  { icon: IconMail, pos: "left-[calc(50%+14px)] top-[calc(50%+79px)]" },
-  { icon: IconBrandX, pos: "left-[calc(50%+117px)] top-[calc(50%-68px)]" },
-  { icon: IconBrandInstagram, pos: "left-[calc(50%-130px)] top-[calc(50%+35px)]" },
-  { icon: IconQrcode, pos: "left-[calc(50%+111px)] top-[calc(50%+77px)]" },
+const channels: { icon: SiteIconName; pos: string }[] = [
+  { icon: "brand-whatsapp", pos: "left-[calc(50%-27px)] top-[calc(50%-75px)]" },
+  { icon: "mail", pos: "left-[calc(50%+14px)] top-[calc(50%+79px)]" },
+  { icon: "brand-x", pos: "left-[calc(50%+117px)] top-[calc(50%-68px)]" },
+  { icon: "brand-instagram", pos: "left-[calc(50%-130px)] top-[calc(50%+35px)]" },
+  { icon: "qrcode", pos: "left-[calc(50%+111px)] top-[calc(50%+77px)]" },
 ];
 
 const OrbitMock = () => (
@@ -134,7 +122,7 @@ const OrbitMock = () => (
     <span className={cn(ring, "size-[160px]")} />
     <span className={cn(ring, "size-[270px]")} />
     <span className={cn(ring, "size-[390px]")} />
-    {channels.map(({ icon: ChannelIcon, pos }) => (
+    {channels.map(({ icon, pos }) => (
       <span
         key={pos}
         className={cn(
@@ -142,7 +130,7 @@ const OrbitMock = () => (
           pos,
         )}
       >
-        <ChannelIcon className="size-[18px]" />
+        <SiteIcon name={icon} className="size-[18px]" />
       </span>
     ))}
     <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white px-3 py-1.5 shadow-site-card">
@@ -172,7 +160,7 @@ const steps = [
 export const HowItWorks = () => (
   <Section id="how-it-works">
     <SectionHeading
-      eyebrow={<Eyebrow icon={<IconBulbFilled aria-hidden="true" />}>How it works</Eyebrow>}
+      eyebrow={<Eyebrow icon={<SiteIcon name="bulb-filled" />}>How it works</Eyebrow>}
       title="With us, link management is easy"
       subtitle="Three steps from a long URL to a link you can track."
     />
