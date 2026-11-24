@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/seo/json-ld";
 import { PLAN_CAPS } from "@/lib/billing/plans";
+import { getActivePromo, promoBannerText } from "@/lib/billing/promo";
 import { isPostLive } from "@/lib/blog";
 import { Paths } from "@/lib/constants/app";
 import { linkOwnershipPoints } from "@/lib/copy/link-ownership";
@@ -40,8 +41,9 @@ import {
 
 import type { Metadata } from "next";
 
-// Hourly ISR, matching the blog, so a scheduled guide's link appears on its publish date.
-export const revalidate = 3600;
+// 5-minute ISR, matching /pricing, so the promo line follows the promo window; it also picks up
+// a scheduled guide's link on its publish date.
+export const revalidate = 300;
 
 export function generateStaticParams() {
   return Object.values(competitors).map((c) => ({ slug: c.slug }));
@@ -138,6 +140,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
   if (!competitor) return notFound();
 
   const isLinkInBio = competitor.category === "link in bio";
+  const promo = getActivePromo();
   const rows = isLinkInBio
     ? featureRows.map((row) =>
         row.competitorKey === "freeLinks" ? { ...row, label: bioLinksLabel } : row,
@@ -343,9 +346,15 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
               </dl>
             </div>
             <div className="mt-8">
-              <ButtonLink href={Paths.Signup} variant="secondary">
-                Start free
-              </ButtonLink>
+              {promo && <p className={cn(bodyClass, "mb-4")}>{promoBannerText(promo)}</p>}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                <ButtonLink href={Paths.Signup} variant="secondary">
+                  Start free
+                </ButtonLink>
+                <Link href="/pricing" className={cn(bodyClass, guideLinkClass)}>
+                  See all plans
+                </Link>
+              </div>
             </div>
           </div>
         </div>

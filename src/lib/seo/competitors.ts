@@ -13,12 +13,13 @@ export const competitors = {
     name: "Bitly",
     slug: "bitly",
     category: "URL shortener",
-    pricesCheckedOn: "2026-11-22",
+    seoTitle: "Bitly vs iShortn: Free Plan, Pricing and Migration (2026)",
+    pricesCheckedOn: "2026-11-24",
     tagline: "The most popular URL shortener",
     description:
       "Bitly Free allows 5 links and 2 QR codes a month, with no click data and an ad page before each link opens. Here's how iShortn compares, and how to move your Bitly links.",
     metaDescription:
-      "Bitly vs iShortn on free links, click analytics, custom domains and price, checked November 2026, plus how to move your Bitly links without breaking them.",
+      "Bitly Free: 5 links a month, no click stats, an ad page. iShortn Free: 30 links with stats and no ads. Checked Nov 2026, plus how to move your links.",
     freeLinks: "5/month",
     freeAnalytics: "None on Free; 30 days of history on Core",
     customDomains: "Growth ($29/mo) and up",
@@ -33,8 +34,10 @@ export const competitors = {
       "Bitly Free shows an ad page before each link opens. iShortn has no ad page on any plan",
       "Bitly Free has no click data. iShortn Free shows location, device and referrer for the last 7 days",
       "Bitly Core is $10/month billed annually, and custom domains need Growth at $29/month billed annually. iShortn Pro is $8/month with 3 custom domains",
-      "You can change a link's destination on every iShortn plan. Bitly Free allows no edits and Core allows 5 a month",
+      "You can change a link's destination on every iShortn plan. Bitly Free can't change a destination, and Core allows 5 changes a month",
       "iShortn Free includes 5 dynamic QR codes: edit the destination anytime, they never expire, and there are no ads",
+      "Send a client a read-only stats page for any iShortn link or QR code, on every plan. They don't need an account",
+      "Monthly iShortn plans can pause billing for 1 to 3 months instead of cancelling, and your links keep redirecting",
     ],
     linksStayYours: true,
     migrationSteps: [
@@ -45,6 +48,11 @@ export const competitors = {
       "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel Bitly.",
     ],
     faqs: [
+      {
+        question: "Is Bitly still free?",
+        answer:
+          "Yes. Bitly Free allows 5 links a month, and QR codes count toward them (2 a month). It shows no click or scan data, can't change a link's destination, and opens free links on a page with an ad. Paid plans start with Core at $10 a month, billed annually only.",
+      },
       {
         question: "Is iShortn a good alternative to Bitly?",
         answer:
@@ -81,6 +89,9 @@ export const competitors = {
         href: "/blog/url-shortener-vs-link-management-platform",
         label: "URL shortener vs link management platform",
       },
+      { href: "/compare/tinyurl", label: "iShortn vs TinyURL" },
+      { href: "/compare/short-io", label: "iShortn vs Short.io" },
+      { href: "/compare/dub", label: "iShortn vs Dub" },
     ],
     migrationGuide: {
       href: "/docs/migrate-from-bitly",
