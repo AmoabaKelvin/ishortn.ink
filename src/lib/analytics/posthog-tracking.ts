@@ -1,10 +1,16 @@
 // Pageview and identity bookkeeping for posthog.ts, kept apart from it so it can be tested without
 // loading posthog-js. `run` queues calls until PostHog loads.
 
+import { SHORTEN_INTENT_COOKIE } from "@/lib/auth/shorten-intent";
+
 type PageLocation = Pick<Location, "href" | "host" | "pathname">;
 
 interface PageviewClient {
-  capture(event: string, properties: Record<string, string>, options: { timestamp: Date }): void;
+  capture(
+    event: string,
+    properties: Record<string, string | boolean>,
+    options: { timestamp: Date },
+  ): void;
 }
 
 interface IdentityClient {
@@ -16,12 +22,31 @@ interface IdentityClient {
 
 type Run<T> = (call: (client: T) => void) => void;
 
+const SIGN_UP_PAGE = /^\/auth\/sign-up(?:\/|$)/;
+
+/**
+ * Extra `$pageview` properties for `pathname`, given the page's `document.cookie`. A sign-up page
+ * opened with a pending shorten intent (the homepage hero, the UTM builder) gets
+ * `shorten_intent: true`, so that funnel can be read straight from page views. Only the flag is
+ * sent, never the URL in the cookie.
+ */
+export function pageviewProperties(pathname: string, cookie: string): Record<string, true> {
+  if (!SIGN_UP_PAGE.test(pathname)) return {};
+  const prefix = `${SHORTEN_INTENT_COOKIE}=`;
+  const hasIntent = cookie.split(";").some((pair) => {
+    const trimmed = pair.trim();
+    return trimmed.startsWith(prefix) && trimmed.length > prefix.length;
+  });
+  return hasIntent ? { shorten_intent: true } : {};
+}
+
 /**
  * Returns a function that sends a `$pageview` for the given location, unless the last one it sent
  * was for the same path. The initial load and the route effect's first run both report the same
- * page, and query-only changes (filters, pricing highlights) are not new pages.
+ * page, and query-only changes (filters, pricing highlights) are not new pages. `readCookie`
+ * returns `document.cookie`, for pageviewProperties.
  */
-export function createPageviewTracker(run: Run<PageviewClient>) {
+export function createPageviewTracker(run: Run<PageviewClient>, readCookie: () => string) {
   let lastPathname: string | null = null;
   return ({ href, host, pathname }: PageLocation) => {
     if (pathname === lastPathname) return;
@@ -29,10 +54,12 @@ export function createPageviewTracker(run: Run<PageviewClient>) {
     // Taken now: by the time PostHog loads, the visitor may have navigated again. Not the title:
     // posthog-js sets it from document.title when it sends a $pageview.
     const timestamp = new Date();
+    // Read now too: middleware clears the intent cookie once the post-auth redirect lands.
+    const extra = pageviewProperties(pathname, readCookie());
     run((posthog) =>
       posthog.capture(
         "$pageview",
-        { $current_url: href, $host: host, $pathname: pathname },
+        { $current_url: href, $host: host, $pathname: pathname, ...extra },
         { timestamp },
       ),
     );

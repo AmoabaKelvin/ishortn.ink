@@ -16,6 +16,17 @@
   }
 }
 
+/* Sign-up with a pending shorten intent: the page renders its own heading above
+   the card (ShortenIntentHeading), and the placeholder leaves this one out too.
+   Clerk moves to later steps (protect-check, verify-…) without re-rendering the
+   page, so start-only content follows the step of the mounted card. */
+[data-theme="site"] [data-shorten-intent] .cl-signUp-start .cl-header,
+[data-theme="site"]
+  [data-shorten-intent]:has(.cl-card:not(.cl-signUp-start))
+  [data-start-step-only] {
+  display: none;
+}
+
 /* Social buttons: stacked full width. First one primary, the rest soft. */
 [data-theme="site"] .cl-socialButtons {
   grid-template-columns: minmax(0, 1fr) !important;
