@@ -1,9 +1,9 @@
 ---
 title: "URL Shortener vs Link Management Platform: What's the Difference?"
 seoTitle: "URL Shortener vs Link Management Platform (2026)"
-description: "A URL shortener makes a link short. A link management platform also tracks clicks, edits destinations, uses your domain and adds team roles and an API."
+description: "A URL shortener makes links short. A link management platform adds click stats, your own domain, editable QR codes, team roles and an API. When each is enough."
 date: "2026-02-27"
-updated: "2026-11-23"
+updated: "2026-11-25"
 author: "Kelvin Amoaba"
 tags: ["link management", "url shortener", "comparison", "guide"]
 published: true
@@ -11,7 +11,7 @@ published: true
 
 A URL shortener turns a long link into a short one. A link management platform does that too, then tells you who clicked, lets you change where a link points after you've shared it, puts links on your own domain and lets a team work on them together. If a click count is all you need, a shortener is enough. If links are part of how you sell, a platform pays for itself.
 
-We make iShortn, which is a link management platform with a free plan, so we have a side in this. Competitor facts below come from each company's own pricing page, checked on 22 November 2026.
+We make iShortn, which is a link management platform with a free plan, so we have a side in this. Competitor facts below come from each company's own pricing page, checked on 24 November 2026.
 
 ## The difference in one table
 
@@ -62,6 +62,8 @@ A platform makes a QR code from a short link. Because the code points at the sho
 
 When marketing, sales and support all make links, a shared workspace keeps them in one place with one set of analytics. Roles decide who can create, edit or delete.
 
+People outside the team sometimes need the numbers too. On iShortn you can send a client a read-only stats page for one link or QR code, and they don't need a login. It's on every plan.
+
 ### An API
 
 Developers create links from code: a tracking link per customer, short links in transactional email, links made by an automation tool. Our [URL shortener API guide](/blog/url-shortener-api-guide) shows what that looks like.
@@ -106,19 +108,29 @@ Most small businesses and freelancers need the volume and history upgrades, not 
 
 ## How to evaluate a link management company
 
-Before you pick one, check these things on the company's own pricing page and docs. We've filled in the answers for Dub, which people often ask about, and for iShortn, as of 22 November 2026.
+Before you pick one, check these things on the company's own pricing page and docs. We've filled in the answers for Bitly and Dub, which people ask about most, and for iShortn, as of 24 November 2026.
 
-| Question | Dub | iShortn |
-| --- | --- | --- |
-| How many new links does the free plan allow? | 25 a month ([links pricing page](https://dub.co/pricing/links)) | 30 a month |
-| How long does the free plan keep analytics? | 30 days | 7 days |
-| Can you use your own domain? | Yes, 3 on Free, 10 on Pro, 100 on Business | Yes, 3 on Pro, unlimited on Ultra |
-| What does the cheapest paid plan cost? | Pro, $30/month ($27/month billed yearly) | Pro, $8/month |
-| Is there an API, and on which plan? | Every plan, including Free | Pro and Ultra |
-| Is SSO available? | Enterprise | No |
-| Can you export your links if you leave? | Not listed on the pricing page | Yes, CSV or JSON export on every plan |
+| Question | Bitly | Dub | iShortn |
+| --- | --- | --- | --- |
+| How many new links does the free plan allow? | 5 a month ([pricing page](https://bitly.com/pages/pricing)) | 25 a month ([links pricing page](https://dub.co/pricing/links)) | 30 a month |
+| How long does the free plan keep analytics? | No analytics on Free; 30 days on Core | 30 days | 7 days |
+| Can you use your own domain? | From Growth, $29/month billed annually | Yes, 3 on Free, 10 on Pro, 100 on Business | Yes, 3 on Pro, unlimited on Ultra |
+| What does the cheapest paid plan cost? | Core, $10/month, billed annually only | Pro, $30/month ($27/month billed yearly) | Pro, $8/month |
+| Is there an API, and on which plan? | Every plan; Free gets 1,000 requests a month | Every plan, including Free | Pro and Ultra |
+| Is SSO available? | Not listed on the pricing page | Enterprise | No |
+| Can you export your links if you leave? | Growth and higher | Yes, CSV export ([help center](https://dub.co/help/article/how-to-export-links)) | Yes, CSV or JSON export on every plan |
 
 Dub's main pricing page is built around affiliate and partner programs, with its short-link plans on a separate page. It suits software companies running referral programs more than a café printing QR codes. Two more things to check that pricing pages rarely spell out. First, what happens to links on your own domain if you cancel? Second, can you import links from your current tool without breaking them? [iShortn vs Dub](/compare/dub) goes into more detail.
+
+## Is a link management platform worth paying for?
+
+You can check this with one number: what a new customer or lead is worth to you.
+
+1. Note the monthly price of the plan. iShortn Pro is $8, Dub Pro is $30.
+2. Put a value on one extra customer, say a $40 order or a booked call.
+3. List the decisions the data would change each month. Which flyer or post brings people in? Can you repoint a printed QR code instead of reprinting it? Is a campaign getting no clicks, so you can stop paying for it?
+
+If the data wins you one extra $40 order a month, saves one print run, or moves money to a channel that works, an $8 to $30 plan pays for itself. If you can't name a decision the data would change, stay on a free plan.
 
 ## The hidden costs of free shorteners
 
@@ -127,7 +139,7 @@ Dub's main pricing page is built around affiliate and partner programs, with its
 - **No analytics.** You can't tell what worked.
 - **No editing.** If you can't change a destination, a typo or a moved page means a new link, and a new print run for QR codes.
 - **Ad pages.** Some free plans show an ad before the redirect. Bitly does this on free links.
-- **Shutdowns.** Services close. Google stopped taking new goo.gl links in 2019. Pick a tool that lets you export your links.
+- **Shutdowns.** Services close. Google stopped making goo.gl links in 2019, then switched off the ones with no recent activity in August 2025. Pick a tool that lets you export your links.
 
 ## Moving from Bitly to a link management platform
 
@@ -158,6 +170,10 @@ These pages compare iShortn with one tool at a time, using each company's own pr
 For roundups, see [the best Bitly alternatives](/blog/bitly-alternatives) and [the best free URL shorteners](/blog/best-free-url-shorteners).
 
 ## FAQ
+
+### What is link management?
+
+Link management means creating, branding, tracking and updating the links you share from one place. In practice that's short links on your own domain, click analytics, QR codes you can edit and shared access for a team. Tools that do this are called link management platforms or link management software.
 
 ### What is the difference between a URL shortener and a link management platform?
 
