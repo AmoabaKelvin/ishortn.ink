@@ -679,9 +679,11 @@ describe("campaign patterns", () => {
     ]);
   });
 
-  test("the blocked link's own host doesn't match", () => {
+  test("the blocked URL re-shortened on its own host matches", () => {
     const url = `https://www.first-compromised.example/${KIT_PATH}?id=2`;
-    expect(campaignPatternMatches(7, url, blockedPaths, ownHosts)).toEqual([]);
+    expect(campaignPatternMatches(7, url, blockedPaths, ownHosts)).toEqual([
+      { linkId: 7, source: "campaign-pattern", kind: "campaign-path", entry: url, host: "" },
+    ]);
   });
 
   test("paths of blocked links on major or shared hosts never become triggers", () => {
@@ -737,7 +739,7 @@ describe("campaign patterns", () => {
       "https://google.co.uk/url?q=https%3A%2F%2Fevil.example%2F%3Fe%3Djane%2540acme.com",
       "https://www.bing.com/ck/a?u=a1aHR0cHM6Ly9ldmlsLmV4YW1wbGU&e=jane@acme.com",
     ]) {
-      expect(campaignPatternMatches(7, url, new Map(), ownHosts)).toEqual([
+      expect(campaignPatternMatches(7, url, new Set(), ownHosts)).toEqual([
         { linkId: 7, source: "campaign-pattern", kind: "email-redirect", entry: url, host: "" },
       ]);
     }
@@ -755,7 +757,7 @@ describe("campaign patterns", () => {
       "https://www.youtube.com/redirect?q=https://medium.com/@writer/a-post&v=1",
       "https://www.google.com/url?q=https://example.com/&sig=ab12@cd34",
     ]) {
-      expect(campaignPatternMatches(7, url, new Map(), ownHosts)).toEqual([]);
+      expect(campaignPatternMatches(7, url, new Set(), ownHosts)).toEqual([]);
     }
   });
 

@@ -232,6 +232,13 @@ describe.skipIf(!testDatabaseUrl)("campaign patterns on link writes (MySQL)", ()
     });
   });
 
+  test("blocks a free account's link to the exact URL already blocked for phishing", async () => {
+    const url = `https://first-compromised.example${KIT_PATH}`;
+    const id = await insertLink("campaign-same-url", url, FREE_USER);
+    await checkCampaignPatterns([{ linkId: id, url }], loadBlockedPhishingPaths);
+    expect((await state(id)).blocked).toBe(true);
+  });
+
   test("only flags a paying account's link, including an email in a redirect", async () => {
     const url = "https://www.google.com/url?q=https://evil.example/&sa=D#x=jane@acme.com";
     const id = await insertLink("campaign-paid", url, PAID_USER);

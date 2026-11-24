@@ -553,8 +553,8 @@ export function distinctivePath(url: string): string | null {
   return path;
 }
 
-/** Distinctive path (see `distinctivePath`) → hosts of the phishing-blocked links serving it. */
-export type BlockedPhishingPaths = ReadonlyMap<string, readonly string[]>;
+/** Distinctive paths (see `distinctivePath`) served by links blocked for phishing. */
+export type BlockedPhishingPaths = ReadonlySet<string>;
 
 /**
  * Indexes the destinations of links blocked for phishing by distinctive path. Destinations on a
@@ -564,23 +564,21 @@ export type BlockedPhishingPaths = ReadonlyMap<string, readonly string[]>;
 export function indexBlockedPhishingPaths(
   urls: readonly string[],
   ownHosts: ReadonlySet<string>,
-): Map<string, string[]> {
-  const paths = new Map<string, string[]>();
+): Set<string> {
+  const paths = new Set<string>();
   for (const url of urls) {
     const path = distinctivePath(url);
     const host = path ? hostOfUrl(url) : null;
     if (!path || !host || isSharedHost(host, ownHosts)) continue;
-    const hosts = paths.get(path);
-    if (!hosts) paths.set(path, [host]);
-    else if (!hosts.includes(host)) hosts.push(host);
+    paths.add(path);
   }
   return paths;
 }
 
 /**
  * Known campaign patterns in one destination of a link: a distinctive path that a link blocked
- * for phishing serves on a different host (one kit deployed across compromised sites), or an
- * email address carried through an open redirector.
+ * for phishing serves (the same URL re-shortened, or one kit deployed across compromised sites),
+ * or an email address carried through an open redirector.
  */
 export function campaignPatternMatches(
   linkId: number,
@@ -591,10 +589,9 @@ export function campaignPatternMatches(
   const matches: RescanMatch[] = [];
   const base = { linkId, source: "campaign-pattern" as const, entry: url, host: "" };
   const path = blockedPaths.size > 0 ? distinctivePath(url) : null;
-  const blockedHosts = path ? blockedPaths.get(path) : undefined;
-  if (blockedHosts) {
+  if (path && blockedPaths.has(path)) {
     const host = hostOfUrl(url);
-    if (host && !blockedHosts.includes(host) && !isProtectedHost(host, ownHosts)) {
+    if (host && !isProtectedHost(host, ownHosts)) {
       matches.push({ ...base, kind: "campaign-path" });
     }
   }

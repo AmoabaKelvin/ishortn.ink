@@ -65,7 +65,7 @@ const MAX_AUTO_BLOCKS_PER_RUN = 250;
 // Newest first: a campaign's links are blocked while it runs, so recent blocks carry its paths.
 const MAX_BLOCKED_PHISHING_LINKS = 2_000;
 const BLOCKED_PATHS_TTL_MS = 10 * 60 * 1000;
-const BLOCKED_PATHS_CACHE_KEY = "phishing:blocked-paths";
+const BLOCKED_PATHS_CACHE_KEY = "phishing:blocked-paths:v2";
 const OWN_HOSTS: ReadonlySet<string> = new Set(PLATFORM_DOMAINS);
 
 type SourceSummary = {
@@ -291,7 +291,7 @@ const PATH_EVIDENCE_REASONS = (["phishing-database-links", "openphish"] as const
 );
 
 /** Distinctive paths of the latest links blocked for phishing; see `indexBlockedPhishingPaths`. */
-export async function loadBlockedPhishingPaths(): Promise<Map<string, string[]>> {
+export async function loadBlockedPhishingPaths(): Promise<Set<string>> {
   const rows = await db
     .select({ url: link.url })
     .from(link)
@@ -315,15 +315,15 @@ export async function loadBlockedPhishingPaths(): Promise<Map<string, string[]>>
   );
 }
 
-const blockedPathsCacheSchema = z.array(z.tuple([z.string(), z.array(z.string())]));
+const blockedPathsCacheSchema = z.array(z.string());
 
 // Shared through KV so a cold isolate reads one key instead of querying the blocked links, and
 // memoised per isolate on top so warm ones skip even that.
-async function loadCachedBlockedPhishingPaths(): Promise<Map<string, string[]>> {
+async function loadCachedBlockedPhishingPaths(): Promise<Set<string>> {
   const cached = await getStringFromCache(BLOCKED_PATHS_CACHE_KEY);
   if (cached) {
     try {
-      return new Map(blockedPathsCacheSchema.parse(JSON.parse(cached)));
+      return new Set(blockedPathsCacheSchema.parse(JSON.parse(cached)));
     } catch {
       // Unreadable entry: rebuild it below.
     }
@@ -366,7 +366,7 @@ export async function checkCampaignPatterns(
 ): Promise<void> {
   const blockedPaths = destinations.some((d) => distinctivePath(d.url))
     ? await loadPaths()
-    : new Map();
+    : new Set<string>();
   const matches = destinations.flatMap((d) =>
     campaignPatternMatches(d.linkId, d.url, blockedPaths, OWN_HOSTS),
   );
