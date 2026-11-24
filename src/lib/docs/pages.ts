@@ -28,6 +28,8 @@ export const DOCS_PAGE_MODULES = {
   "api/link-analytics": () => import("../../../content/docs/api/link-analytics.mdx"),
   "api/get-me": () => import("../../../content/docs/api/get-me.mdx"),
   "api/verify-click": () => import("../../../content/docs/api/verify-click.mdx"),
+  "integrations/browser-extension": () =>
+    import("../../../content/docs/integrations/browser-extension.mdx"),
   "integrations/raycast": () => import("../../../content/docs/integrations/raycast.mdx"),
   "integrations/n8n": () => import("../../../content/docs/integrations/n8n.mdx"),
   "self-hosting": () => import("../../../content/docs/self-hosting.mdx"),

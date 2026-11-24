@@ -524,6 +524,11 @@ export const token = mysqlTable(
     name: varchar("name", { length: 64 }),
     // First characters of the plaintext key, shown in settings so keys can be told apart.
     prefix: varchar("prefix", { length: 8 }),
+    // "api" keys work on /api/v1 only; "extension" tokens (browser extension connect flow) work
+    // on /api/extension only, so they can't be used to reach the paid-plan v1 API.
+    kind: varchar("kind", { length: 16 }).$type<"api" | "extension">().notNull().default("api"),
+    // Set from the connect request for extension tokens, e.g. "Chrome on macOS".
+    label: varchar("label", { length: 64 }),
     lastUsedAt: timestamp("lastUsedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
     userId: varchar("userId", { length: 32 }).notNull(),

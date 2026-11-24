@@ -79,6 +79,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "compare",
   "dashboard",
   "docs-site",
+  "extension",
   "favicon.ico",
   "features",
   "gerador-de-link-whatsapp",
