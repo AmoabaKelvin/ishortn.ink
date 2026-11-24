@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import wrangler from "../../../wrangler.jsonc";
 import {
   browserFromLabel,
   connectResultUrl,
@@ -97,6 +98,28 @@ test("parseRedirectUriList trims and drops empty entries", () => {
     "https://b.example/",
   ]);
   expect(parseRedirectUriList(undefined)).toEqual([]);
+});
+
+describe("deployed EXTENSION_REDIRECT_URIS (wrangler.jsonc vars)", () => {
+  const STORE_URI = "https://opkikfbhepmnlnblmjnfjgjeonadekdj.chromiumapp.org/";
+  const deployed = parseRedirectUriList(wrangler.vars.EXTENSION_REDIRECT_URIS);
+
+  test("accepts the Chrome Web Store build's redirect URI", () => {
+    expect(parseConnectParams({ redirect_uri: STORE_URI, state: STATE }, deployed)).toEqual({
+      ok: true,
+      request: { redirectUri: STORE_URI, state: STATE, label: null },
+    });
+  });
+
+  test.each([
+    ["another chromiumapp.org extension ID", CHROME_URI],
+    ["the store URI without its trailing slash", STORE_URI.slice(0, -1)],
+  ])("refuses %s", (_name, redirectUri) => {
+    expect(parseConnectParams({ redirect_uri: redirectUri, state: STATE }, deployed)).toEqual({
+      ok: false,
+      reason: "redirect_uri",
+    });
+  });
 });
 
 test("browserFromLabel", () => {
