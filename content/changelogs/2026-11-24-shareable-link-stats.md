@@ -41,3 +41,7 @@ In a team workspace, team admins and the person who created the link can change 
 ## Sign-up keeps the link you were creating
 
 If you paste a URL into the shortener on the homepage and then sign up, the sign-up page now opens with a **Get your short link** heading and a card showing the link you entered. The form also appears sooner on slow connections.
+
+## Free analytics count the clicks outside the 7-day window
+
+On the Free plan, a link's analytics page, the analytics overview and a QR code's page now say how many older clicks fall outside the last 7 days, for example "1,284 older clicks are hidden on Free (last 7 days shown)." On the overview, the count covers the links in the current view, so a folder or tag filter applies. Pro and Ultra show the full history.
