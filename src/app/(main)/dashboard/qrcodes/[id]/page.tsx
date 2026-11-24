@@ -20,6 +20,7 @@ import { analyticsRangeEnum } from "@/server/api/routers/link/link.input";
 import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
+import { PromoOfferSuffix } from "../../_components/upgrade-offer";
 import { BarChart } from "../../analytics/[alias]/_components/bar-chart";
 import { CountriesAndCitiesStats } from "../../analytics/[alias]/_components/countries-and-cities-stats";
 import { GeoRulesStats } from "../../analytics/[alias]/_components/geo-rules-stats";
@@ -153,6 +154,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
               <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
                 Viewing limited analytics (last 7 days).{" "}
                 <UpgradeText text="Upgrade to Pro" source="qr_analytics" /> for full data.
+                <PromoOfferSuffix />
               </p>
             )}
           </div>

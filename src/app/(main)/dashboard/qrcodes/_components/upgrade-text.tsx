@@ -2,6 +2,8 @@
 
 import { UpgradeCta } from "@/components/upgrade-cta";
 
+import { useUpgradeOffer } from "../../_components/upgrade-offer";
+
 import type { UpgradePlan } from "@/lib/billing/upgrade";
 
 type UpgradeTextProps = {
@@ -11,12 +13,17 @@ type UpgradeTextProps = {
   requiredPlan?: UpgradePlan;
 };
 
-/** Inline upgrade link for use inside a sentence. */
+/**
+ * Inline upgrade link for use inside a sentence. Place `<PromoOfferSuffix />` after the sentence:
+ * while a promo runs the link is attributed to the offer it shows.
+ */
 function UpgradeText({ text, source, requiredPlan = "pro" }: UpgradeTextProps) {
+  const promo = useUpgradeOffer();
   return (
     <UpgradeCta
       requiredPlan={requiredPlan}
       source={source}
+      promo={promo}
       className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
     >
       {text ?? "Upgrade your subscription"}

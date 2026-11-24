@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { ACTIVE_PROMO } from "./promo";
 import {
   buildUpgradeUrl,
   checkoutReturnSearch,
@@ -16,6 +17,15 @@ describe("buildUpgradeUrl", () => {
     );
     expect(buildUpgradeUrl("ultra", "teams")).toBe(
       "/dashboard/pricing?highlight=ultra&source=teams",
+    );
+  });
+
+  test("adds campaign UTMs only when the prompt showed a promo", () => {
+    expect(buildUpgradeUrl("pro", "sidebar_free", null)).toBe(
+      "/dashboard/pricing?highlight=pro&source=sidebar_free",
+    );
+    expect(buildUpgradeUrl("pro", "sidebar_free", ACTIVE_PROMO)).toBe(
+      "/dashboard/pricing?highlight=pro&source=sidebar_free&utm_source=app&utm_medium=upgrade_prompt&utm_campaign=bfcm2026&utm_content=sidebar_free",
     );
   });
 });

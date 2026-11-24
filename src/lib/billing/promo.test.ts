@@ -5,6 +5,8 @@ import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pr
 import {
   ACTIVE_PROMO,
   checkoutDiscountCode,
+  formatPromoEnd,
+  formatPromoEndShort,
   getActivePromo,
   promoBannerText,
   promoOfferLine,
@@ -65,5 +67,12 @@ describe("promoOfferLine", () => {
     expect(promoOfferLine(ACTIVE_PROMO, "Pro")).toBe(
       "Black Friday: Pro is 20% off your first year until Tuesday 1 December.",
     );
+  });
+});
+
+describe("formatPromoEnd", () => {
+  test("long and short forms of the last day, in UTC", () => {
+    expect(formatPromoEnd(ACTIVE_PROMO.endsAt)).toBe("Tuesday 1 December");
+    expect(formatPromoEndShort(ACTIVE_PROMO.endsAt)).toBe("Tue 1 Dec");
   });
 });

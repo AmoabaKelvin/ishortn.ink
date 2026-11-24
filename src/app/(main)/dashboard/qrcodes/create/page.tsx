@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { api } from "@/trpc/react";
 
+import { PromoOfferSuffix, useUpgradeOffer } from "../../_components/upgrade-offer";
 import UpgradeText from "../_components/upgrade-text";
 import {
   checkIfUserCanCreateMoreQRCodes,
@@ -81,6 +82,7 @@ function createErrorMessage(err: Error): string {
 function QRCodeCreationPage() {
   const router = useTransitionRouter();
   const userSubDetails = api.subscriptions.get.useQuery().data;
+  const upgradeOffer = useUpgradeOffer();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(userSubDetails);
@@ -385,6 +387,7 @@ function QRCodeCreationPage() {
             err.message,
             "qr_create_limit",
             requiredPlanForLimit(err.message, userSubDetails?.plan),
+            upgradeOffer,
           );
           return;
         }
@@ -415,6 +418,7 @@ function QRCodeCreationPage() {
                   requiredPlan={nextPlanFor(userSubDetails?.plan ?? "free")}
                 />{" "}
                 to create more.
+                <PromoOfferSuffix className="text-inherit dark:text-inherit" />
               </p>
             </div>
           )}

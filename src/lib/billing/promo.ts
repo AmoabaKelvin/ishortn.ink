@@ -61,9 +61,16 @@ export function formatDayMonth(date: Date): string {
   return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
 }
 
-function formatPromoEnd(iso: string): string {
+/** "Tuesday 1 December", in UTC. */
+export function formatPromoEnd(iso: string): string {
   const date = new Date(iso);
   return `${WEEKDAYS[date.getUTCDay()]} ${formatDayMonth(date)}`;
+}
+
+/** "Tue 1 Dec", in UTC, for tight spaces like the sidebar. */
+export function formatPromoEndShort(iso: string): string {
+  const date = new Date(iso);
+  return `${WEEKDAYS[date.getUTCDay()]!.slice(0, 3)} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]!.slice(0, 3)}`;
 }
 
 /** One-line announcement shown above the plan cards while the promo runs. */

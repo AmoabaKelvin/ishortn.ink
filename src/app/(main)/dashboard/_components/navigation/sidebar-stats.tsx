@@ -1,11 +1,16 @@
 "use client";
 
-import { IconArrowUpRight } from "@tabler/icons-react";
+import { IconArrowUpRight, IconTag } from "@tabler/icons-react";
 
 import { UpgradeCta } from "@/components/upgrade-cta";
+import { planPriceDisplay } from "@/lib/billing/pricing";
+import { formatPromoEndShort } from "@/lib/billing/promo";
 import { cn } from "@/lib/utils";
 
 import { eventsUpgradeTarget, formatResetDay } from "../tracking-paused";
+import { useUpgradeOffer } from "../upgrade-offer";
+
+import type { Promo } from "@/lib/billing/promo";
 
 export type EventUsage = {
   count: number;
@@ -64,6 +69,28 @@ function EventMeter({ eventUsage }: { eventUsage: EventUsage }) {
   );
 }
 
+// Annual, because that is the interval the pricing page opens on for Free accounts.
+function SidebarOffer({ promo }: { promo: Promo }) {
+  const price = planPriceDisplay("pro", "annual", promo);
+  return (
+    <div className="px-1">
+      <p className="flex items-center gap-1.5 text-[12px] font-medium text-neutral-900 dark:text-foreground">
+        <IconTag
+          size={14}
+          stroke={1.5}
+          aria-hidden="true"
+          className="shrink-0 text-blue-600 dark:text-blue-400"
+        />
+        {promo.label}: {promo.percentOff}% off Pro
+      </p>
+      <p className="mt-0.5 text-[11px] leading-snug text-neutral-500 dark:text-neutral-400">
+        ${price.perMonth}/mo for your first year, billed yearly. Ends{" "}
+        {formatPromoEndShort(promo.endsAt)}.
+      </p>
+    </div>
+  );
+}
+
 const EVENTS_PAUSED_SOURCE = "sidebar_events_paused";
 
 type SidebarStatsProps = {
@@ -93,6 +120,7 @@ export function SidebarStats({
   const isAtLimit = linkLimitValue != null ? monthlyLinkCount >= linkLimitValue : false;
   // While tracking is paused the upgrade CTA leads with the event cap.
   const eventsTarget = eventUsage?.paused ? eventsUpgradeTarget(plan) : null;
+  const promo = useUpgradeOffer();
 
   if (userHasPaidPlan) {
     return (
@@ -166,17 +194,25 @@ export function SidebarStats({
         {eventUsage && <EventMeter eventUsage={eventUsage} />}
       </div>
 
-      <UpgradeCta
-        requiredPlan="pro"
-        source={
-          eventsTarget ? EVENTS_PAUSED_SOURCE : isAtLimit ? "sidebar_free_at_limit" : "sidebar_free"
-        }
-        shown={shown}
-        className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
-      >
-        Upgrade to Pro
-        <IconArrowUpRight size={13} stroke={2} />
-      </UpgradeCta>
+      <div className="space-y-2">
+        {promo && <SidebarOffer promo={promo} />}
+        <UpgradeCta
+          requiredPlan="pro"
+          source={
+            eventsTarget
+              ? EVENTS_PAUSED_SOURCE
+              : isAtLimit
+                ? "sidebar_free_at_limit"
+                : "sidebar_free"
+          }
+          shown={shown}
+          promo={promo}
+          className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          Upgrade to Pro
+          <IconArrowUpRight size={13} stroke={2} />
+        </UpgradeCta>
+      </div>
     </div>
   );
 }
