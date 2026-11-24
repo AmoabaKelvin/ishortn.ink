@@ -32,6 +32,7 @@ import {
   RangePendingContent,
   RangeTransitionProvider,
 } from "../../analytics/_components/range-transition";
+import { ShareStatsButton } from "../../analytics/_components/share-stats-button";
 import UpgradeText from "../_components/upgrade-text";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -157,7 +158,10 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
           </div>
         </div>
 
-        <RangeSelectorWrapper isProPlan={isProPlan} />
+        <div className="flex flex-wrap items-center gap-2">
+          <RangeSelectorWrapper isProPlan={isProPlan} />
+          <ShareStatsButton linkId={qrCode.link.id} />
+        </div>
       </div>
 
       <RangePendingContent>

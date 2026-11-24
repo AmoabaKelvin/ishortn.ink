@@ -7,12 +7,14 @@ import {
   IconLinkOff,
   IconPencil,
   IconRefresh,
+  IconShare,
   IconTrash,
   IconVector,
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ShareStatsDialog } from "@/app/(main)/dashboard/analytics/_components/share-stats-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +52,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
   const [hasOpenedDrawer, setHasOpenedDrawer] = useState(false);
   const [openEditDrawer, setOpenEditDrawer] = useState(false);
   const [resetStatsDialog, setResetStatsDialog] = useState(false);
+  const [shareStatsDialog, setShareStatsDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
   const isActive = !qr.link?.disabled;
@@ -193,6 +196,19 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
               </span>
             </DropdownMenuItem>
           )}
+          {hasLink && (
+            <DropdownMenuItem
+              onClick={() => setShareStatsDialog(true)}
+              className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
+            >
+              <IconShare
+                size={15}
+                stroke={1.5}
+                className="mr-2 text-neutral-400 dark:text-neutral-500"
+              />
+              Share stats
+            </DropdownMenuItem>
+          )}
 
           {hasLink && (
             <>
@@ -251,6 +267,14 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
 
       {hasOpenedDrawer && (
         <EditQRCodeDrawer qr={qr} open={openEditDrawer} onClose={() => setOpenEditDrawer(false)} />
+      )}
+
+      {qr.link && (
+        <ShareStatsDialog
+          linkId={qr.link.id}
+          open={shareStatsDialog}
+          onOpenChange={setShareStatsDialog}
+        />
       )}
 
       {/* Reset Statistics Dialog */}
