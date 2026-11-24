@@ -1,0 +1,38 @@
+{
+  "name": "ishortn-browser-extension",
+  "version": "0.1.0",
+  "description": "iShortn browser extension: shorten the current tab, copy the link and get a QR code.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "homepage": "https://ishortn.ink",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmoabaKelvin/ishortn.ink.git",
+    "directory": "integrations/browser-extension"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "zip": "node scripts/build.mjs && node scripts/zip.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "icons": "node scripts/icons.mjs",
+    "preview": "node scripts/preview.mjs",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^26.6.6",
+    "@types/qrcode": "^1.5.6",
+    "esbuild": "^0.28.2",
+    "fflate": "^0.8.3",
+    "playwright-core": "^1.65.1",
+    "typescript": "^7.0.2"
+  }
+}

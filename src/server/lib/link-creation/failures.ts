@@ -9,7 +9,7 @@ import type { db as Database } from "@/server/db";
 
 const log = logger.child({ component: "link-creation" });
 
-export type LinkCreationSource = "dashboard" | "bulk" | "api";
+export type LinkCreationSource = "dashboard" | "bulk" | "api" | "extension";
 export type LinkCreationStep = "validation" | "safety" | "metadata" | "db";
 
 /** Mutable cursor a create path advances so a failure reports the step it died in. */
@@ -83,7 +83,12 @@ export async function recordLinkCreationFailures(
     log[level]({ source, userId, ...failure }, "link creation failed");
   }
   try {
-    await db.insert(linkCreationFailure).values(failures.map((f) => ({ source, ...f })));
+    // The table's `source` enum predates the extension; widening it is a column MODIFY, so
+    // extension failures are stored with the API's (the log line above keeps the real source).
+    const storedSource = source === "extension" ? "api" : source;
+    await db
+      .insert(linkCreationFailure)
+      .values(failures.map((f) => ({ source: storedSource, ...f })));
   } catch (error) {
     log.error({ err: error, source }, "failed to record link creation failure");
   }

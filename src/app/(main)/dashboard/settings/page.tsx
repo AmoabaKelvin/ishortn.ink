@@ -16,6 +16,7 @@ import { SettingsForm } from "./general/settings-form";
 import { NotificationSettings } from "./notifications/notification-settings";
 import { ProfileForm } from "./profile/profile-form";
 import { ApiKeys } from "./tokens/_components/api-keys";
+import { ConnectedBrowsers } from "./tokens/_components/connected-browsers";
 import { AccountTransferSection } from "./transfer/account-transfer-section";
 
 import type { Metadata } from "next";
@@ -35,6 +36,7 @@ async function SettingsPage(props: Props) {
     subscriptions,
     tokens,
     apiAccess,
+    extensionTokens,
     userProfile,
     workspace,
     graceNotice,
@@ -44,6 +46,7 @@ async function SettingsPage(props: Props) {
     api.subscriptions.get.query(),
     api.token.list.query(),
     api.token.access.query(),
+    api.token.listExtensions.query(),
     api.user.getProfile.query(),
     api.team.currentWorkspace.query(),
     getDashboardGraceNotice(),
@@ -173,6 +176,27 @@ async function SettingsPage(props: Props) {
             </p>
             <div className="mt-4">
               <ApiKeys tokens={tokens} apiAccess={apiAccess} />
+            </div>
+          </section>
+
+          {/* Connected Browsers */}
+          <section id="connected-browsers" className="scroll-mt-24">
+            <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+              Connected Browsers
+            </h2>
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+              Browsers signed in to the iShortn extension
+            </p>
+            <div className="mt-4">
+              <ConnectedBrowsers
+                browsers={extensionTokens}
+                // Absolute: docs are served on the app host only, not on team subdomains.
+                docsUrl={withProductUtm(
+                  `https://${getAppBaseDomain()}/docs/integrations/browser-extension`,
+                  "app",
+                  "settings_extension_docs",
+                )}
+              />
             </div>
           </section>
 

@@ -680,6 +680,13 @@
       "when": 1795476473905,
       "tag": "0096_subscription_cancellation",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "5",
+      "when": 1795487859961,
+      "tag": "0097_extension_tokens",
+      "breakpoints": true
     }
   ]
 }

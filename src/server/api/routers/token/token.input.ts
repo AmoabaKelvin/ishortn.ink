@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { EXTENSION_LABEL_MAX_LENGTH } from "@/lib/extension/connect";
+
 export const TOKEN_NAME_MAX_LENGTH = 64;
 
 const createTokenSchema = z.object({
@@ -14,7 +16,12 @@ const deleteTokenSchema = z.object({
   id: z.number(),
 });
 
+const createExtensionTokenSchema = z.object({
+  label: z.string().trim().max(EXTENSION_LABEL_MAX_LENGTH).nullable(),
+});
+
 export type CreateTokenInput = z.infer<typeof createTokenSchema>;
 export type DeleteTokenInput = z.infer<typeof deleteTokenSchema>;
+export type CreateExtensionTokenInput = z.infer<typeof createExtensionTokenSchema>;
 
-export { createTokenSchema, deleteTokenSchema };
+export { createExtensionTokenSchema, createTokenSchema, deleteTokenSchema };

@@ -3,6 +3,7 @@
 import {
   IconArrowsExchange,
   IconBell,
+  IconBrowser,
   IconCreditCard,
   IconKey,
   IconSettings,
@@ -19,6 +20,7 @@ const navItems = [
   { id: "notifications", label: "Notifications", icon: IconBell },
   { id: "billing", label: "Billing", icon: IconCreditCard },
   { id: "api-keys", label: "API Keys", icon: IconKey },
+  { id: "connected-browsers", label: "Browsers", icon: IconBrowser },
   { id: "account-transfer", label: "Transfer", icon: IconArrowsExchange },
   { id: "delete-account", label: "Delete", icon: IconTrash },
 ];

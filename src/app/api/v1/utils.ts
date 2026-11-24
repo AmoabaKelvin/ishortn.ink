@@ -28,10 +28,20 @@ import type { Plan } from "@/lib/billing/plans";
 // Bounds the write load from busy keys: lastUsedAt is only for display.
 const LAST_USED_RESOLUTION_MS = 60 * 60 * 1000;
 
-export async function validateAndGetToken(apiKey: string | null) {
+/**
+ * Loads the token and its owner's plan. `kind` keeps the two token types on their own routes:
+ * extension tokens exist on every plan, so /api/v1 (a paid feature) must refuse them.
+ */
+export async function validateAndGetToken(
+  apiKey: string | null,
+  kind: "api" | "extension" = "api",
+) {
   if (!apiKey) return null;
   const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
-  const existingToken = await db.select().from(token).where(eq(token.token, hash));
+  const existingToken = await db
+    .select()
+    .from(token)
+    .where(and(eq(token.token, hash), eq(token.kind, kind)));
 
   if (!existingToken.length) return null;
 
