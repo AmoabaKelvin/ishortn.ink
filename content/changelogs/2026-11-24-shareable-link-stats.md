@@ -2,7 +2,7 @@
 date: 2026-11-24T18:00:00
 version: 2.21.0
 title: Share a link's stats with a public page, and sign-up keeps the link you were creating
-shortDesc: Turn on a read-only stats page for any link and send it to anyone without giving them an account, and the sign-up page now shows the link you entered on the homepage
+shortDesc: Turn on a read-only stats page for any link or QR code and send it to anyone without giving them an account, and the sign-up page now shows the link you entered on the homepage
 category: new
 ---
 
@@ -12,10 +12,14 @@ A public stats page for any link, on every plan, and a sign-up page that remembe
 
 You can now give anyone a read-only page with a link's analytics. It's useful for sending results to a client or a manager without giving them an account.
 
-There are two ways to open the sharing settings:
+There are four ways to open the sharing settings:
 
 - **Share**, next to **Export CSV** on a link's analytics page.
 - **Share stats** in the actions menu on a link card.
+- **Share**, next to the date range selector on a QR code's detail page.
+- **Share stats** in the actions menu on a QR code card, for QR codes with a tracking link.
+
+A QR code shares the same public page as its tracking link, so turning sharing on or off in either place changes both.
 
 Turn on **Anyone with the link can view these stats** and the page's URL appears with a **Copy** button. **Reset link** gives you a new URL, and the old one stops working. Turning the switch off revokes the page straight away.
 
