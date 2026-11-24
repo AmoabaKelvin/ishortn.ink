@@ -1,9 +1,9 @@
 ---
 title: "Bitly Alternatives in 2026: 6 Free and Cheaper Options"
-seoTitle: "Best Bitly Alternatives (Free and Paid) for 2026"
-description: "Free and cheaper alternatives to Bitly, with every price checked on the company's own pricing page in November 2026, plus how to move your Bitly links."
+seoTitle: "Bitly Alternatives 2026: Free, No Ads, Enterprise"
+description: "Bitly Free allows 5 links a month, with no click stats and an ad page. Compare free, ad-free, cheaper and enterprise alternatives. Prices checked November 2026."
 date: "2026-03-01"
-updated: "2026-11-23"
+updated: "2026-11-25"
 author: "Kelvin Amoaba"
 tags: ["bitly alternative", "url shortener", "comparison", "link management"]
 published: true
@@ -11,7 +11,7 @@ published: true
 
 The best Bitly alternative depends on why you're leaving. For a bigger free plan with click stats, try iShortn (30 links a month, with location, device and referrer data) or Short.io (1,000 links in total and 5 free custom domains). If you only want a short link and no account, TinyURL is fine. For the cheapest paid plan, Short.io Hobby is $5 a month and iShortn Pro is $8. If you'd rather run it yourself, YOURLS, Kutt, Shlink and iShortn are all MIT-licensed. Big teams that need single sign-on should look at Rebrandly Enterprise or Dub Enterprise.
 
-We make iShortn, so treat our pick with that in mind. Every competitor price and limit below comes from that company's own pricing page or help center, checked on 22 November 2026. Where we couldn't confirm something there, we left it out.
+We make iShortn, so treat our pick with that in mind. Every competitor price and limit below comes from that company's own pricing page or help center, checked on 24 November 2026. Where we couldn't confirm something there, we left it out.
 
 ## Bitly alternatives at a glance
 
@@ -29,10 +29,10 @@ We make iShortn, so treat our pick with that in mind. Every competitor price and
 
 These are the limits that come up most, all from [Bitly's pricing page](https://bitly.com/pages/pricing) and help center:
 
-- **5 links a month on Free.** QR codes count toward the 5, and you can make 2 of them.
+- **5 links a month on Free.** QR codes count toward the 5, and you can make 2 of them. Bitly's pricing page shows 50 a month to visitors from India, Indonesia and Bangladesh.
 - **No click data on Free.** Click and scan history starts on Core, with 30 days.
 - **An ad page.** People who open a free Bitly link see a preview page with an ad before they reach your page.
-- **No editing on Free.** You can't change where a link or QR code points. Core allows 5 edits a month.
+- **No destination changes on Free.** You can't change where a link or QR code points. Core allows 5 a month, and Bitly counts each redirected link as a new link.
 - **Annual-only entry plan.** Core is $10 a month, billed as $120 a year.
 - **Custom domains cost $29 a month or more.** They start on Growth, which is $29 a month billed annually ($348 a year) or $35 billed monthly.
 - **Exporting your links needs Growth.** Bitly lists data export on Growth, Premium and Enterprise only.
@@ -43,11 +43,13 @@ Our post on [Bitly's free plan limits](/blog/bitly-free-plan-limits) covers each
 
 ### 1. iShortn
 
-[iShortn](https://ishortn.ink/?utm_source=blog&utm_medium=content&utm_campaign=bitly-alternatives) is a URL shortener with click analytics, custom domains, QR codes you can edit, bio pages and an API. It's the one we build.
+[iShortn](/) is a URL shortener with click analytics, custom domains, QR codes you can edit, bio pages and an API. It's the one we build.
 
 The free plan gives you 30 new links a month on our `isht.app` domain, 1,000 tracked events a month and 7 days of analytics with location, device, browser and referrer. You can change a link's destination at any time, and there's no ad page in front of your links. You also get 5 dynamic QR codes that never expire. Each QR code uses one of your 30 monthly links, the same way Bitly counts them.
 
 Pro is $8 a month or $80 a year. It adds 1,000 links and 10,000 tracked events a month, full analytics history, 3 custom domains, password-protected links, geo and device targeting, CSV import and the REST API. Ultra is $15 a month for unlimited links, events and domains, plus team workspaces. The [pricing page](/pricing) lists every limit.
+
+Two things help when you report to someone else or your budget changes. Any link or QR code can have a read-only stats page that you send to a client or manager, and they don't need an account. On Free that page shows the last 7 days. And if you pay monthly, you can pause billing for 1 to 3 months instead of cancelling. Your links keep redirecting while it's paused.
 
 It fits small businesses, creators and freelancers who want click stats without paying, or a custom domain for less than Bitly charges. The downsides: we're a much smaller company than Bitly, Free keeps 7 days of history, the API needs Pro (Bitly Free includes 1,000 API requests a month), and there's no SSO.
 
@@ -77,7 +79,7 @@ It suits marketing teams that care most about branded domains. See [iShortn vs R
 
 ### 5. Dub
 
-Dub's code is public on GitHub, and it's popular with developers. Its [pricing page](https://dub.co/pricing) is now built around affiliate and partner programs. It lists Business at $90 a month (10,000 new links and 250,000 tracked events a month, 100 custom domains, 10 users), Advanced at $300 a month, and Enterprise with SAML SSO and audit logs. Paid plans have a 14-day trial. Dub also lists plans for short links only on a separate [links pricing page](https://dub.co/pricing/links). Free allows 25 new links and 1,000 tracked events a month, 3 custom domains, 30 days of analytics, 1 user and API access. Pro is $30 a month, or $27 a month billed yearly, for 1,000 new links and 50,000 tracked events a month, 10 custom domains, a year of analytics and 3 users. Business is $90 a month, or $81 billed yearly.
+Dub's code is public on GitHub, and it's popular with developers. Its [pricing page](https://dub.co/pricing) is now built around affiliate and partner programs. It lists Business at $90 a month (10,000 new links and 250,000 tracked events a month, 100 custom domains, 10 users), Advanced at $300 a month, and Enterprise with SAML SSO and audit logs. Paid plans have a 14-day trial. Dub also lists plans for short links only on a separate [links pricing page](https://dub.co/pricing/links). Free allows 25 new links and 1,000 tracked events a month, 3 custom domains, 30 days of analytics, 1 user and API access. Pro is $30 a month, or $27 a month billed yearly, for 1,000 new links and 50,000 tracked events a month, 10 custom domains, a year of analytics and 3 users. The Pro box on that page opens on the 5,000-link tier, which is $60 a month, so look for the 1,000-link option. Business is $90 a month, or $81 billed yearly.
 
 It makes sense for software companies that want link tracking tied to referral or affiliate programs. If you only need short links, compare its links plans with the others here before you commit. See [iShortn vs Dub](/compare/dub) and [Dub alternatives](/blog/dub-alternatives).
 
@@ -119,18 +121,21 @@ Bitly's cheapest way to see clicks is Core at $120 a year. Here's what tracking 
 | Rebrandly | Essentials, $11/month billed annually | 250 links a month, detailed data on 10,000 clicks, 2 domains |
 | Dub | Free, or Pro at $30/month ($27/month billed yearly) | Free: 30 days of history, 3 custom domains. Pro: 1 year of history, 10 custom domains |
 
-Short.io Hobby is the cheapest paid plan in this list. iShortn Pro is the cheapest with full analytics history and your own domain. Prices change, so check the pricing page before you switch.
+Short.io Hobby is the cheapest paid plan in this list. iShortn Pro is the cheapest with full analytics history and your own domain. These are list prices. Bitly and TinyURL sometimes discount the first year of an annual plan, and prices change, so check the pricing page before you switch.
 
-## Bitly alternatives for enterprise teams
+## Bitly alternatives for enterprise users
 
-Big companies usually leave Bitly over single sign-on, user management or compliance paperwork.
+Big companies usually leave Bitly over single sign-on, user management or compliance paperwork. Here's what each vendor lists on its own pricing page:
 
-- **Rebrandly** lists SAML SSO and SCIM provisioning on Enterprise. Its pricing page also lists SOC 2 Type 2 and HIPAA compliance.
-- **Dub** lists SAML SSO and audit logs on Enterprise.
-- **Short.io** sells a Team plan at $48 a month and an Enterprise plan.
-- **iShortn** has team workspaces with owner, admin and member roles on Ultra at $15 a month. It doesn't offer SSO, so it suits small teams and agencies more than large companies with identity requirements.
+| Tool | Single sign-on | Other enterprise controls | Price |
+| --- | --- | --- | --- |
+| Rebrandly | SAML 2.0 on Enterprise | SCIM 2.0 user provisioning, SOC 2 Type 2, HIPAA | Quote |
+| Dub | SAML SSO on Enterprise | Audit logs | Quote |
+| Short.io | SSO on Enterprise | Multiple teams, raw data export to S3, dedicated IP | $148/month or $1,480/year |
+| Bitly | Not listed on the pricing page | Multiple users and group permissions on Enterprise | Quote |
+| iShortn | No | Team workspaces with owner, admin and member roles | Ultra, $15/month |
 
-If SSO is a must, ask Rebrandly and Dub for quotes. If your team has fewer than 20 people and mostly needs shared links, branded domains and one analytics view, a small-team plan costs far less than an enterprise contract. Our guide to [URL shorteners vs link management platforms](/blog/url-shortener-vs-link-management-platform) explains what the enterprise tier adds.
+If SSO is a must, Short.io is the only one here with a public price for it. Ask Rebrandly and Dub for quotes too. iShortn suits small teams and agencies more than large companies with identity requirements. If your team has fewer than 20 people and mostly needs shared links, branded domains and one analytics view, a small-team plan costs far less than an enterprise contract. Our guide to [URL shorteners vs link management platforms](/blog/url-shortener-vs-link-management-platform) explains what the enterprise tier adds.
 
 ## How to move from Bitly
 
@@ -163,7 +168,7 @@ Before you pick any shortener, check what happens to a link after you stop using
 - **You want click stats for free:** iShortn.
 - **You want your own domain for free:** Short.io.
 - **You want a short link and nothing else:** TinyURL.
-- **You need SSO or compliance paperwork:** Rebrandly Enterprise or Dub Enterprise.
+- **You need SSO or compliance paperwork:** Rebrandly, Dub or Short.io Enterprise.
 - **You want to run it yourself:** YOURLS, Kutt, Shlink or iShortn.
 
 If you're comparing free plans in general rather than leaving Bitly, our [best free URL shorteners](/blog/best-free-url-shorteners) guide ranks them by what the free plan includes.
@@ -173,6 +178,14 @@ If you're comparing free plans in general rather than leaving Bitly, our [best f
 ### Is there a free alternative to Bitly?
 
 Yes. iShortn, TinyURL, Short.io, Rebrandly and Dub all have free plans that give you more links than Bitly's 5 a month. iShortn Free allows 30 new links a month with location and device stats and no ad page. Short.io Free allows 1,000 links in total with 5 custom domains. TinyURL lets you shorten links without an account.
+
+### Which Bitly alternative has no ads?
+
+iShortn has no ad page on any plan. Bitly Free shows one before every link opens, and TinyURL shows one only on links made through its old `api-create.php` endpoint. The pricing pages of Short.io, Rebrandly and Dub say nothing about ads on their free plans.
+
+### Is there a Bitly alternative with free analytics?
+
+Yes. iShortn Free shows location, device, browser and referrer for 7 days. Short.io Free tracks 50,000 clicks a month, Dub Free keeps 30 days of analytics, and Rebrandly Free gives detailed data on 100 clicks a month. TinyURL and Bitly show no click data on their free plans.
 
 ### What website is similar to Bitly?
 
@@ -184,7 +197,7 @@ iShortn and Short.io both track clicks on their free plans. Among paid plans, Sh
 
 ### Which Bitly alternative is best for enterprise users?
 
-Rebrandly Enterprise or Dub Enterprise, if you need single sign-on or audit logs. For small teams that only need shared workspaces and roles, iShortn Ultra costs $15 a month.
+Rebrandly, Dub or Short.io Enterprise, if you need single sign-on. Rebrandly also lists SCIM provisioning and SOC 2 Type 2, Dub lists audit logs, and Short.io publishes its Enterprise price ($148 a month). For small teams that only need shared workspaces and roles, iShortn Ultra costs $15 a month.
 
 ### Is there an open-source alternative to Bitly?
 
@@ -196,4 +209,4 @@ Links on your own domain can keep their exact addresses: export them from Bitly,
 
 ## Try iShortn
 
-If Bitly's limits are why you're here, you can [start free on iShortn](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=bitly-alternatives) and make your first link in under a minute, with no credit card. When you want your own domain, [Pro is $8 a month](/pricing).
+If Bitly's limits are why you're here, you can [start free on iShortn](/auth/sign-up) and make your first link in under a minute, with no credit card. When you want your own domain, [Pro is $8 a month](/pricing).
