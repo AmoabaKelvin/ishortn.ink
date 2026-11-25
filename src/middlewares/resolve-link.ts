@@ -68,7 +68,9 @@ async function loadGeoRules(linkId: number): Promise<GeoRules> {
     where: eq(geoRule.linkId, linkId),
     orderBy: [asc(geoRule.priority)],
   });
-  if (rulesFromDb.length === 0) return null;
+  // Cache the empty list too: most links have no rules, and without it every
+  // click on them missed KV and queried the database. Every rule write for an
+  // existing link evicts this key (geo-rules.service.ts, updateLink).
   void runBackgroundTask(setGeoRulesInCache(linkId, rulesFromDb));
   return rulesFromDb;
 }
