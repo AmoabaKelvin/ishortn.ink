@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { getUserPlanContext } from "@/server/lib/user-plan";
@@ -16,7 +17,10 @@ export const aiRouter = createTRPCRouter({
     const planCtx = await getUserPlanContext(ctx.auth.userId, ctx.db);
 
     if (!planCtx || planCtx.plan === "free") {
-      throw new Error("You need an active subscription to use AI features");
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You need an active subscription to use AI features",
+      });
     }
     const alias = await generateAliasFromMetadata(input);
 

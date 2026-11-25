@@ -142,9 +142,6 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
       setGeneratedAliases(data.alias);
       form.setValue("alias", data.alias[0]);
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
   });
   const { data: userTags } = api.tag.list.useQuery();
   const { data: campaigns } = api.campaign.listNames.useQuery();
@@ -171,12 +168,17 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
   const [debouncedAlias] = useDebounce(form.watch("alias"), 500);
   const selectedDomain = form.watch("domain") ?? DEFAULT_PLATFORM_DOMAIN;
 
+  // Only the regenerate button reports failures; the automatic suggestion after
+  // metadata loads fails silently so the alias field just stays editable.
   async function generateAliases(metadata: { title: string; description: string }) {
-    generateAliasMutation.mutate({
-      url: normalizeDestinationUrl(form.getValues("url")) ?? form.getValues("url"),
-      title: metadata.title,
-      description: metadata.description,
-    });
+    generateAliasMutation.mutate(
+      {
+        url: normalizeDestinationUrl(form.getValues("url")) ?? form.getValues("url"),
+        title: metadata.title,
+        description: metadata.description,
+      },
+      { onError: (error) => toast.error(error.message) },
+    );
   }
 
   const cycleAlias = (direction: "up" | "down") => {
