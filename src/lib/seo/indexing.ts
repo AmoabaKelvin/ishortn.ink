@@ -21,6 +21,7 @@ const MARKETING_PATHS = new Set([
   "/features",
   "/qr-code-generator",
   "/utm-builder",
+  "/extension",
   "/whatsapp-link-generator",
   "/gerador-de-link-whatsapp",
   "/blog",

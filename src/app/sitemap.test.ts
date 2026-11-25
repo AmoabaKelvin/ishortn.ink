@@ -35,6 +35,11 @@ describe("sitemap", () => {
     expect(urls).toContain("https://ishortn.ink/utm-builder");
   });
 
+  it("lists the Chrome extension page", async () => {
+    const urls = (await sitemap()).map((entry) => entry.url);
+    expect(urls).toContain("https://ishortn.ink/extension");
+  });
+
   it("lists the WhatsApp link generator in English and Portuguese, each with both alternates", async () => {
     const entries = await sitemap();
     const languages = {
