@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { isPlatformRequest } from "@/components/link-status/branding";
 import { LinkStatusPage } from "@/components/link-status/link-status-page";
 import { linkStatusMetadata } from "@/components/link-status/metadata";
-import { isLinkScheduled } from "@/middlewares/resolve-link";
+import { isLinkScheduled } from "@/middlewares/link-policy";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 

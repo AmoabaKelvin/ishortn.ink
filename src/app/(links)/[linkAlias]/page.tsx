@@ -2,9 +2,13 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 import { isPlatformHost } from "@/components/link-status/utils";
-import { socialMediaAgents } from "@/lib/constants/app";
-import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
+import {
+  cleanAlias,
+  cleanUrl,
+  getLinkDomain,
+  isSocialMediaAgent,
+} from "@/lib/routing/short-link-request";
 import { noIndexMetadata } from "@/lib/seo/indexing";
 import { getLinkStateRoute, resolveShortLink } from "@/middlewares/resolve-link";
 import { findLinkByAlias } from "@/server/api/routers/link/link.service";
@@ -23,26 +27,11 @@ type LinkRedirectionPageProps = {
   }>;
 };
 
-const DEFAULT_DOMAIN = DEFAULT_PLATFORM_DOMAIN;
-
-const cleanUrl = (url: string) => url.replace(/^(https?:\/\/)?(www\.)?/, "");
-
-// Trust the incoming host; local dev, the staging host, and *.workers.dev
-// preview hosts resolve against the default domain.
-const getDomain = (incomingDomain: string | null): string => {
-  if (!incomingDomain) return DEFAULT_DOMAIN;
-  const host = incomingDomain.split(":")[0] ?? incomingDomain;
-  if (host.includes("localhost")) return DEFAULT_DOMAIN;
-  if (host === process.env.STAGING_DOMAIN) return DEFAULT_DOMAIN;
-  if (host.endsWith(".workers.dev")) return DEFAULT_DOMAIN;
-  return host;
-};
-
 export async function generateMetadata(props: LinkRedirectionPageProps): Promise<Metadata> {
   const params = await props.params;
   const headersList = await headers();
   const incomingDomain = headersList.get("x-forwarded-host") ?? headersList.get("host");
-  const domain = getDomain(incomingDomain);
+  const domain = getLinkDomain(incomingDomain);
 
   if (params.linkAlias.toLowerCase().endsWith(".png")) {
     return noIndexMetadata;
@@ -70,23 +59,12 @@ export async function generateMetadata(props: LinkRedirectionPageProps): Promise
   };
 }
 
-const isSocialMediaAgent = (userAgent: string | null): boolean =>
-  socialMediaAgents.some((agent) => userAgent?.includes(agent));
-
-const cleanAlias = (incomingAlias: string): string => {
-  let alias = incomingAlias;
-  if (alias.endsWith("!")) {
-    alias = alias.slice(0, -1);
-  }
-  return alias.toLowerCase();
-};
-
 const LinkRedirectionPage = async (props: LinkRedirectionPageProps) => {
   const params = await props.params;
   const headersList = await headers();
   const incomingDomain = headersList.get("x-forwarded-host") ?? headersList.get("host");
   const userAgent = headersList.get("user-agent");
-  const domain = cleanUrl(getDomain(incomingDomain));
+  const domain = cleanUrl(getLinkDomain(incomingDomain));
   const alias = cleanAlias(params.linkAlias);
 
   if (params.linkAlias.toLowerCase().endsWith(".png")) {

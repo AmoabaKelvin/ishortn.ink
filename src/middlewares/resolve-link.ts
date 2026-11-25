@@ -12,7 +12,9 @@ import { matchTargetingRules, rulesNeedDevice } from "@/lib/core/geo-rules/match
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { generateVisitId, signVerifiedClickToken } from "@/lib/utils/verified-click-token";
-import { recordClick, resolveLink } from "@/middlewares/record-click";
+import { recordClick } from "@/middlewares/enqueue-click";
+import { appendUtmParams, isLinkScheduled, isPastDisableDate } from "@/middlewares/link-policy";
+import { resolveLink } from "@/middlewares/record-click";
 import { db } from "@/server/db";
 import { geoRule, link as linkTable } from "@/server/db/schema";
 import { getClicksTowardLimit } from "@/server/lib/total-clicks";
@@ -39,7 +41,7 @@ export async function checkLinkExpiration(link: Link, cacheKey: string): Promise
     return true;
   }
 
-  if (link.disableLinkAfterDate && new Date() >= link.disableLinkAfterDate) {
+  if (isPastDisableDate(link)) {
     void runBackgroundTask(autoDisableLink(link.id, cacheKey));
     return true;
   }
@@ -54,11 +56,6 @@ export async function checkLinkExpiration(link: Link, cacheKey: string): Promise
   }
 
   return false;
-}
-
-/** True until the owner's scheduled activation instant has passed. */
-export function isLinkScheduled(link: Pick<Link, "activateAt">): boolean {
-  return !!link.activateAt && new Date() < link.activateAt;
 }
 
 type GeoRules = Awaited<ReturnType<typeof getGeoRulesFromCache>>;
@@ -117,26 +114,6 @@ export async function getLinkStateRoute(
     return `/blocked/${link.id}${geoResult.ruleId ? `?geo=${geoResult.ruleId}` : ""}`;
   }
   return null;
-}
-
-function appendUtmParams(baseUrl: string, utmParams: Link["utmParams"]): string {
-  if (!utmParams) return baseUrl;
-
-  try {
-    const url = new URL(baseUrl);
-    const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
-
-    for (const key of keys) {
-      const value = utmParams[key];
-      if (value !== undefined && value !== null && value !== "") {
-        url.searchParams.set(key, value);
-      }
-    }
-
-    return url.toString();
-  } catch {
-    return baseUrl;
-  }
 }
 
 type ResolveShortLinkParams = {

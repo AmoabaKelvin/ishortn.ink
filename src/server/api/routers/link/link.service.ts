@@ -51,8 +51,10 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { displayName } from "@/lib/utils/user-name";
-import { recordClick, resolveLink } from "@/middlewares/record-click";
-import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
+import { recordClick } from "@/middlewares/enqueue-click";
+import { isLinkScheduled } from "@/middlewares/link-policy";
+import { resolveLink } from "@/middlewares/record-click";
+import { checkLinkExpiration } from "@/middlewares/resolve-link";
 import {
   campaign,
   folder,

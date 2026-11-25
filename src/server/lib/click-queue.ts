@@ -1,7 +1,5 @@
 import { getCloudflareEnv } from "@/lib/platform";
 
-import { ingestClickBatch } from "./click-ingest";
-
 import type { ClickEvent } from "@/lib/core/analytics/click-event";
 
 // `next dev` emulates the queue binding but runs no consumer, so write inline there.
@@ -20,5 +18,8 @@ export async function enqueueClickEvent(event: ClickEvent): Promise<void> {
     });
     return;
   }
+  // Imported lazily so the queue path doesn't load the db client: the worker's
+  // cached redirect enqueues clicks outside the Next bundle.
+  const { ingestClickBatch } = await import("./click-ingest");
   await ingestClickBatch([event]);
 }
