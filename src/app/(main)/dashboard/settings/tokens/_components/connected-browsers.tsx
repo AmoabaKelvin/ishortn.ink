@@ -24,6 +24,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { withProductUtm } from "@/lib/attribution/referral";
 import { CHROME_WEB_STORE_URL } from "@/lib/constants/extension";
+import {
+  dismissExtensionPrompt,
+  readExtensionPromptDismissed,
+  subscribeExtensionPromptDismissed,
+} from "@/lib/extension/prompt";
 import { api } from "@/trpc/react";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -31,38 +36,9 @@ import type { RouterOutputs } from "@/trpc/shared";
 type Browser = RouterOutputs["token"]["listExtensions"][number];
 
 const STORE_URL = withProductUtm(CHROME_WEB_STORE_URL, "app", "settings_extension_store");
-const DISMISS_KEY = "ishortn:extension-prompt-dismissed-at";
-const DISMISS_EVENT = "ishortn:extension-prompt:dismiss";
-
-function subscribeDismissed(onChange: () => void) {
-  window.addEventListener(DISMISS_EVENT, onChange);
-  window.addEventListener("storage", onChange);
-  return () => {
-    window.removeEventListener(DISMISS_EVENT, onChange);
-    window.removeEventListener("storage", onChange);
-  };
-}
-
-const readDismissed = () => {
-  try {
-    return window.localStorage.getItem(DISMISS_KEY) !== null;
-  } catch {
-    return false;
-  }
-};
-
 // Hidden on the server so hydration matches; the prompt enters once the client has read the
 // stored dismissal.
 const readDismissedOnServer = () => true;
-
-const dismiss = () => {
-  try {
-    window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
-  } catch {
-    // Storage can be unavailable (private mode); the prompt then just stays.
-  }
-  window.dispatchEvent(new Event(DISMISS_EVENT));
-};
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -116,7 +92,11 @@ export function ConnectedBrowsers({
 }
 
 function ExtensionPrompt() {
-  const dismissed = useSyncExternalStore(subscribeDismissed, readDismissed, readDismissedOnServer);
+  const dismissed = useSyncExternalStore(
+    subscribeExtensionPromptDismissed,
+    readExtensionPromptDismissed,
+    readDismissedOnServer,
+  );
   if (dismissed) return null;
 
   return (
@@ -144,7 +124,7 @@ function ExtensionPrompt() {
       </p>
       <button
         type="button"
-        onClick={dismiss}
+        onClick={dismissExtensionPrompt}
         aria-label="Dismiss the browser extension prompt"
         className="-mr-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-500 dark:hover:bg-accent dark:hover:text-neutral-300"
       >

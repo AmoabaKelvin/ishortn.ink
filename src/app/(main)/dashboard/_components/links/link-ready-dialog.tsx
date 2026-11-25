@@ -2,7 +2,7 @@
 
 import { IconCheck, IconCopy, IconDownload } from "@tabler/icons-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { trackUpgradeClick, trackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
 import { buildUpgradeUrl } from "@/lib/billing/upgrade";
+import {
+  canShowLinkReadyPrompt,
+  dismissExtensionPrompt,
+  LINK_READY_STORE_URL,
+  readExtensionPromptDismissed,
+  recordLinkReadyView,
+  subscribeExtensionPromptDismissed,
+} from "@/lib/extension/prompt";
 import { copyToClipboard } from "@/lib/utils/clipboard";
 import { api } from "@/trpc/react";
 
@@ -51,6 +60,45 @@ export function LinkReadyDialog({ link, onDone, onCreateAnother }: LinkReadyDial
     trackedLink.current = link;
     trackUpgradeShown(LINK_READY_SOURCE);
   }, [link, offer]);
+
+  // Browser extension note: desktop Chromium only, never next to the plan offer, and only for
+  // accounts with no connected browser. Both server snapshots are "hidden" so hydration matches.
+  const canPromptExtension = useSyncExternalStore(
+    subscribeExtensionPromptDismissed,
+    canShowLinkReadyPrompt,
+    () => false,
+  );
+  const extensionDismissed = useSyncExternalStore(
+    subscribeExtensionPromptDismissed,
+    readExtensionPromptDismissed,
+    () => true,
+  );
+  // Fetched while the create form is open, so the answer is cached before the dialog opens.
+  const { data: extensions } = api.token.listExtensions.useQuery(undefined, {
+    enabled: canPromptExtension && subscription !== undefined && !offer,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  // The dialog the note was picked for; it stays for that dialog even once the cap is reached.
+  const [extensionPromptLink, setExtensionPromptLink] = useState<CreatedLink | null>(null);
+  if (
+    link &&
+    link !== extensionPromptLink &&
+    !offer &&
+    canPromptExtension &&
+    extensions?.length === 0
+  ) {
+    setExtensionPromptLink(link);
+  }
+  const countedExtensionLink = useRef<CreatedLink | null>(null);
+  useEffect(() => {
+    if (!extensionPromptLink || countedExtensionLink.current === extensionPromptLink) return;
+    countedExtensionLink.current = extensionPromptLink;
+    recordLinkReadyView();
+    trackEvent(POSTHOG_EVENTS.EXTENSION_PROMPT_SHOWN, { source: LINK_READY_SOURCE });
+  }, [extensionPromptLink]);
+  const showExtensionPrompt =
+    shownLink !== null && extensionPromptLink === shownLink && !extensionDismissed;
 
   useEffect(() => {
     if (!copied) return;
@@ -147,6 +195,40 @@ export function LinkReadyDialog({ link, onDone, onCreateAnother }: LinkReadyDial
                 >
                   See plans
                 </Link>
+              </p>
+            )}
+
+            {/* Browser extension note (desktop Chromium, no connected browser) */}
+            {showExtensionPrompt && (
+              <p className="border-t border-neutral-100 pt-4 text-[12px] text-neutral-500 dark:border-border/50 dark:text-neutral-400">
+                Next time, do this from your toolbar. The iShortn extension for Chrome and Edge
+                shortens the page you&apos;re on and copies the link.{" "}
+                <a
+                  href={LINK_READY_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() =>
+                    trackEvent(POSTHOG_EVENTS.EXTENSION_PROMPT_CLICKED, {
+                      source: LINK_READY_SOURCE,
+                    })
+                  }
+                  className="whitespace-nowrap font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Add to Chrome
+                </a>{" "}
+                <span aria-hidden="true">&middot;</span>{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    trackEvent(POSTHOG_EVENTS.EXTENSION_PROMPT_DISMISSED, {
+                      source: LINK_READY_SOURCE,
+                    });
+                    dismissExtensionPrompt();
+                  }}
+                  className="whitespace-nowrap font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300"
+                >
+                  Not now
+                </button>
               </p>
             )}
           </DialogBody>
