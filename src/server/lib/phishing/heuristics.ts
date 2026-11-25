@@ -1,8 +1,31 @@
+import { getSubdomain } from "tldts";
+
 type HeuristicResult = { blocked: boolean; reason: string };
 
 export const INVALID_URL_REASON = "Invalid URL format";
 
 const SUSPICIOUS_TLDS = [".tk", ".ml", ".ga", ".cf", ".gq"];
+
+// Subdomain levels allowed below the registrable domain (eTLD+1) before the URL is suspicious.
+const MAX_SUBDOMAIN_LEVELS = 3;
+
+// Storage and CDN hosts that generate deep, random-looking hostnames for legitimate files.
+// Only the depth rule is skipped; the remaining checks still apply.
+const DEEP_HOST_ALLOWLIST = [
+  "rackcdn.com",
+  "amazonaws.com",
+  "blob.core.windows.net",
+  "cloudfront.net",
+  "googleusercontent.com",
+  "storage.googleapis.com",
+  "r2.dev",
+];
+
+function isDeepHostAllowed(hostname: string): boolean {
+  return DEEP_HOST_ALLOWLIST.some(
+    (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`),
+  );
+}
 
 const BRAND_NAMES = [
   "google",
@@ -126,16 +149,19 @@ export function runHeuristicChecks(url: string): HeuristicResult {
     };
   }
 
-  // 3. Excessive subdomains (more than 3 levels total, e.g., a.b.c.d.com)
-  const parts = hostname.split(".");
-  if (parts.length > 4) {
+  // 3. Excessive subdomains, counted below the registrable domain so hosts under two-part
+  // suffixes (shop.example.co.uk) aren't penalised for the suffix itself
+  const subdomain = getSubdomain(hostname) ?? "";
+  const subdomainLevels = subdomain ? subdomain.split(".").length : 0;
+  if (subdomainLevels > MAX_SUBDOMAIN_LEVELS && !isDeepHostAllowed(hostname)) {
     return {
       blocked: true,
-      reason: `URL has ${parts.length - 1} subdomain levels, which is suspicious`,
+      reason: `URL has ${subdomainLevels} subdomain levels, which is suspicious`,
     };
   }
 
   // 4. Suspicious TLDs
+  const parts = hostname.split(".");
   const tld = "." + parts[parts.length - 1];
   if (SUSPICIOUS_TLDS.includes(tld!)) {
     return {
