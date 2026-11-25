@@ -34,7 +34,7 @@ Event organizers use QR codes as digital tickets. Attendees present their code a
 
 ### Business Cards
 
-A QR code on a business card can link to a digital vCard, LinkedIn profile, or personal website. It saves the recipient from typing contact details manually and ensures they always have your current information.
+A QR code on a business card can link to a digital vCard, LinkedIn profile, or personal website. It saves the recipient from typing contact details manually and ensures they always have your current information. For vCard versus link, print sizes and cards for a whole team, see [QR codes on business cards](/blog/qr-code-on-business-cards).
 
 ### Real Estate
 
