@@ -1,5 +1,5 @@
 ---
-date: 2026-11-25T18:00:00
+date: 2026-11-25T20:00:00
 version: 2.22.0
 title: The iShortn browser extension for Chrome and Edge
 shortDesc: Shorten the page you're on from your browser toolbar, with the link copied and a QR code ready to download. Free, for Chrome and Microsoft Edge
