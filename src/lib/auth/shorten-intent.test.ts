@@ -128,6 +128,10 @@ describe("getPostAuthUrl", () => {
       "http://ishortn.ink/dashboard",
       "https://ishortn.ink:8443/dashboard",
       "javascript:alert(1)",
+      "https://ishortn.ink//evil.com",
+      "/.//evil.com",
+      "/a/..//evil.com",
+      "https://ishortn.ink/\t/evil.com",
       "https://",
       "",
     ]) {

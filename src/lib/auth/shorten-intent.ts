@@ -29,6 +29,9 @@ export const SHORTEN_INTENT_COOKIE_OPTIONS = {
 
 const AUTH_PAGE = /^\/auth\/sign-(?:up|in)(?:\/|$)/;
 const LINK_EDITOR = "/dashboard/link/new";
+// A path on this origin: one leading slash, not followed by another slash or a
+// backslash (browsers read `//x` and `/\x` as another host).
+const SAME_ORIGIN_PATH = /^\/(?![/\\])/;
 
 /**
  * For an auth page URL carrying `url`, returns that value and the same URL
@@ -97,7 +100,11 @@ export function toSameOriginPath(redirectUrl: string | undefined, appUrl: string
     target.protocol === app.protocol &&
     target.port === app.port &&
     (target.hostname === app.hostname || target.hostname === `www.${app.hostname}`);
-  return sameOrigin ? `${target.pathname}${target.search}${target.hash}` : null;
+  if (!sameOrigin) return null;
+  // Checked on the parsed result too: normalisation can turn a same-origin input
+  // (`https://ishortn.ink//evil.com`, `/a/..//evil.com`) into a `//` path.
+  const path = `${target.pathname}${target.search}${target.hash}`;
+  return SAME_ORIGIN_PATH.test(path) ? path : null;
 }
 
 /** Where to send the user once signed up or in. */
@@ -114,7 +121,7 @@ export function getPostAuthUrl({
 }): string {
   // `next` is an internal destination (e.g. checkout). Restrict to same-origin
   // paths to avoid open redirects.
-  if (next && /^\/(?![/\\])/.test(next)) return next;
+  if (next && SAME_ORIGIN_PATH.test(next)) return next;
   // Set by the middleware when a signed-out visitor opens a protected page. It
   // also stays on Clerk's later step URLs (factor-one, factor-two, sso-callback),
   // where `next` is gone.
