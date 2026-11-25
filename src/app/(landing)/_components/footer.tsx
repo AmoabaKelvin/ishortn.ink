@@ -12,7 +12,7 @@ const columns: { title: string; links: { label: string; href: string; lang?: str
       { label: "Features", href: "/features" },
       { label: "QR code generator", href: "/qr-code-generator" },
       { label: "UTM builder", href: "/utm-builder" },
-      { label: "Chrome extension", href: "/extension" },
+      { label: "Browser extension", href: "/extension" },
       { label: "WhatsApp link generator", href: "/whatsapp-link-generator" },
       {
         label: "Gerador de link WhatsApp (PT-BR)",

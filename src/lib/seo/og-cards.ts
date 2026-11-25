@@ -87,7 +87,7 @@ export const pageCards = {
   }),
   extension: card({
     eyebrow: "Browser extension",
-    title: "iShortn for Chrome",
+    title: "iShortn for Chrome and Edge",
     subtitle:
       "Shorten the current tab in one click, copy the link and get its QR code, right from your browser toolbar.",
     visual: "links",

@@ -129,7 +129,7 @@ function ExtensionPrompt() {
       />
       <p className="min-w-0 flex-1">
         <span className="font-medium text-neutral-900 dark:text-foreground">
-          Get the Chrome extension
+          Get the extension for Chrome and Edge
         </span>{" "}
         to shorten any page from your toolbar.{" "}
         <a
@@ -145,7 +145,7 @@ function ExtensionPrompt() {
       <button
         type="button"
         onClick={dismiss}
-        aria-label="Dismiss the Chrome extension prompt"
+        aria-label="Dismiss the browser extension prompt"
         className="-mr-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-500 dark:hover:bg-accent dark:hover:text-neutral-300"
       >
         <IconX size={14} stroke={1.5} />

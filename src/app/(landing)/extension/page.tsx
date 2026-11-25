@@ -39,18 +39,19 @@ const description =
   "Shorten the current tab in one click, copy the link and get its QR code with the free iShortn extension for Chrome and Edge.";
 
 export const metadata: Metadata = {
-  title: "Chrome Extension: Shorten Links and Make QR Codes",
+  title: "Chrome and Edge Extension: Shorten Links and Make QR Codes",
   description,
   keywords: [
     "url shortener chrome extension",
     "link shortener extension",
     "qr code chrome extension",
+    "url shortener edge extension",
     "shorten current tab",
     "ishortn extension",
   ],
   alternates: { canonical: "/extension" },
   openGraph: {
-    title: "iShortn for Chrome | iShortn",
+    title: "iShortn for Chrome and Edge | iShortn",
     description,
     type: "website",
     url: "/extension",
@@ -93,7 +94,7 @@ const extensionFaqs = [
   },
   {
     q: "Which browsers does it work in?",
-    a: "Chrome and Microsoft Edge, both from the Chrome Web Store. A Firefox build is available from source; the setup guide explains how to load it.",
+    a: "Chrome and Microsoft Edge, plus other Chromium browsers such as Brave and Arc. They all install it from the Chrome Web Store. In Edge, click Allow extensions from other stores when Edge asks, then Add to Chrome.",
   },
   {
     q: "What can the extension see?",
@@ -111,7 +112,7 @@ export default function ExtensionPage() {
       <JsonLd
         data={createBreadcrumbSchema([
           { name: "Home", url: "https://ishortn.ink" },
-          { name: "Chrome extension", url: "https://ishortn.ink/extension" },
+          { name: "Browser extension", url: "https://ishortn.ink/extension" },
         ])}
       />
       <JsonLd data={createFaqSchema(extensionFaqs.map((f) => ({ question: f.q, answer: f.a })))} />
@@ -121,7 +122,7 @@ export default function ExtensionPage() {
       <Section className="py-16 sm:py-24">
         <div className="flex flex-col items-center text-center">
           <Eyebrow icon={<IconPuzzleFilled aria-hidden="true" />}>Browser extension</Eyebrow>
-          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>iShortn for Chrome</h1>
+          <h1 className={cn(h1Class, "mt-5 max-w-[20ch]")}>iShortn for Chrome and Edge</h1>
           <p className={cn(leadClass, "mt-5 max-w-[52ch]")}>{lead}</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a
@@ -137,7 +138,14 @@ export default function ExtensionPage() {
               Setup guide
             </ButtonLink>
           </div>
-          <p className="mt-4 text-sm text-neutral-600">Free. Works in Chrome and Edge.</p>
+          <p className="mt-4 max-w-[52ch] text-sm text-neutral-600">
+            Free. Using Edge? Click{" "}
+            <strong className="font-medium text-neutral-900">
+              Allow extensions from other stores
+            </strong>{" "}
+            when Edge asks, then{" "}
+            <strong className="font-medium text-neutral-900">Add to Chrome</strong>.
+          </p>
         </div>
 
         {/* The browser screenshot is unreadable at phone width, so phones get the popup alone. */}
