@@ -111,7 +111,7 @@ Will we still be around in ten years? We plan to be, but you shouldn't have to t
 
 [Pro](/pricing) costs $8 a month, or $80 a year, and includes 3 custom domains, unlimited QR codes and the full scan history. The free plan includes 5 dynamic QR codes on an iShortn domain, which is enough to test a code on a prototype label before you commit. If you just need a static code for a page that won't move, our [free QR code generator](/qr-code-generator) makes one with no account.
 
-For codes on packaging, swing tags and labels, see [QR codes for small businesses](/solutions/small-business).
+For codes on packaging and product labels, see [QR codes on product packaging and labels](/blog/qr-code-on-product-packaging). For swing tags, receipts and counter signs in a shop, see [QR codes for small businesses](/solutions/small-business).
 
 ## Quick answers
 
