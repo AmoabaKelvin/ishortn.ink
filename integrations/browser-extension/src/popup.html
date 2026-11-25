@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>iShortn</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <span class="brand">
+        <svg class="brand-mark" viewBox="-1.231 -1.231 34.462 34.462" fill="none" aria-hidden="true">
+          <g stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14V8a4 4 0 0 1 4-4h6" />
+            <path d="M28 18v6a4 4 0 0 1-4 4h-6" />
+          </g>
+          <rect x="11" y="11" width="10" height="10" rx="3" fill="currentColor" />
+        </svg>
+        <span class="brand-name">iShortn</span>
+      </span>
+      <span id="plan" class="badge" hidden></span>
+    </header>
+    <main id="app" aria-busy="true"></main>
+    <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

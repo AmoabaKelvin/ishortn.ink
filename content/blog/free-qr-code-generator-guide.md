@@ -26,7 +26,7 @@ QR codes on tables link directly to a digital menu. This eliminates printing cos
 
 ### Product Packaging
 
-A QR code on packaging can link to setup instructions, ingredient details, warranty registration, or promotional offers, turning a static product into an interactive experience.
+A QR code on packaging can link to setup instructions, ingredient details, warranty registration, or promotional offers, turning a static product into an interactive experience. For print sizes, what to link to and when you need a GS1 code instead, see [QR codes on product packaging and labels](/blog/qr-code-on-product-packaging).
 
 ### Event Tickets and Check-In
 

@@ -28,7 +28,12 @@ function subscriptionEvent(
   eventName: string,
   updatedAt: string,
   customData: { user_id?: string } | null = { user_id: USER_ID },
-  attributes: Partial<{ status: string; card_last_four: string; user_email: string }> = {},
+  attributes: Partial<{
+    status: string;
+    card_last_four: string;
+    user_email: string;
+    pause: { mode: string; resumes_at: string | null } | null;
+  }> = {},
 ) {
   return JSON.stringify({
     meta: { event_name: eventName, custom_data: customData },
@@ -168,6 +173,30 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/lemonsqueezy (MySQL)", () 
       .where(eq(schema.subscription.userId, USER_ID));
     expect((await deliver(body)).status).toBe(200);
     expect((await storedSubscription())?.status).toBe("marker");
+  });
+
+  test("stores a pause and its resume date, and clears it on unpause", async () => {
+    await seedSubscription(new Date("2026-11-19T00:00:00Z"));
+
+    await deliver(
+      subscriptionEvent("subscription_updated", "2026-11-20T00:00:00Z", undefined, {
+        status: "paused",
+        pause: { mode: "void", resumes_at: "2026-12-20T00:00:00Z" },
+      }),
+    );
+    let row = await storedSubscription();
+    expect(row?.status).toBe("paused");
+    expect(row?.pausedUntil?.toISOString()).toBe("2026-12-20T00:00:00.000Z");
+
+    await deliver(
+      subscriptionEvent("subscription_updated", "2026-11-21T00:00:00Z", undefined, {
+        status: "active",
+        pause: null,
+      }),
+    );
+    row = await storedSubscription();
+    expect(row?.status).toBe("active");
+    expect(row?.pausedUntil).toBeNull();
   });
 
   test("acknowledges a stale event without changing the row", async () => {

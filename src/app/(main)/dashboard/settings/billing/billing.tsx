@@ -6,10 +6,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { subscribedPlan } from "@/lib/billing/entitlements";
 import { getIntervalFromVariantId, PLAN_CAPS } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
+import { DowngradeFeedbackModal } from "../../pricing/_components/downgrade-feedback-modal";
 import { PlanSwitcher } from "./plan-switcher";
 import { ResumeSubscriptionButton } from "./resume-subscription-button";
 
@@ -40,7 +42,7 @@ type StatusDisplay = {
 };
 
 function getStatusDisplay(subscription: SubscriptionRow): StatusDisplay {
-  const { status, renewsAt, endsAt } = subscription;
+  const { status, renewsAt, endsAt, pausedUntil } = subscription;
 
   switch (status) {
     case "active":
@@ -61,6 +63,12 @@ function getStatusDisplay(subscription: SubscriptionRow): StatusDisplay {
         tone: "warning",
         detail: null,
       };
+    case "paused":
+      return {
+        label: "Paused",
+        tone: "neutral",
+        detail: pausedUntil ? `Billing restarts ${formatDate(pausedUntil)}` : null,
+      };
     case "cancelled":
       return {
         label: "Cancelled",
@@ -80,10 +88,13 @@ const proLinksLimit = PLAN_CAPS.pro.linksLimit?.toLocaleString() ?? "more";
 
 export default function Billing({ subscriptions, promo }: BillingProps) {
   const [loadingTarget, setLoadingTarget] = useState<"portal" | "payment" | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const subscription = subscriptions?.subscriptions;
-  const currentPlan = subscriptions?.plan ?? "free";
   const subscriptionMode = subscriptions?.subscriptionMode ?? "checkout";
+  // A paused subscription has Free access but still holds its plan until billing restarts.
+  const isPaused = subscriptionMode === "resume" && subscription?.status === "paused";
+  const currentPlan = isPaused ? subscribedPlan(subscription) : (subscriptions?.plan ?? "free");
   const currentInterval = getIntervalFromVariantId(subscription?.variantId);
   // A row that resolves to Free (expired, or never paid) has no live status worth showing.
   const isPaid = currentPlan !== "free";
@@ -195,8 +206,17 @@ export default function Billing({ subscriptions, promo }: BillingProps) {
               {loadingTarget === "portal" && (
                 <IconLoader2 size={14} stroke={1.5} className="mr-1.5 animate-spin" />
               )}
-              Manage Subscription
+              Invoices &amp; payment method
             </Button>
+            {subscriptionMode === "update" && isPaid && (
+              <button
+                type="button"
+                onClick={() => setCancelOpen(true)}
+                className="ml-1 text-[12px] font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-foreground"
+              >
+                Cancel plan
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -209,8 +229,22 @@ export default function Billing({ subscriptions, promo }: BillingProps) {
           subscriptionMode={subscriptionMode}
           renewsAt={subscription?.renewsAt ?? null}
           promo={promo}
+          subscription={subscription ?? null}
+          isPaused={isPaused}
         />
       </div>
+
+      {subscriptionMode === "update" && isPaid && (
+        <DowngradeFeedbackModal
+          open={cancelOpen}
+          onOpenChange={setCancelOpen}
+          targetPlan="free"
+          currentPlanName={currentPlan === "ultra" ? "Ultra" : "Pro"}
+          targetPlanName="Free"
+          renewsAt={subscription?.renewsAt ?? null}
+          subscription={subscription ?? null}
+        />
+      )}
     </div>
   );
 }

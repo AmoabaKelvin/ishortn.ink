@@ -23,10 +23,11 @@ ALTER TABLE `Subscription` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unic
 ALTER TABLE `Tag` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `UniqueBioPageView` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `UtmTemplate` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
--- Created by 0091/0093/0094 after the drift audit; small, so pin them to the same collation too.
+-- Created by 0091/0093/0094/0096 after the drift audit; small, so pin them to the same collation too.
 ALTER TABLE `LinkPreviousAddress` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `CheckoutStart` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `WeeklySummaryEmail` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
+ALTER TABLE `SubscriptionCancellation` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 -- Table default only: no string column differs, and this avoids rebuilding UniqueLinkVisit.
 ALTER TABLE `LinkTag` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint
 ALTER TABLE `LinkVisitDailySummary` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;--> statement-breakpoint

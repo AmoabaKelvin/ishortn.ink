@@ -41,6 +41,7 @@ export const DOCS_SECTIONS = [
   {
     title: "Integrations",
     pages: [
+      { slug: "integrations/browser-extension", title: "Browser extension" },
       { slug: "integrations/raycast", title: "Raycast" },
       { slug: "integrations/n8n", title: "n8n" },
     ],

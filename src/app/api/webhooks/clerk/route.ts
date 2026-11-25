@@ -84,7 +84,8 @@ export async function POST(req: Request) {
   const userInfo = getUserInfo(event.data);
   if (!userInfo) {
     log.error({ eventId: id, eventType }, "clerk user has no email address; user row not written");
-    return new Response("User has no email address", { status: 422 });
+    // 200, not 4xx: Svix retries non-2xx responses and this event can never succeed.
+    return new Response("User has no email address; skipped", { status: 200 });
   }
 
   // Upsert: ensure-user may have created the row on the user's first request.

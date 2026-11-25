@@ -6,14 +6,17 @@ import {
   addLinkToIndex,
   addSafeBrowsingCandidate,
   backlogDecisions,
+  campaignPatternMatches,
   CAP_NOTE_LIKE,
   capBlocks,
   createLinkIndex,
   createSafeBrowsingWindow,
   decideMatch,
+  distinctivePath,
   type FeedKind,
   flagPayingAccounts,
   hostOfUrl,
+  indexBlockedPhishingPaths,
   isSharedHost,
   matchFeedEntry,
   mergeDecisions,
@@ -634,5 +637,143 @@ describe("backlog of blocks over the cap", () => {
     const [flag] = flagPayingAccounts([decideMatch(threat(1), ownHosts)!], new Set([1]));
     const dismissed: ExistingFlag = { id: 1, linkId: 1, status: "dismissed", ...flag! };
     expect(withoutResolvedLinks([decideMatch(threat(1), ownHosts)!], [dismissed])).toEqual([]);
+  });
+});
+
+describe("campaign patterns", () => {
+  const KIT_PATH =
+    "wp-includes-old/ratingdocumentsdocumtesdcopycodesprojectinnobb/richdocumentationandpresentationsofliddy";
+  const ownHosts = new Set(["ishortn.ink", "isht.ink"]);
+  const blockedPaths = indexBlockedPhishingPaths(
+    [`https://first-compromised.example/${KIT_PATH}/`],
+    ownHosts,
+  );
+
+  test("a distinctive path is the trimmed, lowercased path", () => {
+    expect(
+      distinctivePath(
+        "https://blocked.example/wp-includes-old/RatingDocumentsDocumtesdCopycodesProjectInnobb/richdocumentationandpresentationsofliddy/",
+      ),
+    ).toBe(KIT_PATH);
+  });
+
+  test("short and common paths are not distinctive", () => {
+    for (const url of [
+      "https://example.com/",
+      "https://example.com/login",
+      "https://example.com/index.html",
+      "https://example.com/blog/post",
+      "https://example.com/wp-admin/admin-ajax.php?action=some-long-action-name",
+      "https://example.com/wp-admin/options-general-and-more-settings.php",
+      "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=x",
+      "not a url",
+    ]) {
+      expect(distinctivePath(url)).toBeNull();
+    }
+  });
+
+  test("the same distinctive path on a different host matches a blocked phishing link", () => {
+    const url = `https://compromised-site.example/${KIT_PATH}/?id=1`;
+    expect(campaignPatternMatches(7, url, blockedPaths, ownHosts)).toEqual([
+      { linkId: 7, source: "campaign-pattern", kind: "campaign-path", entry: url, host: "" },
+    ]);
+  });
+
+  test("the blocked URL re-shortened on its own host matches", () => {
+    const url = `https://www.first-compromised.example/${KIT_PATH}?id=2`;
+    expect(campaignPatternMatches(7, url, blockedPaths, ownHosts)).toEqual([
+      { linkId: 7, source: "campaign-pattern", kind: "campaign-path", entry: url, host: "" },
+    ]);
+  });
+
+  test("paths of blocked links on major or shared hosts never become triggers", () => {
+    const consent =
+      "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id=evil";
+    const paths = indexBlockedPhishingPaths(
+      [
+        consent,
+        "https://www.paypal.com/myaccount/transfer/homepage?evil=1",
+        "https://evil.github.io/some-long-tenant-path/sign-in-page",
+      ],
+      ownHosts,
+    );
+    expect(paths.size).toBe(0);
+  });
+
+  test("a legitimate link on a major host never matches a blocked kit's copied path", () => {
+    const paths = indexBlockedPhishingPaths(
+      ["https://paypa1.example/myaccount/transfer/homepage"],
+      ownHosts,
+    );
+    expect(paths.has("myaccount/transfer/homepage")).toBe(true);
+    for (const url of [
+      "https://www.paypal.com/myaccount/transfer/homepage",
+      "https://paypal.co.uk/myaccount/transfer/homepage",
+    ]) {
+      expect(campaignPatternMatches(7, url, paths, ownHosts)).toEqual([]);
+    }
+    expect(
+      campaignPatternMatches(
+        7,
+        "https://other-kit.example/myaccount/transfer/homepage",
+        paths,
+        ownHosts,
+      ),
+    ).toHaveLength(1);
+  });
+
+  test("other paths and normal links don't match", () => {
+    for (const url of [
+      "https://example.com/blog/post",
+      "https://example.com/login",
+      "https://example.com/",
+      `https://example.com/${KIT_PATH}-v2`,
+    ]) {
+      expect(campaignPatternMatches(7, url, blockedPaths, ownHosts)).toEqual([]);
+    }
+  });
+
+  test("an email in an open redirect's fragment or query matches", () => {
+    for (const url of [
+      "https://www.google.com/url?q=https://evil.example/doc&sa=D#x=jane@acme.com",
+      "https://google.co.uk/url?q=https%3A%2F%2Fevil.example%2F%3Fe%3Djane%2540acme.com",
+      "https://www.bing.com/ck/a?u=a1aHR0cHM6Ly9ldmlsLmV4YW1wbGU&e=jane@acme.com",
+    ]) {
+      expect(campaignPatternMatches(7, url, new Set(), ownHosts)).toEqual([
+        { linkId: 7, source: "campaign-pattern", kind: "email-redirect", entry: url, host: "" },
+      ]);
+    }
+  });
+
+  test("a redirect without an email, or an email outside a redirector, doesn't match", () => {
+    for (const url of [
+      "https://www.google.com/url?q=https://example.com/page&sa=D",
+      "https://www.google.com/search?q=jane@acme.com",
+      "https://example.com/contact?email=jane@acme.com",
+      "https://notgoogle.com/url?q=x#jane@acme.com",
+      // Email-shaped tokens and URLs that only contain an `@`.
+      "https://www.google.com/url?q=https://example.com/&redir_token=x@y.co",
+      "https://www.google.com/url?q=https%3A%2F%2Fuser%3Apass%40host.co%2Fpage",
+      "https://www.youtube.com/redirect?q=https://medium.com/@writer/a-post&v=1",
+      "https://www.google.com/url?q=https://example.com/&sig=ab12@cd34",
+    ]) {
+      expect(campaignPatternMatches(7, url, new Set(), ownHosts)).toEqual([]);
+    }
+  });
+
+  test("matches block like other URL-level evidence, and paying accounts are flagged", () => {
+    const url = `https://compromised-site.example/${KIT_PATH}`;
+    const [match] = campaignPatternMatches(7, url, blockedPaths, ownHosts);
+    const decision = decideMatch(match!, new Set())!;
+    expect(decision).toMatchObject({
+      action: "block",
+      reason: "phishing-rescan: campaign-pattern",
+      details: `Same path as a link blocked for phishing: ${url}`,
+    });
+    expect(flagPayingAccounts([decision], new Set([7]))[0]?.action).toBe("flag");
+    // A held-back block of this source comes back from the backlog.
+    expect(
+      backlogDecisions([{ id: 1, linkId: 7, reason: decision.reason, details: decision.details }]),
+    ).toHaveLength(1);
   });
 });

@@ -95,6 +95,14 @@ export async function normalizeMonthlyEventCount(
   return ctx.userRecord.monthlyEventCount ?? 0;
 }
 
+/** Links counted this month, without the write normalizeMonthlyLinkCount does on a new month. */
+export function linksUsedThisMonth(
+  userRecord: Pick<User, "monthlyLinkCount" | "lastLinkCountReset" | "createdAt">,
+): number {
+  const lastReset = userRecord.lastLinkCountReset ?? userRecord.createdAt ?? new Date();
+  return lastReset < getMonthStart() ? 0 : (userRecord.monthlyLinkCount ?? 0);
+}
+
 export async function normalizeMonthlyLinkCount(
   ctx: UserPlanContext,
   dbClient: DbClient = db,

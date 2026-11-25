@@ -12,6 +12,7 @@ import {
 } from "@/server/api/routers/link/utils";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias, reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
@@ -158,6 +159,9 @@ export async function updateHiddenTrackingLink(
 
   if (existing.alias) {
     await deleteFromCache(buildCacheKey(existing.domain, existing.alias));
+  }
+  if (opts.url !== undefined && opts.url !== existing.url) {
+    checkCampaignPatternsAfterResponse([{ linkId, url: opts.url }]);
   }
 }
 

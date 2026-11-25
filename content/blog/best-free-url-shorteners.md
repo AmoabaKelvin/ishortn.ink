@@ -1,9 +1,9 @@
 ---
 title: "What Is the Best Free URL Shortener? 6 Free Plans Compared (2026)"
-seoTitle: "Best Free URL Shorteners 2026: Free Plans Compared"
-description: "The best free URL and link shorteners in 2026, compared on monthly links, click stats, QR codes, custom domains and API access. Limits checked November 2026."
+seoTitle: "Best Free URL Shorteners 2026: No Ads, Stats, QR"
+description: "Six free URL shorteners compared on monthly links, click stats, ads, QR codes, custom domains and API, plus which need no sign-up. Checked November 2026."
 date: "2026-03-06"
-updated: "2026-11-23"
+updated: "2026-11-25"
 author: "Kelvin Amoaba"
 tags: ["url shortener", "comparison", "free tools", "link management"]
 published: true
@@ -11,7 +11,7 @@ published: true
 
 The best free URL shortener for most people is the one whose free plan covers the thing you need. iShortn is best if you want click stats without paying. Short.io wins if you want your own domain for free. TinyURL is best if you don't want an account at all. Bitly is the best-known name, but its free plan stops at 5 links a month and shows no click data.
 
-We make iShortn, so weigh our view accordingly. Every competitor limit below comes from that company's own pricing page or help center, checked on 22 November 2026.
+We make iShortn, so weigh our view accordingly. Every competitor limit below comes from that company's own pricing page or help center, checked on 24 November 2026.
 
 ## The short answer
 
@@ -43,6 +43,8 @@ iShortn puts click analytics on the free plan instead of behind a paywall. You g
 
 The free plan also includes 5 dynamic QR codes with colour and style options. They never expire, and you can change the destination after printing. Each QR code uses one of your 30 monthly links.
 
+You can also turn on a read-only stats page for any link and send it to someone who has no account. On Free it shows the last 7 days.
+
 What's missing on Free: custom domains, the API, password protection and geo targeting. They start on Pro at $8 a month.
 
 ### Short.io
@@ -65,9 +67,9 @@ Essentials was $11 a month billed annually when we checked. Rebrandly seems to s
 
 ### Bitly
 
-Bitly is the name most people know. Its free plan allows 5 links a month, and QR codes count toward that 5 (you can make 2). There's no click or scan data on Free, you can't edit destinations, and anyone who opens a free link sees a Bitly page with an ad first. Free does include 1,000 API requests a month.
+Bitly is the name most people know. Its free plan allows 5 links a month, and QR codes count toward that 5 (you can make 2). There's no click or scan data on Free, you can't change where a link points, and anyone who opens a free link sees a Bitly page with an ad first. Free does include 1,000 API requests a month.
 
-Click history starts on Core at $10 a month, billed annually only, and custom domains on Growth at $29 a month billed annually ([Bitly pricing](https://bitly.com/pages/pricing)). [Bitly's free plan limits](/blog/bitly-free-plan-limits) lists every cap, and our guide to [free Bitly alternatives](/blog/bitly-alternatives) covers what to switch to.
+Click history starts on Core at $10 a month, billed annually only, and custom domains on Growth at $29 a month billed annually ([Bitly pricing](https://bitly.com/pages/pricing)). [Bitly's free plan limits](/blog/bitly-free-plan-limits) lists every cap, and our guide to [free Bitly alternatives](/blog/bitly-alternatives) covers what to switch to. For Bitly and iShortn side by side, see [iShortn vs Bitly](/compare/bitly). If your Bitly links are on your own domain, [Move your links from Bitly](/docs/migrate-from-bitly) shows how to bring them across with the same addresses.
 
 ### Self-hosted: YOURLS, Kutt, Shlink or iShortn
 
@@ -112,7 +114,7 @@ For more on paid plans, see [the cheapest URL shorteners with click tracking](/b
 ## How to shorten a link for free
 
 1. Copy the long URL from your browser's address bar.
-2. Paste it into a shortener. On iShortn, [sign up free](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=best-free-url-shorteners), click **New Link** and paste it.
+2. Paste it into a shortener. On iShortn, [sign up free](/auth/sign-up), click **New Link** and paste it.
 3. Optionally set a custom alias, such as `/spring-menu`, so the link is readable.
 4. Copy the short link and share it. If you'll print it, download the QR code too.
 5. Check the analytics after a day to see where clicks came from.
@@ -123,7 +125,7 @@ For more on paid plans, see [the cheapest URL shorteners with click tracking](/b
 - **Editing.** If you can't change a link's destination, a moved page means a new link, and a reprint for QR codes.
 - **Your own domain.** A link on your domain looks like yours, and it can move with you if you change tools later.
 - **Upgrade price.** A good free plan with a $30 first paid plan can cost more in the long run than a smaller free plan with an $8 one.
-- **Safety and longevity.** iShortn checks every new link against threat databases and its own phishing detection. Whatever you pick, choose a service that's actively maintained and lets you export your links. Google stopped taking new goo.gl links in 2019.
+- **Safety and longevity.** iShortn checks every new link against threat databases and its own phishing detection. Whatever you pick, choose a service that's actively maintained and lets you export your links. Google stopped making goo.gl links in 2019, and on 25 August 2025 it switched off the old ones that had shown no activity in late 2024.
 
 ## Common questions
 
@@ -141,7 +143,15 @@ iShortn has no ad page on any plan. Bitly shows an ad page before free links ope
 
 ### Do free short links expire?
 
-Not on iShortn: links stay live as long as your account is active, unless you set an expiry yourself. Bitly says free-plan links don't expire, and TinyURL links don't expire either. The bigger risk is a service shutting down, so pick one that lets you export your links.
+Not on iShortn: links stay live as long as your account is active, unless you set an expiry yourself. Bitly says its links never expire, and TinyURL says the same for Free and Pro links. Links on TinyURL's Bulk plan expire after 90 days by default. The bigger risk is a service shutting down. Google switched off its inactive goo.gl links in August 2025, so pick a service that lets you export your links. iShortn exports all your links as CSV or JSON on every plan.
+
+### Which free URL shortener works without signing up?
+
+TinyURL. Paste a link on its homepage and you get a short one with no account, though you won't see any clicks. iShortn needs a free account to make links, but our [free QR code generator](/qr-code-generator) works without one.
+
+### Can I choose a custom name for a free short link?
+
+On iShortn Free, yes: you can set your own alias of 6 characters or more, such as `isht.app/spring-menu`. Aliases shorter than 6 characters need Pro.
 
 ### Is there a free URL shortener with an API?
 
@@ -155,4 +165,4 @@ Yes. TinyURL, Short.io, Rebrandly and Dub include API access on their free plans
 - **A big company already using Bitly's integrations:** Bitly's paid plans may still be worth it.
 - **Full control:** a self-hosted shortener.
 
-The [pricing page](/pricing) lists every iShortn limit. To try it, [create a free account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=best-free-url-shorteners). It takes under a minute, with no credit card and no trial period.
+The [pricing page](/pricing) lists every iShortn limit. To try it, [create a free account](/auth/sign-up). It takes under a minute, with no credit card and no trial period.

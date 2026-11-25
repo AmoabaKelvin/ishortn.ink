@@ -13,10 +13,11 @@ import { analyticsRangeEnum } from "@/server/api/routers/link/link.input";
 import { isNotFoundError } from "@/trpc/errors";
 import { api } from "@/trpc/server";
 
-import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
 import { ExportClicksButton } from "../_components/export-clicks-button";
+import { LimitedAnalyticsNotice } from "../_components/limited-analytics-notice";
 import { RangePendingContent, RangeTransitionProvider } from "../_components/range-transition";
+import { ShareStatsButton } from "../_components/share-stats-button";
 import { BarChart } from "./_components/bar-chart";
 import { CountriesAndCitiesStats } from "./_components/countries-and-cities-stats";
 import { GeoRulesStats } from "./_components/geo-rules-stats";
@@ -83,6 +84,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     throw error;
   }
   const {
+    linkId,
     totalVisits,
     uniqueVisits,
     referers,
@@ -90,6 +92,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
     geoRules,
     previous,
     archived,
+    hiddenClicks,
     domain,
     range,
     custom,
@@ -117,10 +120,11 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
             {domain}/{params.alias}
           </h1>
           {!isProPlan && (
-            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              Viewing limited analytics (last 7 days).{" "}
-              <UpgradeText text="Upgrade to Pro" source="link_analytics" /> for full data.
-            </p>
+            <LimitedAnalyticsNotice
+              hiddenClicks={hiddenClicks}
+              source="link_analytics"
+              className="mt-1"
+            />
           )}
         </div>
 
@@ -136,6 +140,7 @@ export default async function LinkAnalyticsPage(props: LinksAnalyticsPageProps) 
             }}
             fileName={`clicks-${params.alias}-${range}`}
           />
+          <ShareStatsButton linkId={linkId} />
         </div>
       </div>
 

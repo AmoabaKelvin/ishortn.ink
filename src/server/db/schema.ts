@@ -249,6 +249,9 @@ export const subscription = mysqlTable(
     // can arrive out of order or be replayed, so events older than this are
     // dropped instead of overwriting current state.
     providerUpdatedAt: datetime("providerUpdatedAt"),
+    // When a paused subscription starts billing again (the provider's pause.resumes_at); null
+    // when not paused.
+    pausedUntil: datetime("pausedUntil"),
 
     // details about the payment to show in the dashboard
     cardBrand: varchar("cardBrand", { length: 255 }).default(""),
@@ -329,10 +332,15 @@ export const link = mysqlTable(
     blocked: boolean("blocked").default(false),
     blockedAt: timestamp("blockedAt"),
     blockedReason: varchar("blockedReason", { length: 255 }),
+    // Read-only analytics page at /stats/<token>: shared while the token is set. Separate from
+    // the retired publicStats flag so legacy opt-ins never become public without a fresh one.
+    statsShareToken: varchar("statsShareToken", { length: 64 }),
+    statsSharedAt: timestamp("statsSharedAt"),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
+    statsShareTokenIdx: unique("statsShareToken_idx").on(table.statsShareToken),
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
     uniqueAliasDomainIdx: unique("unique_alias_domain").on(table.alias, table.domain), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
     // Case-insensitive alias lookups (`lower(alias) = ...` in record-click.ts and link.service.ts).
@@ -532,6 +540,11 @@ export const token = mysqlTable(
     name: varchar("name", { length: 64 }),
     // First characters of the plaintext key, shown in settings so keys can be told apart.
     prefix: varchar("prefix", { length: 8 }),
+    // "api" keys work on /api/v1 only; "extension" tokens (browser extension connect flow) work
+    // on /api/extension only, so they can't be used to reach the paid-plan v1 API.
+    kind: varchar("kind", { length: 16 }).$type<"api" | "extension">().notNull().default("api"),
+    // Set from the connect request for extension tokens, e.g. "Chrome on macOS".
+    label: varchar("label", { length: 64 }),
     lastUsedAt: timestamp("lastUsedAt"),
     createdAt: datetime("createdAt", { mode: "date", fsp: 3 })
       .notNull()
@@ -1638,3 +1651,30 @@ export const checkoutStart = mysqlTable(
 );
 
 export type CheckoutStart = typeof checkoutStart.$inferSelect;
+
+// One row per in-app cancel flow submission (cancel, downgrade or pause instead), for churn analysis.
+export const subscriptionCancellation = mysqlTable(
+  "SubscriptionCancellation",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    subscriptionId: int("subscriptionId").notNull(),
+    fromPlan: mysqlEnum("fromPlan", ["free", "pro", "ultra"]).notNull(),
+    toPlan: mysqlEnum("toPlan", ["free", "pro", "ultra"]).notNull(),
+    billingInterval: mysqlEnum("billingInterval", ["monthly", "annual"]).notNull(),
+    variantId: int("variantId"),
+    reason: varchar("reason", { length: 64 }).notNull(),
+    feedback: text("feedback"),
+    // Whether the flow offered a billing pause before cancelling.
+    offerShown: mysqlEnum("offerShown", ["pause", "none"]).notNull(),
+    outcome: mysqlEnum("outcome", ["cancelled", "paused", "downgraded"]).notNull(),
+    pauseMonths: int("pauseMonths"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("subscriptionCancellation_createdAt_idx").on(table.createdAt),
+    userIdIdx: index("subscriptionCancellation_userId_idx").on(table.userId),
+  }),
+);
+
+export type SubscriptionCancellation = typeof subscriptionCancellation.$inferSelect;

@@ -43,14 +43,16 @@ describe("page titles", () => {
     expect(comparisonTitle(competitors.linktree)).toBe(
       "Linktree vs iShortn: link in bio comparison",
     );
-    expect(comparisonTitle(competitors.bitly)).toBe("Bitly vs iShortn: URL shortener comparison");
+    expect(comparisonTitle(competitors.beacons)).toBe("Beacons vs iShortn: link in bio comparison");
   });
 
   it("uses a competitor's seoTitle when it has one", () => {
     expect(comparisonTitle(competitors["short-io"])).toBe(
       "Short.io vs iShortn: Pricing and Free Plan Compared (2026)",
     );
-    expect(comparisonTitle(competitors.bitly)).toBe("Bitly vs iShortn: URL shortener comparison");
+    expect(comparisonTitle(competitors.bitly)).toBe(
+      "Bitly vs iShortn: Free Plan, Pricing and Migration (2026)",
+    );
     expect(comparisonTitle(competitors.dub)).toBe(
       "Dub.co vs iShortn: Pricing and Free Plan Compared (2026)",
     );

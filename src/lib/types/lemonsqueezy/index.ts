@@ -30,6 +30,8 @@ export const lemonsqueezySubscriptionAttributesSchema = z.object({
   ends_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  // Set while payment collection is paused; resumes_at is when billing restarts.
+  pause: z.object({ resumes_at: z.string().nullish() }).nullish(),
 });
 
 export const lemonsqueezySubscriptionEventSchema = z.object({

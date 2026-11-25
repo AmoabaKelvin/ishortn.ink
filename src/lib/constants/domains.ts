@@ -66,3 +66,15 @@ export function getAppUrl(path: string, teamSlug?: string | null): string {
   const host = teamSlug ? `${teamSlug}.${getAppBaseDomain()}` : getAppBaseDomain();
   return `https://${host}${path}`;
 }
+
+// The app's own host, where app-only public pages (docs, shared stats) are served: the app
+// domain, plus localhost and workers.dev previews. Never a short-link or custom domain.
+export function isAppHost(host: string): boolean {
+  const hostname = (host.split(":")[0] ?? host).replace(/\.$/, "").toLowerCase();
+  return (
+    hostname === APP_BASE_DOMAIN ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.endsWith(".workers.dev")
+  );
+}

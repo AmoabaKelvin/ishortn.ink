@@ -4,12 +4,15 @@ import { PostHogHold } from "@/components/scripts/posthog";
 import { clerkLocalization } from "@/lib/auth/clerk-localization";
 import { cn } from "@/lib/utils";
 
+import { AuthFormReady } from "./auth-form-ready";
+
 // Server-rendered stand-in for Clerk's <SignIn/>/<SignUp/> card, shown until Clerk's scripts
 // have loaded and mounted the real form. Every row has the height Clerk gives it under
 // ./clerk-appearance.ts and src/styles/site-auth.css, so the form replaces it without moving
 // the page. Line heights are Clerk's unitless ones: a px value rounds differently and adds up
 // to a visible shift. Re-measure `.cl-cardBox` against this after changing either file or the
-// instance's sign-in/sign-up fields. PostHog waits until Clerk has swapped it out.
+// instance's sign-in/sign-up fields. PostHog waits until Clerk has swapped it out, and the swap is
+// reported as auth_form_ready.
 
 const variants = {
   signUp: {
@@ -31,9 +34,12 @@ const pendingFill = "animate-pulse bg-neutral-950/[0.06] motion-reduce:animate-n
 export function ClerkFormPlaceholder({
   variant,
   next,
+  hideHeader = false,
 }: {
   variant: keyof typeof variants;
   next?: string;
+  // Matches the form under [data-shorten-intent], where the page renders its own heading
+  hideHeader?: boolean;
 }) {
   const { title, subtitle, fields, footerText, footerLink } = variants[variant];
   const footerHref = next
@@ -43,14 +49,17 @@ export function ClerkFormPlaceholder({
   return (
     <div aria-busy="true" className="flex flex-col rounded-[28px] bg-neutral-50 shadow-site-card">
       <PostHogHold />
+      <AuthFormReady page={variant === "signUp" ? "sign-up" : "sign-in"} />
       {/* White card (.cl-card) */}
       <div className="-mx-px -mt-px flex flex-col gap-8 rounded-[28px] bg-white px-6 py-10 shadow-site-card sm:px-10">
-        <div className="flex flex-col gap-1 text-center">
-          <h1 className="font-title text-2xl font-semibold leading-[1.41176] tracking-[-0.035em] text-neutral-900">
-            {title}
-          </h1>
-          <p className="text-base leading-[1.38462] text-neutral-600">{subtitle}</p>
-        </div>
+        {!hideHeader && (
+          <div className="flex flex-col gap-1 text-center">
+            <h1 className="font-title text-2xl font-semibold leading-[1.41176] tracking-[-0.035em] text-neutral-900">
+              {title}
+            </h1>
+            <p className="text-base leading-[1.38462] text-neutral-600">{subtitle}</p>
+          </div>
+        )}
         <div aria-hidden="true" className="flex flex-col gap-6">
           <div className={cn("h-11 rounded-[10px]", pendingFill)} />
           <div className="flex items-center">
@@ -65,7 +74,8 @@ export function ClerkFormPlaceholder({
                   <span className="text-sm font-medium leading-[1.38462] text-neutral-900">
                     {label}
                   </span>
-                  <div className="h-11 rounded-[10px] bg-white shadow-site-btn" />
+                  {/* Pending, not input-styled: taps here do nothing until Clerk mounts */}
+                  <div className={cn("h-11 rounded-[10px]", pendingFill)} />
                 </div>
               ))}
             </div>

@@ -18,6 +18,7 @@ import {
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 import type { Promo } from "@/lib/billing/promo";
+import type { ComponentProps } from "react";
 
 const PLANS: { id: Plan; name: string }[] = [
   { id: "free", name: "Free" },
@@ -34,6 +35,9 @@ type PlanSwitcherProps = {
   renewsAt: Date | null;
   /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
   promo: Promo | null;
+  subscription: ComponentProps<typeof DowngradeFeedbackModal>["subscription"];
+  /** Set while the subscription is paused; it has to be resumed before changing plans. */
+  isPaused: boolean;
 };
 
 export function PlanSwitcher({
@@ -42,6 +46,8 @@ export function PlanSwitcher({
   subscriptionMode,
   renewsAt,
   promo,
+  subscription,
+  isPaused,
 }: PlanSwitcherProps) {
   const [interval, setIntervalState] = useState<BillingInterval>(() =>
     resolveBillingInterval(null, currentPlan, currentInterval),
@@ -153,7 +159,7 @@ export function PlanSwitcher({
 
       {isResumable && (
         <p className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-400">
-          Your subscription is cancelled. Resume it to change plans.
+          Your subscription is {isPaused ? "paused" : "cancelled"}. Resume it to change plans.
         </p>
       )}
 
@@ -258,6 +264,7 @@ export function PlanSwitcher({
           targetPlan={targetDowngrade}
           currentPlanName={currentPlanName}
           renewsAt={renewsAt}
+          subscription={subscription}
           targetPlanName={PLANS.find((p) => p.id === targetDowngrade)?.name ?? targetDowngrade}
         />
       )}

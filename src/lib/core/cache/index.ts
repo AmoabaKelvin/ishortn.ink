@@ -65,6 +65,10 @@ const cachedLinkSchema = z.object({
   blocked: z.boolean().nullable(),
   blockedAt: nullableIsoDate,
   blockedReason: z.string().nullable(),
+  // Absent from entries cached before the columns existed. Never read from the cache: the stats
+  // page looks the token up in the database.
+  statsShareToken: z.string().nullable().default(null),
+  statsSharedAt: nullableIsoDate.default(null),
 });
 
 async function getFromCache(key: string): Promise<Link | null> {

@@ -1,3 +1,5 @@
+import { addMonths } from "date-fns";
+
 import type { Subscription } from "@/server/db/schema";
 
 export type Plan = "free" | "pro" | "ultra";
@@ -46,6 +48,10 @@ export const PLAN_VARIANT_IDS = {
 
 export function getVariantId(plan: Exclude<Plan, "free">, interval: BillingInterval): number {
   return PLAN_VARIANT_IDS[plan][interval];
+}
+
+export function isLegacyProVariant(variantId?: number | null): boolean {
+  return variantId === PRO_LEGACY_MONTHLY_VARIANT_ID;
 }
 
 export function getIntervalFromVariantId(variantId?: number | null): BillingInterval {
@@ -155,21 +161,45 @@ export function resolvePlan(subscription?: Subscription | null, nowMs = Date.now
  * How a plan change applies to a user's subscription:
  * - `checkout`: no paid subscription, so start a new hosted checkout.
  * - `update`: a live paid subscription, changed in place on Lemon Squeezy.
- * - `resume`: cancelled but still inside the paid period; it must be resumed
- *   rather than replaced, or the user would end up with two subscriptions.
+ * - `resume`: cancelled but still inside the paid period, or paused; it must be
+ *   resumed rather than replaced, or the user would end up with two subscriptions.
  */
 export type SubscriptionMode = "checkout" | "update" | "resume";
 
 export function getSubscriptionMode(subscription?: Subscription | null): SubscriptionMode {
-  if (
-    !subscription?.subscriptionId ||
-    subscription.subscriptionId <= 0 ||
-    resolvePlan(subscription) === "free"
-  ) {
-    return "checkout";
-  }
+  if (!subscription?.subscriptionId || subscription.subscriptionId <= 0) return "checkout";
+  // A paused subscription grants only Free access but still exists with the provider.
+  if (subscription.status === "paused") return "resume";
+  if (resolvePlan(subscription) === "free") return "checkout";
 
   return subscription.status === "cancelled" ? "resume" : "update";
+}
+
+export const PAUSE_MONTH_OPTIONS = [1, 2, 3] as const;
+
+/**
+ * Whether cancelling to Free first offers a billing pause. Only active monthly subscriptions:
+ * an annual one is paid up for the year, so pausing invoices for a few months would only take
+ * its paid features away.
+ */
+export function canOfferPause(
+  subscription?: {
+    status?: string | null;
+    subscriptionId?: number | null;
+    variantId?: number | null;
+  } | null,
+): boolean {
+  return (
+    !!subscription?.subscriptionId &&
+    subscription.subscriptionId > 0 &&
+    subscription.status === "active" &&
+    getIntervalFromVariantId(subscription.variantId) === "monthly"
+  );
+}
+
+/** When billing restarts for a pause of `months` starting at `now`. */
+export function pauseResumesAt(months: number, now = new Date()): Date {
+  return addMonths(now, months);
 }
 
 export function getPlanCaps(plan: Plan): PlanCaps {

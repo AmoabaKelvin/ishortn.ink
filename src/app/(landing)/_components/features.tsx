@@ -1,26 +1,6 @@
-import {
-  IconBellFilled,
-  IconBrandInstagram,
-  IconBrandTiktok,
-  IconBrandX,
-  IconBrandYoutube,
-  IconCalendarFilled,
-  IconChevronDown,
-  IconClockFilled,
-  IconCodeCircleFilled,
-  IconFileUploadFilled,
-  IconFolderFilled,
-  IconLockFilled,
-  IconMapPinFilled,
-  IconQrcode,
-  IconShieldCheckFilled,
-  IconSparklesFilled,
-  IconTagFilled,
-  IconUserFilled,
-} from "@tabler/icons-react";
-
 import { cn } from "@/lib/utils";
 
+import { SiteIcon } from "./site-icon";
 import {
   bodyClass,
   cardClass,
@@ -142,7 +122,7 @@ const BrandedLinkMock = () => (
         <div className={fieldLabelClass}>Domain</div>
         <div className={fieldClass}>
           <span className="truncate">links.yourbrand.com</span>
-          <IconChevronDown className="size-4 shrink-0 text-neutral-500" />
+          <SiteIcon name="chevron-down" className="size-4 shrink-0 text-neutral-500" />
         </div>
       </div>
       <div>
@@ -154,15 +134,15 @@ const BrandedLinkMock = () => (
     </div>
     <div className="mt-4 space-y-2.5 border-t border-neutral-950/[0.07] pt-4 text-[0.8125rem] text-neutral-700">
       <div className="flex items-center gap-2">
-        <IconQrcode className="size-4 shrink-0 text-neutral-500" />
+        <SiteIcon name="qrcode" className="size-4 shrink-0 text-neutral-500" />
         QR code included
       </div>
       <div className="flex items-center gap-2">
-        <IconTagFilled className="size-4 shrink-0 text-neutral-500" />
+        <SiteIcon name="tag-filled" className="size-4 shrink-0 text-neutral-500" />
         Tagged: campaigns
       </div>
       <div className="flex items-center gap-2">
-        <IconFolderFilled className="size-4 shrink-0 text-neutral-500" />
+        <SiteIcon name="folder-filled" className="size-4 shrink-0 text-neutral-500" />
         Folder: Summer 2026
       </div>
     </div>
@@ -186,10 +166,10 @@ const BioMock = () => (
         <div className="mt-2 text-sm font-semibold text-neutral-900">Your Brand</div>
         <div className="font-mono text-xs text-neutral-600">ishortn.ink/p/yourbrand</div>
         <div className="mt-3 flex gap-2.5 text-neutral-700">
-          <IconBrandInstagram className="size-4 shrink-0" />
-          <IconBrandTiktok className="size-4 shrink-0" />
-          <IconBrandYoutube className="size-4 shrink-0" />
-          <IconBrandX className="size-4 shrink-0" />
+          <SiteIcon name="brand-instagram" className="size-4 shrink-0" />
+          <SiteIcon name="brand-tiktok" className="size-4 shrink-0" />
+          <SiteIcon name="brand-youtube" className="size-4 shrink-0" />
+          <SiteIcon name="brand-x" className="size-4 shrink-0" />
         </div>
         <div className="mt-4 w-full space-y-2">
           {bioLinks.map((label) => (
@@ -208,25 +188,25 @@ const BioMock = () => (
 
 const controls: { icon: ReactNode; label: string; detail: string; on: boolean }[] = [
   {
-    icon: <IconLockFilled className="size-4 shrink-0" />,
+    icon: <SiteIcon name="lock-filled" className="size-4 shrink-0" />,
     label: "Password protection",
     detail: "Visitors enter a password first",
     on: true,
   },
   {
-    icon: <IconClockFilled className="size-4 shrink-0" />,
+    icon: <SiteIcon name="clock-filled" className="size-4 shrink-0" />,
     label: "Expiration",
     detail: "After 1,000 clicks",
     on: true,
   },
   {
-    icon: <IconMapPinFilled className="size-4 shrink-0" />,
+    icon: <SiteIcon name="map-pin-filled" className="size-4 shrink-0" />,
     label: "Targeting rules",
     detail: "United States to ishortn.ink/us",
     on: true,
   },
   {
-    icon: <IconCalendarFilled className="size-4 shrink-0" />,
+    icon: <SiteIcon name="calendar-filled" className="size-4 shrink-0" />,
     label: "Schedule",
     detail: "Go live at a set time",
     on: false,
@@ -282,20 +262,20 @@ const benefits: { title: string; body: string; mock: ReactNode }[] = [
 ];
 
 const tiles: { label: string; icon: ReactNode }[] = [
-  { label: "Click milestone alerts", icon: <IconBellFilled aria-hidden="true" /> },
-  { label: "UTM templates", icon: <IconTagFilled aria-hidden="true" /> },
-  { label: "Bulk CSV import", icon: <IconFileUploadFilled aria-hidden="true" /> },
-  { label: "REST API", icon: <IconCodeCircleFilled aria-hidden="true" /> },
-  { label: "Team workspaces", icon: <IconUserFilled aria-hidden="true" /> },
-  { label: "Unsafe link scanning", icon: <IconShieldCheckFilled aria-hidden="true" /> },
-  { label: "Folders and tags", icon: <IconFolderFilled aria-hidden="true" /> },
-  { label: "Scheduled links", icon: <IconCalendarFilled aria-hidden="true" /> },
+  { label: "Click milestone alerts", icon: <SiteIcon name="bell-filled" /> },
+  { label: "UTM templates", icon: <SiteIcon name="tag-filled" /> },
+  { label: "Bulk CSV import", icon: <SiteIcon name="file-upload-filled" /> },
+  { label: "REST API", icon: <SiteIcon name="code-circle-filled" /> },
+  { label: "Team workspaces", icon: <SiteIcon name="user-filled" /> },
+  { label: "Unsafe link scanning", icon: <SiteIcon name="shield-check-filled" /> },
+  { label: "Folders and tags", icon: <SiteIcon name="folder-filled" /> },
+  { label: "Scheduled links", icon: <SiteIcon name="calendar-filled" /> },
 ];
 
 export const Features = () => (
   <Section id="features">
     <SectionHeading
-      eyebrow={<Eyebrow icon={<IconSparklesFilled aria-hidden="true" />}>Benefits</Eyebrow>}
+      eyebrow={<Eyebrow icon={<SiteIcon name="sparkles-filled" />}>Benefits</Eyebrow>}
       title="Your all-purpose link platform"
       subtitle="Everything you need to shorten, brand, and measure your links. Free to start."
     />

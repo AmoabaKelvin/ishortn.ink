@@ -1,0 +1,26 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #e5e5e5; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.window { position: relative; display: flex; flex-direction: column; height: 100vh; background: #fff; }
+.tabs { display: flex; align-items: flex-end; gap: 4px; height: 42px; padding: 0 12px; background: #e8e8e8; }
+.dots { display: flex; gap: 8px; align-self: center; margin-right: 16px; }
+.dots i { width: 12px; height: 12px; border-radius: 999px; background: #c4c4c4; }
+.tab span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.tab { display: flex; align-items: center; gap: 8px; width: 260px; height: 34px; padding: 0 12px; border-radius: 10px 10px 0 0; background: #fff; color: #262626; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab-muted { width: 160px; background: transparent; color: #737373; }
+.favicon { flex: none; width: 14px; height: 14px; border-radius: 4px; background: #d4d4d4; }
+.toolbar { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border-bottom: 1px solid #e5e5e5; }
+.nav { width: 18px; height: 18px; border-radius: 999px; background: #e5e5e5; }
+.omnibox { flex: 1; height: 30px; padding: 0 14px; border-radius: 999px; background: #f2f2f2; color: #404040; font-size: 13px; line-height: 30px; }
+.ext { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: #e5e5e5; }
+.page { flex: 1; overflow: hidden; background: #fafafa; }
+.article { max-width: 560px; margin: 48px 0 0 72px; }
+.bar { height: 12px; margin-bottom: 14px; border-radius: 6px; background: #e5e5e5; }
+.bar.eyebrow { width: 120px; height: 10px; margin-bottom: 20px; }
+.bar.h1 { height: 30px; border-radius: 8px; background: #d4d4d4; }
+.bar.h1.short { width: 60%; }
+.bar.meta { width: 220px; margin: 22px 0 30px; }
+.bar.mid { width: 85%; }
+.bar.short { width: 50%; }
+.hero { height: 230px; margin-bottom: 28px; border-radius: 12px; background: #ececec; }
+#popup { position: absolute; top: 82px; right: 44px; width: 340px; height: 200px; border: 1px solid #d4d4d4; border-radius: 10px; background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12); }

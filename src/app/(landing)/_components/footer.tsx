@@ -1,8 +1,8 @@
-import { IconBrandGithub, IconBrandX, IconMail } from "@tabler/icons-react";
 import { Link } from "next-view-transitions";
 
 import { solutionList } from "@/lib/seo/solutions";
 
+import { SiteIcon, type SiteIconName } from "./site-icon";
 import { Section, Wordmark } from "./site-primitives";
 
 const columns: { title: string; links: { label: string; href: string; lang?: string }[] }[] = [
@@ -66,10 +66,10 @@ const columns: { title: string; links: { label: string; href: string; lang?: str
   },
 ];
 
-const socials = [
-  { label: "X (Twitter)", href: "https://twitter.com/kelamoaba", icon: IconBrandX },
-  { label: "GitHub", href: "https://github.com/AmoabaKelvin/ishortn.ink", icon: IconBrandGithub },
-  { label: "Email support", href: "mailto:support@ishortn.ink", icon: IconMail },
+const socials: { label: string; href: string; icon: SiteIconName }[] = [
+  { label: "X (Twitter)", href: "https://twitter.com/kelamoaba", icon: "brand-x" },
+  { label: "GitHub", href: "https://github.com/AmoabaKelvin/ishortn.ink", icon: "brand-github" },
+  { label: "Email support", href: "mailto:support@ishortn.ink", icon: "mail" },
 ];
 
 const isExternal = (href: string) => href.startsWith("http") || href.startsWith("mailto:");
@@ -98,7 +98,7 @@ export const Footer = () => {
                       aria-label={social.label}
                       className="grid size-9 place-items-center rounded-lg text-neutral-700 hover:bg-neutral-950/5 hover:text-neutral-900"
                     >
-                      <social.icon aria-hidden="true" className="size-5" />
+                      <SiteIcon name={social.icon} className="size-5" />
                     </a>
                   </li>
                 ))}

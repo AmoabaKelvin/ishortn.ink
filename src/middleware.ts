@@ -103,9 +103,11 @@ export default clerkMiddleware(async (auth, req) => {
 
 // /api/health and /api/health/* are excluded: they are public or check their
 // own token, and an uptime probe must not depend on Clerk being reachable.
+// /api/extension/* is excluded too: it authenticates with its own bearer token,
+// which Clerk would otherwise try to read as a session token.
 export const config = {
   matcher: [
-    "/((?!_next|favicon|api/health(?:/|$)|^[^/]+$|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api(?!/health(?:/|$))|trpc)(.*)",
+    "/((?!_next|favicon|api/health(?:/|$)|api/extension(?:/|$)|^[^/]+$|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api(?!/health(?:/|$)|/extension(?:/|$))|trpc)(.*)",
   ],
 };

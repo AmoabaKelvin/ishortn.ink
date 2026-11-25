@@ -6,7 +6,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UpgradeCta } from "@/components/upgrade-cta";
+import { formatPromoEnd } from "@/lib/billing/promo";
 import { api } from "@/trpc/react";
+
+import { useUpgradeOffer } from "../../_components/upgrade-offer";
 
 import type { RouterInputs } from "@/trpc/shared";
 
@@ -22,6 +25,7 @@ const BUTTON_CLASS =
   "h-9 gap-1.5 border-neutral-200 bg-white px-3 text-[13px] text-neutral-700 dark:border-border dark:bg-card dark:text-neutral-300";
 
 export function ExportClicksButton({ isProPlan, query, fileName }: ExportClicksButtonProps) {
+  const promo = useUpgradeOffer();
   const exportClicks = api.link.exportClicks.useMutation({
     onSuccess: ({ csv, rowCount, truncated }) => {
       if (rowCount === 0) {
@@ -57,6 +61,7 @@ export function ExportClicksButton({ isProPlan, query, fileName }: ExportClicksB
               <UpgradeCta
                 requiredPlan="pro"
                 source="analytics_export"
+                promo={promo}
                 aria-label="Export CSV is a Pro feature. Upgrade to Pro"
               >
                 <IconLock
@@ -69,7 +74,9 @@ export function ExportClicksButton({ isProPlan, query, fileName }: ExportClicksB
             </Button>
           </TooltipTrigger>
           <TooltipContent className="text-[12px]">
-            Upgrade to Pro to export raw clicks
+            {promo
+              ? `Export raw clicks with Pro. ${promo.percentOff}% off your first year until ${formatPromoEnd(promo.endsAt)}.`
+              : "Upgrade to Pro to export raw clicks"}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

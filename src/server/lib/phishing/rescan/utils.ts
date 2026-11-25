@@ -1,9 +1,12 @@
+import { findEmailInRedirect } from "../heuristics";
+
 const RESCAN_SOURCES = [
   "phishing-database-links",
   "phishing-database-domains",
   "openphish",
   "urlhaus",
   "safe-browsing",
+  "campaign-pattern",
 ] as const;
 
 export type RescanSource = (typeof RESCAN_SOURCES)[number];
@@ -12,13 +15,19 @@ export type FeedKind = "url" | "domain";
 
 export type ScanLink = { id: number; url: string | null; domain: string; alias: string | null };
 
-export type MatchKind = "url" | "short-link" | "domain" | "threat";
+export type MatchKind =
+  | "url"
+  | "short-link"
+  | "domain"
+  | "threat"
+  | "campaign-path"
+  | "email-redirect";
 
 export type RescanMatch = {
   linkId: number;
   source: RescanSource;
   kind: MatchKind;
-  /** Feed entry or threat types that matched, kept for the admin review details. */
+  /** Feed entry, threat types or campaign evidence that matched, kept for the review details. */
   entry: string;
   host: string;
 };
@@ -186,6 +195,7 @@ const MAJOR_SITE_SUFFIXES = [
   "live.com",
   "microsoft.com",
   "microsoft365.com",
+  "microsoftonline.com",
   "notion.so",
   "office.com",
   "outlook.com",
@@ -485,6 +495,18 @@ export function decideMatch(
       if (isHomePageKey(key) && isProtectedHost(match.host, ownHosts)) return null;
       return { ...base, action: "block", details: `Destination listed in feed: ${match.entry}` };
     }
+    case "campaign-path":
+      return {
+        ...base,
+        action: "block",
+        details: `Same path as a link blocked for phishing: ${match.entry}`,
+      };
+    case "email-redirect":
+      return {
+        ...base,
+        action: "block",
+        details: `Email address in an open redirect: ${match.entry}`,
+      };
     case "domain":
       if (isSharedHost(match.host, ownHosts)) return null;
       return {
@@ -494,6 +516,87 @@ export function decideMatch(
         blockDomain: match.host,
       };
   }
+}
+
+// Paths every site of a platform shares, so equal paths say nothing about a shared campaign.
+const COMMON_PATH_PREFIXES = [
+  "wp-admin/",
+  "wp-includes/",
+  "wp-json/",
+  "wp-login.php",
+  ".well-known/",
+  "cgi-bin/",
+];
+// Shorter common paths (`login`, `index.html`) are already under the length minimum.
+const COMMON_PATHS = new Set([
+  "common/oauth2/v2.0/authorize",
+  "organizations/oauth2/v2.0/authorize",
+  "customer/account/login/referer",
+]);
+// Long enough that two hosts serving it exactly means one kit, not a coincidence.
+const MIN_DISTINCTIVE_PATH_LENGTH = 25;
+
+/**
+ * The URL's path without leading or trailing slashes, lowercased, when it is long and unusual
+ * enough to identify a phishing kit deployed across many compromised hosts. Null otherwise.
+ */
+export function distinctivePath(url: string): string | null {
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return null;
+  }
+  const path = pathname.replace(/^\/+|\/+$/g, "").toLowerCase();
+  if (path.length < MIN_DISTINCTIVE_PATH_LENGTH || COMMON_PATHS.has(path)) return null;
+  if (COMMON_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) return null;
+  return path;
+}
+
+/** Distinctive paths (see `distinctivePath`) served by links blocked for phishing. */
+export type BlockedPhishingPaths = ReadonlySet<string>;
+
+/**
+ * Indexes the destinations of links blocked for phishing by distinctive path. Destinations on a
+ * shared or major host are left out: kits copy a brand's real paths and consent phishing runs on
+ * the brand's own sign-in host, so such a path is no evidence against other links.
+ */
+export function indexBlockedPhishingPaths(
+  urls: readonly string[],
+  ownHosts: ReadonlySet<string>,
+): Set<string> {
+  const paths = new Set<string>();
+  for (const url of urls) {
+    const path = distinctivePath(url);
+    const host = path ? hostOfUrl(url) : null;
+    if (!path || !host || isSharedHost(host, ownHosts)) continue;
+    paths.add(path);
+  }
+  return paths;
+}
+
+/**
+ * Known campaign patterns in one destination of a link: a distinctive path that a link blocked
+ * for phishing serves (the same URL re-shortened, or one kit deployed across compromised sites),
+ * or an email address carried through an open redirector.
+ */
+export function campaignPatternMatches(
+  linkId: number,
+  url: string,
+  blockedPaths: BlockedPhishingPaths,
+  ownHosts: ReadonlySet<string>,
+): RescanMatch[] {
+  const matches: RescanMatch[] = [];
+  const base = { linkId, source: "campaign-pattern" as const, entry: url, host: "" };
+  const path = blockedPaths.size > 0 ? distinctivePath(url) : null;
+  if (path && blockedPaths.has(path)) {
+    const host = hostOfUrl(url);
+    if (host && !isProtectedHost(host, ownHosts)) {
+      matches.push({ ...base, kind: "campaign-path" });
+    }
+  }
+  if (findEmailInRedirect(url)) matches.push({ ...base, kind: "email-redirect" });
+  return matches;
 }
 
 /** One decision per link; a block outranks a flag, otherwise the first source wins. */

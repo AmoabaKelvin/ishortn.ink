@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { trackUpgradeClick, trackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
 import { buildUpgradeUrl } from "@/lib/billing/upgrade";
-import { copyToClipboard } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/utils/clipboard";
 import { api } from "@/trpc/react";
 
 import { downloadQRCodePng, renderQRCodePreview } from "./link-card/qrcode-export";

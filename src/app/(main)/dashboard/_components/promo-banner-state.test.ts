@@ -2,7 +2,12 @@ import { describe, expect, test } from "bun:test";
 
 import { ACTIVE_PROMO } from "@/lib/billing/promo";
 
-import { promoBannerHref, promoBannerState, promoDismissKey } from "./promo-banner-state";
+import {
+  promoBannerHref,
+  promoBannerState,
+  promoDismissKey,
+  upgradeOfferPromo,
+} from "./promo-banner-state";
 
 const inside = new Date("2026-11-27T10:00:00Z");
 const free = {
@@ -56,6 +61,27 @@ describe("promoBannerState", () => {
     expect(
       promoBannerState({ subscription: null, otherBannerShown: false, now: inside }),
     ).toBeNull();
+  });
+});
+
+describe("upgradeOfferPromo", () => {
+  test("offers the promo to Free personal workspaces inside the window", () => {
+    expect(upgradeOfferPromo({ subscription: free, isRestricted: false, now: inside })).toBe(
+      ACTIVE_PROMO,
+    );
+  });
+
+  test("is null outside the window, for restricted accounts and for other subscriptions", () => {
+    const after = new Date("2026-12-02T10:00:00Z");
+    expect(upgradeOfferPromo({ subscription: free, isRestricted: false, now: after })).toBeNull();
+    expect(upgradeOfferPromo({ subscription: free, isRestricted: true, now: inside })).toBeNull();
+    expect(upgradeOfferPromo({ subscription: null, isRestricted: false, now: inside })).toBeNull();
+    const resume = { ...free, subscriptionMode: "resume" as const };
+    const team = { ...free, isTeamWorkspace: true };
+    const pro = { ...free, plan: "pro" as const, subscriptionMode: "update" as const };
+    for (const subscription of [resume, team, pro]) {
+      expect(upgradeOfferPromo({ subscription, isRestricted: false, now: inside })).toBeNull();
+    }
   });
 });
 

@@ -183,7 +183,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     const body = await response.json();
     expect(body.error.code).toBe("validation_failed");
     expect(body.error.details).toEqual([
-      { path: "alias", message: "Aliases can be at most 255 characters" },
+      { path: "alias", message: "Alias can be at most 255 characters" },
     ]);
     expect(await storedCount()).toBe(0);
   });

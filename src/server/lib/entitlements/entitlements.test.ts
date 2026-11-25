@@ -128,6 +128,7 @@ const UNPAID_PASSED_LAPSE_ID = "ent_test_unpaid_passed_lapse";
 const UNCHECKED_UNPAID_ID = "ent_test_unchecked_unpaid";
 const CREATION_CAP_GRACE_ID = "ent_test_creation_cap_grace";
 const PASSWORD_GRACE_ID = "ent_test_password_grace";
+const PAUSED_ID = "ent_test_paused";
 const USER_IDS = [
   ...Object.values(ACCOUNTS).map((account) => account.id),
   UNCHECKED_OVER_ID,
@@ -143,6 +144,7 @@ const USER_IDS = [
   UNCHECKED_UNPAID_ID,
   CREATION_CAP_GRACE_ID,
   PASSWORD_GRACE_ID,
+  PAUSED_ID,
 ];
 const TEAM_SLUGS = ["ent-test-pro-team", "ent-test-ultra-team", "ent-test-unpaid-ultra-team"];
 
@@ -923,6 +925,41 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
     await reconcileEntitlements();
     const again = await db.query.user.findFirst({ where: eq(schema.user.id, PAST_DUE_ID) });
     expect(again?.planGraceEndsAt?.getTime()).toBe(endsAt);
+  });
+
+  test("a paused subscription using paid features gets no grace from the webhook or the reconcile", async () => {
+    await db.insert(schema.user).values({
+      id: PAUSED_ID,
+      email: `${PAUSED_ID}@entitlements.test`,
+      planCheckedAt: new Date(),
+    });
+    await db.insert(schema.subscription).values({
+      userId: PAUSED_ID,
+      subscriptionId: 4,
+      status: "active",
+      variantId: PRO_VARIANT,
+      plan: "pro",
+    });
+    for (let n = 1; n <= 3; n++) {
+      await db.insert(schema.customDomain).values({
+        domain: `d${n}.ent-test-paused.test`,
+        userId: PAUSED_ID,
+        status: "active",
+      });
+    }
+    const subWhere = eq(schema.subscription.userId, PAUSED_ID);
+    const previous = await db.query.subscription.findFirst({ where: subWhere });
+    await db.update(schema.subscription).set({ status: "paused" }).where(subWhere);
+
+    await syncEntitlementsAfterBillingEvent(PAUSED_ID, previous ?? null);
+    await reconcileEntitlements();
+
+    const row = await db.query.user.findFirst({ where: eq(schema.user.id, PAUSED_ID) });
+    expect(row?.planGraceEndsAt).toBeNull();
+    expect(row?.planGraceEmailStage).toBe(0);
+    // Paid features follow Free limits while paused.
+    const workspace = await resolveWorkspaceContext(PAUSED_ID, "ishortn.ink", db);
+    expect(workspace.plan).toBe("free");
   });
 
   async function insertFailedPayer(

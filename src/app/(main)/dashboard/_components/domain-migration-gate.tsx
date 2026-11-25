@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { env } from "@/env.mjs";
-import { copyToClipboard } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/utils/clipboard";
 import { api } from "@/trpc/react";
 
 import type { RouterOutputs } from "@/trpc/shared";

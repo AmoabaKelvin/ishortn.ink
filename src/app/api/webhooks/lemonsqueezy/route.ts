@@ -169,6 +169,9 @@ async function processWebhook(
   const createdAt = new Date(lemonsqueezySubscription.created_at);
   const endsAt = lemonsqueezySubscription.ends_at;
   const status = lemonsqueezySubscription.status;
+  const pausedUntil = lemonsqueezySubscription.pause?.resumes_at
+    ? new Date(lemonsqueezySubscription.pause.resumes_at)
+    : null;
   const productId = lemonsqueezySubscription.product_id;
   const variantId = lemonsqueezySubscription.variant_id;
   const plan = getPlanFromIds(variantId, productId) ?? "pro";
@@ -361,6 +364,7 @@ async function processWebhook(
           productId,
           renewsAt: renewsAt ? new Date(renewsAt) : null,
           endsAt: endsAt ? new Date(endsAt) : null,
+          pausedUntil,
           cardBrand,
           cardLastFour,
           providerUpdatedAt,

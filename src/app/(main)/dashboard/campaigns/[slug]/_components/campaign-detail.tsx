@@ -33,6 +33,7 @@ import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { api } from "@/trpc/react";
 
+import { useUpgradeOffer } from "../../../_components/upgrade-offer";
 import { CampaignStateBadge } from "../../_components/campaign-state-badge";
 import { CampaignLinks } from "./campaign-links";
 import { CampaignOverview } from "./campaign-overview";
@@ -68,6 +69,7 @@ export function CampaignDetail({ campaignId, initialData, plan }: CampaignDetail
     { initialData, refetchOnWindowFocus: false },
   );
 
+  const upgradeOffer = useUpgradeOffer();
   const updateCampaign = api.campaign.update.useMutation({
     onSuccess: (_, variables) => {
       toast.success(variables.status === "archived" ? "Campaign archived." : "Campaign restored.");
@@ -81,6 +83,7 @@ export function CampaignDetail({ campaignId, initialData, plan }: CampaignDetail
           error.message,
           "campaign_unarchive",
           requiredPlanForLimit(error.message, plan),
+          upgradeOffer,
         );
       } else {
         toast.error(error.message);

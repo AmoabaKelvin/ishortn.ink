@@ -24,6 +24,8 @@ import { toastMutationError } from "@/lib/analytics/plan-limit-toast";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
+import { useUpgradeOffer } from "../../_components/upgrade-offer";
+
 import type { CreateFolderInput } from "@/server/api/routers/folder/folder.input";
 
 type CreateFolderModalProps = {
@@ -51,6 +53,7 @@ export function CreateFolderModal({
 
   const utils = api.useUtils();
 
+  const upgradeOffer = useUpgradeOffer();
   const createFolderMutation = api.folder.create.useMutation({
     onSuccess: async () => {
       toast.success("Folder created successfully");
@@ -60,7 +63,7 @@ export function CreateFolderModal({
       reset();
       setOpen(false);
     },
-    onError: (error) => toastMutationError(error, "folder_create"),
+    onError: (error) => toastMutationError(error, "folder_create", { promo: upgradeOffer }),
   });
 
   const onSubmit = (data: CreateFolderInput) => {

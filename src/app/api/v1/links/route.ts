@@ -1,31 +1,21 @@
-import { TRPCError } from "@trpc/server";
-import bcrypt from "bcryptjs";
 import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import { z } from "zod";
 
-import { destinationUrlSchema } from "@/lib/utils/destination-url";
-import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
-import { trackLinkCreation } from "@/server/lib/link-creation/failures";
-import { assertUrlSafe } from "@/server/lib/phishing";
-import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
-import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
 import { apiError, errorResponse, readJsonBody, validationError } from "../errors";
 import {
-  apiDomainWriteError,
   getApiReadableDomains,
   resolveApiDomainForUser,
   restrictedAccountResponse,
   toApiLink,
   withApiKey,
 } from "../utils";
+import { createTokenLink, shortenLinkSchema } from "./create";
 import { decodeLinkCursor, encodeLinkCursor } from "./cursor";
 
 import type { LinkCursor } from "./cursor";
-import type { Plan } from "@/lib/billing/plans";
-import type { LinkCreationAttempt } from "@/server/lib/link-creation/failures";
 import type { NextRequest } from "next/server";
 
 const listLinksQuery = z.object({
@@ -113,127 +103,10 @@ export const POST = withApiKey(async (request: Request, token) => {
   const input = shortenLinkSchema.safeParse(body.body);
   if (!input.success) return validationError(input.error);
 
-  const parsedData = input.data;
-
   try {
-    const newLink = await trackLinkCreation(db, "api", token.userId, async (attempt) => {
-      const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
-      if (!requestedDomain) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Domain not available for this API key",
-        });
-      }
-      const plan = token.plan;
-      const domainError = await apiDomainWriteError(
-        token.userId,
-        token.graceUsagePlan,
-        requestedDomain,
-      );
-      if (domainError) {
-        throw new TRPCError({ code: "FORBIDDEN", message: domainError });
-      }
-      if (parsedData.activatesAt && plan === "free") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Scheduled links are only available on Pro and Ultra plans",
-        });
-      }
-      if (parsedData.alias) {
-        await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
-      }
-      return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt);
-    });
+    const newLink = await createTokenLink(token, input.data, "api");
     return Response.json(newLink, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }
 });
-
-const shortenLinkSchema = z.object({
-  url: destinationUrlSchema,
-  expiresAt: z.string().optional(),
-  activatesAt: z.string().datetime({ offset: true }).optional(),
-  expiresAfter: z.number().optional(),
-  // Link.alias is varchar(255).
-  alias: z.string().max(255, "Aliases can be at most 255 characters").optional(),
-  password: z.string().optional(),
-  domain: z.string().optional(),
-  utmParams: z
-    .object({
-      utm_source: z.string().max(255).optional(),
-      utm_medium: z.string().max(255).optional(),
-      utm_campaign: z.string().max(255).optional(),
-      utm_term: z.string().max(255).optional(),
-      utm_content: z.string().max(255).optional(),
-    })
-    .optional(),
-});
-
-type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
-
-async function createNewLink(
-  data: ShortenLinkInput,
-  userId: string,
-  plan: Plan,
-  domain: string,
-  attempt: LinkCreationAttempt,
-) {
-  if (data.password) {
-    if (plan === "free") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "You need to upgrade to a pro plan to use password protection",
-      });
-    }
-
-    const hashedPassword = bcrypt.hashSync(data.password, 10);
-    data.password = hashedPassword;
-  }
-
-  // Check for UTM params - Ultra plan only
-  if (data.utmParams) {
-    const utmParamsValues = Object.values(data.utmParams);
-    const hasUtmParams = utmParamsValues.some(
-      (value) => value !== undefined && value !== null && value !== "",
-    );
-    if (hasUtmParams && plan !== "ultra") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      });
-    }
-  }
-
-  attempt.step = "safety";
-  await assertUrlSafe(data.url);
-
-  attempt.step = "db";
-
-  const newLinkData = {
-    url: data.url,
-    alias: data.alias ?? (await generateUnreservedAlias(db, domain)),
-    disableLinkAfterClicks: data.expiresAfter,
-    disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
-    activateAt: data.activatesAt ? new Date(data.activatesAt) : null,
-    passwordHash: data.password,
-    domain,
-    userId,
-    createdByUserId: userId,
-    utmParams: data.utmParams ?? null,
-  };
-
-  // Count the link and insert it together so a failed insert doesn't consume
-  // quota and parallel requests can't exceed the monthly limit.
-  const newLinkId = await db.transaction(async (tx) => {
-    const { userRecord } = await reserveMonthlyLinkSlot(userId, tx);
-    const newLink = await tx
-      .insert(link)
-      .values({ ...newLinkData, ...restrictedLinkValues(userRecord.restrictedAt) });
-    return newLink[0].insertId;
-  });
-
-  const [retrievedLink] = await db.select().from(link).where(eq(link.id, newLinkId));
-  return { ...toApiLink(retrievedLink!), isProtected: !!retrievedLink!.passwordHash };
-}

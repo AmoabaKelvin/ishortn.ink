@@ -69,6 +69,10 @@ export const env = createEnv({
     HEALTHCHECK_TOKEN: z.string().optional(),
     // Inlined at build time by next.config.js; reported by /api/health/deep.
     BUILD_COMMIT_SHA: z.string().optional(),
+    // Comma-separated redirect URIs the browser extension connect page may send a token to, matched
+    // exactly (https://<extension-id>.chromiumapp.org/, https://<hash>.extensions.allizom.org/).
+    // Unset: /extension/connect refuses every request.
+    EXTENSION_REDIRECT_URIS: z.string().optional(),
     // Tests only: overrides the API access sunset that the api-access-sunset cron
     // stores in the ApiAccessSunset table. Leave unset in every deployed environment.
     API_FREE_ACCESS_SUNSET_AT: z
@@ -146,6 +150,7 @@ export const env = createEnv({
     HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
     BUILD_COMMIT_SHA: process.env.BUILD_COMMIT_SHA,
     API_FREE_ACCESS_SUNSET_AT: process.env.API_FREE_ACCESS_SUNSET_AT,
+    EXTENSION_REDIRECT_URIS: process.env.EXTENSION_REDIRECT_URIS,
     // Client-side env vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_APP_DOMAIN: process.env.NEXT_PUBLIC_APP_DOMAIN,

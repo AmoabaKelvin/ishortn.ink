@@ -353,6 +353,10 @@ export const solutions = {
       },
     ],
     related: [
+      {
+        href: "/blog/qr-code-on-product-packaging",
+        label: "QR codes on product packaging and labels",
+      },
       { href: "/blog/qr-code-for-google-reviews", label: "Make a QR code for Google reviews" },
       { href: "/blog/qr-code-for-flyers", label: "Put a QR code on a flyer" },
       {
@@ -666,12 +670,12 @@ export const solutions = {
       "qr codes for print shops",
       "white label qr code generator",
     ],
-    updatedOn: "2026-11-21",
+    updatedOn: "2026-11-24",
     eyebrow: "Agencies and print shops",
     icon: IconBriefcaseFilled,
     h1: "QR codes and short links for agencies and print shops",
     subhead:
-      "Make codes for clients that you can still change after the job is printed. Each client gets a separate workspace and their own domain, and you can send them the scan numbers.",
+      "Make codes for clients that you can still change after the job is printed. Each client gets a separate workspace and their own domain, and they can follow the scan numbers on a read-only stats page without an account.",
     heroPoints: ["Editable after printing", "Runs on the client's domain", "Teammates join free"],
     heroCta: "Start free",
     benefitsTitle: "Made for client work",
@@ -693,7 +697,7 @@ export const solutions = {
       },
       {
         title: "Scan numbers for every job",
-        body: "Each scan records the day, country, city, device and referrer, and unique visitors are counted separately. Pro and Ultra keep the full history, and campaign analytics export to CSV for client reports.",
+        body: "Each scan records the day, country, city, device and referrer, and unique visitors are counted separately. To show a client the results, turn on a read-only stats page for the link and send them the address. They don't need an account, and the page never shows the destination or your workspace. Pro and Ultra keep the full history, and campaign analytics export to CSV.",
         icon: IconReportAnalyticsFilled,
       },
       {
@@ -718,7 +722,7 @@ export const solutions = {
       },
       {
         title: "Repoint and report",
-        body: "Change destinations when the campaign changes, and send the client the scan numbers.",
+        body: "Change destinations when the campaign changes. For reporting, send the client the link's read-only stats page, or export the numbers to CSV.",
       },
     ],
     plans: [
@@ -741,7 +745,12 @@ export const solutions = {
       {
         question: "Can my clients see their own scan numbers?",
         answer:
-          "Yes. Invite the client to their team workspace and they see its links and analytics. Members can also create and edit links, so if you'd rather keep the client read-only, export the campaign analytics to CSV and send that instead.",
+          "Yes. Invite the client to their team workspace and they see its links and analytics. Members can also create and edit links, so if you'd rather keep the client read-only, send them a link's read-only stats page or a CSV export of the campaign analytics instead.",
+      },
+      {
+        question: "Can a client see the numbers without an account?",
+        answer:
+          "Yes. Turn on sharing for a link on its analytics page and send the address. The client sees clicks over time, countries, devices and traffic sources. Free accounts' shared pages show the last 7 days; on Pro and Ultra the client can pick the date range. Turning sharing off stops the address working at once.",
       },
       {
         question: "Is iShortn white label?",

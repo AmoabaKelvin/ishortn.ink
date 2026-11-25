@@ -18,6 +18,11 @@ export const POSTHOG_EVENTS = {
   // Analytics events
   ANALYTICS_VIEWED: "analytics_viewed",
   ANALYTICS_OVERVIEW_VIEWED: "analytics_overview_viewed",
+  // Shared read-only link stats (/stats/<token>)
+  STATS_SHARE_ENABLED: "stats_share_enabled",
+  STATS_SHARE_DISABLED: "stats_share_disabled",
+  STATS_SHARE_RESET: "stats_share_reset",
+  STATS_SHARE_COPIED: "stats_share_copied",
 
   // Verified clicks feature
   VERIFIED_CLICKS_ENABLED: "verified_clicks_enabled",
@@ -41,6 +46,9 @@ export const POSTHOG_EVENTS = {
   // Subscription events
   SUBSCRIPTION_UPGRADED: "subscription_upgraded",
   SUBSCRIPTION_DOWNGRADED: "subscription_downgraded",
+  // Pause offered in the cancel flow (downgrade-feedback-modal.tsx)
+  CANCEL_OFFER_SHOWN: "cancel_offer_shown",
+  SUBSCRIPTION_PAUSED: "subscription_paused",
 
   // Upgrade prompt events
   PLAN_LIMIT_REACHED: "plan_limit_reached",
@@ -57,6 +65,9 @@ export const POSTHOG_EVENTS = {
   ANNUAL_SWITCH_CARD_SHOWN: "annual_switch_card_shown",
   ANNUAL_SWITCH_CARD_CLICKED: "annual_switch_card_clicked",
   ANNUAL_SWITCH_CARD_DISMISSED: "annual_switch_card_dismissed",
+
+  // Clerk replaced the sign-up/sign-in placeholder (auth-form-ready.tsx)
+  AUTH_FORM_READY: "auth_form_ready",
 } as const;
 
 type PostHogEventName = (typeof POSTHOG_EVENTS)[keyof typeof POSTHOG_EVENTS];

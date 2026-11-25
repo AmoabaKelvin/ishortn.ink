@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/chart";
 import { cn, formatChartBucket, formatChartBucketLabel } from "@/lib/utils";
 
+import { PromoOfferSuffix } from "../../../_components/upgrade-offer";
 import UpgradeText from "../../../qrcodes/_components/upgrade-text";
 import { useChartAnimation } from "../../_components/use-chart-animation";
 import { ChartEmptyState } from "./chart-empty-state";
@@ -55,6 +56,8 @@ type BarChartProps = {
   isProPlan?: boolean;
   geoRules?: GeoRuleData[];
   totalVisits?: { matchedGeoRuleId: number | null }[];
+  /** Shown under "No clicks yet" when the range has no clicks. */
+  emptyDescription?: string;
 };
 
 type ChartView = "clicks" | "geotargeting";
@@ -86,7 +89,13 @@ function GeoChartTooltip({
   return null;
 }
 
-export function BarChart({ series, isProPlan, geoRules = [], totalVisits = [] }: BarChartProps) {
+export function BarChart({
+  series,
+  isProPlan,
+  geoRules = [],
+  totalVisits = [],
+  emptyDescription = "Share your link to start seeing data here.",
+}: BarChartProps) {
   const [chartView, setChartView] = useState<ChartView>("clicks");
   const [chartType, setChartType] = useState<ChartType>("area");
   const animate = useChartAnimation();
@@ -229,7 +238,7 @@ export function BarChart({ series, isProPlan, geoRules = [], totalVisits = [] }:
       {/* Charts */}
       <div className="px-2 pb-5 pt-4 sm:px-5 sm:pt-5">
         {chartView === "clicks" && !hasClicks ? (
-          <ChartEmptyState description="Share your link to start seeing data here." />
+          <ChartEmptyState description={emptyDescription} />
         ) : chartView === "clicks" ? (
           <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
             {chartType === "area" ? (
@@ -382,6 +391,7 @@ export function BarChart({ series, isProPlan, geoRules = [], totalVisits = [] }:
         <div className="px-5 pb-4 text-center text-[12px] text-neutral-400 dark:text-neutral-500">
           Showing data for the last 7 days.{" "}
           <UpgradeText text="Upgrade to Pro" source="analytics_chart" /> for full analytics.
+          <PromoOfferSuffix />
         </div>
       )}
     </Card>

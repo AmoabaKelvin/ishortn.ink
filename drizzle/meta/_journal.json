@@ -677,8 +677,29 @@
     {
       "idx": 96,
       "version": "5",
-      "when": 1795472271395,
-      "tag": "0096_align_production_schema",
+      "when": 1795476473905,
+      "tag": "0096_subscription_cancellation",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "5",
+      "when": 1795487859961,
+      "tag": "0097_extension_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "5",
+      "when": 1795523389011,
+      "tag": "0098_link_stats_share",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "5",
+      "when": 1795623437998,
+      "tag": "0099_align_production_schema",
       "breakpoints": true
     }
   ]

@@ -10,6 +10,8 @@ type CountriesAndCitiesStatsProps = {
   continentsRecords: Record<string, number>;
   proUser: boolean;
   totalClicks: number;
+  /** Overrides the plan's tabs, e.g. countries only on a shared page. */
+  views?: GeoView[];
 };
 
 type GeoView = "countries" | "cities" | "continents";
@@ -20,6 +22,7 @@ export function CountriesAndCitiesStats({
   continentsRecords,
   proUser,
   totalClicks,
+  views,
 }: CountriesAndCitiesStatsProps) {
   const countryRecordsAsArray = converRecordToArray(countriesRecords);
   const cityRecordsAsArray = converRecordToArray(citiesRecords);
@@ -33,17 +36,23 @@ export function CountriesAndCitiesStats({
 
   const [currentView, setCurrentView] = useState<GeoView>("countries");
 
-  const viewsToShow: GeoView[] = proUser
-    ? ["countries", "cities", "continents"]
-    : ["countries", "cities"];
+  const viewsToShow: GeoView[] =
+    views ?? (proUser ? ["countries", "cities", "continents"] : ["countries", "cities"]);
+
+  const showsCities = viewsToShow.includes("cities");
 
   return (
-    <BarList.BarListTitle title="Countries and cities" description="Top countries and cities">
-      <BarList.BarListTabViewSwitcher
-        currentView={currentView}
-        views={viewsToShow}
-        onChangeView={setCurrentView}
-      />
+    <BarList.BarListTitle
+      title={showsCities ? "Countries and cities" : "Countries"}
+      description={showsCities ? "Top countries and cities" : "Top countries"}
+    >
+      {viewsToShow.length > 1 && (
+        <BarList.BarListTabViewSwitcher
+          currentView={currentView}
+          views={viewsToShow}
+          onChangeView={setCurrentView}
+        />
+      )}
       <BarList records={recordsMap[currentView]} totalClicks={totalClicks} color="blue" />
     </BarList.BarListTitle>
   );

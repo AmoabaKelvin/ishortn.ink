@@ -7,7 +7,16 @@ import mysql from "mysql2/promise";
 
 import * as schema from "@/server/db/schema";
 
-import { createToken, getApiAccessStatus } from "./token.service";
+import {
+  MAX_EXTENSION_TOKENS_PER_USER,
+  createExtensionToken,
+  createToken,
+  deleteExtensionToken,
+  deleteToken,
+  getApiAccessStatus,
+  getExtensionTokens,
+  getTokens,
+} from "./token.service";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 
@@ -86,5 +95,47 @@ describe.skipIf(!testDatabaseUrl)("token service (MySQL)", () => {
       canCreateKeys: true,
       access: { status: "full" },
     });
+  });
+
+  test("Free accounts connect the extension; its tokens stay out of the API key list", async () => {
+    const created = await createExtensionToken(ctx, { label: "Chrome on macOS" });
+    expect(created.token).toHaveLength(29);
+
+    const [stored] = await db.select().from(schema.token).where(eq(schema.token.userId, USER_ID));
+    expect(stored).toMatchObject({ kind: "extension", label: "Chrome on macOS" });
+    expect(stored?.token).not.toBe(created.token);
+    expect(await getTokens(ctx)).toEqual([]);
+    expect((await getExtensionTokens(ctx)).map((t) => t.label)).toEqual(["Chrome on macOS"]);
+  });
+
+  test("connecting one more browser than the cap revokes the oldest", async () => {
+    for (let i = 0; i < MAX_EXTENSION_TOKENS_PER_USER; i++) {
+      await db.insert(schema.token).values({
+        userId: USER_ID,
+        kind: "extension",
+        label: `browser ${i}`,
+        token: `hash-${i}`,
+        createdAt: new Date(Date.UTC(2026, 0, 1 + i)),
+      });
+    }
+
+    await createExtensionToken(ctx, { label: "newest" });
+
+    const labels = (await getExtensionTokens(ctx)).map((t) => t.label);
+    expect(labels).toHaveLength(MAX_EXTENSION_TOKENS_PER_USER);
+    expect(labels).not.toContain("browser 0");
+    expect(labels).toContain("browser 1");
+    expect(labels[0]).toBe("newest");
+  });
+
+  test("API key and browser removal only touch their own kind", async () => {
+    await createExtensionToken(ctx, { label: null });
+    const [extension] = await getExtensionTokens(ctx);
+
+    await expect(deleteToken(ctx, { id: extension!.id })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await deleteExtensionToken(ctx, { id: extension!.id });
+    expect(await tokenCount()).toBe(0);
   });
 });

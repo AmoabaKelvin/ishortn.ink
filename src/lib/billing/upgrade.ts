@@ -1,12 +1,26 @@
 import type { Plan, SubscriptionMode } from "./plans";
+import type { Promo } from "./promo";
 
 export type UpgradePlan = Exclude<Plan, "free">;
 
 const UPGRADE_PLAN_NAMES = { pro: "Pro", ultra: "Ultra" } satisfies Record<UpgradePlan, string>;
 
-/** Where every upgrade prompt leads: the pricing page with the plan that removes the limit. */
-export function buildUpgradeUrl(requiredPlan: UpgradePlan, source: string): string {
+/**
+ * Where every upgrade prompt leads: the pricing page with the plan that removes the limit.
+ * Prompts that showed a promo offer add campaign UTMs so their checkouts attribute to it.
+ */
+export function buildUpgradeUrl(
+  requiredPlan: UpgradePlan,
+  source: string,
+  promo?: Promo | null,
+): string {
   const params = new URLSearchParams({ highlight: requiredPlan, source });
+  if (promo) {
+    params.set("utm_source", "app");
+    params.set("utm_medium", "upgrade_prompt");
+    params.set("utm_campaign", promo.utmCampaign);
+    params.set("utm_content", source);
+  }
   return `/dashboard/pricing?${params.toString()}`;
 }
 

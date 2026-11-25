@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { UpgradeCta } from "@/components/upgrade-cta";
 import { cn } from "@/lib/utils";
+import { LINK_NAME_MAX_LENGTH, LINK_NOTE_MAX_LENGTH } from "@/server/api/routers/link/link.input";
 import { qrcodeUpdateInput } from "@/server/api/routers/qrcode/qrcode.input";
 import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
@@ -200,6 +201,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                       <Input
                         className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                         placeholder="My QR Code"
+                        maxLength={LINK_NAME_MAX_LENGTH}
                         {...field}
                       />
                     </FormControl>
@@ -223,6 +225,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                       <Input
                         className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                         placeholder="Add a note to your QR code"
+                        maxLength={LINK_NOTE_MAX_LENGTH}
                         {...field}
                       />
                     </FormControl>

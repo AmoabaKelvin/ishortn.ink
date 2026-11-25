@@ -11,9 +11,10 @@ import { isInternalRequest } from "@/server/lib/internal-request";
 const log = logger.child({ job: "entitlements" });
 
 /**
- * Daily entitlements reconcile: starts and clears plan grace periods from live
- * subscription status and feature usage, catching missed billing webhooks, and
- * sends the grace emails that are due. Idempotent, so it is also safe to call
+ * Daily entitlements reconcile: syncs paid and failed-payment subscriptions that
+ * Lemon Squeezy has since expired or cancelled, starts and clears plan grace periods
+ * from live subscription status and feature usage, catching missed billing
+ * webhooks, and sends the grace emails that are due. Idempotent, so it is also safe to call
  * by hand (for example right after a deploy).
  *
  * With `?emails=1` it only clears over-plan graces that no longer apply and

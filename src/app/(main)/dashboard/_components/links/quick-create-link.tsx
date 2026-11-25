@@ -13,6 +13,8 @@ import { isPlanLimitError, requiredPlanForLimit } from "@/lib/billing/required-p
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { api } from "@/trpc/react";
 
+import { useUpgradeOffer } from "../upgrade-offer";
+
 import type { CreatedLink } from "./link-ready-dialog";
 
 type QuickCreateLinkProps = {
@@ -39,6 +41,7 @@ export function QuickCreateLink({ onCreated }: QuickCreateLinkProps) {
     if (window.matchMedia("(min-width: 768px)").matches) inputRef.current?.focus();
   }, []);
 
+  const upgradeOffer = useUpgradeOffer();
   const quickShorten = api.link.quickShorten.useMutation({
     onSuccess: (data) => {
       setUrl("");
@@ -53,6 +56,7 @@ export function QuickCreateLink({ onCreated }: QuickCreateLinkProps) {
           mutationError.message,
           "link_quick_create",
           requiredPlanForLimit(mutationError.message),
+          upgradeOffer,
         );
       }
     },

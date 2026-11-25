@@ -19,8 +19,18 @@ import { useTrackUpgradeShown } from "./upgrade-prompt";
 import type { ReactNode } from "react";
 import type { Root } from "react-dom/client";
 
-function Prompt({ source, enabled, label }: { source: string; enabled?: boolean; label: string }) {
-  useTrackUpgradeShown(source, enabled);
+function Prompt({
+  source,
+  enabled,
+  label,
+  promo,
+}: {
+  source: string;
+  enabled?: boolean;
+  label: string;
+  promo?: string;
+}) {
+  useTrackUpgradeShown(source, enabled, promo ? { promo } : undefined);
   return <span>{label}</span>;
 }
 
@@ -81,5 +91,32 @@ describe("useTrackUpgradeShown", () => {
     render(<Prompt source="sidebar_free" label="a" />);
     render(<Prompt source="sidebar_free_at_limit" label="a" />);
     expect(shownSources()).toEqual(["sidebar_free", "sidebar_free_at_limit"]);
+  });
+
+  test("carries the promo code only for prompts that show the offer", () => {
+    render(<Prompt key="1" source="sidebar_free" label="a" />);
+    render(<Prompt key="2" source="sidebar_free" label="a" promo="BFCM20" />);
+    const shown = trackEvent.mock.calls
+      .filter(([name]) => name === events.POSTHOG_EVENTS.UPGRADE_PROMPT_SHOWN)
+      .map(([, properties]) => properties);
+    expect(shown).toEqual([
+      { source: "sidebar_free" },
+      { source: "sidebar_free", promo: "BFCM20" },
+    ]);
+  });
+
+  test("carries extra properties such as the hidden click count", () => {
+    function Notice() {
+      useTrackUpgradeShown("link_analytics", true, { hidden_clicks: 1284, promo: "BFCM20" });
+      return null;
+    }
+    render(<Notice />);
+    render(<Notice />);
+    expect(trackEvent.mock.calls).toEqual([
+      [
+        events.POSTHOG_EVENTS.UPGRADE_PROMPT_SHOWN,
+        { source: "link_analytics", hidden_clicks: 1284, promo: "BFCM20" },
+      ],
+    ]);
   });
 });

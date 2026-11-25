@@ -5,6 +5,7 @@ import { isPlanLimitError, requiredPlanForLimit } from "@/lib/billing/required-p
 import { notifyPlanLimit } from "./upgrade-prompt";
 
 import type { Plan } from "@/lib/billing/plans";
+import type { Promo } from "@/lib/billing/promo";
 
 /**
  * Mutation `onError` for actions the server can reject for plan reasons: plan
@@ -13,10 +14,10 @@ import type { Plan } from "@/lib/billing/plans";
 export function toastMutationError(
   error: { message: string; data?: { code?: string } | null },
   source: string,
-  currentPlan?: Plan,
+  { currentPlan, promo }: { currentPlan?: Plan; promo?: Promo | null } = {},
 ) {
   if (isPlanLimitError(error)) {
-    notifyPlanLimit(error.message, source, requiredPlanForLimit(error.message, currentPlan));
+    notifyPlanLimit(error.message, source, requiredPlanForLimit(error.message, currentPlan), promo);
     return;
   }
   toast.error(error.message);

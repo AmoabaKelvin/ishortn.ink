@@ -1,8 +1,11 @@
 import { openai } from "@ai-sdk/openai";
+import { TRPCError } from "@trpc/server";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
+
+import { ALIAS_SUGGESTIONS_UNAVAILABLE, aiErrorLogFields } from "./utils";
 
 const log = logger.child({ component: "ai.service" });
 
@@ -10,12 +13,23 @@ const aliasSchema = z.object({
   recommendations: z.array(z.string()),
 });
 
-export async function generateAliasFromMetadata(metadata: {
+type AliasMetadata = {
   title?: string;
   description?: string;
   keywords?: string[];
   url: string;
-}): Promise<Array<string>> {
+};
+
+export async function generateAliasFromMetadata(metadata: AliasMetadata): Promise<Array<string>> {
+  try {
+    return await requestAliases(metadata);
+  } catch (error) {
+    log.error(aiErrorLogFields(error), "alias suggestion failed");
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: ALIAS_SUGGESTIONS_UNAVAILABLE });
+  }
+}
+
+async function requestAliases(metadata: AliasMetadata): Promise<Array<string>> {
   const result = await generateText({
     model: openai("gpt-4o-mini"),
     output: Output.object({

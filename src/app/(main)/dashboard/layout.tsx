@@ -18,11 +18,12 @@ import { DashboardNav } from "./_components/navigation/header";
 import { SidebarWrapper } from "./_components/navigation/sidebar-wrapper";
 import { PlanGraceBanner } from "./_components/plan-grace-banner";
 import { PromoBanner } from "./_components/promo-banner";
-import { promoBannerState } from "./_components/promo-banner-state";
+import { promoBannerState, upgradeOfferPromo } from "./_components/promo-banner-state";
 import { RestoreAccountButton } from "./_components/restore-account-button";
 import { SignOutButton } from "./_components/sign-out-button";
 import { trackingPausedBannerState } from "./_components/tracking-paused";
 import { TrackingPausedBanner } from "./_components/tracking-paused-banner";
+import { UpgradeOfferProvider } from "./_components/upgrade-offer";
 import { getDashboardGraceNotice, getDashboardSubscription } from "./_lib/get-subscription";
 
 interface Props {
@@ -154,6 +155,7 @@ export default async function DashboardLayout({ children }: Props) {
     subscription,
     otherBannerShown: isRestricted || emailBounced || !!trackingPaused || !!graceNotice,
   });
+  const upgradeOffer = upgradeOfferPromo({ subscription, isRestricted });
   // Dismissal is read on the client (annual-switch-card.tsx).
   const annualOffer = annualSwitchOffer({
     subscription: subscription?.subscriptions ?? null,
@@ -165,44 +167,46 @@ export default async function DashboardLayout({ children }: Props) {
   });
 
   return (
-    <div className={cn("min-h-screen bg-neutral-50 dark:bg-accent/50", funnelSans.className)}>
-      <SidebarWrapper isAdmin={isAdmin} userName={userName} />
+    <UpgradeOfferProvider promo={upgradeOffer}>
+      <div className={cn("min-h-screen bg-neutral-50 dark:bg-accent/50", funnelSans.className)}>
+        <SidebarWrapper isAdmin={isAdmin} userName={userName} />
 
-      {/* Main content area with left margin for sidebar */}
-      <div className="lg:pl-[280px]">
-        <ChangelogBanner />
-        <div className="mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
-          <DashboardNav />
-          {isRestricted && (
-            <div className="mt-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
-              <IconAlertTriangle size={16} stroke={1.5} className="mt-0.5 shrink-0" />
-              <p className="min-w-0">
-                Your account is restricted. Contact{" "}
-                <a
-                  href="mailto:safety@ishortn.ink"
-                  className="font-medium underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300"
-                >
-                  safety@ishortn.ink
-                </a>
-              </p>
+        {/* Main content area with left margin for sidebar */}
+        <div className="lg:pl-[280px]">
+          <ChangelogBanner />
+          <div className="mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
+            <DashboardNav />
+            {isRestricted && (
+              <div className="mt-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+                <IconAlertTriangle size={16} stroke={1.5} className="mt-0.5 shrink-0" />
+                <p className="min-w-0">
+                  Your account is restricted. Contact{" "}
+                  <a
+                    href="mailto:safety@ishortn.ink"
+                    className="font-medium underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-300"
+                  >
+                    safety@ishortn.ink
+                  </a>
+                </p>
+              </div>
+            )}
+            {emailBounced && <BouncedEmailBanner />}
+            {trackingPaused && <TrackingPausedBanner {...trackingPaused} />}
+            {promo && <PromoBanner promo={promo} />}
+            {annualOffer && (
+              <AnnualSwitchCard offer={annualOffer} source="dashboard" className="mt-6" />
+            )}
+            <div className="mt-7 py-4">
+              <PlanGraceBanner initialNotice={graceNotice} />
+              {children}
             </div>
-          )}
-          {emailBounced && <BouncedEmailBanner />}
-          {trackingPaused && <TrackingPausedBanner {...trackingPaused} />}
-          {promo && <PromoBanner promo={promo} />}
-          {annualOffer && (
-            <AnnualSwitchCard offer={annualOffer} source="dashboard" className="mt-6" />
-          )}
-          <div className="mt-7 py-4">
-            <PlanGraceBanner initialNotice={graceNotice} />
-            {children}
           </div>
         </div>
+
+        <DomainMigrationGate />
+
+        <AttributionRecorder />
       </div>
-
-      <DomainMigrationGate />
-
-      <AttributionRecorder />
-    </div>
+    </UpgradeOfferProvider>
   );
 }

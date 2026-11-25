@@ -94,6 +94,8 @@ function fakeContext(
         } else if (!Array.isArray(values)) {
           inserted.push(values);
         }
+        // mysql2's result shape: the header carries the new row's id.
+        return [{ insertId: inserted.length }];
       },
     }),
     update: () => ({
@@ -218,6 +220,25 @@ describe("bulkCreateLinks", () => {
       { row: 5, reason: "Alias is used by an earlier row in this file" },
     ]);
     expect(inserted.map((row) => row.alias)).toEqual(["Repeated"]);
+  });
+
+  test("rejects rows with a note or alias longer than the column", async () => {
+    const { ctx, inserted } = fakeContext(0);
+    const result = await bulkCreateLinks(
+      ctx,
+      csv(
+        `https://a.example,,,${"n".repeat(256)}`,
+        `https://b.example,${"a".repeat(256)},,`,
+        `https://c.example,,,${"n".repeat(255)}`,
+      ),
+      allowUrl,
+    );
+
+    expect(result.failures).toEqual([
+      { row: 2, reason: "Note can be at most 255 characters" },
+      { row: 3, reason: "Alias can be at most 255 characters" },
+    ]);
+    expect(inserted.map((row) => row.url)).toEqual(["https://c.example"]);
   });
 
   test("reports rows that fail the URL safety check or have no url", async () => {

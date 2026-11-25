@@ -18,4 +18,21 @@ export const tokenRouter = createTRPCRouter({
   delete: protectedProcedure.input(inputs.deleteTokenSchema).mutation(({ ctx, input }) => {
     return services.deleteToken(ctx, input);
   }),
+
+  listExtensions: protectedProcedure.query(({ ctx }) => {
+    return services.getExtensionTokens(ctx);
+  }),
+
+  // Called by the /extension/connect server action only: it checks the redirect URI and state.
+  connectExtension: protectedProcedure
+    .input(inputs.createExtensionTokenSchema)
+    .mutation(({ ctx, input }) => {
+      return services.createExtensionToken(ctx, input);
+    }),
+
+  disconnectExtension: protectedProcedure
+    .input(inputs.deleteTokenSchema)
+    .mutation(({ ctx, input }) => {
+      return services.deleteExtensionToken(ctx, input);
+    }),
 });

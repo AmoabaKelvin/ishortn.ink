@@ -1,9 +1,10 @@
 // A signed-out visitor who asks to shorten a URL (UTM builder, hero form) goes
 // through sign-up first. The URL travels in a cookie, never in the auth page's
-// address bar, where Umami, PostHog and Clarity record it and asset requests
-// send it as Referer. The UTM builder sets the cookie on click so the URL is
-// not in its CTA's href either (Clarity and PostHog record clicked hrefs);
-// middleware moves a `?url=` on an auth page into the same cookie. The auth
+// address bar, where Umami and PostHog record it and asset requests
+// send it as Referer. The homepage hero and the tool CTAs set the cookie on click,
+// so the URL is not in an href either (PostHog records clicked hrefs) and the
+// auth page loads without a redirect; middleware moves a `?url=` that still
+// arrives on an auth page (older links) into the same cookie with a 307. The auth
 // pages read it for the post-auth redirect, and middleware clears it when that
 // redirect lands.
 // Edge-safe: imported by src/middleware.ts.
@@ -28,6 +29,9 @@ export const SHORTEN_INTENT_COOKIE_OPTIONS = {
 
 const AUTH_PAGE = /^\/auth\/sign-(?:up|in)(?:\/|$)/;
 const LINK_EDITOR = "/dashboard/link/new";
+// A path on this origin: one leading slash, not followed by another slash or a
+// backslash (browsers read `//x` and `/\x` as another host).
+const SAME_ORIGIN_PATH = /^\/(?![/\\])/;
 
 /**
  * For an auth page URL carrying `url`, returns that value and the same URL
@@ -75,17 +79,54 @@ export function clearShortenIntent(response: NextResponse): NextResponse {
   return response;
 }
 
+/**
+ * `redirect_url` as a same-origin path (path + query + hash), or null. Clerk's
+ * `auth.protect()` sets it to the absolute URL that was asked for; only the app's
+ * own origin (or its `www.` host) is accepted, so it can't become an open redirect.
+ */
+export function toSameOriginPath(redirectUrl: string | undefined, appUrl: string): string | null {
+  // Backslashes are read as slashes by browsers (`/\evil.com`), and `//x` is
+  // protocol-relative; both would leave the origin.
+  if (!redirectUrl || redirectUrl.includes("\\") || redirectUrl.startsWith("//")) return null;
+  let app: URL;
+  let target: URL;
+  try {
+    app = new URL(appUrl);
+    target = new URL(redirectUrl, app);
+  } catch {
+    return null;
+  }
+  const sameOrigin =
+    target.protocol === app.protocol &&
+    target.port === app.port &&
+    (target.hostname === app.hostname || target.hostname === `www.${app.hostname}`);
+  if (!sameOrigin) return null;
+  // Checked on the parsed result too: normalisation can turn a same-origin input
+  // (`https://ishortn.ink//evil.com`, `/a/..//evil.com`) into a `//` path.
+  const path = `${target.pathname}${target.search}${target.hash}`;
+  return SAME_ORIGIN_PATH.test(path) ? path : null;
+}
+
 /** Where to send the user once signed up or in. */
 export function getPostAuthUrl({
   next,
+  redirectUrl,
   intent,
+  appUrl,
 }: {
   next: string | undefined;
+  redirectUrl: string | undefined;
   intent: string | undefined;
+  appUrl: string;
 }): string {
   // `next` is an internal destination (e.g. checkout). Restrict to same-origin
   // paths to avoid open redirects.
-  if (next && /^\/(?![/\\])/.test(next)) return next;
+  if (next && SAME_ORIGIN_PATH.test(next)) return next;
+  // Set by the middleware when a signed-out visitor opens a protected page. It
+  // also stays on Clerk's later step URLs (factor-one, factor-two, sso-callback),
+  // where `next` is gone.
+  const returnPath = toSameOriginPath(redirectUrl, appUrl);
+  if (returnPath) return returnPath;
   if (intent) return `${LINK_EDITOR}?url=${encodeURIComponent(intent)}`;
   return "/dashboard";
 }

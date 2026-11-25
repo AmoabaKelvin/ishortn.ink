@@ -48,6 +48,7 @@ import { getBioLinkBlockLimit } from "@/lib/billing/plans";
 import { isPlanLimitError, requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { api } from "@/trpc/react";
 
+import { useUpgradeOffer } from "../../../_components/upgrade-offer";
 import { AnalyticsPanel } from "./analytics-panel";
 import { BlockFormDialog } from "./block-form-dialog";
 import { BlockList } from "./block-list";
@@ -165,6 +166,7 @@ export function BioPageBuilder({
 
   const refresh = () => utils.bioPage.get.invalidate({ id: pageId });
 
+  const upgradeOffer = useUpgradeOffer();
   const updatePage = api.bioPage.update.useMutation({
     onSuccess: async () => {
       toast.success("Changes saved.");
@@ -176,7 +178,7 @@ export function BioPageBuilder({
     },
     onError: (e) => {
       if (isPlanLimitError(e)) {
-        notifyPlanLimit(e.message, bioSettingsLimitSource(e.message), "pro");
+        notifyPlanLimit(e.message, bioSettingsLimitSource(e.message), "pro", upgradeOffer);
         return;
       }
       toast.error(formatMutationError(e));
@@ -197,6 +199,7 @@ export function BioPageBuilder({
           e.message,
           /schedul/i.test(e.message) ? "bio_scheduled_blocks" : "bio_link_block_limit",
           requiredPlanForLimit(e.message, plan),
+          upgradeOffer,
         );
         return;
       }

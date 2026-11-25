@@ -4,6 +4,7 @@ import {
   DEFAULT_PLATFORM_DOMAIN,
   PLATFORM_DOMAINS,
   extractPlatformSubdomain,
+  isAppHost,
   isPlatformDomain,
 } from "./domains";
 
@@ -35,6 +36,33 @@ describe("extractPlatformSubdomain", () => {
       "acme.example.com",
     ]) {
       expect(extractPlatformSubdomain(host)).toBeNull();
+    }
+  });
+});
+
+describe("isAppHost", () => {
+  test("accepts the app domain, local dev and previews", () => {
+    for (const host of [
+      "ishortn.ink",
+      "ISHORTN.INK",
+      "ishortn.ink.",
+      "localhost:3000",
+      "app.acme.workers.dev",
+    ]) {
+      expect(isAppHost(host)).toBe(true);
+    }
+  });
+
+  test("rejects short-link, team and custom domains", () => {
+    for (const host of [
+      "isht.app",
+      "isht.ink",
+      "www.ishortn.ink",
+      "acme.ishortn.ink",
+      "go.customer.com",
+      "ishortn.ink.evil.com",
+    ]) {
+      expect(isAppHost(host)).toBe(false);
     }
   });
 });

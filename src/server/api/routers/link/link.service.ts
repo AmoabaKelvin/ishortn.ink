@@ -28,6 +28,7 @@ import {
 import { DEFAULT_PLATFORM_DOMAIN, isPlatformDomain } from "@/lib/constants/domains";
 import {
   bucketKey,
+  freeAnalyticsWindowStart,
   resolveAnalyticsRange,
   resolveRangeWindow,
   summarizeArchived,
@@ -74,6 +75,10 @@ import {
 } from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import {
+  checkCampaignPatternsAfterResponse,
+  type LinkDestination,
+} from "@/server/lib/phishing/rescan";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { generateUnreservedAlias, reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
@@ -92,6 +97,7 @@ import {
 
 import { mergeCampaignUtm } from "../campaign/utils";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
+import { LINK_ALIAS_MAX_LENGTH, LINK_NOTE_MAX_LENGTH } from "./link.input";
 import {
   assertDomainAllowed,
   assertDomainOwned,
@@ -421,6 +427,19 @@ async function fetchMetadataFailOpen(
   }
 }
 
+/** The URL and redirect-rule destinations of a link, for the campaign-pattern check. */
+function linkDestinations(
+  linkId: number,
+  url: string | undefined,
+  rules: { action: string; destination?: string | null }[] = [],
+): LinkDestination[] {
+  const urls = [
+    url,
+    ...rules.map((rule) => (rule.action === "redirect" ? rule.destination : null)),
+  ];
+  return urls.flatMap((u) => (u ? [{ linkId, url: u }] : []));
+}
+
 export const createLink = (
   ctx: WorkspaceTRPCContext,
   input: CreateLinkInput,
@@ -652,6 +671,7 @@ const createLinkSteps = async (
   }
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
+  checkCampaignPatternsAfterResponse(linkDestinations(linkId, input.url, geoRulesInput));
 
   return { id: linkId, alias, domain };
 };
@@ -936,6 +956,15 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   await Promise.all(staleKeys.map((key) => deleteFromCache(key)));
   // Always set the new cache entry with updated values
   await setInCache(buildCacheKey(updatedLink.domain, updatedLink.alias!), updatedLinkWithTags);
+
+  // After the cache write, so a block from the check isn't overwritten by it.
+  checkCampaignPatternsAfterResponse(
+    linkDestinations(
+      input.id,
+      input.url !== existingLink.url ? input.url : undefined,
+      geoRulesInput,
+    ),
+  );
 };
 
 export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
@@ -1240,6 +1269,7 @@ const shortenLinkSteps = async (
   });
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
+  checkCampaignPatternsAfterResponse(linkDestinations(Number(result.insertId), input.url));
 
   return {
     id: result.insertId,
@@ -1254,6 +1284,58 @@ const topReferrerName = (referers: Record<string, number>) =>
     (top, row) => (top && top.clicks >= row.clicks ? top : row),
     null,
   )?.name ?? "Direct";
+
+/**
+ * A link's visits and unique visits inside a window, plus the per-day counts archived from
+ * visits past the retention window. Shared by the owner's and the shared stats pages.
+ */
+export const getLinkVisitsInWindow = (
+  db: WorkspaceTRPCContext["db"],
+  linkId: number,
+  from: Date,
+  to: Date,
+) =>
+  Promise.all([
+    db.query.linkVisit.findMany({
+      where: (visit, { eq, and, gte, lte }) =>
+        and(eq(visit.linkId, linkId), gte(visit.createdAt, from), lte(visit.createdAt, to)),
+    }),
+    db.query.uniqueLinkVisit.findMany({
+      where: (visit, { eq, and, gte, lte }) =>
+        and(eq(visit.linkId, linkId), gte(visit.createdAt, from), lte(visit.createdAt, to)),
+    }),
+    db.query.linkVisitDailySummary.findMany({
+      where: (s, { eq, and, gte, lte }) =>
+        and(eq(s.linkId, linkId), gte(s.date, bucketKey(from)), lte(s.date, bucketKey(to))),
+    }),
+  ]);
+
+/**
+ * Clicks on these links before `before`, raw visits plus archived daily summaries, in one
+ * statement: the count uses the (linkId, createdAt) index, the subquery the (linkId, date) one.
+ * Summary rows only hold whole days, and `before` is a UTC midnight, so neither side overlaps.
+ */
+export const countClicksBefore = async (
+  db: WorkspaceTRPCContext["db"],
+  linkIds: number[],
+  before: Date,
+) => {
+  if (linkIds.length === 0) return 0;
+  const archived = db
+    .select({ clicks: sql`coalesce(sum(${linkVisitDailySummary.clicks}), 0)` })
+    .from(linkVisitDailySummary)
+    .where(
+      and(
+        inArray(linkVisitDailySummary.linkId, linkIds),
+        lt(linkVisitDailySummary.date, bucketKey(before)),
+      ),
+    );
+  const [row] = await db
+    .select({ clicks: sql<number>`count(*) + (${archived})`.mapWith(Number) })
+    .from(linkVisit)
+    .where(and(inArray(linkVisit.linkId, linkIds), lt(linkVisit.createdAt, before)));
+  return row?.clicks ?? 0;
+};
 
 export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisitsInput) => {
   // Use workspace plan - team workspaces inherit Ultra features
@@ -1288,82 +1370,67 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
   const prevEnd = startDate;
   const prevStart = new Date(startDate.getTime() - windowMs);
 
-  const [totalVisits, uniqueVisits, linkGeoRules, prevCounts, summaries, prevSummaries] =
-    await Promise.all([
-      ctx.db.query.linkVisit.findMany({
-        where: (visit, { eq, and, gte, lte }) =>
-          and(
-            eq(visit.linkId, foundLink.id),
-            gte(visit.createdAt, startDate),
-            lte(visit.createdAt, now),
-          ),
-      }),
-      ctx.db.query.uniqueLinkVisit.findMany({
-        where: (visit, { eq, and, gte, lte }) =>
-          and(
-            eq(visit.linkId, foundLink.id),
-            gte(visit.createdAt, startDate),
-            lte(visit.createdAt, now),
-          ),
-      }),
-      ctx.db.query.geoRule.findMany({
-        where: (rule, { eq }) => eq(rule.linkId, foundLink.id),
-        columns: {
-          id: true,
-          action: true,
-        },
-      }),
-      hasPreviousPeriod
-        ? Promise.all([
-            ctx.db
-              .select({
-                total: count(),
-                verified: sql<number>`SUM(CASE WHEN ${linkVisit.verifiedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
-              })
-              .from(linkVisit)
-              .where(
-                and(
-                  eq(linkVisit.linkId, foundLink.id),
-                  gte(linkVisit.createdAt, prevStart),
-                  lt(linkVisit.createdAt, prevEnd),
-                ),
-              ),
-            ctx.db
-              .select({ value: count() })
-              .from(uniqueLinkVisit)
-              .where(
-                and(
-                  eq(uniqueLinkVisit.linkId, foundLink.id),
-                  gte(uniqueLinkVisit.createdAt, prevStart),
-                  lt(uniqueLinkVisit.createdAt, prevEnd),
-                ),
-              ),
-          ])
-        : Promise.resolve(null),
-      ctx.db.query.linkVisitDailySummary.findMany({
-        where: (s, { eq, and, gte, lte }) =>
-          and(
-            eq(s.linkId, foundLink.id),
-            gte(s.date, bucketKey(startDate)),
-            lte(s.date, bucketKey(now)),
-          ),
-      }),
-      hasPreviousPeriod
-        ? ctx.db
+  const [
+    [totalVisits, uniqueVisits, summaries],
+    linkGeoRules,
+    prevCounts,
+    prevSummaries,
+    hiddenClicks,
+  ] = await Promise.all([
+    getLinkVisitsInWindow(ctx.db, foundLink.id, startDate, now),
+    ctx.db.query.geoRule.findMany({
+      where: (rule, { eq }) => eq(rule.linkId, foundLink.id),
+      columns: {
+        id: true,
+        action: true,
+      },
+    }),
+    hasPreviousPeriod
+      ? Promise.all([
+          ctx.db
             .select({
-              clicks: sum(linkVisitDailySummary.clicks),
-              uniqueClicks: sum(linkVisitDailySummary.uniqueClicks),
+              total: count(),
+              verified: sql<number>`SUM(CASE WHEN ${linkVisit.verifiedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
             })
-            .from(linkVisitDailySummary)
+            .from(linkVisit)
             .where(
               and(
-                eq(linkVisitDailySummary.linkId, foundLink.id),
-                gte(linkVisitDailySummary.date, bucketKey(prevStart)),
-                lt(linkVisitDailySummary.date, bucketKey(prevEnd)),
+                eq(linkVisit.linkId, foundLink.id),
+                gte(linkVisit.createdAt, prevStart),
+                lt(linkVisit.createdAt, prevEnd),
               ),
-            )
-        : Promise.resolve(null),
-    ]);
+            ),
+          ctx.db
+            .select({ value: count() })
+            .from(uniqueLinkVisit)
+            .where(
+              and(
+                eq(uniqueLinkVisit.linkId, foundLink.id),
+                gte(uniqueLinkVisit.createdAt, prevStart),
+                lt(uniqueLinkVisit.createdAt, prevEnd),
+              ),
+            ),
+        ])
+      : Promise.resolve(null),
+    hasPreviousPeriod
+      ? ctx.db
+          .select({
+            clicks: sum(linkVisitDailySummary.clicks),
+            uniqueClicks: sum(linkVisitDailySummary.uniqueClicks),
+          })
+          .from(linkVisitDailySummary)
+          .where(
+            and(
+              eq(linkVisitDailySummary.linkId, foundLink.id),
+              gte(linkVisitDailySummary.date, bucketKey(prevStart)),
+              lt(linkVisitDailySummary.date, bucketKey(prevEnd)),
+            ),
+          )
+      : Promise.resolve(null),
+    userHasPaidPlan
+      ? Promise.resolve(0)
+      : countClicksBefore(ctx.db, [foundLink.id], freeAnalyticsWindowStart(now)),
+  ]);
 
   const archived = summarizeArchived(summaries);
 
@@ -1377,6 +1444,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
 
   if (totalVisits.length === 0) {
     return {
+      linkId: foundLink.id,
       totalVisits: [],
       uniqueVisits: [],
       topCountry: "N/A",
@@ -1386,6 +1454,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
       geoRules: linkGeoRules,
       previous,
       archived,
+      hiddenClicks,
       domain,
       range,
       custom,
@@ -1414,6 +1483,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
   }, {});
 
   return {
+    linkId: foundLink.id,
     totalVisits,
     uniqueVisits,
     topCountry,
@@ -1423,6 +1493,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
     geoRules: linkGeoRules,
     previous,
     archived,
+    hiddenClicks,
     domain,
     range,
     custom,
@@ -1449,6 +1520,7 @@ export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllA
     clicksByLink: {},
     clicksByDestination: {},
     archived: summarizeArchived([]),
+    hiddenClicks: 0,
     range,
     custom,
     window,
@@ -1467,7 +1539,7 @@ export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllA
 
   // Fetch all visits for all links, plus the per-day counts archived from
   // visits past the retention window (summed in SQL, so one row per day).
-  const [totalVisits, uniqueVisits, summaries] = await Promise.all([
+  const [totalVisits, uniqueVisits, summaries, hiddenClicks] = await Promise.all([
     ctx.db.query.linkVisit.findMany({
       where: (visit, { inArray, and, gte, lte }) =>
         and(
@@ -1499,12 +1571,15 @@ export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllA
         ),
       )
       .groupBy(linkVisitDailySummary.date),
+    userHasPaidPlan
+      ? Promise.resolve(0)
+      : countClicksBefore(ctx.db, linkIds, freeAnalyticsWindowStart(now)),
   ]);
 
   const archived = summarizeArchived(summaries);
 
   if (totalVisits.length === 0) {
-    return { ...empty, archived };
+    return { ...empty, archived, hiddenClicks };
   }
 
   // Aggregate clicks by link
@@ -1557,6 +1632,7 @@ export const getAllUserAnalytics = async (ctx: WorkspaceTRPCContext, input: AllA
     clicksByLink,
     clicksByDestination,
     archived,
+    hiddenClicks,
     range,
     custom,
     window,
@@ -1789,9 +1865,6 @@ export const checkAliasAvailability = async (
 // request; cap them so a 1,000-row file doesn't fan out all at once.
 const CSV_IMPORT_CONCURRENCY = 8;
 
-// Width of the alias column; a longer alias would fail the insert with a driver error.
-const MAX_IMPORT_ALIAS_LENGTH = 20;
-
 type ImportLink = {
   row: number;
   url: string;
@@ -1978,10 +2051,10 @@ const bulkCreateLinkRows = async (
           message: "Alias is used by an earlier row in this file",
         });
       }
-      if (record.alias.length > MAX_IMPORT_ALIAS_LENGTH) {
+      if (record.alias.length > LINK_ALIAS_MAX_LENGTH) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Alias can be at most ${MAX_IMPORT_ALIAS_LENGTH} characters`,
+          message: `Alias can be at most ${LINK_ALIAS_MAX_LENGTH} characters`,
         });
       }
       await validateAlias(ctx, record.alias, record.domain, isPaidPlan);
@@ -2005,6 +2078,12 @@ const bulkCreateLinkRows = async (
       if (!record.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
       const url = normalizeDestinationUrl(record.url);
       if (!url) throw new TRPCError({ code: "BAD_REQUEST", message: INVALID_URL_MESSAGE });
+      if (record.note && record.note.length > LINK_NOTE_MAX_LENGTH) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Note can be at most ${LINK_NOTE_MAX_LENGTH} characters`,
+        });
+      }
       const domainError = domainErrors.get(record.domain);
       if (domainError) throw domainError;
       return prepare({ ...record, url });
@@ -2017,6 +2096,7 @@ const bulkCreateLinkRows = async (
   let importAllotted = 0;
   // Rows often share a destination, and a Bitly code always shares its row's.
   const scans = new Map<string, Promise<void>>();
+  const createdDestinations: LinkDestination[] = [];
   const createLinks = async (checks: PromiseSettledResult<PreparedLink>[]) => {
     const steps = checks.map((): LinkCreationStep => "validation");
     const usesImportAllowance = checks.map(() => false);
@@ -2055,7 +2135,7 @@ const bulkCreateLinkRows = async (
         steps[index] = "db";
         const ownership = workspaceOwnership(ctx.workspace);
         const alias = record.alias ?? (await generateUnreservedAlias(ctx.db, record.domain));
-        await ctx.db.insert(link).values({
+        const [inserted] = await ctx.db.insert(link).values({
           url: record.url,
           alias,
           name: record.name,
@@ -2066,6 +2146,7 @@ const bulkCreateLinkRows = async (
           note: record.note,
           ...restrictedLinkValues(ctx.restrictedAt),
         });
+        createdDestinations.push({ linkId: Number(inserted.insertId), url: record.url });
         return { record: { ...record, alias }, alreadyImported: false };
       },
     );
@@ -2167,6 +2248,7 @@ const bulkCreateLinkRows = async (
     await incrementWorkspaceLinkCount(ctx, currentCount, limit, created - importCreated);
   }
   await incrementCustomDomainImportCount(ctx, importCreated);
+  checkCampaignPatternsAfterResponse(createdDestinations);
 
   const importAllowanceRemaining = importAllowanceLeft - importCreated;
   const importNotice =

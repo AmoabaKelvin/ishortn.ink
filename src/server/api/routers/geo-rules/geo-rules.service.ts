@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { canUseGeoRules, getGeoRulesLimit, isUnlimitedGeoRules } from "@/lib/billing/plans";
 import { deleteGeoRulesFromCache } from "@/lib/core/cache";
 import { geoRule } from "@/server/db/schema";
+import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { workspaceUsagePlan } from "@/server/lib/workspace";
 
@@ -113,6 +114,9 @@ export async function createGeoRule(ctx: WorkspaceTRPCContext, input: CreateGeoR
 
   // Invalidate cache
   await deleteGeoRulesFromCache(input.linkId);
+  if (input.rule.action === "redirect" && input.rule.destination) {
+    checkCampaignPatternsAfterResponse([{ linkId: input.linkId, url: input.rule.destination }]);
+  }
 
   return {
     id: Number(result.insertId),
@@ -157,6 +161,11 @@ export async function updateGeoRule(ctx: WorkspaceTRPCContext, input: UpdateGeoR
 
   // Invalidate cache
   await deleteGeoRulesFromCache(existingRule.linkId);
+  if (input.rule.action === "redirect" && input.rule.destination) {
+    checkCampaignPatternsAfterResponse([
+      { linkId: existingRule.linkId, url: input.rule.destination },
+    ]);
+  }
 
   return {
     id: input.ruleId,

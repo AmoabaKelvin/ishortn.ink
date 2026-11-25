@@ -1,0 +1,61 @@
+---
+title: Browser extension
+description: Shorten the page you're on, copy the short link and get its QR code from the browser toolbar. Works in Chrome, Edge and Firefox, on every plan including Free.
+---
+
+The iShortn browser extension shortens the tab you're looking at in one click. It copies the short link to your clipboard and shows a QR code you can download as a PNG. It works in Chrome, Edge and Firefox (version 115 or later), on every plan, including Free.
+
+You don't need an account to make a QR code: before you connect, the extension shows a QR code for the current page, generated on your device. Short links need an iShortn account.
+
+## Install
+
+The extension isn't in the browser stores yet. Until it is, build it from source with [Node.js](https://nodejs.org) 22.18 or later:
+
+```bash
+git clone https://github.com/AmoabaKelvin/ishortn.ink.git
+cd ishortn.ink/integrations/browser-extension
+npm ci
+npm run build
+```
+
+- **Chrome and Edge**: open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode**, click **Load unpacked** and pick `dist/chrome`.
+- **Firefox**: open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `dist/firefox/manifest.json`.
+
+## Connect your account
+
+1. Click the iShortn icon in the toolbar (or press `Alt+Shift+S`).
+2. Click **Connect iShortn**. A small iShortn window opens. Sign in, or create a free account.
+3. Check the account and click **Connect**.
+
+The extension gets its own token, separate from [API keys](/docs/api). It can only create links and read your recent links in your personal workspace; it can't use the iShortn API. Links it creates go to your personal workspace, not a team workspace.
+
+## Use it
+
+- **Shorten & copy**: shortens the current tab and copies the short link. On Pro and Ultra, the extension shortens the page as soon as you open it; on Free you click **Shorten & copy**, so opening the popup doesn't use up links. Change this with **Shorten automatically when I open the popup**.
+- **QR code**: every short link gets a QR code. **Download PNG** saves it.
+- **Customize**: pick a custom alias and a domain (a [platform domain](/docs/platform-domains), or one of your [custom domains](/docs/custom-domains) on paid plans), then click **Create**.
+- Reopening the popup on the same page within 10 minutes shows the link you already made instead of creating another.
+- On pages that can't be shortened, such as the browser's settings or new tab page, paste a URL instead. Your five most recent links are listed below it.
+
+## Permissions
+
+| Permission | Why |
+| --- | --- |
+| `activeTab` | Reads the URL of the current tab, only after you click the toolbar icon or press the shortcut. The extension can't see your other tabs or your browsing history. |
+| `storage` | Keeps your connection token and settings on this device. The token is never synced to other devices. |
+| `identity` | Opens the iShortn sign-in window when you click **Connect iShortn**. |
+
+The extension has no content scripts and no access to the pages you visit. It only talks to `ishortn.ink`.
+
+## Free and paid plans
+
+Links from the extension count toward your monthly link limit, the same as links made in the dashboard: 30 a month on Free. The popup shows how many you've used. When you reach the limit, or pick something your plan doesn't include (such as a custom domain on Free, or an alias shorter than 6 characters), the extension says so and links to [Pricing](/pricing). See [Plans and limits](/docs/plans).
+
+Password protection, scheduling, UTM parameters and expiry aren't in the extension. Set them in the dashboard, or with the [API](/docs/api) on Pro and Ultra.
+
+## Disconnect
+
+- In the extension: click **Sign out** at the bottom of the popup.
+- From any device: open [Settings → Connected Browsers](/dashboard/settings#connected-browsers) and click **Disconnect** next to the browser.
+
+Disconnecting revokes that browser's token straight away. You can connect up to 10 browsers; connecting another one disconnects the oldest.

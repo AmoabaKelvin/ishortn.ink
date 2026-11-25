@@ -4,12 +4,17 @@ import { useState } from "react";
 
 import { BarList } from "./bar-list";
 
+type UserAgentView = "device" | "os" | "browser" | "model";
+
+const ALL_VIEWS: UserAgentView[] = ["device", "os", "browser", "model"];
+
 type UserAgentStatsProps = {
   clicksPerDevice: Record<string, number>;
   clicksPerOS: Record<string, number>;
   clicksPerBrowser: Record<string, number>;
   clicksPerModel: Record<string, number>;
   totalClicks: number;
+  views?: UserAgentView[];
 };
 
 export function UserAgentStats({
@@ -18,13 +23,14 @@ export function UserAgentStats({
   clicksPerBrowser,
   clicksPerModel,
   totalClicks,
+  views = ALL_VIEWS,
 }: UserAgentStatsProps) {
   const deviceRecordsAsArray = converRecordToArray(clicksPerDevice);
   const osRecordsAsArray = converRecordToArray(clicksPerOS);
   const browserRecordsAsArray = converRecordToArray(clicksPerBrowser);
   const modelRecordsAsArray = converRecordToArray(clicksPerModel);
 
-  const [currentView, setCurrentView] = useState<"device" | "os" | "browser" | "model">("device");
+  const [currentView, setCurrentView] = useState<UserAgentView>("device");
 
   const recordsMap = {
     device: deviceRecordsAsArray,
@@ -36,11 +42,15 @@ export function UserAgentStats({
   return (
     <BarList.BarListTitle
       title="Clicks Statistics"
-      description="Top devices, OS, browsers, and models"
+      description={
+        views.includes("model")
+          ? "Top devices, OS, browsers, and models"
+          : "Top devices, browsers, and OS"
+      }
     >
       <BarList.BarListTabViewSwitcher
         currentView={currentView}
-        views={["device", "os", "browser", "model"]}
+        views={views}
         onChangeView={setCurrentView}
       />
       <BarList records={recordsMap[currentView]} totalClicks={totalClicks} color="green" />

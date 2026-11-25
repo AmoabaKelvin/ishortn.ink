@@ -49,7 +49,12 @@ import {
 import { clientLogger } from "@/lib/logger/client";
 import { normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { fetchMetadataInfo } from "@/lib/utils/fetch-link-metadata";
-import { createLinkSchema } from "@/server/api/routers/link/link.input";
+import {
+  createLinkSchema,
+  LINK_ALIAS_MAX_LENGTH,
+  LINK_NAME_MAX_LENGTH,
+  LINK_NOTE_MAX_LENGTH,
+} from "@/server/api/routers/link/link.input";
 import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
 
@@ -65,6 +70,7 @@ import { checkIframeable } from "../../_components/links/check-iframeable";
 import { LinkExpirationDatePicker } from "../../_components/links/link-card/update-modal";
 import { LinkReadyDialog } from "../../_components/links/link-ready-dialog";
 import { PlanBadge, SectionToggle } from "../../_components/section-toggle";
+import { useUpgradeOffer } from "../../_components/upgrade-offer";
 import { UtmParamsForm } from "../../_components/utm-params-form";
 import { UtmTemplateSelector } from "../../_components/utm-template-selector";
 import { revalidateHomepage } from "../../revalidate-homepage";
@@ -141,9 +147,6 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
       setGeneratedAliases(data.alias);
       form.setValue("alias", data.alias[0]);
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
   });
   const { data: userTags } = api.tag.list.useQuery();
   const { data: campaigns } = api.campaign.listNames.useQuery();
@@ -170,12 +173,17 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
   const [debouncedAlias] = useDebounce(form.watch("alias"), 500);
   const selectedDomain = form.watch("domain") ?? DEFAULT_PLATFORM_DOMAIN;
 
+  // Only the regenerate button reports failures; the automatic suggestion after
+  // metadata loads fails silently so the alias field just stays editable.
   async function generateAliases(metadata: { title: string; description: string }) {
-    generateAliasMutation.mutate({
-      url: normalizeDestinationUrl(form.getValues("url")) ?? form.getValues("url"),
-      title: metadata.title,
-      description: metadata.description,
-    });
+    generateAliasMutation.mutate(
+      {
+        url: normalizeDestinationUrl(form.getValues("url")) ?? form.getValues("url"),
+        title: metadata.title,
+        description: metadata.description,
+      },
+      { onError: (error) => toast.error(error.message) },
+    );
   }
 
   const cycleAlias = (direction: "up" | "down") => {
@@ -240,6 +248,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
     await generateAliases(currentMetadata);
   };
 
+  const upgradeOffer = useUpgradeOffer();
   const formUpdateMutation = api.link.create.useMutation({
     onSuccess: async (created) => {
       await revalidateHomepage();
@@ -254,6 +263,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
           error.message,
           "link_create",
           requiredPlanForLimit(error.message, userSubscription.data?.plan),
+          upgradeOffer,
         );
       } else {
         toast.error(error.message);
@@ -508,6 +518,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                     <FormControl>
                       <Input
                         placeholder="My Awesome Link"
+                        maxLength={LINK_NAME_MAX_LENGTH}
                         className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         {...field}
                       />
@@ -557,6 +568,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                         <div className="h-4 w-px bg-neutral-200 dark:bg-border" />
                         <input
                           placeholder="short-link"
+                          maxLength={LINK_ALIAS_MAX_LENGTH}
                           className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 dark:text-foreground placeholder:text-neutral-400 focus:outline-none"
                           {...field}
                         />
@@ -641,6 +653,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                     </FormLabel>
                     <FormControl>
                       <Input
+                        maxLength={LINK_NOTE_MAX_LENGTH}
                         className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                         {...field}
                       />

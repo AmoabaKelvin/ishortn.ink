@@ -14,6 +14,16 @@ export function getBioReferralUrl(slug: string): string {
   return `https://${APP_BASE_DOMAIN}/?${params.toString()}`;
 }
 
+/** Footer credit on a shared, read-only link analytics page (/stats/<token>). */
+export function getSharedStatsReferralUrl(): string {
+  const params = new URLSearchParams({
+    utm_source: "shared_stats",
+    utm_medium: "referral",
+    utm_campaign: "made_with_ishortn",
+  });
+  return `https://${APP_BASE_DOMAIN}/?${params.toString()}`;
+}
+
 /** Tags a marketing-site URL or path linked from inside the product. */
 export function withProductUtm(url: string, medium: "email" | "app", campaign: string): string {
   const params = new URLSearchParams({

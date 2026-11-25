@@ -22,7 +22,7 @@ let loadStarted = false;
 let importStarted = false;
 let holds = 0;
 let resumeAfterHolds: (() => void) | null = null;
-const capturePageview = createPageviewTracker(deferred.run);
+const capturePageview = createPageviewTracker(deferred.run, () => document.cookie);
 const syncIdentity = createIdentityTracker(deferred.run);
 
 function whenIdle(callback: () => void) {

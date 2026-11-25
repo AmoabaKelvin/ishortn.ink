@@ -17,10 +17,10 @@ import { api } from "@/trpc/server";
 
 export const dynamic = "force-dynamic";
 
-import UpgradeText from "../../qrcodes/_components/upgrade-text";
 import { RangeSelectorWrapper } from "../[alias]/_components/range-selector-wrapper";
 import { AnalyticsTracker } from "../_components/analytics-tracker";
 import { ExportClicksButton } from "../_components/export-clicks-button";
+import { LimitedAnalyticsNotice } from "../_components/limited-analytics-notice";
 import { RangePendingContent, RangeTransitionProvider } from "../_components/range-transition";
 import { AnalyticsFilter } from "./_components/analytics-filter";
 import { DestinationUrlsCard } from "./_components/destination-urls-card";
@@ -77,6 +77,7 @@ export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPage
     clicksByLink,
     clicksByDestination,
     archived,
+    hiddenClicks,
     range,
     custom,
     window,
@@ -100,10 +101,11 @@ export default async function AnalyticsOverviewPage(props: AnalyticsOverviewPage
             Analytics Overview
           </h1>
           {!isProPlan && (
-            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
-              Viewing limited analytics (last 7 days).{" "}
-              <UpgradeText text="Upgrade to Pro" source="analytics_overview" /> for full data.
-            </p>
+            <LimitedAnalyticsNotice
+              hiddenClicks={hiddenClicks}
+              source="analytics_overview"
+              className="mt-1"
+            />
           )}
         </div>
 

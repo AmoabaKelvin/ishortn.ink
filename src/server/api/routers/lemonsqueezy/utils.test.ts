@@ -3,7 +3,9 @@ import { describe, expect, test } from "bun:test";
 import {
   createCheckoutWithPromoFallback,
   parseProviderUpdatedAt,
+  pauseUpdate,
   providerErrorToClient,
+  resumeUpdate,
 } from "./utils";
 
 describe("providerErrorToClient", () => {
@@ -96,5 +98,23 @@ describe("createCheckoutWithPromoFallback", () => {
     expect(result).toBe(failed);
     expect(discountCode).toBe("BFCM20");
     expect(calls).toEqual(["BFCM20"]);
+  });
+});
+
+describe("pauseUpdate", () => {
+  test("voids invoices until the resume date", () => {
+    expect(pauseUpdate(new Date("2026-12-23T10:00:00Z"))).toEqual({
+      pause: { mode: "void", resumesAt: "2026-12-23T10:00:00.000Z" },
+    });
+  });
+});
+
+describe("resumeUpdate", () => {
+  test("a paused subscription is unpaused", () => {
+    expect(resumeUpdate("paused")).toEqual({ pause: null });
+  });
+
+  test("a cancelled subscription is uncancelled", () => {
+    expect(resumeUpdate("cancelled")).toEqual({ cancelled: false });
   });
 });

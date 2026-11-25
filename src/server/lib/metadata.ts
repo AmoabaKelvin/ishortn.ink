@@ -36,13 +36,88 @@ function absolutize(href: string | null, base: string): string {
   }
 }
 
-function decodeEntities(text: string): string {
-  return text
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'");
+const NAMED_ENTITIES = new Map([
+  ["amp", "&"],
+  ["lt", "<"],
+  ["gt", ">"],
+  ["quot", '"'],
+  ["apos", "'"],
+]);
+
+// One pass, so "&amp;lt;" stays "&lt;" instead of being decoded twice.
+export function decodeEntities(text: string): string {
+  return text.replace(
+    /&(?:#(\d+)|#x([0-9a-f]+)|(amp|lt|gt|quot|apos));/gi,
+    (match, dec: string | undefined, hex: string | undefined, name: string | undefined) => {
+      if (name) return NAMED_ENTITIES.get(name.toLowerCase()) ?? match;
+      const code = dec ? Number.parseInt(dec, 10) : Number.parseInt(hex ?? "", 16);
+      const valid = code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff);
+      return valid ? String.fromCodePoint(code) : "\uFFFD";
+    },
+  );
+}
+
+function supportedEncoding(label: string | null | undefined): string | null {
+  if (!label) return null;
+  try {
+    return new TextDecoder(label.trim()).encoding;
+  } catch {
+    return null;
+  }
+}
+
+function bomEncoding(bytes: Uint8Array): string | null {
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return "utf-8";
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return "utf-16be";
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return "utf-16le";
+  return null;
+}
+
+function metaEncoding(bytes: Uint8Array): string | null {
+  // Charset labels are ASCII, so any ASCII-compatible decoding finds them.
+  const head = new TextDecoder("windows-1252").decode(bytes.subarray(0, 1024));
+  for (const tag of head.match(/<meta\s[^>]*>/gi) ?? []) {
+    const label = tag.match(/charset\s*=\s*["']?\s*([\w.:-]+)/i)?.[1];
+    const encoding = supportedEncoding(label);
+    if (!encoding) continue;
+    // A page that could be read as ASCII to find this tag isn't really UTF-16;
+    // the HTML spec maps that declaration to UTF-8.
+    return encoding.startsWith("utf-16") ? "utf-8" : encoding;
+  }
+  return null;
+}
+
+/** Charset from the Content-Type header, then the BOM, then a <meta> tag, then UTF-8. */
+export function detectCharset(bytes: Uint8Array, contentType: string | null): string {
+  const headerLabel = contentType?.match(/charset\s*=\s*["']?([^"';\s]+)/i)?.[1];
+  return supportedEncoding(headerLabel) ?? bomEncoding(bytes) ?? metaEncoding(bytes) ?? "utf-8";
+}
+
+export function decodeHtml(bytes: Uint8Array, contentType: string | null): string {
+  return new TextDecoder(detectCharset(bytes, contentType)).decode(bytes);
+}
+
+async function readCapped(response: Response, maxBytes: number): Promise<Uint8Array> {
+  if (!response.body) return new Uint8Array();
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (total < maxBytes) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = value.subarray(0, maxBytes - total);
+    chunks.push(chunk);
+    total += chunk.length;
+  }
+  await reader.cancel().catch(() => {});
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
 }
 
 export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
@@ -69,11 +144,12 @@ export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
   const base = response.url || target.toString();
   const fallbackFavicon = absolutize("/favicon.ico", base);
 
-  if (!(response.headers.get("content-type") ?? "").includes("html")) {
+  const contentType = response.headers.get("content-type");
+  if (!(contentType ?? "").includes("html")) {
     return { title: "", description: "", image: "", favicon: fallbackFavicon };
   }
 
-  const html = (await response.text()).slice(0, MAX_HTML_BYTES);
+  const html = decodeHtml(await readCapped(response, MAX_HTML_BYTES), contentType);
 
   const title =
     findMeta(html, ["og:title", "twitter:title"]) ??

@@ -125,6 +125,11 @@ export function graceUsagePlan(
   return plan;
 }
 
+/** Paused by the customer: paid features follow Free limits, with no grace period or emails. */
+export function isPausedSubscription(subscription?: SubscriptionState): boolean {
+  return subscription?.status === "paused";
+}
+
 /** Subscription statuses where access ended without the customer choosing another plan. */
 export function isLapsedStatus(status: string | null | undefined): boolean {
   return status !== "active" && status !== "on_trial";
@@ -180,7 +185,11 @@ export function graceChangeAfterBillingEvent(input: {
   // so a later lapse gets a grace of its own.
   if (lapseEndedByPayment(input.subscription, input.grace, now)) return { type: "clear" };
 
-  const lapsed = isLapsedStatus(input.subscription?.status) && !planAtLeast(after, input.before);
+  // A pause was chosen by the customer and was shown its Free limits, so it gets no grace.
+  const lapsed =
+    isLapsedStatus(input.subscription?.status) &&
+    !isPausedSubscription(input.subscription) &&
+    !planAtLeast(after, input.before);
   if (lapsed && !isGraceActive(planGraceEndsAt, now)) {
     const lapsedAt = input.lapsedAt ?? now;
     return {

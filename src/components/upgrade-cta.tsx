@@ -5,6 +5,8 @@ import Link from "next/link";
 import { trackUpgradeClick, useTrackUpgradeShown } from "@/lib/analytics/upgrade-prompt";
 import { buildUpgradeUrl } from "@/lib/billing/upgrade";
 
+import type { UpgradePromptProperties } from "@/lib/analytics/upgrade-prompt";
+import type { Promo } from "@/lib/billing/promo";
 import type { UpgradePlan } from "@/lib/billing/upgrade";
 import type { ComponentProps } from "react";
 
@@ -15,6 +17,10 @@ type UpgradeCtaProps = Omit<ComponentProps<typeof Link>, "href"> & {
   source: string;
   /** False while the CTA is mounted but not on screen (off-canvas, faded out); defers the impression. */
   shown?: boolean;
+  /** The promo this prompt shows next to it; adds campaign UTMs and a `promo` analytics property. */
+  promo?: Promo | null;
+  /** Extra impression and click properties, e.g. what the prompt told the user they're missing. */
+  trackingProperties?: Omit<UpgradePromptProperties, "promo">;
 };
 
 /**
@@ -25,16 +31,19 @@ export function UpgradeCta({
   requiredPlan,
   source,
   shown = true,
+  promo,
+  trackingProperties,
   onClick,
   ...props
 }: UpgradeCtaProps) {
-  useTrackUpgradeShown(source, shown);
+  const properties = promo ? { ...trackingProperties, promo: promo.code } : trackingProperties;
+  useTrackUpgradeShown(source, shown, properties);
   return (
     <Link
       {...props}
-      href={buildUpgradeUrl(requiredPlan, source)}
+      href={buildUpgradeUrl(requiredPlan, source, promo)}
       onClick={(event) => {
-        trackUpgradeClick(source);
+        trackUpgradeClick(source, properties);
         onClick?.(event);
       }}
     />

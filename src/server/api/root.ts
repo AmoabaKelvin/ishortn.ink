@@ -18,6 +18,7 @@ import { linkRouter } from "./routers/link/link.procedure";
 import { planLimitsRouter } from "./routers/plan-limits/plan-limits.procedure";
 import { qrCodeRouter } from "./routers/qrcode/qrcode.procedure";
 import { siteSettingsRouter } from "./routers/settings/settings.procedure";
+import { statsShareRouter } from "./routers/stats-share/stats-share.procedure";
 import { subscriptionsRouter } from "./routers/subscriptions/subscriptions.procedure";
 import { tagRouter } from "./routers/tag/tag.router";
 import { teamRouter } from "./routers/team/team.procedure";
@@ -32,6 +33,7 @@ export const appRouter = createTRPCRouter({
   accountTransfer: accountTransferRouter,
   admin: adminRouter,
   link: linkRouter,
+  statsShare: statsShareRouter,
   token: tokenRouter,
   lemonsqueezy: lemonsqueezyRouter,
   subscriptions: subscriptionsRouter,
