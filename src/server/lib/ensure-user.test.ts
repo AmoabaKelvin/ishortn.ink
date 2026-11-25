@@ -18,7 +18,7 @@ function profile(firstName: string | null, lastName: string | null) {
 describe("profileValues", () => {
   // User.name is NOT NULL in production, so a null here fails the insert.
   test("writes an empty name, not null, for a nameless email sign-up", () => {
-    expect(profileValues(profile(null, null)).name).toBe("");
+    expect(profileValues(profile(null, null))?.name).toBe("");
   });
 
   test("writes the joined name and the primary email", () => {
@@ -30,8 +30,13 @@ describe("profileValues", () => {
   });
 
   test("falls back to the first email when there is no primary", () => {
-    expect(profileValues({ ...profile("Ama", null), primaryEmailAddressId: null }).email).toBe(
+    expect(profileValues({ ...profile("Ama", null), primaryEmailAddressId: null })?.email).toBe(
       "old@example.com",
     );
+  });
+
+  // User.email is NOT NULL, so ensureUser must not attempt the insert.
+  test("returns null when the profile has no email address", () => {
+    expect(profileValues({ ...profile("Ama", null), emailAddresses: [] })).toBeNull();
   });
 });

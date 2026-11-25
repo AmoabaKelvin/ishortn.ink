@@ -17,6 +17,8 @@ function clampTtl(ttlSeconds: number): number {
   return Math.max(ttlSeconds, MIN_KV_TTL);
 }
 
+const isoDate = z.string().transform((value) => new Date(value));
+
 const nullableIsoDate = z
   .string()
   .nullable()
@@ -25,18 +27,18 @@ const nullableIsoDate = z
 const cachedLinkSchema = z.object({
   id: z.number(),
   name: z.string().nullable(),
-  url: z.string().nullable(),
-  alias: z.string().nullable(),
+  url: z.string(),
+  alias: z.string(),
   domain: z.string(),
-  createdAt: nullableIsoDate,
+  createdAt: isoDate,
   disableLinkAfterClicks: z.number().nullable(),
   // Absent from entries cached before the column existed. Never read from the cache: the click
   // limit check reads it from the database.
   clickLimitCount: z.number().nullable().default(null),
   disableLinkAfterDate: nullableIsoDate,
   activateAt: nullableIsoDate,
-  disabled: z.boolean().nullable(),
-  publicStats: z.boolean().nullable(),
+  disabled: z.boolean(),
+  publicStats: z.boolean(),
   userId: z.string(),
   teamId: z.number().nullable(),
   createdByUserId: z.string().nullable(),

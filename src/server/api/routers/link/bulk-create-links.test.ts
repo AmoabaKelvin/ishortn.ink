@@ -228,7 +228,7 @@ describe("bulkCreateLinks", () => {
       ctx,
       csv(
         `https://a.example,,,${"n".repeat(256)}`,
-        `https://b.example,${"a".repeat(21)},,`,
+        `https://b.example,${"a".repeat(256)},,`,
         `https://c.example,,,${"n".repeat(255)}`,
       ),
       allowUrl,
@@ -236,7 +236,7 @@ describe("bulkCreateLinks", () => {
 
     expect(result.failures).toEqual([
       { row: 2, reason: "Note can be at most 255 characters" },
-      { row: 3, reason: "Alias can be at most 20 characters" },
+      { row: 3, reason: "Alias can be at most 255 characters" },
     ]);
     expect(inserted.map((row) => row.url)).toEqual(["https://c.example"]);
   });

@@ -16,6 +16,11 @@ import type { Visitor } from "./click-event";
 
 const isLocalhost = process.env.NODE_ENV === "development";
 
+// LinkVisit stores these in varchar(191) and production rejects longer values, which would fail
+// the whole click batch. A crafted User-Agent or client hint can parse to longer ones.
+const MAX_FIELD_LENGTH = 191;
+const fit = (value: string) => value.slice(0, MAX_FIELD_LENGTH);
+
 export type DeviceDetails = {
   browser: string;
   os: string;
@@ -29,10 +34,10 @@ export async function parseDeviceDetails(headers: Headers): Promise<DeviceDetail
   const parsed = await UAParser(userAgent, headers).withClientHints();
   const osName = parsed.os.name ?? "Unknown";
   return {
-    browser: parsed.browser.name ?? "Unknown",
-    os: osName,
-    device: resolveDeviceType(osName, parsed.device.type),
-    model: parsed.device.model ?? "Unknown",
+    browser: fit(parsed.browser.name ?? "Unknown"),
+    os: fit(osName),
+    device: fit(resolveDeviceType(osName, parsed.device.type)),
+    model: fit(parsed.device.model ?? "Unknown"),
   };
 }
 
@@ -52,9 +57,9 @@ export function resolveGeo(country: string, city: string) {
 
   try {
     return {
-      countryName: getCountryFullName(country) ?? "Unknown",
+      countryName: fit(getCountryFullName(country) ?? "Unknown"),
       continentName: getContinentName(country) ?? "Unknown",
-      cityName: city && city !== "undefined" && city !== "Unknown" ? city : "Unknown",
+      cityName: city && city !== "undefined" && city !== "Unknown" ? fit(city) : "Unknown",
     };
   } catch {
     return { countryName: "Unknown", continentName: "Unknown", cityName: "Unknown" };

@@ -156,9 +156,11 @@ export const user = mysqlTable(
     id: varchar("id", {
       length: 32,
     }).primaryKey(), // 32 chars is the length of clerk user id
-    name: varchar("name", { length: 255 }),
-    email: varchar("email", { length: 255 }).unique(),
-    createdAt: timestamp("createdAt").defaultNow(),
+    name: varchar("name", { length: 255 }).notNull().default(""),
+    email: varchar("email", { length: 255 }).notNull().unique("User_email_key"),
+    createdAt: datetime("createdAt", { mode: "date", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
     imageUrl: text("imageUrl"),
     qrCodeCount: int("qrCodeCount").default(0),
     monthlyLinkCount: int("monthlyLinkCount").default(0),
@@ -287,22 +289,22 @@ export const userAttribution = mysqlTable(
 export const link = mysqlTable(
   "Link",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").autoincrement().primaryKey(),
     name: varchar("name", { length: 255 }),
-    url: text("url"),
-    alias: varchar("alias", {
-      length: 20,
-    }),
+    url: text("url").notNull(),
+    alias: varchar("alias", { length: 255 }).notNull(),
     domain: varchar("domain", { length: 255 }).notNull().default("ishortn.ink"),
-    createdAt: timestamp("createdAt").defaultNow(),
+    createdAt: datetime("createdAt", { mode: "date", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
     disableLinkAfterClicks: int("disableLinkAfterClicks"),
     // Visits counted toward disableLinkAfterClicks, including ones the monthly event cap kept out
     // of analytics. Null until the first counted visit, which starts it from the recorded total.
     clickLimitCount: int("clickLimitCount"),
-    disableLinkAfterDate: datetime("disableLinkAfterDate"),
+    disableLinkAfterDate: datetime("disableLinkAfterDate", { fsp: 3 }),
     activateAt: datetime("activateAt"), // link is not reachable before this instant
-    disabled: boolean("disabled").default(false),
-    publicStats: boolean("publicStats").default(false),
+    disabled: boolean("disabled").notNull().default(false),
+    publicStats: boolean("publicStats").notNull().default(false),
     userId: varchar("userId", {
       length: 32,
     }).notNull(),
@@ -341,6 +343,11 @@ export const link = mysqlTable(
     statsShareTokenIdx: unique("statsShareToken_idx").on(table.statsShareToken),
     aliasDomainIdx: index("aliasDomain_idx").on(table.alias, table.domain),
     uniqueAliasDomainIdx: unique("unique_alias_domain").on(table.alias, table.domain), // we have to have unique entries for alias and domain. so that we can't have two links with the same alias and domain
+    // Case-insensitive alias lookups (`lower(alias) = ...` in record-click.ts and link.service.ts).
+    lowerAliasDomainIdx: index("idx_lower_alias_domain").on(
+      sql`(lower(${table.alias}))`,
+      table.domain,
+    ),
     folderIdIdx: index("folderId_idx").on(table.folderId),
     campaignIdIdx: index("campaignId_idx").on(table.campaignId),
     createdAtIdx: index("createdAt_idx").on(table.createdAt),
@@ -365,7 +372,7 @@ export const reservedAlias = mysqlTable(
   {
     id: serial("id").primaryKey(),
     domain: varchar("domain", { length: 255 }).notNull(),
-    alias: varchar("alias", { length: 20 }).notNull(), // normalizeAlias()d
+    alias: varchar("alias", { length: 255 }).notNull(), // normalizeAlias()d; as long as Link.alias
     reason: mysqlEnum("reason", ["deleted", "purged", "blocked"]).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
@@ -383,7 +390,7 @@ export const linkPreviousAddress = mysqlTable(
     id: serial("id").primaryKey(),
     linkId: int("linkId").notNull(),
     domain: varchar("domain", { length: 255 }).notNull(), // lowercase
-    alias: varchar("alias", { length: 20 }).notNull(), // normalizeAlias()d
+    alias: varchar("alias", { length: 255 }).notNull(), // normalizeAlias()d
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({
@@ -416,20 +423,23 @@ export const geoRule = mysqlTable(
 export const linkVisit = mysqlTable(
   "LinkVisit",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").autoincrement().primaryKey(),
     linkId: int("linkId").notNull(),
-    device: varchar("device", { length: 255 }),
-    browser: varchar("browser", { length: 255 }),
-    os: varchar("os", { length: 255 }),
-    model: varchar("model", { length: 255 }).default(""),
+    // 191 chars in production; visitor.ts caps parsed values to fit.
+    device: varchar("device", { length: 191 }).notNull(),
+    browser: varchar("browser", { length: 191 }).notNull(),
+    os: varchar("os", { length: 191 }).notNull(),
+    model: varchar("model", { length: 191 }).notNull().default(""),
     referer: varchar("referer", { length: 255 }),
-    country: varchar("country", { length: 255 }),
-    city: varchar("city", { length: 255 }),
+    country: varchar("country", { length: 191 }).notNull(),
+    city: varchar("city", { length: 191 }).notNull(),
     continent: varchar("continent", { length: 255 }).default("N/A"),
     matchedGeoRuleId: int("matchedGeoRuleId"), // Reference to the geo rule that matched (for analytics)
     visitId: char("visitId", { length: 36 }), // queue message id; dedupes redelivered clicks and keys the verified-click beacon
     verifiedAt: timestamp("verifiedAt"), // set when the destination-page beacon POSTs back with a valid token
-    createdAt: timestamp("createdAt").defaultNow(),
+    createdAt: datetime("createdAt", { mode: "date", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
   },
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
@@ -453,6 +463,7 @@ export const uniqueLinkVisit = mysqlTable(
     ipHashIdx: index("ipHash_idx").on(table.ipHash),
     uniqueVisitIdx: unique("unique_visit_idx").on(table.linkId, table.ipHash),
     linkCreatedAtIdx: index("linkId_createdAt_idx").on(table.linkId, table.createdAt),
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
   }),
 );
 
@@ -524,7 +535,7 @@ export const linkMilestoneRelations = relations(linkMilestone, ({ one }) => ({
 export const token = mysqlTable(
   "Token",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").autoincrement().primaryKey(),
     token: varchar("token", { length: 255 }),
     name: varchar("name", { length: 64 }),
     // First characters of the plaintext key, shown in settings so keys can be told apart.
@@ -535,7 +546,9 @@ export const token = mysqlTable(
     // Set from the connect request for extension tokens, e.g. "Chrome on macOS".
     label: varchar("label", { length: 64 }),
     lastUsedAt: timestamp("lastUsedAt"),
-    createdAt: timestamp("createdAt").defaultNow(),
+    createdAt: datetime("createdAt", { mode: "date", fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
     userId: varchar("userId", { length: 32 }).notNull(),
   },
   (table) => ({

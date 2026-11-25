@@ -113,7 +113,7 @@ describe.skipIf(!testDatabaseUrl)("unsubscribe preferences (MySQL)", () => {
 
   beforeEach(async () => {
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
-    await db.insert(schema.user).values({ id: USER_ID });
+    await db.insert(schema.user).values({ id: USER_ID, email: `${USER_ID}@example.com` });
   });
 
   afterAll(async () => {

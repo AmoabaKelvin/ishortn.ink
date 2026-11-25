@@ -48,7 +48,10 @@ describe.skipIf(!testDatabaseUrl)("PATCH and DELETE /api/v1/links/[alias] (MySQL
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values([{ id: USER_ID }, { id: OTHER_USER_ID }]);
+    await db.insert(schema.user).values([
+      { id: USER_ID, email: `${USER_ID}@example.com` },
+      { id: OTHER_USER_ID, email: `${OTHER_USER_ID}@example.com` },
+    ]);
     await db.insert(schema.token).values({
       userId: USER_ID,
       token: crypto.createHash("sha256").update(API_KEY).digest("hex"),

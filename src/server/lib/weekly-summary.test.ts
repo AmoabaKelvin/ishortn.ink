@@ -251,9 +251,18 @@ describe.skipIf(!testDatabaseUrl)("weekly summary job (MySQL)", () => {
     createdAt: Date,
     visit: { country?: string; referer?: string } = {},
   ) {
-    await db
-      .insert(schema.linkVisit)
-      .values(Array.from({ length: total }, () => ({ linkId, createdAt, ...visit })));
+    await db.insert(schema.linkVisit).values(
+      Array.from({ length: total }, () => ({
+        device: "Desktop",
+        browser: "Chrome",
+        os: "macOS",
+        country: "Unknown",
+        city: "Unknown",
+        linkId,
+        createdAt,
+        ...visit,
+      })),
+    );
   }
 
   beforeEach(async () => {
@@ -318,7 +327,7 @@ describe.skipIf(!testDatabaseUrl)("weekly summary job (MySQL)", () => {
         { shortUrl: `ishortn.ink/${PREFIX}a2`, name: null, clicks: 4 },
       ],
       topCountry: { name: "Ghana", clicks: 5 },
-      topSource: { name: "instagram.com", clicks: 5 },
+      topSource: { name: "Instagram", clicks: 5 },
       droppedClicks: 42,
     });
     expect(sent.find((item) => item.userId === PRO)?.content.topCountry).toBeNull();

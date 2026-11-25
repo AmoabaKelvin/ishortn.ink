@@ -22,16 +22,16 @@ function event(firstName: string | null, lastName: string | null) {
 describe("getUserInfo", () => {
   // User.name is NOT NULL in production, so a null here fails the insert.
   test("stores an empty name, not null, when both parts are null", () => {
-    expect(getUserInfo(event(null, null)).name).toBe("");
+    expect(getUserInfo(event(null, null))?.name).toBe("");
   });
 
   test("stores only the part that is set", () => {
-    expect(getUserInfo(event("Ama", null)).name).toBe("Ama");
-    expect(getUserInfo(event(null, "Mensah")).name).toBe("Mensah");
+    expect(getUserInfo(event("Ama", null))?.name).toBe("Ama");
+    expect(getUserInfo(event(null, "Mensah"))?.name).toBe("Mensah");
   });
 
   test("joins both parts when set", () => {
-    expect(getUserInfo(event("Ama", "Mensah")).name).toBe("Ama Mensah");
+    expect(getUserInfo(event("Ama", "Mensah"))?.name).toBe("Ama Mensah");
   });
 
   test("uses the primary email address", () => {
@@ -40,5 +40,11 @@ describe("getUserInfo", () => {
       email: "ama@example.com",
       avatarUrl: "https://img.clerk.com/a.png",
     });
+  });
+
+  // User.email is NOT NULL, so the route must not attempt the insert.
+  test("returns null when the user has no email address", () => {
+    const noEmail = event("Ama", "Mensah");
+    expect(getUserInfo({ ...noEmail, data: { ...noEmail.data, email_addresses: [] } })).toBeNull();
   });
 });

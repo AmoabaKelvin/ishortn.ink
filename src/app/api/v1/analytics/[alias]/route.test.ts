@@ -57,7 +57,7 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/analytics/[alias] (MySQL)", () =>
   // One visit 2 days ago, one 20 days ago, and an archived day 60 days ago.
   async function seedUser(userId: string) {
     const now = new Date();
-    await db.insert(schema.user).values({ id: userId });
+    await db.insert(schema.user).values({ id: userId, email: `${userId}@example.com` });
     await db.insert(schema.token).values({
       userId,
       token: crypto.createHash("sha256").update(keyFor(userId)).digest("hex"),
@@ -69,9 +69,16 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/analytics/[alias] (MySQL)", () =>
       userId,
     });
     const linkId = inserted[0].insertId;
+    const visitor = {
+      device: "Desktop",
+      browser: "Chrome",
+      os: "macOS",
+      country: "Ghana",
+      city: "Accra",
+    };
     await db.insert(schema.linkVisit).values([
-      { linkId, referer: "twitter", createdAt: subDays(now, 2) },
-      { linkId, referer: "null", createdAt: subDays(now, 20) },
+      { ...visitor, linkId, referer: "twitter", createdAt: subDays(now, 2) },
+      { ...visitor, linkId, referer: "null", createdAt: subDays(now, 20) },
     ]);
     await db.insert(schema.uniqueLinkVisit).values([
       { linkId, ipHash: "a".repeat(64), createdAt: subDays(now, 2) },

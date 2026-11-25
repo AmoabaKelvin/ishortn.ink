@@ -61,8 +61,8 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/links (MySQL)", () => {
   beforeEach(async () => {
     await cleanup();
     await db.insert(schema.user).values([
-      { id: USER_ID, planCheckedAt: new Date() },
-      { id: OTHER_USER_ID, planCheckedAt: new Date() },
+      { id: USER_ID, email: `${USER_ID}@example.com`, planCheckedAt: new Date() },
+      { id: OTHER_USER_ID, email: `${OTHER_USER_ID}@example.com`, planCheckedAt: new Date() },
     ]);
     await db.insert(schema.token).values({
       userId: USER_ID,
@@ -84,17 +84,19 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/links (MySQL)", () => {
       ].map((values) => ({ ...values, url: "https://example.com", userId: USER_ID })),
     );
     // Out of the key's reach: another account, a team, a custom domain that isn't active.
-    await db.insert(schema.link).values([
-      { alias: "list-other", domain: "isht.app", userId: OTHER_USER_ID, createdAt: at(5) },
-      {
-        alias: "list-team",
-        domain: "isht.app",
-        userId: USER_ID,
-        teamId: 999_999,
-        createdAt: at(5),
-      },
-      { alias: "list-pending", domain: PENDING_DOMAIN, userId: USER_ID, createdAt: at(5) },
-    ]);
+    await db.insert(schema.link).values(
+      [
+        { alias: "list-other", domain: "isht.app", userId: OTHER_USER_ID, createdAt: at(5) },
+        {
+          alias: "list-team",
+          domain: "isht.app",
+          userId: USER_ID,
+          teamId: 999_999,
+          createdAt: at(5),
+        },
+        { alias: "list-pending", domain: PENDING_DOMAIN, userId: USER_ID, createdAt: at(5) },
+      ].map((values) => ({ ...values, url: "https://example.com" })),
+    );
   });
 
   afterAll(cleanup);

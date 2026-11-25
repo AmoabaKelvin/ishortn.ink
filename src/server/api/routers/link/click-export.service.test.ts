@@ -74,24 +74,29 @@ describe.skipIf(!testDatabaseUrl)("exportClicks (MySQL)", () => {
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values([{ id: OWNER }, { id: OTHER }]);
+    await db.insert(schema.user).values([
+      { id: OWNER, email: `${OWNER}@example.com` },
+      { id: OTHER, email: `${OTHER}@example.com` },
+    ]);
     const now = new Date();
     const linkA = await insertLink(OWNER, "click-export-a");
     const linkB = await insertLink(OWNER, "click-export-b");
     const qr = await insertLink(OWNER, "click-export-qr", { isQrCode: true });
     const otherLink = await insertLink(OTHER, "click-export-other");
+    const visitor = { device: "Desktop", browser: "Chrome", os: "macOS", city: "Unknown" };
     await db.insert(schema.linkVisit).values([
       {
+        ...visitor,
         linkId: linkA,
         country: "GH",
         city: "Accra",
         referer: "twitter",
         createdAt: subHours(now, 2),
       },
-      { linkId: linkA, country: "US", referer: "null", createdAt: subDays(now, 20) },
-      { linkId: linkB, country: "DE", createdAt: subDays(now, 3) },
-      { linkId: qr, country: "FR", createdAt: subDays(now, 1) },
-      { linkId: otherLink, country: "NG", createdAt: subDays(now, 1) },
+      { ...visitor, linkId: linkA, country: "US", referer: "null", createdAt: subDays(now, 20) },
+      { ...visitor, linkId: linkB, country: "DE", createdAt: subDays(now, 3) },
+      { ...visitor, linkId: qr, country: "FR", createdAt: subDays(now, 1) },
+      { ...visitor, linkId: otherLink, country: "NG", createdAt: subDays(now, 1) },
     ]);
   }, HOOK_TIMEOUT_MS);
 

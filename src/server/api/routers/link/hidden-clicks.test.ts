@@ -42,7 +42,7 @@ describe.skipIf(!testDatabaseUrl)("countClicksBefore (MySQL)", () => {
     // run, dropping DATABASE_URL; the app's db client reads it on first use.
     if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
     await cleanup();
-    await db.insert(schema.user).values({ id: USER });
+    await db.insert(schema.user).values({ id: USER, email: `${USER}@example.com` });
     for (const alias of ["hidden-clicks-a", "hidden-clicks-b"]) {
       const inserted = await db.insert(schema.link).values({
         url: "https://example.com",
@@ -53,14 +53,21 @@ describe.skipIf(!testDatabaseUrl)("countClicksBefore (MySQL)", () => {
       linkIds.push(inserted[0].insertId);
     }
     const [a = 0, b = 0] = linkIds;
+    const visitor = {
+      device: "Desktop",
+      browser: "Chrome",
+      os: "macOS",
+      country: "Ghana",
+      city: "Accra",
+    };
     await db.insert(schema.linkVisit).values([
       // Inside the window: shown, not hidden.
-      { linkId: a, createdAt: now },
-      { linkId: a, createdAt: windowStart },
+      { ...visitor, linkId: a, createdAt: now },
+      { ...visitor, linkId: a, createdAt: windowStart },
       // Before it: hidden.
-      { linkId: a, createdAt: new Date(windowStart.getTime() - 1000) },
-      { linkId: a, createdAt: subDays(now, 20) },
-      { linkId: b, createdAt: subDays(now, 10) },
+      { ...visitor, linkId: a, createdAt: new Date(windowStart.getTime() - 1000) },
+      { ...visitor, linkId: a, createdAt: subDays(now, 20) },
+      { ...visitor, linkId: b, createdAt: subDays(now, 10) },
     ]);
     await db.insert(schema.linkVisitDailySummary).values([
       { linkId: a, date: bucketKey(subDays(now, 60)), clicks: 40, uniqueClicks: 30 },

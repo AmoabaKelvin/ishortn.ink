@@ -393,7 +393,11 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
   // ---------------------------------------------------------------------------
 
   test("an unchecked account over its plan gets its grace on the first request", async () => {
-    await db.insert(schema.user).values({ id: UNCHECKED_OVER_ID, lastLinkCountReset: new Date() });
+    await db.insert(schema.user).values({
+      id: UNCHECKED_OVER_ID,
+      email: `${UNCHECKED_OVER_ID}@entitlements.test`,
+      lastLinkCountReset: new Date(),
+    });
     const domains = [1, 2].map((n) => `d${n}.ent-test-unchecked.test`);
     for (const [i, domain] of domains.entries()) {
       await db.insert(schema.customDomain).values({
@@ -430,7 +434,11 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
   });
 
   test("an unchecked account within its plan is only marked as checked", async () => {
-    await db.insert(schema.user).values({ id: UNCHECKED_FREE_ID, lastLinkCountReset: new Date() });
+    await db.insert(schema.user).values({
+      id: UNCHECKED_FREE_ID,
+      email: `${UNCHECKED_FREE_ID}@entitlements.test`,
+      lastLinkCountReset: new Date(),
+    });
     const workspace = await resolveWorkspaceContext(UNCHECKED_FREE_ID, "ishortn.ink", db);
     expect(workspace.plan).toBe("free");
     const row = await db.query.user.findFirst({ where: eq(schema.user.id, UNCHECKED_FREE_ID) });
@@ -441,6 +449,7 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
   test("an over-plan grace doesn't unlock team creation", async () => {
     await db.insert(schema.user).values({
       id: OVER_PLAN_GRACE_ID,
+      email: `${OVER_PLAN_GRACE_ID}@entitlements.test`,
       planCheckedAt: new Date(),
       planGracePlan: "ultra",
       planGraceEndsAt: new Date(Date.now() + 3 * DAY),
@@ -887,6 +896,7 @@ describe.skipIf(!testDatabaseUrl)("plan entitlements on write paths (MySQL)", ()
   test("the reconcile starts a lapse grace for a failed payment after a passed over-plan grace", async () => {
     await db.insert(schema.user).values({
       id: PAST_DUE_ID,
+      email: `${PAST_DUE_ID}@entitlements.test`,
       planCheckedAt: new Date(),
       planGracePlan: "ultra",
       planGraceEndsAt: new Date(Date.now() - 10 * DAY),

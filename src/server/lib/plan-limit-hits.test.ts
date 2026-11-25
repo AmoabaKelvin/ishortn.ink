@@ -102,7 +102,11 @@ describe.skipIf(!testDatabaseUrl)("PlanLimitHit logging (MySQL)", () => {
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values({ id: USER_ID, lastLinkCountReset: new Date() });
+    await db.insert(schema.user).values({
+      id: USER_ID,
+      email: `${USER_ID}@example.com`,
+      lastLinkCountReset: new Date(),
+    });
   });
 
   afterAll(cleanup);

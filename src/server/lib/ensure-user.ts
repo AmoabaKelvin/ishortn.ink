@@ -1,4 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
+import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
@@ -25,11 +26,13 @@ type ClerkProfile = {
   emailAddresses: { id: string; emailAddress: string }[];
 };
 
-/** The User columns ensureUser writes from a Clerk profile. */
+/** The User columns ensureUser writes from a Clerk profile; null when it has no email. */
 export function profileValues(profile: ClerkProfile) {
   const email =
     profile.emailAddresses.find((e) => e.id === profile.primaryEmailAddressId)?.emailAddress ??
     profile.emailAddresses[0]?.emailAddress;
+  // User.email is NOT NULL, so a profile without one cannot get a row.
+  if (!email) return null;
   return {
     name: storedName(profile.firstName, profile.lastName),
     email,
@@ -60,6 +63,13 @@ export async function ensureUser(userId: string): Promise<UserAccess | undefined
   if (!profile || profile.id !== userId) return undefined;
 
   const values = profileValues(profile);
+  if (!values) {
+    log.error({ userId }, "Clerk profile has no email address; cannot provision user row");
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Your account has no email address. Add one in your account settings to continue.",
+    });
+  }
 
   // Upsert: the webhook may insert the same row concurrently.
   try {

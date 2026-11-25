@@ -16,13 +16,13 @@ describe("link input length limits", () => {
       url,
       name: "n".repeat(300),
       note: "n".repeat(300),
-      alias: "a".repeat(21),
+      alias: "a".repeat(256),
       domain: `${"d".repeat(252)}.com`,
     });
 
     expect(issues(result)).toEqual([
       "Link name can be at most 255 characters",
-      "Alias can be at most 20 characters",
+      "Alias can be at most 255 characters",
       "Domain can be at most 255 characters",
       "Note can be at most 255 characters",
     ]);
@@ -33,7 +33,7 @@ describe("link input length limits", () => {
       url,
       name: "n".repeat(255),
       note: "n".repeat(255),
-      alias: "a".repeat(20),
+      alias: "a".repeat(255),
     });
 
     expect(result.success).toBe(true);
@@ -50,12 +50,12 @@ describe("link input length limits", () => {
       "Link name can be at most 255 characters",
       "Note can be at most 255 characters",
     ]);
-    expect(updateLinkSchema.safeParse({ id: 1, alias: "a".repeat(21) }).success).toBe(false);
+    expect(updateLinkSchema.safeParse({ id: 1, alias: "a".repeat(256) }).success).toBe(false);
   });
 
   test("the API and QR code inputs share the limits", () => {
-    expect(issues(shortenLinkSchema.safeParse({ url, alias: "a".repeat(21) }))).toEqual([
-      "Alias can be at most 20 characters",
+    expect(issues(shortenLinkSchema.safeParse({ url, alias: "a".repeat(256) }))).toEqual([
+      "Alias can be at most 255 characters",
     ]);
     expect(
       issues(qrcodeUpdateInput.safeParse({ id: 1, title: "t".repeat(256), note: "n".repeat(256) })),

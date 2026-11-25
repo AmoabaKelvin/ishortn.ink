@@ -106,7 +106,7 @@ export const geoRuleInputSchema = z
 // fails the insert with ER_DATA_TOO_LONG instead of being truncated.
 export const LINK_NAME_MAX_LENGTH = 255;
 export const LINK_NOTE_MAX_LENGTH = 255;
-export const LINK_ALIAS_MAX_LENGTH = 20;
+export const LINK_ALIAS_MAX_LENGTH = 255;
 export const LINK_DOMAIN_MAX_LENGTH = 255;
 
 export const linkNameSchema = z

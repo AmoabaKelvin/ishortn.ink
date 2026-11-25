@@ -76,6 +76,7 @@ describe.skipIf(!testDatabaseUrl)("click limits (MySQL)", () => {
     // A Free account that has used its whole monthly event allowance.
     await db.insert(schema.user).values({
       id: USER_ID,
+      email: `${USER_ID}@example.com`,
       monthlyEventCount: FREE_EVENTS_LIMIT,
       lastEventCountReset: new Date(),
     });
@@ -141,7 +142,15 @@ describe.skipIf(!testDatabaseUrl)("click limits (MySQL)", () => {
 
   test("a link's counter starts from the clicks it had already recorded", async () => {
     const id = await createLink("limit-existing", 3);
-    await db.insert(schema.linkVisit).values([{ linkId: id }, { linkId: id }]);
+    const recorded = {
+      linkId: id,
+      device: "Desktop",
+      browser: "Chrome",
+      os: "macOS",
+      country: "Ghana",
+      city: "Accra",
+    };
+    await db.insert(schema.linkVisit).values([recorded, recorded]);
 
     expect(await visit("limit-existing")).toBe(DESTINATION);
     expect((await storedLink(id))?.clickLimitCount).toBe(3);

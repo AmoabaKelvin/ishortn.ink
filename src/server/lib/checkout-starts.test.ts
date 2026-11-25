@@ -28,8 +28,10 @@ const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 describe.skipIf(!testDatabaseUrl)("CheckoutStart logging (MySQL)", () => {
   const USER_ID = "checkout_start_test";
 
-  const cleanup = () =>
-    db.delete(schema.checkoutStart).where(eq(schema.checkoutStart.userId, USER_ID));
+  // Awaited here: a drizzle query only runs when awaited, and the hooks don't await thenables.
+  const cleanup = async () => {
+    await db.delete(schema.checkoutStart).where(eq(schema.checkoutStart.userId, USER_ID));
+  };
 
   beforeEach(cleanup);
   afterAll(cleanup);

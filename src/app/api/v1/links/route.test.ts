@@ -39,6 +39,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
     await db.insert(schema.user).values({
       id: USER_ID,
+      email: `${USER_ID}@example.com`,
       monthlyLinkCount,
       lastLinkCountReset: new Date(),
       restrictedAt,
@@ -174,6 +175,17 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     const body = await response.json();
     expect(body.error.code).toBe("validation_failed");
     expect(body.error.details).toEqual([{ path: "url", message: INVALID_URL_MESSAGE }]);
+  });
+
+  test("rejects an alias longer than Link.alias holds with a validation error", async () => {
+    const response = await createLink({ alias: "a".repeat(256) });
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe("validation_failed");
+    expect(body.error.details).toEqual([
+      { path: "alias", message: "Alias can be at most 255 characters" },
+    ]);
+    expect(await storedCount()).toBe(0);
   });
 
   test("answers a missing API key with a 401 JSON error", async () => {

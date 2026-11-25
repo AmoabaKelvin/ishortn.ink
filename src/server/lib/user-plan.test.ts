@@ -39,7 +39,12 @@ describe.skipIf(!testDatabaseUrl)("reserveMonthlyLinkSlot (MySQL)", () => {
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
-    await db.insert(schema.user).values({ id: USER_ID, monthlyLinkCount, lastLinkCountReset });
+    await db.insert(schema.user).values({
+      id: USER_ID,
+      email: `${USER_ID}@example.com`,
+      monthlyLinkCount,
+      lastLinkCountReset,
+    });
     if (plan !== "free") {
       await db.insert(schema.subscription).values({ userId: USER_ID, status: "active", plan });
     }

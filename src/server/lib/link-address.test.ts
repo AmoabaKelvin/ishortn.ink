@@ -45,7 +45,9 @@ describe.skipIf(!testDatabaseUrl)("moving a link to another domain (MySQL)", () 
   const OTHER = "link_address_other";
   const USERS = [OWNER, OTHER];
   const CUSTOM_DOMAIN = "go.link-address.test";
-  const ALIASES = ["move-me", "move-taken", "move-renamed"];
+  // 30 characters: longer than the 20 the previous-address table once held.
+  const LONG_ALIAS = "move-me-with-a-long-alias-0030";
+  const ALIASES = ["move-me", "move-taken", "move-renamed", LONG_ALIAS];
 
   function workspaceCtx(userId: string): WorkspaceTRPCContext {
     // SAFETY: updateLink and deleteLink read only db, auth.userId, restrictedAt
@@ -146,6 +148,19 @@ describe.skipIf(!testDatabaseUrl)("moving a link to another domain (MySQL)", () 
     // Destination edits apply to the old address too, though it is now cached.
     await updateLink(workspaceCtx(OWNER), { id, url: "https://example.com/updated" });
     expect((await resolveLink("isht.ink", "move-me"))?.url).toBe("https://example.com/updated");
+  });
+
+  test("a moved link's old address keeps an alias longer than 20 characters in full", async () => {
+    expect(LONG_ALIAS).toHaveLength(30);
+    const id = await insertLink(LONG_ALIAS, "isht.ink");
+    await updateLink(workspaceCtx(OWNER), { id, domain: "ishortn.ink" });
+
+    const previous = await db
+      .select({ alias: schema.linkPreviousAddress.alias })
+      .from(schema.linkPreviousAddress)
+      .where(eq(schema.linkPreviousAddress.linkId, id));
+    expect(previous).toEqual([{ alias: LONG_ALIAS }]);
+    expect((await resolveLink("isht.ink", LONG_ALIAS))?.id).toBe(id);
   });
 
   test("the old address stays reserved, also after the link is deleted", async () => {

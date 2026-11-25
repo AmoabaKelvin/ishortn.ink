@@ -37,7 +37,7 @@ describe.skipIf(!testDatabaseUrl)("resolveLink (MySQL)", () => {
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values({ id: USER_ID });
+    await db.insert(schema.user).values({ id: USER_ID, email: `${USER_ID}@example.com` });
     await db.insert(schema.link).values({
       userId: USER_ID,
       url: "https://example.com/isht-app",

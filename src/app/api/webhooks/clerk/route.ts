@@ -82,6 +82,11 @@ export async function POST(req: Request) {
 
   // Get the user info
   const userInfo = getUserInfo(event.data);
+  if (!userInfo) {
+    log.error({ eventId: id, eventType }, "clerk user has no email address; user row not written");
+    // 200, not 4xx: Svix retries non-2xx responses and this event can never succeed.
+    return new Response("User has no email address; skipped", { status: 200 });
+  }
 
   // Upsert: ensure-user may have created the row on the user's first request.
   const values = {
@@ -97,12 +102,7 @@ export async function POST(req: Request) {
 
   // Only on sign-up: user.updated fires on every profile change, including email changes.
   // A lifecycle email, so it skips addresses that hard-bounced or complained.
-  if (
-    resend &&
-    eventType === "user.created" &&
-    userInfo.email &&
-    !(await isEmailSuppressed(userInfo.email))
-  ) {
+  if (resend && eventType === "user.created" && !(await isEmailSuppressed(userInfo.email))) {
     const { error } = await resend.emails.send({
       from: env.EMAIL_FROM ?? "Kelvin <developer@ishortn.ink>",
       to: userInfo.email,

@@ -79,9 +79,17 @@ describe.skipIf(!testDatabaseUrl)("shared link stats (MySQL)", () => {
     });
     const linkId = inserted[0].insertId;
     const now = new Date();
+    const visitor = { device: "Desktop", browser: "Chrome", os: "macOS" };
     await db.insert(schema.linkVisit).values([
-      { linkId, country: "GH", city: "Accra", referer: "twitter", createdAt: subDays(now, 2) },
-      { linkId, country: "US", city: "Austin", createdAt: subDays(now, 20) },
+      {
+        ...visitor,
+        linkId,
+        country: "GH",
+        city: "Accra",
+        referer: "twitter",
+        createdAt: subDays(now, 2),
+      },
+      { ...visitor, linkId, country: "US", city: "Austin", createdAt: subDays(now, 20) },
     ]);
     await db
       .insert(schema.uniqueLinkVisit)
@@ -96,7 +104,10 @@ describe.skipIf(!testDatabaseUrl)("shared link stats (MySQL)", () => {
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values([{ id: FREE_USER }, { id: PRO_USER }]);
+    await db.insert(schema.user).values([
+      { id: FREE_USER, email: `${FREE_USER}@example.com` },
+      { id: PRO_USER, email: `${PRO_USER}@example.com` },
+    ]);
     await db.insert(schema.subscription).values({
       userId: PRO_USER,
       status: "active",

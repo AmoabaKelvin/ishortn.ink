@@ -45,7 +45,10 @@ describe.skipIf(!testDatabaseUrl)("phishing rescan backlog (MySQL)", () => {
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values([{ id: FREE_USER }, { id: PAID_USER }]);
+    await db.insert(schema.user).values([
+      { id: FREE_USER, email: `${FREE_USER}@example.com` },
+      { id: PAID_USER, email: `${PAID_USER}@example.com` },
+    ]);
     await db
       .insert(schema.subscription)
       .values({ userId: PAID_USER, status: "active", plan: "pro" });
@@ -207,7 +210,10 @@ describe.skipIf(!testDatabaseUrl)("campaign patterns on link writes (MySQL)", ()
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values([{ id: FREE_USER }, { id: PAID_USER }]);
+    await db.insert(schema.user).values([
+      { id: FREE_USER, email: `${FREE_USER}@example.com` },
+      { id: PAID_USER, email: `${PAID_USER}@example.com` },
+    ]);
     await db
       .insert(schema.subscription)
       .values({ userId: PAID_USER, status: "active", plan: "pro" });

@@ -106,7 +106,11 @@ describe.skipIf(!testDatabaseUrl)("API key access by plan (MySQL)", () => {
 
   beforeEach(async () => {
     await cleanup();
-    await db.insert(schema.user).values({ id: USER_ID, lastLinkCountReset: new Date() });
+    await db.insert(schema.user).values({
+      id: USER_ID,
+      email: `${USER_ID}@example.com`,
+      lastLinkCountReset: new Date(),
+    });
     await db.insert(schema.token).values({
       userId: USER_ID,
       token: crypto.createHash("sha256").update(API_KEY).digest("hex"),
