@@ -1062,6 +1062,7 @@ export const solutions = {
       },
     ],
     related: [
+      { href: "/blog/qr-code-on-business-cards", label: "QR codes on business cards" },
       { href: "/blog/qr-code-for-flyers", label: "Put a QR code on a flyer" },
       { href: "/blog/qr-code-for-google-reviews", label: "Make a QR code for Google reviews" },
       { href: "/blog/how-to-track-qr-code-scans", label: "How to track QR code scans" },
