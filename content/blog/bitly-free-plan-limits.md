@@ -57,7 +57,7 @@ From Bitly's help center:
 
 - When you reach your link limit, you can't create new links until the next calendar month starts.
 - Links you've already made keep working. Clicks and scans aren't capped.
-- If you were on a paid plan and downgrade to Free, your bit.ly links keep working. Links on a custom domain keep redirecting as long as the domain's DNS still points at Bitly, but Bitly stops renewing the SSL certificate, so visitors may see a "not secure" warning later. If you used Bitly's complimentary domain, those links stop working when its registration runs out ([downgrade article](https://support.bitly.com/hc/en-us/articles/360029870551-What-happens-when-I-downgrade-to-a-lower-subscription-plan)).
+- If you were on a paid plan and downgrade to Free, your bit.ly links keep working. Links on a custom domain keep redirecting as long as the domain's DNS still points at Bitly, but Bitly stops renewing the SSL certificate, so visitors may see a "not secure" warning later. If you used Bitly's complimentary domain, those links stop working when its registration runs out ([downgrade article](https://support.bitly.com/hc/en-us/articles/360029870551-What-happens-when-I-downgrade-to-a-lower-subscription-plan)). Planning to leave? [How to cancel Bitly without breaking your links](/blog/cancel-bitly-subscription) covers what to export and move first.
 
 ## What Bitly's paid plans cost
 

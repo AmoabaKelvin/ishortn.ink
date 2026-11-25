@@ -3,7 +3,7 @@ title: "Bitly Alternatives in 2026: 6 Free and Cheaper Options"
 seoTitle: "Bitly Alternatives 2026: Free, No Ads, Enterprise"
 description: "Bitly Free allows 5 links a month, with no click stats and an ad page. Compare free, ad-free, cheaper and enterprise alternatives. Prices checked November 2026."
 date: "2026-03-01"
-updated: "2026-11-25"
+updated: "2026-11-29"
 author: "Kelvin Amoaba"
 tags: ["bitly alternative", "url shortener", "comparison", "link management"]
 published: true
@@ -153,6 +153,8 @@ To move links on your own domain to iShortn:
 5. Open a few old links in a private window and scan a printed QR code to check them.
 
 Expect a few minutes of downtime between the DNS change and the import. [Move your links from Bitly](/docs/migrate-from-bitly) has every step, including apex domains and GoDaddy, and [CSV bulk import](/docs/bulk-import) covers file limits. CSV import and custom domains are on iShortn Pro and Ultra.
+
+Cancel the Bitly plan only after the move is checked. [How to cancel Bitly without breaking your links](/blog/cancel-bitly-subscription) covers what to export first, and what happens to links on Bitly's complimentary domain, which can't move.
 
 ## Your links stay yours
 
