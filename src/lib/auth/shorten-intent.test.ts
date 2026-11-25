@@ -82,26 +82,87 @@ describe("extractShortenIntent", () => {
   });
 });
 
+const appUrl = "https://ishortn.ink";
+const noRedirect = { redirectUrl: undefined, appUrl };
+const pricing = "/dashboard/pricing?utm_source=email&utm_campaign=bfcm2026";
+
 describe("getPostAuthUrl", () => {
   test("prefers a same-origin next path", () => {
-    expect(getPostAuthUrl({ next: "/dashboard/checkout", intent: tagged })).toBe(
+    expect(getPostAuthUrl({ ...noRedirect, next: "/dashboard/checkout", intent: tagged })).toBe(
       "/dashboard/checkout",
     );
   });
 
   test("rejects off-site next values", () => {
-    expect(getPostAuthUrl({ next: "//evil.com", intent: undefined })).toBe("/dashboard");
-    expect(getPostAuthUrl({ next: "/\\evil.com", intent: undefined })).toBe("/dashboard");
+    expect(getPostAuthUrl({ ...noRedirect, next: "//evil.com", intent: undefined })).toBe(
+      "/dashboard",
+    );
+    expect(getPostAuthUrl({ ...noRedirect, next: "/\\evil.com", intent: undefined })).toBe(
+      "/dashboard",
+    );
   });
 
   test("sends a shorten intent to the link editor, prefilled", () => {
-    expect(getPostAuthUrl({ next: undefined, intent: tagged })).toBe(
+    expect(getPostAuthUrl({ ...noRedirect, next: undefined, intent: tagged })).toBe(
       `/dashboard/link/new?url=${encodeURIComponent(tagged)}`,
     );
   });
 
+  test("returns a same-origin redirect_url as path, query and hash", () => {
+    const withRedirect = (redirectUrl: string) =>
+      getPostAuthUrl({ next: undefined, intent: undefined, redirectUrl, appUrl });
+    expect(withRedirect(`https://ishortn.ink${pricing}`)).toBe(pricing);
+    expect(withRedirect(`https://www.ishortn.ink${pricing}#plans`)).toBe(`${pricing}#plans`);
+    expect(withRedirect("/dashboard/link/new")).toBe("/dashboard/link/new");
+    expect(withRedirect(pricing)).toBe(pricing);
+  });
+
+  test("ignores redirect_url values that leave the app's origin", () => {
+    for (const redirectUrl of [
+      "https://evil.example/",
+      "//evil.com",
+      "/\\evil.com",
+      "\\\\evil.com",
+      "https://ishortn.ink.evil.com/",
+      "https://evil.com/?x=https://ishortn.ink/",
+      "http://ishortn.ink/dashboard",
+      "https://ishortn.ink:8443/dashboard",
+      "javascript:alert(1)",
+      "https://",
+      "",
+    ]) {
+      expect(getPostAuthUrl({ next: undefined, intent: undefined, redirectUrl, appUrl })).toBe(
+        "/dashboard",
+      );
+    }
+  });
+
+  test("prefers next over redirect_url", () => {
+    expect(
+      getPostAuthUrl({
+        next: "/dashboard/checkout",
+        intent: undefined,
+        redirectUrl: `https://ishortn.ink${pricing}`,
+        appUrl,
+      }),
+    ).toBe("/dashboard/checkout");
+  });
+
+  test("prefers redirect_url over a shorten intent", () => {
+    expect(
+      getPostAuthUrl({
+        next: undefined,
+        intent: tagged,
+        redirectUrl: `https://ishortn.ink${pricing}`,
+        appUrl,
+      }),
+    ).toBe(pricing);
+  });
+
   test("falls back to the dashboard", () => {
-    expect(getPostAuthUrl({ next: undefined, intent: undefined })).toBe("/dashboard");
+    expect(getPostAuthUrl({ ...noRedirect, next: undefined, intent: undefined })).toBe(
+      "/dashboard",
+    );
   });
 });
 
@@ -137,7 +198,7 @@ describe("serializeShortenIntentCookie", () => {
 describe("clearing a used intent", () => {
   test("happens where the post-auth redirect lands", () => {
     const landing = new URL(
-      getPostAuthUrl({ next: undefined, intent: tagged }),
+      getPostAuthUrl({ ...noRedirect, next: undefined, intent: tagged }),
       "https://ishortn.ink",
     );
     expect(isShortenIntentLanding(landing)).toBe(true);
