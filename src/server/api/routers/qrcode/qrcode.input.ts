@@ -3,7 +3,7 @@ import { z } from "zod";
 import { MarkerFrames, PixelStyles, QREffects, QRMarkerCenters } from "@/lib/qr-generator/types";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
 
-import { geoRuleInputSchema } from "../link/link.input";
+import { geoRuleInputSchema, linkDomainSchema, linkNoteSchema } from "../link/link.input";
 
 import type { QRCodeStyle } from "@/lib/qr-generator/types";
 
@@ -14,15 +14,16 @@ export const qrcodeInput = z.object({
   patternStyle: z.enum(PixelStyles),
   cornerStyle: z.enum(MarkerFrames),
   selectedColor: z.string(),
-  domain: z.string().optional(),
+  domain: linkDomainSchema.optional(),
 });
 
 export const qrcodeUpdateInput = z.object({
   id: z.number(),
-  title: z.string().optional(),
+  // The title is stored as the link's name.
+  title: z.string().max(255, "Title must be 255 characters or fewer").optional(),
   url: z.string().url("Please enter a valid URL").optional(),
-  note: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  note: linkNoteSchema.optional(),
+  tags: z.array(z.string().max(50, "Tags can be at most 50 characters")).optional(),
   utmParams: z
     .object({
       utm_source: z.string().max(255).optional(),

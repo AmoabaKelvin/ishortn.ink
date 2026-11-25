@@ -34,7 +34,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { updateLinkSchema } from "@/server/api/routers/link/link.input";
+import {
+  LINK_ALIAS_MAX_LENGTH,
+  LINK_NAME_MAX_LENGTH,
+  LINK_NOTE_MAX_LENGTH,
+  updateLinkSchema,
+} from "@/server/api/routers/link/link.input";
 import { api } from "@/trpc/react";
 
 import { selectLinkDomain } from "./edit-link-form";
@@ -216,6 +221,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                               <FormControl>
                                 <Input
                                   placeholder="My Awesome Link"
+                                  maxLength={LINK_NAME_MAX_LENGTH}
                                   className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                                   {...field}
                                 />
@@ -242,6 +248,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                                   />
                                   <Input
                                     placeholder="short-link"
+                                    maxLength={LINK_ALIAS_MAX_LENGTH}
                                     className="h-9 flex-grow rounded-l-none border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                                     {...field}
                                   />
@@ -271,6 +278,7 @@ export function UpdateLinkModal({ link, open, setOpen }: LinkEditModalProps) {
                               <FormControl>
                                 <Input
                                   placeholder="Add a note"
+                                  maxLength={LINK_NOTE_MAX_LENGTH}
                                   className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
                                   {...field}
                                 />

@@ -53,7 +53,12 @@ import {
 import { clientLogger } from "@/lib/logger/client";
 import { cn } from "@/lib/utils";
 import { normalizeDestinationUrl } from "@/lib/utils/destination-url";
-import { updateLinkSchema } from "@/server/api/routers/link/link.input";
+import {
+  LINK_ALIAS_MAX_LENGTH,
+  LINK_NAME_MAX_LENGTH,
+  LINK_NOTE_MAX_LENGTH,
+  updateLinkSchema,
+} from "@/server/api/routers/link/link.input";
 import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
 
@@ -470,6 +475,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                 <Input
                                   className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                                   placeholder="My Awesome Link"
+                                  maxLength={LINK_NAME_MAX_LENGTH}
                                   {...field}
                                 />
                               </FormControl>
@@ -500,6 +506,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   <div className="h-4 w-px bg-neutral-200 dark:bg-border" />
                                   <input
                                     placeholder="short-link"
+                                    maxLength={LINK_ALIAS_MAX_LENGTH}
                                     className="h-full flex-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-900 dark:text-foreground placeholder:text-neutral-400 focus:outline-none"
                                     {...field}
                                   />
@@ -527,6 +534,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                 <Input
                                   className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                                   placeholder="Add a note to your link"
+                                  maxLength={LINK_NOTE_MAX_LENGTH}
                                   {...field}
                                 />
                               </FormControl>

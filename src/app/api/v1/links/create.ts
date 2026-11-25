@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
+import { linkAliasSchema, linkDomainSchema } from "@/server/api/routers/link/link.input";
 import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
@@ -24,9 +25,9 @@ export const shortenLinkSchema = z.object({
   expiresAt: z.string().optional(),
   activatesAt: z.string().datetime({ offset: true }).optional(),
   expiresAfter: z.number().optional(),
-  alias: z.string().optional(),
+  alias: linkAliasSchema.optional(),
   password: z.string().optional(),
-  domain: z.string().optional(),
+  domain: linkDomainSchema.optional(),
   utmParams: z
     .object({
       utm_source: z.string().max(255).optional(),
