@@ -29,6 +29,9 @@ export const SHORTEN_INTENT_COOKIE_OPTIONS = {
 
 const AUTH_PAGE = /^\/auth\/sign-(?:up|in)(?:\/|$)/;
 const LINK_EDITOR = "/dashboard/link/new";
+// A path on this origin: one leading slash, not followed by another slash or a
+// backslash (browsers read `//x` and `/\x` as another host).
+const SAME_ORIGIN_PATH = /^\/(?![/\\])/;
 
 /**
  * For an auth page URL carrying `url`, returns that value and the same URL
@@ -76,17 +79,54 @@ export function clearShortenIntent(response: NextResponse): NextResponse {
   return response;
 }
 
+/**
+ * `redirect_url` as a same-origin path (path + query + hash), or null. Clerk's
+ * `auth.protect()` sets it to the absolute URL that was asked for; only the app's
+ * own origin (or its `www.` host) is accepted, so it can't become an open redirect.
+ */
+export function toSameOriginPath(redirectUrl: string | undefined, appUrl: string): string | null {
+  // Backslashes are read as slashes by browsers (`/\evil.com`), and `//x` is
+  // protocol-relative; both would leave the origin.
+  if (!redirectUrl || redirectUrl.includes("\\") || redirectUrl.startsWith("//")) return null;
+  let app: URL;
+  let target: URL;
+  try {
+    app = new URL(appUrl);
+    target = new URL(redirectUrl, app);
+  } catch {
+    return null;
+  }
+  const sameOrigin =
+    target.protocol === app.protocol &&
+    target.port === app.port &&
+    (target.hostname === app.hostname || target.hostname === `www.${app.hostname}`);
+  if (!sameOrigin) return null;
+  // Checked on the parsed result too: normalisation can turn a same-origin input
+  // (`https://ishortn.ink//evil.com`, `/a/..//evil.com`) into a `//` path.
+  const path = `${target.pathname}${target.search}${target.hash}`;
+  return SAME_ORIGIN_PATH.test(path) ? path : null;
+}
+
 /** Where to send the user once signed up or in. */
 export function getPostAuthUrl({
   next,
+  redirectUrl,
   intent,
+  appUrl,
 }: {
   next: string | undefined;
+  redirectUrl: string | undefined;
   intent: string | undefined;
+  appUrl: string;
 }): string {
   // `next` is an internal destination (e.g. checkout). Restrict to same-origin
   // paths to avoid open redirects.
-  if (next && /^\/(?![/\\])/.test(next)) return next;
+  if (next && SAME_ORIGIN_PATH.test(next)) return next;
+  // Set by the middleware when a signed-out visitor opens a protected page. It
+  // also stays on Clerk's later step URLs (factor-one, factor-two, sso-callback),
+  // where `next` is gone.
+  const returnPath = toSameOriginPath(redirectUrl, appUrl);
+  if (returnPath) return returnPath;
   if (intent) return `${LINK_EDITOR}?url=${encodeURIComponent(intent)}`;
   return "/dashboard";
 }
