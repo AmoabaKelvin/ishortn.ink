@@ -9,7 +9,8 @@ You don't need an account to make a QR code: before you connect, the extension s
 
 ## Install
 
-The extension isn't in the browser stores yet. Until it is, build it from source with [Node.js](https://nodejs.org) 22.18 or later:
+- **Chrome and Edge**: [add iShortn from the Chrome Web Store](https://chromewebstore.google.com/detail/ishortn-url-shortener-qr/opkikfbhepmnlnblmjnfjgjeonadekdj?utm_source=ishortn&utm_medium=site&utm_campaign=extension). See what it does on the [extension page](/extension).
+- **Firefox**: the extension isn't in the Firefox store yet. Build it from source with [Node.js](https://nodejs.org) 22.18 or later:
 
 ```bash
 git clone https://github.com/AmoabaKelvin/ishortn.ink.git
@@ -18,8 +19,7 @@ npm ci
 npm run build
 ```
 
-- **Chrome and Edge**: open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode**, click **Load unpacked** and pick `dist/chrome`.
-- **Firefox**: open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `dist/firefox/manifest.json`.
+Then open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `dist/firefox/manifest.json`.
 
 ## Connect your account
 

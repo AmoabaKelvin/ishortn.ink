@@ -85,6 +85,14 @@ export const pageCards = {
     visual: "links",
     visualLabel: "example.com/sale?utm_source=newsletter&utm_medium=email&utm_campaign=spring",
   }),
+  extension: card({
+    eyebrow: "Browser extension",
+    title: "iShortn for Chrome",
+    subtitle:
+      "Shorten the current tab in one click, copy the link and get its QR code, right from your browser toolbar.",
+    visual: "links",
+    visualLabel: "ishortn.ink/q4Lx9",
+  }),
   whatsappLinkGenerator: card({
     eyebrow: "Free tool",
     title: "Free WhatsApp link generator",
