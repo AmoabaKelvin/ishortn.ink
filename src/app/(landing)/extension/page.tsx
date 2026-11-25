@@ -138,6 +138,10 @@ export default function ExtensionPage() {
             </ButtonLink>
           </div>
           <p className="mt-4 text-sm text-neutral-600">Free. Works in Chrome and Edge.</p>
+          <p className="mt-1 max-w-[52ch] text-sm text-neutral-600">
+            On Edge, click &ldquo;Allow extensions from other stores&rdquo; when asked, then
+            &ldquo;Add to Chrome&rdquo;.
+          </p>
         </div>
 
         {/* The browser screenshot is unreadable at phone width, so phones get the popup alone. */}
