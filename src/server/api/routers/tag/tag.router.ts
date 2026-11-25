@@ -11,6 +11,9 @@ import {
   getUserTags,
 } from "./tag.service";
 
+// Tag.name is varchar(50).
+const tagNameSchema = z.string().max(50, "Tags can be at most 50 characters");
+
 export const tagRouter = createTRPCRouter({
   // Get all tags for the current workspace
   list: workspaceProcedure.query(async ({ ctx }) => {
@@ -19,7 +22,7 @@ export const tagRouter = createTRPCRouter({
 
   // Create a new tag
   create: workspaceProcedure
-    .input(z.object({ name: z.string() }))
+    .input(z.object({ name: tagNameSchema }))
     .mutation(async ({ ctx, input }) => {
       return createTag(ctx, input.name);
     }),
@@ -39,7 +42,7 @@ export const tagRouter = createTRPCRouter({
     .input(
       z.object({
         linkId: z.number(),
-        tagNames: z.array(z.string()),
+        tagNames: z.array(tagNameSchema),
       }),
     )
     .mutation(async ({ ctx, input }) => {

@@ -97,6 +97,7 @@ import {
 
 import { mergeCampaignUtm } from "../campaign/utils";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
+import { LINK_ALIAS_MAX_LENGTH, LINK_NOTE_MAX_LENGTH } from "./link.input";
 import {
   assertDomainAllowed,
   assertDomainOwned,
@@ -1864,9 +1865,6 @@ export const checkAliasAvailability = async (
 // request; cap them so a 1,000-row file doesn't fan out all at once.
 const CSV_IMPORT_CONCURRENCY = 8;
 
-// Width of the alias column; a longer alias would fail the insert with a driver error.
-const MAX_IMPORT_ALIAS_LENGTH = 20;
-
 type ImportLink = {
   row: number;
   url: string;
@@ -2053,10 +2051,10 @@ const bulkCreateLinkRows = async (
           message: "Alias is used by an earlier row in this file",
         });
       }
-      if (record.alias.length > MAX_IMPORT_ALIAS_LENGTH) {
+      if (record.alias.length > LINK_ALIAS_MAX_LENGTH) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Alias can be at most ${MAX_IMPORT_ALIAS_LENGTH} characters`,
+          message: `Alias can be at most ${LINK_ALIAS_MAX_LENGTH} characters`,
         });
       }
       await validateAlias(ctx, record.alias, record.domain, isPaidPlan);
@@ -2080,6 +2078,12 @@ const bulkCreateLinkRows = async (
       if (!record.url) throw new TRPCError({ code: "BAD_REQUEST", message: "Missing url" });
       const url = normalizeDestinationUrl(record.url);
       if (!url) throw new TRPCError({ code: "BAD_REQUEST", message: INVALID_URL_MESSAGE });
+      if (record.note && record.note.length > LINK_NOTE_MAX_LENGTH) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Note can be at most ${LINK_NOTE_MAX_LENGTH} characters`,
+        });
+      }
       const domainError = domainErrors.get(record.domain);
       if (domainError) throw domainError;
       return prepare({ ...record, url });

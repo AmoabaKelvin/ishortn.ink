@@ -102,16 +102,36 @@ export const geoRuleInputSchema = z
     },
   );
 
+// Widths of the Link varchar columns. MySQL runs in strict mode, so a longer value
+// fails the insert with ER_DATA_TOO_LONG instead of being truncated.
+export const LINK_NAME_MAX_LENGTH = 255;
+export const LINK_NOTE_MAX_LENGTH = 255;
+export const LINK_ALIAS_MAX_LENGTH = 20;
+export const LINK_DOMAIN_MAX_LENGTH = 255;
+
+export const linkNameSchema = z
+  .string()
+  .max(LINK_NAME_MAX_LENGTH, `Link name can be at most ${LINK_NAME_MAX_LENGTH} characters`);
+export const linkNoteSchema = z
+  .string()
+  .max(LINK_NOTE_MAX_LENGTH, `Note can be at most ${LINK_NOTE_MAX_LENGTH} characters`);
+export const linkAliasSchema = z
+  .string()
+  .max(LINK_ALIAS_MAX_LENGTH, `Alias can be at most ${LINK_ALIAS_MAX_LENGTH} characters`);
+export const linkDomainSchema = z
+  .string()
+  .max(LINK_DOMAIN_MAX_LENGTH, `Domain can be at most ${LINK_DOMAIN_MAX_LENGTH} characters`);
+
 export const createLinkSchema = z.object({
   url: destinationUrlSchema,
-  name: z.string().optional(),
-  alias: z.string().optional(),
+  name: linkNameSchema.optional(),
+  alias: linkAliasSchema.optional(),
   disableLinkAfterClicks: z.number().optional(),
   disableLinkAfterDate: z.date().optional(),
   activateAt: z.date().nullable().optional(),
   password: z.string().optional(),
-  domain: z.string().optional(),
-  note: z.string().optional(),
+  domain: linkDomainSchema.optional(),
+  note: linkNoteSchema.optional(),
   // Tag.name is varchar(50).
   tags: z.array(z.string().max(50, "Tags can be at most 50 characters")).optional(),
   metadata: z
@@ -143,10 +163,10 @@ export const quickLinkShorteningSchema = z.object({
 
 export const updateLinkSchema = createLinkSchema.partial().extend({
   id: z.number(),
-  name: z.string().optional(),
+  name: linkNameSchema.optional(),
   disabled: z.boolean().optional(),
   publicStats: z.boolean().optional(),
-  note: z.string().optional(),
+  note: linkNoteSchema.optional(),
   cloaking: z.boolean().optional(),
   verifiedClicksEnabled: z.boolean().optional(),
 });
