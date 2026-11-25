@@ -353,6 +353,10 @@ export const solutions = {
       },
     ],
     related: [
+      {
+        href: "/blog/qr-code-on-product-packaging",
+        label: "QR codes on product packaging and labels",
+      },
       { href: "/blog/qr-code-for-google-reviews", label: "Make a QR code for Google reviews" },
       { href: "/blog/qr-code-for-flyers", label: "Put a QR code on a flyer" },
       {
