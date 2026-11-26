@@ -3,11 +3,13 @@ import { describe, expect, test } from "bun:test";
 import { API_RATE_LIMITS } from "@/lib/billing/plans";
 
 import {
+  applyRateLimit,
   consumeRateLimit,
   evaluateWindow,
   planRateLimitWindows,
   rateLimitedResponse,
   rateLimitHeaders,
+  readRateLimitCounters,
 } from "./rate-limit";
 
 import type { CounterStore, RateLimitWindow } from "./rate-limit";
@@ -160,6 +162,34 @@ describe("consumeRateLimit", () => {
       limit: API_RATE_LIMITS.free.perDay,
       remaining: 4,
     });
+  });
+});
+
+describe("readRateLimitCounters + applyRateLimit", () => {
+  test("counters read before the plan is known apply that plan's limits", async () => {
+    const subject = nextSubject();
+    const minuteIndex = Math.floor(MINUTE_START / 1000 / 60);
+    const { store, data } = memoryStore({
+      [`ratelimit:api:${subject}:60:${minuteIndex}`]: API_RATE_LIMITS.free.perMinute,
+    });
+    const windows = planRateLimitWindows("free");
+    const counters = await readRateLimitCounters(
+      subject,
+      windows.map((w) => w.windowSeconds),
+      { store, nowMs: MINUTE_START },
+    );
+
+    // The same stored counts block Free but leave room on Pro.
+    expect(applyRateLimit(counters, windows, { store, defer: runNow }).allowed).toBe(false);
+    const pro = applyRateLimit(counters, planRateLimitWindows("pro"), { store, defer: runNow });
+    expect(pro).toMatchObject({
+      allowed: true,
+      limit: API_RATE_LIMITS.pro.perMinute,
+      remaining: API_RATE_LIMITS.pro.perMinute - API_RATE_LIMITS.free.perMinute - 1,
+    });
+    expect(data.get(`ratelimit:api:${subject}:60:${minuteIndex}`)).toBe(
+      String(API_RATE_LIMITS.free.perMinute + 1),
+    );
   });
 });
 

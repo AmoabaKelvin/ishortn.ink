@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 import { env } from "@/env.mjs";
+import { API_RATE_LIMITS } from "@/lib/billing/plans";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { EXTENSION_UPGRADE_URL } from "@/lib/extension/connect";
 import { db } from "@/server/db";
@@ -139,11 +140,28 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     expect(response.status).toBe(401);
   });
 
-  test("refuses banned and deleted accounts with 401", async () => {
+  test("refuses banned and deleted accounts and unknown tokens with 401", async () => {
     await reset({ banned: true });
     expect((await shorten()).status).toBe(401);
     await reset({ deletedAt: new Date() });
     expect((await getMe(extensionRequest("/me"))).status).toBe(401);
+    await reset();
+    const unknown = await getMe(extensionRequest("/me", {}, "not-a-token"));
+    expect(unknown.status).toBe(401);
+    expect(unknown.headers.get("x-ratelimit-limit")).toBeNull();
+  });
+
+  test("counts each request against the plan's rate limit in the headers", async () => {
+    const first = await getMe(extensionRequest("/me"));
+    const second = await getMe(extensionRequest("/me"));
+    expect(second.status).toBe(200);
+    // The minute window is closest to its limit, so it is the one reported.
+    expect(second.headers.get("x-ratelimit-limit")).toBe(String(API_RATE_LIMITS.free.perMinute));
+    expect(Number(second.headers.get("x-ratelimit-remaining"))).toBe(
+      Number(first.headers.get("x-ratelimit-remaining")) - 1,
+    );
+    expect(Number(second.headers.get("x-ratelimit-reset")) % 60).toBe(0);
+    expect(second.headers.get("access-control-allow-origin")).toBe("*");
   });
 
   test("refuses link creation from a restricted account with 403", async () => {

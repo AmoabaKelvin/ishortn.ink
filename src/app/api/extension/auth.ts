@@ -1,5 +1,5 @@
-import { consumeApiRateLimit, rateLimitHeaders } from "../v1/rate-limit";
-import { validateAndGetToken } from "../v1/utils";
+import { applyApiRateLimit, rateLimitHeaders } from "../v1/rate-limit";
+import { authenticateToken } from "../v1/utils";
 
 import type { ApiToken } from "../v1/utils";
 
@@ -43,10 +43,11 @@ export function withExtensionToken<Req extends Request, Args extends unknown[]>(
   handler: (request: Req, token: ApiToken, ...args: Args) => Promise<Response>,
 ) {
   return async (request: Req, ...args: Args): Promise<Response> => {
-    const token = await validateAndGetToken(bearerToken(request), "extension");
-    if (!token) return extensionError(401, "Not connected. Connect the extension again.");
+    const auth = await authenticateToken(bearerToken(request), "extension");
+    if (!auth) return extensionError(401, "Not connected. Connect the extension again.");
+    const { token } = auth;
 
-    const decision = await consumeApiRateLimit(token.userId, token.plan);
+    const decision = applyApiRateLimit(await auth.counters, token.plan);
     if (!decision.allowed) {
       return extensionError(
         429,

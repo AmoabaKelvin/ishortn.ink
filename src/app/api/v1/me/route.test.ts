@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
-import { PLAN_VARIANT_IDS } from "@/lib/billing/plans";
+import { API_RATE_LIMITS, PLAN_VARIANT_IDS } from "@/lib/billing/plans";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { clearApiSunsetCache } from "@/server/lib/api-access";
@@ -81,7 +81,8 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/me (MySQL)", () => {
 
     const response = await me();
     expect(response.status).toBe(200);
-    expect(response.headers.get("X-RateLimit-Limit")).not.toBeNull();
+    // The plan comes from the joined subscription, so the limits are Pro's.
+    expect(response.headers.get("X-RateLimit-Limit")).toBe(String(API_RATE_LIMITS.pro.perMinute));
     expect(await response.json()).toEqual({
       id: USER_ID,
       email: "api-me@example.com",
@@ -89,6 +90,19 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/me (MySQL)", () => {
       plan: "pro",
       defaultDomain: "isht.ink",
     });
+  });
+
+  test("answers keys of banned or deleted accounts with 401", async () => {
+    for (const values of [{ banned: true }, { deletedAt: new Date() }]) {
+      await db.update(schema.user).set(values).where(eq(schema.user.id, USER_ID));
+      const response = await me();
+      expect(response.status).toBe(401);
+      expect(response.headers.get("X-RateLimit-Limit")).toBeNull();
+      await db
+        .update(schema.user)
+        .set({ banned: false, deletedAt: null })
+        .where(eq(schema.user.id, USER_ID));
+    }
   });
 
   test("falls back to the platform default domain", async () => {

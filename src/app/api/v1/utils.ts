@@ -21,7 +21,12 @@ import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 
 import { apiAccessRevokedResponse, withApiSunsetNotice } from "./api-access";
 import { apiError } from "./errors";
-import { consumeApiRateLimit, rateLimitedResponse, rateLimitHeaders } from "./rate-limit";
+import {
+  applyApiRateLimit,
+  rateLimitedResponse,
+  rateLimitHeaders,
+  readApiRateLimitCounters,
+} from "./rate-limit";
 
 import type { Plan } from "@/lib/billing/plans";
 
@@ -29,71 +34,91 @@ import type { Plan } from "@/lib/billing/plans";
 const LAST_USED_RESOLUTION_MS = 60 * 60 * 1000;
 
 /**
- * Loads the token and its owner's plan. `kind` keeps the two token types on their own routes:
- * extension tokens exist on every plan, so /api/v1 (a paid feature) must refuse them.
+ * The token row, the owner's auth columns and their subscription in one round trip, or null
+ * for an unknown token or a banned or deleted owner. `kind` keeps the two token types on their
+ * own routes: extension tokens exist on every plan, so /api/v1 (a paid feature) must refuse them.
  */
-export async function validateAndGetToken(
-  apiKey: string | null,
-  kind: "api" | "extension" = "api",
-) {
+async function findToken(apiKey: string | null, kind: "api" | "extension") {
   if (!apiKey) return null;
   const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
-  const existingToken = await db
-    .select()
-    .from(token)
-    .where(and(eq(token.token, hash), eq(token.kind, kind)));
-
-  if (!existingToken.length) return null;
-
-  const userId = existingToken[0]!.userId;
-
-  // Run ban/restriction check and subscription lookup in parallel
-  const [userRecord, userSubscription] = await Promise.all([
-    db.query.user.findFirst({
-      where: eq(user.id, userId),
-      columns: {
-        id: true,
-        banned: true,
-        deletedAt: true,
-        restrictedAt: true,
-        planGracePlan: true,
-        planGraceEndsAt: true,
-        planGraceReason: true,
-        planCheckedAt: true,
+  const [row] = await db
+    .select({
+      token,
+      owner: {
+        id: user.id,
+        banned: user.banned,
+        deletedAt: user.deletedAt,
+        restrictedAt: user.restrictedAt,
+        planGracePlan: user.planGracePlan,
+        planGraceEndsAt: user.planGraceEndsAt,
+        planGraceReason: user.planGraceReason,
+        planCheckedAt: user.planCheckedAt,
+        // For /api/extension/me, so it needn't load the user again.
+        email: user.email,
+        monthlyLinkCount: user.monthlyLinkCount,
+        lastLinkCountReset: user.lastLinkCountReset,
+        createdAt: user.createdAt,
       },
-    }),
-    db.select().from(subscription).where(eq(subscription.userId, userId)),
-  ]);
+      subscription,
+    })
+    .from(token)
+    .innerJoin(user, eq(user.id, token.userId))
+    .leftJoin(subscription, eq(subscription.userId, token.userId))
+    .where(and(eq(token.token, hash), eq(token.kind, kind)))
+    .limit(1);
 
-  if (!userRecord || userRecord.banned || userRecord.deletedAt) {
-    return null;
-  }
+  if (!row || row.owner.banned || row.owner.deletedAt) return null;
 
   const now = new Date();
-  const { id, lastUsedAt } = existingToken[0]!;
+  const { id, lastUsedAt } = row.token;
   if (!lastUsedAt || now.getTime() - lastUsedAt.getTime() >= LAST_USED_RESOLUTION_MS) {
     void runBackgroundTask(db.update(token).set({ lastUsedAt: now }).where(eq(token.id, id))).catch(
       () => undefined,
     );
   }
+  return row;
+}
 
-  const userSub = userSubscription[0] ?? null;
+async function resolveTokenPlan({
+  token: tokenRow,
+  owner,
+  subscription: userSub,
+}: NonNullable<Awaited<ReturnType<typeof findToken>>>) {
   // The same entitlement the dashboard uses: API links live in the personal workspace.
   // Every paid-feature check in v1 reads this plan, so a trialing, past-due or
   // cancelled-but-paid-up subscriber gets the same access as in the dashboard.
-  const grace = await ensurePlanChecked(userRecord, userSub);
+  const grace = await ensurePlanChecked(owner, userSub);
   return {
-    ...existingToken[0]!,
+    ...tokenRow,
     subscription: userSub,
     grace,
     plan: effectivePlan(userSub, grace),
     // Existing usage (domains past the allowance) during an over-plan grace.
     graceUsagePlan: graceUsagePlan(userSub, grace),
-    restrictedAt: userRecord.restrictedAt ?? null,
+    restrictedAt: owner.restrictedAt ?? null,
+    owner: {
+      email: owner.email,
+      monthlyLinkCount: owner.monthlyLinkCount,
+      lastLinkCountReset: owner.lastLinkCountReset,
+      createdAt: owner.createdAt,
+    },
   };
 }
 
-export type ApiToken = NonNullable<Awaited<ReturnType<typeof validateAndGetToken>>>;
+/**
+ * Loads the token with its owner's plan, and the owner's rate-limit counters; null for an
+ * unknown token or a banned or deleted owner. The counter read needs only the user id, so it
+ * starts right after the token query and overlaps the rest of auth instead of following it.
+ */
+export async function authenticateToken(apiKey: string | null, kind: "api" | "extension") {
+  const row = await findToken(apiKey, kind);
+  if (!row) return null;
+  const counters = readApiRateLimitCounters(row.token.userId);
+  const token = await resolveTokenPlan(row);
+  return { token, counters };
+}
+
+export type ApiToken = Awaited<ReturnType<typeof resolveTokenPlan>>;
 
 /** 403 for write routes when the token owner's account is restricted, else null. */
 export function restrictedAccountResponse(token: ApiToken): Response | null {
@@ -110,10 +135,11 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
   handler: (request: Req, token: ApiToken, ...args: Args) => Promise<Response>,
 ) {
   return async (request: Req, ...args: Args): Promise<Response> => {
-    const token = await validateAndGetToken(request.headers.get("x-api-key"));
-    if (!token) {
+    const auth = await authenticateToken(request.headers.get("x-api-key"), "api");
+    if (!auth) {
       return apiError(401, "unauthorized", "Invalid or missing API key");
     }
+    const { token } = auth;
 
     // Paid keys skip the sunset lookup; for the rest it's cached per isolate.
     const sunsetAt = canUseApi(token.plan) ? null : await getApiSunset();
@@ -123,7 +149,7 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
       return apiAccessRevokedResponse();
     }
 
-    const decision = await consumeApiRateLimit(token.userId, token.plan);
+    const decision = applyApiRateLimit(await auth.counters, token.plan);
     if (!decision.allowed) return withApiSunsetNotice(rateLimitedResponse(decision), access);
 
     const response = await handler(request, token, ...args);
