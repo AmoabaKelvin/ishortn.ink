@@ -94,6 +94,20 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     expect(user?.monthlyLinkCount).toBe(1);
   });
 
+  test("reports the create steps in Server-Timing and exposes the header", async () => {
+    const response = await shorten();
+    expect(response.status).toBe(201);
+    const names = response.headers
+      .get("server-timing")
+      ?.split(", ")
+      .map((metric) => metric.split(";")[0]);
+    expect(names).toEqual(
+      expect.arrayContaining(["auth", "domain", "alias", "safety", "db", "total"]),
+    );
+    expect(response.headers.get("access-control-expose-headers")).toBe("Server-Timing");
+    expect(response.headers.get("timing-allow-origin")).toBe("*");
+  });
+
   test("answers the free monthly limit with 403 and the upgrade URL", async () => {
     await reset({ monthlyLinkCount: 29 });
     expect((await shorten()).status).toBe(201);
@@ -104,6 +118,8 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
       error: monthlyLinkLimitMessage("free", 30),
       upgradeUrl: EXTENSION_UPGRADE_URL,
     });
+    expect(response.headers.get("server-timing")).toMatch(/^auth;dur=\d+, domain;dur=\d+, /);
+    expect(response.headers.get("server-timing")).toContain("db;dur=");
   });
 
   test("refuses API keys", async () => {

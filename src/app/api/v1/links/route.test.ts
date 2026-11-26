@@ -78,6 +78,13 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     return row?.monthlyLinkCount;
   }
 
+  function timingNames(response: Response) {
+    return response.headers
+      .get("server-timing")
+      ?.split(", ")
+      .map((metric) => metric.split(";")[0]);
+  }
+
   beforeEach(() => reset(0));
 
   afterAll(async () => {
@@ -240,5 +247,46 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     const links = await db.select().from(schema.link).where(eq(schema.link.userId, USER_ID));
     expect(links.map((l) => l.url)).toEqual([TARGET_URL]);
     expect(await storedCount()).toBe(1);
+  });
+
+  test("reports the create steps in Server-Timing", async () => {
+    const response = await createLink();
+    expect(response.status).toBe(201);
+    expect(timingNames(response)).toEqual(
+      expect.arrayContaining(["auth", "domain", "alias", "safety", "db", "read", "total"]),
+    );
+    expect(response.headers.get("server-timing")).not.toContain("localhost");
+  });
+
+  test("reports Server-Timing on a plan-limit refusal", async () => {
+    await reset(30);
+    const response = await createLink({ alias: "route-test-limit" });
+    expect(response.status).toBe(403);
+    const names = timingNames(response);
+    expect(names).toEqual(expect.arrayContaining(["auth", "domain", "alias", "safety", "db"]));
+    expect(names).not.toContain("read");
+  });
+
+  test("reports Server-Timing when the safety check blocks the URL", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/v1/links", {
+        method: "POST",
+        headers: { "x-api-key": API_KEY, "content-type": "application/json" },
+        body: JSON.stringify({ url: "http://192.0.2.10/login" }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    const header = response.headers.get("server-timing");
+    expect(header).toContain("safety;dur=");
+    expect(header).toContain('desc="blocked-pre-llm"');
+    expect(timingNames(response)).not.toContain("db");
+  });
+
+  test("reports auth and total in Server-Timing for a missing API key", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/v1/links", { method: "POST", body: "{}" }),
+    );
+    expect(response.status).toBe(401);
+    expect(timingNames(response)).toEqual(["auth", "total"]);
   });
 });
