@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
+import { ServerTiming } from "@/server/lib/server-timing";
 
 import { apiError, errorResponse, readJsonBody, validationError } from "../errors";
 import {
@@ -93,20 +94,25 @@ function afterCursor({ createdAt, id }: LinkCursor) {
   );
 }
 
-export const POST = withApiKey(async (request: Request, token) => {
-  const restricted = restrictedAccountResponse(token);
-  if (restricted) return restricted;
+// Every response, refusals included, carries a Server-Timing header with the create steps.
+export async function POST(request: Request): Promise<Response> {
+  const serverTiming = new ServerTiming();
+  const response = await withApiKey(async (request: Request, token) => {
+    const restricted = restrictedAccountResponse(token);
+    if (restricted) return restricted;
 
-  const body = await readJsonBody(request);
-  if (!body.ok) return body.response;
+    const body = await readJsonBody(request);
+    if (!body.ok) return body.response;
 
-  const input = shortenLinkSchema.safeParse(body.body);
-  if (!input.success) return validationError(input.error);
+    const input = shortenLinkSchema.safeParse(body.body);
+    if (!input.success) return validationError(input.error);
 
-  try {
-    const newLink = await createTokenLink(token, input.data, "api");
-    return Response.json(newLink, { status: 201 });
-  } catch (error) {
-    return errorResponse(error);
-  }
-});
+    try {
+      const newLink = await createTokenLink(token, input.data, "api", serverTiming);
+      return Response.json(newLink, { status: 201 });
+    } catch (error) {
+      return errorResponse(error);
+    }
+  }, serverTiming)(request);
+  return serverTiming.apply(response);
+}
