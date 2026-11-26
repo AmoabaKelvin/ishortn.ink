@@ -96,6 +96,8 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "qr-code-generator",
   "robots.txt",
   "sitemap.xml",
+  // public/social: marketing images served as static assets, never short links.
+  "social",
   "solutions",
   "stats",
   "teams",

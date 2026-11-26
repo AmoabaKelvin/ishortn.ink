@@ -223,6 +223,7 @@ describe("reserved app route aliases", () => {
       "qr-code-generator",
       "whatsapp-link-generator",
       "gerador-de-link-whatsapp",
+      "social",
       "Pricing",
     ]) {
       expect(isAppRouteAlias(alias, "ishortn.ink")).toBe(true);
