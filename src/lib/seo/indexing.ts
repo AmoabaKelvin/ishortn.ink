@@ -38,9 +38,13 @@ const MARKETING_PATHS = new Set([
 ]);
 const MARKETING_PREFIXES = ["/blog/", "/compare/", "/solutions/"];
 
-// Short-link domains and subdomains of the app domain (www, status, team
-// subdomains). Team subdomains of the other short domains are left alone.
-const NON_PRIMARY_HOSTS = new Set(PLATFORM_DOMAINS.filter((domain) => domain !== APP_BASE_DOMAIN));
+// Short-link domains, their www hosts, and subdomains of the app domain (www,
+// status, team subdomains). Team subdomains of the other short domains are
+// left alone; "www" is a reserved team slug, so it never names a team.
+const NON_PRIMARY_HOSTS = new Set([
+  ...PLATFORM_DOMAINS.filter((domain) => domain !== APP_BASE_DOMAIN),
+  ...PLATFORM_DOMAINS.map((domain) => `www.${domain}`),
+]);
 
 function normalizeHost(host: string): string {
   return (host.split(":")[0] ?? host).replace(/\.$/, "").toLowerCase();

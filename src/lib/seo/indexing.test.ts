@@ -30,6 +30,21 @@ describe("getMarketingRedirectUrl", () => {
     );
   });
 
+  test("moves marketing routes on the www hosts of the short domains", () => {
+    expect(getMarketingRedirectUrl("www.isht.ink", "/open-source-url-shortener", "?a=1")).toBe(
+      "https://ishortn.ink/open-source-url-shortener?a=1",
+    );
+    expect(getMarketingRedirectUrl("www.isht.ink", "/blog/bitly-alternatives", "")).toBe(
+      "https://ishortn.ink/blog/bitly-alternatives",
+    );
+    expect(getMarketingRedirectUrl("www.isht.ink", "/sitemap.xml", "")).toBe(
+      "https://ishortn.ink/sitemap.xml",
+    );
+    expect(getMarketingRedirectUrl("WWW.ISHT.APP:443", "/pricing", "?ref=x")).toBe(
+      "https://ishortn.ink/pricing?ref=x",
+    );
+  });
+
   test("leaves the app domain, short links, app routes and other hosts alone", () => {
     expect(getMarketingRedirectUrl("ishortn.ink", "/pricing", "")).toBeNull();
     expect(getMarketingRedirectUrl("ishortn.ink", "/llms.txt", "")).toBeNull();
@@ -37,7 +52,11 @@ describe("getMarketingRedirectUrl", () => {
     expect(getMarketingRedirectUrl("www.ishortn.ink", "/abc123", "")).toBeNull();
     expect(getMarketingRedirectUrl("isht.app", "/blogpost", "")).toBeNull();
     expect(getMarketingRedirectUrl("isht.app", "/p/my-bio", "")).toBeNull();
+    expect(getMarketingRedirectUrl("www.isht.ink", "/abc123", "")).toBeNull();
+    expect(getMarketingRedirectUrl("www.isht.app", "/abc123", "?x=1")).toBeNull();
+    expect(getMarketingRedirectUrl("www.isht.ink", "/docs", "")).toBeNull();
     expect(getMarketingRedirectUrl("acme.isht.app", "/", "")).toBeNull();
+    expect(getMarketingRedirectUrl("acme.isht.ink", "/pricing", "")).toBeNull();
     expect(getMarketingRedirectUrl("go.customer.com", "/", "")).toBeNull();
     expect(getMarketingRedirectUrl("localhost:3000", "/pricing", "")).toBeNull();
     expect(getMarketingRedirectUrl("ishortn.workers.dev", "/", "")).toBeNull();
