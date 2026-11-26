@@ -119,13 +119,17 @@ async function createNewLink(
   }
 
   attempt.step = "safety";
-  await assertUrlSafe(data.url);
+  // The alias lookup doesn't depend on the safety verdict, so it runs alongside it.
+  const [, alias] = await Promise.all([
+    assertUrlSafe(data.url),
+    data.alias ?? generateUnreservedAlias(db, domain),
+  ]);
 
   attempt.step = "db";
 
   const newLinkData = {
     url: data.url,
-    alias: data.alias ?? (await generateUnreservedAlias(db, domain)),
+    alias,
     disableLinkAfterClicks: data.expiresAfter,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     activateAt: data.activatesAt ? new Date(data.activatesAt) : null,
