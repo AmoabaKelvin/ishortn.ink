@@ -448,15 +448,19 @@ export const competitors = {
     name: "Linktree",
     slug: "linktree",
     category: "link in bio",
-    pricesCheckedOn: "2026-11-22",
+    seoTitle: "Linktree vs iShortn: Custom Domain, Analytics and Price",
+    pricesCheckedOn: "2026-11-26",
     tagline: "The default link-in-bio — but you pay to see what's working",
     description:
       "Linktree is the most recognized link-in-bio tool, with a generous free page and a huge template library. The catch: the analytics that show which links convert sit behind paid plans. See how iShortn compares.",
+    metaDescription:
+      "Linktree has no custom domains on any plan, and per-link stats start on Starter. iShortn bio pages track every link on Free, and Pro adds your own domain.",
     freeLinks: "Unlimited links on the bio page",
-    freeAnalytics: "Last 28 days on Free; 90 days on Starter, 365 on Pro, lifetime on Premium",
+    freeAnalytics:
+      "Last 28 days; per-link insights from Starter, location, device and referrer from Pro",
     customDomains: "Not available on any plan",
     qrCodes: "Yes, all plans",
-    apiAccess: "No public REST API (offers an MCP server for AI assistants)",
+    apiAccess: "No self-serve public API (developer access by application)",
     teamFeatures: "Separate team plans with roles and permissions",
     passwordProtection: "Password and code lock on Pro and Premium",
     pricing:
@@ -469,6 +473,34 @@ export const competitors = {
       "Linktree doesn't support custom domains on any plan — iShortn Pro ($8/mo) serves your bio page and short links on your own domain",
       "iShortn Pro ($8/mo) includes password-protected links; Linktree's password and code lock needs its Pro plan ($17/mo, or $14/mo billed annually)",
       "iShortn Pro includes a REST API for links and analytics; Linktree has no public REST API",
+    ],
+    faqs: [
+      {
+        question: "Can I use my own domain with Linktree?",
+        answer:
+          "No. Linktree's help center says it doesn't support custom domains: every page uses linktr.ee/yourname, and it doesn't provide domain forwarding. iShortn Pro ($8 a month) puts your bio page and your short links on your own domain, with up to 3 domains.",
+      },
+      {
+        question: "Does Linktree's free plan show clicks on each link?",
+        answer:
+          "Linktree Free shows 28 days of page analytics, but individual link insights start on Starter, and location, device and referrer data start on Pro. On iShortn every bio link is a tracked short link, so the free plan shows clicks per link with country, device and referrer, for the last 7 days.",
+      },
+      {
+        question: "What does iShortn's free bio page include?",
+        answer:
+          "One bio page with up to 3 link blocks, each one a tracked short link, on the free plan. Pro gives you 3 bio pages on your own domain without iShortn branding, and Ultra makes bio pages unlimited.",
+      },
+      {
+        question: "When is Linktree the better choice?",
+        answer:
+          "If you want many links on one page for free, a large template library, or to sell digital products and bookings from your bio page, Linktree does more there. iShortn is the better fit when you want your own domain, per-link stats on the free plan, and short links and QR codes in the same tool.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/blog/linktree-custom-domain", label: "Linktree and custom domains: what works" },
+      { href: "/blog/linktree-alternatives", label: "Linktree alternatives compared" },
+      { href: "/docs/bio-pages", label: "How iShortn bio pages work" },
+      { href: "/compare/beacons", label: "Beacons vs iShortn" },
     ],
     guide: {
       slug: "linktree-custom-domain",
