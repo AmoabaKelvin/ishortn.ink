@@ -5,6 +5,8 @@ description: Run your own iShortn instance on Cloudflare Workers with a MySQL da
 
 iShortn is MIT-licensed, and the code that runs the hosted service is the code you deploy. This guide takes you from a fresh Cloudflare account to a working instance: create a link, follow it, see the click in analytics.
 
+Comparing open-source shorteners? See [Open-source URL shorteners compared](/open-source-url-shortener).
+
 ## What you're deploying
 
 A Next.js app built with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare) and deployed as **one Cloudflare Worker**. `custom-worker.ts` is the entry point. It serves every page and short link, runs the cron jobs, and consumes the click queue.

@@ -1,7 +1,7 @@
 ---
 title: "Linktree Custom Domain: Can You Use Your Own Domain? (And What to Use Instead)"
 seoTitle: "Linktree Custom Domain: Can You Use Your Own?"
-description: "Linktree doesn't support custom domains on any plan. Here's why it matters, the workarounds people try, and how to put a tracked link-in-bio page on your own domain."
+description: "Linktree doesn't support custom domains on any plan. Why that matters, the workarounds people try, and how to put a tracked bio page on your own domain."
 date: "2026-11-23"
 author: "Kelvin Amoaba"
 tags: ["link in bio", "linktree", "custom domain", "branding", "guide"]

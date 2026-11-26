@@ -59,38 +59,55 @@ export function isBlockedAddress(address: string): boolean {
   return BLOCKED.check(bare, version === 4 ? "ipv4" : "ipv6");
 }
 
+export type HttpUrlCheck = "public" | "private" | "unresolved" | "invalid";
+
+type Resolver = (hostname: string) => Promise<string[]>;
+
+const dnsResolver: Resolver = async (hostname) => {
+  // resolve4/resolve6 rather than lookup — Workers implements the resolver
+  // calls (over DoH) but not getaddrinfo.
+  const [v4, v6] = await Promise.allSettled([resolve4(hostname), resolve6(hostname)]);
+  return [v4, v6].flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+};
+
 /**
- * True when `url` is a syntactically valid http(s) URL whose hostname resolves
- * exclusively to public unicast addresses.
+ * Classifies `url` for an outbound request: "public" only when it is a valid
+ * http(s) URL whose hostname resolves exclusively to public unicast addresses.
  *
  * Note: this resolves the name, and the connection resolves it again. A host
  * with an attacker-controlled, very short TTL can therefore still rebind
  * between the two. Closing that needs the connection pinned to the address
  * validated here, which Node's global fetch has no hook for.
  */
-export async function isPublicHttpUrl(url: string): Promise<boolean> {
+export async function checkHttpUrl(
+  url: string,
+  resolve: Resolver = dnsResolver,
+): Promise<HttpUrlCheck> {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
-    return false;
+    return "invalid";
   }
 
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "invalid";
 
   // Strip the brackets Node keeps on IPv6 literals.
   const hostname = parsed.hostname.replace(/^\[|\]$/g, "");
-  if (!hostname) return false;
+  if (!hostname) return "invalid";
 
-  if (net.isIP(hostname)) return !isBlockedAddress(hostname);
+  if (net.isIP(hostname)) return isBlockedAddress(hostname) ? "private" : "public";
 
   // Reject names that resolve anywhere inside the deployment's network: every
-  // A and AAAA record must be public. resolve4/resolve6 rather than lookup —
-  // Workers implements the resolver calls (over DoH) but not getaddrinfo.
-  const [v4, v6] = await Promise.allSettled([resolve4(hostname), resolve6(hostname)]);
-  const addresses = [v4, v6].flatMap((r) => (r.status === "fulfilled" ? r.value : []));
-  if (!addresses.length) return false;
-  return addresses.every((address) => !isBlockedAddress(address));
+  // A and AAAA record must be public.
+  const addresses = await resolve(hostname);
+  if (!addresses.length) return "unresolved";
+  return addresses.every((address) => !isBlockedAddress(address)) ? "public" : "private";
+}
+
+/** True when `url` is a public http(s) URL; see checkHttpUrl. */
+export async function isPublicHttpUrl(url: string): Promise<boolean> {
+  return (await checkHttpUrl(url)) === "public";
 }
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);

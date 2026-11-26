@@ -220,9 +220,11 @@ describe("reserved app route aliases", () => {
   test("app route names are reserved on platform domains, in any case", () => {
     for (const alias of [
       "utm-builder",
+      "url-expander",
       "qr-code-generator",
       "whatsapp-link-generator",
       "gerador-de-link-whatsapp",
+      "social",
       "Pricing",
     ]) {
       expect(isAppRouteAlias(alias, "ishortn.ink")).toBe(true);

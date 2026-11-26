@@ -33,6 +33,12 @@ describe("sitemap", () => {
   it("lists the UTM builder", async () => {
     const urls = (await sitemap()).map((entry) => entry.url);
     expect(urls).toContain("https://ishortn.ink/utm-builder");
+    expect(urls).toContain("https://ishortn.ink/url-expander");
+  });
+
+  it("lists the open-source URL shortener page", async () => {
+    const urls = (await sitemap()).map((entry) => entry.url);
+    expect(urls).toContain("https://ishortn.ink/open-source-url-shortener");
   });
 
   it("lists the Chrome extension page", async () => {

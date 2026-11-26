@@ -44,6 +44,12 @@ export const pageCards = {
     title: "Link shorteners compared: free plans and prices",
     subtitle: "Free-plan limits, custom domains, QR codes and prices, side by side.",
   }),
+  openSourceUrlShortener: card({
+    eyebrow: "MIT licence",
+    title: "Open-source URL shortener",
+    subtitle:
+      "Self-host it on Cloudflare Workers or use the free hosted plan. Open-source shorteners compared.",
+  }),
   changelog: card({
     eyebrow: "Changelog",
     title: "What's new in iShortn",
@@ -84,6 +90,13 @@ export const pageCards = {
       "Add UTM tags to any link so Google Analytics shows which post, email or ad sent each visitor.",
     visual: "links",
     visualLabel: "example.com/sale?utm_source=newsletter&utm_medium=email&utm_campaign=spring",
+  }),
+  urlExpander: card({
+    eyebrow: "Free tool",
+    title: "URL expander",
+    subtitle: "Paste a short link to see where it really goes.",
+    visual: "links",
+    visualLabel: "Final page: https://example.com/spring-launch",
   }),
   extension: card({
     eyebrow: "Browser extension",
