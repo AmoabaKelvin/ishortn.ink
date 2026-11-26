@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { type PaidPlan } from "@/lib/constants/plan-pricing";
-import { timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils/time-ago";
 import { displayName } from "@/lib/utils/user-name";
 
 import type { RouterOutputs } from "@/trpc/shared";

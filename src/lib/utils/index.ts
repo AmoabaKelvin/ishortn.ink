@@ -1,5 +1,4 @@
 import { clsx } from "clsx";
-import { formatDistanceToNow } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import type { ClassValue } from "clsx";
@@ -87,9 +86,4 @@ export function formatChartMonth(monthStr: string): string {
   const [year, month] = monthStr.split("-").map(Number);
   const d = new Date(year!, month! - 1);
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-}
-
-export function timeAgo(date: Date | string | null): string {
-  if (!date) return "";
-  return formatDistanceToNow(new Date(date), { addSuffix: true });
 }

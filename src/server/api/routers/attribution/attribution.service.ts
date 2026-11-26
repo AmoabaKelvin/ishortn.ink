@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { parseFirstTouch } from "@/lib/attribution/first-touch";
+import { parseFirstTouch } from "@/lib/attribution/parse-first-touch";
 import { user, userAttribution } from "@/server/db/schema";
 
 import type { ProtectedTRPCContext } from "../../trpc";
