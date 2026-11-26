@@ -3,9 +3,13 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+import { RowHint } from "../../[alias]/_components/bar-list";
+
 type DistributionItem = {
   name: string;
   clicks: number;
+  /** Explains what the row means; shown in a tooltip beside the name. */
+  description?: string;
 };
 
 type ColoredDistributionCardProps = {
@@ -83,9 +87,12 @@ export function ColoredDistributionCard({
                 />
 
                 {/* Item name */}
-                <span className="relative z-10 truncate pr-4 text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                  {item.name}
-                </span>
+                <div className="relative z-10 flex min-w-0 items-center gap-1.5 pr-4">
+                  <span className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                    {item.name}
+                  </span>
+                  {item.description && <RowHint label={item.name} text={item.description} />}
+                </div>
 
                 {/* Stats */}
                 <div className="relative z-10 flex items-center gap-2">
@@ -120,13 +127,14 @@ export function TabSwitcher<View extends string>({
   onChangeView,
 }: TabSwitcherProps<View>) {
   return (
-    <div className="mb-4 flex items-center gap-1 border-b border-neutral-100 dark:border-border/50 pb-2">
+    <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-neutral-100 dark:border-border/50 pb-2">
       {views.map((name) => (
         <button
           key={name}
+          type="button"
           onClick={() => onChangeView(name)}
           className={cn(
-            "relative rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
+            "relative shrink-0 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
             currentView === name
               ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
               : "text-neutral-400 dark:text-muted-foreground hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600 dark:hover:text-neutral-300",
