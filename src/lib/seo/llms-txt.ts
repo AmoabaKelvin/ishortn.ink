@@ -66,6 +66,7 @@ export function buildLlmsTxt({
 - [Compare iShortn with Bitly, TinyURL, Rebrandly, Short.io, Dub, Linktree, Beacons and Carrd](${SITE}/compare)
 - [Free QR code generator (no signup, no expiry)](${SITE}/qr-code-generator)
 - [UTM builder](${SITE}/utm-builder)
+- [URL expander: see where a short link goes, with a Google Safe Browsing check](${SITE}/url-expander)
 - [Chrome extension](${SITE}/extension)
 - [Documentation](${SITE}/docs)
 - [Plans and limits](${SITE}/docs/plans)

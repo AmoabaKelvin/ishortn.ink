@@ -113,6 +113,7 @@ describe("card copy", () => {
     privacy: "privacy/page.tsx",
     qrCodeGenerator: "qr-code-generator/page.tsx",
     utmBuilder: "utm-builder/page.tsx",
+    urlExpander: "url-expander/page.tsx",
     extension: "extension/page.tsx",
     whatsappLinkGenerator: "whatsapp-link-generator/page.tsx",
     whatsappLinkGeneratorPtBr: "gerador-de-link-whatsapp/page.tsx",
