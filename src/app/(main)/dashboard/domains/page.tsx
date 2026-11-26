@@ -33,7 +33,7 @@ async function CustomDomainsPage() {
             Custom Domains
           </h1>
           {userDomains.length > 0 && (
-            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
               {userDomains.length} {userDomains.length === 1 ? "domain" : "domains"} total
             </p>
           )}

@@ -111,7 +111,7 @@ export function DomainMigrationGate() {
         </DialogBody>
 
         <DialogFooter className="sm:items-center sm:justify-between">
-          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
             This notice returns each session until every domain is updated.
           </p>
           <Button
@@ -192,13 +192,13 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
         <table className="min-w-full divide-y divide-neutral-100 dark:divide-border/50">
           <thead className="bg-neutral-50 dark:bg-accent/50">
             <tr>
-              <th className="px-3 py-2 text-left text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
+              <th className="px-3 py-2 text-left text-[11px] font-medium text-neutral-400 dark:text-muted-foreground">
                 Type
               </th>
-              <th className="px-3 py-2 text-left text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
+              <th className="px-3 py-2 text-left text-[11px] font-medium text-neutral-400 dark:text-muted-foreground">
                 Name
               </th>
-              <th className="px-3 py-2 text-left text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
+              <th className="px-3 py-2 text-left text-[11px] font-medium text-neutral-400 dark:text-muted-foreground">
                 Value
               </th>
             </tr>
@@ -211,7 +211,7 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
                     {record.type}
                   </span>
                   {record.type === "TXT" && (
-                    <span className="ml-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+                    <span className="ml-1.5 text-[10px] text-neutral-400 dark:text-muted-foreground">
                       optional
                     </span>
                   )}
@@ -219,7 +219,7 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
                 <td className="px-3 py-2.5 align-top">
                   <CopyableValue value={record.name} />
                   {record.fqdn !== record.name && (
-                    <p className="mt-1 break-all text-[11px] text-neutral-400 dark:text-neutral-500">
+                    <p className="mt-1 break-all text-[11px] text-neutral-400 dark:text-muted-foreground">
                       {record.fqdn}
                     </p>
                   )}
@@ -238,7 +238,7 @@ function DomainMigrationSection({ entry }: { entry: MigrationDomain }) {
           <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-400">
             Using an apex domain?
           </p>
-          <p className="mt-0.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-0.5 text-[11px] text-neutral-400 dark:text-muted-foreground">
             Apex domains need a DNS provider that supports ALIAS, ANAME, or flattened CNAME records
             — for example Cloudflare, Namecheap, Porkbun, or Route 53. Create the CNAME record above
             as an ALIAS or ANAME record pointing to the same value.
@@ -273,7 +273,7 @@ function CopyableValue({ value }: { value: string }) {
         type="button"
         onClick={handleCopy}
         aria-label={`Copy ${value}`}
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 dark:hover:text-neutral-300"
       >
         {copied ? (
           <IconCheck size={12} stroke={1.5} className="text-emerald-500" />

@@ -102,7 +102,7 @@ export function AddToCampaignModal({
               Campaign
             </Label>
             {!isLoading && options.length === 0 ? (
-              <p className="rounded-lg border border-neutral-200 dark:border-border p-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+              <p className="rounded-lg border border-neutral-200 dark:border-border p-3 text-[13px] text-neutral-400 dark:text-muted-foreground">
                 No active campaigns to pick from. Create one from the Campaigns page first.
               </p>
             ) : (
@@ -134,7 +134,7 @@ export function AddToCampaignModal({
               />
               <span>
                 <Label className="cursor-pointer text-[13px]">Apply campaign UTM defaults</Label>
-                <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Stamps utm_campaign={selectedCampaign.slug}
                   {selectedCampaign.utmSource && `, utm_source=${selectedCampaign.utmSource}`}
                   {selectedCampaign.utmMedium && `, utm_medium=${selectedCampaign.utmMedium}`} onto

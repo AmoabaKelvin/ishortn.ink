@@ -222,11 +222,11 @@ export default function WhatsAppLinkGeneratorPage() {
         </div>
         <div className="mt-12 sm:mt-14">
           <WhatsAppLinkGenerator />
-          <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-sm text-neutral-500">
+          <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-sm text-neutral-600">
             WhatsApp is a trademark of WhatsApp LLC. iShortn isn&apos;t affiliated with or endorsed
             by WhatsApp or Meta.
           </p>
-          <p className="mx-auto mt-2 max-w-4xl text-center text-sm text-neutral-500">
+          <p className="mx-auto mt-2 max-w-4xl text-center text-sm text-neutral-600">
             <Link
               href="/gerador-de-link-whatsapp"
               hrefLang="pt-BR"

@@ -64,7 +64,7 @@ export default function DashboardError({
         {retryFailed ? " if it keeps happening." : " if the problem persists."}
       </p>
       {error.digest && (
-        <p className="mt-2 font-mono text-[11px] break-all text-neutral-400 dark:text-neutral-500">
+        <p className="mt-2 font-mono text-[11px] break-all text-neutral-400 dark:text-muted-foreground">
           Reference: {error.digest}
         </p>
       )}

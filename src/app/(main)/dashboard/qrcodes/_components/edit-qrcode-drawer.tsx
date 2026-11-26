@@ -181,7 +181,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Change where this QR code redirects to
                     </FormDescription>
                     <FormMessage />
@@ -205,7 +205,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       A friendly name to identify your QR code (optional)
                     </FormDescription>
                     <FormMessage />
@@ -257,7 +257,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                                   type="button"
                                   onClick={() => removeTag(tag)}
                                   aria-label={`Remove tag ${tag}`}
-                                  className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600"
+                                  className="text-neutral-400 dark:text-muted-foreground transition-colors hover:text-neutral-600"
                                 >
                                   <IconX size={12} stroke={1.5} />
                                 </button>
@@ -301,7 +301,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                         </div>
                       </div>
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Press Enter to add a tag, or select from existing tags.
                     </FormDescription>
                     <FormMessage />
@@ -358,7 +358,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                       Go live at
                     </FormLabel>
                     {!userSubscription.isLoading && !isProOrUltraUser && (
-                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                         You need to be on a{" "}
                         <UpgradeCta
                           requiredPlan="pro"
@@ -379,7 +379,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                         className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Scans show a &quot;not live yet&quot; page until this time. Print early,
                       launch on schedule.
                     </FormDescription>
@@ -403,7 +403,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                         className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Deactivate after a certain number of scans. Leave empty to never disable.
                     </FormDescription>
                     <FormMessage />
@@ -426,13 +426,13 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                             variant="outline"
                             className={cn(
                               "h-9 w-full justify-start border-neutral-200 dark:border-border text-left text-[13px] font-normal hover:bg-neutral-50 dark:hover:bg-accent/50",
-                              !field.value && "text-neutral-400 dark:text-neutral-500",
+                              !field.value && "text-neutral-400 dark:text-muted-foreground",
                             )}
                           >
                             <IconCalendar
                               size={14}
                               stroke={1.5}
-                              className="mr-2 text-neutral-400 dark:text-neutral-500"
+                              className="mr-2 text-neutral-400 dark:text-muted-foreground"
                             />
                             {field.value ? (
                               format(new Date(field.value), "PPP")
@@ -452,7 +452,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                         </PopoverContent>
                       </Popover>
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Deactivate the QR code after a certain date.
                     </FormDescription>
                     <FormMessage />
@@ -528,11 +528,11 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                     <IconQrcode
                       size={14}
                       stroke={1.5}
-                      className="text-neutral-400 dark:text-neutral-500"
+                      className="text-neutral-400 dark:text-muted-foreground"
                     />
                     {qr.title || "Untitled QR Code"}
                   </p>
-                  <div className="mt-2 flex items-center gap-3 text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <div className="mt-2 flex items-center gap-3 text-[12px] text-neutral-400 dark:text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <IconClick
                         size={14}
@@ -551,7 +551,7 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                   type="button"
                   onClick={onClose}
                   aria-label="Close drawer"
-                  className="rounded-md p-1 text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600"
+                  className="rounded-md p-1 text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600"
                 >
                   <IconX size={18} stroke={1.5} />
                 </button>

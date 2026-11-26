@@ -143,11 +143,11 @@ export function HeldDomains() {
                       {d.reviewReason}
                     </p>
                     {/* Owner and registration move under the domain on small screens */}
-                    <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500 md:hidden">
+                    <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground md:hidden">
                       <span className="break-all">{d.ownerEmail ?? "Unknown owner"}</span> &middot;{" "}
                       {accountAge(d.ownerCreatedAt)} &middot; {PLAN_LABELS[d.plan]}
                     </p>
-                    <p className="mt-0.5 break-words text-[12px] text-neutral-400 dark:text-neutral-500 lg:hidden">
+                    <p className="mt-0.5 break-words text-[12px] text-neutral-400 dark:text-muted-foreground lg:hidden">
                       Registered {formatDate(d.registeredAt)} &middot;{" "}
                       {d.registrar ?? "Unknown registrar"}
                     </p>

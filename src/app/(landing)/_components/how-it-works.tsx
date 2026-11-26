@@ -66,7 +66,7 @@ const SettingRow = ({
     className={cn(
       "flex items-center justify-between gap-3 border-t px-4 py-3.5 first:border-t-0",
       hairline,
-      !active && "opacity-40",
+      !active && "opacity-60",
     )}
   >
     <span className="shrink-0 text-[0.8125rem] font-medium text-neutral-900">{label}</span>
@@ -84,7 +84,7 @@ const SettingsMock = () => (
             isht.app/<span className="font-medium text-neutral-900">launch</span>
           </span>
         </SettingRow>
-        <SettingRow label="Domain">
+        <SettingRow label="Domain" active>
           <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-white py-1 pl-2 pr-1 font-mono text-xs text-neutral-700 shadow-site-btn">
             <span className="truncate">isht.app</span>
             <SiteIcon name="selector" className="size-3.5 shrink-0" />

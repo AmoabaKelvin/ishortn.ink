@@ -139,7 +139,7 @@ export function BioRenderer({
             target="_blank"
             // No noreferrer: the referrer host is part of the visit's attribution.
             rel="noopener"
-            className="mt-10 text-xs opacity-60 transition-opacity hover:opacity-100"
+            className="mt-10 text-xs underline-offset-4 hover:underline"
             style={{ color: t.mutedColor }}
           >
             Made with iShortn · Create your own

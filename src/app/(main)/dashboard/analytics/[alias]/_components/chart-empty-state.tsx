@@ -11,13 +11,13 @@ export function ChartEmptyState({ description }: ChartEmptyStateProps) {
         <IconChartAreaLine
           size={24}
           stroke={1.5}
-          className="text-neutral-400 dark:text-neutral-500"
+          className="text-neutral-400 dark:text-muted-foreground"
         />
       </div>
       <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
         No clicks yet
       </p>
-      <p className="mt-1 max-w-xs text-[13px] text-neutral-400 dark:text-neutral-500">
+      <p className="mt-1 max-w-xs text-[13px] text-neutral-400 dark:text-muted-foreground">
         {description}
       </p>
     </div>

@@ -26,7 +26,7 @@ const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+      <ChevronDown className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -39,7 +39,7 @@ const SelectScrollUpButton = React.forwardRef<
   <SelectPrimitive.ScrollUpButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center py-1 text-gray-400 dark:text-gray-500",
+      "flex cursor-default items-center justify-center py-1 text-gray-400 dark:text-muted-foreground",
       className
     )}
     {...props}
@@ -56,7 +56,7 @@ const SelectScrollDownButton = React.forwardRef<
   <SelectPrimitive.ScrollDownButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center py-1 text-gray-400 dark:text-gray-500",
+      "flex cursor-default items-center justify-center py-1 text-gray-400 dark:text-muted-foreground",
       className
     )}
     {...props}
@@ -105,7 +105,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500", className)}
+    className={cn("px-2 py-1.5 text-xs font-medium text-gray-400 dark:text-muted-foreground", className)}
     {...props}
   />
 ));

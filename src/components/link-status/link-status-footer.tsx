@@ -27,7 +27,7 @@ export function LinkStatusFooter({
 
   if (!isPlatform) {
     return (
-      <p className="mt-6 text-[12px] text-neutral-400 dark:text-neutral-500">
+      <p className="mt-6 text-[12px] text-neutral-400 dark:text-muted-foreground">
         If you believe this is a mistake, contact the owner of this link.
       </p>
     );

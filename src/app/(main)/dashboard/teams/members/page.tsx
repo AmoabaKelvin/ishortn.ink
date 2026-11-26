@@ -82,7 +82,7 @@ type InviteInput = z.infer<typeof inviteSchema>;
 // Hover-revealed on desktop; always shown on touch screens (no hover), while
 // focused, and while the menu is open.
 const rowActionClassName =
-  "flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity hover:bg-neutral-100 hover:text-neutral-600 group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 dark:text-neutral-500 dark:hover:bg-accent [@media(hover:none)]:opacity-100";
+  "flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity hover:bg-neutral-100 hover:text-neutral-600 group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 dark:text-muted-foreground dark:hover:bg-accent [@media(hover:none)]:opacity-100";
 
 const inviteStatusConfig = {
   pending: { color: "bg-emerald-500", label: "Active" },
@@ -214,7 +214,7 @@ export default function TeamMembersPage() {
         <IconLoader2
           size={20}
           stroke={1.5}
-          className="animate-spin text-neutral-400 dark:text-neutral-500"
+          className="animate-spin text-neutral-400 dark:text-muted-foreground"
         />
       </div>
     );
@@ -224,12 +224,16 @@ export default function TeamMembersPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-          <IconUsers size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+          <IconUsers
+            size={20}
+            stroke={1.5}
+            className="text-neutral-400 dark:text-muted-foreground"
+          />
         </div>
         <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
           Team Members
         </p>
-        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-muted-foreground">
           Switch to a team workspace to manage members and their roles.
         </p>
         <button
@@ -250,7 +254,7 @@ export default function TeamMembersPage() {
           <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Members
           </h1>
-          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
             Manage your team members and their roles.
           </p>
         </div>
@@ -270,7 +274,7 @@ export default function TeamMembersPage() {
                 <DialogTitle className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                   Invite member
                 </DialogTitle>
-                <DialogDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <DialogDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Send an invite link to add someone to your team.
                 </DialogDescription>
               </DialogHeader>
@@ -335,7 +339,7 @@ export default function TeamMembersPage() {
                               {...field}
                             />
                           </FormControl>
-                          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                          <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                             Leave empty to create a link-only invite.
                           </p>
                           <FormMessage className="text-[11px]" />
@@ -363,7 +367,7 @@ export default function TeamMembersPage() {
                                   <IconUser
                                     size={14}
                                     stroke={1.5}
-                                    className="text-neutral-400 dark:text-neutral-500"
+                                    className="text-neutral-400 dark:text-muted-foreground"
                                   />
                                   Member
                                 </div>
@@ -450,7 +454,7 @@ export default function TeamMembersPage() {
                       {config.label}
                     </span>
                   </div>
-                  <div className="mt-1 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <div className="mt-1 truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
                     {member.user?.email}
                   </div>
                 </div>
@@ -552,13 +556,13 @@ export default function TeamMembersPage() {
                       <IconMail
                         size={14}
                         stroke={1.5}
-                        className="text-neutral-400 dark:text-neutral-500"
+                        className="text-neutral-400 dark:text-muted-foreground"
                       />
                     ) : (
                       <IconLink
                         size={14}
                         stroke={1.5}
-                        className="text-neutral-400 dark:text-neutral-500"
+                        className="text-neutral-400 dark:text-muted-foreground"
                       />
                     )}
                   </div>
@@ -576,7 +580,7 @@ export default function TeamMembersPage() {
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
-                      <span className="text-neutral-400 dark:text-neutral-500">
+                      <span className="text-neutral-400 dark:text-muted-foreground">
                         {invite.status === "pending"
                           ? `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`
                           : inviteStatusConfig[invite.status].label}

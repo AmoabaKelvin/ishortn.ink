@@ -70,7 +70,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
     <nav className="mb-6 flex min-w-0 items-center gap-1.5 text-[13px]">
       <Link
         href="/dashboard/qrcodes"
-        className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-foreground"
+        className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-900 dark:text-muted-foreground dark:hover:text-foreground"
       >
         QR Codes
       </Link>
@@ -145,7 +145,7 @@ export default async function QRCodeAnalyticsPage(props: QRCodeAnalyticsPageProp
               {qrCode.title || "Untitled QR Code"}
             </h1>
             <p
-              className="truncate text-[13px] text-neutral-400 dark:text-neutral-500"
+              className="truncate text-[13px] text-neutral-400 dark:text-muted-foreground"
               title={qrCode.link.url ?? undefined}
             >
               {qrCode.link.url}

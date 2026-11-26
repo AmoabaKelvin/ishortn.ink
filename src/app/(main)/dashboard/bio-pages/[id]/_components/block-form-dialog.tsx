@@ -303,7 +303,9 @@ function BlockForm({
             <Label className="text-[12px] text-muted-foreground">Schedule (optional)</Label>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <span className="block text-[12px] text-neutral-500">Show from</span>
+                <span className="block text-[12px] text-neutral-500 dark:text-neutral-400">
+                  Show from
+                </span>
                 <DateTimePicker
                   value={scheduledAt}
                   onChange={setScheduledAt}
@@ -311,7 +313,9 @@ function BlockForm({
                 />
               </div>
               <div className="space-y-1">
-                <span className="block text-[12px] text-neutral-500">Hide after</span>
+                <span className="block text-[12px] text-neutral-500 dark:text-neutral-400">
+                  Hide after
+                </span>
                 <DateTimePicker
                   value={scheduledUntil}
                   onChange={setScheduledUntil}

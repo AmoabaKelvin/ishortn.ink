@@ -353,7 +353,7 @@ export function PricingCards({
               >
                 <div className="flex items-baseline gap-1 whitespace-nowrap">
                   {price.compareAt && (
-                    <del className="mr-1 text-lg tabular-nums text-gray-400 dark:text-neutral-500">
+                    <del className="mr-1 text-lg tabular-nums text-gray-400 dark:text-muted-foreground">
                       <span className="sr-only">Regular price </span>${price.compareAt}
                     </del>
                   )}
@@ -452,7 +452,7 @@ export function PricingCards({
                     <ul className="space-y-3">
                       {plan.comingSoon.map((feature) => (
                         <li key={feature} className="flex items-start gap-3">
-                          <Check className="h-4 w-4 text-gray-400 dark:text-neutral-500 mt-0.5 shrink-0" />
+                          <Check className="h-4 w-4 text-gray-400 dark:text-muted-foreground mt-0.5 shrink-0" />
                           <span className="text-sm text-gray-500 dark:text-neutral-400">
                             {feature}
                           </span>
@@ -472,7 +472,7 @@ export function PricingCards({
                       {plan.limitations.map((limitation) => (
                         <li
                           key={limitation}
-                          className="text-xs text-gray-400 dark:text-neutral-500"
+                          className="text-xs text-gray-400 dark:text-muted-foreground"
                         >
                           • {limitation}
                         </li>

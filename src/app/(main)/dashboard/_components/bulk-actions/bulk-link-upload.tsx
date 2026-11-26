@@ -123,7 +123,7 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
                   <IconUpload
                     size={18}
                     stroke={1.5}
-                    className="text-neutral-400 dark:text-neutral-500"
+                    className="text-neutral-400 dark:text-muted-foreground"
                   />
                 )}
               </div>
@@ -132,7 +132,7 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
                   <p className="mt-3 max-w-full truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                     {file.name}
                   </p>
-                  <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
                     Ready to import. Click to choose a different file.
                   </p>
                 </>
@@ -141,7 +141,7 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
                   <p className="mt-3 text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                     {isDragActive ? "Drop the file to select it" : "Drop a CSV file here"}
                   </p>
-                  <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
                     or click to choose one
                   </p>
                 </>
@@ -162,7 +162,7 @@ export function BulkLinkUploadDialog({ open, setOpen, proMembership }: BulkLinkU
                 <span className="block text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   Also keep Bitly&apos;s original codes (like go.example.com/3XCetqn) working
                 </span>
-                <span className="mt-0.5 block text-[12px] text-neutral-400 dark:text-neutral-500">
+                <span className="mt-0.5 block text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Applies to Bitly exports. Each code counts as one link.
                 </span>
               </span>
@@ -256,7 +256,7 @@ function ImportRowList({ title, items, textClassName }: ImportRowListProps) {
       <ul className="max-h-48 divide-y divide-neutral-300/60 overflow-y-auto dark:divide-border">
         {items.map((item, index) => (
           <li key={`${item.row}-${index}`} className="flex gap-2 px-3 py-2 text-[12px]">
-            <span className="shrink-0 tabular-nums text-neutral-400 dark:text-neutral-500">
+            <span className="shrink-0 tabular-nums text-neutral-400 dark:text-muted-foreground">
               Row {item.row.toLocaleString()}
             </span>
             <span className={cn("min-w-0 break-words", textClassName)}>{item.text}</span>

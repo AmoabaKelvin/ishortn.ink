@@ -63,7 +63,7 @@ export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <IconUpload size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+      <IconUpload size={20} stroke={1.5} className="text-neutral-400 dark:text-muted-foreground" />
       <div className="flex items-center gap-1 text-[13px]">
         <label
           htmlFor="logo-image"
@@ -79,9 +79,11 @@ export function LogoUploader({ setLogoImage }: LogoUploaderProps) {
             accept="image/*"
           />
         </label>
-        <span className="text-neutral-400 dark:text-neutral-500">or drag and drop</span>
+        <span className="text-neutral-400 dark:text-muted-foreground">or drag and drop</span>
       </div>
-      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">PNG, JPG, GIF up to 2MB</p>
+      <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
+        PNG, JPG, GIF up to 2MB
+      </p>
       {error && <p className="text-[12px] text-red-500">{error}</p>}
     </div>
   );

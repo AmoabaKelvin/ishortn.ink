@@ -37,7 +37,7 @@ export function PageQrDialog({ slug }: { slug: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
-          className="rounded-md p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-muted"
+          className="rounded-md p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
           title="Page QR code"
         >
           <IconQrcode size={18} />

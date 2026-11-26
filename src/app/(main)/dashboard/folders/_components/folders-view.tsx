@@ -52,7 +52,7 @@ export function FoldersView({ initialFolders, isProUser }: FoldersViewProps) {
             Folders
           </h2>
           {hasFolders && (
-            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
               {folders.length} {folders.length === 1 ? "folder" : "folders"} total
             </p>
           )}

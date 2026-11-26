@@ -114,7 +114,7 @@ export function AddCustomDomainModal() {
                   <IconWorld
                     size={16}
                     stroke={1.5}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-muted-foreground"
                   />
                   <Input
                     id="domain"
@@ -139,7 +139,7 @@ export function AddCustomDomainModal() {
                 <IconInfoCircle
                   size={14}
                   stroke={1.5}
-                  className="mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+                  className="mt-0.5 shrink-0 text-neutral-400 dark:text-muted-foreground"
                 />
                 <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
                   Use a subdomain like{" "}

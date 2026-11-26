@@ -192,7 +192,7 @@ export function PlanSwitcher({
                 <p
                   key={price.note}
                   className={cn(
-                    "text-[12px] tabular-nums text-neutral-400 dark:text-neutral-500",
+                    "text-[12px] tabular-nums text-neutral-400 dark:text-muted-foreground",
                     priceFade &&
                       "motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 motion-safe:ease-out",
                   )}
@@ -213,7 +213,7 @@ export function PlanSwitcher({
               </div>
 
               {matchesCurrent ? (
-                <span className="shrink-0 rounded-full border border-neutral-200 dark:border-border px-2.5 py-1 text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
+                <span className="shrink-0 rounded-full border border-neutral-200 dark:border-border px-2.5 py-1 text-[11px] font-medium text-neutral-400 dark:text-muted-foreground">
                   Current
                 </span>
               ) : canSwitchInterval ? (

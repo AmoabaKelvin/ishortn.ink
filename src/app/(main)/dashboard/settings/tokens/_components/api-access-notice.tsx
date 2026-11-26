@@ -12,12 +12,12 @@ export function ApiProGate() {
     <div className="py-6 text-center">
       <RecordPlanLimitView limitKey="tokens_page_view" />
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
-        <IconKey size={18} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+        <IconKey size={18} stroke={1.5} className="text-neutral-400 dark:text-muted-foreground" />
       </div>
       <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
         API access is a Pro feature
       </p>
-      <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400 dark:text-neutral-500">
+      <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400 dark:text-muted-foreground">
         Upgrade to Pro or Ultra to create API keys and manage your links and analytics from your own
         code.
       </p>

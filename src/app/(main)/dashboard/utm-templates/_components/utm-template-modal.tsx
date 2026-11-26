@@ -223,7 +223,7 @@ export function UtmTemplateModal({
                                   <Icon
                                     size={14}
                                     stroke={1.5}
-                                    className="text-neutral-400 dark:text-neutral-500"
+                                    className="text-neutral-400 dark:text-muted-foreground"
                                   />
                                   <span className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
                                     {field.label}

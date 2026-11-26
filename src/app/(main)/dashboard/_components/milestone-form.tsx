@@ -86,7 +86,7 @@ export function MilestoneEditor({ milestones, onChange, disabled }: MilestoneEdi
             type="button"
             onClick={() => addThreshold(preset)}
             disabled={disabled}
-            className="rounded-full border border-dashed border-neutral-300 px-2.5 py-1 text-[12px] text-neutral-500 hover:border-neutral-400 hover:bg-neutral-50 hover:text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full border border-dashed border-neutral-300 px-2.5 py-1 text-[12px] text-neutral-500 hover:border-neutral-400 hover:bg-neutral-50 hover:text-neutral-700 dark:border-border dark:text-neutral-400 dark:hover:bg-accent/50 dark:hover:text-neutral-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             +{preset.toLocaleString()}
           </button>

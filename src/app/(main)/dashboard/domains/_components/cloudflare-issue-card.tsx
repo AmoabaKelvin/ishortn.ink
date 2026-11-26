@@ -21,7 +21,7 @@ const CloudflareIssuesCard = () => {
           <IconChevronDown
             size={14}
             stroke={1.5}
-            className="text-neutral-400 dark:text-neutral-500"
+            className="text-neutral-400 dark:text-muted-foreground"
           />
         </motion.div>
       </button>

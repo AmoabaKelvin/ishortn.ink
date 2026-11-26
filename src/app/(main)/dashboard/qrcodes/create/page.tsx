@@ -403,7 +403,7 @@ function QRCodeCreationPage() {
         <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Create a QR code
         </h2>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Configure content, style, and generate your QR code.
         </p>
 
@@ -451,7 +451,7 @@ function QRCodeCreationPage() {
                 onChange={(e) => setDestinationUrl(e.target.value)}
                 className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
               />
-              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 The URL people will be redirected to when scanning the QR code
               </p>
             </div>
@@ -480,7 +480,7 @@ function QRCodeCreationPage() {
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Pick the domain shown when someone scans your QR code.
                 </p>
               </div>
@@ -494,7 +494,7 @@ function QRCodeCreationPage() {
                 <p className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
                   Design
                 </p>
-                <span className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Customize appearance and effects
                 </span>
               </div>
@@ -571,12 +571,12 @@ function QRCodeCreationPage() {
                   <IconLoader2
                     size={16}
                     stroke={1.5}
-                    className="animate-spin text-neutral-400 dark:text-neutral-500"
+                    className="animate-spin text-neutral-400 dark:text-muted-foreground"
                   />
                 </div>
               ) : presets && presets.length > 0 ? (
                 <div className="space-y-2">
-                  <span className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
+                  <span className="text-[12px] font-medium text-neutral-400 dark:text-muted-foreground">
                     Saved Presets
                   </span>
                   <div className="flex items-center gap-2">
@@ -611,7 +611,7 @@ function QRCodeCreationPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   No presets yet. Save your first style preset for quick reuse.
                 </p>
               )}
@@ -667,7 +667,7 @@ function QRCodeCreationPage() {
           <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Preview
           </h2>
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
             Live preview of your QR code
           </p>
         </div>
@@ -691,7 +691,7 @@ function QRCodeCreationPage() {
             </div>
 
             <div className="mt-4 w-full max-w-[280px]">
-              <p className="text-center text-[12px] text-neutral-400 dark:text-neutral-500 truncate">
+              <p className="text-center text-[12px] text-neutral-400 dark:text-muted-foreground truncate">
                 {destinationUrl || "Enter a destination URL above"}
               </p>
             </div>
@@ -721,7 +721,7 @@ function QRCodeCreationPage() {
               </SelectContent>
             </Select>
             {downloadFormat === "svg" && hasRasterOnlyOptions(qrState) && (
-              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 {SVG_EFFECTS_NOTE}
               </p>
             )}

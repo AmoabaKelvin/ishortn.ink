@@ -347,7 +347,9 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
       {/* Active tag filter */}
       {tagFilter && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[12px] text-neutral-400 dark:text-neutral-500">Filtered by:</span>
+          <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
+            Filtered by:
+          </span>
           <button
             type="button"
             onClick={clearTag}
@@ -434,20 +436,20 @@ const LinksContent = ({ links, totalPages, currentPage, workspaceHasLinks, tags 
               <IconSearch
                 size={24}
                 stroke={1.5}
-                className="text-neutral-400 dark:text-neutral-500"
+                className="text-neutral-400 dark:text-muted-foreground"
               />
             ) : (
               <IconArchive
                 size={24}
                 stroke={1.5}
-                className="text-neutral-400 dark:text-neutral-500"
+                className="text-neutral-400 dark:text-muted-foreground"
               />
             )}
           </div>
           <p className="mt-6 text-[14px] font-medium text-neutral-900 dark:text-foreground">
             {hasFilters ? "No links found" : "No active links"}
           </p>
-          <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-muted-foreground">
             {hasFilters
               ? "Try adjusting your search or filters."
               : "Archived links are hidden from this view. They still redirect."}

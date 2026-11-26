@@ -52,7 +52,7 @@ export function QRCodeCard({ qr, index }: QRCodeCardProps) {
 
             {/* Metadata row */}
             <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
-              <span className="text-neutral-400 dark:text-neutral-500">
+              <span className="text-neutral-400 dark:text-muted-foreground">
                 {daysSinceCreation === 0 ? "Today" : `${daysSinceCreation}d`}
               </span>
 

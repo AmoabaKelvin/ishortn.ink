@@ -59,13 +59,13 @@ export function ConnectedBrowsers({
             <IconBrowser
               size={18}
               stroke={1.5}
-              className="text-neutral-400 dark:text-neutral-500"
+              className="text-neutral-400 dark:text-muted-foreground"
             />
           </div>
           <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
             No Connected Browsers
           </p>
-          <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mx-auto mt-1 max-w-sm text-[12px] text-neutral-400 dark:text-muted-foreground">
             Shorten the page you&apos;re on, copy the link and get its QR code from your browser
             toolbar.{" "}
             <a
@@ -126,7 +126,7 @@ function ExtensionPrompt() {
         type="button"
         onClick={dismissExtensionPrompt}
         aria-label="Dismiss the browser extension prompt"
-        className="-mr-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-500 dark:hover:bg-accent dark:hover:text-neutral-300"
+        className="-mr-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-neutral-300"
       >
         <IconX size={14} stroke={1.5} />
       </button>
@@ -152,7 +152,11 @@ function BrowserRow({ browser }: { browser: Browser }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
-        <IconBrowser size={15} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+        <IconBrowser
+          size={15}
+          stroke={1.5}
+          className="text-neutral-400 dark:text-muted-foreground"
+        />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -166,7 +170,7 @@ function BrowserRow({ browser }: { browser: Browser }) {
             </code>
           )}
         </div>
-        <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
           {browser.createdAt && <>Connected {formatDate(browser.createdAt)} &middot; </>}
           {browser.lastUsedAt ? (
             <span title={browser.lastUsedAt.toLocaleString()}>

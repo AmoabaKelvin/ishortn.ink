@@ -14,7 +14,7 @@ const formatDay = (date: Date) =>
 
 function GraceStatus({ endsAt, active }: { endsAt: Date | null; active: boolean }) {
   if (!endsAt) {
-    return <span className="text-neutral-400 dark:text-neutral-500">Not started</span>;
+    return <span className="text-neutral-400 dark:text-muted-foreground">Not started</span>;
   }
   return active ? (
     <span className="text-amber-700 dark:text-amber-400">Grace until {formatDay(endsAt)}</span>
@@ -40,7 +40,7 @@ function EmptyPanel({ title, description }: { title: string; description: string
         className="mx-auto mb-3 text-neutral-300 dark:text-neutral-600"
       />
       <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">{title}</p>
-      <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">{description}</p>
+      <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">{description}</p>
     </div>
   );
 }
@@ -87,7 +87,7 @@ export default async function AdminEntitlementsPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Entitlements
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Accounts using features above their live plan, and teams whose owner isn&apos;t on Ultra
         </p>
       </div>
@@ -101,7 +101,7 @@ export default async function AdminEntitlementsPage() {
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Accounts over their plan
             </h2>
-            <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Personal workspaces, compared with the plan they pay for now
               {data.totalAccounts > data.accounts.length &&
                 ` · showing ${data.accounts.length.toLocaleString()} of ${data.totalAccounts.toLocaleString()}`}
@@ -155,7 +155,7 @@ export default async function AdminEntitlementsPage() {
                         <p className="break-words text-[13px] font-medium text-neutral-900 dark:text-foreground">
                           {displayName(account.name) ?? "Unnamed"}
                         </p>
-                        <p className="break-all text-[11px] text-neutral-400 dark:text-neutral-500">
+                        <p className="break-all text-[11px] text-neutral-400 dark:text-muted-foreground">
                           {account.email ?? account.userId}
                         </p>
                         <p className="mt-1 text-[11px] lg:hidden">
@@ -175,7 +175,7 @@ export default async function AdminEntitlementsPage() {
                           {account.features.map((item) => (
                             <li key={item.feature}>
                               {item.label}{" "}
-                              <span className="tabular-nums text-neutral-400 dark:text-neutral-500">
+                              <span className="tabular-nums text-neutral-400 dark:text-muted-foreground">
                                 {item.amount.toLocaleString()} / {item.limit.toLocaleString()}
                               </span>
                             </li>
@@ -199,7 +199,7 @@ export default async function AdminEntitlementsPage() {
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Teams below Ultra
             </h2>
-            <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Read-only for every member once the grace period ends
             </p>
           </div>
@@ -235,7 +235,7 @@ export default async function AdminEntitlementsPage() {
                         <p className="break-words text-[13px] font-medium text-neutral-900 dark:text-foreground">
                           {team.name}
                         </p>
-                        <p className="break-all text-[11px] text-neutral-400 dark:text-neutral-500">
+                        <p className="break-all text-[11px] text-neutral-400 dark:text-muted-foreground">
                           {team.ownerEmail ?? team.slug}
                         </p>
                       </td>

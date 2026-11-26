@@ -127,7 +127,7 @@ export function SidebarStats({
       <div className="space-y-3">
         <div className="rounded-lg border border-neutral-100 dark:border-border/50 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
               {plan} plan
             </span>
             <span className="text-[11px] tabular-nums text-neutral-500 dark:text-neutral-400">
@@ -144,7 +144,7 @@ export function SidebarStats({
             requiredPlan="ultra"
             source={eventsTarget ? EVENTS_PAUSED_SOURCE : "sidebar_pro"}
             shown={shown}
-            className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-foreground"
+            className="flex items-center gap-1 px-1 text-[12px] font-medium text-neutral-400 dark:text-muted-foreground transition-colors hover:text-neutral-900 dark:hover:text-foreground"
           >
             Upgrade to Ultra
             <IconArrowUpRight size={12} stroke={1.5} />
@@ -159,7 +159,7 @@ export function SidebarStats({
     <div className="space-y-3">
       <div className="rounded-lg border border-neutral-100 dark:border-border/50 p-3">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
             Free plan
           </span>
           <span

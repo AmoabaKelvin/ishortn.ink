@@ -56,7 +56,7 @@ export function CampaignOverview({ campaign, plan }: { campaign: CampaignData; p
         <h3 className="text-[15px] font-medium text-neutral-900 dark:text-foreground">
           No links yet
         </h3>
-        <p className="mt-1 max-w-sm text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 max-w-sm text-[13px] text-neutral-400 dark:text-muted-foreground">
           Add links or QR codes in the Links tab — their clicks and scans roll up here.
         </p>
       </div>
@@ -78,7 +78,7 @@ export function CampaignOverview({ campaign, plan }: { campaign: CampaignData; p
                   "rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors",
                   range === r.value
                     ? "bg-neutral-900 text-white dark:bg-foreground dark:text-background"
-                    : "text-neutral-500 hover:text-neutral-800 dark:hover:text-foreground",
+                    : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-foreground",
                   locked && "cursor-not-allowed opacity-40 hover:text-neutral-500",
                 )}
                 title={locked ? "Upgrade to Pro for full analytics history." : undefined}
@@ -91,7 +91,7 @@ export function CampaignOverview({ campaign, plan }: { campaign: CampaignData; p
 
         <div className="flex items-center gap-3">
           {isFree ? (
-            <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               Free plans show the last 7 days.
             </p>
           ) : (
@@ -166,13 +166,13 @@ function EngagementChart({ series }: { series: Analytics["series"] }) {
         <h3 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Engagement over time
         </h3>
-        <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
           Link clicks and QR scans across the selected range
         </p>
       </div>
       <div className="px-2 pb-5 pt-4 sm:px-5">
         {chartData.length === 0 ? (
-          <div className="flex h-56 items-center justify-center text-[13px] text-neutral-400 dark:text-neutral-500">
+          <div className="flex h-56 items-center justify-center text-[13px] text-neutral-400 dark:text-muted-foreground">
             No engagement in this range yet.
           </div>
         ) : (
@@ -243,11 +243,11 @@ function TopLinksCard({
       <h3 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
         Top links
       </h3>
-      <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+      <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
         Share of all campaign engagement
       </p>
       {top.every((l) => l.clicks === 0) ? (
-        <p className="mt-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-3 text-[13px] text-neutral-400 dark:text-muted-foreground">
           No clicks in this range yet.
         </p>
       ) : (
@@ -295,11 +295,11 @@ function ChannelsCard({ channels }: { channels: Record<string, number> }) {
       <h3 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
         Channels
       </h3>
-      <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+      <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
         Links grouped by their utm_source
       </p>
       {entries.every(([, count]) => count === 0) ? (
-        <p className="mt-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-3 text-[13px] text-neutral-400 dark:text-muted-foreground">
           No channel activity yet. Set UTM defaults or per-link sources to compare channels.
         </p>
       ) : (
@@ -336,7 +336,7 @@ function BreakdownCard({ title, entries }: { title: string; entries: Record<stri
         {title}
       </h3>
       {rows.length === 0 ? (
-        <p className="mt-3 text-[13px] text-neutral-400 dark:text-neutral-500">No data yet.</p>
+        <p className="mt-3 text-[13px] text-neutral-400 dark:text-muted-foreground">No data yet.</p>
       ) : (
         <div className="mt-4 space-y-2.5">
           {rows.map(([label, count]) => (

@@ -58,7 +58,7 @@ export function BioPagesList({ pages, plan, bioPageLimit }: BioPagesListProps) {
           <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Bio Pages
           </h2>
-          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
             One link for everything you share, tracked with your existing analytics.
           </p>
         </div>
@@ -111,7 +111,7 @@ export function BioPagesList({ pages, plan, bioPageLimit }: BioPagesListProps) {
                 href={`/dashboard/bio-pages/${page.id}`}
                 className="flex min-w-0 flex-1 items-center gap-3"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 dark:bg-muted">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 dark:bg-muted dark:text-muted-foreground">
                   <IconLayoutList size={18} stroke={1.5} />
                 </span>
                 <span className="min-w-0">
@@ -130,7 +130,7 @@ export function BioPagesList({ pages, plan, bioPageLimit }: BioPagesListProps) {
                       <Badge variant="secondary">Draft</Badge>
                     )}
                   </span>
-                  <span className="mt-0.5 block truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+                  <span className="mt-0.5 block truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
                     ishortn.ink/p/{page.slug} · {page.blockCount}{" "}
                     {page.blockCount === 1 ? "block" : "blocks"}
                   </span>
@@ -205,7 +205,7 @@ function EmptyState({ canCreate }: { canCreate: boolean }) {
       <h3 className="mt-4 text-[15px] font-medium text-neutral-900 dark:text-foreground">
         Create your first bio page
       </h3>
-      <p className="mt-1 max-w-sm text-[13px] text-neutral-400 dark:text-neutral-500">
+      <p className="mt-1 max-w-sm text-[13px] text-neutral-400 dark:text-muted-foreground">
         A single shareable page for all your links. Every click is tracked through your existing
         analytics.
       </p>

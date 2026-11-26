@@ -45,7 +45,7 @@ export function OverallClicksChart({ series }: OverallClicksChartProps) {
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Click Analytics
           </h2>
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
             Aggregated click performance across all your links (UTC)
           </p>
         </div>

@@ -31,7 +31,11 @@ export function QRCodeEmptyState() {
         className="relative"
       >
         <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-          <IconQrcode size={24} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+          <IconQrcode
+            size={24}
+            stroke={1.5}
+            className="text-neutral-400 dark:text-muted-foreground"
+          />
         </div>
       </motion.div>
 
@@ -44,7 +48,7 @@ export function QRCodeEmptyState() {
         <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
           No QR codes yet
         </p>
-        <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-muted-foreground">
           Create custom QR codes linked to your short URLs. Track scans and customize designs.
         </p>
       </motion.div>

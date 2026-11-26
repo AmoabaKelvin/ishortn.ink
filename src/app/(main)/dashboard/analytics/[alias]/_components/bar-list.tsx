@@ -52,7 +52,7 @@ export function BarList({ records, totalClicks, color = "blue" }: BarListProps) 
               <span className="text-[13px] font-semibold tabular-nums text-neutral-600 dark:text-neutral-400">
                 {record.clicks.toLocaleString()}
               </span>
-              <span className="w-0 overflow-hidden text-[13px] font-medium tabular-nums text-neutral-400 dark:text-neutral-500 opacity-0 transition-all duration-200 ease-out group-hover:w-10 group-hover:opacity-100">
+              <span className="w-0 overflow-hidden text-[13px] font-medium tabular-nums text-neutral-400 dark:text-muted-foreground opacity-0 transition-all duration-200 ease-out group-hover:w-10 group-hover:opacity-100">
                 {percentOfTotal}%
               </span>
             </div>
@@ -79,9 +79,9 @@ function BarListTitle({ title, description, unit = "Clicks", children }: BarList
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             {title}
           </h2>
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">{description}</p>
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">{description}</p>
         </div>
-        <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300 dark:text-neutral-500">
+        <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300 dark:text-muted-foreground">
           {unit}
         </span>
       </div>
@@ -113,7 +113,7 @@ function BarListTabViewSwitcher<View extends string>({
             "relative rounded-md px-3 py-1.5 text-[12px] font-medium transition-all duration-150",
             currentView === name
               ? "bg-neutral-100 dark:bg-muted text-neutral-900 dark:text-foreground"
-              : "text-neutral-400 dark:text-neutral-500 hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600 dark:hover:text-neutral-300",
+              : "text-neutral-400 dark:text-muted-foreground hover:bg-neutral-50 dark:hover:bg-accent/50 hover:text-neutral-600 dark:hover:text-neutral-300",
           )}
         >
           {name.charAt(0).toUpperCase() + name.slice(1)}

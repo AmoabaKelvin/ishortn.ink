@@ -46,7 +46,7 @@ const TokenCard = ({ token, active = true }: { token: Token; active?: boolean })
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-muted">
-        <IconKey size={15} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+        <IconKey size={15} stroke={1.5} className="text-neutral-400 dark:text-muted-foreground" />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -71,7 +71,7 @@ const TokenCard = ({ token, active = true }: { token: Token; active?: boolean })
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
           {token.createdAt && <>Created {formatDate(token.createdAt)} &middot; </>}
           {token.lastUsedAt ? (
             <span title={token.lastUsedAt.toLocaleString()}>

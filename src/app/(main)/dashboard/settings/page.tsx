@@ -71,7 +71,7 @@ async function SettingsPage(props: Props) {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Settings
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Manage your account preferences
         </p>
       </div>
@@ -85,7 +85,7 @@ async function SettingsPage(props: Props) {
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Profile
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Your personal information
             </p>
             <div className="mt-4">
@@ -98,7 +98,7 @@ async function SettingsPage(props: Props) {
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               General
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Default settings and preferences
             </p>
             <div className="mt-4">
@@ -124,7 +124,7 @@ async function SettingsPage(props: Props) {
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Notifications
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Emails we send about your links and domains
             </p>
             <div className="mt-4">
@@ -140,7 +140,7 @@ async function SettingsPage(props: Props) {
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Billing
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Subscription and payment details
             </p>
             <div className="mt-4">
@@ -171,7 +171,7 @@ async function SettingsPage(props: Props) {
                 Docs
               </Link>
             </div>
-            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Programmatic access to your account
             </p>
             <div className="mt-4">
@@ -184,7 +184,7 @@ async function SettingsPage(props: Props) {
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Connected Browsers
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Browsers signed in to the iShortn extension
             </p>
             <div className="mt-4">
@@ -205,7 +205,7 @@ async function SettingsPage(props: Props) {
             <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
               Account Transfer
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Move your resources to another user
             </p>
             <div className="mt-4">
@@ -218,7 +218,7 @@ async function SettingsPage(props: Props) {
             <h2 className="text-[14px] font-semibold text-red-600 dark:text-red-400">
               Delete Account
             </h2>
-            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
               Close your account and remove your data
             </p>
             <div className="mt-4">

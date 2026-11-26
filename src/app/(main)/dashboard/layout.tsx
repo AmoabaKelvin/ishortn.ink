@@ -76,7 +76,7 @@ export default async function DashboardLayout({ children }: Props) {
             </p>
             {currentUser.bannedReason && (
               <div className="mt-5 rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card px-4 py-3">
-                <p className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] font-medium text-neutral-400 dark:text-muted-foreground">
                   Reason
                 </p>
                 <p className="mt-1 text-[13px] text-neutral-700 dark:text-neutral-300">
@@ -84,7 +84,7 @@ export default async function DashboardLayout({ children }: Props) {
                 </p>
               </div>
             )}
-            <p className="mt-6 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-6 text-[12px] text-neutral-400 dark:text-muted-foreground">
               If you believe this is a mistake, please contact us at{" "}
               <a
                 href="mailto:support@ishortn.ink"
@@ -174,7 +174,7 @@ export default async function DashboardLayout({ children }: Props) {
         {/* Main content area with left margin for sidebar */}
         <div className="lg:pl-[280px]">
           <ChangelogBanner />
-          <div className="mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-black sm:px-6 lg:px-8 lg:pt-10">
+          <div className="mx-auto max-w-[1180px] px-4 pt-6 pb-10 text-black dark:text-foreground sm:px-6 lg:px-8 lg:pt-10">
             <DashboardNav />
             {isRestricted && (
               <div className="mt-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">

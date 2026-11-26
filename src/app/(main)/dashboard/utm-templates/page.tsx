@@ -40,7 +40,7 @@ export default function UtmTemplatesPage() {
         <IconLoader2
           size={20}
           stroke={1.5}
-          className="animate-spin text-neutral-400 dark:text-neutral-500"
+          className="animate-spin text-neutral-400 dark:text-muted-foreground"
         />
       </div>
     );
@@ -73,7 +73,11 @@ export default function UtmTemplatesPage() {
           className="relative"
         >
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-            <IconTarget size={24} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+            <IconTarget
+              size={24}
+              stroke={1.5}
+              className="text-neutral-400 dark:text-muted-foreground"
+            />
           </div>
         </motion.div>
 
@@ -86,7 +90,7 @@ export default function UtmTemplatesPage() {
           <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
             UTM Templates
           </p>
-          <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-muted-foreground">
             Create reusable UTM parameter templates to streamline your campaign tracking.
           </p>
         </motion.div>
@@ -105,7 +109,7 @@ export default function UtmTemplatesPage() {
             <IconDiamond
               size={14}
               stroke={1.5}
-              className="text-neutral-400 dark:text-neutral-500"
+              className="text-neutral-400 dark:text-muted-foreground"
             />
             Available on Ultra plan
           </UpgradeCta>
@@ -122,7 +126,7 @@ export default function UtmTemplatesPage() {
             UTM Templates
           </h1>
           {templates && templates.length > 0 && (
-            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
               {templates.length} {templates.length === 1 ? "template" : "templates"} total
             </p>
           )}
@@ -193,7 +197,7 @@ export default function UtmTemplatesPage() {
               <IconTarget
                 size={24}
                 stroke={1.5}
-                className="text-neutral-400 dark:text-neutral-500"
+                className="text-neutral-400 dark:text-muted-foreground"
               />
             </div>
           </motion.div>
@@ -207,7 +211,7 @@ export default function UtmTemplatesPage() {
             <p className="text-[14px] font-medium text-neutral-900 dark:text-foreground">
               No templates yet
             </p>
-            <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-neutral-400 dark:text-muted-foreground">
               Create your first UTM template to get started.
             </p>
           </motion.div>

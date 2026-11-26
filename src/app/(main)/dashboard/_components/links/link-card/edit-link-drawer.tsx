@@ -479,7 +479,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   {...field}
                                 />
                               </FormControl>
-                              <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 A friendly name to identify your link (optional)
                               </FormDescription>
                               <FormMessage />
@@ -513,7 +513,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                 </div>
                               </FormControl>
                               {movesDomain && (
-                                <FormDescription className="break-all text-[12px] text-neutral-400 dark:text-neutral-500">
+                                <FormDescription className="break-all text-[12px] text-neutral-400 dark:text-muted-foreground">
                                   {link.domain}/{link.alias} will keep redirecting to this link.
                                 </FormDescription>
                               )}
@@ -610,7 +610,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   </div>
                                 </div>
                               </FormControl>
-                              <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 Press Enter to add a tag, or select from existing tags.
                               </FormDescription>
                               <FormMessage />
@@ -746,7 +746,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                 <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                                   Enable Link Cloaking
                                 </FormLabel>
-                                <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                                <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                   Visitors see your short URL while viewing the destination page.
                                 </FormDescription>
                               </div>
@@ -771,13 +771,13 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                         />
 
                         {!isUltraUser && (
-                          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                             Link cloaking is an Ultra plan feature.
                           </p>
                         )}
 
                         {!watchedUrl && isUltraUser && (
-                          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                             Enter a destination URL above to enable link cloaking.
                           </p>
                         )}
@@ -813,7 +813,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                 <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                                   Enable Verified Clicks
                                 </FormLabel>
-                                <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                                <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                   With this on, your analytics shows which clicks came from real
                                   visitors, not automated traffic — so you can tell real engagement
                                   apart from noise.
@@ -830,7 +830,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                           )}
                         />
                         {!isProOrUltraUser && (
-                          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                             Verified clicks are available on Pro and Ultra plans.
                           </p>
                         )}
@@ -861,7 +861,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                           disabled={!isProOrUltraUser}
                         />
                         {!isProOrUltraUser && (
-                          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                             Click milestones are available on Pro and Ultra plans.{" "}
                             <UpgradeCta
                               requiredPlan="pro"
@@ -890,7 +890,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                 Go live at
                               </FormLabel>
                               {!userSubscription.isLoading && !isProOrUltraUser && (
-                                <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                                <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                   You need to be on a{" "}
                                   <UpgradeCta
                                     requiredPlan="pro"
@@ -911,7 +911,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50"
                                 />
                               </FormControl>
-                              <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 Visitors see a &quot;not live yet&quot; page until this time. Clear
                                 to go live now.
                               </FormDescription>
@@ -935,7 +935,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400 focus-visible:ring-neutral-300"
                                 />
                               </FormControl>
-                              <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 Deactivate after a certain number of clicks. Leave empty to never
                                 disable.
                               </FormDescription>
@@ -985,7 +985,7 @@ export function EditLinkDrawer({ link, open, onClose }: EditLinkDrawerProps) {
                                   </PopoverContent>
                                 </Popover>
                               </FormControl>
-                              <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                              <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                                 Deactivate the link after a certain date.
                               </FormDescription>
                               <FormMessage />
