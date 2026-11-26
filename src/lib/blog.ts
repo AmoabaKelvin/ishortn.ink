@@ -164,6 +164,8 @@ function isFaqHeading(text: string): boolean {
     normalized === "faq" ||
     normalized === "faqs" ||
     normalized === "frequently asked questions" ||
+    normalized === "questions" ||
+    normalized === "questions and answers" ||
     normalized.startsWith("common questions")
   );
 }
