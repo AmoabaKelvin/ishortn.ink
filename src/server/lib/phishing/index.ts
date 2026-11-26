@@ -14,6 +14,7 @@ import { checkGoogleWebRisk } from "./web-risk";
 import { isWellKnownHost } from "./well-known-hosts";
 
 import type { ScrapedMetadata } from "@/server/lib/metadata";
+import type { ServerTiming } from "@/server/lib/server-timing";
 
 const log = logger.child({ component: "phishing" });
 
@@ -21,6 +22,15 @@ const log = logger.child({ component: "phishing" });
 type SafetyTimings = Partial<
   Record<"deterministicMs" | "safeBrowsingMs" | "verdictCacheMs" | "scrapeMs" | "llmMs", number>
 >;
+
+/** Server-Timing metric name for each safety step. */
+const SERVER_TIMING_STEPS: ReadonlyArray<readonly [keyof SafetyTimings, string]> = [
+  ["deterministicMs", "deterministic"],
+  ["safeBrowsingMs", "safebrowsing"],
+  ["verdictCacheMs", "verdictcache"],
+  ["scrapeMs", "scrape"],
+  ["llmMs", "llm"],
+];
 
 type CheckResult = {
   blocked: boolean;
@@ -166,8 +176,13 @@ async function prepareLLMInput(
  *
  * The pre-LLM checks always run. The scrape and LLM call are skipped for well-known hosts and
  * for URLs the LLM cleared in the last 24 h; the blocklist and Safe Browsing still cover those.
+ * `serverTiming` receives `safety` (with the outcome) and the durations of the steps that finished.
  */
-export async function assertUrlSafe(url: string, deps: UrlSafetyDeps = {}): Promise<void> {
+export async function assertUrlSafe(
+  url: string,
+  deps: UrlSafetyDeps = {},
+  serverTiming?: ServerTiming,
+): Promise<void> {
   const {
     preChecks = runPreLLMChecks,
     scrape = scrapeMetadata,
@@ -177,8 +192,16 @@ export async function assertUrlSafe(url: string, deps: UrlSafetyDeps = {}): Prom
   } = deps;
   const started = Date.now();
   const timings: SafetyTimings = {};
-  const done = (outcome: string) =>
-    log.info({ url, outcome, totalMs: Date.now() - started, ...timings }, "url safety checked");
+  const done = (outcome: string) => {
+    const totalMs = Date.now() - started;
+    log.info({ url, outcome, totalMs, ...timings }, "url safety checked");
+    if (!serverTiming) return;
+    serverTiming.add("safety", totalMs, outcome);
+    for (const [key, name] of SERVER_TIMING_STEPS) {
+      const ms = timings[key];
+      if (ms !== undefined) serverTiming.add(name, ms);
+    }
+  };
 
   // The page fetch doesn't depend on the pre-LLM checks, so it runs alongside them. Its result
   // is discarded if they block the URL.

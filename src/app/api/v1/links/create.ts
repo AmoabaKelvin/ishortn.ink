@@ -11,6 +11,7 @@ import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
+import { ServerTiming } from "@/server/lib/server-timing";
 import { claimMonthlyLinkSlot, releaseMonthlyLinkSlot } from "@/server/lib/user-plan";
 
 import { apiDomainWriteError, resolveApiDomainForUser, toApiLink } from "../utils";
@@ -42,24 +43,29 @@ export type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 /**
  * Creates a link in the token owner's personal workspace with the plan's checks, the URL safety
  * check and the monthly quota. Shared by POST /api/v1/links and the browser extension. Throws
- * TRPCErrors with user-facing messages; plan refusals are FORBIDDEN.
+ * TRPCErrors with user-facing messages; plan refusals are FORBIDDEN. Step durations go to
+ * `serverTiming` for the route's Server-Timing header.
  */
 export async function createTokenLink(
   token: ApiToken,
   parsedData: ShortenLinkInput,
   source: LinkCreationSource,
+  serverTiming = new ServerTiming(),
 ) {
   return trackLinkCreation(db, source, token.userId, async (attempt) => {
     // The safety check needs only the URL, so it overlaps the checks below. The no-op catch keeps
     // a verdict from going unhandled when one of them throws first.
-    const safety = assertUrlSafe(parsedData.url);
+    const safety = assertUrlSafe(parsedData.url, {}, serverTiming);
     safety.catch(() => undefined);
 
-    const requestedDomain = await resolveApiDomainForUser(
-      token.userId,
-      parsedData,
-      token.defaultDomain,
-    );
+    const { requestedDomain, domainError } = await serverTiming.measure("domain", async () => {
+      const domain = await resolveApiDomainForUser(token.userId, parsedData, token.defaultDomain);
+      return {
+        requestedDomain: domain,
+        domainError:
+          domain && (await apiDomainWriteError(token.userId, token.graceUsagePlan, domain)),
+      };
+    });
     if (!requestedDomain) {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -70,11 +76,6 @@ export async function createTokenLink(
       });
     }
     const plan = token.plan;
-    const domainError = await apiDomainWriteError(
-      token.userId,
-      token.graceUsagePlan,
-      requestedDomain,
-    );
     if (domainError) {
       throw new TRPCError({ code: "FORBIDDEN", message: domainError });
     }
@@ -84,10 +85,13 @@ export async function createTokenLink(
         message: "Scheduled links are only available on Pro and Ultra plans",
       });
     }
-    if (parsedData.alias) {
-      await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
+    const alias = parsedData.alias;
+    if (alias) {
+      await serverTiming.measure("alias", () =>
+        validateAlias({ db }, alias, requestedDomain, plan !== "free"),
+      );
     }
-    return createNewLink(parsedData, token, requestedDomain, safety, attempt);
+    return createNewLink(parsedData, token, requestedDomain, safety, attempt, serverTiming);
   });
 }
 
@@ -97,6 +101,7 @@ async function createNewLink(
   domain: string,
   safety: Promise<void>,
   attempt: LinkCreationAttempt,
+  serverTiming: ServerTiming,
 ) {
   const { userId, plan } = token;
   if (data.password) {
@@ -128,7 +133,10 @@ async function createNewLink(
 
   attempt.step = "safety";
   // The alias lookup doesn't depend on the safety verdict, so it runs alongside it.
-  const [, alias] = await Promise.all([safety, data.alias ?? generateUnreservedAlias(db, domain)]);
+  const [, alias] = await Promise.all([
+    safety,
+    data.alias ?? serverTiming.measure("alias", () => generateUnreservedAlias(db, domain)),
+  ]);
 
   attempt.step = "db";
 
@@ -150,15 +158,16 @@ async function createNewLink(
 
   // No transaction: the conditional UPDATE alone keeps parallel requests under the monthly
   // limit, and a failed insert gives its slot back, so each step is one round trip.
-  await claimMonthlyLinkSlot(userId, plan);
-  let newLinkId: number;
-  try {
-    const [inserted] = await db.insert(link).values(newLinkData);
-    newLinkId = inserted.insertId;
-  } catch (error) {
-    await releaseMonthlyLinkSlot(userId, plan).catch(() => undefined);
-    throw error;
-  }
+  const newLinkId = await serverTiming.measure("db", async () => {
+    await claimMonthlyLinkSlot(userId, plan);
+    try {
+      const [inserted] = await db.insert(link).values(newLinkData);
+      return inserted.insertId;
+    } catch (error) {
+      await releaseMonthlyLinkSlot(userId, plan).catch(() => undefined);
+      throw error;
+    }
+  });
   checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
 
   return {
