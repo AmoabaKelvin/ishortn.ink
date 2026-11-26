@@ -69,7 +69,7 @@ export type ExistingFlag = {
 export const RESCAN_REASON_PREFIX = "phishing-rescan:";
 
 const DOMAIN_BLOCK_DETAILS = "Destination host listed in feed: ";
-const PAYING_NOTE = " (paying account, review before blocking)";
+export const PAYING_NOTE = " (paying account, review before blocking)";
 
 // Large sites that the feeds list as whole domains or bare home pages (docs.google.com,
 // sites.google.com, notion.so, gravatar.com, ...). Such listings never act on a link.

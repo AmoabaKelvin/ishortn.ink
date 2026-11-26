@@ -9,6 +9,7 @@ import { scrapePageForSafetyCheck } from "@/server/lib/metadata";
 import { checkBlocklist } from "./blocklist";
 import { checkGoogleSafeBrowsing } from "./google-safe-browsing";
 import { INVALID_URL_REASON, runHeuristicChecks } from "./heuristics";
+import { PAYING_NOTE } from "./rescan/utils";
 import { isSharedHostTenant } from "./shared-hosts";
 import { hasSafeVerdict, storeSafeVerdict } from "./verdict-cache";
 import { checkGoogleWebRisk } from "./web-risk";
@@ -168,6 +169,7 @@ export type UrlSafetyOptions = UrlSafetyDeps & { account?: SafetyAccount };
 const NEW_ACCOUNT_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const CREDENTIAL_FORM_REASON = "phishing-check:credential-form";
+export const LLM_CHECK_REASON = "phishing-check:llm";
 
 async function prepareLLMInput(
   url: string,
@@ -217,69 +219,31 @@ async function isNewFreeAccount(account: SafetyAccount | undefined, now: Date): 
   return createdAt !== null && now.getTime() - createdAt.getTime() < NEW_ACCOUNT_DAYS * DAY_MS;
 }
 
+/** A URL the page rules or the LLM found unsafe, with what to record and show for it. */
+type UnsafeVerdict = { reason: string; details: string; userMessage: string };
+
+/** What the page rules and the LLM made of a URL that passed the pre-LLM checks. */
+type PageVerdict = { outcome: string; unsafe?: UnsafeVerdict; followUp?: SafetyFollowUp };
+
+type PageCheckDeps = Required<Pick<UrlSafetyDeps, "detect" | "rememberVerdict" | "now">> & {
+  account?: SafetyAccount;
+};
+
 /**
- * Run the full URL safety pipeline (pre-LLM checks, page rules and LLM phishing detection) and
- * throw if the URL is unsafe. Call this from every link write path, passing the account, and hand
- * the result to `recordSafetyFollowUp` once the link exists.
- *
- * The pre-LLM checks always run. The scrape and LLM call are skipped for well-known hosts and
- * for URLs the LLM cleared in the last 24 h; the blocklist and Safe Browsing still cover those.
- * `serverTiming` receives `safety` (with the outcome) and the durations of the steps that finished.
+ * Layer 3: the page rules and LLM phishing detection on the page `prepareLLMInput` fetched. Fails
+ * open: an outage in the metadata service or the LLM provider must not block link creation.
  */
-export async function assertUrlSafe(
+async function checkPage(
   url: string,
-  options: UrlSafetyOptions = {},
-  serverTiming?: ServerTiming,
-): Promise<UrlSafetyResult> {
-  const {
-    preChecks = runPreLLMChecks,
-    scrape = scrapePageForSafetyCheck,
-    detect = detectPhishingLink,
-    readVerdict = hasSafeVerdict,
-    rememberVerdict = (safeUrl) => void runBackgroundTask(storeSafeVerdict(safeUrl)),
-    now = () => new Date(),
-    account,
-  } = options;
-  const started = Date.now();
-  const timings: SafetyTimings = {};
-  const done = (outcome: string, followUp?: SafetyFollowUp): UrlSafetyResult => {
-    const totalMs = Date.now() - started;
-    log.info({ url, outcome, totalMs, ...timings }, "url safety checked");
-    if (serverTiming) {
-      serverTiming.add("safety", totalMs, outcome);
-      for (const [key, name] of SERVER_TIMING_STEPS) {
-        const ms = timings[key];
-        if (ms !== undefined) serverTiming.add(name, ms);
-      }
-    }
-    return { outcome, followUp };
-  };
-  const reject = (outcome: string, message: string): never => {
-    done(outcome);
-    throw new TRPCError({ code: "BAD_REQUEST", message });
-  };
+  input: Exclude<LLMInput, { kind: "heuristic-block" }>,
+  { detect, rememberVerdict, now, account }: PageCheckDeps,
+  timings: SafetyTimings,
+): Promise<PageVerdict> {
+  if (input.kind === "well-known" || input.kind === "cached") return { outcome: input.kind };
 
-  // The page fetch doesn't depend on the pre-LLM checks, so it runs alongside them. Its result
-  // is discarded if they block the URL.
-  const llmInput = prepareLLMInput(url, scrape, readVerdict, timings);
-
-  // Layer 1 & 2: Deterministic checks + Google Safe Browsing / Web Risk
-  const preLLMResult = await preChecks(url, timings);
-  if (preLLMResult.blocked) {
-    log.warn({ url, reason: preLLMResult.reason }, "link blocked (pre-LLM)");
-    return reject("blocked-pre-llm", preLLMResult.userMessage);
-  }
-
-  const input = await llmInput;
-  // Only reachable if the pre-LLM checks skipped the heuristics; never let such a URL through.
-  if (input.kind === "heuristic-block") return reject("blocked-heuristics", USER_MSG_SUSPICIOUS);
-  if (input.kind === "well-known" || input.kind === "cached") return done(input.kind);
-
-  // Layer 3: LLM-based phishing detection. Fail open — an outage in the
-  // metadata service or the LLM provider must not block link creation.
   if (input.kind === "scrape-failed") {
     log.warn({ err: input.error, url }, "LLM phishing check failed, allowing link");
-    return done("scrape-failed", { kind: "recheck", reason: "scrape-failed" });
+    return { outcome: "scrape-failed", followUp: { kind: "recheck", reason: "scrape-failed" } };
   }
 
   const { metadata, signals } = input.page;
@@ -292,7 +256,14 @@ export async function assertUrlSafe(
   if (formHost) {
     if (await isNewFreeAccount(account, now())) {
       log.warn({ url, host: formHost }, "link blocked (credential form on shared host)");
-      return reject("blocked-credential-form", USER_MSG_SUSPICIOUS);
+      return {
+        outcome: "blocked-credential-form",
+        unsafe: {
+          reason: CREDENTIAL_FORM_REASON,
+          details: `Password form on shared host ${formHost} (new free account)`,
+          userMessage: USER_MSG_SUSPICIOUS,
+        },
+      };
     }
     followUp = {
       kind: "review",
@@ -310,16 +281,163 @@ export async function assertUrlSafe(
   } catch (error) {
     timings.llmMs = Date.now() - llmStarted;
     log.warn({ err: error, url }, "LLM phishing check failed, allowing link");
-    return done("llm-failed", followUp);
+    return { outcome: "llm-failed", followUp };
   }
   timings.llmMs = Date.now() - llmStarted;
 
-  if (phishingResult.phishing) return reject("blocked-llm", USER_MSG_UNSAFE);
-  if (formHost) return done("flagged-credential-form", followUp);
-  if (unverified) return done("unverified-challenge", followUp);
+  if (phishingResult.phishing) {
+    return {
+      outcome: "blocked-llm",
+      unsafe: {
+        reason: LLM_CHECK_REASON,
+        details: `LLM phishing check flagged ${url}`,
+        userMessage: USER_MSG_UNSAFE,
+      },
+    };
+  }
+  if (formHost) return { outcome: "flagged-credential-form", followUp };
+  if (unverified) return { outcome: "unverified-challenge", followUp };
 
   // Only a completed "not phishing" verdict on the real page is cached; everything above returns
   // early, so a URL that is flagged or unverified is checked again next time.
   rememberVerdict(url);
-  return done("allowed");
+  return { outcome: "allowed" };
+}
+
+/** Logs the per-step timings of one safety check and reports them to `serverTiming`. */
+function safetyLogger(
+  url: string,
+  part: "full" | "fast" | "after-response",
+  timings: SafetyTimings,
+  serverTiming?: ServerTiming,
+) {
+  const started = Date.now();
+  return (outcome: string) => {
+    const totalMs = Date.now() - started;
+    log.info({ url, part, outcome, totalMs, ...timings }, "url safety checked");
+    if (serverTiming) {
+      serverTiming.add("safety", totalMs, outcome);
+      for (const [key, name] of SERVER_TIMING_STEPS) {
+        const ms = timings[key];
+        if (ms !== undefined) serverTiming.add(name, ms);
+      }
+    }
+  };
+}
+
+function withDefaults(options: UrlSafetyOptions) {
+  return {
+    preChecks: options.preChecks ?? runPreLLMChecks,
+    scrape: options.scrape ?? scrapePageForSafetyCheck,
+    detect: options.detect ?? detectPhishingLink,
+    readVerdict: options.readVerdict ?? hasSafeVerdict,
+    rememberVerdict:
+      options.rememberVerdict ??
+      ((safeUrl: string) => void runBackgroundTask(storeSafeVerdict(safeUrl))),
+    now: options.now ?? (() => new Date()),
+    account: options.account,
+  };
+}
+
+/**
+ * Run the full URL safety pipeline (pre-LLM checks, page rules and LLM phishing detection) and
+ * throw if the URL is unsafe. Call this from every link write path, passing the account, and hand
+ * the result to `recordSafetyFollowUp` once the link exists.
+ *
+ * The pre-LLM checks always run. The scrape and LLM call are skipped for well-known hosts and
+ * for URLs the LLM cleared in the last 24 h; the blocklist and Safe Browsing still cover those.
+ * `serverTiming` receives `safety` (with the outcome) and the durations of the steps that finished.
+ */
+export async function assertUrlSafe(
+  url: string,
+  options: UrlSafetyOptions = {},
+  serverTiming?: ServerTiming,
+): Promise<UrlSafetyResult> {
+  const deps = withDefaults(options);
+  const timings: SafetyTimings = {};
+  const done = safetyLogger(url, "full", timings, serverTiming);
+  const reject = (outcome: string, message: string): never => {
+    done(outcome);
+    throw new TRPCError({ code: "BAD_REQUEST", message });
+  };
+
+  // The page fetch doesn't depend on the pre-LLM checks, so it runs alongside them. Its result
+  // is discarded if they block the URL.
+  const llmInput = prepareLLMInput(url, deps.scrape, deps.readVerdict, timings);
+
+  // Layer 1 & 2: Deterministic checks + Google Safe Browsing / Web Risk
+  const preLLMResult = await deps.preChecks(url, timings);
+  if (preLLMResult.blocked) {
+    log.warn({ url, reason: preLLMResult.reason }, "link blocked (pre-LLM)");
+    return reject("blocked-pre-llm", preLLMResult.userMessage);
+  }
+
+  const input = await llmInput;
+  // Only reachable if the pre-LLM checks skipped the heuristics; never let such a URL through.
+  if (input.kind === "heuristic-block") return reject("blocked-heuristics", USER_MSG_SUSPICIOUS);
+
+  const verdict = await checkPage(url, input, deps, timings);
+  if (verdict.unsafe) return reject(verdict.outcome, verdict.unsafe.userMessage);
+  done(verdict.outcome);
+  return { outcome: verdict.outcome, followUp: verdict.followUp };
+}
+
+/**
+ * The part of `assertUrlSafe` a link create waits for: heuristics, the blocklist and Safe
+ * Browsing / Web Risk, which reject with the same messages. Pair it with
+ * `checkUrlWithLlmAfterResponse` once the link exists, which runs the page rules and the LLM.
+ */
+export async function assertUrlSafeFast(
+  url: string,
+  options: Pick<UrlSafetyDeps, "preChecks"> = {},
+  serverTiming?: ServerTiming,
+): Promise<void> {
+  const { preChecks = runPreLLMChecks } = options;
+  const timings: SafetyTimings = {};
+  const done = safetyLogger(url, "fast", timings, serverTiming);
+  const preLLMResult = await preChecks(url, timings);
+  if (preLLMResult.blocked) {
+    log.warn({ url, reason: preLLMResult.reason }, "link blocked (pre-LLM)");
+    done("blocked-pre-llm");
+    throw new TRPCError({ code: "BAD_REQUEST", message: preLLMResult.userMessage });
+  }
+  done("passed-fast");
+}
+
+/** What the after-response check leaves against a link: block it, or a `SafetyFollowUp`. */
+export type SafetyAction = { kind: "block"; reason: string; details: string } | SafetyFollowUp;
+
+/**
+ * The page rules and LLM check of `assertUrlSafe`, for a link that already passed
+ * `assertUrlSafeFast` and exists. Instead of rejecting, an unsafe URL becomes an action with the
+ * re-scan's rules: free accounts are blocked, paying and team accounts flagged for review. A
+ * failed scrape or LLM call leaves the link live.
+ */
+export async function checkUrlWithLlm(
+  url: string,
+  options: Omit<UrlSafetyOptions, "preChecks"> & { account: SafetyAccount },
+): Promise<SafetyAction | undefined> {
+  const deps = withDefaults(options);
+  const timings: SafetyTimings = {};
+  const done = safetyLogger(url, "after-response", timings);
+
+  const input = await prepareLLMInput(url, deps.scrape, deps.readVerdict, timings);
+  // The fast checks rejected this URL already, so no link exists for it.
+  if (input.kind === "heuristic-block") {
+    done("blocked-heuristics");
+    return undefined;
+  }
+
+  const verdict = await checkPage(url, input, deps, timings);
+  done(verdict.outcome);
+  if (!verdict.unsafe) return verdict.followUp;
+
+  const { reason, details } = verdict.unsafe;
+  const { account } = options;
+  if (account.isTeam || account.plan !== "free") {
+    log.warn({ url, reason }, "link flagged after creation (paying account)");
+    return { kind: "review", reason, details: details + PAYING_NOTE };
+  }
+  log.warn({ url, reason }, "link blocked after creation");
+  return { kind: "block", reason, details };
 }

@@ -8,8 +8,8 @@ import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/u
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { trackLinkCreation } from "@/server/lib/link-creation/failures";
-import { assertUrlSafe } from "@/server/lib/phishing";
-import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
+import { assertUrlSafeFast } from "@/server/lib/phishing";
+import { checkUrlWithLlmAfterResponse } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { ServerTiming } from "@/server/lib/server-timing";
@@ -24,7 +24,7 @@ import {
 
 import type { ApiToken } from "../utils";
 import type { LinkCreationAttempt, LinkCreationSource } from "@/server/lib/link-creation/failures";
-import type { UrlSafetyResult } from "@/server/lib/phishing";
+import type { UrlSafetyDeps } from "@/server/lib/phishing";
 
 export const shortenLinkSchema = z.object({
   url: destinationUrlSchema,
@@ -47,26 +47,32 @@ export const shortenLinkSchema = z.object({
 
 export type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 
+/** Seams for tests; the routes use the defaults. */
+export type TokenLinkSafetyDeps = UrlSafetyDeps & {
+  checkAfterResponse?: typeof checkUrlWithLlmAfterResponse;
+};
+
 /**
  * Creates a link in the token owner's personal workspace with the plan's checks, the URL safety
  * check and the monthly quota. Shared by POST /api/v1/links and the browser extension. Throws
  * TRPCErrors with user-facing messages; plan refusals are FORBIDDEN. Step durations go to
  * `serverTiming` for the route's Server-Timing header.
+ *
+ * Only the fast safety layers (heuristics, blocklist, Safe Browsing) hold up the create. The page
+ * fetch and LLM check take seconds and almost never reject, so they run after the response and
+ * block or flag the link instead.
  */
 export async function createTokenLink(
   token: ApiToken,
   parsedData: ShortenLinkInput,
   source: LinkCreationSource,
   serverTiming = new ServerTiming(),
+  safetyDeps: TokenLinkSafetyDeps = {},
 ) {
   return trackLinkCreation(db, source, token.userId, async (attempt) => {
     // The safety check needs only the URL, so it overlaps the checks below. The no-op catch keeps
     // a verdict from going unhandled when one of them throws first.
-    const safety = assertUrlSafe(
-      parsedData.url,
-      { account: apiSafetyAccount(token) },
-      serverTiming,
-    );
+    const safety = assertUrlSafeFast(parsedData.url, safetyDeps, serverTiming);
     safety.catch(() => undefined);
 
     const { requestedDomain, domainError } = await serverTiming.measure("domain", async () => {
@@ -102,7 +108,15 @@ export async function createTokenLink(
         validateAlias({ db }, alias, requestedDomain, plan !== "free"),
       );
     }
-    return createNewLink(parsedData, token, requestedDomain, safety, attempt, serverTiming);
+    return createNewLink(
+      parsedData,
+      token,
+      requestedDomain,
+      safety,
+      attempt,
+      serverTiming,
+      safetyDeps,
+    );
   });
 }
 
@@ -110,9 +124,10 @@ async function createNewLink(
   data: ShortenLinkInput,
   token: ApiToken,
   domain: string,
-  safety: Promise<UrlSafetyResult>,
+  safety: Promise<void>,
   attempt: LinkCreationAttempt,
   serverTiming: ServerTiming,
+  { checkAfterResponse = checkUrlWithLlmAfterResponse, ...safetyDeps }: TokenLinkSafetyDeps,
 ) {
   const { userId, plan } = token;
   if (data.password) {
@@ -144,7 +159,7 @@ async function createNewLink(
 
   attempt.step = "safety";
   // The alias lookup doesn't depend on the safety verdict, so it runs alongside it.
-  const [safetyResult, alias] = await Promise.all([
+  const [, alias] = await Promise.all([
     safety,
     data.alias ?? serverTiming.measure("alias", () => generateUnreservedAlias(db, domain)),
   ]);
@@ -179,7 +194,10 @@ async function createNewLink(
       throw error;
     }
   });
-  recordSafetyFollowUp(newLinkId, safetyResult);
+  void checkAfterResponse({ id: newLinkId, domain, alias }, data.url, {
+    ...safetyDeps,
+    account: apiSafetyAccount(token),
+  });
   checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
 
   return {

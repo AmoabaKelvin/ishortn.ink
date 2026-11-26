@@ -4,7 +4,13 @@ import { TRPCError } from "@trpc/server";
 
 import { parseScrapedPage } from "@/server/lib/metadata";
 
-import { CREDENTIAL_FORM_REASON, USER_MSG_UNSAFE, assertUrlSafe } from "./index";
+import {
+  CREDENTIAL_FORM_REASON,
+  LLM_CHECK_REASON,
+  USER_MSG_UNSAFE,
+  assertUrlSafe,
+  checkUrlWithLlm,
+} from "./index";
 
 import type { SafetyAccount, UrlSafetyOptions } from "./index";
 import type { Plan } from "@/lib/billing/plans";
@@ -323,5 +329,112 @@ describe("ordinary pages", () => {
 
     expect(result).toEqual({ outcome: "allowed", followUp: undefined });
     expect(d.rememberVerdict).toHaveBeenCalledWith(url);
+  });
+});
+
+describe("checkUrlWithLlm (after the link exists)", () => {
+  const formUrl = "https://spectrum-mail.framer.app/";
+  const lureUrl = "https://studio-copyright-review.cfd/appeal";
+  const phishing = { detect: mock(async (u: string) => ({ url: u, phishing: true })) };
+
+  test("blocks a URL the LLM flags on a free account", async () => {
+    const d = deps(page(lureUrl, COPYRIGHT_HTML), phishing);
+
+    const action = await checkUrlWithLlm(lureUrl, { ...d, account: account("free", 300) });
+
+    expect(action).toMatchObject({ kind: "block", reason: LLM_CHECK_REASON });
+    expect(d.preChecks).not.toHaveBeenCalled();
+    expect(d.rememberVerdict).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["a paying account", account("pro", 2)],
+    ["a team", account("ultra", 2, true)],
+  ])("flags a URL the LLM flags on %s for review", async (_name, owner) => {
+    const d = deps(page(lureUrl, COPYRIGHT_HTML), {
+      detect: mock(async (u: string) => ({ url: u, phishing: true })),
+    });
+
+    const action = await checkUrlWithLlm(lureUrl, { ...d, account: owner });
+
+    expect(action).toMatchObject({ kind: "review", reason: LLM_CHECK_REASON });
+    expect(action?.kind === "review" && action.details).toContain("paying account");
+  });
+
+  test("blocks a credential form on a new free account without asking the LLM", async () => {
+    const d = deps(page(formUrl, WEBMAIL_FORM_HTML));
+
+    const action = await checkUrlWithLlm(formUrl, { ...d, account: account("free", 2) });
+
+    expect(action).toMatchObject({ kind: "block", reason: CREDENTIAL_FORM_REASON });
+    expect(d.detect).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["a paying account", account("pro", 2)],
+    ["an established free account", account("free", 30)],
+  ])("flags a credential form on %s", async (_name, owner) => {
+    const d = deps(page(formUrl, WEBMAIL_FORM_HTML));
+
+    const action = await checkUrlWithLlm(formUrl, { ...d, account: owner });
+
+    expect(action).toMatchObject({ kind: "review", reason: CREDENTIAL_FORM_REASON });
+    expect(d.rememberVerdict).not.toHaveBeenCalled();
+  });
+
+  test("queues a challenge page for a re-check without caching a verdict", async () => {
+    const url = "https://secure-docs.example/view";
+    const d = deps(page(url, CHALLENGE_HTML, 403));
+
+    const action = await checkUrlWithLlm(url, { ...d, account: account("free", 2) });
+
+    expect(action).toEqual({ kind: "recheck", reason: "unverified-challenge" });
+    expect(d.rememberVerdict).not.toHaveBeenCalled();
+  });
+
+  test("queues a failed scrape for a re-check and leaves the link live", async () => {
+    const d = deps(page(lureUrl, ""), {
+      scrape: mock(async () => {
+        throw new Error("fetch failed");
+      }),
+    });
+
+    const action = await checkUrlWithLlm(lureUrl, { ...d, account: account("free", 2) });
+
+    expect(action).toEqual({ kind: "recheck", reason: "scrape-failed" });
+    expect(d.detect).not.toHaveBeenCalled();
+  });
+
+  test("a failed LLM call leaves the link live", async () => {
+    const d = deps(page(lureUrl, COPYRIGHT_HTML), {
+      detect: mock(async () => {
+        throw new Error("timeout");
+      }),
+    });
+
+    expect(await checkUrlWithLlm(lureUrl, { ...d, account: account("free", 2) })).toBeUndefined();
+    expect(d.rememberVerdict).not.toHaveBeenCalled();
+  });
+
+  test("caches a safe verdict", async () => {
+    const url = "https://acme-store.myshopify.com/products/blue-mug";
+    const d = deps(page(url, SHOP_HTML));
+
+    expect(await checkUrlWithLlm(url, { ...d, account: account("free", 2) })).toBeUndefined();
+    expect(d.rememberVerdict).toHaveBeenCalledWith(url);
+  });
+
+  test("skips the scrape for well-known hosts and cached verdicts", async () => {
+    const cached = deps(page(lureUrl, COPYRIGHT_HTML), { readVerdict: mock(async () => true) });
+    await checkUrlWithLlm(lureUrl, { ...cached, account: account("free", 2) });
+    const known = deps(page(lureUrl, COPYRIGHT_HTML));
+    await checkUrlWithLlm("https://github.com/AmoabaKelvin", {
+      ...known,
+      account: account("free", 2),
+    });
+
+    expect(cached.scrape).not.toHaveBeenCalled();
+    expect(known.scrape).not.toHaveBeenCalled();
+    expect(known.readVerdict).not.toHaveBeenCalled();
   });
 });

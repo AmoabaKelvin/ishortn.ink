@@ -308,6 +308,9 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     );
     // The response is built from the inserted values, so there is no read-back step.
     expect(timingNames(response)).not.toContain("read");
+    // The page fetch and LLM check run after the response.
+    expect(timingNames(response)).not.toContain("scrape");
+    expect(timingNames(response)).not.toContain("llm");
     expect(response.headers.get("server-timing")).not.toContain("localhost");
   });
 
