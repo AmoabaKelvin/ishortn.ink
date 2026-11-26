@@ -16,6 +16,7 @@ import { isWellKnownHost } from "./well-known-hosts";
 
 import type { Plan } from "@/lib/billing/plans";
 import type { PageSignals, ScrapedPage } from "@/server/lib/metadata";
+import type { ServerTiming } from "@/server/lib/server-timing";
 
 const log = logger.child({ component: "phishing" });
 
@@ -23,6 +24,15 @@ const log = logger.child({ component: "phishing" });
 type SafetyTimings = Partial<
   Record<"deterministicMs" | "safeBrowsingMs" | "verdictCacheMs" | "scrapeMs" | "llmMs", number>
 >;
+
+/** Server-Timing metric name for each safety step. */
+const SERVER_TIMING_STEPS: ReadonlyArray<readonly [keyof SafetyTimings, string]> = [
+  ["deterministicMs", "deterministic"],
+  ["safeBrowsingMs", "safebrowsing"],
+  ["verdictCacheMs", "verdictcache"],
+  ["scrapeMs", "scrape"],
+  ["llmMs", "llm"],
+];
 
 type CheckResult = {
   blocked: boolean;
@@ -41,11 +51,28 @@ const USER_MSG_BLOCKLISTED =
 const USER_MSG_SUSPICIOUS =
   "This URL looks suspicious and cannot be shortened. Please double-check the URL and try again, or contact support if you believe this is an error.";
 
+/** The lookups behind runPreLLMChecks; tests pass fakes. */
+export type PreLLMCheckDeps = {
+  blocklist?: typeof checkBlocklist;
+  safeBrowsing?: typeof checkGoogleSafeBrowsing;
+  webRisk?: typeof checkGoogleWebRisk;
+};
+
 /**
- * Runs all deterministic checks (heuristics + blocklist).
- * These are fast and don't call external APIs.
+ * Runs all pre-LLM checks: heuristics, the blocklist, Google Safe Browsing and Web Risk
+ * (fallback). Call this before the existing LLM-based phishing detection.
  */
-export async function runDeterministicChecks(url: string): Promise<CheckResult> {
+export async function runPreLLMChecks(
+  url: string,
+  timings: SafetyTimings = {},
+  deps: PreLLMCheckDeps = {},
+): Promise<CheckResult> {
+  const {
+    blocklist = checkBlocklist,
+    safeBrowsing = checkGoogleSafeBrowsing,
+    webRisk = checkGoogleWebRisk,
+  } = deps;
+
   // Layer 1a: Heuristic pattern checks (synchronous, instant)
   const heuristicResult = runHeuristicChecks(url);
   if (heuristicResult.blocked) {
@@ -57,39 +84,22 @@ export async function runDeterministicChecks(url: string): Promise<CheckResult> 
     };
   }
 
-  // Layer 1b: Database blocklist check
-  const blocklistResult = await checkBlocklist(url);
-  if (blocklistResult.blocked) {
-    return {
-      ...blocklistResult,
-      userMessage: USER_MSG_BLOCKLISTED,
-    };
-  }
+  // Layer 1b and 2: the blocklist query and the Safe Browsing call are independent, so they run
+  // together. Safe Browsing never rejects, so leaving it unawaited on a blocklist hit is safe.
+  const started = Date.now();
+  const safeBrowsingResultPromise = safeBrowsing(url).then((result) => {
+    timings.safeBrowsingMs = Date.now() - started;
+    return result;
+  });
 
-  return { blocked: false, reason: "", userMessage: "" };
-}
-
-/**
- * Runs all pre-LLM checks: deterministic + Google Safe Browsing + Web Risk (fallback).
- * Call this before the existing LLM-based phishing detection.
- */
-export async function runPreLLMChecks(
-  url: string,
-  timings: SafetyTimings = {},
-): Promise<CheckResult> {
-  // Layer 1: Deterministic checks
-  let started = Date.now();
-  const deterministicResult = await runDeterministicChecks(url);
+  // A blocklist hit wins over whatever Safe Browsing says.
+  const blocklistResult = await blocklist(url);
   timings.deterministicMs = Date.now() - started;
-  if (deterministicResult.blocked) {
-    return deterministicResult;
+  if (blocklistResult.blocked) {
+    return { ...blocklistResult, userMessage: USER_MSG_BLOCKLISTED };
   }
 
-  // Layer 2: Google Safe Browsing API
-  started = Date.now();
-  const safeBrowsingResult = await checkGoogleSafeBrowsing(url);
-  timings.safeBrowsingMs = Date.now() - started;
-
+  const safeBrowsingResult = await safeBrowsingResultPromise;
   if (safeBrowsingResult.status === "unsafe") {
     return {
       blocked: true,
@@ -100,7 +110,7 @@ export async function runPreLLMChecks(
 
   // Layer 2b: Google Web Risk API (fallback when Safe Browsing is unavailable or errors)
   if (safeBrowsingResult.status === "error") {
-    const webRiskResult = await checkGoogleWebRisk(url);
+    const webRiskResult = await webRisk(url);
     timings.safeBrowsingMs = Date.now() - started;
 
     if (webRiskResult.status === "unsafe") {
@@ -214,10 +224,12 @@ async function isNewFreeAccount(account: SafetyAccount | undefined, now: Date): 
  *
  * The pre-LLM checks always run. The scrape and LLM call are skipped for well-known hosts and
  * for URLs the LLM cleared in the last 24 h; the blocklist and Safe Browsing still cover those.
+ * `serverTiming` receives `safety` (with the outcome) and the durations of the steps that finished.
  */
 export async function assertUrlSafe(
   url: string,
   options: UrlSafetyOptions = {},
+  serverTiming?: ServerTiming,
 ): Promise<UrlSafetyResult> {
   const {
     preChecks = runPreLLMChecks,
@@ -231,7 +243,15 @@ export async function assertUrlSafe(
   const started = Date.now();
   const timings: SafetyTimings = {};
   const done = (outcome: string, followUp?: SafetyFollowUp): UrlSafetyResult => {
-    log.info({ url, outcome, totalMs: Date.now() - started, ...timings }, "url safety checked");
+    const totalMs = Date.now() - started;
+    log.info({ url, outcome, totalMs, ...timings }, "url safety checked");
+    if (serverTiming) {
+      serverTiming.add("safety", totalMs, outcome);
+      for (const [key, name] of SERVER_TIMING_STEPS) {
+        const ms = timings[key];
+        if (ms !== undefined) serverTiming.add(name, ms);
+      }
+    }
     return { outcome, followUp };
   };
   const reject = (outcome: string, message: string): never => {

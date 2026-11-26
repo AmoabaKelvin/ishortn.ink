@@ -9,6 +9,7 @@ import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
+import { ServerTiming } from "@/server/lib/server-timing";
 
 import { readJsonBody } from "../../v1/errors";
 import { createTokenLink } from "../../v1/links/create";
@@ -57,34 +58,39 @@ const createLinkBody = z.object({
   domain: z.string().trim().max(255).optional(),
 });
 
-export const POST = withExtensionToken(async (request: Request, token) => {
-  if (token.restrictedAt) return extensionError(403, ACCOUNT_RESTRICTED_MESSAGE);
+// Every response, refusals included, carries a Server-Timing header with the create steps.
+export async function POST(request: Request): Promise<Response> {
+  const serverTiming = new ServerTiming();
+  const response = await withExtensionToken(async (request: Request, token) => {
+    if (token.restrictedAt) return extensionError(403, ACCOUNT_RESTRICTED_MESSAGE);
 
-  const body = await readJsonBody(request);
-  if (!body.ok) return extensionError(400, "Request body must be valid JSON");
+    const body = await readJsonBody(request);
+    if (!body.ok) return extensionError(400, "Request body must be valid JSON");
 
-  const input = createLinkBody.safeParse(body.body);
-  if (!input.success) {
-    return extensionError(400, input.error.issues[0]?.message ?? "Request body is invalid");
-  }
+    const input = createLinkBody.safeParse(body.body);
+    if (!input.success) {
+      return extensionError(400, input.error.issues[0]?.message ?? "Request body is invalid");
+    }
 
-  try {
-    const created = await createTokenLink(token, input.data, "extension");
-    captureServerEvent(token.userId, "extension_link_created", { plan: token.plan });
-    return Response.json(
-      {
-        shortUrl: created.shortLink,
-        alias: created.alias,
-        domain: new URL(created.shortLink).hostname,
-        url: created.url,
-        createdAt: created.createdAt,
-      },
-      { status: 201 },
-    );
-  } catch (error) {
-    return creationErrorResponse(token, error);
-  }
-});
+    try {
+      const created = await createTokenLink(token, input.data, "extension", serverTiming);
+      captureServerEvent(token.userId, "extension_link_created", { plan: token.plan });
+      return Response.json(
+        {
+          shortUrl: created.shortLink,
+          alias: created.alias,
+          domain: new URL(created.shortLink).hostname,
+          url: created.url,
+          createdAt: created.createdAt,
+        },
+        { status: 201 },
+      );
+    } catch (error) {
+      return creationErrorResponse(token, error);
+    }
+  }, serverTiming)(request);
+  return serverTiming.apply(response);
+}
 
 /** Plan refusals (FORBIDDEN) carry the upgrade link; other client errors keep their message. */
 function creationErrorResponse(token: ApiToken, cause: unknown): Response {

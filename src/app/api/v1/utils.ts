@@ -30,6 +30,7 @@ import {
 
 import type { Plan } from "@/lib/billing/plans";
 import type { SafetyAccount } from "@/server/lib/phishing";
+import type { ServerTiming } from "@/server/lib/server-timing";
 
 // Bounds the write load from busy keys: lastUsedAt is only for display.
 const LAST_USED_RESOLUTION_MS = 60 * 60 * 1000;
@@ -59,6 +60,11 @@ async function findToken(apiKey: string | null, kind: "api" | "extension") {
         monthlyLinkCount: user.monthlyLinkCount,
         lastLinkCountReset: user.lastLinkCountReset,
         createdAt: user.createdAt,
+        // For the default domain of link creates; a subquery, not a join, so stray extra
+        // settings rows can't multiply the token row.
+        defaultDomain: sql<
+          string | null
+        >`(select ${siteSettings.defaultDomain} from ${siteSettings} where ${siteSettings.userId} = ${token.userId} limit 1)`,
       },
       subscription,
     })
@@ -103,6 +109,7 @@ async function resolveTokenPlan({
       lastLinkCountReset: owner.lastLinkCountReset,
       createdAt: owner.createdAt,
     },
+    defaultDomain: normalizeApiDomain(owner.defaultDomain) ?? DEFAULT_PLATFORM_DOMAIN,
   };
 }
 
@@ -135,14 +142,19 @@ export function restrictedAccountResponse(token: ApiToken): Response | null {
  * Wraps a v1 route handler with API key auth, the plan's API access and its
  * rate limit. The limit is checked after auth (it needs the plan) and every
  * response carries the X-RateLimit-* headers. Keys on accounts without a paid
- * plan get 403 after their sunset and the sunset headers until then.
+ * plan get 403 after their sunset and the sunset headers until then. The auth time goes to
+ * `serverTiming` as `auth` when given.
  */
 export function withApiKey<Req extends Request, Args extends unknown[]>(
   handler: (request: Req, token: ApiToken, ...args: Args) => Promise<Response>,
+  serverTiming?: ServerTiming,
 ) {
   return async (request: Req, ...args: Args): Promise<Response> => {
+    const started = Date.now();
+    const authDone = () => serverTiming?.add("auth", Date.now() - started);
     const auth = await authenticateToken(request.headers.get("x-api-key"), "api");
     if (!auth) {
+      authDone();
       return apiError(401, "unauthorized", "Invalid or missing API key");
     }
     const { token } = auth;
@@ -152,10 +164,12 @@ export function withApiKey<Req extends Request, Args extends unknown[]>(
     const access = getApiAccess(token.subscription, token.grace, sunsetAt, new Date());
     if (access.status === "revoked") {
       await recordPlanLimitHit({ userId: token.userId, limitKey: "api_v1", plan: token.plan });
+      authDone();
       return apiAccessRevokedResponse();
     }
 
     const decision = applyApiRateLimit(await auth.counters, token.plan);
+    authDone();
     if (!decision.allowed) return withApiSunsetNotice(rateLimitedResponse(decision), access);
 
     const response = await handler(request, token, ...args);
@@ -188,13 +202,15 @@ export async function getUserDefaultDomain(userId: string) {
  * active custom domain in the token owner's personal workspace — API links are
  * always created there (no teamId). Returns null when the requested domain is
  * not one of those; without this check a token holder could read, modify, or
- * mint links on any other account's branded domain.
+ * mint links on any other account's branded domain. Pass `defaultDomain` (from the token)
+ * to skip the settings lookup when no domain is given.
  */
 export async function resolveApiDomainForUser(
   userId: string,
   input: {
     domain?: string | null;
   },
+  defaultDomain?: string,
 ) {
   const explicitDomain = normalizeApiDomain(input.domain);
 
@@ -216,7 +232,7 @@ export async function resolveApiDomainForUser(
     return explicitDomain;
   }
 
-  return getUserDefaultDomain(userId);
+  return defaultDomain ?? getUserDefaultDomain(userId);
 }
 
 /**
