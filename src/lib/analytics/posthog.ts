@@ -3,55 +3,26 @@
 import { clientLogger } from "@/lib/logger/client";
 
 import { createDeferredClient } from "./deferred-client";
-import {
-  buildBeaconBody,
-  isLikelyBot,
-  postHogPersistenceName,
-  resolveBeaconIdentity,
-} from "./pageview-beacon";
 import { createIdentityTracker, createPageviewTracker } from "./posthog-tracking";
 
-import type { BeaconIdentity, QueuedPageview } from "./pageview-beacon";
 import type { PostHog } from "posthog-js/dist/module.slim";
 
 // Inlined at build time. Read here rather than through @/env.mjs, which would put zod and
 // t3-env in the client bundle of every page that loads analytics.
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
 const IDLE_TIMEOUT_MS = 2000;
 // Longest a page can hold PostHog back, in case what it waits for never finishes.
 const MAX_HOLD_MS = 10_000;
 const INTERACTION_EVENTS = ["pointerdown", "keydown"] as const;
-// Scrolling counts as interaction for holdPostHogUntilInteraction, not for the idle start: a
-// restored scroll position fires it during load.
-const HOLD_RELEASE_EVENTS = [...INTERACTION_EVENTS, "scroll"] as const;
 
 const deferred = createDeferredClient<PostHog>(100);
 let loadStarted = false;
 let importStarted = false;
 let holds = 0;
 let resumeAfterHolds: (() => void) | null = null;
-// Page views posthog-js hasn't sent yet. sendUnsentPageviews beacons them if the page is hidden
-// first, and the queued capture then skips them.
-const unsentPageviews = new Set<QueuedPageview>();
-// Set once a beacon has gone out with ids posthog-js didn't make, so posthog-js adopts them.
-let beaconIdentity: BeaconIdentity | null = null;
-const capturePageview = createPageviewTracker(
-  (call) =>
-    call({
-      capture: (_event, properties, { timestamp }) => {
-        const pageview = { properties, timestamp };
-        unsentPageviews.add(pageview);
-        deferred.run((posthog) => {
-          if (unsentPageviews.delete(pageview)) {
-            posthog.capture("$pageview", properties, { timestamp });
-          }
-        });
-      },
-    }),
-  () => document.cookie,
-);
+const capturePageview = createPageviewTracker(deferred.run, () => document.cookie);
 const syncIdentity = createIdentityTracker(deferred.run);
 
 function whenIdle(callback: () => void) {
@@ -65,47 +36,6 @@ function whenIdle(callback: () => void) {
 /** Runs `call` with PostHog now if it has loaded, otherwise once it does. */
 export function withPostHog(call: (posthog: PostHog) => void) {
   if (POSTHOG_KEY) deferred.run(call);
-}
-
-function readLocalStorage(key: string) {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Sends the page views posthog-js hasn't sent with sendBeacon, for a visitor leaving (or hiding
- * the tab) before it has loaded. Uses the visitor's stored PostHog ids, or new ones that posthog-js
- * is bootstrapped with if it loads later on this page.
- */
-function sendUnsentPageviews() {
-  if (!POSTHOG_KEY || unsentPageviews.size === 0 || !("sendBeacon" in navigator)) return;
-  if (isLikelyBot(navigator.userAgent, navigator.webdriver)) return;
-  const identity =
-    beaconIdentity ??
-    resolveBeaconIdentity(
-      POSTHOG_KEY,
-      document.cookie,
-      readLocalStorage(postHogPersistenceName(POSTHOG_KEY)),
-    );
-  const body = buildBeaconBody(POSTHOG_KEY, identity, [...unsentPageviews], {
-    title: document.title,
-    search: window.location.search,
-    referrer: document.referrer,
-    userAgent: navigator.userAgent,
-    screen: { width: window.screen.width, height: window.screen.height },
-    viewport: { width: window.innerWidth, height: window.innerHeight },
-  });
-  const url = `${POSTHOG_HOST.replace(/\/$/, "")}/i/v0/e/?compression=base64`;
-  if (!navigator.sendBeacon(url, new Blob([body], { type: "text/plain" }))) return;
-  unsentPageviews.clear();
-  beaconIdentity = identity;
-}
-
-function sendUnsentPageviewsWhenHidden() {
-  if (document.visibilityState === "hidden") sendUnsentPageviews();
 }
 
 /**
@@ -130,25 +60,6 @@ export function holdPostHog() {
   return release;
 }
 
-/**
- * holdPostHog until the visitor first taps, types or scrolls (or 10 s pass). For content pages,
- * where posthog-js start-up would otherwise land in the middle of the first render on a slow
- * phone. Page views from visitors who leave first are sent by sendUnsentPageviews.
- */
-export function holdPostHogUntilInteraction() {
-  const release = holdPostHog();
-  const releaseOnInteraction = () => {
-    for (const type of HOLD_RELEASE_EVENTS) {
-      window.removeEventListener(type, releaseOnInteraction, true);
-    }
-    release();
-  };
-  for (const type of HOLD_RELEASE_EVENTS) {
-    window.addEventListener(type, releaseOnInteraction, { capture: true, passive: true });
-  }
-  return releaseOnInteraction;
-}
-
 function importPostHog() {
   if (importStarted || !POSTHOG_KEY) return;
   importStarted = true;
@@ -166,14 +77,6 @@ function importPostHog() {
         // was for. Page leaves would otherwise follow capture_pageview off.
         capture_pageview: false,
         capture_pageleave: true,
-        bootstrap: beaconIdentity
-          ? {
-              distinctID: beaconIdentity.bootstrap.distinctId
-                ? beaconIdentity.distinctId
-                : undefined,
-              sessionID: beaconIdentity.bootstrap.sessionId ? beaconIdentity.sessionId : undefined,
-            }
-          : undefined,
         __extensionClasses: { ...AnalyticsExtensions, ...ToolbarExtensions },
       });
       deferred.ready(posthog);
@@ -204,8 +107,6 @@ export function loadPostHog() {
   if (!POSTHOG_KEY || loadStarted) return;
   loadStarted = true;
   capturePageview(window.location);
-  document.addEventListener("visibilitychange", sendUnsentPageviewsWhenHidden);
-  window.addEventListener("pagehide", sendUnsentPageviews);
 
   for (const type of INTERACTION_EVENTS) {
     window.addEventListener(type, startWhenFree, { capture: true, once: true, passive: true });
