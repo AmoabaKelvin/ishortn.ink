@@ -4,9 +4,9 @@ import {
   buildFirstTouch,
   FIRST_TOUCH_MAX_AGE_SECONDS,
   isDirectTouch,
-  parseFirstTouch,
   serializeFirstTouch,
 } from "./first-touch";
+import { parseFirstTouch } from "./parse-first-touch";
 import { getBioReferralUrl } from "./referral";
 
 const NOW = new Date("2026-11-20T12:00:00Z");

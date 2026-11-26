@@ -4,7 +4,7 @@ import { Link } from "next-view-transitions";
 import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
-import { timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils/time-ago";
 import { displayName } from "@/lib/utils/user-name";
 import { api } from "@/trpc/react";
 
