@@ -51,6 +51,7 @@ export type FirstTouch = {
   firstSeenAt: Date;
 };
 
+// Exported for parse-first-touch.ts only; not part of the attribution API.
 export function clean(value: string | null | undefined): string | null {
   if (value == null) return null;
   const trimmed = value.trim().slice(0, FIRST_TOUCH_VALUE_MAX_LENGTH);
