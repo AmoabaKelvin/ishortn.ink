@@ -370,6 +370,22 @@ export async function checkCampaignPatterns(
   const matches = destinations.flatMap((d) =>
     campaignPatternMatches(d.linkId, d.url, blockedPaths, OWN_HOSTS),
   );
+  await blockOrFlagMatches(matches, "link destination matches a known phishing campaign pattern");
+}
+
+/**
+ * Acts on the LLM phishing check flagging a new link's destination, with the rescan's rules:
+ * free accounts are blocked, paying and team accounts flagged for review.
+ */
+export async function blockOrFlagLlmPhishing(linkId: number, url: string): Promise<void> {
+  await blockOrFlagMatches(
+    [{ linkId, source: "llm-check", kind: "llm", entry: url, host: "" }],
+    "LLM phishing check flagged a new link's destination",
+  );
+}
+
+// Matches an admin already ruled on are skipped, so a dismissed link isn't flagged again.
+async function blockOrFlagMatches(matches: RescanMatch[], message: string): Promise<void> {
   if (matches.length === 0) return;
 
   const existing = await loadExistingFlags([...new Set(matches.map((m) => m.linkId))]);
@@ -384,8 +400,13 @@ export async function checkCampaignPatterns(
   const flags = decisions.filter((d) => d.action === "flag");
   await applyDecisions(blocks, flags, []);
   log.warn(
-    { linkIds: decisions.map((d) => d.linkId), blocked: blocks.length, flagged: flags.length },
-    "link destination matches a known phishing campaign pattern",
+    {
+      linkIds: decisions.map((d) => d.linkId),
+      source: decisions[0]?.source,
+      blocked: blocks.length,
+      flagged: flags.length,
+    },
+    message,
   );
 }
 

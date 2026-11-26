@@ -9,6 +9,7 @@ import { scrapeMetadata } from "@/server/lib/metadata";
 import { checkBlocklist } from "./blocklist";
 import { checkGoogleSafeBrowsing } from "./google-safe-browsing";
 import { INVALID_URL_REASON, runHeuristicChecks } from "./heuristics";
+import { blockOrFlagLlmPhishing } from "./rescan";
 import { hasSafeVerdict, storeSafeVerdict } from "./verdict-cache";
 import { checkGoogleWebRisk } from "./web-risk";
 import { isWellKnownHost } from "./well-known-hosts";
@@ -160,21 +161,63 @@ async function prepareLLMInput(
   }
 }
 
+/** How the scrape + LLM step ended. */
+type LLMOutcome = "well-known" | "cached" | "scrape-failed" | "llm-failed" | "phishing" | "allowed";
+
+/** Runs the LLM on prepared input. Fails open: scrape and LLM failures count as not phishing. */
+async function runLLMStep(
+  url: string,
+  input: Exclude<LLMInput, { kind: "heuristic-block" }>,
+  detect: typeof detectPhishingLink,
+  rememberVerdict: (url: string) => void,
+  timings: SafetyTimings,
+): Promise<LLMOutcome> {
+  if (input.kind === "well-known" || input.kind === "cached") return input.kind;
+
+  // An outage in the metadata service or the LLM provider must not block link creation.
+  if (input.kind === "scrape-failed") {
+    log.warn({ err: input.error, url }, "LLM phishing check failed, allowing link");
+    return "scrape-failed";
+  }
+
+  const started = Date.now();
+  let phishingResult: { url: string; phishing: boolean };
+  try {
+    phishingResult = await detect(url, input.metadata);
+  } catch (error) {
+    log.warn({ err: error, url }, "LLM phishing check failed, allowing link");
+    return "llm-failed";
+  } finally {
+    timings.llmMs = Date.now() - started;
+  }
+  if (phishingResult.phishing) return "phishing";
+
+  // Only a completed "not phishing" verdict is cached; failures and timeouts above return early.
+  rememberVerdict(url);
+  return "allowed";
+}
+
+function defaultLLMDeps(deps: UrlSafetyDeps) {
+  return {
+    scrape: deps.scrape ?? scrapeMetadata,
+    detect: deps.detect ?? detectPhishingLink,
+    readVerdict: deps.readVerdict ?? hasSafeVerdict,
+    rememberVerdict:
+      deps.rememberVerdict ??
+      ((safeUrl: string) => void runBackgroundTask(storeSafeVerdict(safeUrl))),
+  };
+}
+
 /**
  * Run the full URL safety pipeline (pre-LLM checks + LLM phishing detection)
- * and throw if the URL is unsafe. Call this from every link write path.
+ * and throw if the URL is unsafe.
  *
  * The pre-LLM checks always run. The scrape and LLM call are skipped for well-known hosts and
  * for URLs the LLM cleared in the last 24 h; the blocklist and Safe Browsing still cover those.
  */
 export async function assertUrlSafe(url: string, deps: UrlSafetyDeps = {}): Promise<void> {
-  const {
-    preChecks = runPreLLMChecks,
-    scrape = scrapeMetadata,
-    detect = detectPhishingLink,
-    readVerdict = hasSafeVerdict,
-    rememberVerdict = (safeUrl) => void runBackgroundTask(storeSafeVerdict(safeUrl)),
-  } = deps;
+  const { preChecks = runPreLLMChecks } = deps;
+  const { scrape, detect, readVerdict, rememberVerdict } = defaultLLMDeps(deps);
   const started = Date.now();
   const timings: SafetyTimings = {};
   const done = (outcome: string) =>
@@ -201,40 +244,83 @@ export async function assertUrlSafe(url: string, deps: UrlSafetyDeps = {}): Prom
     done("blocked-heuristics");
     throw new TRPCError({ code: "BAD_REQUEST", message: USER_MSG_SUSPICIOUS });
   }
-  if (input.kind === "well-known" || input.kind === "cached") {
-    done(input.kind);
-    return;
-  }
 
-  // Layer 3: LLM-based phishing detection. Fail open — an outage in the
-  // metadata service or the LLM provider must not block link creation.
-  if (input.kind === "scrape-failed") {
-    log.warn({ err: input.error, url }, "LLM phishing check failed, allowing link");
-    done("scrape-failed");
-    return;
-  }
-
-  const llmStarted = Date.now();
-  let phishingResult: { url: string; phishing: boolean };
-  try {
-    phishingResult = await detect(url, input.metadata);
-  } catch (error) {
-    timings.llmMs = Date.now() - llmStarted;
-    log.warn({ err: error, url }, "LLM phishing check failed, allowing link");
-    done("llm-failed");
-    return;
-  }
-  timings.llmMs = Date.now() - llmStarted;
-
-  if (phishingResult.phishing) {
+  // Layer 3: LLM-based phishing detection.
+  const outcome = await runLLMStep(url, input, detect, rememberVerdict, timings);
+  if (outcome === "phishing") {
     done("blocked-llm");
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: USER_MSG_UNSAFE,
     });
   }
+  done(outcome);
+}
 
-  // Only a completed "not phishing" verdict is cached; failures and timeouts above return early.
-  rememberVerdict(url);
-  done("allowed");
+/**
+ * The part of `assertUrlSafe` that runs before a link is written: heuristics, the blocklist and
+ * Safe Browsing / Web Risk. Pair it with `checkUrlWithLlmAfterResponse` once the link exists.
+ */
+export async function assertUrlSafeFast(
+  url: string,
+  preChecks: typeof runPreLLMChecks = runPreLLMChecks,
+): Promise<void> {
+  const started = Date.now();
+  const timings: SafetyTimings = {};
+  const result = await preChecks(url, timings);
+  const outcome = result.blocked ? "blocked-pre-llm" : "passed-pre-llm";
+  log.info(
+    { url, part: "fast", outcome, totalMs: Date.now() - started, ...timings },
+    "url safety checked",
+  );
+  if (result.blocked) {
+    log.warn({ url, reason: result.reason }, "link blocked (pre-LLM)");
+    throw new TRPCError({ code: "BAD_REQUEST", message: result.userMessage });
+  }
+}
+
+export type LlmCheckDeps = Omit<UrlSafetyDeps, "preChecks"> & {
+  /** Blocks or flags the link once the LLM calls its destination phishing. */
+  onPhishing?: (linkId: number, url: string) => Promise<void>;
+};
+
+/**
+ * The scrape + LLM part of `assertUrlSafe` for a link that already exists, after
+ * `assertUrlSafeFast` passed. A phishing verdict blocks the link on a free account and flags it
+ * on a paying or team account (`blockOrFlagLlmPhishing`). Resolves with the outcome; never rejects
+ * on scrape or LLM failures.
+ */
+export async function checkUrlWithLlm(
+  linkId: number,
+  url: string,
+  deps: LlmCheckDeps = {},
+): Promise<LLMOutcome | "heuristic-block"> {
+  const { scrape, detect, readVerdict, rememberVerdict } = defaultLLMDeps(deps);
+  const { onPhishing = blockOrFlagLlmPhishing } = deps;
+  const started = Date.now();
+  const timings: SafetyTimings = {};
+
+  const input = await prepareLLMInput(url, scrape, readVerdict, timings);
+  // assertUrlSafeFast already rejected such a URL, so there is nothing to scrape.
+  const outcome =
+    input.kind === "heuristic-block"
+      ? input.kind
+      : await runLLMStep(url, input, detect, rememberVerdict, timings);
+  log.info(
+    { url, linkId, part: "llm", outcome, totalMs: Date.now() - started, ...timings },
+    "url safety checked",
+  );
+  if (outcome === "phishing") await onPhishing(linkId, url);
+  return outcome;
+}
+
+/** Runs `checkUrlWithLlm` after the response, so the link write doesn't wait on the LLM. */
+export function checkUrlWithLlmAfterResponse(linkId: number, url: string): void {
+  // Well-known hosts skip the LLM; checking here avoids scheduling a task that does nothing.
+  if (isWellKnownHost(url)) return;
+  const task = checkUrlWithLlm(linkId, url).catch((err) => {
+    log.error({ err, linkId, url }, "after-response LLM phishing check failed");
+  });
+  // Off-platform (tests, scripts) there is no waitUntil; the task still runs.
+  void runBackgroundTask(task).catch(() => undefined);
 }

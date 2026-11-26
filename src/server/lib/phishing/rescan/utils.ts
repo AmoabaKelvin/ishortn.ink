@@ -7,6 +7,7 @@ const RESCAN_SOURCES = [
   "urlhaus",
   "safe-browsing",
   "campaign-pattern",
+  "llm-check",
 ] as const;
 
 export type RescanSource = (typeof RESCAN_SOURCES)[number];
@@ -21,7 +22,8 @@ export type MatchKind =
   | "domain"
   | "threat"
   | "campaign-path"
-  | "email-redirect";
+  | "email-redirect"
+  | "llm";
 
 export type RescanMatch = {
   linkId: number;
@@ -506,6 +508,12 @@ export function decideMatch(
         ...base,
         action: "block",
         details: `Email address in an open redirect: ${match.entry}`,
+      };
+    case "llm":
+      return {
+        ...base,
+        action: "block",
+        details: `LLM phishing check flagged the destination: ${match.entry}`,
       };
     case "domain":
       if (isSharedHost(match.host, ownHosts)) return null;

@@ -9,7 +9,7 @@ import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/u
 import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { trackLinkCreation } from "@/server/lib/link-creation/failures";
-import { assertUrlSafe } from "@/server/lib/phishing";
+import { assertUrlSafeFast, checkUrlWithLlmAfterResponse } from "@/server/lib/phishing";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
@@ -41,15 +41,25 @@ export const shortenLinkSchema = z.object({
 
 export type ShortenLinkInput = z.infer<typeof shortenLinkSchema>;
 
+export type TokenLinkDeps = {
+  checkUrl?: (url: string) => Promise<void>;
+  /** Runs the scrape + LLM phishing check on the new link after the response. */
+  checkUrlAfterCreate?: (linkId: number, url: string) => void;
+};
+
 /**
  * Creates a link in the token owner's personal workspace with the plan's checks, the URL safety
  * check and the monthly quota. Shared by POST /api/v1/links and the browser extension. Throws
  * TRPCErrors with user-facing messages; plan refusals are FORBIDDEN.
+ *
+ * Only the fast safety layers run before the insert. The scrape + LLM check (about 2 s) runs
+ * after the response and blocks or flags the link if it finds phishing.
  */
 export async function createTokenLink(
   token: ApiToken,
   parsedData: ShortenLinkInput,
   source: LinkCreationSource,
+  deps: TokenLinkDeps = {},
 ) {
   return trackLinkCreation(db, source, token.userId, async (attempt) => {
     const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
@@ -80,7 +90,7 @@ export async function createTokenLink(
     if (parsedData.alias) {
       await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
     }
-    return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt);
+    return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt, deps);
   });
 }
 
@@ -90,6 +100,10 @@ async function createNewLink(
   plan: Plan,
   domain: string,
   attempt: LinkCreationAttempt,
+  {
+    checkUrl = assertUrlSafeFast,
+    checkUrlAfterCreate = checkUrlWithLlmAfterResponse,
+  }: TokenLinkDeps,
 ) {
   if (data.password) {
     if (plan === "free") {
@@ -121,7 +135,7 @@ async function createNewLink(
   attempt.step = "safety";
   // The alias lookup doesn't depend on the safety verdict, so it runs alongside it.
   const [, alias] = await Promise.all([
-    assertUrlSafe(data.url),
+    checkUrl(data.url),
     data.alias ?? generateUnreservedAlias(db, domain),
   ]);
 
@@ -150,6 +164,7 @@ async function createNewLink(
     return newLink[0].insertId;
   });
   checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
+  checkUrlAfterCreate(newLinkId, data.url);
 
   const [retrievedLink] = await db.select().from(link).where(eq(link.id, newLinkId));
   return { ...toApiLink(retrievedLink!), isProtected: !!retrievedLink!.passwordHash };

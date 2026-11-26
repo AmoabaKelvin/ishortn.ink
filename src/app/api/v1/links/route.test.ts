@@ -10,10 +10,15 @@ import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { INVALID_URL_MESSAGE } from "@/lib/utils/destination-url";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
+import { assertUrlSafeFast, checkUrlWithLlm, USER_MSG_UNSAFE } from "@/server/lib/phishing";
 import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
 
+import { authenticateToken } from "../utils";
 import { PATCH } from "./[alias]/route";
+import { createTokenLink } from "./create";
 import { POST } from "./route";
+
+import type { TokenLinkDeps } from "./create";
 
 // Runs against a disposable MySQL with the schema pushed (test/setup.ts points
 // the app's db client at it); see CONTRIBUTING.md, "Database tests".
@@ -80,7 +85,10 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
 
   beforeEach(() => reset(0));
 
+  const BLOCKED_HOST = "route-test-blocked.example";
+
   afterAll(async () => {
+    await db.delete(schema.blockedDomain).where(eq(schema.blockedDomain.domain, BLOCKED_HOST));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
@@ -240,5 +248,150 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     const links = await db.select().from(schema.link).where(eq(schema.link.userId, USER_ID));
     expect(links.map((l) => l.url)).toEqual([TARGET_URL]);
     expect(await storedCount()).toBe(1);
+  });
+  describe("URL safety on create", () => {
+    const PHISHING_URL = "https://route-test-phish.example/signin";
+
+    async function apiToken() {
+      const auth = await authenticateToken(API_KEY, "api");
+      return auth!.token;
+    }
+
+    /** Runs the after-response LLM check inline, with an LLM that calls every page phishing. */
+    function flaggingLlm() {
+      const pending: Promise<unknown>[] = [];
+      const deps: TokenLinkDeps = {
+        // Skips the Safe Browsing call; the blocklist and heuristics are covered below.
+        checkUrl: (url) =>
+          assertUrlSafeFast(url, async () => ({ blocked: false, reason: "", userMessage: "" })),
+        checkUrlAfterCreate: (linkId, url) => {
+          pending.push(
+            checkUrlWithLlm(linkId, url, {
+              readVerdict: async () => false,
+              scrape: async () => ({ title: "Sign in", description: "", image: "", favicon: "" }),
+              detect: async (detected) => ({ url: detected, phishing: true }),
+              rememberVerdict: () => {},
+            }),
+          );
+        },
+      };
+      return { deps, settled: () => Promise.all(pending) };
+    }
+
+    async function storedLink() {
+      const row = await db.query.link.findFirst({ where: eq(schema.link.userId, USER_ID) });
+      const flags = row
+        ? await db.select().from(schema.flaggedLink).where(eq(schema.flaggedLink.linkId, row.id))
+        : [];
+      return { row, flags };
+    }
+
+    afterAll(async () => {
+      const rows = await db
+        .select({ id: schema.link.id })
+        .from(schema.link)
+        .where(eq(schema.link.userId, USER_ID));
+      for (const { id } of rows) {
+        await db.delete(schema.flaggedLink).where(eq(schema.flaggedLink.linkId, id));
+      }
+    });
+
+    test("creates the link before the LLM runs, then blocks it on a free account", async () => {
+      const llm = flaggingLlm();
+      const created = await createTokenLink(
+        await apiToken(),
+        { url: PHISHING_URL },
+        "api",
+        llm.deps,
+      );
+      expect(created.url).toBe(PHISHING_URL);
+      expect((await storedLink()).row?.blocked).toBeFalsy();
+
+      await llm.settled();
+
+      const { row, flags } = await storedLink();
+      expect(row?.blocked).toBe(true);
+      expect(row?.blockedReason).toBe("phishing-rescan: llm-check");
+      expect(flags).toMatchObject([{ status: "blocked", reason: "phishing-rescan: llm-check" }]);
+    });
+
+    test("flags the link for review on a paying account instead of blocking it", async () => {
+      await subscribe({ status: "active" });
+      const llm = flaggingLlm();
+      await createTokenLink(await apiToken(), { url: PHISHING_URL }, "api", llm.deps);
+
+      await llm.settled();
+
+      const { row, flags } = await storedLink();
+      expect(row?.blocked).toBeFalsy();
+      expect(flags).toMatchObject([{ status: "pending", reason: "phishing-rescan: llm-check" }]);
+      expect(flags[0]?.details).toContain("paying account");
+    });
+
+    test("leaves the link live when the scrape or the LLM fails", async () => {
+      const pending: Promise<unknown>[] = [];
+      const failing = (scrapeFails: boolean): TokenLinkDeps => ({
+        checkUrl: async () => {},
+        checkUrlAfterCreate: (linkId, url) => {
+          pending.push(
+            checkUrlWithLlm(linkId, url, {
+              readVerdict: async () => false,
+              scrape: async () => {
+                if (scrapeFails) throw new Error("fetch failed");
+                return { title: "", description: "", image: "", favicon: "" };
+              },
+              detect: async () => {
+                throw new Error("timeout");
+              },
+              rememberVerdict: () => {},
+            }),
+          );
+        },
+      });
+      const token = await apiToken();
+      await createTokenLink(token, { url: PHISHING_URL }, "api", failing(true));
+      await createTokenLink(token, { url: PHISHING_URL }, "api", failing(false));
+
+      expect(await Promise.all(pending)).toEqual(["scrape-failed", "llm-failed"]);
+      const rows = await db.select().from(schema.link).where(eq(schema.link.userId, USER_ID));
+      expect(rows.map((r) => Boolean(r.blocked))).toEqual([false, false]);
+    });
+
+    test("rejects a Safe Browsing hit with 400 before the insert or the LLM", async () => {
+      const afterCreate: string[] = [];
+      const create = createTokenLink(await apiToken(), { url: PHISHING_URL }, "api", {
+        checkUrl: (url) =>
+          assertUrlSafeFast(url, async () => ({
+            blocked: true,
+            reason: "Google Safe Browsing flagged this URL: SOCIAL_ENGINEERING",
+            userMessage: USER_MSG_UNSAFE,
+          })),
+        checkUrlAfterCreate: (_linkId, url) => void afterCreate.push(url),
+      });
+
+      expect(create).rejects.toMatchObject({ code: "BAD_REQUEST", message: USER_MSG_UNSAFE });
+      await create.catch(() => undefined);
+      expect(afterCreate).toEqual([]);
+      expect(await storedCount()).toBe(0);
+    });
+
+    test("rejects blocklisted and heuristic-flagged URLs with 400 before the insert", async () => {
+      await db
+        .insert(schema.blockedDomain)
+        .values({ domain: BLOCKED_HOST })
+        .onDuplicateKeyUpdate({ set: { domain: BLOCKED_HOST } });
+
+      for (const url of [`https://${BLOCKED_HOST}/page`, "http://192.168.10.20/login"]) {
+        const response = await POST(
+          new Request("http://localhost/api/v1/links", {
+            method: "POST",
+            headers: { "x-api-key": API_KEY, "content-type": "application/json" },
+            body: JSON.stringify({ url }),
+          }),
+        );
+        expect(response.status).toBe(400);
+      }
+      expect(await storedCount()).toBe(0);
+    });
   });
 });
