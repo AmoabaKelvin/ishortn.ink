@@ -35,6 +35,11 @@ describe("sitemap", () => {
     expect(urls).toContain("https://ishortn.ink/utm-builder");
   });
 
+  it("lists the open-source URL shortener page", async () => {
+    const urls = (await sitemap()).map((entry) => entry.url);
+    expect(urls).toContain("https://ishortn.ink/open-source-url-shortener");
+  });
+
   it("lists the Chrome extension page", async () => {
     const urls = (await sitemap()).map((entry) => entry.url);
     expect(urls).toContain("https://ishortn.ink/extension");

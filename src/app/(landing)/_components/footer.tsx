@@ -46,6 +46,7 @@ const columns: { title: string; links: { label: string; href: string; lang?: str
       { label: "vs Linktree", href: "/compare/linktree" },
       { label: "vs Beacons", href: "/compare/beacons" },
       { label: "vs Carrd", href: "/compare/carrd" },
+      { label: "Open-source shorteners", href: "/open-source-url-shortener" },
       { label: "All comparisons", href: "/compare" },
     ],
   },
