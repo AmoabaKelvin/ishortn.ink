@@ -809,16 +809,25 @@ export const flaggedLink = mysqlTable(
   }),
 );
 
-// Links whose destination the creation-time phishing check couldn't judge (a bot-challenge or
-// error page, or a failed fetch); the phishing re-scan fetches them again later.
+// Links whose destination the phishing re-scan fetches again after creation: pages the
+// creation-time check couldn't judge (a bot-challenge or error page, or a failed fetch), and new
+// links from new free accounts. Also the re-scan's progress, so no check runs twice.
 export const linkSafetyRecheck = mysqlTable(
   "LinkSafetyRecheck",
   {
     id: serial("id").primaryKey(),
     linkId: int("linkId").notNull(),
-    // "unverified-challenge" or "scrape-failed"; varchar so new reasons need no migration.
+    // "unverified-challenge", "scrape-failed" or "new-account"; varchar so new reasons need no
+    // migration.
     reason: varchar("reason", { length: 32 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
+    // Scheduled content checks done so far (see CONTENT_CHECK_DELAYS_MS in the re-scan).
+    checksDone: int("checksDone").default(0).notNull(),
+    // Set when a run takes the row, so an overlapping run leaves it alone.
+    lastCheckedAt: timestamp("lastCheckedAt"),
+    // Outcome of the last check: "clean", "unverified", "phishing", "error" or "skipped"; while a
+    // run holds the row, that run's "claim:…" token.
+    result: varchar("result", { length: 16 }),
   },
   (table) => ({
     linkIdIdx: index("linkId_idx").on(table.linkId),
