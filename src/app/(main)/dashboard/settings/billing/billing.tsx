@@ -154,7 +154,9 @@ export default function Billing({ subscriptions, promo }: BillingProps) {
         {statusDisplay && subscription ? (
           <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
             {statusDisplay.detail && (
-              <span className="text-neutral-400 dark:text-neutral-500">{statusDisplay.detail}</span>
+              <span className="text-neutral-400 dark:text-muted-foreground">
+                {statusDisplay.detail}
+              </span>
             )}
             {subscription.cardLastFour && (
               <>
@@ -168,7 +170,7 @@ export default function Billing({ subscriptions, promo }: BillingProps) {
             )}
           </div>
         ) : (
-          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
             Upgrade for up to {proLinksLimit} links a month, custom domains, and advanced analytics.
           </p>
         )}

@@ -127,7 +127,7 @@ export function CampaignDetail({ campaignId, initialData, plan }: CampaignDetail
               </h2>
               <CampaignStateBadge state={campaign.displayState} />
             </div>
-            <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               utm_campaign={campaign.slug}
               {dateRange && ` · ${dateRange}`}
             </p>

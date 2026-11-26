@@ -91,7 +91,7 @@ export function AnalyticsPanel({ pageId, plan }: { pageId: number; plan: Plan })
                   "rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors",
                   range === r.value
                     ? "bg-neutral-900 text-white dark:bg-foreground dark:text-background"
-                    : "text-neutral-500 hover:text-neutral-800 dark:hover:text-foreground",
+                    : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-foreground",
                   locked && "cursor-not-allowed opacity-40 hover:text-neutral-500",
                 )}
                 title={locked ? "Upgrade to Pro for full analytics history." : undefined}
@@ -102,7 +102,7 @@ export function AnalyticsPanel({ pageId, plan }: { pageId: number; plan: Plan })
           })}
         </div>
         {isFree && (
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
             Free plans show the last 7 days.
           </p>
         )}
@@ -190,13 +190,13 @@ function ViewsChart({ series }: { series: Analytics["viewsSeries"] }) {
         <h3 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Views over time
         </h3>
-        <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
           Page views across the selected range
         </p>
       </div>
       <div className="px-2 pb-5 pt-4 sm:px-5">
         {!hasViews ? (
-          <div className="flex h-56 items-center justify-center text-[13px] text-neutral-400 dark:text-neutral-500">
+          <div className="flex h-56 items-center justify-center text-[13px] text-neutral-400 dark:text-muted-foreground">
             No views in this range yet.
           </div>
         ) : (
@@ -248,7 +248,7 @@ function TopLinks({ perBlock }: { perBlock: Analytics["perBlock"] }) {
         Top links
       </h3>
       {perBlock.length === 0 ? (
-        <p className="mt-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-3 text-[13px] text-neutral-400 dark:text-muted-foreground">
           No link clicks in this range yet.
         </p>
       ) : (
@@ -286,7 +286,7 @@ function ViewReferrers({ referrers }: { referrers: Analytics["viewReferrers"] })
       unit="Views"
     >
       {total === 0 ? (
-        <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
           No visitor sources in this range yet.
         </p>
       ) : (
@@ -306,7 +306,7 @@ function ClickBreakdowns({
   if (totalClicks === 0) {
     return (
       <div className="flex flex-col items-center rounded-lg border border-dashed border-neutral-200 px-4 py-10 text-center dark:border-border">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 dark:bg-muted dark:text-neutral-500">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 dark:bg-muted dark:text-muted-foreground">
           <IconChartBar size={16} stroke={1.5} />
         </span>
         <p className="mt-3 text-[14px] font-medium text-neutral-900 dark:text-foreground">

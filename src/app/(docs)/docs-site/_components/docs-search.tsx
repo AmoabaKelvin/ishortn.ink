@@ -196,7 +196,7 @@ export function DocsSearch({ className }: { className?: string }) {
                         className="size-4 shrink-0 text-neutral-400"
                       />
                       <span className="truncate">{page.title}</span>
-                      <span className="ml-auto shrink-0 text-sm font-normal text-neutral-400 dark:text-neutral-500">
+                      <span className="ml-auto shrink-0 text-sm font-normal text-neutral-400 dark:text-muted-foreground">
                         {page.section}
                       </span>
                     </CommandItem>

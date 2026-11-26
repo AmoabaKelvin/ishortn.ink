@@ -523,7 +523,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       A friendly name to identify your link (optional)
                     </FormDescription>
                     <FormMessage />
@@ -546,7 +546,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                             form.setValue("domain", value);
                           }}
                         >
-                          <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:text-neutral-700 focus:ring-0">
+                          <SelectTrigger className="h-full w-max shrink-0 gap-1 border-0 bg-transparent px-3 text-[13px] font-medium text-neutral-500 shadow-none ring-0 hover:text-neutral-700 focus:ring-0 dark:text-neutral-400 dark:hover:text-neutral-300">
                             <SelectValue placeholder={DEFAULT_PLATFORM_DOMAIN} />
                           </SelectTrigger>
                           <SelectContent>
@@ -626,7 +626,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                               Suggestion {currentAliasIndex + 1} of {generatedAliases.length}
                             </motion.span>
                             <motion.span
-                              className="cursor-pointer text-neutral-500 hover:text-neutral-700"
+                              className="cursor-pointer text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300"
                               onClick={handleRegenerateClick}
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
@@ -658,7 +658,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Add a note to your link
                     </FormDescription>
                     <FormMessage />
@@ -734,7 +734,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                         </div>
                       </div>
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Add tags to categorize your links. Press Enter to add a tag or select from
                       existing tags.
                     </FormDescription>
@@ -773,7 +773,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                       </SelectContent>
                     </Select>
                     {isProUser && selectedCampaign ? (
-                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                         Will stamp{" "}
                         <code className="rounded bg-neutral-100 dark:bg-muted px-1 py-0.5 text-[11px]">
                           utm_campaign={selectedCampaign.slug}
@@ -785,7 +785,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                         onto this link. Values you enter yourself are kept.
                       </FormDescription>
                     ) : (
-                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                         Group this link into a campaign (optional)
                       </FormDescription>
                     )}
@@ -933,7 +933,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                       <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                         Enable Link Cloaking
                       </FormLabel>
-                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                         Visitors see your short URL while viewing the destination page.
                       </FormDescription>
                     </div>
@@ -958,13 +958,13 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
               />
 
               {!isUltraUser && (
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Link cloaking is an Ultra plan feature.
                 </p>
               )}
 
               {!destinationURL && isUltraUser && (
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Enter a destination URL above to enable link cloaking.
                 </p>
               )}
@@ -1000,7 +1000,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                       <FormLabel className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                         Enable Verified Clicks
                       </FormLabel>
-                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                         With this on, your analytics shows which clicks came from real visitors, not
                         automated traffic — so you can tell real engagement apart from noise.
                       </FormDescription>
@@ -1016,7 +1016,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                 )}
               />
               {!isProUser && (
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Verified clicks are available on Pro and Ultra plans.
                 </p>
               )}
@@ -1046,7 +1046,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                       Go live at
                     </FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
-                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                         You need to be on a{" "}
                         <UpgradeCta
                           requiredPlan="pro"
@@ -1067,7 +1067,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                         className="h-9 border-neutral-200 dark:border-border text-[13px]"
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Visitors see a &quot;not live yet&quot; page until this time
                     </FormDescription>
                     <FormMessage />
@@ -1090,7 +1090,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                         className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Deactivate the link after a certain number of clicks. Leave empty to never
                       disable
                     </FormDescription>
@@ -1110,7 +1110,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                     <FormControl>
                       <LinkExpirationDatePicker setSeletectedDate={field.onChange} />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Deactivate the link after a certain date
                     </FormDescription>
                     <FormMessage />
@@ -1128,7 +1128,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                       Password
                     </FormLabel>
                     {!userSubscription.isLoading && !isProUser && (
-                      <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                      <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                         You need to be on a{" "}
                         <UpgradeCta
                           requiredPlan="pro"
@@ -1147,7 +1147,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                         className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px]"
                       />
                     </FormControl>
-                    <FormDescription className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                    <FormDescription className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                       Set a password to protect your link
                     </FormDescription>
                     <FormMessage />

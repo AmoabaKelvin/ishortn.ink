@@ -59,7 +59,7 @@ export function QRCodeModal({ open, setOpen, destinationUrl }: QRCodeModalProps)
                 style={{ width: "240px", height: "240px" }}
               />
             ) : (
-              <div className="flex h-[240px] w-[240px] items-center justify-center text-sm text-gray-400 dark:text-neutral-500">
+              <div className="flex h-[240px] w-[240px] items-center justify-center text-sm text-gray-400 dark:text-muted-foreground">
                 No URL provided
               </div>
             )}

@@ -139,7 +139,7 @@ export default async function ExtensionConnectPage({
         <ConnectButton />
       </form>
 
-      <p className="mt-4 text-center text-[12px] text-neutral-400 dark:text-neutral-500">
+      <p className="mt-4 text-center text-[12px] text-neutral-400 dark:text-muted-foreground">
         You can disconnect it at any time in Settings.
       </p>
     </ConnectShell>
@@ -189,7 +189,7 @@ function PermissionList({
   const Icon = allowed ? IconCheck : IconX;
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 dark:text-muted-foreground">
         {title}
       </p>
       <ul className="mt-2 space-y-1.5">
@@ -206,7 +206,7 @@ function PermissionList({
                 "mt-0.5 shrink-0",
                 allowed
                   ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-neutral-400 dark:text-neutral-500",
+                  : "text-neutral-400 dark:text-muted-foreground",
               )}
             />
             {item}

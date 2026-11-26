@@ -101,7 +101,7 @@ export default function CreateTeamPage() {
         <IconLoader2
           size={20}
           stroke={1.5}
-          className="animate-spin text-neutral-400 dark:text-neutral-500"
+          className="animate-spin text-neutral-400 dark:text-muted-foreground"
         />
       </div>
     );
@@ -111,12 +111,16 @@ export default function CreateTeamPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-          <IconUsers size={20} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+          <IconUsers
+            size={20}
+            stroke={1.5}
+            className="text-neutral-400 dark:text-muted-foreground"
+          />
         </div>
         <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
           Create a Team
         </p>
-        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 max-w-sm text-center text-[13px] text-neutral-400 dark:text-muted-foreground">
           Set up a shared workspace to collaborate with your team members.
         </p>
         <UpgradeCta
@@ -125,7 +129,11 @@ export default function CreateTeamPage() {
           aria-label="Available on Ultra plan. Upgrade to Ultra"
           className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 py-1.5 text-[12px] font-medium text-neutral-600 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent"
         >
-          <IconDiamond size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+          <IconDiamond
+            size={14}
+            stroke={1.5}
+            className="text-neutral-400 dark:text-muted-foreground"
+          />
           Available on Ultra plan
         </UpgradeCta>
       </div>
@@ -138,7 +146,7 @@ export default function CreateTeamPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Create a team
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Set up a shared workspace for your organization.
         </p>
       </div>
@@ -175,7 +183,7 @@ export default function CreateTeamPage() {
                     Team URL
                   </FormLabel>
                   <div className="flex items-center">
-                    <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+                    <span className="inline-flex h-9 items-center rounded-l-lg border border-r-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-muted-foreground">
                       https://
                     </span>
                     <FormControl>
@@ -189,14 +197,14 @@ export default function CreateTeamPage() {
                         }}
                       />
                     </FormControl>
-                    <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-neutral-500">
+                    <span className="inline-flex h-9 items-center rounded-r-lg border border-l-0 border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 px-3 text-[13px] text-neutral-400 dark:text-muted-foreground">
                       .{APP_BASE_DOMAIN}
                     </span>
                   </div>
                   {debouncedSlug && debouncedSlug.length >= 3 && (
                     <div className="mt-2 flex items-center gap-1.5">
                       {slugCheck.isLoading ? (
-                        <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                        <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-muted-foreground">
                           <IconLoader2 size={12} stroke={1.5} className="animate-spin" />
                           Checking...
                         </div>
@@ -243,7 +251,7 @@ export default function CreateTeamPage() {
         </Form>
 
         <div className="mt-8 rounded-lg border border-neutral-200 dark:border-border bg-neutral-50 dark:bg-accent/50 p-4">
-          <p className="text-[12px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+          <p className="text-[12px] leading-relaxed text-neutral-400 dark:text-muted-foreground">
             Your team will have its own workspace at{" "}
             <span className="font-mono text-neutral-600 dark:text-neutral-400">
               {slug || "your-team"}.{APP_BASE_DOMAIN}

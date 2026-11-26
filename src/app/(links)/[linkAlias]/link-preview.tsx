@@ -40,13 +40,13 @@ function LinkPreview({ domain, alias, url, branded }: LinkPreviewProps) {
         </p>
 
         <div className="mt-8 rounded-xl border border-neutral-200 bg-white p-5 text-left dark:border-border dark:bg-card">
-          <p className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
+          <p className="text-[12px] font-medium text-neutral-400 dark:text-muted-foreground">
             Short link
           </p>
           <p className="mt-1 text-[14px] font-medium break-all text-neutral-900 dark:text-foreground">
             {shortUrl}
           </p>
-          <div className="my-3 flex items-center gap-2 text-neutral-400 dark:text-neutral-500">
+          <div className="my-3 flex items-center gap-2 text-neutral-400 dark:text-muted-foreground">
             <IconArrowDown size={14} stroke={1.5} aria-hidden="true" />
             <span className="text-[12px]">Redirects to</span>
           </div>

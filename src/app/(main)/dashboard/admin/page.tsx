@@ -65,7 +65,7 @@ export default function AdminPage() {
           <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Admin Dashboard
           </h1>
-          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
             Platform overview and moderation tools
           </p>
         </div>
@@ -132,7 +132,7 @@ export default function AdminPage() {
             </p>
             <Link
               href="/dashboard/admin/users"
-              className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+              className="text-[12px] font-medium text-neutral-400 dark:text-muted-foreground transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               View all
             </Link>
@@ -143,7 +143,9 @@ export default function AdminPage() {
             </div>
           ) : !recentUsers || recentUsers.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No users yet</p>
+              <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
+                No users yet
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-border/50">
@@ -166,13 +168,13 @@ export default function AdminPage() {
                       <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                         {displayName(u.name) ?? "Unnamed"}
                       </p>
-                      <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                      <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                         {u.email}
                       </p>
                     </div>
                   </div>
                   <div className="shrink-0 pl-4 text-right">
-                    <p className="text-[11px] tabular-nums text-neutral-400 dark:text-neutral-500">
+                    <p className="text-[11px] tabular-nums text-neutral-400 dark:text-muted-foreground">
                       {u.linkCount} {u.linkCount === 1 ? "link" : "links"}
                     </p>
                     <p className="text-[11px] text-neutral-300 dark:text-neutral-600">
@@ -193,7 +195,7 @@ export default function AdminPage() {
             </p>
             <Link
               href="/dashboard/admin/links"
-              className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+              className="text-[12px] font-medium text-neutral-400 dark:text-muted-foreground transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               View all
             </Link>
@@ -204,7 +206,7 @@ export default function AdminPage() {
             </div>
           ) : !activity || activity.recentLinks.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
                 No links created yet
               </p>
             </div>
@@ -214,15 +216,17 @@ export default function AdminPage() {
                 <div key={l.id} className="flex items-center justify-between px-5 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                      <span className="text-neutral-400 dark:text-neutral-500">{l.domain}/</span>
+                      <span className="text-neutral-400 dark:text-muted-foreground">
+                        {l.domain}/
+                      </span>
                       {l.alias}
                     </p>
-                    <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                    <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                       {l.url}
                     </p>
                   </div>
                   <div className="shrink-0 pl-4 text-right">
-                    <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                    <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                       {l.userEmail}
                     </p>
                     <p className="text-[11px] text-neutral-300 dark:text-neutral-600">
@@ -245,7 +249,7 @@ export default function AdminPage() {
             </p>
             <Link
               href="/dashboard/admin/links"
-              className="text-[12px] font-medium text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+              className="text-[12px] font-medium text-neutral-400 dark:text-muted-foreground transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               View all
             </Link>
@@ -256,7 +260,9 @@ export default function AdminPage() {
             </div>
           ) : !activity || activity.recentBlocked.length === 0 ? (
             <div className="flex flex-1 items-center justify-center px-5 py-12">
-              <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No blocked links</p>
+              <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
+                No blocked links
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-border/50">
@@ -264,15 +270,17 @@ export default function AdminPage() {
                 <div key={l.id} className="flex items-center justify-between px-5 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                      <span className="text-neutral-400 dark:text-neutral-500">{l.domain}/</span>
+                      <span className="text-neutral-400 dark:text-muted-foreground">
+                        {l.domain}/
+                      </span>
                       {l.alias}
                     </p>
-                    <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                    <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                       {l.blockedReason}
                     </p>
                   </div>
                   <div className="shrink-0 pl-4 text-right">
-                    <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                    <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                       {l.userEmail}
                     </p>
                     <p className="text-[11px] text-neutral-300 dark:text-neutral-600">

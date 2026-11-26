@@ -71,7 +71,7 @@ export function ChangelogBanner() {
                 <button
                   type="button"
                   onClick={handleViewed}
-                  className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-500 dark:hover:bg-accent dark:hover:text-neutral-300"
+                  className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-neutral-300"
                   aria-label="Dismiss changelog announcement"
                 >
                   <IconX size={14} stroke={1.5} />

@@ -14,7 +14,7 @@ export function LinkNoteTooltip({ note }: LinkNoteViewerProps) {
           <IconNote
             size={16}
             stroke={1.5}
-            className="cursor-pointer text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400"
+            className="cursor-pointer text-neutral-400 dark:text-muted-foreground hover:text-neutral-600 dark:hover:text-neutral-400"
           />
         </TooltipTrigger>
         <TooltipContent>

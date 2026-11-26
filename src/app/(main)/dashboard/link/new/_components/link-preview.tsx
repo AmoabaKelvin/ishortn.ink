@@ -40,7 +40,7 @@ export function LinkPreviewComponent({
             onError={() => setFailedFavicon(favicon)}
           />
         ) : (
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-400 dark:bg-muted dark:text-neutral-500">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-400 dark:bg-muted dark:text-muted-foreground">
             <IconWorld size={14} stroke={1.5} />
           </span>
         )}
@@ -49,7 +49,7 @@ export function LinkPreviewComponent({
         ) : metaTitle ? (
           <span className="min-w-0 truncate">{metaTitle}</span>
         ) : (
-          <span className="min-w-0 truncate font-medium text-neutral-400 dark:text-neutral-500">
+          <span className="min-w-0 truncate font-medium text-neutral-400 dark:text-muted-foreground">
             {host ? "No title found" : "Page title"}
           </span>
         )}
@@ -61,14 +61,16 @@ export function LinkPreviewComponent({
           {metaDescription}
         </span>
       ) : (
-        <span className="text-[13px] text-neutral-400 dark:text-neutral-500">
+        <span className="text-[13px] text-neutral-400 dark:text-muted-foreground">
           {host
             ? "This page has no description."
             : "Enter a destination URL to preview how your link will look."}
         </span>
       )}
       {host && (
-        <span className="break-all text-[12px] text-neutral-400 dark:text-neutral-500">{host}</span>
+        <span className="break-all text-[12px] text-neutral-400 dark:text-muted-foreground">
+          {host}
+        </span>
       )}
       {metaImage && !isLoading && (
         /* eslint-disable-next-line next/no-img-element -- OG image scraped from an arbitrary destination host */

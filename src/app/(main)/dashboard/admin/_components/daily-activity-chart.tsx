@@ -66,7 +66,7 @@ export function ActivityChart({
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Activity
           </h2>
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">{description}</p>
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">{description}</p>
         </div>
         <div className="flex items-center gap-2">
           <Tabs value={metricView} onValueChange={(v) => setMetricView(metricViewSchema.parse(v))}>
@@ -105,7 +105,9 @@ export function ActivityChart({
           </div>
         ) : !data ? (
           <div className="flex h-64 items-center justify-center">
-            <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No data available</p>
+            <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
+              No data available
+            </p>
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="aspect-auto h-64 w-full">

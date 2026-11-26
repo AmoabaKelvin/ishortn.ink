@@ -85,7 +85,7 @@ export default function AdminAudienceFeedbackPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Audience Feedback
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           Survey and acquisition prompt answers on who&apos;s using iShortn and how they got here
         </p>
       </div>
@@ -262,12 +262,12 @@ function BreakdownCard({
 }) {
   return (
     <div className="rounded-lg border border-neutral-200 dark:border-border bg-white dark:bg-card p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 dark:text-muted-foreground">
         {title}
       </p>
       <div className="mt-3 space-y-2">
         {rows.length === 0 && (
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">—</p>
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">—</p>
         )}
         {rows.map((row) => {
           const pct = total > 0 ? Math.round((row.count / total) * 100) : 0;
@@ -277,7 +277,7 @@ function BreakdownCard({
                 <span className="text-neutral-700 dark:text-neutral-300">
                   {formatAudienceFeedbackLabel(row.value)}
                 </span>
-                <span className="tabular-nums text-neutral-400 dark:text-neutral-500">
+                <span className="tabular-nums text-neutral-400 dark:text-muted-foreground">
                   {row.count}
                   <span className="ml-1 text-[11px]">({pct}%)</span>
                 </span>
@@ -341,8 +341,8 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
             <span className="min-w-0 break-all text-[12px] text-neutral-500 dark:text-neutral-400">
               {userLabel}
             </span>
-            <span className="text-[11px] text-neutral-400 dark:text-neutral-500">·</span>
-            <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
+            <span className="text-[11px] text-neutral-400 dark:text-muted-foreground">·</span>
+            <span className="text-[11px] text-neutral-400 dark:text-muted-foreground">
               {answeredAt
                 ? new Date(answeredAt).toLocaleDateString("en-US", {
                     month: "short",
@@ -406,7 +406,7 @@ function SubmissionCard({ item }: { item: SubmissionItem }) {
 function Field({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex items-baseline gap-2 text-[12px]">
-      <span className="shrink-0 text-neutral-400 dark:text-neutral-500">{label}</span>
+      <span className="shrink-0 text-neutral-400 dark:text-muted-foreground">{label}</span>
       <span className="text-neutral-700 dark:text-neutral-300">
         {formatAudienceFeedbackLabel(value)}
       </span>
@@ -417,7 +417,7 @@ function Field({ label, value }: { label: string; value: string | null }) {
 function Quote({ label, text }: { label: string; text: string }) {
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 dark:text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 text-[13px] leading-relaxed text-neutral-700 dark:text-neutral-300">
@@ -442,7 +442,7 @@ function FilterSelect<T extends string>({ label, value, onChange, options }: Fil
   return (
     <Select value={value} onValueChange={select}>
       <SelectTrigger className="h-9 w-auto min-w-[160px] text-[13px]">
-        <span className="text-neutral-400 dark:text-neutral-500">{label}:</span>
+        <span className="text-neutral-400 dark:text-muted-foreground">{label}:</span>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

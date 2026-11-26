@@ -153,7 +153,7 @@ export function AnnualSwitchCard({ offer, source, className }: AnnualSwitchCardP
         type="button"
         onClick={dismiss}
         aria-label="Dismiss the annual billing offer"
-        className="-mr-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-500 dark:hover:bg-accent dark:hover:text-neutral-300"
+        className="-mr-1 shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-neutral-300"
       >
         <IconX size={14} stroke={1.5} />
       </button>

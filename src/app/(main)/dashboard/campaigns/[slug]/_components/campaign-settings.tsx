@@ -106,7 +106,7 @@ export function CampaignSettings({ campaign, plan }: { campaign: CampaignData; p
                   onChange={(e) => setSlug(e.target.value)}
                   maxLength={100}
                 />
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Changing this only affects links tagged from now on.
                 </p>
               </div>
@@ -145,7 +145,7 @@ export function CampaignSettings({ campaign, plan }: { campaign: CampaignData; p
                 />
               </div>
             </div>
-            <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
               Dates only affect how the campaign is labeled — links keep working either way.
             </p>
           </div>
@@ -157,7 +157,7 @@ export function CampaignSettings({ campaign, plan }: { campaign: CampaignData; p
               <h3 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
                 UTM defaults
               </h3>
-              <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
                 Auto-applied to links created in or added to this campaign.{" "}
                 <code className="rounded bg-neutral-100 px-1 py-0.5 text-[11px] dark:bg-muted">
                   utm_campaign={normalizedSlug || campaign.slug}
@@ -207,7 +207,7 @@ export function CampaignSettings({ campaign, plan }: { campaign: CampaignData; p
                   </option>
                 ))}
               </datalist>
-              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 Lowercase; GA4 mediums like email, cpc, social keep reports clean.
               </p>
             </div>

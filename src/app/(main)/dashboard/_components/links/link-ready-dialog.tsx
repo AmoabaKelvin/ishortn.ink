@@ -137,7 +137,7 @@ export function LinkReadyDialog({ link, onDone, onCreateAnother }: LinkReadyDial
             {/* Short URL */}
             <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-border dark:bg-accent/50">
               <p className="select-all break-all text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
-                <span className="text-neutral-400 dark:text-neutral-500">https://</span>
+                <span className="text-neutral-400 dark:text-muted-foreground">https://</span>
                 {shownLink.domain}/{shownLink.alias}
               </p>
               <Button

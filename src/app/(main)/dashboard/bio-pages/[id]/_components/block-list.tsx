@@ -236,7 +236,7 @@ function SortableRow({
         <IconGripVertical size={18} stroke={1.5} />
       </button>
 
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-500 dark:bg-muted">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-500 dark:bg-muted dark:text-muted-foreground">
         <Icon size={16} stroke={1.5} />
       </span>
 

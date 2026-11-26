@@ -108,7 +108,7 @@ export function CampaignsList({ campaigns, plan, campaignLimit }: CampaignsListP
           <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Campaigns
           </h2>
-          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
             Group links and QR codes behind one initiative and see which channel wins.
           </p>
         </div>
@@ -138,7 +138,7 @@ export function CampaignsList({ campaigns, plan, campaignLimit }: CampaignsListP
       {campaigns.length === 0 ? (
         <EmptyState />
       ) : visible.length === 0 ? (
-        <p className="py-20 text-center text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="py-20 text-center text-[13px] text-neutral-400 dark:text-muted-foreground">
           No {effectiveView} campaigns.
         </p>
       ) : (
@@ -173,7 +173,7 @@ export function CampaignsList({ campaigns, plan, campaignLimit }: CampaignsListP
                       </span>
                       <CampaignStateBadge state={campaign.displayState} />
                     </span>
-                    <span className="mt-0.5 block truncate text-[12px] tabular-nums text-neutral-400 dark:text-neutral-500">
+                    <span className="mt-0.5 block truncate text-[12px] tabular-nums text-neutral-400 dark:text-muted-foreground">
                       {campaign.linkCount} {campaign.linkCount === 1 ? "link" : "links"}
                       {campaign.qrCount > 0 &&
                         ` · ${campaign.qrCount} QR ${campaign.qrCount === 1 ? "code" : "codes"}`}
@@ -246,7 +246,7 @@ function NewCampaignButton({ atLimit }: { atLimit: boolean }) {
   if (atLimit) {
     return (
       <span
-        className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-[13px] font-medium text-neutral-400 dark:bg-muted dark:text-neutral-500"
+        className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-[13px] font-medium text-neutral-400 dark:bg-muted dark:text-muted-foreground"
         title="You've reached your plan's active campaign limit. Archive one or upgrade."
       >
         <IconPlus size={16} stroke={2} />
@@ -275,7 +275,7 @@ function EmptyState() {
       <h3 className="mt-4 text-[15px] font-medium text-neutral-900 dark:text-foreground">
         Run your first campaign
       </h3>
-      <p className="mt-1 max-w-sm text-[13px] text-neutral-400 dark:text-neutral-500">
+      <p className="mt-1 max-w-sm text-[13px] text-neutral-400 dark:text-muted-foreground">
         A campaign groups the links and QR codes behind one launch, event, or push — with combined
         analytics and per-channel comparison.
       </p>

@@ -38,7 +38,7 @@ export function SubscriptionGrowthChart({ data, isLoading }: SubscriptionGrowthC
           <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Subscription Growth
           </h2>
-          <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
             New paid subscriptions by plan, monthly
           </p>
         </div>
@@ -51,7 +51,9 @@ export function SubscriptionGrowthChart({ data, isLoading }: SubscriptionGrowthC
           </div>
         ) : !data ? (
           <div className="flex h-64 items-center justify-center">
-            <p className="text-[13px] text-neutral-400 dark:text-neutral-500">No data available</p>
+            <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
+              No data available
+            </p>
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="aspect-auto h-64 w-full">

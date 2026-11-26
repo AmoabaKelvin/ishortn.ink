@@ -59,7 +59,7 @@ export function TopUsersCard({ from, to }: TopUsersCardProps) {
         </div>
       ) : !data || data.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
             No data for this period
           </p>
         </div>
@@ -86,7 +86,7 @@ export function TopUsersCard({ from, to }: TopUsersCardProps) {
                 <p className="truncate text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   {displayName(u.name) ?? "Unnamed"}
                 </p>
-                <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                   {u.email}
                 </p>
               </div>
@@ -96,7 +96,7 @@ export function TopUsersCard({ from, to }: TopUsersCardProps) {
                     ? u.clickCount.toLocaleString()
                     : u.linkCount.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[10px] text-neutral-400 dark:text-muted-foreground">
                   {sortBy === "clicks" ? "clicks" : "links"}
                 </p>
               </div>

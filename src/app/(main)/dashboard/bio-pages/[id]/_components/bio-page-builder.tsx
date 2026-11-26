@@ -261,7 +261,7 @@ export function BioPageBuilder({
             <h2 className="truncate text-lg font-semibold tracking-tight text-neutral-900 dark:text-foreground">
               {page.title || `/${page.slug}`}
             </h2>
-            <p className="truncate text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
               {page.customDomain || `ishortn.ink/p/${page.slug}`}
             </p>
           </div>
@@ -284,13 +284,13 @@ export function BioPageBuilder({
               href={`/p/${page.slug}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-[13px] text-neutral-500 hover:text-neutral-800 dark:hover:text-foreground"
+              className="inline-flex items-center gap-1 text-[13px] text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-foreground"
             >
               View <IconExternalLink size={14} />
             </a>
           )}
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-neutral-500">Published</span>
+            <span className="text-[13px] text-neutral-500 dark:text-neutral-400">Published</span>
             <Switch
               checked={page.isPublished ?? false}
               onCheckedChange={(checked) =>
@@ -332,7 +332,10 @@ export function BioPageBuilder({
                       disabled={opt.type === "link" && atLinkBlockLimit}
                       onSelect={() => handleAdd(opt.type)}
                     >
-                      <opt.icon size={16} className="mr-2 text-neutral-500" />
+                      <opt.icon
+                        size={16}
+                        className="mr-2 text-neutral-500 dark:text-muted-foreground"
+                      />
                       {opt.label}
                     </DropdownMenuItem>
                   ))}

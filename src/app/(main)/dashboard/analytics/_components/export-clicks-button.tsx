@@ -67,7 +67,7 @@ export function ExportClicksButton({ isProPlan, query, fileName }: ExportClicksB
                 <IconLock
                   size={14}
                   stroke={1.5}
-                  className="text-neutral-400 dark:text-neutral-500"
+                  className="text-neutral-400 dark:text-muted-foreground"
                 />
                 Export CSV
               </UpgradeCta>
@@ -91,7 +91,11 @@ export function ExportClicksButton({ isProPlan, query, fileName }: ExportClicksB
       disabled={exportClicks.isLoading}
       onClick={() => exportClicks.mutate(query)}
     >
-      <IconDownload size={14} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+      <IconDownload
+        size={14}
+        stroke={1.5}
+        className="text-neutral-400 dark:text-muted-foreground"
+      />
       {exportClicks.isLoading ? "Exporting..." : "Export CSV"}
     </Button>
   );

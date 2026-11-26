@@ -20,7 +20,7 @@ export function LimitedAnalyticsNotice({
 }: LimitedAnalyticsNoticeProps) {
   const { lead, tail } = limitedAnalyticsCopy(hiddenClicks);
   return (
-    <p className={cn("text-[13px] text-neutral-400 dark:text-neutral-500", className)}>
+    <p className={cn("text-[13px] text-neutral-400 dark:text-muted-foreground", className)}>
       {lead}{" "}
       <UpgradeText
         text="Upgrade to Pro"

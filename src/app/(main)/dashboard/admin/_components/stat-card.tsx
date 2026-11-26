@@ -12,7 +12,7 @@ type StatCardProps = {
 export function StatCard({ title, value, growth, hint }: StatCardProps) {
   return (
     <Card className="min-w-0 rounded-xl border-neutral-200 dark:border-border p-5 shadow-none">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
         {title}
       </p>
       <p className="mt-1 truncate text-2xl font-semibold tabular-nums tracking-tight text-neutral-900 dark:text-foreground">
@@ -35,7 +35,9 @@ export function StatCard({ title, value, growth, hint }: StatCardProps) {
             {Math.abs(growth)}% vs prev period
           </span>
         )}
-        {hint && <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{hint}</span>}
+        {hint && (
+          <span className="text-[11px] text-neutral-400 dark:text-muted-foreground">{hint}</span>
+        )}
       </div>
     </Card>
   );

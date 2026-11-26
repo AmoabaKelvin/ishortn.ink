@@ -165,7 +165,7 @@ export default function AdminUsersPage() {
           <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
             Users
           </h1>
-          <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
             User base overview and account management
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function AdminUsersPage() {
         <h2 className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Find a user
         </h2>
-        <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
           Search by email or name to manage bans and restrictions
         </p>
       </div>
@@ -222,7 +222,7 @@ export default function AdminUsersPage() {
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             Search for users to manage
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
             Enter a user&apos;s email address or name
           </p>
         </div>
@@ -241,7 +241,7 @@ export default function AdminUsersPage() {
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             No users found for &ldquo;{searchQuery}&rdquo;
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
             Try a different search term
           </p>
         </div>
@@ -249,7 +249,7 @@ export default function AdminUsersPage() {
 
       {data && data.users.length > 0 && (
         <>
-          <p className="mb-3 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mb-3 text-[12px] text-neutral-400 dark:text-muted-foreground">
             {data.total} {data.total === 1 ? "result" : "results"} found
           </p>
 
@@ -281,7 +281,7 @@ export default function AdminUsersPage() {
                       <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
                         {displayName(u.name) ?? "Unnamed"}
                       </p>
-                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                      <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                         {u.email}
                       </p>
                     </td>
@@ -395,7 +395,7 @@ export default function AdminUsersPage() {
 
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 Page {page} of {totalPages}
               </p>
               <div className="flex gap-2">
@@ -439,7 +439,7 @@ export default function AdminUsersPage() {
               <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 {displayName(pending?.user.name) ?? "Unnamed"}
               </p>
-              <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                 {pending?.user.email}
               </p>
               {pending?.action === "ban" && pending.user.linkCount > 0 && (

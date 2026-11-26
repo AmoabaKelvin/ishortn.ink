@@ -64,7 +64,7 @@ export function SignupsView({ data }: { data: SignupAttribution }) {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Signups
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           New accounts by first-touch source over the last 90 days
         </p>
       </div>
@@ -98,7 +98,7 @@ export function SignupsView({ data }: { data: SignupAttribution }) {
           <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             No signups in the last 90 days
           </p>
-          <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+          <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
             New accounts and their first-touch source will show up here
           </p>
         </div>
@@ -114,7 +114,7 @@ export function SignupsView({ data }: { data: SignupAttribution }) {
                 <h2 className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
                   Breakdown
                 </h2>
-                <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Paid counts signups that later started a subscription. Not recorded means the
                   signup has no first-touch record.
                 </p>

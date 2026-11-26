@@ -39,7 +39,7 @@ export function ThemeToggle() {
         {options.map((option) => (
           <div
             key={option.value}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-neutral-400 dark:text-neutral-500"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-neutral-400 dark:text-muted-foreground"
           >
             <option.icon size={14} stroke={1.5} />
             <span className="text-[13px] font-medium">{option.label}</span>
@@ -66,7 +66,7 @@ export function ThemeToggle() {
               "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors",
               isActive
                 ? "bg-neutral-100 text-neutral-900 dark:bg-white/10 dark:text-white"
-                : "text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300",
+                : "text-neutral-400 hover:text-neutral-600 dark:text-muted-foreground dark:hover:text-neutral-300",
             )}
           >
             <option.icon size={14} stroke={1.5} />

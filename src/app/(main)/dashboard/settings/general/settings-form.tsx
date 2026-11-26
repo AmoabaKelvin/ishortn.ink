@@ -105,7 +105,7 @@ export function SettingsForm({ userSettings, availableDomains }: SettingsFormPro
                           <IconWorld
                             size={14}
                             stroke={1.5}
-                            className="text-neutral-400 dark:text-neutral-500"
+                            className="text-neutral-400 dark:text-muted-foreground"
                           />
                           <span>{domain.domain}</span>
                         </div>
@@ -113,7 +113,7 @@ export function SettingsForm({ userSettings, availableDomains }: SettingsFormPro
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                <p className="text-[11px] text-neutral-400 dark:text-muted-foreground">
                   Used when creating quick shortened links.{" "}
                   <Link
                     href="/dashboard/domains"

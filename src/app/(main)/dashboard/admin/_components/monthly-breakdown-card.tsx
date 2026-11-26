@@ -66,7 +66,7 @@ export function MonthlyBreakdownCard({ data, isLoading }: MonthlyBreakdownCardPr
   return (
     <Card className="rounded-xl border-neutral-200 dark:border-border shadow-none">
       <div className="flex items-center gap-2 border-b border-neutral-100 dark:border-border/50 px-5 py-4">
-        <IconTable size={15} stroke={1.5} className="text-neutral-400 dark:text-neutral-500" />
+        <IconTable size={15} stroke={1.5} className="text-neutral-400 dark:text-muted-foreground" />
         <p className="text-[14px] font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Monthly Breakdown
         </p>
@@ -78,7 +78,7 @@ export function MonthlyBreakdownCard({ data, isLoading }: MonthlyBreakdownCardPr
         </div>
       ) : sorted.length === 0 ? (
         <div className="flex items-center justify-center px-5 py-12">
-          <p className="text-[13px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[13px] text-neutral-400 dark:text-muted-foreground">
             No data for this period
           </p>
         </div>
@@ -102,7 +102,7 @@ export function MonthlyBreakdownCard({ data, isLoading }: MonthlyBreakdownCardPr
                     <button
                       type="button"
                       onClick={() => toggleSort(col.key)}
-                      className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+                      className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
                     >
                       {col.label}
                       <SortIcon active={sortKey === col.key} dir={sortDir} />

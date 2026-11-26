@@ -264,7 +264,7 @@ export function AppSidebar({
             {currentWorkspace.type === "team" && (
               <>
                 <div className="my-3 h-px bg-neutral-100 dark:bg-border/50" />
-                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
                   Team
                 </p>
                 <ul className="space-y-0.5">
@@ -298,7 +298,7 @@ export function AppSidebar({
             {isAdmin && (
               <>
                 <div className="my-3 h-px bg-neutral-100 dark:bg-border/50" />
-                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
                   Admin
                 </p>
                 <ul className="space-y-0.5">
@@ -388,14 +388,14 @@ export function AppSidebar({
                       <p className="truncate text-[13px] font-medium text-neutral-900 dark:text-foreground">
                         {displayName}
                       </p>
-                      <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">
+                      <p className="truncate text-[11px] text-neutral-400 dark:text-muted-foreground">
                         {user?.primaryEmailAddress?.emailAddress}
                       </p>
                     </div>
                     <IconChevronUp
                       size={14}
                       stroke={1.5}
-                      className="shrink-0 text-neutral-400 dark:text-neutral-500"
+                      className="shrink-0 text-neutral-400 dark:text-muted-foreground"
                     />
                   </button>
                 </PopoverTrigger>

@@ -88,7 +88,7 @@ export default function AdminFeedbackPage() {
         <h1 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-foreground">
           Feedback
         </h1>
-        <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+        <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
           User feedback, bug reports, and feature requests
         </p>
       </div>
@@ -132,7 +132,7 @@ export default function AdminFeedbackPage() {
             {statusFilter === "open" ? "No open feedback" : "No feedback found"}
           </p>
           {statusFilter === "open" && (
-            <p className="mt-1 text-[12px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[12px] text-neutral-400 dark:text-muted-foreground">
               All feedback has been addressed
             </p>
           )}
@@ -167,7 +167,7 @@ export default function AdminFeedbackPage() {
                               ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400"
                               : item.status === "resolved"
                                 ? "bg-neutral-100 dark:bg-muted text-neutral-500 dark:text-neutral-400"
-                                : "bg-neutral-100 dark:bg-muted text-neutral-400 dark:text-neutral-500"
+                                : "bg-neutral-100 dark:bg-muted text-neutral-400 dark:text-muted-foreground"
                           }`}
                         >
                           {item.status}
@@ -223,7 +223,7 @@ export default function AdminFeedbackPage() {
                         </div>
                       )}
 
-                      <div className="mt-2 flex min-w-0 items-center gap-2 text-[11px] text-neutral-400 dark:text-neutral-500">
+                      <div className="mt-2 flex min-w-0 items-center gap-2 text-[11px] text-neutral-400 dark:text-muted-foreground">
                         <span className="min-w-0 truncate">
                           {displayName(item.user?.name) && item.user?.email
                             ? `${displayName(item.user.name)} (${item.user.email})`

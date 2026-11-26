@@ -295,7 +295,10 @@ export function SettingsPanel({ value, onChange, plan, onSave, saving, dirty }: 
           {isPaid && domainOptions.length === 0 ? (
             <p className="text-[12px] text-muted-foreground">
               No verified domains yet.{" "}
-              <Link href="/dashboard/domains" className="font-medium text-blue-600 hover:underline">
+              <Link
+                href="/dashboard/domains"
+                className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
                 Add and verify a domain
               </Link>{" "}
               to serve your bio page from it.

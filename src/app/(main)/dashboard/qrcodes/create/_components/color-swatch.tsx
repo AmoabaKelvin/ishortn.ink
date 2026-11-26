@@ -87,7 +87,7 @@ export function ColorSwatch({
   return (
     <div className="space-y-2">
       {label && (
-        <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">{label}</Label>
+        <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">{label}</Label>
       )}
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Preset color swatches */}
@@ -151,7 +151,7 @@ export function ColorSwatch({
           <PopoverContent className="w-60 p-3" align="start" sideOffset={8}>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Custom Color
                 </Label>
                 <div className="flex gap-2">
@@ -186,7 +186,7 @@ export function ColorSwatch({
 
               {/* Quick presets in popover */}
               <div className="space-y-1.5">
-                <Label className="text-[12px] text-neutral-400 dark:text-neutral-500">
+                <Label className="text-[12px] text-neutral-400 dark:text-muted-foreground">
                   Quick Select
                 </Label>
                 <div className="grid grid-cols-6 gap-1">

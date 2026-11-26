@@ -65,7 +65,7 @@ const LinkCardMock = () => (
         https://acme.com/blog/2026/product-launch-announcement?ref=newsletter
       </p>
 
-      <div className="mt-5 grid grid-cols-4 rounded-lg bg-neutral-100 p-0.5 text-center text-xs font-medium text-neutral-500">
+      <div className="mt-5 grid grid-cols-4 rounded-lg bg-neutral-100 p-0.5 text-center text-xs font-medium text-neutral-600">
         {["24h", "7d", "30d", "All"].map((range) => (
           <span
             key={range}
@@ -107,7 +107,7 @@ const LinkCardMock = () => (
         <span className="font-title text-3xl font-semibold tracking-tight text-neutral-900 tabular-nums">
           12,847
         </span>
-        <span className="text-xs font-medium text-emerald-600">+12.4%</span>
+        <span className="text-xs font-medium text-emerald-700">+12.4%</span>
       </div>
 
       <div className="mt-5 flex h-32 items-end gap-1.5">

@@ -84,7 +84,7 @@ export default async function DashboardPage(props: Props) {
             Links
           </h2>
           {totalLinks > 0 && (
-            <p className="mt-1 text-[13px] text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-[13px] text-neutral-400 dark:text-muted-foreground">
               {totalLinks.toLocaleString("en-US")} {totalLinks === 1 ? "link" : "links"} total
             </p>
           )}

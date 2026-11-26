@@ -139,7 +139,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           <button
             type="button"
             aria-label={`Actions for ${qr.title || "QR code"}`}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 dark:text-muted-foreground transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
           >
             <IconDots size={16} stroke={1.5} />
           </button>
@@ -149,7 +149,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           className="w-52 border-neutral-200 dark:border-border p-1"
           sideOffset={4}
         >
-          <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
             Edit & Manage
           </DropdownMenuLabel>
           {hasLink && (
@@ -160,7 +160,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
               <IconPencil
                 size={15}
                 stroke={1.5}
-                className="mr-2 text-neutral-400 dark:text-neutral-500"
+                className="mr-2 text-neutral-400 dark:text-muted-foreground"
               />
               Edit QR code
             </DropdownMenuItem>
@@ -172,7 +172,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
             <IconDownload
               size={15}
               stroke={1.5}
-              className="mr-2 text-neutral-400 dark:text-neutral-500"
+              className="mr-2 text-neutral-400 dark:text-muted-foreground"
             />
             Download PNG
           </DropdownMenuItem>
@@ -184,12 +184,12 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
               <IconVector
                 size={15}
                 stroke={1.5}
-                className="mr-2 mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+                className="mr-2 mt-0.5 shrink-0 text-neutral-400 dark:text-muted-foreground"
               />
               <span className="flex min-w-0 flex-col gap-0.5">
                 Download SVG
                 {svgNote && (
-                  <span className="text-[11px] leading-snug text-neutral-400 dark:text-neutral-500">
+                  <span className="text-[11px] leading-snug text-neutral-400 dark:text-muted-foreground">
                     {svgNote}
                   </span>
                 )}
@@ -204,7 +204,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
               <IconShare
                 size={15}
                 stroke={1.5}
-                className="mr-2 text-neutral-400 dark:text-neutral-500"
+                className="mr-2 text-neutral-400 dark:text-muted-foreground"
               />
               Share stats
             </DropdownMenuItem>
@@ -214,7 +214,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
             <>
               <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-muted" />
 
-              <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+              <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-muted-foreground">
                 Settings
               </DropdownMenuLabel>
               <DropdownMenuItem
@@ -226,7 +226,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
                     <IconLinkOff
                       size={15}
                       stroke={1.5}
-                      className="mr-2 text-neutral-400 dark:text-neutral-500"
+                      className="mr-2 text-neutral-400 dark:text-muted-foreground"
                     />
                     Deactivate QR code
                   </>
@@ -235,7 +235,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
                     <IconLink
                       size={15}
                       stroke={1.5}
-                      className="mr-2 text-neutral-400 dark:text-neutral-500"
+                      className="mr-2 text-neutral-400 dark:text-muted-foreground"
                     />
                     Activate QR code
                   </>

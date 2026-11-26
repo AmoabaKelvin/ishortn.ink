@@ -166,10 +166,10 @@ export function DomainCardNew({ domain, index, canManageDomains }: DomainCardPro
             </div>
 
             <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
-              <span className="text-neutral-400 dark:text-neutral-500">
+              <span className="text-neutral-400 dark:text-muted-foreground">
                 {daysSinceCreation === 0 ? "Today" : `${daysSinceCreation}d`}
               </span>
-              <span className="text-neutral-300 dark:text-neutral-500">&middot;</span>
+              <span className="text-neutral-300 dark:text-muted-foreground">&middot;</span>
               <span className="inline-flex items-center gap-1 tabular-nums text-neutral-500 dark:text-neutral-400">
                 <IconLink size={12} stroke={1.5} />
                 {linkCountLabel}
@@ -209,7 +209,7 @@ export function DomainCardNew({ domain, index, canManageDomains }: DomainCardPro
                 onClick={() => setDeleteDialogOpen(true)}
                 disabled={deleteMutation.isLoading}
                 aria-label={`Delete ${domain.domain}`}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-focus-within:opacity-100 group-hover:opacity-100 dark:text-neutral-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 [@media(hover:none)]:opacity-100"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-focus-within:opacity-100 group-hover:opacity-100 dark:text-muted-foreground dark:hover:bg-red-500/10 dark:hover:text-red-400 [@media(hover:none)]:opacity-100"
               >
                 <IconTrash size={14} stroke={1.5} />
               </button>
