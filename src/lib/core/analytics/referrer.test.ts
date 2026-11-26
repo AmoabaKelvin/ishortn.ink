@@ -4,9 +4,12 @@ import {
   baseDomain,
   canonicalReferrer,
   formatReferrerLabel,
+  groupReferrerChannels,
   groupReferrers,
+  isEmailReferrer,
   isSearchReferrer,
   isSocialReferrer,
+  referrerChannel,
 } from "./referrer";
 import { externalReferrer, parseReferrer } from "./visitor";
 
@@ -41,6 +44,10 @@ describe("canonicalReferrer", () => {
       youtube: ["youtube", "youtube.com", "m.youtube.com", "youtu.be"],
       reddit: ["reddit", "reddit.com", "out.reddit.com", "redd.it"],
       whatsapp: ["whatsapp", "whatsapp.com", "web.whatsapp.com", "wa.me", "com.whatsapp"],
+      tiktok: ["tiktok", "tiktok.com", "vm.tiktok.com"],
+      pinterest: ["pinterest", "pinterest.com", "pin.it"],
+      threads: ["threads", "threads.net", "threads.com"],
+      telegram: ["telegram", "t.me", "telegram.org"],
     };
     for (const [source, aliases] of Object.entries(cases)) {
       for (const alias of aliases) expect(canonicalReferrer(alias)).toBe(source);
@@ -60,6 +67,9 @@ describe("canonicalReferrer", () => {
     expect(formatReferrerLabel("youtube.com")).toBe("YouTube");
     expect(formatReferrerLabel("wa.me")).toBe("WhatsApp");
     expect(formatReferrerLabel("https://l.facebook.com/")).toBe("Facebook");
+    expect(formatReferrerLabel("qr")).toBe("QR code scan");
+    expect(formatReferrerLabel("tiktok.com")).toBe("TikTok");
+    expect(formatReferrerLabel("wechat")).toBe("WeChat");
   });
 });
 
@@ -120,6 +130,65 @@ describe("referrer classification", () => {
     expect(isSocialReferrer("youtube.com")).toBe(true);
     expect(isSearchReferrer("google")).toBe(true);
     expect(isSearchReferrer("https://www.google.de/")).toBe(true);
+  });
+});
+
+describe("referrerChannel", () => {
+  test("groups sources into channels", () => {
+    const cases = {
+      social: ["instagram", "facebook", "x.com", "tiktok", "tiktok.com", "snapchat", "threads"],
+      email: [
+        "gmail",
+        "list-manage.com",
+        "mailchi.mp",
+        "awstrack.me",
+        "sendgrid.net",
+        "outlook.com",
+        "live.com",
+        "office.com",
+        "substack.com",
+        "https://www.beehiiv.com/p/x",
+      ],
+      messaging: ["whatsapp", "wa.me", "telegram", "t.me", "wechat", "line"],
+      search: ["google.com", "google.co.uk", "bing.com", "duckduckgo.com"],
+      qr: ["qr"],
+      website: ["ycombinator.com", "example.co.uk", "https://blog.example.com/post"],
+      direct: ["direct", "null", "", "unknown"],
+    };
+    for (const [channel, sources] of Object.entries(cases)) {
+      for (const source of sources) expect(referrerChannel(source)).toBe(channel);
+    }
+  });
+
+  test("isEmailReferrer matches the email channel", () => {
+    expect(isEmailReferrer("list-manage.com")).toBe(true);
+    expect(isEmailReferrer("google.com")).toBe(false);
+  });
+
+  test("messaging apps and QR scans are not social", () => {
+    expect(isSocialReferrer("whatsapp")).toBe(false);
+    expect(isSocialReferrer("telegram")).toBe(false);
+    expect(isSocialReferrer("qr")).toBe(false);
+  });
+
+  test("groupReferrerChannels gives one row per channel", () => {
+    expect(
+      groupReferrerChannels({
+        direct: 5,
+        null: 1,
+        instagram: 3,
+        "tiktok.com": 2,
+        "list-manage.com": 4,
+        qr: 6,
+        "example.com": 1,
+      }),
+    ).toEqual([
+      { source: "direct", name: "Direct", clicks: 6 },
+      { source: "social", name: "Social", clicks: 5 },
+      { source: "email", name: "Email", clicks: 4 },
+      { source: "qr", name: "QR code scan", clicks: 6 },
+      { source: "website", name: "Websites", clicks: 1 },
+    ]);
   });
 });
 

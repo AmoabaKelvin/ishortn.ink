@@ -63,7 +63,13 @@ type RecordClickOptions = {
 /** Queues a click. Drops bots here; quota and persistence happen in the consumer. */
 export async function recordClick(opts: RecordClickOptions): Promise<void> {
   const { headers, link, ip, country, city, matchedGeoRuleId, visitId } = opts;
-  const visitor = await describeVisitor({ headers, ip, country, city });
+  const visitor = await describeVisitor({
+    headers,
+    ip,
+    country,
+    city,
+    isQrCode: link.isQrCode,
+  });
   if (!visitor) return;
 
   await enqueueClickEvent({

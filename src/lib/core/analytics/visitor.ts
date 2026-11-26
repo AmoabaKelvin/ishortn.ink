@@ -90,6 +90,50 @@ export function parseReferrer(referrer: string | null): string {
   }
 }
 
+// In-app browser names as ua-parser-js reports them, mapped to source labels.
+// "GSA" (the Google app) is left out: it opens links from search, Discover and
+// chats alike, so it says nothing about the source.
+const IN_APP_BROWSER_SOURCES = {
+  Facebook: "facebook", // Messenger reports as Facebook too
+  Instagram: "instagram",
+  TikTok: "tiktok",
+  Snapchat: "snapchat",
+  LinkedIn: "linkedin",
+  Twitter: "x",
+  WeChat: "wechat",
+  Line: "line",
+};
+
+// Apps ua-parser-js doesn't name (it reports their WebView). Threads identifies
+// itself by its codename, Barcelona.
+const IN_APP_UA_TOKENS: [RegExp, string][] = [
+  [/\bBarcelona [\d.]+/, "threads"],
+  [/\bPinterest\//i, "pinterest"],
+  [/\bTelegram-(?:Android|iOS)\//i, "telegram"],
+];
+
+/** Source label of a known in-app browser, from the parsed browser name or the raw UA. */
+export function inAppSource(browser: string, userAgent: string): string | null {
+  for (const [token, source] of IN_APP_UA_TOKENS) {
+    if (token.test(userAgent)) return source;
+  }
+  return lookup(IN_APP_BROWSER_SOURCES, browser) ?? null;
+}
+
+/**
+ * Source label for an event. A referrer always wins; without one, an in-app
+ * browser names the app, and a QR code's tracking link means a scan.
+ */
+export function inferSource(opts: {
+  referrer: string | null;
+  browser: string;
+  userAgent: string;
+  isQrCode?: boolean | null;
+}): string {
+  if (opts.referrer) return parseReferrer(opts.referrer);
+  return inAppSource(opts.browser, opts.userAgent) ?? (opts.isQrCode ? "qr" : "direct");
+}
+
 /**
  * The referrer, or null when it is empty or points at `ownHost` (reloads and
  * in-page navigation are direct visits, not a source).
@@ -120,8 +164,10 @@ export async function describeVisitor(opts: {
   city: string;
   /** Replaces the request's Referer header when the caller knows the real source. */
   referrer?: string | null;
+  /** The event is a click on a QR code's tracking link. */
+  isQrCode?: boolean | null;
 }): Promise<Visitor | null> {
-  const { headers, ip, country, city, referrer = headers.get("referer") } = opts;
+  const { headers, ip, country, city, isQrCode, referrer = headers.get("referer") } = opts;
   const userAgent = headers.get("user-agent") ?? "";
   if (userAgent && isBot(userAgent)) return null;
 
@@ -131,7 +177,7 @@ export async function describeVisitor(opts: {
   return {
     ipHash: hashIp(ip && ip !== "undefined" ? ip : "localhost-dev"),
     ...deviceDetails,
-    referer: parseReferrer(referrer),
+    referer: inferSource({ referrer, browser: deviceDetails.browser, userAgent, isQrCode }),
     country: countryName,
     city: cityName,
     continent: continentName,
