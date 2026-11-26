@@ -198,6 +198,18 @@ describe("assertUrlSafe on a well-known host", () => {
     expect(error?.message).toBe(result.userMessage);
   });
 
+  test.each([
+    "https://www.youtube.com/redirect?q=https%3A%2F%2Fevil.example%2Flogin",
+    "https://www.linkedin.com/redir/redirect?url=https%3A%2F%2Fevil.example",
+  ])("an open redirect on a listed host gets the full pipeline: %s", async (redirect) => {
+    const deps = fakeDeps();
+
+    await assertUrlSafe(redirect, deps);
+
+    expect(deps.scrape).toHaveBeenCalledTimes(1);
+    expect(deps.detect).toHaveBeenCalledTimes(1);
+  });
+
   test("a subdomain of a listed host gets the full pipeline", async () => {
     const deps = fakeDeps();
 
