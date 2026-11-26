@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { parseScrapedPage } from "@/server/lib/metadata";
 import { ServerTiming } from "@/server/lib/server-timing";
 
-import { USER_MSG_UNSAFE, assertUrlSafe, runPreLLMChecks } from "./index";
+import { USER_MSG_UNSAFE, assertUrlSafe, assertUrlSafeFast, runPreLLMChecks } from "./index";
 
 import type { PreLLMCheckDeps, UrlSafetyDeps } from "./index";
 
@@ -333,5 +333,37 @@ describe("assertUrlSafe Server-Timing", () => {
       /^safety;dur=\d+;desc="blocked-pre-llm", deterministic;dur=4, (.+, )?total;dur=\d+$/,
     );
     expect(timing.header()).not.toContain("example.com");
+  });
+});
+
+describe("assertUrlSafeFast", () => {
+  const url = "https://example.com/landing";
+
+  test("runs only the pre-LLM checks and reports their timings", async () => {
+    const timing = new ServerTiming();
+    const preChecks = mock(async (_url: string, timings = {}) => {
+      timings.deterministicMs = 3;
+      timings.safeBrowsingMs = 5;
+      return PASS;
+    });
+
+    await assertUrlSafeFast(url, { preChecks }, timing);
+
+    expect(preChecks).toHaveBeenCalledTimes(1);
+    const names = timing
+      .header()
+      .split(", ")
+      .map((metric) => metric.split(";")[0]);
+    expect(names).toEqual(["safety", "deterministic", "safebrowsing", "total"]);
+  });
+
+  test.each([
+    ["the blocklist", BLOCKLISTED],
+    ["Safe Browsing", SAFE_BROWSING_FLAGGED],
+  ])("rejects with the message from %s", async (_name, result) => {
+    const error = await rejection(assertUrlSafeFast(url, { preChecks: mock(async () => result) }));
+
+    expect(error?.code).toBe("BAD_REQUEST");
+    expect(error?.message).toBe(result.userMessage);
   });
 });
