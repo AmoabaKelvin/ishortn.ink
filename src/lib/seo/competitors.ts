@@ -92,6 +92,7 @@ export const competitors = {
       { href: "/compare/tinyurl", label: "iShortn vs TinyURL" },
       { href: "/compare/short-io", label: "iShortn vs Short.io" },
       { href: "/compare/dub", label: "iShortn vs Dub" },
+      { href: "/compare/cuttly", label: "Cuttly vs iShortn" },
     ],
     migrationGuide: {
       href: "/docs/migrate-from-bitly",
@@ -166,6 +167,7 @@ export const competitors = {
       { href: "/blog/how-to-track-link-clicks", label: "How to track link clicks" },
       { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
       { href: "/compare/bitly", label: "Bitly vs iShortn" },
+      { href: "/compare/cuttly", label: "Cuttly vs iShortn" },
     ],
     guide: {
       slug: "tinyurl-alternatives",
@@ -376,6 +378,71 @@ export const competitors = {
       slug: "dub-alternatives",
       label: "Looking at more options? Read our guide to Dub.co alternatives.",
     },
+  },
+  cuttly: {
+    name: "Cuttly",
+    slug: "cuttly",
+    category: "URL shortener",
+    seoTitle: "Cuttly vs iShortn: Free Plan, Pricing and Analytics (2026)",
+    pricesCheckedOn: "2026-11-26",
+    tagline: "Link shortener with a branded domain on the free plan",
+    description:
+      "Cuttly gives free users 30 links a month, 30 days of click history and one branded domain, but free links can't be edited. See how iShortn compares on price, editing, QR codes and teams.",
+    metaDescription:
+      "Cuttly Free gives 30 links a month but no link editing; iShortn Free gives 30 you can edit, with stats. Pro is $8/mo vs Cuttly Starter $12. Checked Nov 2026.",
+    freeLinks: "30/month",
+    freeAnalytics: "Last 30 days (total clicks only, no unique clicks)",
+    customDomains: "1 on Free and Starter (automatic HTTPS from Single, $25/mo)",
+    qrCodes: "One style on Free (PNG, JPG, WEBP); SVG and styling on paid plans",
+    apiAccess: "Yes (Free: 3 calls a minute, up to 30 links a month)",
+    teamFeatures: "From Team ($99/mo): 3 teams of 5 members",
+    passwordProtection: "From Single ($25/mo)",
+    pricing:
+      "Free, Starter $12/mo, Single $25/mo, Team $99/mo, Team Enterprise $149/mo (one month free when billed yearly)",
+    whySwitch: [
+      "You can change where an iShortn link points on every plan, including Free; Cuttly Free can't edit a link's destination, and Starter and Single only allow a new URL on the same domain",
+      "iShortn Pro is $8 a month ($80 a year) with 3 custom domains, password protection and scheduled links; Cuttly's password links start on Single at $25 a month",
+      "iShortn Free includes 5 dynamic QR codes with colour and style options that never expire; Cuttly Free QR codes come in one style",
+      "iShortn counts unique visitors as well as total clicks on every plan; Cuttly Free and Starter count total clicks only",
+      "Cuttly is the better fit if you want a branded domain or 30 days of click history without paying: Cuttly Free includes 1 domain and 30 days of history, while iShortn's custom domains start on Pro and Free keeps 7 days in the dashboard",
+    ],
+    linksStayYours: true,
+    migrationSteps: [
+      "Check where your links live. Links on your own branded domain can keep their exact addresses. Links on cutt.ly stay with Cuttly, because Cuttly owns that domain.",
+      "Export your links and destinations as a CSV file. Cuttly's CSV export is on Single and higher; on Free or Starter, copy them from the dashboard into a spreadsheet.",
+      "Name the columns iShortn reads: url for the destination, alias for the back-half and domain for your own domain. Other columns are ignored.",
+      "On Pro, add the same domain in iShortn under Domains, then replace Cuttly's DNS records with the ones iShortn shows.",
+      "Upload the file with Upload CSV in the dashboard. On Pro, rows on your custom domain use a one-time 5,000-link import allowance instead of the monthly limit.",
+      "Open a few old links in a private window and scan a printed QR code. When they all redirect, you can cancel Cuttly.",
+    ],
+    faqs: [
+      {
+        question: "Is iShortn a good alternative to Cuttly?",
+        answer:
+          "If you want to edit your links and pay less for a paid plan, yes. Both free plans give 30 links a month with click stats. iShortn lets you change where a link points on Free and Pro is $8 a month with 3 custom domains; Cuttly Free can't edit destinations and Starter is $12 a month. Cuttly is the better fit if you need a branded domain without paying.",
+      },
+      {
+        question: "How much does Cuttly cost?",
+        answer:
+          "Cuttly lists Free, Starter at $12 a month, Single at $25, Team at $99 and Team Enterprise at $149. Billed yearly they cost $132, $275, $1,089 and $1,639, which works out to one month free. Prices from cutt.ly/pricing, checked 26 November 2026.",
+      },
+      {
+        question: "Can you edit a Cuttly link on the free plan?",
+        answer:
+          "No. Cuttly's plan table lists editing the destination URL as not included on Free. Starter and Single can change it to another URL on the same domain, and Team plans can change it to any URL. iShortn lets you change where a link points on every plan.",
+      },
+      {
+        question: "Does Cuttly show ads or expire links?",
+        answer:
+          "No to both. Cuttly's help center says it doesn't show ads before the redirect and that its short links don't expire. iShortn doesn't show ads either, and links stay live unless you set an expiry date or click limit yourself.",
+      },
+    ],
+    relatedGuides: [
+      { href: "/blog/best-free-url-shorteners", label: "The best free URL shorteners compared" },
+      { href: "/compare/bitly", label: "Bitly vs iShortn" },
+      { href: "/compare/tinyurl", label: "TinyURL vs iShortn" },
+      { href: "/docs/bulk-import", label: "CSV bulk import: file format and limits" },
+    ],
   },
   linktree: {
     name: "Linktree",
