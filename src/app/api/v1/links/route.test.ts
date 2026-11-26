@@ -32,7 +32,12 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
   });
 
-  async function reset(monthlyLinkCount: number, restrictedAt: Date | null = null) {
+  async function reset(
+    monthlyLinkCount: number,
+    restrictedAt: Date | null = null,
+    lastLinkCountReset = new Date(),
+  ) {
+    await db.delete(schema.siteSettings).where(eq(schema.siteSettings.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
@@ -40,7 +45,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     await db.insert(schema.user).values({
       id: USER_ID,
       monthlyLinkCount,
-      lastLinkCountReset: new Date(),
+      lastLinkCountReset,
       restrictedAt,
       // Checked already, so the first-request plan check doesn't start a grace (and send its
       // email through waitUntil, which needs the Worker context) for past_due subscribers.
@@ -88,6 +93,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
   beforeEach(() => reset(0));
 
   afterAll(async () => {
+    await db.delete(schema.siteSettings).where(eq(schema.siteSettings.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
@@ -131,6 +137,51 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
       error: { code: "forbidden", message: monthlyLinkLimitMessage("free", 30), details: [] },
     });
     expect(await storedCount()).toBe(30);
+  });
+
+  test("the first create of a new month resets the count to 1", async () => {
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    await reset(30, null, lastMonth);
+
+    expect((await createLink()).status).toBe(201);
+    expect(await storedCount()).toBe(1);
+  });
+
+  test("concurrent creates one below the limit allow exactly one", async () => {
+    await reset(29);
+
+    const responses = await Promise.all(Array.from({ length: 5 }, () => createLink()));
+
+    expect(responses.map((r) => r.status).sort()).toEqual([201, 403, 403, 403, 403]);
+    expect(await storedCount()).toBe(30);
+  });
+
+  test("creates on the account's default domain when none is given", async () => {
+    await db.insert(schema.siteSettings).values({ userId: USER_ID, defaultDomain: "isht.ink" });
+
+    const response = await createLink({ alias: "route-test-default" });
+    expect(response.status).toBe(201);
+    expect((await response.json()).shortLink).toBe("https://isht.ink/route-test-default");
+  });
+
+  test("returns a protected link's stored values", async () => {
+    await subscribe({ status: "active" });
+    const response = await createLink({ alias: "route-test-protected", password: "hunter22" });
+    expect(response.status).toBe(201);
+
+    const stored = await db.query.link.findFirst({ where: eq(schema.link.userId, USER_ID) });
+    expect(await response.json()).toEqual({
+      id: stored?.id,
+      shortLink: `https://${stored?.domain}/route-test-protected`,
+      url: TARGET_URL,
+      alias: "route-test-protected",
+      createdAt: stored?.createdAt?.toISOString(),
+      expiresAt: null,
+      activatesAt: null,
+      expiresAfter: null,
+      isProtected: true,
+    });
   });
 
   test("rejects custom aliases that fail validateAlias with 400", async () => {
@@ -253,8 +304,10 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     const response = await createLink();
     expect(response.status).toBe(201);
     expect(timingNames(response)).toEqual(
-      expect.arrayContaining(["auth", "domain", "alias", "safety", "db", "read", "total"]),
+      expect.arrayContaining(["auth", "domain", "alias", "safety", "db", "total"]),
     );
+    // The response is built from the inserted values, so there is no read-back step.
+    expect(timingNames(response)).not.toContain("read");
     expect(response.headers.get("server-timing")).not.toContain("localhost");
   });
 
