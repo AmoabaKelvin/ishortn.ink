@@ -44,6 +44,12 @@ export const pageCards = {
     title: "Link shorteners compared: free plans and prices",
     subtitle: "Free-plan limits, custom domains, QR codes and prices, side by side.",
   }),
+  openSourceUrlShortener: card({
+    eyebrow: "MIT licence",
+    title: "Open-source URL shortener",
+    subtitle:
+      "Self-host it on Cloudflare Workers or use the free hosted plan. Open-source shorteners compared.",
+  }),
   changelog: card({
     eyebrow: "Changelog",
     title: "What's new in iShortn",
