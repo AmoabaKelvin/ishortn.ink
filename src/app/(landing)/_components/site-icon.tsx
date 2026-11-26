@@ -34,6 +34,7 @@ export const siteIconNames = [
   "message-circle-filled",
   "plus",
   "qrcode",
+  "quote-filled",
   "selector",
   "shield-check-filled",
   "sparkles-filled",
