@@ -112,7 +112,8 @@ export async function prepareHiddenTrackingLink(
  * Insert a prepared hidden tracking link inside an existing transaction and
  * bump the workspace's monthly link count in the same transaction, so a
  * downstream failure rolls the link and the count back together (no orphan
- * links, no quota drift). Returns the new link id.
+ * links, no quota drift). Returns the new link id. Once the transaction commits, the caller
+ * passes `prepared.safety` to `recordSafetyFollowUp`, so a rollback leaves no orphan follow-up.
  */
 export async function insertHiddenTrackingLink(
   tx: TransactionClient,
@@ -121,8 +122,6 @@ export async function insertHiddenTrackingLink(
 ): Promise<number> {
   const result = await tx.insert(link).values(prepared.values);
   const linkId = Number(result[0].insertId);
-  // Written after the response, by which time this transaction has settled.
-  recordSafetyFollowUp(linkId, prepared.safety);
 
   if (prepared.shouldIncrementCount) {
     await tx

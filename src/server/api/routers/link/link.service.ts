@@ -1893,11 +1893,17 @@ export type BulkCreateLinksOptions = {
 
 type CheckImportUrl = (url: string) => Promise<UrlSafetyResult | void>;
 
+// One account for the whole import, so its age is looked up at most once.
+const checkImportUrl = (ctx: WorkspaceTRPCContext): CheckImportUrl => {
+  const account = workspaceSafetyAccount(ctx);
+  return (url) => assertUrlSafe(url, { account });
+};
+
 // `checkUrl` is a seam for tests; callers use the default.
 export const bulkCreateLinks = (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
-  checkUrl: CheckImportUrl = (url) => assertUrlSafe(url, { account: workspaceSafetyAccount(ctx) }),
+  checkUrl: CheckImportUrl = checkImportUrl(ctx),
   options: BulkCreateLinksOptions = {},
 ) =>
   // Records failures that reject the whole import; per-row failures are recorded below.

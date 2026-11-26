@@ -23,6 +23,7 @@ import {
   linkVisit,
   uniqueBioPageView,
 } from "@/server/db/schema";
+import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { deleteImage, isOwnedR2Url, uploadImage } from "@/server/lib/storage";
 import {
@@ -471,6 +472,7 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
       });
       return { id: Number(res.insertId), linkId };
     });
+    recordSafetyFollowUp(linkId, prepared.safety);
     checkCampaignPatternsAfterResponse([{ linkId, url: destination }]);
     revalidateBioPath(page.slug);
     return { id };

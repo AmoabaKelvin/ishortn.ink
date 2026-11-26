@@ -13,6 +13,7 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
+import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { reserveLinkAliases } from "@/server/lib/reserved-alias";
@@ -125,6 +126,7 @@ export const createQrCode = userFacing(
 
       return { insertedQrCodeId: insertionResult[0].insertId, hiddenLinkId };
     });
+    recordSafetyFollowUp(hiddenLinkId, prepared.safety);
     checkCampaignPatternsAfterResponse([{ linkId: hiddenLinkId, url: input.content }]);
 
     return { trackingUrl: prepared.trackingUrl, id: insertedQrCodeId };

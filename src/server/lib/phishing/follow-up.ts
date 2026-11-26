@@ -9,15 +9,16 @@ import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 
 /** The account a workspace's links belong to; a team is always a paying account. */
 export function workspaceSafetyAccount(ctx: WorkspaceTRPCContext): SafetyAccount {
+  // Looked up at most once, however many URLs a bulk import checks against this account.
+  let createdAt: Promise<Date | null> | undefined;
   return {
     plan: ctx.workspace.plan,
     isTeam: ctx.workspace.type === "team",
-    createdAt: async () => {
-      const row = await ctx.db.query.user.findFirst({
-        where: eq(user.id, ctx.auth.userId),
-        columns: { createdAt: true },
-      });
-      return row?.createdAt ?? null;
+    createdAt: () => {
+      createdAt ??= ctx.db.query.user
+        .findFirst({ where: eq(user.id, ctx.auth.userId), columns: { createdAt: true } })
+        .then((row) => row?.createdAt ?? null);
+      return createdAt;
     },
   };
 }

@@ -99,6 +99,32 @@ describe("page signals", () => {
     });
   });
 
+  test.each([
+    ["unquoted attributes", "<input type=email name=email><input type=password name=p>"],
+    [
+      "data-* attributes before type",
+      `<input data-type="x" type="email"><input data-type="x" type="password">`,
+    ],
+    [
+      "a form-builder field with a generated name",
+      `<label>Email</label><input type="text" name="_u123"><input type="password" name="_u124">`,
+    ],
+  ])("finds the credential form with %s", (_name, html) => {
+    const { signals } = page("https://a.framer.app/", html);
+    expect(signals.hasPasswordInput).toBe(true);
+    expect(signals.hasEmailInput).toBe(true);
+  });
+
+  test("a data-type attribute is not read as the input's type", () => {
+    const { signals } = page("https://a.example/", `<input data-type="password" name="q">`);
+    expect(signals.hasPasswordInput).toBe(false);
+  });
+
+  test("a site search box is not an identity field", () => {
+    const { signals } = page("https://a.example/", `<input type="search" name="user-search">`);
+    expect(signals.hasEmailInput).toBe(false);
+  });
+
   test("caps the visible text", () => {
     const { signals } = page("https://a.example/", `<p>${"word ".repeat(400)}</p>`);
     expect(signals.visibleText.length).toBe(500);
@@ -189,6 +215,17 @@ describe("credential form on a page-builder subdomain", () => {
     const url = "https://office-docs-share.pages.dev/";
     const html = `<form><input type="hidden" name="login_email" value="a@b.example">
       <input type="password" name="pw"></form>`;
+    const d = deps(page(url, html));
+
+    const error = await rejection(assertUrlSafe(url, { ...d, account: account("free", 2) }));
+
+    expect(error?.message).toStartWith(SUSPICIOUS);
+  });
+
+  test("an unquoted form on a new free account is rejected", async () => {
+    const url = "https://spectrum-mail.framer.app/";
+    const html =
+      "<h1>Sign In to Webmail</h1><input type=email name=email><input type=password name=p>";
     const d = deps(page(url, html));
 
     const error = await rejection(assertUrlSafe(url, { ...d, account: account("free", 2) }));

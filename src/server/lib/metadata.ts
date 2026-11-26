@@ -11,9 +11,13 @@ const MAX_HTML_BYTES = 2_000_000;
 
 const BLOCKED_HOSTS = /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.|\[?::1)/i;
 
+// The name must follow whitespace (so `type` doesn't match inside `data-type`), and values may be
+// unquoted, as minified HTML often leaves them.
 function attr(tag: string, name: string): string | null {
-  const match = tag.match(new RegExp(`${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i"));
-  return match ? (match[2] ?? match[3] ?? null) : null;
+  const match = tag.match(
+    new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\`]+))`, "i"),
+  );
+  return match ? (match[1] ?? match[2] ?? match[3] ?? null) : null;
 }
 
 function findMeta(html: string, keys: string[]): string | null {
@@ -201,6 +205,7 @@ export type PageSignals = {
   /** URL the request ended on after redirects. */
   finalUrl: string;
   hasPasswordInput: boolean;
+  /** A text, email or tel field (somewhere to type an email or username), or a prefilled hidden one. */
   hasEmailInput: boolean;
   /** Hosts that the page's forms submit to. */
   formActionHosts: string[];
@@ -222,6 +227,9 @@ const CHALLENGE_TITLES = /^(just a moment\.*|attention required!?(\s*\|\s*cloudf
 // "/cdn-cgi/challenge-platform/" bot-detection scripts, so that path proves nothing.
 const CHALLENGE_MARKERS = /cf[-_]chl/i;
 const IDENTITY_FIELD = /e-?mail|user|login|account/i;
+// Fields that can take an email or username; `search` is left out so a site search box beside a
+// protected post's password field doesn't read as a sign-in form.
+const TEXT_ENTRY_TYPES = new Set(["text", "email", "tel"]);
 
 function inputTags(html: string): string[] {
   return html.match(/<input\b[^>]*>/gi) ?? [];
@@ -265,10 +273,11 @@ function parsePageSignals(
     hasPasswordInput: inputs.some((tag) => typeOf(tag) === "password"),
     hasEmailInput: inputs.some((tag) => {
       const type = typeOf(tag);
-      if (type === "email") return true;
+      // Form builders give fields generated names ("_u123"), so any free-text field counts.
+      if (TEXT_ENTRY_TYPES.has(type)) return true;
       // Kits that prefill the victim's address from the URL often carry it in a hidden field.
-      if (type !== "text" && type !== "hidden") return false;
-      const names = ["name", "id", "autocomplete", "placeholder"].map((key) => attr(tag, key));
+      if (type !== "hidden") return false;
+      const names = ["name", "id", "autocomplete"].map((key) => attr(tag, key));
       return names.some((value) => value && IDENTITY_FIELD.test(value));
     }),
     formActionHosts: [...formActionHosts].slice(0, MAX_LIST_ITEMS),
