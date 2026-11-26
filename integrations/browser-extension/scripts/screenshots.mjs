@@ -15,6 +15,7 @@ await mkdir(statesDir, { recursive: true });
 const STATES = [
   { name: "not-connected", view: "not-connected" },
   { name: "manual", view: "manual" },
+  { name: "creating", view: "creating" },
   { name: "created", view: "created" },
   { name: "customize", view: "created", customize: true },
   { name: "limit", view: "limit" },

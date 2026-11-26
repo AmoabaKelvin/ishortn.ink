@@ -1,6 +1,6 @@
 {
   "name": "ishortn-browser-extension",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "iShortn browser extension: shorten the current tab, copy the link and get a QR code.",
   "license": "MIT",
   "private": true,
