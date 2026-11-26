@@ -34,6 +34,7 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
 
   async function cleanup() {
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
+    await db.delete(schema.customDomain).where(eq(schema.customDomain.userId, USER_ID));
     await db.delete(schema.token).where(eq(schema.token.userId, USER_ID));
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
@@ -182,6 +183,25 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     const { links } = await response.json();
     expect(links).toHaveLength(1);
     expect(links[0].url).toBe(TARGET_URL);
+  });
+
+  test("lists links on active personal custom domains but not on inactive ones", async () => {
+    await db.insert(schema.customDomain).values([
+      { userId: USER_ID, domain: "go.extension-active.test", status: "active" },
+      { userId: USER_ID, domain: "go.extension-lapsed.test", status: "invalid" },
+    ]);
+    await db.insert(schema.link).values([
+      { userId: USER_ID, url: TARGET_URL, alias: "ext-platform", domain: "ishortn.ink" },
+      { userId: USER_ID, url: TARGET_URL, alias: "ext-active", domain: "go.extension-active.test" },
+      { userId: USER_ID, url: TARGET_URL, alias: "ext-lapsed", domain: "go.extension-lapsed.test" },
+    ]);
+    const response = await listLinks(extensionRequest("/links?limit=20"));
+    expect(response.status).toBe(200);
+    const { links } = await response.json();
+    expect(links.map((l: { shortUrl: string }) => l.shortUrl).sort()).toEqual([
+      "https://go.extension-active.test/ext-active",
+      "https://ishortn.ink/ext-platform",
+    ]);
   });
 
   test("sign out deletes the calling token only", async () => {

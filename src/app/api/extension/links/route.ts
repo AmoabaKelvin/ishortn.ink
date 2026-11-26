@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { getHTTPStatusCodeFromError } from "@trpc/server/http";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
@@ -12,7 +12,7 @@ import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
 
 import { readJsonBody } from "../../v1/errors";
 import { createTokenLink } from "../../v1/links/create";
-import { getApiReadableDomains } from "../../v1/utils";
+import { apiReadableLinkDomain } from "../../v1/utils";
 import { extensionError, extensionPreflight, withExtensionToken } from "../auth";
 
 import type { ApiToken } from "../../v1/utils";
@@ -31,11 +31,7 @@ export const GET = withExtensionToken(async (request: NextRequest, token) => {
     .select({ domain: link.domain, alias: link.alias, url: link.url, createdAt: link.createdAt })
     .from(link)
     .where(
-      and(
-        eq(link.userId, token.userId),
-        isNull(link.teamId),
-        inArray(link.domain, await getApiReadableDomains(token.userId)),
-      ),
+      and(eq(link.userId, token.userId), isNull(link.teamId), apiReadableLinkDomain(token.userId)),
     )
     .orderBy(desc(link.createdAt), desc(link.id))
     .limit(query.data.limit);
