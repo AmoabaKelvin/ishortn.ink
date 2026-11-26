@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { link, linkCreationFailure } from "@/server/db/schema";
+import { parseScrapedPage } from "@/server/lib/metadata";
 
 import { createLink } from "./link.service";
 
@@ -66,7 +67,14 @@ function fakeContext({ failInsert = false } = {}) {
   return { ctx, inserted, recordedFailures };
 }
 
-const allowUrl = async () => {};
+// Safety layers that pass the URL without network or database calls.
+const allowUrl = {
+  preChecks: async () => ({ blocked: false, reason: "", userMessage: "" }),
+  readVerdict: async () => false,
+  rememberVerdict: () => {},
+  scrape: async (url: string) => parseScrapedPage("<title>Page</title>", url, 200, new Headers()),
+  detect: async (url: string) => ({ url, phishing: false }),
+};
 const noMetadata = async () => ({ title: "", description: "", image: "", favicon: "" });
 const URL = "https://example.com/page";
 
@@ -77,7 +85,7 @@ describe("createLink", () => {
       ctx,
       { url: URL },
       {
-        checkUrl: allowUrl,
+        ...allowUrl,
         fetchMetadata: async () => {
           throw new Error("metadata service unavailable");
         },
@@ -95,7 +103,7 @@ describe("createLink", () => {
     const generated = await createLink(
       ctx,
       { url: URL },
-      { checkUrl: allowUrl, fetchMetadata: noMetadata },
+      { ...allowUrl, fetchMetadata: noMetadata },
     );
     expect(generated).toEqual({
       id: 7,
@@ -107,7 +115,7 @@ describe("createLink", () => {
     const custom = await createLink(
       ctx,
       { url: URL, alias: "spring-sale" },
-      { checkUrl: allowUrl, fetchMetadata: noMetadata },
+      { ...allowUrl, fetchMetadata: noMetadata },
     );
     expect(custom).toEqual({ id: 7, alias: "spring-sale", domain: DEFAULT_PLATFORM_DOMAIN });
     expect(inserted[1]).toMatchObject({ alias: "spring-sale", domain: DEFAULT_PLATFORM_DOMAIN });
@@ -119,7 +127,7 @@ describe("createLink", () => {
       ctx,
       { url: URL },
       {
-        checkUrl: allowUrl,
+        ...allowUrl,
         fetchMetadata: async () => ({
           title: "Example",
           description: "An example page",
@@ -135,7 +143,7 @@ describe("createLink", () => {
   test("records a database failure as a server-side db failure and rethrows it", async () => {
     const { ctx, recordedFailures } = fakeContext({ failInsert: true });
     await expect(
-      createLink(ctx, { url: URL }, { checkUrl: allowUrl, fetchMetadata: noMetadata }),
+      createLink(ctx, { url: URL }, { ...allowUrl, fetchMetadata: noMetadata }),
     ).rejects.toThrow("ECONNREFUSED");
 
     expect(recordedFailures).toEqual([
@@ -146,11 +154,7 @@ describe("createLink", () => {
   test("records a plan rejection as a client-side validation failure", async () => {
     const { ctx, inserted, recordedFailures } = fakeContext();
     await expect(
-      createLink(
-        ctx,
-        { url: URL, cloaking: true },
-        { checkUrl: allowUrl, fetchMetadata: noMetadata },
-      ),
+      createLink(ctx, { url: URL, cloaking: true }, { ...allowUrl, fetchMetadata: noMetadata }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
 
     expect(inserted).toEqual([]);

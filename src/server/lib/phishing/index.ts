@@ -219,6 +219,23 @@ async function isNewFreeAccount(account: SafetyAccount | undefined, now: Date): 
   return createdAt !== null && now.getTime() - createdAt.getTime() < NEW_ACCOUNT_DAYS * DAY_MS;
 }
 
+const DEFERRED_CHECK_MIN_ACCOUNT_DAYS = 7;
+
+/**
+ * Whether a dashboard write may run the page rules and LLM after the response
+ * (`assertUrlSafeFast` + `checkUrlWithLlmAfterResponse`) instead of before the insert. Paying and
+ * team accounts may, and free accounts older than 7 days; nearly all phishing comes from newer
+ * free accounts, so they (and free accounts of unknown age) keep the full check.
+ */
+export async function canDeferLlmCheck(account: SafetyAccount, now = new Date()): Promise<boolean> {
+  if (account.isTeam || account.plan !== "free") return true;
+  const createdAt = await account.createdAt();
+  return (
+    createdAt !== null &&
+    now.getTime() - createdAt.getTime() >= DEFERRED_CHECK_MIN_ACCOUNT_DAYS * DAY_MS
+  );
+}
+
 /** A URL the page rules or the LLM found unsafe, with what to record and show for it. */
 type UnsafeVerdict = { reason: string; details: string; userMessage: string };
 

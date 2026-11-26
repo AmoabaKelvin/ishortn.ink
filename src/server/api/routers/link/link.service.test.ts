@@ -21,6 +21,8 @@ function fakeContext() {
   });
   const db = {
     query: {
+      // A new free account, so a changed URL gets the full check before the write.
+      user: { findFirst: async () => ({ createdAt: new Date() }) },
       link: {
         findFirst: async () => ({
           id: 1,
@@ -38,10 +40,11 @@ function fakeContext() {
     ...db,
     transaction: async <T>(run: (tx: typeof db) => Promise<T>) => run(db),
   };
-  // SAFETY: updateLink only touches ctx.db.query.link.findFirst, ctx.db.transaction,
-  // tx.update and ctx.workspace before the write, which is where ReachedWrite stops it.
+  // SAFETY: updateLink only touches ctx.db.query.{link,user}.findFirst, ctx.db.transaction,
+  // tx.update, ctx.auth and ctx.workspace before the write, which is where ReachedWrite stops it.
   const ctx = {
     db: dbWithTransaction,
+    auth: { userId: "user_1" },
     workspace: {
       type: "personal",
       userId: "user_1",

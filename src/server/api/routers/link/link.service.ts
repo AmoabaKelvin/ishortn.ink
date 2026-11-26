@@ -74,8 +74,12 @@ import {
   trackLinkCreation,
 } from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
-import { assertUrlSafe } from "@/server/lib/phishing";
-import { recordSafetyFollowUp, workspaceSafetyAccount } from "@/server/lib/phishing/follow-up";
+import { assertUrlSafe, assertUrlSafeFast, canDeferLlmCheck } from "@/server/lib/phishing";
+import {
+  checkUrlWithLlmAfterResponse,
+  recordSafetyFollowUp,
+  workspaceSafetyAccount,
+} from "@/server/lib/phishing/follow-up";
 import {
   checkCampaignPatternsAfterResponse,
   type LinkDestination,
@@ -147,7 +151,8 @@ import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
 import type { ScrapedMetadata } from "@/server/lib/metadata";
-import type { UrlSafetyResult } from "@/server/lib/phishing";
+import type { UrlSafetyDeps, UrlSafetyResult } from "@/server/lib/phishing";
+import type { CreatedLink } from "@/server/lib/phishing/follow-up";
 import type { WorkspaceContext } from "@/server/lib/workspace";
 
 const log = logger.child({ component: "link.service" });
@@ -410,10 +415,33 @@ export const getLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) =>
 };
 
 // Seams for tests; callers use the defaults.
-type LinkCreationDeps = {
-  checkUrl?: typeof assertUrlSafe;
+export type LinkSafetyDeps = UrlSafetyDeps & {
+  checkAfterResponse?: typeof checkUrlWithLlmAfterResponse;
+};
+
+type LinkCreationDeps = LinkSafetyDeps & {
   fetchMetadata?: (url: string) => Promise<ScrapedMetadata>;
 };
+
+/**
+ * The URL safety check for a dashboard write, run before it. Returns what to run once the link
+ * exists. Lower-risk accounts (see `canDeferLlmCheck`) wait only for the fast layers; the page
+ * fetch and LLM check, which take seconds and rarely reject, then run after the response and
+ * block or flag the link. Other accounts get the full check before the write.
+ */
+async function checkLinkUrl(
+  ctx: WorkspaceTRPCContext,
+  url: string,
+  { checkAfterResponse = checkUrlWithLlmAfterResponse, ...deps }: LinkSafetyDeps = {},
+): Promise<(created: CreatedLink) => void> {
+  const account = workspaceSafetyAccount(ctx);
+  if (await canDeferLlmCheck(account)) {
+    await assertUrlSafeFast(url, deps);
+    return (created) => void checkAfterResponse(created, url, { ...deps, account });
+  }
+  const safety = await assertUrlSafe(url, { ...deps, account });
+  return (created) => recordSafetyFollowUp(created.id, safety);
+}
 
 // Best-effort: a metadata-service outage must not block link creation.
 async function fetchMetadataFailOpen(
@@ -455,7 +483,7 @@ const createLinkSteps = async (
   ctx: WorkspaceTRPCContext,
   input: CreateLinkInput,
   attempt: LinkCreationAttempt,
-  { checkUrl = assertUrlSafe, fetchMetadata = scrapeMetadata }: LinkCreationDeps,
+  { fetchMetadata = scrapeMetadata, ...safetyDeps }: LinkCreationDeps,
 ) => {
   const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
   const isPaidPlan = plan !== "free";
@@ -466,7 +494,7 @@ const createLinkSteps = async (
     input.alias && input.alias !== "" ? input.alias : await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
-  const safety = await checkUrl(input.url, { account: workspaceSafetyAccount(ctx) });
+  const afterCreate = await checkLinkUrl(ctx, input.url, safetyDeps);
 
   attempt.step = "metadata";
   const fetchedMetadata = await fetchMetadataFailOpen(fetchMetadata, input.url);
@@ -643,7 +671,7 @@ const createLinkSteps = async (
     return inserted;
   });
   const linkId = Number(result.insertId);
-  recordSafetyFollowUp(linkId, safety);
+  afterCreate({ id: linkId, domain, alias });
 
   // Upload OG image to R2 if it's base64
   if (input.metadata?.image) {
@@ -679,7 +707,11 @@ const createLinkSteps = async (
   return { id: linkId, alias, domain };
 };
 
-export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInput) => {
+export const updateLink = async (
+  ctx: WorkspaceTRPCContext,
+  input: UpdateLinkInput,
+  safetyDeps: LinkSafetyDeps = {},
+) => {
   // Get existing link first
   const existingLink = await ctx.db.query.link.findFirst({
     where: and(eq(link.id, input.id), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
@@ -703,9 +735,9 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
 
   // Re-scan only when the destination actually changes: the check can reach
   // Safe Browsing / Web Risk and an LLM, and the current URL already passed it.
-  const safety =
+  const afterUpdate =
     input.url !== undefined && input.url !== existingLink.url
-      ? await assertUrlSafe(input.url, { account: workspaceSafetyAccount(ctx) })
+      ? await checkLinkUrl(ctx, input.url, safetyDeps)
       : undefined;
 
   // If domain is being changed, it must be platform-owned or a verified
@@ -961,8 +993,8 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   // Always set the new cache entry with updated values
   await setInCache(buildCacheKey(updatedLink.domain, updatedLink.alias!), updatedLinkWithTags);
 
-  recordSafetyFollowUp(input.id, safety);
-  // After the cache write, so a block from the check isn't overwritten by it.
+  // After the cache write, so a block from these checks isn't overwritten by it.
+  afterUpdate?.({ id: input.id, domain: updatedLink.domain, alias: updatedLink.alias! });
   checkCampaignPatternsAfterResponse(
     linkDestinations(
       input.id,
@@ -1227,7 +1259,7 @@ const shortenLinkSteps = async (
   const alias = await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
-  const safety = await assertUrlSafe(input.url, { account: workspaceSafetyAccount(ctx) });
+  const afterCreate = await checkLinkUrl(ctx, input.url);
 
   attempt.step = "metadata";
   const fetchedMetadata = await fetchMetadataFailOpen(scrapeMetadata, input.url);
@@ -1261,7 +1293,7 @@ const shortenLinkSteps = async (
   });
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
-  recordSafetyFollowUp(Number(result.insertId), safety);
+  afterCreate({ id: Number(result.insertId), domain, alias });
   checkCampaignPatternsAfterResponse(linkDestinations(Number(result.insertId), input.url));
 
   return {
