@@ -5,9 +5,15 @@ import { TRPCError } from "@trpc/server";
 import { parseScrapedPage } from "@/server/lib/metadata";
 import { ServerTiming } from "@/server/lib/server-timing";
 
-import { USER_MSG_UNSAFE, assertUrlSafe, assertUrlSafeFast, runPreLLMChecks } from "./index";
+import {
+  USER_MSG_UNSAFE,
+  assertUrlSafe,
+  assertUrlSafeFast,
+  canDeferLlmCheck,
+  runPreLLMChecks,
+} from "./index";
 
-import type { PreLLMCheckDeps, UrlSafetyDeps } from "./index";
+import type { PreLLMCheckDeps, SafetyAccount, UrlSafetyDeps } from "./index";
 
 const PAGE = parseScrapedPage(
   "<html><head><title>Example</title></head><body><p>Hello</p></body></html>",
@@ -365,5 +371,38 @@ describe("assertUrlSafeFast", () => {
 
     expect(error?.code).toBe("BAD_REQUEST");
     expect(error?.message).toBe(result.userMessage);
+  });
+});
+
+describe("canDeferLlmCheck", () => {
+  const NOW = new Date("2026-11-26T12:00:00Z");
+  const daysAgo = (days: number) => new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000);
+  const account = (overrides: Partial<SafetyAccount>): SafetyAccount => ({
+    plan: "free",
+    isTeam: false,
+    createdAt: async () => daysAgo(30),
+    ...overrides,
+  });
+
+  test("defers for paying and team accounts without looking up their age", async () => {
+    const createdAt = mock(async () => daysAgo(0));
+    expect(await canDeferLlmCheck(account({ plan: "pro", createdAt }), NOW)).toBe(true);
+    expect(await canDeferLlmCheck(account({ plan: "ultra", createdAt }), NOW)).toBe(true);
+    expect(await canDeferLlmCheck(account({ isTeam: true, createdAt }), NOW)).toBe(true);
+    expect(createdAt).not.toHaveBeenCalled();
+  });
+
+  test("defers for free accounts from 7 days old", async () => {
+    expect(await canDeferLlmCheck(account({ createdAt: async () => daysAgo(7) }), NOW)).toBe(true);
+    expect(await canDeferLlmCheck(account({ createdAt: async () => daysAgo(400) }), NOW)).toBe(
+      true,
+    );
+  });
+
+  test("keeps the full check for free accounts younger than 7 days or of unknown age", async () => {
+    expect(await canDeferLlmCheck(account({ createdAt: async () => daysAgo(6.9) }), NOW)).toBe(
+      false,
+    );
+    expect(await canDeferLlmCheck(account({ createdAt: async () => null }), NOW)).toBe(false);
   });
 });
