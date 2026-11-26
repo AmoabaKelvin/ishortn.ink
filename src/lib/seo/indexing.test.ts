@@ -65,6 +65,11 @@ describe("isShortLinkPath", () => {
     expect(isShortLinkPath("/llms.txt")).toBe(false);
   });
 
+  test("never treats the social image folder as a short link", () => {
+    expect(isShortLinkPath("/social")).toBe(false);
+    expect(isShortLinkPath("/social/ishortn-mark.png")).toBe(false);
+  });
+
   test("knows every top-level route under src/app", () => {
     const appDir = join(import.meta.dir, "../../app");
     const interstitials = [
