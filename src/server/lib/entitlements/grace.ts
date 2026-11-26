@@ -1,6 +1,5 @@
 import { and, eq, gt, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 
-import PlanGraceEmail from "@/emails/plan-grace";
 import {
   describeOverPlanFeature,
   dueGraceEmail,
@@ -30,7 +29,7 @@ import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, team, user } from "@/server/db/schema";
-import { resend } from "@/server/lib/notifications/resend-client";
+import { getResend } from "@/server/lib/notifications/resend-client";
 import { EMAIL_FROM } from "@/server/lib/notifications/send-email";
 
 import {
@@ -703,7 +702,7 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
 type PendingEmail = {
   to: string;
   subject: string;
-  react: ReturnType<typeof PlanGraceEmail>;
+  props: PlanGraceEmailProps;
   /** Moves the row to this email's stage; false when another run already did. */
   claim: () => Promise<boolean>;
   /** Undoes the claim after a failed send, so the next run retries it. */
@@ -895,7 +894,7 @@ export async function sendDueGraceEmails(options: {
     pending.push({
       to: email,
       subject: message.subject,
-      react: PlanGraceEmail(message.props),
+      props: message.props,
       claim: async () => {
         const [result] = await db
           .update(user)
@@ -962,7 +961,7 @@ export async function sendDueGraceEmails(options: {
       pending.push({
         to: row.ownerEmail,
         subject,
-        react: PlanGraceEmail(props),
+        props,
         claim: async () => {
           const [result] = await db
             .update(team)
@@ -980,7 +979,12 @@ export async function sendDueGraceEmails(options: {
     }
   }
 
-  if (!resend || pending.length === 0) return 0;
+  if (pending.length === 0) return 0;
+  const resend = await getResend();
+  if (!resend) return 0;
+  // Imported here, not at the top: the template pulls React into every route that imports this
+  // module (API auth, workspace context), and only this path renders it.
+  const { default: PlanGraceEmail } = await import("@/emails/plan-grace");
 
   // Claimed before sending, so concurrent runs (batched first requests, the
   // webhook and the cron) never send the same stage twice.
@@ -998,7 +1002,7 @@ export async function sendDueGraceEmails(options: {
           from: EMAIL_FROM,
           to: email.to,
           subject: email.subject,
-          react: email.react,
+          react: PlanGraceEmail(email.props),
         })),
       ));
     } catch (err) {

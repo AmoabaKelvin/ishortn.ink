@@ -1,7 +1,7 @@
 import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
 
-import { resend } from "./resend-client";
+import { getResend } from "./resend-client";
 import { isEmailSuppressed } from "./suppression";
 
 import type { UnsubscribeHeaders } from "./unsubscribe";
@@ -88,6 +88,6 @@ export async function deliverEmail(
 
 const log = logger.child({ component: "email" });
 
-export function sendEmail(input: SendEmailInput): Promise<boolean> {
-  return deliverEmail(resend, log, input, isEmailSuppressed);
+export async function sendEmail(input: SendEmailInput): Promise<boolean> {
+  return deliverEmail(await getResend(), log, input, isEmailSuppressed);
 }

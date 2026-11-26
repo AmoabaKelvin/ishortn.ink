@@ -6,8 +6,8 @@ import { socialMediaAgents } from "@/lib/constants/app";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { getClientIp, getRequestGeo } from "@/lib/platform";
 import { noIndexMetadata } from "@/lib/seo/indexing";
+import { findLinkByAlias } from "@/middlewares/record-click";
 import { getLinkStateRoute, resolveShortLink } from "@/middlewares/resolve-link";
-import { findLinkByAlias } from "@/server/api/routers/link/link.service";
 import { toPublicLink } from "@/server/api/routers/link/utils";
 
 import CloakedPage from "../cloaked/[url]/page";
