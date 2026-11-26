@@ -9,6 +9,7 @@ import { scrapePageForSafetyCheck } from "@/server/lib/metadata";
 import { checkBlocklist } from "./blocklist";
 import { checkGoogleSafeBrowsing } from "./google-safe-browsing";
 import { INVALID_URL_REASON, runHeuristicChecks } from "./heuristics";
+import { findLookalikeBrand } from "./lookalike-host";
 import { PAYING_NOTE } from "./rescan/utils";
 import { isSharedHostTenant } from "./shared-hosts";
 import { hasSafeVerdict, storeSafeVerdict } from "./verdict-cache";
@@ -170,6 +171,25 @@ const NEW_ACCOUNT_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const CREDENTIAL_FORM_REASON = "phishing-check:credential-form";
 export const LLM_CHECK_REASON = "phishing-check:llm";
+export const LOOKALIKE_HOST_REASON = "phishing-check:lookalike-host";
+
+function isPayingAccount(account: SafetyAccount): boolean {
+  return account.isTeam || account.plan !== "free";
+}
+
+/** A destination host posing as a card, bank or payment brand (see `findLookalikeBrand`). */
+function lookalikeHostDetails(url: string): string | null {
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return null;
+  }
+  const brand = findLookalikeBrand(host);
+  return brand
+    ? `Host ${host} looks like a "${brand}" brand site but is not its official domain`
+    : null;
+}
 
 async function prepareLLMInput(
   url: string,
@@ -389,12 +409,31 @@ export async function assertUrlSafe(
     return reject("blocked-pre-llm", preLLMResult.userMessage);
   }
 
+  // Free accounts can't create a lookalike link; anyone else (or an unknown account) gets it
+  // flagged for review, unless the page rules below reject it outright.
+  const lookalike = lookalikeHostDetails(url);
+  if (lookalike && deps.account && !isPayingAccount(deps.account)) {
+    log.warn({ url, reason: LOOKALIKE_HOST_REASON }, "link blocked (lookalike host)");
+    return reject("blocked-lookalike-host", USER_MSG_SUSPICIOUS);
+  }
+
   const input = await llmInput;
   // Only reachable if the pre-LLM checks skipped the heuristics; never let such a URL through.
   if (input.kind === "heuristic-block") return reject("blocked-heuristics", USER_MSG_SUSPICIOUS);
 
   const verdict = await checkPage(url, input, deps, timings);
   if (verdict.unsafe) return reject(verdict.outcome, verdict.unsafe.userMessage);
+  if (lookalike) {
+    done("flagged-lookalike-host");
+    return {
+      outcome: "flagged-lookalike-host",
+      followUp: {
+        kind: "review",
+        reason: LOOKALIKE_HOST_REASON,
+        details: deps.account ? lookalike + PAYING_NOTE : lookalike,
+      },
+    };
+  }
   done(verdict.outcome);
   return { outcome: verdict.outcome, followUp: verdict.followUp };
 }
@@ -437,6 +476,14 @@ export async function checkUrlWithLlm(
   const deps = withDefaults(options);
   const timings: SafetyTimings = {};
   const done = safetyLogger(url, "after-response", timings);
+  const { account } = options;
+
+  // Deterministic, so the page fetch and the LLM add nothing.
+  const lookalike = lookalikeHostDetails(url);
+  if (lookalike) {
+    done("lookalike-host");
+    return unsafeAction(url, account, LOOKALIKE_HOST_REASON, lookalike);
+  }
 
   const input = await prepareLLMInput(url, deps.scrape, deps.readVerdict, timings);
   // The fast checks rejected this URL already, so no link exists for it.
@@ -449,9 +496,16 @@ export async function checkUrlWithLlm(
   done(verdict.outcome);
   if (!verdict.unsafe) return verdict.followUp;
 
-  const { reason, details } = verdict.unsafe;
-  const { account } = options;
-  if (account.isTeam || account.plan !== "free") {
+  return unsafeAction(url, account, verdict.unsafe.reason, verdict.unsafe.details);
+}
+
+function unsafeAction(
+  url: string,
+  account: SafetyAccount,
+  reason: string,
+  details: string,
+): SafetyAction {
+  if (isPayingAccount(account)) {
     log.warn({ url, reason }, "link flagged after creation (paying account)");
     return { kind: "review", reason, details: details + PAYING_NOTE };
   }
