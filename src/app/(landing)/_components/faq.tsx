@@ -3,7 +3,10 @@ import { landingPageCopy } from "@/lib/copy/landing-page";
 import { SiteIcon } from "./site-icon";
 import { Eyebrow, Section, SectionHeading } from "./site-primitives";
 
-type FaqEntry = { q: string; a: string };
+import type { ReactNode } from "react";
+
+// `a` is the plain-text answer (also used for FAQPage JSON-LD); `body` renders it with links.
+type FaqEntry = { q: string; a: string; body?: ReactNode };
 
 // Same source as the homepage FAQ JSON-LD, so the schema matches what's on the page.
 const defaultFaqs: FaqEntry[] = landingPageCopy.faq.map((f) => ({ q: f.question, a: f.answer }));
@@ -43,7 +46,9 @@ export const Faq = ({
               className="size-5 shrink-0 text-neutral-600 transition-transform group-open:rotate-45 motion-reduce:transition-none"
             />
           </summary>
-          <p className="max-w-[70ch] text-pretty pb-6 pr-10 text-base text-neutral-600">{it.a}</p>
+          <p className="max-w-[70ch] text-pretty pb-6 pr-10 text-base text-neutral-600">
+            {it.body ?? it.a}
+          </p>
         </details>
       ))}
     </div>

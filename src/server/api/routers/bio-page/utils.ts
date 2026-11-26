@@ -42,6 +42,7 @@ export const RESERVED_BIO_SLUGS = new Set([
   "solutions",
   "qr-code-generator",
   "utm-builder",
+  "url-expander",
   "whatsapp-link-generator",
   "gerador-de-link-whatsapp",
   "admin",

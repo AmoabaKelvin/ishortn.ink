@@ -117,7 +117,7 @@ export async function getLinkStateRoute(
   return null;
 }
 
-function appendUtmParams(baseUrl: string, utmParams: Link["utmParams"]): string {
+export function appendUtmParams(baseUrl: string, utmParams: Link["utmParams"]): string {
   if (!utmParams) return baseUrl;
 
   try {

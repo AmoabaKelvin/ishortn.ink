@@ -82,6 +82,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: absoluteUrl("/url-expander"),
+      lastModified: "2026-11-26",
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
       url: absoluteUrl("/extension"),
       lastModified: "2026-11-25",
       changeFrequency: "monthly",

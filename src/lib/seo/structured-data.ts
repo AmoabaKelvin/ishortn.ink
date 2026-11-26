@@ -123,6 +123,7 @@ export function createWebApplicationSchema(app: {
   description: string;
   /** BCP 47 tag, for pages not in English. */
   inLanguage?: string;
+  applicationCategory?: string;
 }) {
   return {
     "@context": "https://schema.org",
@@ -131,7 +132,7 @@ export function createWebApplicationSchema(app: {
     url: app.url,
     description: app.description,
     ...(app.inLanguage && { inLanguage: app.inLanguage }),
-    applicationCategory: "BusinessApplication",
+    applicationCategory: app.applicationCategory ?? "BusinessApplication",
     operatingSystem: "Any",
     browserRequirements: "Requires JavaScript",
     isAccessibleForFree: true,

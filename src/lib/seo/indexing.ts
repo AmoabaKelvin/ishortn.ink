@@ -21,6 +21,7 @@ const MARKETING_PATHS = new Set([
   "/features",
   "/qr-code-generator",
   "/utm-builder",
+  "/url-expander",
   "/extension",
   "/whatsapp-link-generator",
   "/gerador-de-link-whatsapp",
@@ -102,6 +103,7 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "stats",
   "teams",
   "terms",
+  "url-expander",
   "utm-builder",
   "whatsapp-link-generator",
 ]);

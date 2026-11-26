@@ -37,6 +37,12 @@ const tools: { href: string; title: string; body: string; icon: ReactNode }[] = 
     body: "Make a wa.me link with your message already typed in, plus a QR code to print.",
     icon: <SiteIcon name="message-circle-filled" />,
   },
+  {
+    href: "/url-expander",
+    title: "URL expander",
+    body: "See every redirect and the final page behind a short link, with a safety check.",
+    icon: <SiteIcon name="link" />,
+  },
 ];
 
 const focusRing =
@@ -47,9 +53,9 @@ export const FreeTools = () => (
     <SectionHeading
       eyebrow={<Eyebrow icon={<SiteIcon name="apps-filled" />}>Free tools</Eyebrow>}
       title="Free tools, no account needed"
-      subtitle="Each one runs in your browser. Sign up when you want to track clicks."
+      subtitle="Use them as often as you like. Sign up when you want to track clicks."
     />
-    <ul className="mt-14 grid gap-4 md:grid-cols-3">
+    <ul className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {tools.map((tool) => (
         <li key={tool.href} className="flex">
           <Link

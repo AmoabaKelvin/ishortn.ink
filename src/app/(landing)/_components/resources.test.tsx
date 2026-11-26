@@ -34,11 +34,12 @@ const hrefs = (html: string) =>
 const guidesOn = (now: string) => hrefs(render(<Guides now={new Date(now)} />));
 
 describe("homepage resources", () => {
-  it("links the three free tools", () => {
+  it("links the four free tools", () => {
     expect(hrefs(render(<FreeTools />))).toEqual([
       "/qr-code-generator",
       "/utm-builder",
       "/whatsapp-link-generator",
+      "/url-expander",
     ]);
   });
 

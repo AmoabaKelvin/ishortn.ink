@@ -85,6 +85,13 @@ export const pageCards = {
     visual: "links",
     visualLabel: "example.com/sale?utm_source=newsletter&utm_medium=email&utm_campaign=spring",
   }),
+  urlExpander: card({
+    eyebrow: "Free tool",
+    title: "URL expander",
+    subtitle: "Paste a short link to see where it really goes.",
+    visual: "links",
+    visualLabel: "Final page: https://example.com/spring-launch",
+  }),
   extension: card({
     eyebrow: "Browser extension",
     title: "iShortn for Chrome",
