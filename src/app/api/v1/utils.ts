@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
 import { effectivePlan, graceUsagePlan } from "@/lib/billing/entitlements";
@@ -14,7 +14,7 @@ import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { domainBeyondPlanMessage, getUsableCustomDomains } from "@/server/api/routers/link/utils";
 import { db } from "@/server/db";
-import { customDomain, siteSettings, subscription, token, user } from "@/server/db/schema";
+import { customDomain, link, siteSettings, subscription, token, user } from "@/server/db/schema";
 import { getApiSunset } from "@/server/lib/api-access";
 import { ensurePlanChecked } from "@/server/lib/entitlements/grace";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
@@ -192,7 +192,23 @@ export async function resolveApiDomainForUser(
  * domains plus the active custom domains in their personal workspace.
  */
 export async function getApiReadableDomains(userId: string) {
-  const owned = await db
+  const owned = await personalActiveDomains(userId);
+  return [...PLATFORM_DOMAINS, ...owned.flatMap((row) => row.domain ?? [])];
+}
+
+/**
+ * getApiReadableDomains as a `link.domain` condition with the custom domains in a
+ * subquery, so the link lookup needs no separate round trip for them.
+ */
+export function apiReadableLinkDomain(userId: string) {
+  return or(
+    inArray(link.domain, PLATFORM_DOMAINS),
+    inArray(link.domain, personalActiveDomains(userId)),
+  );
+}
+
+function personalActiveDomains(userId: string) {
+  return db
     .select({ domain: customDomain.domain })
     .from(customDomain)
     .where(
@@ -202,7 +218,6 @@ export async function getApiReadableDomains(userId: string) {
         isNull(customDomain.teamId),
       ),
     );
-  return [...PLATFORM_DOMAINS, ...owned.flatMap((row) => row.domain ?? [])];
 }
 
 /**
