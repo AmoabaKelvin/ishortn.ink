@@ -190,10 +190,13 @@ export function runHeuristicChecks(url: string): HeuristicResult {
 // Open redirectors phishing mail wraps its links in, so the sender's own domain is what the
 // victim's mail filter sees. Paths are matched as prefixes.
 export const OPEN_REDIRECTORS: { host: RegExp; paths: string[] }[] = [
-  { host: /^(www\.)?google\.(com?\.)?[a-z]{2,3}$/, paths: ["/url", "/amp/"] },
+  {
+    host: /^(www\.)?google\.(com?\.)?[a-z]{2,3}$/,
+    paths: ["/url", "/amp/", "/aclk", "/interstitial"],
+  },
   { host: /^(www\.)?bing\.com$/, paths: ["/ck/"] },
   { host: /^(www\.)?duckduckgo\.com$/, paths: ["/l/"] },
-  { host: /^(l|lm)\.facebook\.com$/, paths: ["/l.php"] },
+  { host: /^((l|lm|m|www)\.)?facebook\.com$/, paths: ["/l.php"] },
   { host: /^l\.instagram\.com$/, paths: ["/"] },
   { host: /^(www\.|m\.)?youtube\.com$/, paths: ["/redirect"] },
   { host: /^(www\.)?linkedin\.com$/, paths: ["/redir/"] },

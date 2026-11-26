@@ -15,6 +15,7 @@ import { checkGoogleWebRisk } from "./web-risk";
 import { isWellKnownHost } from "./well-known-hosts";
 
 import type { ScrapedMetadata } from "@/server/lib/metadata";
+import type { ServerTiming } from "@/server/lib/server-timing";
 
 const log = logger.child({ component: "phishing" });
 
@@ -22,6 +23,15 @@ const log = logger.child({ component: "phishing" });
 type SafetyTimings = Partial<
   Record<"deterministicMs" | "safeBrowsingMs" | "verdictCacheMs" | "scrapeMs" | "llmMs", number>
 >;
+
+/** Server-Timing metric name for each safety step. */
+const SERVER_TIMING_STEPS: ReadonlyArray<readonly [keyof SafetyTimings, string]> = [
+  ["deterministicMs", "deterministic"],
+  ["safeBrowsingMs", "safebrowsing"],
+  ["verdictCacheMs", "verdictcache"],
+  ["scrapeMs", "scrape"],
+  ["llmMs", "llm"],
+];
 
 type CheckResult = {
   blocked: boolean;
@@ -119,6 +129,21 @@ export async function runPreLLMChecks(
   return { blocked: false, reason: "", userMessage: "" };
 }
 
+/** Reports `safety` (with the outcome) and the durations of the steps that finished. */
+function addSafetyTimings(
+  serverTiming: ServerTiming | undefined,
+  outcome: string,
+  totalMs: number,
+  timings: SafetyTimings,
+): void {
+  if (!serverTiming) return;
+  serverTiming.add("safety", totalMs, outcome);
+  for (const [key, name] of SERVER_TIMING_STEPS) {
+    const ms = timings[key];
+    if (ms !== undefined) serverTiming.add(name, ms);
+  }
+}
+
 /** What the LLM step needs, prepared while the pre-LLM checks run. Never rejects. */
 type LLMInput =
   | { kind: "well-known" }
@@ -214,14 +239,22 @@ function defaultLLMDeps(deps: UrlSafetyDeps) {
  *
  * The pre-LLM checks always run. The scrape and LLM call are skipped for well-known hosts and
  * for URLs the LLM cleared in the last 24 h; the blocklist and Safe Browsing still cover those.
+ * `serverTiming` receives `safety` (with the outcome) and the durations of the steps that finished.
  */
-export async function assertUrlSafe(url: string, deps: UrlSafetyDeps = {}): Promise<void> {
+export async function assertUrlSafe(
+  url: string,
+  deps: UrlSafetyDeps = {},
+  serverTiming?: ServerTiming,
+): Promise<void> {
   const { preChecks = runPreLLMChecks } = deps;
   const { scrape, detect, readVerdict, rememberVerdict } = defaultLLMDeps(deps);
   const started = Date.now();
   const timings: SafetyTimings = {};
-  const done = (outcome: string) =>
-    log.info({ url, outcome, totalMs: Date.now() - started, ...timings }, "url safety checked");
+  const done = (outcome: string) => {
+    const totalMs = Date.now() - started;
+    log.info({ url, outcome, totalMs, ...timings }, "url safety checked");
+    addSafetyTimings(serverTiming, outcome, totalMs, timings);
+  };
 
   // The page fetch doesn't depend on the pre-LLM checks, so it runs alongside them. Its result
   // is discarded if they block the URL.
@@ -260,19 +293,20 @@ export async function assertUrlSafe(url: string, deps: UrlSafetyDeps = {}): Prom
 /**
  * The part of `assertUrlSafe` that runs before a link is written: heuristics, the blocklist and
  * Safe Browsing / Web Risk. Pair it with `checkUrlWithLlmAfterResponse` once the link exists.
+ * `serverTiming` gets the same metrics as `assertUrlSafe`, without `scrape` or `llm`.
  */
 export async function assertUrlSafeFast(
   url: string,
   preChecks: typeof runPreLLMChecks = runPreLLMChecks,
+  serverTiming?: ServerTiming,
 ): Promise<void> {
   const started = Date.now();
   const timings: SafetyTimings = {};
   const result = await preChecks(url, timings);
   const outcome = result.blocked ? "blocked-pre-llm" : "passed-pre-llm";
-  log.info(
-    { url, part: "fast", outcome, totalMs: Date.now() - started, ...timings },
-    "url safety checked",
-  );
+  const totalMs = Date.now() - started;
+  log.info({ url, part: "fast", outcome, totalMs, ...timings }, "url safety checked");
+  addSafetyTimings(serverTiming, outcome, totalMs, timings);
   if (result.blocked) {
     log.warn({ url, reason: result.reason }, "link blocked (pre-LLM)");
     throw new TRPCError({ code: "BAD_REQUEST", message: result.userMessage });

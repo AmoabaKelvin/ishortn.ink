@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { beforeAll, describe, expect, it } from "bun:test";
 
 import { resolveSitemap } from "next/dist/build/webpack/loaders/metadata/resolve-route-data";
 
@@ -10,8 +10,13 @@ import { solutionList } from "@/lib/seo/solutions";
 import sitemap from "./sitemap";
 
 describe("sitemap", () => {
-  // Each call renders every blog post through remark (~4s under a full parallel run), so two calls
-  // exceed bun's 5s default.
+  // Each call renders every blog post through remark (~4s under a full parallel run), so the
+  // read-only tests share one result and the calls get a longer timeout than bun's 5s default.
+  let entries: Awaited<ReturnType<typeof sitemap>>;
+  beforeAll(async () => {
+    entries = await sitemap();
+  }, 30_000);
+
   it("returns the same lastModified values on every call", async () => {
     const first = await sitemap();
     await Bun.sleep(5);
@@ -20,7 +25,6 @@ describe("sitemap", () => {
   }, 30_000);
 
   it("lists the compare hub and dates each compare page by its prices check", async () => {
-    const entries = await sitemap();
     const urls = entries.map((entry) => entry.url);
     expect(urls).toContain("https://ishortn.ink/compare");
 
@@ -31,17 +35,16 @@ describe("sitemap", () => {
   });
 
   it("lists the UTM builder", async () => {
-    const urls = (await sitemap()).map((entry) => entry.url);
+    const urls = entries.map((entry) => entry.url);
     expect(urls).toContain("https://ishortn.ink/utm-builder");
   });
 
   it("lists the Chrome extension page", async () => {
-    const urls = (await sitemap()).map((entry) => entry.url);
+    const urls = entries.map((entry) => entry.url);
     expect(urls).toContain("https://ishortn.ink/extension");
   });
 
   it("lists the WhatsApp link generator in English and Portuguese, each with both alternates", async () => {
-    const entries = await sitemap();
     const languages = {
       en: "https://ishortn.ink/whatsapp-link-generator",
       "pt-BR": "https://ishortn.ink/gerador-de-link-whatsapp",
@@ -60,7 +63,6 @@ describe("sitemap", () => {
   });
 
   it("lists the solutions hub and dates each solution page by its last copy update", async () => {
-    const entries = await sitemap();
     expect(entries.map((entry) => entry.url)).toContain("https://ishortn.ink/solutions");
 
     for (const solution of solutionList) {
@@ -70,7 +72,7 @@ describe("sitemap", () => {
   });
 
   it("dates the changelog by its newest entry", async () => {
-    const [entries, changelog] = await Promise.all([sitemap(), getChangelogEntries()]);
+    const changelog = await getChangelogEntries();
     const entry = entries.find((e) => e.url === "https://ishortn.ink/changelog");
     const newest = changelog[0]?.date.slice(0, 10);
     expect(newest).toBeDefined();

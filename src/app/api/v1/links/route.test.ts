@@ -11,6 +11,7 @@ import { INVALID_URL_MESSAGE } from "@/lib/utils/destination-url";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { assertUrlSafeFast, checkUrlWithLlm, USER_MSG_UNSAFE } from "@/server/lib/phishing";
+import { ServerTiming } from "@/server/lib/server-timing";
 import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
 
 import { authenticateToken } from "../utils";
@@ -81,6 +82,13 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
   async function storedCount() {
     const row = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
     return row?.monthlyLinkCount;
+  }
+
+  function timingNames(response: Response) {
+    return response.headers
+      .get("server-timing")
+      ?.split(", ")
+      .map((metric) => metric.split(";")[0]);
   }
 
   beforeEach(() => reset(0));
@@ -249,6 +257,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     expect(links.map((l) => l.url)).toEqual([TARGET_URL]);
     expect(await storedCount()).toBe(1);
   });
+
   describe("URL safety on create", () => {
     const PHISHING_URL = "https://route-test-phish.example/signin";
 
@@ -302,6 +311,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
         await apiToken(),
         { url: PHISHING_URL },
         "api",
+        new ServerTiming(),
         llm.deps,
       );
       expect(created.url).toBe(PHISHING_URL);
@@ -318,7 +328,13 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     test("flags the link for review on a paying account instead of blocking it", async () => {
       await subscribe({ status: "active" });
       const llm = flaggingLlm();
-      await createTokenLink(await apiToken(), { url: PHISHING_URL }, "api", llm.deps);
+      await createTokenLink(
+        await apiToken(),
+        { url: PHISHING_URL },
+        "api",
+        new ServerTiming(),
+        llm.deps,
+      );
 
       await llm.settled();
 
@@ -349,8 +365,14 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
         },
       });
       const token = await apiToken();
-      await createTokenLink(token, { url: PHISHING_URL }, "api", failing(true));
-      await createTokenLink(token, { url: PHISHING_URL }, "api", failing(false));
+      await createTokenLink(token, { url: PHISHING_URL }, "api", new ServerTiming(), failing(true));
+      await createTokenLink(
+        token,
+        { url: PHISHING_URL },
+        "api",
+        new ServerTiming(),
+        failing(false),
+      );
 
       expect(await Promise.all(pending)).toEqual(["scrape-failed", "llm-failed"]);
       const rows = await db.select().from(schema.link).where(eq(schema.link.userId, USER_ID));
@@ -359,15 +381,21 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
 
     test("rejects a Safe Browsing hit with 400 before the insert or the LLM", async () => {
       const afterCreate: string[] = [];
-      const create = createTokenLink(await apiToken(), { url: PHISHING_URL }, "api", {
-        checkUrl: (url) =>
-          assertUrlSafeFast(url, async () => ({
-            blocked: true,
-            reason: "Google Safe Browsing flagged this URL: SOCIAL_ENGINEERING",
-            userMessage: USER_MSG_UNSAFE,
-          })),
-        checkUrlAfterCreate: (_linkId, url) => void afterCreate.push(url),
-      });
+      const create = createTokenLink(
+        await apiToken(),
+        { url: PHISHING_URL },
+        "api",
+        new ServerTiming(),
+        {
+          checkUrl: (url) =>
+            assertUrlSafeFast(url, async () => ({
+              blocked: true,
+              reason: "Google Safe Browsing flagged this URL: SOCIAL_ENGINEERING",
+              userMessage: USER_MSG_UNSAFE,
+            })),
+          checkUrlAfterCreate: (_linkId, url) => void afterCreate.push(url),
+        },
+      );
 
       expect(create).rejects.toMatchObject({ code: "BAD_REQUEST", message: USER_MSG_UNSAFE });
       await create.catch(() => undefined);
@@ -393,5 +421,49 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
       }
       expect(await storedCount()).toBe(0);
     });
+  });
+
+  test("reports the create steps in Server-Timing", async () => {
+    const response = await createLink();
+    expect(response.status).toBe(201);
+    expect(timingNames(response)).toEqual(
+      expect.arrayContaining(["auth", "domain", "alias", "safety", "db", "read", "total"]),
+    );
+    // The scrape + LLM check runs after the response.
+    expect(timingNames(response)).not.toContain("scrape");
+    expect(timingNames(response)).not.toContain("llm");
+    expect(response.headers.get("server-timing")).not.toContain("localhost");
+  });
+
+  test("reports Server-Timing on a plan-limit refusal", async () => {
+    await reset(30);
+    const response = await createLink({ alias: "route-test-limit" });
+    expect(response.status).toBe(403);
+    const names = timingNames(response);
+    expect(names).toEqual(expect.arrayContaining(["auth", "domain", "alias", "safety", "db"]));
+    expect(names).not.toContain("read");
+  });
+
+  test("reports Server-Timing when the safety check blocks the URL", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/v1/links", {
+        method: "POST",
+        headers: { "x-api-key": API_KEY, "content-type": "application/json" },
+        body: JSON.stringify({ url: "http://192.0.2.10/login" }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    const header = response.headers.get("server-timing");
+    expect(header).toContain("safety;dur=");
+    expect(header).toContain('desc="blocked-pre-llm"');
+    expect(timingNames(response)).not.toContain("db");
+  });
+
+  test("reports auth and total in Server-Timing for a missing API key", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/v1/links", { method: "POST", body: "{}" }),
+    );
+    expect(response.status).toBe(401);
+    expect(timingNames(response)).toEqual(["auth", "total"]);
   });
 });
