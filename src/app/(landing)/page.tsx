@@ -21,6 +21,7 @@ import { HowItWorks } from "./_components/how-it-works";
 import { Pricing } from "./_components/pricing";
 import { QRSection } from "./_components/qr-section";
 import { FreeTools, Guides } from "./_components/resources";
+import { Testimonial } from "./_components/testimonial";
 
 import type { Metadata } from "next";
 
@@ -78,6 +79,7 @@ export default function HomePage() {
       <Features />
       <DashboardPreview />
       <QRSection />
+      <Testimonial />
       <Pricing promo={getActivePromo()} />
       <FreeTools />
       <Guides />

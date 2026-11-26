@@ -18,6 +18,7 @@ import { Footer } from "../_components/footer";
 import { Header } from "../_components/header";
 import { Pricing } from "../_components/pricing";
 import { Eyebrow, h1Class, leadClass, Section } from "../_components/site-primitives";
+import { Testimonial } from "../_components/testimonial";
 
 import type { Metadata } from "next";
 
@@ -103,6 +104,8 @@ export default function PricingPage() {
       </Section>
 
       <Pricing showHeading={false} promo={getActivePromo()} />
+
+      <Testimonial />
 
       <Faq faqs={pricingFaqs} />
 
