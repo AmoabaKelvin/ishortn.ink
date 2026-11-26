@@ -47,5 +47,6 @@ export function recordSafetyFollowUp(linkId: number, result: UrlSafetyResult | v
           .execute()
       : db.insert(linkSafetyRecheck).values({ linkId, reason: followUp.reason }).execute();
 
-  void runBackgroundTask(write);
+  // Off-platform (tests, scripts) there is no waitUntil; the write still runs.
+  void runBackgroundTask(write).catch(() => undefined);
 }

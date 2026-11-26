@@ -701,6 +701,13 @@
       "when": 1795658927092,
       "tag": "0099_link_safety_recheck",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "5",
+      "when": 1795660351902,
+      "tag": "0100_link_safety_recheck_progress",
+      "breakpoints": true
     }
   ]
 }
