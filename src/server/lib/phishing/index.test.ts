@@ -6,10 +6,12 @@ import { parseScrapedPage } from "@/server/lib/metadata";
 import { ServerTiming } from "@/server/lib/server-timing";
 
 import {
+  LOOKALIKE_HOST_REASON,
   USER_MSG_UNSAFE,
   assertUrlSafe,
   assertUrlSafeFast,
   canDeferLlmCheck,
+  checkUrlWithLlm,
   runPreLLMChecks,
 } from "./index";
 
@@ -404,5 +406,57 @@ describe("canDeferLlmCheck", () => {
       false,
     );
     expect(await canDeferLlmCheck(account({ createdAt: async () => null }), NOW)).toBe(false);
+  });
+});
+
+describe("lookalike bank and payment hosts", () => {
+  const url = "https://lnternationalcard.servicesportal.im/login";
+  const account = (overrides: Partial<SafetyAccount>): SafetyAccount => ({
+    plan: "free",
+    isTeam: false,
+    createdAt: async () => null,
+    ...overrides,
+  });
+
+  test("assertUrlSafe rejects one from a free account", async () => {
+    const deps = fakeDeps();
+    const error = await rejection(assertUrlSafe(url, { ...deps, account: account({}) }));
+
+    expect(error?.code).toBe("BAD_REQUEST");
+    expect(deps.detect).not.toHaveBeenCalled();
+  });
+
+  test("assertUrlSafe flags one from a paying or team account for review", async () => {
+    for (const overrides of [{ plan: "pro" as const }, { isTeam: true }]) {
+      const result = await assertUrlSafe(url, { ...fakeDeps(), account: account(overrides) });
+      expect(result.followUp).toMatchObject({ kind: "review", reason: LOOKALIKE_HOST_REASON });
+    }
+  });
+
+  test("assertUrlSafe still rejects a paying account's lookalike the LLM flags", async () => {
+    const deps = fakeDeps({ detect: mock(async (u: string) => ({ url: u, phishing: true })) });
+    const error = await rejection(
+      assertUrlSafe(url, { ...deps, account: account({ plan: "pro" }) }),
+    );
+    expect(error?.message).toBe(USER_MSG_UNSAFE);
+  });
+
+  test("checkUrlWithLlm blocks free accounts and flags paying ones without fetching", async () => {
+    const deps = fakeDeps();
+    const free = await checkUrlWithLlm(url, { ...deps, account: account({}) });
+    const paying = await checkUrlWithLlm(url, { ...deps, account: account({ plan: "ultra" }) });
+
+    expect(free).toMatchObject({ kind: "block", reason: LOOKALIKE_HOST_REASON });
+    expect(paying).toMatchObject({ kind: "review", reason: LOOKALIKE_HOST_REASON });
+    expect(deps.scrape).not.toHaveBeenCalled();
+    expect(deps.detect).not.toHaveBeenCalled();
+  });
+
+  test("leaves the official domain alone", async () => {
+    const result = await assertUrlSafe("https://www.icscards.nl/", {
+      ...fakeDeps(),
+      account: account({}),
+    });
+    expect(result).toEqual({ outcome: "allowed", followUp: undefined });
   });
 });
