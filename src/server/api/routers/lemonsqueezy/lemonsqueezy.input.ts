@@ -1,12 +1,25 @@
 import { z } from "zod";
 
+import { ATTRIBUTION_VALUE_MAX_LENGTH } from "@/lib/billing/attribution";
 import { PAUSE_MONTH_OPTIONS } from "@/lib/billing/plans";
+
+const attributionValue = z.string().max(ATTRIBUTION_VALUE_MAX_LENGTH).optional();
 
 export const createCheckoutOrUpdateInput = z.object({
   plan: z.enum(["pro", "ultra"]),
   interval: z.enum(["monthly", "annual"]).default("monthly"),
   /** Where the checkout was started from, logged to `CheckoutStart`. */
-  source: z.string().max(64).optional(),
+  source: attributionValue,
+  /** Campaign tags carried from the pricing page, passed to the checkout's custom data. */
+  utm: z
+    .object({
+      utm_source: attributionValue,
+      utm_medium: attributionValue,
+      utm_campaign: attributionValue,
+      utm_term: attributionValue,
+      utm_content: attributionValue,
+    })
+    .optional(),
 });
 
 export type CreateCheckoutOrUpdateInput = z.infer<typeof createCheckoutOrUpdateInput>;
