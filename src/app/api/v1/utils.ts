@@ -59,6 +59,11 @@ async function findToken(apiKey: string | null, kind: "api" | "extension") {
         monthlyLinkCount: user.monthlyLinkCount,
         lastLinkCountReset: user.lastLinkCountReset,
         createdAt: user.createdAt,
+        // For the default domain of link creates; a subquery, not a join, so stray extra
+        // settings rows can't multiply the token row.
+        defaultDomain: sql<
+          string | null
+        >`(select ${siteSettings.defaultDomain} from ${siteSettings} where ${siteSettings.userId} = ${token.userId} limit 1)`,
       },
       subscription,
     })
@@ -103,6 +108,7 @@ async function resolveTokenPlan({
       lastLinkCountReset: owner.lastLinkCountReset,
       createdAt: owner.createdAt,
     },
+    defaultDomain: normalizeApiDomain(owner.defaultDomain) ?? DEFAULT_PLATFORM_DOMAIN,
   };
 }
 
@@ -190,13 +196,15 @@ export async function getUserDefaultDomain(userId: string) {
  * active custom domain in the token owner's personal workspace — API links are
  * always created there (no teamId). Returns null when the requested domain is
  * not one of those; without this check a token holder could read, modify, or
- * mint links on any other account's branded domain.
+ * mint links on any other account's branded domain. Pass `defaultDomain` (from the token)
+ * to skip the settings lookup when no domain is given.
  */
 export async function resolveApiDomainForUser(
   userId: string,
   input: {
     domain?: string | null;
   },
+  defaultDomain?: string,
 ) {
   const explicitDomain = normalizeApiDomain(input.domain);
 
@@ -218,7 +226,7 @@ export async function resolveApiDomainForUser(
     return explicitDomain;
   }
 
-  return getUserDefaultDomain(userId);
+  return defaultDomain ?? getUserDefaultDomain(userId);
 }
 
 /**

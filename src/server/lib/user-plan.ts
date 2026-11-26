@@ -186,3 +186,56 @@ export async function reserveMonthlyLinkSlot(
 
   return planCtx;
 }
+
+/**
+ * reserveMonthlyLinkSlot in one statement, for callers that already know the plan (API tokens
+ * load it with the token): applies the new-month reset and counts one link in a single
+ * conditional UPDATE, so it needs no transaction and parallel requests can't overshoot the cap.
+ * Plans without a limit are not counted. Pair a failed insert with releaseMonthlyLinkSlot.
+ * Throws TRPCError("FORBIDDEN") with the user-facing message when the limit is reached.
+ */
+export async function claimMonthlyLinkSlot(
+  userId: string,
+  plan: Plan,
+  dbClient: DbClient = db,
+): Promise<void> {
+  const limit = getPlanCaps(plan).linksLimit;
+  if (limit === undefined) return;
+
+  const monthStart = getMonthStart();
+  // Same fallback as normalizeMonthlyLinkCount: a user never reset counts from sign-up.
+  const isNewMonth = or(
+    lt(user.lastLinkCountReset, monthStart),
+    and(isNull(user.lastLinkCountReset), lt(user.createdAt, monthStart)),
+  );
+  const usedThisMonth = sql`(case when ${isNewMonth} then 0 else coalesce(${user.monthlyLinkCount}, 0) end)`;
+
+  // MySQL applies SET assignments left to right and later ones see earlier results. Drizzle
+  // emits them in schema order, monthlyLinkCount before lastLinkCountReset, so the count is
+  // computed against the old reset date.
+  const [result] = await dbClient
+    .update(user)
+    .set({
+      monthlyLinkCount: sql`${usedThisMonth} + 1`,
+      lastLinkCountReset: sql`case when ${isNewMonth} then ${sql.param(new Date(), user.lastLinkCountReset)} else ${user.lastLinkCountReset} end`,
+    })
+    .where(and(eq(user.id, userId), lt(usedThisMonth, limit)));
+
+  if (result.affectedRows === 0) {
+    await recordPlanLimitHit({ userId, limitKey: "monthly_links", plan });
+    throw new TRPCError({ code: "FORBIDDEN", message: monthlyLinkLimitMessage(plan, limit) });
+  }
+}
+
+/** Gives back a slot claimMonthlyLinkSlot took when the link it was for wasn't created. */
+export async function releaseMonthlyLinkSlot(
+  userId: string,
+  plan: Plan,
+  dbClient: DbClient = db,
+): Promise<void> {
+  if (getPlanCaps(plan).linksLimit === undefined) return;
+  await dbClient
+    .update(user)
+    .set({ monthlyLinkCount: sql`greatest(coalesce(${user.monthlyLinkCount}, 0) - 1, 0)` })
+    .where(eq(user.id, userId));
+}
