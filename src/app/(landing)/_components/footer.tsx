@@ -68,7 +68,12 @@ const columns: { title: string; links: { label: string; href: string; lang?: str
 ];
 
 const socials: { label: string; href: string; icon: SiteIconName }[] = [
-  { label: "X (Twitter)", href: "https://twitter.com/kelamoaba", icon: "brand-x" },
+  { label: "iShortn on X", href: "https://x.com/ishortn_ink", icon: "brand-x" },
+  {
+    label: "iShortn on LinkedIn",
+    href: "https://www.linkedin.com/company/ishortn",
+    icon: "brand-linkedin",
+  },
   { label: "GitHub", href: "https://github.com/AmoabaKelvin/ishortn.ink", icon: "brand-github" },
   { label: "Email support", href: "mailto:support@ishortn.ink", icon: "mail" },
 ];

@@ -30,7 +30,11 @@ export const organizationSchema = {
   name: "iShortn",
   url: "https://ishortn.ink",
   logo: "https://ishortn.ink/icon.png",
-  sameAs: ["https://twitter.com/kelamoaba", "https://github.com/AmoabaKelvin/ishortn.ink"],
+  sameAs: [
+    "https://x.com/ishortn_ink",
+    "https://www.linkedin.com/company/ishortn",
+    "https://github.com/AmoabaKelvin/ishortn.ink",
+  ],
   description: SITE_DESCRIPTION,
 };
 

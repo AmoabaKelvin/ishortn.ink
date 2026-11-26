@@ -78,4 +78,12 @@ describe("softwareApplicationSchema", () => {
     expect(softwareApplicationSchema.description).toBe(organizationSchema.description);
     expect(organizationSchema.description).toContain(`Pro $${PLAN_PRICES_USD.pro} a month`);
   });
+
+  it("links the Organization to its official profiles", () => {
+    expect(organizationSchema.sameAs).toEqual([
+      "https://x.com/ishortn_ink",
+      "https://www.linkedin.com/company/ishortn",
+      "https://github.com/AmoabaKelvin/ishortn.ink",
+    ]);
+  });
 });
