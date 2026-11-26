@@ -67,7 +67,7 @@ The manifest asks for exactly three permissions and no host permissions:
 | Permission  | Why                                                                                                       |
 | ----------- | --------------------------------------------------------------------------------------------------------- |
 | `activeTab` | Read the URL of the current tab, only after you click the toolbar button or press the shortcut.           |
-| `storage`   | Keep the connection token and your auto-shorten choice (`storage.local`), and the 10-minute link cache (`storage.session`). |
+| `storage`   | Keep the connection token, your auto-shorten choice and the last account details (plan, monthly usage, domains) so the popup opens instantly (`storage.local`), and the 10-minute link cache (`storage.session`). |
 | `identity`  | Run the iShortn sign-in window and receive the token on the extension's redirect URI.                     |
 
 There are no content scripts. Requests go only to the configured iShortn base URL, which serves `/api/extension/*` with CORS for any origin, so host permissions aren't needed. The token is stored in `storage.local` (never synced), sent only in the `Authorization` header, and revoked on the server by **Sign out**. You can also revoke it from **Settings → Connected browsers** in the dashboard.
@@ -84,7 +84,7 @@ npm run preview
 # http://127.0.0.1:4173/frame.html?state=created   (popup inside a mock browser window)
 ```
 
-States: `not-connected`, `manual`, `created`, `customize`, `limit`, `unshortenable`, `unshortenable-empty`, `network-error`.
+States: `not-connected`, `manual`, `creating`, `created`, `customize`, `limit`, `unshortenable`, `unshortenable-empty`, `network-error`.
 
 `npm run screenshots` renders every state in light and dark (2x) to `store/popup-states/` and the three 1280x800 store screenshots to `store/screenshot-{1,2,3}.png`. It uses Playwright's Chromium (`npx playwright-core install chromium` if it isn't installed). On Linux the preview uses Inter, if installed, in place of `system-ui` so the renders are closer to the macOS and Windows UI fonts.
 
