@@ -4,16 +4,18 @@ import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { INVALID_URL_MESSAGE } from "@/lib/utils/destination-url";
 import { detectPhishingLink } from "@/server/api/routers/ai/ai.service";
-import { scrapeMetadata } from "@/server/lib/metadata";
+import { scrapePageForSafetyCheck } from "@/server/lib/metadata";
 
 import { checkBlocklist } from "./blocklist";
 import { checkGoogleSafeBrowsing } from "./google-safe-browsing";
 import { INVALID_URL_REASON, runHeuristicChecks } from "./heuristics";
+import { isSharedHostTenant } from "./shared-hosts";
 import { hasSafeVerdict, storeSafeVerdict } from "./verdict-cache";
 import { checkGoogleWebRisk } from "./web-risk";
 import { isWellKnownHost } from "./well-known-hosts";
 
-import type { ScrapedMetadata } from "@/server/lib/metadata";
+import type { Plan } from "@/lib/billing/plans";
+import type { PageSignals, ScrapedPage } from "@/server/lib/metadata";
 import type { ServerTiming } from "@/server/lib/server-timing";
 
 const log = logger.child({ component: "phishing" });
@@ -133,21 +135,43 @@ type LLMInput =
   | { kind: "well-known" }
   | { kind: "cached" }
   | { kind: "heuristic-block" }
-  | { kind: "scraped"; metadata: ScrapedMetadata }
+  | { kind: "scraped"; page: ScrapedPage }
   | { kind: "scrape-failed"; error: unknown };
+
+/** The account a link is created for; the credential-form rule treats new free accounts strictly. */
+export type SafetyAccount = {
+  plan: Plan;
+  isTeam: boolean;
+  /** Loaded only when a rule needs the account's age. */
+  createdAt: () => Promise<Date | null>;
+};
+
+/** Work the caller records against the link once it exists (see `recordSafetyFollowUp`). */
+export type SafetyFollowUp =
+  | { kind: "review"; reason: string; details: string }
+  | { kind: "recheck"; reason: "unverified-challenge" | "scrape-failed" };
+
+export type UrlSafetyResult = { outcome: string; followUp?: SafetyFollowUp };
 
 export type UrlSafetyDeps = {
   preChecks?: typeof runPreLLMChecks;
-  scrape?: (url: string) => Promise<ScrapedMetadata>;
+  scrape?: (url: string) => Promise<ScrapedPage>;
   detect?: typeof detectPhishingLink;
   readVerdict?: (url: string) => Promise<boolean>;
   /** Remembers a "not phishing" verdict; must not delay the response. */
   rememberVerdict?: (url: string) => void;
+  now?: () => Date;
 };
+
+export type UrlSafetyOptions = UrlSafetyDeps & { account?: SafetyAccount };
+
+const NEW_ACCOUNT_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const CREDENTIAL_FORM_REASON = "phishing-check:credential-form";
 
 async function prepareLLMInput(
   url: string,
-  scrape: (url: string) => Promise<ScrapedMetadata>,
+  scrape: (url: string) => Promise<ScrapedPage>,
   readVerdict: (url: string) => Promise<boolean>,
   timings: SafetyTimings,
 ): Promise<LLMInput> {
@@ -162,7 +186,7 @@ async function prepareLLMInput(
 
   started = Date.now();
   try {
-    return { kind: "scraped", metadata: await scrape(url) };
+    return { kind: "scraped", page: await scrape(url) };
   } catch (error) {
     return { kind: "scrape-failed", error };
   } finally {
@@ -171,8 +195,32 @@ async function prepareLLMInput(
 }
 
 /**
- * Run the full URL safety pipeline (pre-LLM checks + LLM phishing detection)
- * and throw if the URL is unsafe. Call this from every link write path.
+ * A sign-in form (password plus email or username) on a tenant subdomain of a page builder or
+ * free host. A password field alone is also how WordPress.com protected posts and password-locked
+ * file shares ask for their password, so it isn't enough.
+ */
+function credentialFormHost(signals: PageSignals): string | null {
+  if (!signals.hasPasswordInput || !signals.hasEmailInput) return null;
+  let host: string;
+  try {
+    host = new URL(signals.finalUrl).hostname;
+  } catch {
+    return null;
+  }
+  return isSharedHostTenant(host) ? host : null;
+}
+
+/** New free accounts are rejected outright; anyone else (or an unknown account) is reviewed. */
+async function isNewFreeAccount(account: SafetyAccount | undefined, now: Date): Promise<boolean> {
+  if (!account || account.isTeam || account.plan !== "free") return false;
+  const createdAt = await account.createdAt();
+  return createdAt !== null && now.getTime() - createdAt.getTime() < NEW_ACCOUNT_DAYS * DAY_MS;
+}
+
+/**
+ * Run the full URL safety pipeline (pre-LLM checks, page rules and LLM phishing detection) and
+ * throw if the URL is unsafe. Call this from every link write path, passing the account, and hand
+ * the result to `recordSafetyFollowUp` once the link exists.
  *
  * The pre-LLM checks always run. The scrape and LLM call are skipped for well-known hosts and
  * for URLs the LLM cleared in the last 24 h; the blocklist and Safe Browsing still cover those.
@@ -180,27 +228,35 @@ async function prepareLLMInput(
  */
 export async function assertUrlSafe(
   url: string,
-  deps: UrlSafetyDeps = {},
+  options: UrlSafetyOptions = {},
   serverTiming?: ServerTiming,
-): Promise<void> {
+): Promise<UrlSafetyResult> {
   const {
     preChecks = runPreLLMChecks,
-    scrape = scrapeMetadata,
+    scrape = scrapePageForSafetyCheck,
     detect = detectPhishingLink,
     readVerdict = hasSafeVerdict,
     rememberVerdict = (safeUrl) => void runBackgroundTask(storeSafeVerdict(safeUrl)),
-  } = deps;
+    now = () => new Date(),
+    account,
+  } = options;
   const started = Date.now();
   const timings: SafetyTimings = {};
-  const done = (outcome: string) => {
+  const done = (outcome: string, followUp?: SafetyFollowUp): UrlSafetyResult => {
     const totalMs = Date.now() - started;
     log.info({ url, outcome, totalMs, ...timings }, "url safety checked");
-    if (!serverTiming) return;
-    serverTiming.add("safety", totalMs, outcome);
-    for (const [key, name] of SERVER_TIMING_STEPS) {
-      const ms = timings[key];
-      if (ms !== undefined) serverTiming.add(name, ms);
+    if (serverTiming) {
+      serverTiming.add("safety", totalMs, outcome);
+      for (const [key, name] of SERVER_TIMING_STEPS) {
+        const ms = timings[key];
+        if (ms !== undefined) serverTiming.add(name, ms);
+      }
     }
+    return { outcome, followUp };
+  };
+  const reject = (outcome: string, message: string): never => {
+    done(outcome);
+    throw new TRPCError({ code: "BAD_REQUEST", message });
   };
 
   // The page fetch doesn't depend on the pre-LLM checks, so it runs alongside them. Its result
@@ -211,53 +267,59 @@ export async function assertUrlSafe(
   const preLLMResult = await preChecks(url, timings);
   if (preLLMResult.blocked) {
     log.warn({ url, reason: preLLMResult.reason }, "link blocked (pre-LLM)");
-    done("blocked-pre-llm");
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: preLLMResult.userMessage,
-    });
+    return reject("blocked-pre-llm", preLLMResult.userMessage);
   }
 
   const input = await llmInput;
   // Only reachable if the pre-LLM checks skipped the heuristics; never let such a URL through.
-  if (input.kind === "heuristic-block") {
-    done("blocked-heuristics");
-    throw new TRPCError({ code: "BAD_REQUEST", message: USER_MSG_SUSPICIOUS });
-  }
-  if (input.kind === "well-known" || input.kind === "cached") {
-    done(input.kind);
-    return;
-  }
+  if (input.kind === "heuristic-block") return reject("blocked-heuristics", USER_MSG_SUSPICIOUS);
+  if (input.kind === "well-known" || input.kind === "cached") return done(input.kind);
 
   // Layer 3: LLM-based phishing detection. Fail open — an outage in the
   // metadata service or the LLM provider must not block link creation.
   if (input.kind === "scrape-failed") {
     log.warn({ err: input.error, url }, "LLM phishing check failed, allowing link");
-    done("scrape-failed");
-    return;
+    return done("scrape-failed", { kind: "recheck", reason: "scrape-failed" });
+  }
+
+  const { metadata, signals } = input.page;
+  // A challenge or error page says nothing about the real page, so no verdict on it is cached.
+  const unverified = signals.isChallenge || signals.status < 200 || signals.status >= 300;
+
+  // Layer 3a: credential form on a page builder or free host (deterministic, before the LLM).
+  let followUp: SafetyFollowUp | undefined;
+  const formHost = credentialFormHost(signals);
+  if (formHost) {
+    if (await isNewFreeAccount(account, now())) {
+      log.warn({ url, host: formHost }, "link blocked (credential form on shared host)");
+      return reject("blocked-credential-form", USER_MSG_SUSPICIOUS);
+    }
+    followUp = {
+      kind: "review",
+      reason: CREDENTIAL_FORM_REASON,
+      details: `Password form on shared host ${formHost} (allowed for a paying, team or established account, review before blocking)`,
+    };
+  } else if (unverified) {
+    followUp = { kind: "recheck", reason: "unverified-challenge" };
   }
 
   const llmStarted = Date.now();
   let phishingResult: { url: string; phishing: boolean };
   try {
-    phishingResult = await detect(url, input.metadata);
+    phishingResult = await detect(url, metadata, signals);
   } catch (error) {
     timings.llmMs = Date.now() - llmStarted;
     log.warn({ err: error, url }, "LLM phishing check failed, allowing link");
-    done("llm-failed");
-    return;
+    return done("llm-failed", followUp);
   }
   timings.llmMs = Date.now() - llmStarted;
 
-  if (phishingResult.phishing) {
-    done("blocked-llm");
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: USER_MSG_UNSAFE,
-    });
-  }
+  if (phishingResult.phishing) return reject("blocked-llm", USER_MSG_UNSAFE);
+  if (formHost) return done("flagged-credential-form", followUp);
+  if (unverified) return done("unverified-challenge", followUp);
 
-  // Only a completed "not phishing" verdict is cached; failures and timeouts above return early.
+  // Only a completed "not phishing" verdict on the real page is cached; everything above returns
+  // early, so a URL that is flagged or unverified is checked again next time.
   rememberVerdict(url);
-  done("allowed");
+  return done("allowed");
 }

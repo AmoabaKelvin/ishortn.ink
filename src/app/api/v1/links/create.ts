@@ -9,15 +9,22 @@ import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { ServerTiming } from "@/server/lib/server-timing";
 import { claimMonthlyLinkSlot, releaseMonthlyLinkSlot } from "@/server/lib/user-plan";
 
-import { apiDomainWriteError, resolveApiDomainForUser, toApiLink } from "../utils";
+import {
+  apiDomainWriteError,
+  apiSafetyAccount,
+  resolveApiDomainForUser,
+  toApiLink,
+} from "../utils";
 
 import type { ApiToken } from "../utils";
 import type { LinkCreationAttempt, LinkCreationSource } from "@/server/lib/link-creation/failures";
+import type { UrlSafetyResult } from "@/server/lib/phishing";
 
 export const shortenLinkSchema = z.object({
   url: destinationUrlSchema,
@@ -55,7 +62,11 @@ export async function createTokenLink(
   return trackLinkCreation(db, source, token.userId, async (attempt) => {
     // The safety check needs only the URL, so it overlaps the checks below. The no-op catch keeps
     // a verdict from going unhandled when one of them throws first.
-    const safety = assertUrlSafe(parsedData.url, {}, serverTiming);
+    const safety = assertUrlSafe(
+      parsedData.url,
+      { account: apiSafetyAccount(token) },
+      serverTiming,
+    );
     safety.catch(() => undefined);
 
     const { requestedDomain, domainError } = await serverTiming.measure("domain", async () => {
@@ -99,7 +110,7 @@ async function createNewLink(
   data: ShortenLinkInput,
   token: ApiToken,
   domain: string,
-  safety: Promise<void>,
+  safety: Promise<UrlSafetyResult>,
   attempt: LinkCreationAttempt,
   serverTiming: ServerTiming,
 ) {
@@ -133,7 +144,7 @@ async function createNewLink(
 
   attempt.step = "safety";
   // The alias lookup doesn't depend on the safety verdict, so it runs alongside it.
-  const [, alias] = await Promise.all([
+  const [safetyResult, alias] = await Promise.all([
     safety,
     data.alias ?? serverTiming.measure("alias", () => generateUnreservedAlias(db, domain)),
   ]);
@@ -168,6 +179,7 @@ async function createNewLink(
       throw error;
     }
   });
+  recordSafetyFollowUp(newLinkId, safetyResult);
   checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
 
   return {

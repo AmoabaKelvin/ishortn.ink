@@ -75,6 +75,7 @@ import {
 } from "@/server/lib/link-creation/failures";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { recordSafetyFollowUp, workspaceSafetyAccount } from "@/server/lib/phishing/follow-up";
 import {
   checkCampaignPatternsAfterResponse,
   type LinkDestination,
@@ -146,6 +147,7 @@ import type { Plan } from "@/lib/billing/plans";
 import type { Link } from "@/server/db/schema";
 import type { LinkCreationAttempt, LinkCreationStep } from "@/server/lib/link-creation/failures";
 import type { ScrapedMetadata } from "@/server/lib/metadata";
+import type { UrlSafetyResult } from "@/server/lib/phishing";
 import type { WorkspaceContext } from "@/server/lib/workspace";
 
 const log = logger.child({ component: "link.service" });
@@ -409,7 +411,7 @@ export const getLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) =>
 
 // Seams for tests; callers use the defaults.
 type LinkCreationDeps = {
-  checkUrl?: (url: string) => Promise<void>;
+  checkUrl?: typeof assertUrlSafe;
   fetchMetadata?: (url: string) => Promise<ScrapedMetadata>;
 };
 
@@ -464,7 +466,7 @@ const createLinkSteps = async (
     input.alias && input.alias !== "" ? input.alias : await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
-  await checkUrl(input.url);
+  const safety = await checkUrl(input.url, { account: workspaceSafetyAccount(ctx) });
 
   attempt.step = "metadata";
   const fetchedMetadata = await fetchMetadataFailOpen(fetchMetadata, input.url);
@@ -641,6 +643,7 @@ const createLinkSteps = async (
     return inserted;
   });
   const linkId = Number(result.insertId);
+  recordSafetyFollowUp(linkId, safety);
 
   // Upload OG image to R2 if it's base64
   if (input.metadata?.image) {
@@ -700,9 +703,10 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
 
   // Re-scan only when the destination actually changes: the check can reach
   // Safe Browsing / Web Risk and an LLM, and the current URL already passed it.
-  if (input.url !== undefined && input.url !== existingLink.url) {
-    await assertUrlSafe(input.url);
-  }
+  const safety =
+    input.url !== undefined && input.url !== existingLink.url
+      ? await assertUrlSafe(input.url, { account: workspaceSafetyAccount(ctx) })
+      : undefined;
 
   // If domain is being changed, it must be platform-owned or a verified
   // custom domain for this workspace. Either way it must be within the plan's
@@ -957,6 +961,7 @@ export const updateLink = async (ctx: WorkspaceTRPCContext, input: UpdateLinkInp
   // Always set the new cache entry with updated values
   await setInCache(buildCacheKey(updatedLink.domain, updatedLink.alias!), updatedLinkWithTags);
 
+  recordSafetyFollowUp(input.id, safety);
   // After the cache write, so a block from the check isn't overwritten by it.
   checkCampaignPatternsAfterResponse(
     linkDestinations(
@@ -1235,7 +1240,7 @@ const shortenLinkSteps = async (
   const alias = await generateUnreservedAlias(ctx.db, domain);
 
   attempt.step = "safety";
-  await assertUrlSafe(input.url);
+  const safety = await assertUrlSafe(input.url, { account: workspaceSafetyAccount(ctx) });
 
   attempt.step = "metadata";
   const fetchedMetadata = await fetchMetadataFailOpen(scrapeMetadata, input.url);
@@ -1269,6 +1274,7 @@ const shortenLinkSteps = async (
   });
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
+  recordSafetyFollowUp(Number(result.insertId), safety);
   checkCampaignPatternsAfterResponse(linkDestinations(Number(result.insertId), input.url));
 
   return {
@@ -1885,11 +1891,19 @@ export type BulkCreateLinksOptions = {
   keepBitlyCodes?: boolean;
 };
 
+type CheckImportUrl = (url: string) => Promise<UrlSafetyResult | void>;
+
+// One account for the whole import, so its age is looked up at most once.
+const checkImportUrl = (ctx: WorkspaceTRPCContext): CheckImportUrl => {
+  const account = workspaceSafetyAccount(ctx);
+  return (url) => assertUrlSafe(url, { account });
+};
+
 // `checkUrl` is a seam for tests; callers use the default.
 export const bulkCreateLinks = (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
-  checkUrl: (url: string) => Promise<void> = assertUrlSafe,
+  checkUrl: CheckImportUrl = checkImportUrl(ctx),
   options: BulkCreateLinksOptions = {},
 ) =>
   // Records failures that reject the whole import; per-row failures are recorded below.
@@ -1942,7 +1956,7 @@ const importErrorMessage = ({ reason }: PromiseRejectedResult) =>
 const bulkCreateLinkRows = async (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
-  checkUrl: (url: string) => Promise<void>,
+  checkUrl: CheckImportUrl,
   { keepBitlyCodes = true }: BulkCreateLinksOptions,
 ) => {
   const parsed = parseLinkCsv(csvContent);
@@ -2095,7 +2109,7 @@ const bulkCreateLinkRows = async (
   let allotted = 0;
   let importAllotted = 0;
   // Rows often share a destination, and a Bitly code always shares its row's.
-  const scans = new Map<string, Promise<void>>();
+  const scans = new Map<string, Promise<UrlSafetyResult | void>>();
   const createdDestinations: LinkDestination[] = [];
   const createLinks = async (checks: PromiseSettledResult<PreparedLink>[]) => {
     const steps = checks.map((): LinkCreationStep => "validation");
@@ -2130,7 +2144,7 @@ const bulkCreateLinkRows = async (
           scan = checkUrl(record.url);
           scans.set(record.url, scan);
         }
-        await scan;
+        const safety = await scan;
 
         steps[index] = "db";
         const ownership = workspaceOwnership(ctx.workspace);
@@ -2146,6 +2160,7 @@ const bulkCreateLinkRows = async (
           note: record.note,
           ...restrictedLinkValues(ctx.restrictedAt),
         });
+        recordSafetyFollowUp(Number(inserted.insertId), safety);
         createdDestinations.push({ linkId: Number(inserted.insertId), url: record.url });
         return { record: { ...record, alias }, alreadyImported: false };
       },

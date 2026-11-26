@@ -22,6 +22,7 @@ import {
   geoRule,
   link,
   linkMilestone,
+  linkSafetyRecheck,
   linkTag,
   linkVisit,
   linkVisitDailySummary,
@@ -156,6 +157,7 @@ async function purgeAccount(
       await tx.delete(linkMilestone).where(inArray(linkMilestone.linkId, ids));
       await tx.delete(geoRule).where(inArray(geoRule.linkId, ids));
       await tx.delete(flaggedLink).where(inArray(flaggedLink.linkId, ids));
+      await tx.delete(linkSafetyRecheck).where(inArray(linkSafetyRecheck.linkId, ids));
     }
 
     for (const ids of chunk(bioPageIds)) {
