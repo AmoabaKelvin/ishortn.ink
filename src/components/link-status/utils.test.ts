@@ -15,6 +15,7 @@ describe("getBlockedLinkMessage", () => {
     for (const reason of [
       "phishing-rescan: phishing-database-domains",
       "phishing-rescan: safe-browsing",
+      "phishing-rescan:content",
       "Google Safe Browsing flagged this URL: MALWARE",
       "Google Web Risk flagged this URL: SOCIAL_ENGINEERING",
       'Domain "bad.example" is on the blocklist: scam',

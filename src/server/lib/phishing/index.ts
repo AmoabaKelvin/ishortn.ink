@@ -201,7 +201,7 @@ async function prepareLLMInput(
  * free host. A password field alone is also how WordPress.com protected posts and password-locked
  * file shares ask for their password, so it isn't enough.
  */
-function credentialFormHost(signals: PageSignals): string | null {
+export function credentialFormHost(signals: PageSignals): string | null {
   if (!signals.hasPasswordInput || !signals.hasEmailInput) return null;
   let host: string;
   try {

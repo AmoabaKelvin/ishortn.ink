@@ -132,7 +132,17 @@ type FetchedPage = {
   html: string | null;
 };
 
-async function fetchPage(url: string): Promise<FetchedPage> {
+// Sites gate their OG tags on link-preview crawlers; a plain browser UA gets a consent wall or JS
+// shell from e.g. YouTube, while Wikipedia blocks "facebookexternalhit". The Twitterbot token
+// passes both.
+const PREVIEW_USER_AGENT =
+  "Mozilla/5.0 (compatible; iShortn/1.0; +https://ishortn.ink) Twitterbot/1.0";
+
+/** A current desktop Chrome, for fetches that must see what a visitor sees, not a crawler. */
+export const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
+
+async function fetchPage(url: string, userAgent = PREVIEW_USER_AGENT): Promise<FetchedPage> {
   const target = new URL(url);
   if (target.protocol !== "http:" && target.protocol !== "https:") {
     throw new Error("only http(s) URLs are supported");
@@ -143,10 +153,7 @@ async function fetchPage(url: string): Promise<FetchedPage> {
 
   const response = await fetch(target, {
     headers: {
-      // Sites gate their OG tags on link-preview crawlers; a plain browser UA
-      // gets a consent wall or JS shell from e.g. YouTube, while Wikipedia
-      // blocks "facebookexternalhit". The Twitterbot token passes both.
-      "User-Agent": "Mozilla/5.0 (compatible; iShortn/1.0; +https://ishortn.ink) Twitterbot/1.0",
+      "User-Agent": userAgent,
       Accept: "text/html,application/xhtml+xml",
     },
     redirect: "follow",
@@ -304,9 +311,13 @@ export function parseScrapedPage(
 
 /**
  * The page's preview metadata plus the signals the phishing check needs. Same fetch and limits as
- * `scrapeMetadata`, which link previews keep using unchanged.
+ * `scrapeMetadata`, which link previews keep using unchanged. Phishing pages that cloak show
+ * crawlers a harmless page, so the re-scan passes `BROWSER_USER_AGENT`.
  */
-export async function scrapePageForSafetyCheck(url: string): Promise<ScrapedPage> {
-  const { response, base, html } = await fetchPage(url);
+export async function scrapePageForSafetyCheck(
+  url: string,
+  userAgent?: string,
+): Promise<ScrapedPage> {
+  const { response, base, html } = await fetchPage(url, userAgent);
   return parseScrapedPage(html, base, response.status, response.headers);
 }

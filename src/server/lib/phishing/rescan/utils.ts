@@ -8,6 +8,7 @@ const RESCAN_SOURCES = [
   "urlhaus",
   "safe-browsing",
   "campaign-pattern",
+  "content",
 ] as const;
 
 export type RescanSource = (typeof RESCAN_SOURCES)[number];
