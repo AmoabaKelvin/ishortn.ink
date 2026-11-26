@@ -24,6 +24,14 @@ const withMDX = createMDX({
   },
 });
 
+/** Host condition for rules that only apply on the app domain (and local dev). */
+function appHostMatcher() {
+  const appDomain = (
+    process.env.NEXT_PUBLIC_APP_DOMAIN?.trim().toLowerCase() || "ishortn.ink"
+  ).replaceAll(".", "\\.");
+  return [{ type: "host", value: `(?:www\\.)?${appDomain}|localhost` }];
+}
+
 /** @type {import("next").NextConfig} */
 const config = {
   // CLAUDE.md is maintained by hand; stop `next dev` injecting its agent block.
@@ -58,17 +66,29 @@ const config = {
   // Guessable auth URLs. Scoped to the app host so `/sign-in` stays usable as a
   // short-link alias on the short and custom domains.
   async redirects() {
-    const appDomain = (
-      process.env.NEXT_PUBLIC_APP_DOMAIN?.trim().toLowerCase() || "ishortn.ink"
-    ).replaceAll(".", "\\.");
-    const has = [{ type: "host", value: `(?:www\\.)?${appDomain}|localhost` }];
+    const has = appHostMatcher();
     return [
       { source: "/sign-in", destination: "/auth/sign-in", permanent: true, has },
       { source: "/sign-up", destination: "/auth/sign-up", permanent: true, has },
     ];
   },
   async headers() {
+    const appHost = appHostMatcher();
     return [
+      // Point crawlers and AI agents at llms.txt and the sitemap from marketing pages. Scoped to
+      // the app host because on short and custom domains these paths are short links or bio pages.
+      ...["/", "/pricing", "/features", "/compare/:path*", "/docs/:path*", "/blog/:path*"].map(
+        (source) => ({
+          source,
+          has: appHost,
+          headers: [
+            {
+              key: "Link",
+              value: '</llms.txt>; rel="describedby", </sitemap.xml>; rel="sitemap"',
+            },
+          ],
+        }),
+      ),
       {
         source: "/(.*)",
         headers: [
