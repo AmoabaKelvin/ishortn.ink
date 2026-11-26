@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
-import { isPlanLimitError, linkEditLimitSource, requiredPlanForLimit } from "./required-plan";
+import { domainBeyondPlanMessage } from "@/server/api/routers/link/utils";
+import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
+
+import {
+  isPlanLimitError,
+  linkEditLimitSource,
+  planLimitKey,
+  requiredPlanForLimit,
+} from "./required-plan";
 
 describe("requiredPlanForLimit", () => {
   test("Ultra-only messages need Ultra", () => {
@@ -73,5 +81,30 @@ describe("linkEditLimitSource", () => {
     expect(linkEditLimitSource("Link cloaking is only available on the Ultra plan.")).toBe(
       "link_edit",
     );
+  });
+});
+
+describe("planLimitKey", () => {
+  test("names the limit behind each link-create refusal", () => {
+    expect(planLimitKey(monthlyLinkLimitMessage("free", 30))).toBe("monthly_links");
+    expect(planLimitKey(monthlyLinkLimitMessage("pro", 1000))).toBe("monthly_links");
+    expect(planLimitKey(domainBeyondPlanMessage("go.acme.com", 0))).toBe("custom_domain");
+    expect(planLimitKey(domainBeyondPlanMessage("go.acme.com", 1))).toBe("custom_domain");
+    expect(planLimitKey("Domain not available for this account")).toBe("custom_domain");
+    expect(planLimitKey("You need to upgrade to a pro plan to use password protection")).toBe(
+      "password",
+    );
+    expect(
+      planLimitKey(
+        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
+      ),
+    ).toBe("utm");
+    expect(planLimitKey("Scheduled links are only available on Pro and Ultra plans")).toBe(
+      "scheduling",
+    );
+  });
+
+  test("falls back to other for gates it doesn't know", () => {
+    expect(planLimitKey("Theme customization is available on Pro and Ultra plans.")).toBe("other");
   });
 });

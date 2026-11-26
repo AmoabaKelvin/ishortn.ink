@@ -124,9 +124,12 @@ export function trackPageview() {
   else loadPostHog();
 }
 
-/** Identifies the signed-in user (by id only), or resets PostHog's identity when signed out. */
-export function identifyUser(userId: string | null) {
-  if (POSTHOG_KEY) syncIdentity(userId);
+/**
+ * Identifies the signed-in user (by id only), or resets PostHog's identity when signed out.
+ * `internal` accounts are opted out of capturing instead (see isInternalEmail).
+ */
+export function identifyUser(userId: string | null, internal = false) {
+  if (POSTHOG_KEY) syncIdentity(userId, internal);
 }
 
 // Long enough for posthog-js to load on a typical connection, short enough not to stall sign-out.

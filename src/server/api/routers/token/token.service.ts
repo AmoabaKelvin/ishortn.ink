@@ -156,7 +156,7 @@ export const createExtensionToken = async (
 
   const planContext = await getUserPlanContext(userId, ctx.db);
   const createdAt = planContext?.userRecord.createdAt;
-  captureServerEvent(userId, "extension_connected", {
+  captureServerEvent({ id: userId, email: planContext?.userRecord.email }, "extension_connected", {
     plan: planContext?.plan ?? "free",
     newAccount: !!createdAt && Date.now() - createdAt.getTime() <= NEW_ACCOUNT_WINDOW_MS,
     browser: browserFromLabel(input.label),

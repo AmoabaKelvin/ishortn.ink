@@ -1,4 +1,13 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  spyOn,
+  test,
+} from "bun:test";
 import crypto from "node:crypto";
 
 import { eq } from "drizzle-orm";
@@ -10,6 +19,7 @@ import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { EXTENSION_UPGRADE_URL } from "@/lib/extension/connect";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
+import * as posthogServer from "@/server/lib/analytics/posthog-server";
 import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
 
 import { GET as v1ListLinks, POST as v1CreateLink } from "../v1/links/route";
@@ -79,7 +89,14 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     );
   }
 
-  beforeEach(() => reset());
+  // Stands in for the PostHog client, so no test sends an event even with a real key in the env.
+  let captureSpy: ReturnType<typeof spyOn<typeof posthogServer, "captureServerEvent">>;
+
+  beforeEach(() => {
+    captureSpy = spyOn(posthogServer, "captureServerEvent").mockImplementation(() => {});
+    return reset();
+  });
+  afterEach(() => captureSpy.mockRestore());
   afterAll(cleanup);
 
   test("creates a link on the free plan and counts it", async () => {
@@ -120,6 +137,32 @@ describe.skipIf(!testDatabaseUrl)("/api/extension (MySQL)", () => {
     });
     expect(response.headers.get("server-timing")).toMatch(/^auth;dur=\d+, domain;dur=\d+, /);
     expect(response.headers.get("server-timing")).toContain("db;dur=");
+    expect(captureSpy).toHaveBeenLastCalledWith(
+      { id: USER_ID, email: "extension@example.com" },
+      "extension_limit_hit",
+      { plan: "free", limit_key: "monthly_links" },
+    );
+  });
+
+  test("records nothing in PostHog for a refused create from an internal account", async () => {
+    await reset({ email: "qa@euploading.com", monthlyLinkCount: 30 });
+    captureSpy.mockRestore();
+    const { NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST } = env;
+    Object.assign(env, {
+      NEXT_PUBLIC_POSTHOG_KEY: "phc_test",
+      NEXT_PUBLIC_POSTHOG_HOST: "https://posthog.invalid",
+    });
+    const fetchSpy = spyOn(globalThis, "fetch");
+    try {
+      expect((await shorten()).status).toBe(403);
+      const posthogCalls = fetchSpy.mock.calls.filter(([input]) =>
+        String(input instanceof Request ? input.url : input).includes("posthog.invalid"),
+      );
+      expect(posthogCalls).toEqual([]);
+    } finally {
+      fetchSpy.mockRestore();
+      Object.assign(env, { NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST });
+    }
   });
 
   test("refuses API keys", async () => {

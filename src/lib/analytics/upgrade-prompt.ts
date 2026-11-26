@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { PLAN_NAMES } from "@/lib/billing/entitlements";
 import { promoOfferLine } from "@/lib/billing/promo";
+import { planLimitKey } from "@/lib/billing/required-plan";
 import { buildUpgradeUrl } from "@/lib/billing/upgrade";
 
 import { POSTHOG_EVENTS, trackEvent } from "./events";
@@ -18,9 +19,10 @@ export type UpgradePromptProperties = { promo?: string; hidden_clicks?: number }
 
 /**
  * Surface an actionable upgrade prompt at a real plan-limit moment.
- * Tracks that the limit was hit and that the prompt was shown, and tracks the click if the user
- * follows the upgrade CTA to the pricing page with `requiredPlan` preselected. With a `promo`
- * (accounts that would start a new checkout, while it runs) the toast also states the offer.
+ * Tracks that the limit was hit (with the `limit_key` named in `message`) and that the prompt was
+ * shown, and tracks the click if the user follows the upgrade CTA to the pricing page with
+ * `requiredPlan` preselected. With a `promo` (accounts that would start a new checkout, while it
+ * runs) the toast also states the offer.
  */
 export function notifyPlanLimit(
   message: string,
@@ -29,7 +31,7 @@ export function notifyPlanLimit(
   promo?: Promo | null,
 ) {
   const properties = promo ? { promo: promo.code } : undefined;
-  trackEvent(POSTHOG_EVENTS.PLAN_LIMIT_REACHED, { source });
+  trackEvent(POSTHOG_EVENTS.PLAN_LIMIT_REACHED, { source, limit_key: planLimitKey(message) });
   trackUpgradeShown(source, properties);
   toast.error(message, {
     description: promo ? promoOfferLine(promo, PLAN_NAMES[requiredPlan]) : undefined,

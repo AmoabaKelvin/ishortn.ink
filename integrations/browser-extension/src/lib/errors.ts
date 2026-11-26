@@ -1,3 +1,5 @@
+import type { Me } from "./api.ts";
+
 export type UiErrorKind = "upgrade" | "invalid" | "unauthorized" | "rate_limited" | "retry";
 
 export type UiError = {
@@ -56,4 +58,19 @@ export const mapApiError = (
     return { kind: "retry", message: "Couldn't reach iShortn. Check your connection and try again." };
   }
   return { kind: "retry", message: "iShortn is having trouble right now. Try again in a moment." };
+};
+
+/**
+ * The limit screen for an account /me already shows at its monthly cap, so the popup doesn't
+ * send a create the server would refuse. Null below the cap or without one. Same wording as the
+ * server's refusal.
+ */
+export const monthlyLimitError = (me: Me): UiError | null => {
+  if (me.linksLimit === null || me.linksUsedThisMonth < me.linksLimit) return null;
+  const next = me.plan === "free" ? "Upgrade to Pro for more." : "Upgrade to Ultra for unlimited links.";
+  return {
+    kind: "upgrade",
+    message: `You've reached your monthly limit of ${me.linksLimit.toLocaleString("en-US")} links. ${next}`,
+    upgradeUrl: me.upgradeUrl,
+  };
 };
