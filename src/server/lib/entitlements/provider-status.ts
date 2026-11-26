@@ -1,6 +1,3 @@
-import { getSubscription } from "@lemonsqueezy/lemonsqueezy.js";
-
-import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { parseProviderUpdatedAt } from "@/server/api/routers/lemonsqueezy/utils";
 
 export type ProviderSubscriptionState = {
@@ -18,6 +15,11 @@ export class ProviderSubscriptionNotFoundError extends Error {}
 
 /** The subscription's current state at Lemon Squeezy. Throws when it can't be read. */
 export const lookupProviderSubscription: ProviderSubscriptionLookup = async (subscriptionId) => {
+  // Imported on use: this module is in the API auth path (via grace.ts), which never calls it.
+  const [{ getSubscription }, { configureLemonSqueezy }] = await Promise.all([
+    import("@lemonsqueezy/lemonsqueezy.js"),
+    import("@/lib/config/lemonsqueezy"),
+  ]);
   configureLemonSqueezy();
   const { data, error, statusCode } = await getSubscription(subscriptionId);
   if (statusCode === 404) {

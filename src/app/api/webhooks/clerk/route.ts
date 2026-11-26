@@ -7,7 +7,7 @@ import WelcomeEmail from "@/lib/email/templates/welcome-email";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
-import { resend } from "@/server/lib/notifications/resend-client";
+import { getResend } from "@/server/lib/notifications/resend-client";
 import { isEmailSuppressed } from "@/server/lib/notifications/suppression";
 
 import { clerkUserDeletedEventSchema, clerkUserEventSchema, getUserInfo } from "./user-info";
@@ -97,12 +97,8 @@ export async function POST(req: Request) {
 
   // Only on sign-up: user.updated fires on every profile change, including email changes.
   // A lifecycle email, so it skips addresses that hard-bounced or complained.
-  if (
-    resend &&
-    eventType === "user.created" &&
-    userInfo.email &&
-    !(await isEmailSuppressed(userInfo.email))
-  ) {
+  const resend = eventType === "user.created" ? await getResend() : null;
+  if (resend && userInfo.email && !(await isEmailSuppressed(userInfo.email))) {
     const { error } = await resend.emails.send({
       from: env.EMAIL_FROM ?? "Kelvin <developer@ishortn.ink>",
       to: userInfo.email,

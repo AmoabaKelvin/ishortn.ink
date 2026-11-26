@@ -2,7 +2,7 @@ import ApiAccessSunsetEmail from "@/emails/api-access-sunset";
 import { API_UPGRADE_URL, formatSunsetDate } from "@/lib/billing/api-access";
 import { logger } from "@/lib/logger";
 
-import { resend } from "./resend-client";
+import { getResend } from "./resend-client";
 
 const log = logger.child({ notification: "api-access-sunset" });
 
@@ -46,11 +46,11 @@ function toEmail(recipient: ApiSunsetRecipient) {
  */
 export async function sendApiSunsetEmails(recipients: ApiSunsetRecipient[]): Promise<string[]> {
   if (!recipients.length) return [];
-  if (!resend) {
+  const client = await getResend();
+  if (!client) {
     log.warn({ count: recipients.length }, "RESEND_API_KEY unset; skipping sunset emails");
     return [];
   }
-  const client = resend;
 
   try {
     const { error } = await client.batch.send(recipients.map(toEmail));

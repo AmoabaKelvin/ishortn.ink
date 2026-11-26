@@ -51,7 +51,7 @@ import { runBackgroundTask } from "@/lib/utils/background";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { hashIp } from "@/lib/utils/ip-hash";
 import { displayName } from "@/lib/utils/user-name";
-import { recordClick, resolveLink } from "@/middlewares/record-click";
+import { findLinkByAlias, recordClick } from "@/middlewares/record-click";
 import { checkLinkExpiration, isLinkScheduled } from "@/middlewares/resolve-link";
 import {
   campaign,
@@ -1190,19 +1190,6 @@ export const bulkToggleLinkStatus = async (
   );
 
   return { success: true, count: linksToUpdate.length, disabled: disable };
-};
-
-/**
- * Full link row by alias, cache-first. Server-only: the row carries the
- * destination, password hash and owner fields, so it must never be returned
- * from a public procedure as-is (see `retrieveOriginalUrl`).
- */
-export const findLinkByAlias = async (
-  input: Pick<RetrieveOriginalUrlInput, "alias" | "domain">,
-) => {
-  // The same lookup as the redirect, so previews and metadata also follow moved links.
-  const found = await resolveLink(input.domain, input.alias);
-  return found?.alias ? found : null;
 };
 
 export const retrieveOriginalUrl = async (
