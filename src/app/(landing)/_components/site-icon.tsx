@@ -11,6 +11,7 @@ export const siteIconNames = [
   "book-filled",
   "brand-github",
   "brand-instagram",
+  "brand-linkedin",
   "brand-tiktok",
   "brand-whatsapp",
   "brand-x",
