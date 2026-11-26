@@ -4,9 +4,10 @@
 // browser- or server-only imports here. Parsing a cookie back lives in
 // parse-first-touch.ts, so writing one doesn't ship zod to every marketing page.
 
+import { clean, FIRST_TOUCH_VALUE_MAX_LENGTH } from "./clean-value";
+
 export const FIRST_TOUCH_COOKIE = "ish_ft";
 export const FIRST_TOUCH_MAX_AGE_SECONDS = 60 * 60 * 24 * 90;
-export const FIRST_TOUCH_VALUE_MAX_LENGTH = 255;
 
 export const UTM_PARAMS = [
   "utm_source",
@@ -50,13 +51,6 @@ export type FirstTouch = {
   referrerHost: string | null;
   firstSeenAt: Date;
 };
-
-// Exported for parse-first-touch.ts only; not part of the attribution API.
-export function clean(value: string | null | undefined): string | null {
-  if (value == null) return null;
-  const trimmed = value.trim().slice(0, FIRST_TOUCH_VALUE_MAX_LENGTH);
-  return trimmed === "" ? null : trimmed;
-}
 
 const AUTH_PATH = /^\/auth(\/|$)/;
 

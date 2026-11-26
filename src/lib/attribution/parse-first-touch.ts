@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { clean, CLICK_ID_PARAMS, FIRST_TOUCH_MAX_AGE_SECONDS, isDirectTouch } from "./first-touch";
+import { clean } from "./clean-value";
+import { CLICK_ID_PARAMS, FIRST_TOUCH_MAX_AGE_SECONDS, isDirectTouch } from "./first-touch";
 
 import type { ClickIdType, FirstTouch } from "./first-touch";
 

@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
-import { holdPostHog, trackPageview } from "@/lib/analytics/posthog";
+import { holdPostHog, holdPostHogUntilInteraction, trackPageview } from "@/lib/analytics/posthog";
 
 export function PostHogScript() {
   // The pathname only triggers the effect; trackPageview reads window.location, which is the URL
@@ -16,5 +16,11 @@ export function PostHogScript() {
 /** Holds PostHog back while mounted (see holdPostHog). */
 export function PostHogHold() {
   useEffect(holdPostHog, []);
+  return null;
+}
+
+/** Holds PostHog back until the visitor first interacts (see holdPostHogUntilInteraction). */
+export function PostHogHoldUntilInteraction() {
+  useEffect(holdPostHogUntilInteraction, []);
   return null;
 }
