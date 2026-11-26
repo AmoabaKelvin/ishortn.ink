@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
@@ -12,12 +11,11 @@ import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
-import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
+import { claimMonthlyLinkSlot, releaseMonthlyLinkSlot } from "@/server/lib/user-plan";
 
 import { apiDomainWriteError, resolveApiDomainForUser, toApiLink } from "../utils";
 
 import type { ApiToken } from "../utils";
-import type { Plan } from "@/lib/billing/plans";
 import type { LinkCreationAttempt, LinkCreationSource } from "@/server/lib/link-creation/failures";
 
 export const shortenLinkSchema = z.object({
@@ -52,7 +50,16 @@ export async function createTokenLink(
   source: LinkCreationSource,
 ) {
   return trackLinkCreation(db, source, token.userId, async (attempt) => {
-    const requestedDomain = await resolveApiDomainForUser(token.userId, parsedData);
+    // The safety check needs only the URL, so it overlaps the checks below. The no-op catch keeps
+    // a verdict from going unhandled when one of them throws first.
+    const safety = assertUrlSafe(parsedData.url);
+    safety.catch(() => undefined);
+
+    const requestedDomain = await resolveApiDomainForUser(
+      token.userId,
+      parsedData,
+      token.defaultDomain,
+    );
     if (!requestedDomain) {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -80,17 +87,18 @@ export async function createTokenLink(
     if (parsedData.alias) {
       await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
     }
-    return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt);
+    return createNewLink(parsedData, token, requestedDomain, safety, attempt);
   });
 }
 
 async function createNewLink(
   data: ShortenLinkInput,
-  userId: string,
-  plan: Plan,
+  token: ApiToken,
   domain: string,
+  safety: Promise<void>,
   attempt: LinkCreationAttempt,
 ) {
+  const { userId, plan } = token;
   if (data.password) {
     if (plan === "free") {
       throw new TRPCError({
@@ -120,37 +128,41 @@ async function createNewLink(
 
   attempt.step = "safety";
   // The alias lookup doesn't depend on the safety verdict, so it runs alongside it.
-  const [, alias] = await Promise.all([
-    assertUrlSafe(data.url),
-    data.alias ?? generateUnreservedAlias(db, domain),
-  ]);
+  const [, alias] = await Promise.all([safety, data.alias ?? generateUnreservedAlias(db, domain)]);
 
   attempt.step = "db";
 
   const newLinkData = {
     url: data.url,
     alias,
-    disableLinkAfterClicks: data.expiresAfter,
+    disableLinkAfterClicks: data.expiresAfter ?? null,
     disableLinkAfterDate: data.expiresAt ? new Date(data.expiresAt) : null,
     activateAt: data.activatesAt ? new Date(data.activatesAt) : null,
-    passwordHash: data.password,
+    passwordHash: data.password ?? null,
     domain,
     userId,
     createdByUserId: userId,
     utmParams: data.utmParams ?? null,
+    // TIMESTAMP keeps whole seconds; truncating here makes the response match the stored row.
+    createdAt: new Date(Math.floor(Date.now() / 1000) * 1000),
+    ...restrictedLinkValues(token.restrictedAt),
   };
 
-  // Count the link and insert it together so a failed insert doesn't consume
-  // quota and parallel requests can't exceed the monthly limit.
-  const newLinkId = await db.transaction(async (tx) => {
-    const { userRecord } = await reserveMonthlyLinkSlot(userId, tx);
-    const newLink = await tx
-      .insert(link)
-      .values({ ...newLinkData, ...restrictedLinkValues(userRecord.restrictedAt) });
-    return newLink[0].insertId;
-  });
+  // No transaction: the conditional UPDATE alone keeps parallel requests under the monthly
+  // limit, and a failed insert gives its slot back, so each step is one round trip.
+  await claimMonthlyLinkSlot(userId, plan);
+  let newLinkId: number;
+  try {
+    const [inserted] = await db.insert(link).values(newLinkData);
+    newLinkId = inserted.insertId;
+  } catch (error) {
+    await releaseMonthlyLinkSlot(userId, plan).catch(() => undefined);
+    throw error;
+  }
   checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
 
-  const [retrievedLink] = await db.select().from(link).where(eq(link.id, newLinkId));
-  return { ...toApiLink(retrievedLink!), isProtected: !!retrievedLink!.passwordHash };
+  return {
+    ...toApiLink({ id: newLinkId, ...newLinkData }),
+    isProtected: !!newLinkData.passwordHash,
+  };
 }

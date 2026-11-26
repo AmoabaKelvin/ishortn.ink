@@ -2,9 +2,9 @@ import { describe, expect, mock, test } from "bun:test";
 
 import { TRPCError } from "@trpc/server";
 
-import { USER_MSG_UNSAFE, assertUrlSafe } from "./index";
+import { USER_MSG_UNSAFE, assertUrlSafe, runPreLLMChecks } from "./index";
 
-import type { UrlSafetyDeps } from "./index";
+import type { PreLLMCheckDeps, UrlSafetyDeps } from "./index";
 
 const METADATA = { title: "Example", description: "", image: "", favicon: "" };
 const PASS = { blocked: false, reason: "", userMessage: "" };
@@ -216,5 +216,82 @@ describe("assertUrlSafe on a well-known host", () => {
     await assertUrlSafe("https://someone.github.io/login", deps);
 
     expect(deps.detect).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("runPreLLMChecks", () => {
+  const url = "https://example.com/landing";
+  const NOT_LISTED = { blocked: false, reason: "" };
+
+  function fakeChecks(overrides: PreLLMCheckDeps = {}) {
+    return {
+      blocklist: mock(async (_url: string) => NOT_LISTED),
+      safeBrowsing: mock(async (_url: string) => ({ status: "safe" as const })),
+      webRisk: mock(async (_url: string) => ({ status: "safe" as const })),
+      ...overrides,
+    };
+  }
+
+  test("queries the blocklist and Safe Browsing at the same time", async () => {
+    let safeBrowsingStarted!: () => void;
+    const started = new Promise<void>((resolve) => (safeBrowsingStarted = resolve));
+    const checks = fakeChecks({
+      safeBrowsing: mock(async () => {
+        safeBrowsingStarted();
+        return { status: "safe" as const };
+      }),
+      // Resolves only once Safe Browsing has started, so this would hang if the steps were serial.
+      blocklist: mock(async () => {
+        await started;
+        return NOT_LISTED;
+      }),
+    });
+
+    expect((await runPreLLMChecks(url, {}, checks)).blocked).toBe(false);
+  });
+
+  test("a blocklist hit wins over a safe Safe Browsing verdict", async () => {
+    const checks = fakeChecks({
+      blocklist: mock(async () => ({ blocked: true, reason: BLOCKLISTED.reason })),
+    });
+
+    const result = await runPreLLMChecks(url, {}, checks);
+
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toBe(BLOCKLISTED.reason);
+    expect(result.userMessage).toContain("blocked");
+  });
+
+  test("blocks a URL Safe Browsing flags", async () => {
+    const checks = fakeChecks({
+      safeBrowsing: mock(async () => ({
+        status: "unsafe" as const,
+        threats: ["SOCIAL_ENGINEERING"],
+      })),
+    });
+
+    expect(await runPreLLMChecks(url, {}, checks)).toEqual(SAFE_BROWSING_FLAGGED);
+    expect(checks.webRisk).not.toHaveBeenCalled();
+  });
+
+  test("falls back to Web Risk only when Safe Browsing errors", async () => {
+    const checks = fakeChecks({
+      safeBrowsing: mock(async () => ({ status: "error" as const })),
+      webRisk: mock(async () => ({ status: "unsafe" as const, threats: ["MALWARE"] })),
+    });
+
+    const result = await runPreLLMChecks(url, {}, checks);
+
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain("Web Risk");
+    expect(checks.webRisk).toHaveBeenCalledTimes(1);
+  });
+
+  test("rejects a heuristic match without any lookup", async () => {
+    const checks = fakeChecks();
+
+    expect((await runPreLLMChecks("not a url", {}, checks)).blocked).toBe(true);
+    expect(checks.blocklist).not.toHaveBeenCalled();
+    expect(checks.safeBrowsing).not.toHaveBeenCalled();
   });
 });

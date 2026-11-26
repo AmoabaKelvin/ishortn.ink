@@ -7,7 +7,12 @@ import mysql from "mysql2/promise";
 
 import * as schema from "@/server/db/schema";
 
-import { monthlyLinkLimitMessage, reserveMonthlyLinkSlot } from "./user-plan";
+import {
+  claimMonthlyLinkSlot,
+  monthlyLinkLimitMessage,
+  releaseMonthlyLinkSlot,
+  reserveMonthlyLinkSlot,
+} from "./user-plan";
 
 import type { Plan } from "@/lib/billing/plans";
 
@@ -150,5 +155,160 @@ describe.skipIf(!testDatabaseUrl)("reserveMonthlyLinkSlot (MySQL)", () => {
 
     await expect(failing).rejects.toThrow("insert failed");
     expect(await storedCount()).toBe(3);
+  });
+});
+
+describe.skipIf(!testDatabaseUrl)("claimMonthlyLinkSlot (MySQL)", () => {
+  const pool = mysql.createPool({ uri: testDatabaseUrl ?? "", connectionLimit: 10 });
+  const db = drizzle(pool, { schema, mode: "default" });
+  const USER_ID = "user_plan_test_claim";
+  const lastMonth = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    return date;
+  };
+
+  async function seedUser(
+    monthlyLinkCount: number,
+    lastLinkCountReset: Date | null = new Date(),
+    createdAt = new Date(),
+  ) {
+    await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
+    await db.delete(schema.planLimitHit).where(eq(schema.planLimitHit.userId, USER_ID));
+    await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
+    await db.insert(schema.user).values({ id: USER_ID, monthlyLinkCount, createdAt });
+    // The column defaults to now(), so null has to be written explicitly.
+    await db.update(schema.user).set({ lastLinkCountReset }).where(eq(schema.user.id, USER_ID));
+  }
+
+  async function storedUser() {
+    return db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
+  }
+
+  // Mirrors createTokenLink: claim, insert, and give the slot back if the insert fails.
+  async function createLink(plan: Plan = "free", alias = crypto.randomUUID().slice(0, 12)) {
+    await claimMonthlyLinkSlot(USER_ID, plan, db);
+    try {
+      await db.insert(schema.link).values({
+        url: "https://example.com",
+        alias,
+        domain: "ishortn.ink",
+        userId: USER_ID,
+        createdByUserId: USER_ID,
+      });
+    } catch (error) {
+      await releaseMonthlyLinkSlot(USER_ID, plan, db);
+      throw error;
+    }
+  }
+
+  async function linkCount() {
+    const rows = await db.select().from(schema.link).where(eq(schema.link.userId, USER_ID));
+    return rows.length;
+  }
+
+  beforeEach(() => seedUser(0));
+
+  afterAll(async () => {
+    await seedUser(0);
+    await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
+    await pool.end();
+  });
+
+  test("counts each link until the limit, then refuses with FORBIDDEN and records the hit", async () => {
+    await seedUser(28);
+    await createLink();
+    await createLink();
+    expect((await storedUser())?.monthlyLinkCount).toBe(30);
+
+    const overLimit = createLink();
+    await expect(overLimit).rejects.toBeInstanceOf(TRPCError);
+    await expect(overLimit).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: monthlyLinkLimitMessage("free", 30),
+    });
+    expect((await storedUser())?.monthlyLinkCount).toBe(30);
+    expect(await linkCount()).toBe(2);
+
+    const hits = await db
+      .select()
+      .from(schema.planLimitHit)
+      .where(eq(schema.planLimitHit.userId, USER_ID));
+    expect(hits).toMatchObject([{ limitKey: "monthly_links", plan: "free" }]);
+  });
+
+  test("concurrent requests one below the limit create exactly one link", async () => {
+    await seedUser(29);
+
+    const results = await Promise.allSettled(Array.from({ length: 8 }, () => createLink()));
+
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await linkCount()).toBe(1);
+    expect((await storedUser())?.monthlyLinkCount).toBe(30);
+  });
+
+  test("the first create of a new month resets the count to 1", async () => {
+    await seedUser(30, lastMonth());
+
+    await createLink();
+
+    const stored = await storedUser();
+    expect(stored?.monthlyLinkCount).toBe(1);
+    expect(stored!.lastLinkCountReset!.getTime()).toBeGreaterThan(Date.now() - 60_000);
+  });
+
+  test("concurrent first requests of a new month reset the count only once", async () => {
+    await seedUser(30, lastMonth());
+
+    const results = await Promise.allSettled(Array.from({ length: 8 }, () => createLink()));
+
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(8);
+    expect((await storedUser())?.monthlyLinkCount).toBe(8);
+  });
+
+  test("without a reset date, an account from last month starts over", async () => {
+    await seedUser(30, null, lastMonth());
+
+    await createLink();
+    expect((await storedUser())?.monthlyLinkCount).toBe(1);
+  });
+
+  test("without a reset date, an account from this month keeps its count", async () => {
+    await seedUser(30, null);
+
+    await expect(createLink()).rejects.toThrow(monthlyLinkLimitMessage("free", 30));
+    const stored = await storedUser();
+    expect(stored?.monthlyLinkCount).toBe(30);
+    expect(stored?.lastLinkCountReset).toBeNull();
+  });
+
+  test("a failed insert leaves the count unchanged", async () => {
+    await seedUser(3);
+    await createLink("free", "claim-dup");
+
+    // The alias is taken, so the insert fails with a duplicate key.
+    await expect(createLink("free", "claim-dup")).rejects.toThrow();
+    expect((await storedUser())?.monthlyLinkCount).toBe(4);
+    expect(await linkCount()).toBe(1);
+  });
+
+  test("a failed insert on a new month's first create leaves the month reset", async () => {
+    await seedUser(30, lastMonth());
+    await db.insert(schema.link).values({
+      url: "https://example.com",
+      alias: "claim-dup",
+      domain: "ishortn.ink",
+      userId: USER_ID,
+    });
+
+    await expect(createLink("free", "claim-dup")).rejects.toThrow();
+    expect((await storedUser())?.monthlyLinkCount).toBe(0);
+  });
+
+  test("Ultra is unlimited and not counted", async () => {
+    await seedUser(5000);
+
+    await createLink("ultra");
+    expect((await storedUser())?.monthlyLinkCount).toBe(5000);
   });
 });
