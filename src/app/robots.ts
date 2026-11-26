@@ -19,6 +19,8 @@ export default function robots(): MetadataRoute.Robots {
         // Internal path of /docs (see src/lib/docs/routing.ts); only /docs is canonical.
         "/docs-site",
       ],
+      // Content Signals (contentsignals.org): explicit opt-in for search, AI answers and training.
+      other: { "Content-Signal": "search=yes, ai-input=yes, ai-train=yes" },
     },
     sitemap: absoluteUrl("/sitemap.xml"),
   };
