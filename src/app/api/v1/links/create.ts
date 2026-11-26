@@ -10,14 +10,19 @@ import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { trackLinkCreation } from "@/server/lib/link-creation/failures";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { reserveMonthlyLinkSlot } from "@/server/lib/user-plan";
 
-import { apiDomainWriteError, resolveApiDomainForUser, toApiLink } from "../utils";
+import {
+  apiDomainWriteError,
+  apiSafetyAccount,
+  resolveApiDomainForUser,
+  toApiLink,
+} from "../utils";
 
 import type { ApiToken } from "../utils";
-import type { Plan } from "@/lib/billing/plans";
 import type { LinkCreationAttempt, LinkCreationSource } from "@/server/lib/link-creation/failures";
 
 export const shortenLinkSchema = z.object({
@@ -80,17 +85,17 @@ export async function createTokenLink(
     if (parsedData.alias) {
       await validateAlias({ db }, parsedData.alias, requestedDomain, plan !== "free");
     }
-    return createNewLink(parsedData, token.userId, plan, requestedDomain, attempt);
+    return createNewLink(parsedData, token, requestedDomain, attempt);
   });
 }
 
 async function createNewLink(
   data: ShortenLinkInput,
-  userId: string,
-  plan: Plan,
+  token: ApiToken,
   domain: string,
   attempt: LinkCreationAttempt,
 ) {
+  const { userId, plan } = token;
   if (data.password) {
     if (plan === "free") {
       throw new TRPCError({
@@ -120,8 +125,8 @@ async function createNewLink(
 
   attempt.step = "safety";
   // The alias lookup doesn't depend on the safety verdict, so it runs alongside it.
-  const [, alias] = await Promise.all([
-    assertUrlSafe(data.url),
+  const [safety, alias] = await Promise.all([
+    assertUrlSafe(data.url, { account: apiSafetyAccount(token) }),
     data.alias ?? generateUnreservedAlias(db, domain),
   ]);
 
@@ -149,6 +154,7 @@ async function createNewLink(
       .values({ ...newLinkData, ...restrictedLinkValues(userRecord.restrictedAt) });
     return newLink[0].insertId;
   });
+  recordSafetyFollowUp(newLinkId, safety);
   checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
 
   const [retrievedLink] = await db.select().from(link).where(eq(link.id, newLinkId));

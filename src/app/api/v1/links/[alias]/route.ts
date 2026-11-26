@@ -11,11 +11,13 @@ import { db } from "@/server/db";
 import { link } from "@/server/db/schema";
 import { previousAddressCacheKeys, recordAddressChange } from "@/server/lib/link-address";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 
 import { apiError, errorResponse, readJsonBody, validationError } from "../../errors";
 import {
   apiDomainWriteError,
+  apiSafetyAccount,
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
   restrictedAccountResponse,
@@ -24,6 +26,7 @@ import {
 } from "../../utils";
 
 import type { ApiToken } from "../../utils";
+import type { UrlSafetyResult } from "@/server/lib/phishing";
 import type { PersonalWorkspaceContext } from "@/server/lib/workspace";
 import type { NextRequest } from "next/server";
 
@@ -122,12 +125,13 @@ export const PATCH = withApiKey(
     }
 
     const filteredUpdateData: LinkUpdate = {};
+    let safety: UrlSafetyResult | undefined;
 
     if (parsed.data.url !== undefined) {
       // assertUrlSafe throws a TRPCError; surface it as the 400 the create route
       // already returns for the same rejection rather than a generic 500.
       try {
-        await assertUrlSafe(parsed.data.url);
+        safety = await assertUrlSafe(parsed.data.url, { account: apiSafetyAccount(token) });
       } catch (error) {
         return errorResponse(error);
       }
@@ -238,6 +242,7 @@ export const PATCH = withApiKey(
         staleKeys.push(buildCacheKey(updatedLink.domain, updatedLink.alias ?? ""));
       }
       await Promise.all(staleKeys.map((key) => deleteFromCache(key)));
+      recordSafetyFollowUp(existingLink.id, safety);
       if (filteredUpdateData.url && filteredUpdateData.url !== existingLink.url) {
         checkCampaignPatternsAfterResponse([
           { linkId: existingLink.id, url: filteredUpdateData.url },

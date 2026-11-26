@@ -2,11 +2,18 @@ import { describe, expect, mock, test } from "bun:test";
 
 import { TRPCError } from "@trpc/server";
 
+import { parseScrapedPage } from "@/server/lib/metadata";
+
 import { USER_MSG_UNSAFE, assertUrlSafe } from "./index";
 
 import type { UrlSafetyDeps } from "./index";
 
-const METADATA = { title: "Example", description: "", image: "", favicon: "" };
+const PAGE = parseScrapedPage(
+  "<html><head><title>Example</title></head><body><p>Hello</p></body></html>",
+  "https://example.com/landing",
+  200,
+  new Headers(),
+);
 const PASS = { blocked: false, reason: "", userMessage: "" };
 const BLOCKLISTED = {
   blocked: true,
@@ -22,7 +29,7 @@ const SAFE_BROWSING_FLAGGED = {
 function fakeDeps(overrides: UrlSafetyDeps = {}) {
   const deps = {
     preChecks: mock(async (_url: string) => PASS),
-    scrape: mock(async (_url: string) => METADATA),
+    scrape: mock(async (_url: string) => PAGE),
     detect: mock(async (url: string) => ({ url, phishing: false })),
     readVerdict: mock(async (_url: string) => false),
     rememberVerdict: mock((_url: string) => {}),
@@ -50,7 +57,7 @@ describe("assertUrlSafe on an unlisted, uncached URL", () => {
     const deps = fakeDeps({
       scrape: mock(async () => {
         scrapeStarted();
-        return METADATA;
+        return PAGE;
       }),
       // Resolves only once the scrape has started, so this would hang if the steps were serial.
       preChecks: mock(async () => {
@@ -62,7 +69,7 @@ describe("assertUrlSafe on an unlisted, uncached URL", () => {
     await assertUrlSafe(url, deps);
 
     expect(deps.readVerdict).toHaveBeenCalledWith(url);
-    expect(deps.detect).toHaveBeenCalledWith(url, METADATA);
+    expect(deps.detect).toHaveBeenCalledWith(url, PAGE.metadata, PAGE.signals);
     expect(deps.rememberVerdict).toHaveBeenCalledWith(url);
   });
 

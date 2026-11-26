@@ -120,7 +120,15 @@ async function readCapped(response: Response, maxBytes: number): Promise<Uint8Ar
   return bytes;
 }
 
-export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
+type FetchedPage = {
+  response: Response;
+  /** Final URL after redirects. */
+  base: string;
+  /** Null when the response isn't HTML. */
+  html: string | null;
+};
+
+async function fetchPage(url: string): Promise<FetchedPage> {
   const target = new URL(url);
   if (target.protocol !== "http:" && target.protocol !== "https:") {
     throw new Error("only http(s) URLs are supported");
@@ -142,14 +150,20 @@ export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
   });
 
   const base = response.url || target.toString();
-  const fallbackFavicon = absolutize("/favicon.ico", base);
-
   const contentType = response.headers.get("content-type");
   if (!(contentType ?? "").includes("html")) {
+    await response.body?.cancel().catch(() => {});
+    return { response, base, html: null };
+  }
+  const html = decodeHtml(await readCapped(response, MAX_HTML_BYTES), contentType);
+  return { response, base, html };
+}
+
+function parseMetadata(html: string | null, base: string): ScrapedMetadata {
+  const fallbackFavicon = absolutize("/favicon.ico", base);
+  if (html === null) {
     return { title: "", description: "", image: "", favicon: fallbackFavicon };
   }
-
-  const html = decodeHtml(await readCapped(response, MAX_HTML_BYTES), contentType);
 
   const title =
     findMeta(html, ["og:title", "twitter:title"]) ??
@@ -174,4 +188,116 @@ export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
     image: absolutize(image, base),
     favicon: absolutize(favicon, base) || fallbackFavicon,
   };
+}
+
+export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
+  const { base, html } = await fetchPage(url);
+  return parseMetadata(html, base);
+}
+
+/** What the phishing check reads from a page beyond its preview metadata. */
+export type PageSignals = {
+  status: number;
+  /** URL the request ended on after redirects. */
+  finalUrl: string;
+  hasPasswordInput: boolean;
+  hasEmailInput: boolean;
+  /** Hosts that the page's forms submit to. */
+  formActionHosts: string[];
+  /** Start of the page's visible text, whitespace collapsed. */
+  visibleText: string;
+  imageAlts: string[];
+  /** A bot-challenge interstitial (Cloudflare "Just a moment...") rather than the page itself. */
+  isChallenge: boolean;
+};
+
+export type ScrapedPage = { metadata: ScrapedMetadata; signals: PageSignals };
+
+const VISIBLE_TEXT_CHARS = 500;
+const MAX_LIST_ITEMS = 10;
+const MAX_ALT_CHARS = 100;
+
+const CHALLENGE_TITLES = /^(just a moment\.*|attention required!?(\s*\|\s*cloudflare)?)$/i;
+// Only on the interstitial itself: ordinary Cloudflare-proxied pages also load
+// "/cdn-cgi/challenge-platform/" bot-detection scripts, so that path proves nothing.
+const CHALLENGE_MARKERS = /cf[-_]chl/i;
+const IDENTITY_FIELD = /e-?mail|user|login|account/i;
+
+function inputTags(html: string): string[] {
+  return html.match(/<input\b[^>]*>/gi) ?? [];
+}
+
+function visibleText(html: string): string {
+  const text = html
+    .replace(/<(head|script|style|noscript|template|svg)\b[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ");
+  return decodeEntities(text).replace(/\s+/g, " ").trim().slice(0, VISIBLE_TEXT_CHARS);
+}
+
+function parsePageSignals(
+  html: string | null,
+  base: string,
+  status: number,
+  headers: Headers,
+): PageSignals {
+  const inputs = html === null ? [] : inputTags(html);
+  const typeOf = (tag: string) => attr(tag, "type")?.trim().toLowerCase() ?? "text";
+
+  const formActionHosts = new Set<string>();
+  for (const tag of html?.match(/<form\b[^>]*>/gi) ?? []) {
+    const action = absolutize(attr(tag, "action"), base);
+    const host = action ? new URL(action).hostname : "";
+    if (host) formActionHosts.add(host);
+  }
+
+  const imageAlts = new Set<string>();
+  for (const tag of html?.match(/<img\b[^>]*>/gi) ?? []) {
+    const alt = decodeEntities(attr(tag, "alt") ?? "").trim();
+    if (alt) imageAlts.add(alt.slice(0, MAX_ALT_CHARS));
+  }
+
+  const title = html?.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "";
+  return {
+    status,
+    finalUrl: base,
+    hasPasswordInput: inputs.some((tag) => typeOf(tag) === "password"),
+    hasEmailInput: inputs.some((tag) => {
+      const type = typeOf(tag);
+      if (type === "email") return true;
+      // Kits that prefill the victim's address from the URL often carry it in a hidden field.
+      if (type !== "text" && type !== "hidden") return false;
+      const names = ["name", "id", "autocomplete", "placeholder"].map((key) => attr(tag, key));
+      return names.some((value) => value && IDENTITY_FIELD.test(value));
+    }),
+    formActionHosts: [...formActionHosts].slice(0, MAX_LIST_ITEMS),
+    visibleText: html === null ? "" : visibleText(html),
+    imageAlts: [...imageAlts].slice(0, MAX_LIST_ITEMS),
+    isChallenge:
+      headers.get("cf-mitigated") === "challenge" ||
+      CHALLENGE_TITLES.test(decodeEntities(title).trim()) ||
+      (html !== null && CHALLENGE_MARKERS.test(html)),
+  };
+}
+
+export function parseScrapedPage(
+  html: string | null,
+  base: string,
+  status: number,
+  headers: Headers,
+): ScrapedPage {
+  return {
+    metadata: parseMetadata(html, base),
+    signals: parsePageSignals(html, base, status, headers),
+  };
+}
+
+/**
+ * The page's preview metadata plus the signals the phishing check needs. Same fetch and limits as
+ * `scrapeMetadata`, which link previews keep using unchanged.
+ */
+export async function scrapePageForSafetyCheck(url: string): Promise<ScrapedPage> {
+  const { response, base, html } = await fetchPage(url);
+  return parseScrapedPage(html, base, response.status, response.headers);
 }

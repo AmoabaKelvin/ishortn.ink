@@ -29,6 +29,7 @@ import {
 } from "./rate-limit";
 
 import type { Plan } from "@/lib/billing/plans";
+import type { SafetyAccount } from "@/server/lib/phishing";
 
 // Bounds the write load from busy keys: lastUsedAt is only for display.
 const LAST_USED_RESOLUTION_MS = 60 * 60 * 1000;
@@ -119,6 +120,11 @@ export async function authenticateToken(apiKey: string | null, kind: "api" | "ex
 }
 
 export type ApiToken = Awaited<ReturnType<typeof resolveTokenPlan>>;
+
+/** API links live in the owner's personal workspace, so the account is the owner's. */
+export function apiSafetyAccount(token: ApiToken): SafetyAccount {
+  return { plan: token.plan, isTeam: false, createdAt: async () => token.owner.createdAt };
+}
 
 /** 403 for write routes when the token owner's account is restricted, else null. */
 export function restrictedAccountResponse(token: ApiToken): Response | null {

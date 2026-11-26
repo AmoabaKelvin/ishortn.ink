@@ -12,12 +12,14 @@ import {
 } from "@/server/api/routers/link/utils";
 import { link, linkVisit, uniqueLinkVisit, user } from "@/server/db/schema";
 import { assertUrlSafe } from "@/server/lib/phishing";
+import { recordSafetyFollowUp, workspaceSafetyAccount } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { generateUnreservedAlias, reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "@/server/api/trpc";
 import type { db } from "@/server/db";
+import type { UrlSafetyResult } from "@/server/lib/phishing";
 
 // A "hidden tracking link" is a regular Link row that backs another resource
 // (a QR code, or a bio-page link block) rather than appearing in the user's
@@ -37,6 +39,8 @@ export type PreparedTrackingLink = {
   domain: string;
   shouldIncrementCount: boolean;
   currentCount: number;
+  /** Follow-up from the URL safety check, recorded once the link is inserted. */
+  safety?: UrlSafetyResult;
 };
 
 /**
@@ -70,7 +74,7 @@ export async function prepareHiddenTrackingLink(
 ): Promise<PreparedTrackingLink> {
   const { currentCount, shouldIncrementCount } = await checkTrackingLinkQuota(ctx, opts.kind);
 
-  await assertUrlSafe(opts.url);
+  const safety = await assertUrlSafe(opts.url, { account: workspaceSafetyAccount(ctx) });
 
   const requestedDomain = opts.domain?.trim();
   if (requestedDomain) {
@@ -100,6 +104,7 @@ export async function prepareHiddenTrackingLink(
     domain,
     shouldIncrementCount,
     currentCount,
+    safety,
   };
 }
 
@@ -116,6 +121,8 @@ export async function insertHiddenTrackingLink(
 ): Promise<number> {
   const result = await tx.insert(link).values(prepared.values);
   const linkId = Number(result[0].insertId);
+  // Written after the response, by which time this transaction has settled.
+  recordSafetyFollowUp(linkId, prepared.safety);
 
   if (prepared.shouldIncrementCount) {
     await tx
@@ -137,9 +144,10 @@ export async function updateHiddenTrackingLink(
   linkId: number,
   opts: { url?: string; name?: string },
 ): Promise<void> {
-  if (opts.url !== undefined) {
-    await assertUrlSafe(opts.url);
-  }
+  const safety =
+    opts.url !== undefined
+      ? await assertUrlSafe(opts.url, { account: workspaceSafetyAccount(ctx) })
+      : undefined;
 
   const existing = await ctx.db.query.link.findFirst({
     where: and(eq(link.id, linkId), workspaceFilter(ctx.workspace, link.userId, link.teamId)),
@@ -156,6 +164,7 @@ export async function updateHiddenTrackingLink(
   if (Object.keys(updates).length > 0) {
     await ctx.db.update(link).set(updates).where(eq(link.id, linkId));
   }
+  recordSafetyFollowUp(linkId, safety);
 
   if (existing.alias) {
     await deleteFromCache(buildCacheKey(existing.domain, existing.alias));

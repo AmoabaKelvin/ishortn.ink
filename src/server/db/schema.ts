@@ -809,6 +809,23 @@ export const flaggedLink = mysqlTable(
   }),
 );
 
+// Links whose destination the creation-time phishing check couldn't judge (a bot-challenge or
+// error page, or a failed fetch); the phishing re-scan fetches them again later.
+export const linkSafetyRecheck = mysqlTable(
+  "LinkSafetyRecheck",
+  {
+    id: serial("id").primaryKey(),
+    linkId: int("linkId").notNull(),
+    // "unverified-challenge" or "scrape-failed"; varchar so new reasons need no migration.
+    reason: varchar("reason", { length: 32 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    linkIdIdx: index("linkId_idx").on(table.linkId),
+    createdAtIdx: index("createdAt_idx").on(table.createdAt),
+  }),
+);
+
 // Define relations
 export const linkRelations = relations(link, ({ one, many }) => ({
   user: one(user, {
