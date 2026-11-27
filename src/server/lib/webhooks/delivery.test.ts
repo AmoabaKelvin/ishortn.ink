@@ -10,6 +10,7 @@ import {
   runDueDeliveries,
   WEBHOOK_DISABLE_AFTER,
   WEBHOOK_FAILURE_WINDOW_MS,
+  WEBHOOK_OVER_LIMIT_ERROR,
   WEBHOOK_RETRY_WINDOW_MS,
   WEBHOOK_TEST_EVENT,
   type DeliveryDeps,
@@ -34,8 +35,9 @@ type StoredEndpoint = WebhookEndpoint & {
 type StoredDelivery = NewDelivery & Partial<DeliveryUpdate> & { id: number; attempts: number };
 
 /** In-memory WebhookStore with the semantics of dbWebhookStore. */
-function memoryStore(endpoints: StoredEndpoint[], plan: Plan = "ultra") {
+function memoryStore(endpoints: StoredEndpoint[], initialPlan: Plan = "ultra") {
   const deliveries: StoredDelivery[] = [];
+  const plans = { current: initialPlan };
   const toJob = (delivery: StoredDelivery): DeliveryJob => {
     const endpoint = endpoints.find((e) => e.id === delivery.webhookId)!;
     return {
@@ -48,6 +50,8 @@ function memoryStore(endpoints: StoredEndpoint[], plan: Plan = "ultra") {
       createdAt: delivery.createdAt,
       url: endpoint.url,
       secret: endpoint.secret,
+      userId: endpoint.userId,
+      teamId: endpoint.teamId,
     };
   };
   const store: WebhookStore = {
@@ -59,7 +63,7 @@ function memoryStore(endpoints: StoredEndpoint[], plan: Plan = "ultra") {
             ? e.teamId === null && e.userId === workspace.userId
             : e.teamId === workspace.teamId),
       ),
-    workspacePlan: async () => plan,
+    workspacePlan: async () => plans.current,
     insertDeliveries: async (rows) =>
       rows.map((row) => {
         const delivery = {
@@ -89,6 +93,13 @@ function memoryStore(endpoints: StoredEndpoint[], plan: Plan = "ultra") {
         update,
       );
     },
+    failDeliveries: async (ids, error) => {
+      for (const d of deliveries) {
+        if (ids.includes(d.id) && d.status === "pending") {
+          Object.assign(d, { status: "failed", nextAttemptAt: null, error });
+        }
+      }
+    },
     resetFailures: async (webhookId) => {
       Object.assign(
         endpoints.find((e) => e.id === webhookId)!,
@@ -114,7 +125,7 @@ function memoryStore(endpoints: StoredEndpoint[], plan: Plan = "ultra") {
       return true;
     },
   };
-  return { store, deliveries, endpoints };
+  return { store, deliveries, endpoints, plans };
 }
 
 function endpoint(
@@ -326,6 +337,48 @@ describe("retries", () => {
     });
     expect(sent).toHaveLength(7);
     expect(delivery!.lastAttemptAt!.getTime() - start).toBeLessThanOrEqual(WEBHOOK_RETRY_WINDOW_MS);
+  });
+
+  test("retries of endpoints beyond the plan's limit are failed, not sent", async () => {
+    const { store, deliveries, plans } = memoryStore(
+      [
+        endpoint(1, { ...personal }),
+        endpoint(2, { ...personal }),
+        endpoint(3, { ...personal }),
+        endpoint(4, { ...personal }),
+        endpoint(5, { ...team }),
+      ],
+      "ultra",
+    );
+    const { deps, sent, advance } = fakeDeps(() => 503);
+
+    await dispatchWebhookEvents(store, personal, "link.created", [link], deps);
+    await dispatchWebhookEvents(store, team, "link.created", [link], deps);
+    expect(sent).toHaveLength(5);
+
+    // Downgraded to Pro (3 endpoints) before the retries are due; the team's owner is Pro too.
+    plans.current = "pro";
+    advance(5 * MINUTE);
+    expect(await runDueDeliveries(store, deps)).toEqual({ attempted: 4, succeeded: 0 });
+    expect(sent.slice(5).map((s) => s.url)).toEqual([
+      "https://hooks1.example.com/in",
+      "https://hooks2.example.com/in",
+      "https://hooks3.example.com/in",
+      "https://hooks5.example.com/in",
+    ]);
+    expect(deliveries.find((d) => d.webhookId === 4)).toMatchObject({
+      status: "failed",
+      attempts: 1,
+      nextAttemptAt: null,
+      error: WEBHOOK_OVER_LIMIT_ERROR,
+    });
+
+    // On Free nothing is sent and every pending retry is given up.
+    plans.current = "free";
+    advance(HOUR);
+    expect(await runDueDeliveries(store, deps)).toEqual({ attempted: 0, succeeded: 0 });
+    expect(sent).toHaveLength(9);
+    expect(deliveries.every((d) => d.status === "failed")).toBe(true);
   });
 
   test("a retry that succeeds stops the retries and resets the failure count", async () => {

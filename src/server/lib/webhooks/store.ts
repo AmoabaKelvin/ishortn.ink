@@ -40,6 +40,8 @@ const jobColumns = {
   createdAt: webhookDelivery.createdAt,
   url: webhook.url,
   secret: webhook.secret,
+  userId: webhook.userId,
+  teamId: webhook.teamId,
 };
 
 export function dbWebhookStore(db: Db): WebhookStore {
@@ -88,6 +90,15 @@ export function dbWebhookStore(db: Db): WebhookStore {
 
     saveAttempt: async (deliveryId, update) => {
       await db.update(webhookDelivery).set(update).where(eq(webhookDelivery.id, deliveryId));
+    },
+
+    failDeliveries: async (deliveryIds, error) => {
+      await db
+        .update(webhookDelivery)
+        .set({ status: "failed", nextAttemptAt: null, error })
+        .where(
+          and(inArray(webhookDelivery.id, deliveryIds), eq(webhookDelivery.status, "pending")),
+        );
     },
 
     resetFailures: async (webhookId) => {

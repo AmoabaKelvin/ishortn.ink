@@ -67,6 +67,8 @@ export type DeliveryJob = {
   createdAt: Date;
   url: string;
   secret: string;
+  userId: string;
+  teamId: number | null;
 };
 
 export type NewDelivery = {
@@ -99,6 +101,8 @@ export type WebhookStore = {
   /** Pending deliveries of enabled endpoints due by `now`, oldest first. */
   dueDeliveries(now: Date, limit: number): Promise<DeliveryJob[]>;
   saveAttempt(deliveryId: number, update: DeliveryUpdate): Promise<void>;
+  /** Gives up on pending deliveries without attempting them. */
+  failDeliveries(deliveryIds: number[], error: string): Promise<void>;
   resetFailures(webhookId: number): Promise<void>;
   /**
    * Counts one failed attempt, unless one was already counted within WEBHOOK_FAILURE_WINDOW_MS of
@@ -264,6 +268,22 @@ async function eachWithConcurrency<T>(
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
 }
 
+/** Error saved on deliveries dropped because their endpoint is beyond the plan's limit. */
+export const WEBHOOK_OVER_LIMIT_ERROR = "Endpoint is over the plan's webhook limit";
+
+/**
+ * The enabled endpoints that may receive events on `plan`: the oldest ones up to its limit, so
+ * endpoints kept past a downgrade's lower limit stay quiet.
+ */
+function liveEndpointIds(enabled: readonly WebhookEndpoint[], plan: Plan): Set<number> {
+  return new Set(
+    enabled
+      .map((endpoint) => endpoint.id)
+      .sort((a, b) => a - b)
+      .slice(0, getWebhookEndpointLimit(plan)),
+  );
+}
+
 /**
  * Records one `type` event per item for every subscribed endpoint of the workspace and makes the
  * first attempts. A bulk action (up to 100 links) can create more deliveries than one request
@@ -282,15 +302,9 @@ export async function dispatchWebhookEvents(
   const subscribed = subscribedEndpoints(enabled, workspace, type);
   if (subscribed.length === 0) return [];
   // Callers skip plans without webhooks when they know the plan; this also covers the ones that
-  // don't, and endpoints kept past a downgrade's lower limit (the oldest ones stay live).
-  const limit = getWebhookEndpointLimit(await store.workspacePlan(workspace));
-  if (limit === 0) return [];
-  const live = new Set(
-    enabled
-      .map((endpoint) => endpoint.id)
-      .sort((a, b) => a - b)
-      .slice(0, limit),
-  );
+  // don't, and endpoints kept past a downgrade's lower limit.
+  const live = liveEndpointIds(enabled, await store.workspacePlan(workspace));
+  if (live.size === 0) return [];
   const endpoints = subscribed.filter((endpoint) => live.has(endpoint.id));
 
   const now = deps.now();
@@ -318,17 +332,48 @@ export async function dispatchWebhookEvents(
   return jobs;
 }
 
-/** Attempts the deliveries whose retry is due; run by the webhook-retries cron. */
+/**
+ * Attempts the deliveries whose retry is due; run by the webhook-retries cron. The plan may have
+ * changed since the event, so deliveries of endpoints no longer within its limit are failed
+ * instead of sent, as dispatchWebhookEvents would have skipped them.
+ */
 export async function runDueDeliveries(
   store: WebhookStore,
   deps: DeliveryDeps,
   { limit = 500 }: { limit?: number } = {},
 ): Promise<{ attempted: number; succeeded: number }> {
   const due = await store.dueDeliveries(deps.now(), limit);
+  const byWorkspace = new Map<string, DeliveryJob[]>();
+  for (const job of due) {
+    const key = job.teamId === null ? `user:${job.userId}` : `team:${job.teamId}`;
+    const jobs = byWorkspace.get(key);
+    if (jobs) jobs.push(job);
+    else byWorkspace.set(key, [job]);
+  }
+
+  // One lookup per workspace in the batch, not per delivery.
+  const sendable: DeliveryJob[] = [];
+  const overLimit: number[] = [];
+  await Promise.all(
+    [...byWorkspace.values()].map(async (jobs) => {
+      const workspace = { userId: jobs[0]!.userId, teamId: jobs[0]!.teamId };
+      const [enabled, plan] = await Promise.all([
+        store.listEnabledEndpoints(workspace),
+        store.workspacePlan(workspace),
+      ]);
+      const live = liveEndpointIds(enabled, plan);
+      for (const job of jobs) {
+        if (live.has(job.webhookId)) sendable.push(job);
+        else overLimit.push(job.id);
+      }
+    }),
+  );
+  if (overLimit.length > 0) await store.failDeliveries(overLimit, WEBHOOK_OVER_LIMIT_ERROR);
+
   let succeeded = 0;
-  await eachWithConcurrency(due, ATTEMPT_CONCURRENCY, async (job) => {
+  await eachWithConcurrency(sendable, ATTEMPT_CONCURRENCY, async (job) => {
     const update = await attemptDelivery(store, job, deps);
     if (update.status === "succeeded") succeeded++;
   });
-  return { attempted: due.length, succeeded };
+  return { attempted: sendable.length, succeeded };
 }

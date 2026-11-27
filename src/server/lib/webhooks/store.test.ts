@@ -207,4 +207,34 @@ describe.skipIf(!testDatabaseUrl)("dbWebhookStore (MySQL)", () => {
       .where(inArray(webhookDelivery.webhookId, [id]));
     expect(row).toMatchObject({ status: "succeeded", attempts: 1 });
   });
+
+  test("the retry run fails due deliveries of endpoints beyond the plan's limit", async () => {
+    const ids = [];
+    for (let i = 0; i < 4; i++) ids.push(await addEndpoint({ userId: USERS[0]! }));
+    await db.insert(webhookDelivery).values(
+      ids.map((webhookId) => ({
+        webhookId,
+        eventId: `evt_store_limit_${webhookId}`,
+        eventType: "link.created",
+        payload: "{}",
+        nextAttemptAt: new Date(Date.now() - 1000),
+      })),
+    );
+
+    // Pro allows 3: the newest endpoint is past the limit.
+    await runDueDeliveries(store, deps(200));
+    const rows = await db
+      .select()
+      .from(webhookDelivery)
+      .where(inArray(webhookDelivery.webhookId, ids))
+      .orderBy(webhookDelivery.webhookId);
+    expect(rows.map((row) => row.status)).toEqual([
+      "succeeded",
+      "succeeded",
+      "succeeded",
+      "failed",
+    ]);
+    expect(rows[3]).toMatchObject({ attempts: 0, nextAttemptAt: null });
+    expect(rows[3]!.error).toContain("limit");
+  });
 });
