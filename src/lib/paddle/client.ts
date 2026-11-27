@@ -40,6 +40,9 @@ const jsonObjectSchema = z.record(z.string(), z.json());
 const transactionSchema = z.object({
   id: z.string(),
   status: z.string(),
+  // Set when the transaction belongs to an existing subscription (a payment-method update or a
+  // renewal); null on a checkout for a new one.
+  subscription_id: z.string().nullish(),
   // Paddle returns no checkout URL when the account has no default payment link.
   checkout: z.object({ url: z.string().nullable() }).nullable(),
 });
@@ -189,6 +192,21 @@ export function createPaddleClient(config: PaddleConfig) {
         custom_data: input.customData,
         discount_id: input.discountId,
         collection_mode: input.collectionMode,
+      }),
+
+    getTransaction: (id: string) =>
+      request("GET", `/transactions/${encodeURIComponent(id)}`, transactionSchema),
+
+    /** The customer's draft and ready transactions: checkouts not yet paid (first page only). */
+    listOpenTransactions: (customerId: string) => {
+      const query = new URLSearchParams({ customer_id: customerId, status: "draft,ready" });
+      return request("GET", `/transactions?${query}`, z.array(transactionSchema));
+    },
+
+    /** Only draft and ready transactions can be canceled. */
+    cancelTransaction: (id: string) =>
+      request("PATCH", `/transactions/${encodeURIComponent(id)}`, transactionSchema, {
+        status: "canceled",
       }),
 
     /** Codes (including unknown ones) are cached for 10 minutes per isolate. */
