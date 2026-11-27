@@ -7,6 +7,9 @@ process.env.SKIP_ENV_VALIDATION = "1";
 // .env (Bun loads it before this preload, and dev setups point it at localhost).
 process.env.NEXT_PUBLIC_APP_URL = "https://ishortn.ink";
 
+// Pinned so tests can assert every email send sets reply_to from it.
+process.env.EMAIL_REPLY_TO = "replies@mail.ishortn.ink";
+
 // Server-side analytics (src/server/lib/analytics) must never send test events, even when the
 // shell has a real PostHog key.
 delete process.env.NEXT_PUBLIC_POSTHOG_KEY;

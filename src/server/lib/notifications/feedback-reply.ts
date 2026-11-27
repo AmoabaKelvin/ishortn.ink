@@ -1,5 +1,4 @@
 import FeedbackReplyEmail from "@/emails/feedback-reply";
-import { SUPPORT_EMAIL } from "@/lib/constants/app";
 
 import { sendEmail } from "./send-email";
 
@@ -26,8 +25,6 @@ export function sendFeedbackReplyEmail({
     recipientId: userId,
     to: toEmail,
     essential: true,
-    // Follow-ups from the user belong in the support inbox, not the sender's mailbox.
-    reply_to: SUPPORT_EMAIL,
     subject: "Re: your feedback on iShortn",
     react: FeedbackReplyEmail({ userName: toName, reply, originalMessage }),
     context: { feedbackId },

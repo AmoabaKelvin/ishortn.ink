@@ -12,23 +12,22 @@ import {
 } from "@react-email/components";
 import { render } from "@react-email/render";
 
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { firstName } from "@/lib/utils/user-name";
 
 interface WelcomeEmailProps {
   userName: string | null;
 }
 
-const UTM = "utm_source=email&utm_medium=lifecycle&utm_campaign=welcome";
-
-export const CREATE_LINK_URL = `https://ishortn.ink/dashboard/link/new?${UTM}`;
+export const CREATE_LINK_URL = emailLinkUrl(EMAIL_LINKS.welcome.createLink);
 
 const nextSteps = [
-  { label: "Make a QR code for a link", href: `https://ishortn.ink/docs/qr-codes?${UTM}` },
+  { label: "Make a QR code for a link", href: emailLinkUrl(EMAIL_LINKS.welcome.qrCodes) },
   {
     label: "Use your own custom domain (Pro)",
-    href: `https://ishortn.ink/docs/custom-domains?${UTM}`,
+    href: emailLinkUrl(EMAIL_LINKS.welcome.customDomains),
   },
-  { label: "Build a link-in-bio page", href: `https://ishortn.ink/docs/bio-pages?${UTM}` },
+  { label: "Build a link-in-bio page", href: emailLinkUrl(EMAIL_LINKS.welcome.bioPages) },
 ];
 
 export const WelcomeEmail = ({ userName }: WelcomeEmailProps) => (

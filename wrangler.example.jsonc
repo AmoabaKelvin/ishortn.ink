@@ -73,6 +73,8 @@
     // Sender for lifecycle email (weekly summary, upgrade nudge); use a separate
     // sending subdomain from EMAIL_FROM. Remove it to turn both off.
     "EMAIL_FROM_LIFECYCLE": "Example Links <updates@mail.example.com>",
+    // Monitored inbox that replies to product emails go to. Remove it to send replies to the sender.
+    "EMAIL_REPLY_TO": "replies@mail.example.com",
   },
   // Each expression maps to a route in CRON_ROUTES (custom-worker.ts). Remove
   // the ones you don't need; an expression missing from CRON_ROUTES only logs.

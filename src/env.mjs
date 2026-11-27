@@ -23,6 +23,10 @@ export const env = createEnv({
     // Sender for lifecycle email (weekly summary, upgrade nudge), on a separate sending subdomain
     // from EMAIL_FROM. Unset: those jobs send nothing.
     EMAIL_FROM_LIFECYCLE: z.string().optional(),
+    // Sender for system notices (cap alerts, plan grace, domain, team and account emails)
+    EMAIL_FROM_SYSTEM: z.string().optional(),
+    // Monitored inbox that replies to every product email go to
+    EMAIL_REPLY_TO: z.string().email().optional(),
     WEBHOOK_SECRET: z.string().optional(),
     // Resend webhook signing secret (svix whsec_…) for /api/webhooks/resend
     RESEND_WEBHOOK_SECRET: z.string().optional(),
@@ -136,6 +140,8 @@ export const env = createEnv({
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,
     EMAIL_FROM_LIFECYCLE: process.env.EMAIL_FROM_LIFECYCLE,
+    EMAIL_FROM_SYSTEM: process.env.EMAIL_FROM_SYSTEM,
+    EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
     RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
     UMAMI_TRACKING_ID: process.env.UMAMI_TRACKING_ID,

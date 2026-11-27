@@ -1,4 +1,3 @@
-import { pricingHighlightHref } from "@/app/(main)/dashboard/_components/tracking-paused";
 import WeeklySummaryEmail, {
   formatClicks,
   type WeeklySummaryEmailProps,
@@ -6,15 +5,10 @@ import WeeklySummaryEmail, {
 } from "@/emails/weekly-summary";
 import { env } from "@/env.mjs";
 import { getAppUrl } from "@/lib/constants/domains";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
-import { sendEmail } from "./send-email";
+import { EMAIL_FROM_SYSTEM, sendEmail, withSenderName } from "./send-email";
 import { buildUnsubscribeHeaders, NOTIFICATION_SETTINGS_PATH, unsubscribeUrl } from "./unsubscribe";
-
-const UTM = {
-  utm_source: "email",
-  utm_medium: "lifecycle",
-  utm_campaign: "weekly_summary",
-};
 
 export type WeeklySummaryContent = Pick<
   WeeklySummaryEmailProps,
@@ -23,13 +17,6 @@ export type WeeklySummaryContent = Pick<
   /** The Free upgrade line, or null for paid accounts and Free accounts with nothing to say. */
   upgrade: WeeklySummaryUpgrade | null;
 };
-
-// Pricing `source` per line, so conversions can be told apart.
-const UPGRADE_SOURCES = {
-  paused: "weekly_summary",
-  cap: "weekly_summary_cap",
-  history: "weekly_summary_history",
-} satisfies Record<WeeklySummaryUpgrade["reason"], string>;
 
 export type SendWeeklySummaryInput = {
   userId: string;
@@ -48,9 +35,9 @@ export function weeklySummaryEmailProps(
     userName: name,
     upgrade: upgrade && {
       ...upgrade,
-      upgradeUrl: getAppUrl(pricingHighlightHref("pro", UPGRADE_SOURCES[upgrade.reason], UTM)),
+      upgradeUrl: emailLinkUrl(EMAIL_LINKS.weeklySummary.upgrade[upgrade.reason]),
     },
-    analyticsUrl: getAppUrl(`/dashboard/analytics/overview?${new URLSearchParams(UTM).toString()}`),
+    analyticsUrl: emailLinkUrl(EMAIL_LINKS.weeklySummary.analytics),
     unsubscribeUrl: unsubscribeUrl(userId, env.EMAIL_UNSUBSCRIBE_SECRET, "weekly-summary"),
     notificationSettingsUrl: getAppUrl(NOTIFICATION_SETTINGS_PATH),
   };
@@ -71,7 +58,7 @@ export function sendWeeklySummaryEmail({
     recipientId: userId,
     to: email,
     essential: false,
-    from: env.EMAIL_FROM_LIFECYCLE,
+    from: env.EMAIL_FROM_LIFECYCLE && withSenderName(env.EMAIL_FROM_LIFECYCLE, EMAIL_FROM_SYSTEM),
     subject: `Your links got ${formatClicks(content.clicks)} last week`,
     react: WeeklySummaryEmail(weeklySummaryEmailProps(userId, name, content)),
     headers: buildUnsubscribeHeaders(userId, env.EMAIL_UNSUBSCRIBE_SECRET, "weekly-summary"),

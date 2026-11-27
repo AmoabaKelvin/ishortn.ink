@@ -7,7 +7,6 @@ import { createElement, type FunctionComponent } from "react";
 
 import { env } from "@/env.mjs";
 import { PLAN_CAPS } from "@/lib/billing/plans";
-import { ACTIVE_PROMO } from "@/lib/billing/promo";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { promoPausedNoticeUrl } from "@/server/lib/notifications/promo-paused-notice";
 import { upgradeNudgeEmailProps } from "@/server/lib/notifications/upgrade-nudge";
@@ -48,6 +47,8 @@ describe("email templates", () => {
       expect(html).toContain("https://ishortn.ink/dashboard");
       // No fixed widths that could overflow a 390px screen
       expect(html).not.toMatch(/(?<![-\w])width:\s*\d{3,}px/);
+      // Campaign tags live on the short links, never in template URLs
+      expect(html).not.toMatch(/href="[^"]*utm_/);
     });
   }
 });
@@ -57,11 +58,9 @@ describe("first link nudge", () => {
     const html = await render(createElement(FirstLinkNudgeEmail, FirstLinkNudgeEmail.PreviewProps));
 
     expect(html).toContain("Create your first link");
-    expect(html).toContain(
-      "https://ishortn.ink/dashboard/link/new?utm_source=email&amp;utm_medium=lifecycle&amp;utm_campaign=first_link_nudge",
-    );
+    expect(html).toContain('href="https://ishortn.ink/e-nudge-link"');
     expect(html).toContain("Prefer a QR code?");
-    expect(html).toContain("https://ishortn.ink/dashboard/qrcodes/create?utm_source=email");
+    expect(html).toContain('href="https://ishortn.ink/e-nudge-qr"');
     expect(html).toContain("The iShortn team");
     expect(html).toContain("Manage notifications");
   });
@@ -104,9 +103,7 @@ describe("promo paused notice", () => {
       "Black Friday: Pro is 20% off your first year until Tuesday 1 December.",
     );
     expect(html).toContain("Upgrade to Pro");
-    expect(html).toContain(
-      "/dashboard/pricing?highlight=pro&amp;source=events_promo_email&amp;utm_source=ishortn&amp;utm_medium=email&amp;utm_campaign=bfcm2026",
-    );
+    expect(html).toContain('href="https://ishortn.ink/e-paused-pro"');
     expect(html).toContain("Manage notifications");
   });
 
@@ -118,7 +115,7 @@ describe("promo paused notice", () => {
         upgrade: {
           plan: "ultra",
           label: "Upgrade to Ultra",
-          url: promoPausedNoticeUrl("ultra", ACTIVE_PROMO),
+          url: promoPausedNoticeUrl("ultra"),
         },
       }),
     );
@@ -126,7 +123,7 @@ describe("promo paused notice", () => {
     expect(html).toContain("Ultra has no monthly event cap");
     expect(html).toContain("Black Friday: Ultra is 20% off your first year");
     expect(html).toContain("Upgrade to Ultra");
-    expect(html).toContain("highlight=ultra&amp;source=events_promo_email");
+    expect(html).toContain('href="https://ishortn.ink/e-paused-ultra"');
     expect(html).not.toContain("Pro includes");
   });
 });
@@ -160,9 +157,7 @@ describe("weekly summary", () => {
     expect(html).toContain("Top country: <strong>Ghana</strong>");
     expect(html).toContain("Top source: <strong>Instagram</strong>");
     expect(html).toContain("View your analytics");
-    expect(html).toContain(
-      "https://ishortn.ink/dashboard/analytics/overview?utm_source=email&amp;utm_medium=lifecycle&amp;utm_campaign=weekly_summary",
-    );
+    expect(html).toContain('href="https://ishortn.ink/e-weekly-analytics"');
     expect(html).toContain("Manage notifications");
     expect(html).not.toContain("Upgrade to Pro");
   });
@@ -180,7 +175,7 @@ describe("weekly summary", () => {
 
     expect(html).toContain("so 342 clicks this month weren&#x27;t recorded.");
     expect(html).toContain("Upgrade to Pro");
-    expect(html).toContain("/dashboard/pricing?highlight=pro&amp;source=weekly_summary&amp;");
+    expect(html).toContain('href="https://ishortn.ink/e-weekly-paused"');
   });
 
   test("a Free account at 60%+ of the cap gets its usage with a link to Pro", async () => {
@@ -197,7 +192,7 @@ describe("weekly summary", () => {
     expect(html).toContain("You&#x27;ve used 640 of 1,000 tracked visits this month.");
     expect(html).toContain("Upgrade to Pro");
     expect(html).toContain("for 10,000 a month.");
-    expect(html).toContain("/dashboard/pricing?highlight=pro&amp;source=weekly_summary_cap&amp;");
+    expect(html).toContain('href="https://ishortn.ink/e-weekly-cap"');
     expect(html).not.toContain("hidden on the Free plan");
   });
 
@@ -214,9 +209,7 @@ describe("weekly summary", () => {
 
     expect(html).toContain("2,418 clicks older than 7 days are hidden on the Free plan.");
     expect(html).toContain("to see your full history.");
-    expect(html).toContain(
-      "/dashboard/pricing?highlight=pro&amp;source=weekly_summary_history&amp;",
-    );
+    expect(html).toContain('href="https://ishortn.ink/e-weekly-history"');
     expect(html).not.toContain("tracked visits this month");
   });
 
@@ -357,7 +350,7 @@ describe("upgrade nudge", () => {
     expect(await at("2026-12-02T00:00:00Z")).not.toContain("Black Friday");
   });
 
-  test("the CTA carries the campaign UTMs and source, and the footer unsubscribes", async () => {
+  test("the CTA is the tracked link for its angle, and the footer unsubscribes", async () => {
     const secret = env.EMAIL_UNSUBSCRIBE_SECRET;
     Object.assign(env, { EMAIL_UNSUBSCRIBE_SECRET: "u".repeat(32) });
     try {
@@ -368,10 +361,8 @@ describe("upgrade nudge", () => {
       );
       const rendered = await html(props);
 
-      expect(props.upgradeUrl).toBe(
-        "https://ishortn.ink/dashboard/pricing?highlight=pro&source=upgrade_nudge&utm_source=lifecycle&utm_medium=email&utm_campaign=upgrade_nudge&utm_content=links",
-      );
-      expect(rendered).toContain(props.upgradeUrl.replaceAll("&", "&amp;"));
+      expect(props.upgradeUrl).toBe("https://ishortn.ink/e-upgrade-links");
+      expect(rendered).toContain(`href="${props.upgradeUrl}"`);
       expect(props.unsubscribeUrl).toStartWith(
         "https://ishortn.ink/api/email/unsubscribe?token=user_1.",
       );

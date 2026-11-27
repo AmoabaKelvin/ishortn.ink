@@ -1,6 +1,7 @@
 import { Column, Link, Row, Section, Text } from "@react-email/components";
 
 import { PLAN_CAPS } from "@/lib/billing/plans";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { displayName } from "@/lib/utils/user-name";
 
 import {
@@ -212,11 +213,9 @@ WeeklySummaryEmail.PreviewProps = {
   upgrade: {
     reason: "cap",
     count: 640,
-    upgradeUrl:
-      "https://ishortn.ink/dashboard/pricing?highlight=pro&source=weekly_summary_cap&utm_source=email&utm_medium=lifecycle&utm_campaign=weekly_summary",
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.weeklySummary.upgrade.cap),
   },
-  analyticsUrl:
-    "https://ishortn.ink/dashboard/analytics/overview?utm_source=email&utm_medium=lifecycle&utm_campaign=weekly_summary",
+  analyticsUrl: emailLinkUrl(EMAIL_LINKS.weeklySummary.analytics),
   unsubscribeUrl: "https://ishortn.ink/api/email/unsubscribe?token=user_1.sig&list=weekly-summary",
   notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
 } satisfies WeeklySummaryEmailProps;
