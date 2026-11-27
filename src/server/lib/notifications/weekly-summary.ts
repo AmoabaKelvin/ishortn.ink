@@ -21,7 +21,6 @@ export type WeeklySummaryContent = Pick<
 export type SendWeeklySummaryInput = {
   userId: string;
   email: string;
-  name: string | null;
   content: WeeklySummaryContent;
 };
 

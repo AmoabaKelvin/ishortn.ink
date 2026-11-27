@@ -277,7 +277,6 @@ export async function sendWeeklySummaries({
       .select({
         id: user.id,
         email: user.email,
-        name: user.name,
         createdAt: user.createdAt,
         banned: user.banned,
         restrictedAt: user.restrictedAt,
@@ -426,7 +425,7 @@ export async function sendWeeklySummaries({
       if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
       lastSendAt = Date.now();
 
-      if (await send({ userId: row.id, email: row.email, name: row.name, content })) {
+      if (await send({ userId: row.id, email: row.email, content })) {
         counts.sent++;
         consecutiveFailures = 0;
         await db

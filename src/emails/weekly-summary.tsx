@@ -126,6 +126,8 @@ export const WeeklySummaryEmail = (props: WeeklySummaryEmailProps) => {
   } = props;
   const paused = upgrade?.reason === "paused" ? upgrade : null;
   const inlineUpgrade = upgrade && upgrade.reason !== "paused" ? upgrade : null;
+  const pausedText = paused && pausedCopy(paused.count);
+  const upgradeText = inlineUpgrade && upgradeCopy(inlineUpgrade);
 
   return (
     <EmailLayout
@@ -175,22 +177,20 @@ export const WeeklySummaryEmail = (props: WeeklySummaryEmailProps) => {
         </Text>
       )}
 
-      {paused && (
+      {pausedText && (
         <Well>
-          <Text style={{ ...panelItem, color: "#171717", fontWeight: 600 }}>
-            {pausedCopy(paused.count).lead}
-          </Text>
-          <Text style={panelItem}>{pausedCopy(paused.count).detail}</Text>
+          <Text style={{ ...panelItem, color: "#171717", fontWeight: 600 }}>{pausedText.lead}</Text>
+          <Text style={panelItem}>{pausedText.detail}</Text>
         </Well>
       )}
 
-      {inlineUpgrade && (
+      {inlineUpgrade && upgradeText && (
         <Text style={text}>
-          {upgradeCopy(inlineUpgrade).lead}{" "}
+          {upgradeText.lead}{" "}
           <Link href={inlineUpgrade.upgradeUrl} style={link}>
             Upgrade to Pro
           </Link>{" "}
-          {upgradeCopy(inlineUpgrade).tail}
+          {upgradeText.tail}
         </Text>
       )}
 
