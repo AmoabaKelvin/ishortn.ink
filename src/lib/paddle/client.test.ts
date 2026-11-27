@@ -255,6 +255,19 @@ describe("Paddle client", () => {
     expect(call(1).body).not.toHaveProperty("maximum_recurring_intervals");
   });
 
+  test("archiveDiscount patches the discount's status to archived", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      ok({ id: "dsc_2", recur: false, maximum_recurring_intervals: null }),
+    );
+    const client = createPaddleClient(sandbox);
+    await client.archiveDiscount("dsc_2");
+    expect(call()).toMatchObject({
+      url: `${BASE}/discounts/dsc_2`,
+      method: "PATCH",
+      body: { status: "archived" },
+    });
+  });
+
   test("findCustomerByEmail encodes the email and returns the first match", async () => {
     fetchSpy.mockResolvedValueOnce(ok([customer]));
     const client = createPaddleClient(sandbox);

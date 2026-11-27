@@ -231,6 +231,48 @@ describe("promoDiscountActive", () => {
   });
 });
 
+describe("promoDiscountActive after a plan change removed the discount", () => {
+  test("monthly after an annual period (monthly → annual → monthly) has no discount", () => {
+    expect(
+      promoDiscountActive({
+        checkoutInterval: "monthly",
+        interval: "monthly",
+        firstPaymentAt,
+        periodEndsAt: inMonth(9),
+        endedAt: inMonth(8),
+        now: inMonth(8),
+      }),
+    ).toBeNull();
+  });
+
+  test("a removal from an earlier subscription on the same row is ignored", () => {
+    expect(
+      promoDiscountActive({
+        checkoutInterval: "monthly",
+        interval: "monthly",
+        firstPaymentAt,
+        periodEndsAt: inMonth(4),
+        endedAt: new Date("2025-06-01T00:00:00Z"),
+        now: inMonth(3),
+      }),
+    ).toEqual({ endsAt: new Date("2027-11-27T10:00:00Z") });
+  });
+});
+
+describe("promoDiscountActive with Paddle's period anchored before created_at", () => {
+  test("the second annual period, starting seconds before the first year ends, is not discounted", () => {
+    expect(
+      promoDiscountActive({
+        checkoutInterval: "annual",
+        interval: "annual",
+        firstPaymentAt: new Date("2026-11-27T10:00:05Z"),
+        periodEndsAt: new Date("2028-11-27T10:00:04Z"),
+        now: new Date("2028-01-15T00:00:00Z"),
+      }),
+    ).toBeNull();
+  });
+});
+
 describe("promoFirstPaymentAt", () => {
   const checkoutAt = new Date("2026-11-27T09:59:00Z");
 

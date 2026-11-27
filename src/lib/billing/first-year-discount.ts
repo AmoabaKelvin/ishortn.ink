@@ -1,4 +1,4 @@
-import { addMonths, differenceInMonths } from "date-fns";
+import { addMonths, differenceInMonths, subDays } from "date-fns";
 
 import type { BillingInterval } from "./plans";
 
@@ -76,16 +76,26 @@ export function planChangeDiscount(input: {
 /**
  * Whether a first-year promo still discounts the subscription now, under the rules above:
  * monthly while the first year runs and the checkout was monthly; annual while the current annual
- * period started in the first year. `periodEndsAt` is the end of the current period.
+ * period started in the first year. `periodEndsAt` is the end of the current period. Once a plan
+ * change has removed the discount (`endedAt`, e.g. annual back to monthly) nothing counts.
  */
 export function promoDiscountActive(input: {
   checkoutInterval: BillingInterval;
   interval: BillingInterval;
   firstPaymentAt: Date;
   periodEndsAt: Date | null;
+  endedAt?: Date | null;
   now?: Date;
 }): { endsAt: Date } | null {
-  const { checkoutInterval, interval, firstPaymentAt, periodEndsAt, now = new Date() } = input;
+  const {
+    checkoutInterval,
+    interval,
+    firstPaymentAt,
+    periodEndsAt,
+    endedAt,
+    now = new Date(),
+  } = input;
+  if (endedAt && endedAt >= firstPaymentAt) return null;
   const firstYearEnd = addMonths(firstPaymentAt, FIRST_YEAR_MONTHS);
   if (interval === "monthly") {
     return checkoutInterval === "monthly" && now < firstYearEnd ? { endsAt: firstYearEnd } : null;
@@ -93,8 +103,12 @@ export function promoDiscountActive(input: {
   if (!periodEndsAt) {
     return checkoutInterval === "annual" && now < firstYearEnd ? { endsAt: firstYearEnd } : null;
   }
+  // Paddle anchors the period on started_at, a moment before created_at (firstPaymentAt), so the
+  // second annual period starts just before firstYearEnd; a day of slack keeps it out.
   const periodStart = addMonths(periodEndsAt, -FIRST_YEAR_MONTHS);
-  return now < periodEndsAt && periodStart < firstYearEnd ? { endsAt: periodEndsAt } : null;
+  return now < periodEndsAt && periodStart < subDays(firstYearEnd, 1)
+    ? { endsAt: periodEndsAt }
+    : null;
 }
 
 /**

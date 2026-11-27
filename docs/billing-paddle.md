@@ -110,10 +110,21 @@ Plan and interval changes made in the app set the subscription's discount explic
 | Any change after month 12                          | `discount: null`                                                                 |
 
 These per-change discounts are created through the API (`mode: custom`, no code, not usable at
-checkout) with the promo's percent. Subscriptions whose checkout had no promo, or a code other than
-the current `ACTIVE_PROMO`, keep their discount unchanged. The billing card follows the same rules
+checkout) with the promo's percent. If the plan change then fails, the discount created for it is
+archived. If creating the discount fails, a change to monthly goes ahead without `discount` (the
+checkout discount's remaining recurrences cover the rest of the first year), and a change to
+annual fails with a retryable error.
+
+The rules apply to every code in `FIRST_YEAR_PROMOS` (`src/lib/billing/promo.ts`), past campaigns
+included, so they keep working after `ACTIVE_PROMO` moves on. Add each new campaign's code there
+before it goes live and never remove one. A checkout code that isn't registered gets
+`discount: null` on a monthly → annual change, so a recurring discount can't carry into annual
+periods; other changes leave it as it is. Subscriptions whose checkout had no promo are untouched.
+
+When a change removes the discount, `Subscription.promoDiscountEndedAt` is set; the promo then
+stays ended for that subscription. The billing card follows the same rules
 (`promoDiscountActive`): monthly shows the discount until the end of the first year, annual for an
-annual period that started in the first year.
+annual period that started in the first year, and nothing once `promoDiscountEndedAt` is set.
 
 ## Local testing
 

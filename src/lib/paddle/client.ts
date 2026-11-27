@@ -255,6 +255,10 @@ export function createPaddleClient(config: PaddleConfig) {
         custom_data: input.customData,
       }),
 
+    /** Retires a discount so it can't be applied again. */
+    archiveDiscount: (id: string) =>
+      request("PATCH", `/discounts/${id}`, discountSchema, { status: "archived" }),
+
     findCustomerByEmail,
 
     createCustomer: async (input: { email: string; name?: string }): Promise<PaddleCustomer> => {

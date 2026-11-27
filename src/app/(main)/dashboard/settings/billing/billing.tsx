@@ -113,6 +113,7 @@ export default function Billing({ subscriptions, promo, latestCheckout }: Billin
             provider: subscription.billingProvider,
             startedAt: subscription.createdAt,
             periodEndsAt: subscription.renewsAt ?? subscription.endsAt,
+            discountEndedAt: subscription.promoDiscountEndedAt,
           }),
         )
       : null;

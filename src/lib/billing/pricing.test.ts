@@ -218,6 +218,35 @@ describe("subscriptionDiscount", () => {
       ).toMatchObject({ endsAt: new Date("2027-11-25T12:00:00Z") });
     });
 
+    test("monthly after an annual period, once the change removed the discount, shows none", () => {
+      expect(
+        subscriptionDiscount(
+          paddleCheckout,
+          {
+            plan: "pro",
+            interval: "monthly",
+            provider: "paddle",
+            startedAt,
+            periodEndsAt: new Date("2027-08-25T12:05:00Z"),
+            discountEndedAt: new Date("2027-07-25T12:05:00Z"),
+          },
+          new Date("2027-07-26T00:00:00Z"),
+        ),
+      ).toBeNull();
+    });
+
+    test("a past campaign's code keeps its percent after ACTIVE_PROMO moves on", () => {
+      const promos = [{ code: "SPRING15", percentOff: 15 }];
+      expect(
+        subscriptionDiscount(
+          { ...paddleCheckout, promoCode: "SPRING15" },
+          { plan: "pro", interval: "monthly", provider: "paddle", startedAt },
+          now,
+          promos,
+        ),
+      ).toEqual({ code: "SPRING15", percentOff: 15, endsAt: firstYearEnd });
+    });
+
     test("after the first year nothing is shown", () => {
       expect(
         subscriptionDiscount(

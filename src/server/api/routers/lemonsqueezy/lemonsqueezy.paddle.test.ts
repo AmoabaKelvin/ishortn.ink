@@ -5,6 +5,7 @@ import { addMonths } from "date-fns";
 import { eq } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { ACTIVE_PROMO } from "@/lib/billing/promo";
 import { PaddleApiError } from "@/lib/paddle/client";
 import { buildPaddleConfig } from "@/lib/paddle/config";
 import { db } from "@/server/db";
@@ -131,6 +132,10 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
         recur: input.maximumRecurringIntervals !== null,
         maximum_recurring_intervals: input.maximumRecurringIntervals,
       };
+    },
+    archiveDiscount: async (id) => {
+      calls.push(["archiveDiscount", id]);
+      return { id, recur: false, maximum_recurring_intervals: null };
     },
     createPortalSession: async (customerId, subscriptionIds) => {
       calls.push(["createPortalSession", customerId, subscriptionIds]);
@@ -274,13 +279,14 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
       billingMonth: number,
       subscription: Partial<typeof schema.subscription.$inferInsert> = {},
       checkoutInterval: "monthly" | "annual" = "monthly",
+      promoCode = "BFCM20",
     ) {
       const createdAt = inBillingMonth(billingMonth);
       await db.insert(schema.checkoutStart).values({
         userId: USER_ID,
         plan: "pro",
         interval: checkoutInterval,
-        promoCode: "BFCM20",
+        promoCode,
         provider: "paddle",
         createdAt: new Date(createdAt.getTime() - 60_000),
       });
@@ -347,6 +353,35 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
       });
     });
 
+    test("a failed discount create fails a change to annual, which would recur yearly", async () => {
+      await seedPromo(5);
+      discountFails = true;
+
+      await expect(
+        caller().createCheckoutOrUpdate({ plan: "pro", interval: "annual" }),
+      ).rejects.toThrow();
+
+      expect(updateCall()).toBeUndefined();
+      expect(await stored()).toMatchObject({ billingInterval: "monthly" });
+    });
+
+    test("a failed plan change archives the discount created for it", async () => {
+      await seedPromo(3);
+      respond = (method) => (method === "updateSubscription" ? paddleError(400) : paddleSub());
+
+      await expect(
+        caller().createCheckoutOrUpdate({ plan: "ultra", interval: "monthly" }),
+      ).rejects.toThrow();
+
+      expect(calls.map(([method]) => method)).toEqual([
+        "createDiscount",
+        "updateSubscription",
+        "archiveDiscount",
+      ]);
+      expect(calls[2]).toEqual(["archiveDiscount", "dsc_01firstyear"]);
+      expect(await stored()).toMatchObject({ plan: "pro", promoDiscountEndedAt: null });
+    });
+
     test("a monthly downgrade to Pro keeps it for the payments still to come", async () => {
       await seedPromo(3, { plan: "ultra", providerPriceId: PRICES.ultraMonthly });
       respond = () => paddleSub();
@@ -381,6 +416,44 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
 
       expect(discountCall()).toBeUndefined();
       expect(updateCall()).toMatchObject({ discount: null });
+    });
+
+    test("once a change removed it, a later switch back to annual doesn't bring it back", async () => {
+      // Monthly checkout, annual from month 2, back to monthly now (month 4).
+      await seedPromo(4, { providerPriceId: PRICES.proAnnual, billingInterval: "annual" });
+
+      await caller().createCheckoutOrUpdate({ plan: "pro", interval: "monthly" });
+      expect(updateCall()).toMatchObject({ discount: null });
+      const endedAt = (await stored())?.promoDiscountEndedAt;
+      expect(endedAt).toBeInstanceOf(Date);
+
+      calls = [];
+      respond = () => paddleSub({ items: [{ price: { id: PRICES.proAnnual } }] });
+      await caller().createCheckoutOrUpdate({ plan: "pro", interval: "annual" });
+
+      expect(discountCall()).toBeUndefined();
+      expect(updateCall()).toMatchObject({ discount: null });
+    });
+
+    test("a code other than ACTIVE_PROMO's, not in the registry, is removed on monthly to annual", async () => {
+      expect(ACTIVE_PROMO.code).not.toBe("PARTNER10");
+      await seedPromo(5, {}, "monthly", "PARTNER10");
+      respond = () => paddleSub({ items: [{ price: { id: PRICES.proAnnual } }] });
+
+      await caller().createCheckoutOrUpdate({ plan: "pro", interval: "annual" });
+
+      expect(discountCall()).toBeUndefined();
+      expect(updateCall()).toMatchObject({ discount: null });
+    });
+
+    test("a code not in the registry is left alone on a monthly plan switch", async () => {
+      await seedPromo(3, {}, "monthly", "PARTNER10");
+      respond = () => paddleSub({ items: [{ price: { id: PRICES.ultraMonthly } }] });
+
+      await caller().createCheckoutOrUpdate({ plan: "ultra", interval: "monthly" });
+
+      expect(discountCall()).toBeUndefined();
+      expect(updateCall()).not.toHaveProperty("discount");
     });
   });
 

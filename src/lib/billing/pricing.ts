@@ -4,7 +4,7 @@ import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pr
 
 import { withAttribution } from "./attribution";
 import { promoDiscountActive, promoFirstPaymentAt } from "./first-year-discount";
-import { ACTIVE_PROMO, formatDayMonthYearShort, promoPrice } from "./promo";
+import { FIRST_YEAR_PROMOS, formatDayMonthYearShort, promoPrice } from "./promo";
 
 import type { Attribution } from "./attribution";
 import type { BillingInterval, Plan } from "./plans";
@@ -108,6 +108,8 @@ type DiscountSubscription = {
   startedAt?: Date | null;
   /** End of the current billing period (renewal, or the end date of a cancelled one). */
   periodEndsAt?: Date | null;
+  /** When a Paddle plan change removed the promo discount (Subscription.promoDiscountEndedAt). */
+  discountEndedAt?: Date | null;
 };
 
 /**
@@ -120,7 +122,7 @@ export function subscriptionDiscount(
   checkout: DiscountCheckout | null | undefined,
   subscription: DiscountSubscription,
   now = new Date(),
-  promos: Promo[] = [ACTIVE_PROMO],
+  promos: readonly Pick<Promo, "code" | "percentOff">[] = FIRST_YEAR_PROMOS,
 ): SubscriptionDiscount | null {
   if (!checkout?.promoCode || checkout.provider !== subscription.provider) return null;
   const code = checkout.promoCode;
@@ -132,6 +134,7 @@ export function subscriptionDiscount(
       interval: subscription.interval,
       firstPaymentAt: promoFirstPaymentAt(subscription.startedAt, checkout.createdAt),
       periodEndsAt: subscription.periodEndsAt ?? null,
+      endedAt: subscription.discountEndedAt,
       now,
     });
     return active && { code, percentOff, endsAt: active.endsAt };
