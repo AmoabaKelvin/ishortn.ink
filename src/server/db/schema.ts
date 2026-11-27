@@ -1643,6 +1643,31 @@ export const planLimitHit = mysqlTable(
 
 export type PlanLimitHit = typeof planLimitHit.$inferSelect;
 
+// One row per user and month with event usage, written by the lazy monthly reset
+// (normalizeMonthlyEventCount in src/server/lib/user-plan.ts) just before it zeroes the counters,
+// so recorded and dropped (over-cap) visits survive the reset.
+export const monthlyUsageSnapshot = mysqlTable(
+  "MonthlyUsageSnapshot",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    // YYYY-MM of the month the counts belong to.
+    month: char("month", { length: 7 }).notNull(),
+    recordedEventCount: int("recordedEventCount").notNull().default(0),
+    droppedEventCount: int("droppedEventCount").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    userMonthUnique: unique("monthlyUsageSnapshot_userId_month_unique").on(
+      table.userId,
+      table.month,
+    ),
+    monthIdx: index("monthlyUsageSnapshot_month_idx").on(table.month),
+  }),
+);
+
+export type MonthlyUsageSnapshot = typeof monthlyUsageSnapshot.$inferSelect;
+
 /** One row per hosted checkout handed to a user, so the funnel from checkout to payment can be measured. */
 export const checkoutStart = mysqlTable(
   "CheckoutStart",

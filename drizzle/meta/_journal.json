@@ -708,6 +708,13 @@
       "when": 1795660351902,
       "tag": "0100_link_safety_recheck_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "5",
+      "when": 1795738780552,
+      "tag": "0101_monthly_usage_snapshot",
+      "breakpoints": true
     }
   ]
 }
