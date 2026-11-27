@@ -271,7 +271,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
       );
 
       captureServerEvent(
-        userId,
+        { id: userId, email: user?.email },
         "checkout_started",
         checkoutEventProperties({
           plan: input.plan,
