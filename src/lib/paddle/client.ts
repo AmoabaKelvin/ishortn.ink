@@ -132,6 +132,7 @@ export function createPaddleClient(config: PaddleConfig) {
     path: string,
     schema: z.ZodType<T>,
     body?: PaddleRequestBody,
+    timeoutMs = REQUEST_TIMEOUT_MS,
   ): Promise<T> {
     const response = await fetch(`${baseUrl}${path}`, {
       method,
@@ -141,7 +142,7 @@ export function createPaddleClient(config: PaddleConfig) {
         Accept: "application/json",
       },
       ...(body && { body: JSON.stringify(body) }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     const json: unknown = await response.json().catch(() => null);
@@ -223,8 +224,14 @@ export function createPaddleClient(config: PaddleConfig) {
       }
     },
 
-    getCustomer: (id: string) =>
-      request("GET", `/customers/${encodeURIComponent(id)}`, customerSchema),
+    getCustomer: (id: string, options?: { timeoutMs?: number }) =>
+      request(
+        "GET",
+        `/customers/${encodeURIComponent(id)}`,
+        customerSchema,
+        undefined,
+        options?.timeoutMs,
+      ),
 
     getSubscription: (id: string) =>
       request("GET", `/subscriptions/${encodeURIComponent(id)}`, subscriptionSchema),
