@@ -11,6 +11,8 @@ export const bioBlockTypeSchema = z.enum([
   "divider",
   "email",
   "whatsapp",
+  "embed",
+  "image",
 ]);
 
 export const bioThemeSchema = z.object({
@@ -83,7 +85,8 @@ export const getBioPageAnalyticsSchema = z.object({
 const blockFieldsSchema = {
   title: z.string().max(255).nullish(),
   content: z.string().max(5000).nullish(), // text body
-  url: z.string().max(2048).nullish(), // link destination / email address
+  url: z.string().max(2048).nullish(), // link/image destination, email address, embed source URL
+  image: z.string().nullish(), // image blocks: base64 data URL (new upload) or the stored URL
   socials: z.array(bioSocialLinkSchema).max(20).optional(), // social blocks
   whatsapp: whatsappDetailsSchema.optional(), // WhatsApp blocks
   scheduledAt: z.date().nullish(), // Ultra

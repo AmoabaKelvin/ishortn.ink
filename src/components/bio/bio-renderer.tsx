@@ -3,17 +3,20 @@ import { IconBrandWhatsapp } from "@tabler/icons-react";
 import { getBioReferralUrl } from "@/lib/attribution/referral";
 import { cn } from "@/lib/utils";
 
+import { EmbedFacade } from "./embed-facade";
 import { getInitials } from "./initials";
 import { socialIcon } from "./social-icons";
 import { type ResolvedBioTheme, resolveBioTheme } from "./theme";
 import { WHATSAPP_DEFAULT_LABEL } from "./whatsapp";
 
+import type { EmbedProvider } from "./embed";
 import type { BioPageTheme } from "@/server/db/schema";
 import type { CSSProperties } from "react";
 
 // Shared, presentational renderer used by BOTH the builder's live preview and
 // the public /p/[slug] page, so the two can never drift. No hooks → it renders
-// fine as a server component (near-zero client JS on the public page).
+// fine as a server component (near-zero client JS on the public page); embed
+// facades are the only client island.
 
 // `previewNote` is set only by the builder preview, to flag blocks that the
 // public page won't show right now (hidden, scheduled, blocked).
@@ -28,6 +31,8 @@ export type BioRenderBlock = BioRenderBlockBase &
     | { type: "text"; content: string | null }
     | { type: "social"; socials: { platform: string; url: string }[] }
     | { type: "divider" }
+    | { type: "embed"; title: string | null; provider: EmbedProvider; embedId: string }
+    | { type: "image"; src: string | null; alt: string | null; href?: string | null }
   );
 
 export type BioRenderModel = {
@@ -44,6 +49,12 @@ export type BioRenderModel = {
 // motion-safe so reduced-motion users see content immediately.
 const BIO_ENTER =
   "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:fill-mode-both";
+
+// Media blocks slide without the fade: Chrome never takes content that fades in
+// from opacity 0 as the page's LCP, and a facade or image is usually the
+// largest thing in the first screen.
+const BIO_ENTER_MEDIA =
+  "motion-safe:animate-in motion-safe:slide-in-from-bottom-2 motion-safe:fill-mode-both";
 
 // The stagger stops growing after this many blocks, so long pages finish
 // entering in under a second instead of trickling in one block at a time.
@@ -117,7 +128,10 @@ export function BioRenderer({
           {model.blocks.map((block, i) => (
             <div
               key={block.id}
-              className={cn("min-w-0", BIO_ENTER)}
+              className={cn(
+                "min-w-0",
+                block.type === "embed" || block.type === "image" ? BIO_ENTER_MEDIA : BIO_ENTER,
+              )}
               style={{
                 animationDelay: `${210 + Math.min(i, MAX_STAGGER_INDEX) * 55}ms`,
                 animationDuration: "450ms",
@@ -155,7 +169,49 @@ export function BioRenderer({
 }
 
 function BioBlockView({ block, t }: { block: BioRenderBlock; t: ResolvedBioTheme }) {
+  // Media follows the theme's corners: square for sharp buttons, rounded otherwise
+  // (a pill radius would crop a 16:9 frame into a capsule).
+  const mediaRadius = t.buttonRadius === "0px" ? "0px" : "0.75rem";
+
   switch (block.type) {
+    case "embed":
+      return (
+        <EmbedFacade
+          provider={block.provider}
+          embedId={block.embedId}
+          title={block.title}
+          radius={mediaRadius}
+        />
+      );
+
+    case "image": {
+      if (!block.src) return null;
+      const image = (
+        // eslint-disable-next-line next/no-img-element -- user-uploaded image with unknown dimensions
+        <img
+          src={block.src}
+          alt={block.alt ?? ""}
+          loading="lazy"
+          decoding="async"
+          className="block h-auto w-full"
+          style={{ borderRadius: mediaRadius }}
+        />
+      );
+      return block.href ? (
+        <a
+          href={block.href}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={block.alt ? undefined : "Open link"}
+          className="block transition-opacity hover:opacity-90"
+        >
+          {image}
+        </a>
+      ) : (
+        image
+      );
+    }
+
     case "heading":
       return block.title ? (
         <h2 className="break-words pt-3 text-center text-base font-semibold">{block.title}</h2>

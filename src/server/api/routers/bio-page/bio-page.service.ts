@@ -3,6 +3,14 @@ import { and, count, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import {
+  oembedUrl,
+  parseEmbedUrl,
+  type EmbedDetails,
+  type EmbedProvider,
+  type ParsedEmbed,
+} from "@/components/bio/embed";
+import { parseEmbed, serializeEmbed } from "@/components/bio/embed-content";
 import { normalizeSocialUrl } from "@/components/bio/social-links";
 import {
   buildWhatsAppUrl,
@@ -15,6 +23,7 @@ import {
   canScheduleBioBlocks,
   canUseBioCustomDomain,
   canUseBioCustomThemes,
+  canUseBioImageBlocks,
   getPlanCaps,
 } from "@/lib/billing/plans";
 import { getAppBaseDomain, isPlatformDomain } from "@/lib/constants/domains";
@@ -31,6 +40,7 @@ import {
 } from "@/server/db/schema";
 import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
+import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { deleteImage, isOwnedR2Url, uploadImage } from "@/server/lib/storage";
 import {
   deleteHiddenTrackingLink,
@@ -38,6 +48,7 @@ import {
   prepareHiddenTrackingLink,
   purgeTrackingLinkCache,
   updateHiddenTrackingLink,
+  type PreparedTrackingLink,
 } from "@/server/lib/tracking-link";
 import { requirePermission, workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
@@ -48,7 +59,7 @@ import {
   checkBioPageLimit,
   countryLabel,
   deviceLabel,
-  lockBioLinkBlockCapacity,
+  lockBioBlockCapacity,
   pageBelongsToWorkspace,
   referrerHostLabel,
   rethrowBioDuplicate,
@@ -134,6 +145,52 @@ function assertSchedulingAllowed(
   }
 }
 
+function resolveEmbed(url: string | null | undefined): ParsedEmbed {
+  const result = parseEmbedUrl(url ?? "");
+  if (!result.ok) throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+  return result.embed;
+}
+
+const oembedSchema = z.object({ title: z.string() });
+
+/**
+ * The provider's title for an embed, used when the block has none of its own.
+ * Best effort: a slow or failing provider only costs the title, never the add.
+ */
+async function fetchEmbedTitle(embed: ParsedEmbed): Promise<string | undefined> {
+  const endpoint = oembedUrl(embed);
+  if (!endpoint) return undefined;
+  try {
+    const res = await fetch(endpoint, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return undefined;
+    const parsed = oembedSchema.safeParse(await res.json());
+    return parsed.success ? parsed.data.title.trim().slice(0, 255) || undefined : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function embedDetails(embed: ParsedEmbed): Promise<EmbedDetails> {
+  const title = await fetchEmbedTitle(embed);
+  return { provider: embed.provider, embedId: embed.embedId, title };
+}
+
+async function assertImageBlocksAllowed(ctx: WorkspaceTRPCContext): Promise<void> {
+  if (canUseBioImageBlocks(ctx.workspace.plan)) return;
+  await recordPlanLimitHit({
+    userId: ctx.auth.userId,
+    limitKey: "bio_image_blocks",
+    plan: ctx.workspace.plan,
+  });
+  throw forbidden("Image blocks are available on Pro and Ultra plans.");
+}
+
+// Block images are keyed by upload time rather than block id: the id doesn't
+// exist yet when a block is added, and a replaced image gets a fresh URL
+// instead of overwriting one that browsers and the CDN have cached.
+const uploadBlockImage = (ctx: WorkspaceTRPCContext, image: string, previous: string | null) =>
+  resolveImageUpdate(ctx, Date.now(), "bio-block", image, previous);
+
 /**
  * Upload a new bio image (or clear it) and remove the previous R2 object when it
  * changed. Returns the value to persist.
@@ -216,7 +273,7 @@ function toEditorBlock(
   b: BioBlock,
   linkMap: Map<number, { domain: string; alias: string | null; blocked: boolean | null }>,
 ) {
-  const trackingLink = b.type === "link" && b.linkId ? linkMap.get(b.linkId) : undefined;
+  const trackingLink = b.linkId ? linkMap.get(b.linkId) : undefined;
   const whatsapp = b.type === "link" ? parseWhatsApp(b.content) : null;
   return {
     id: b.id,
@@ -230,6 +287,7 @@ function toEditorBlock(
     scheduledUntil: b.scheduledUntil,
     socials: b.type === "social" ? parseSocials(b.content) : undefined,
     whatsapp,
+    embed: b.type === "embed" ? parseEmbed(b.content) : null,
     shortUrl: trackingLink?.alias ? `https://${trackingLink.domain}/${trackingLink.alias}` : null,
     blocked: trackingLink?.blocked ?? false,
   };
@@ -422,8 +480,9 @@ export async function deleteBioPage(ctx: WorkspaceTRPCContext, id: number) {
   }
 
   // Remove the page's images from R2 (no-op for non-R2/base64 values).
+  const blockImages = blocks.filter((b) => b.type === "image").map((b) => b.content);
   await Promise.all(
-    [page.avatarUrl, page.socialImageUrl]
+    [page.avatarUrl, page.socialImageUrl, ...blockImages]
       .filter((url): url is string => !!url)
       .map((url) => deleteImage(ctx.workspace, url).catch(() => {})),
   );
@@ -474,7 +533,7 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
       kind: "bio",
     });
     const { id, linkId } = await ctx.db.transaction(async (tx) => {
-      await lockBioLinkBlockCapacity(tx, ctx.workspace.plan, page.id, ctx.auth.userId);
+      await lockBioBlockCapacity(tx, ctx.workspace.plan, page.id, ctx.auth.userId, "link");
       const linkId = await insertHiddenTrackingLink(tx, ctx, prepared);
       const [res] = await tx.insert(bioBlock).values({
         bioPageId: page.id,
@@ -493,6 +552,71 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
     checkCampaignPatternsAfterResponse([{ linkId, url: destination }]);
     revalidateBioPath(page.slug);
     return { id };
+  }
+
+  if (input.type === "embed") {
+    const embed = resolveEmbed(input.url);
+    const details = await embedDetails(embed);
+    const id = await ctx.db.transaction(async (tx) => {
+      await lockBioBlockCapacity(tx, ctx.workspace.plan, page.id, ctx.auth.userId, "embed");
+      const [res] = await tx.insert(bioBlock).values({
+        bioPageId: page.id,
+        type: "embed",
+        title: input.title?.trim() || null,
+        content: serializeEmbed(details),
+        url: embed.sourceUrl,
+        position,
+        scheduledAt: input.scheduledAt ?? null,
+        scheduledUntil: input.scheduledUntil ?? null,
+      });
+      return Number(res.insertId);
+    });
+    revalidateBioPath(page.slug);
+    return { id };
+  }
+
+  if (input.type === "image") {
+    await assertImageBlocksAllowed(ctx);
+    if (!input.image) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "An image block needs an image." });
+    }
+    const destination = input.url?.trim() || null;
+    // The safety scan runs before the upload, so a refused link leaves no object behind.
+    const prepared = destination
+      ? await prepareHiddenTrackingLink(ctx, {
+          url: destination,
+          name: input.title || page.title || "Bio image",
+          kind: "bio",
+        })
+      : null;
+    const { value: src } = await uploadBlockImage(ctx, input.image, null);
+    let inserted: { id: number; linkId: number | null };
+    try {
+      inserted = await ctx.db.transaction(async (tx) => {
+        const linkId = prepared ? await insertHiddenTrackingLink(tx, ctx, prepared) : null;
+        const [res] = await tx.insert(bioBlock).values({
+          bioPageId: page.id,
+          type: "image",
+          title: input.title?.trim() || null,
+          content: src,
+          url: destination,
+          linkId,
+          position,
+          scheduledAt: input.scheduledAt ?? null,
+          scheduledUntil: input.scheduledUntil ?? null,
+        });
+        return { id: Number(res.insertId), linkId };
+      });
+    } catch (error) {
+      if (src) await deleteImage(ctx.workspace, src).catch(() => {});
+      throw error;
+    }
+    if (prepared && inserted.linkId && destination) {
+      recordSafetyFollowUp(inserted.linkId, prepared.safety);
+      checkCampaignPatternsAfterResponse([{ linkId: inserted.linkId, url: destination }]);
+    }
+    revalidateBioPath(page.slug);
+    return { id: inserted.id };
   }
 
   const [res] = await ctx.db.insert(bioBlock).values({
@@ -527,27 +651,41 @@ export async function updateBlock(ctx: WorkspaceTRPCContext, input: UpdateBioBlo
   if (input.scheduledAt !== undefined) updates.scheduledAt = input.scheduledAt;
   if (input.scheduledUntil !== undefined) updates.scheduledUntil = input.scheduledUntil;
 
-  // A link block's content only ever holds its WhatsApp details, so it changes
-  // through `whatsapp` and the destination is rebuilt from them.
-  const isWhatsApp = block.type === "link" && parseWhatsApp(block.content) !== null;
-  const url = isWhatsApp ? input.whatsapp && buildWhatsAppUrl(input.whatsapp) : input.url;
+  if (block.type === "embed") {
+    if (input.url !== undefined) {
+      const embed = resolveEmbed(input.url);
+      const stored = parseEmbed(block.content);
+      // Only a different item needs a new provider title.
+      if (stored?.provider !== embed.provider || stored.embedId !== embed.embedId) {
+        updates.content = serializeEmbed(await embedDetails(embed));
+      }
+      updates.url = embed.sourceUrl;
+    }
+  } else if (block.type === "image") {
+    return updateImageBlock(ctx, block, input, updates);
+  } else {
+    // A link block's content only ever holds its WhatsApp details, so it changes
+    // through `whatsapp` and the destination is rebuilt from them.
+    const isWhatsApp = block.type === "link" && parseWhatsApp(block.content) !== null;
+    const url = isWhatsApp ? input.whatsapp && buildWhatsAppUrl(input.whatsapp) : input.url;
 
-  if (block.type === "social") {
-    if (input.socials !== undefined)
-      updates.content = JSON.stringify(normalizeSocials(input.socials));
-  } else if (isWhatsApp) {
-    if (input.whatsapp) updates.content = serializeWhatsApp(input.whatsapp);
-  } else if (input.content !== undefined && block.type !== "link") {
-    updates.content = input.content;
-  }
+    if (block.type === "social") {
+      if (input.socials !== undefined)
+        updates.content = JSON.stringify(normalizeSocials(input.socials));
+    } else if (isWhatsApp) {
+      if (input.whatsapp) updates.content = serializeWhatsApp(input.whatsapp);
+    } else if (input.content !== undefined && block.type !== "link") {
+      updates.content = input.content;
+    }
 
-  if (url !== undefined) {
-    updates.url = url;
-    if (block.type === "link" && block.linkId && url) {
-      await updateHiddenTrackingLink(ctx, block.linkId, {
-        url,
-        name: input.title ?? block.title ?? undefined,
-      });
+    if (url !== undefined) {
+      updates.url = url;
+      if (block.type === "link" && block.linkId && url) {
+        await updateHiddenTrackingLink(ctx, block.linkId, {
+          url,
+          name: input.title ?? block.title ?? undefined,
+        });
+      }
     }
   }
 
@@ -558,11 +696,91 @@ export async function updateBlock(ctx: WorkspaceTRPCContext, input: UpdateBioBlo
   return { success: true };
 }
 
+/**
+ * Image blocks: the image goes through the same upload path as the avatar, and
+ * the optional destination gets, keeps or loses its hidden tracking link. Plan
+ * checks only apply to adding the block, so a downgraded page stays editable.
+ */
+async function updateImageBlock(
+  ctx: WorkspaceTRPCContext,
+  block: Awaited<ReturnType<typeof fetchBlockForWorkspace>>,
+  input: UpdateBioBlockInput,
+  updates: Partial<typeof bioBlock.$inferInsert>,
+) {
+  if (input.image === null || input.image === "") {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "An image block needs an image." });
+  }
+
+  const destination = input.url === undefined ? undefined : input.url?.trim() || null;
+  let prepared: PreparedTrackingLink | null = null;
+  let removedLinkId: number | null = null;
+  if (destination !== undefined && destination !== block.url) {
+    updates.url = destination;
+    if (destination && block.linkId) {
+      await updateHiddenTrackingLink(ctx, block.linkId, {
+        url: destination,
+        name: input.title ?? block.title ?? undefined,
+      });
+    } else if (destination) {
+      prepared = await prepareHiddenTrackingLink(ctx, {
+        url: destination,
+        name: input.title || block.bioPage.title || "Bio image",
+        kind: "bio",
+      });
+    } else if (block.linkId) {
+      removedLinkId = block.linkId;
+    }
+  }
+  const removedLink = removedLinkId
+    ? await ctx.db.query.link.findFirst({ where: eq(link.id, removedLinkId) })
+    : undefined;
+
+  let previousImage: string | null = null;
+  if (input.image !== undefined) {
+    const { value, previousToDelete } = await uploadBlockImage(ctx, input.image, block.content);
+    updates.content = value;
+    previousImage = previousToDelete;
+  }
+
+  let addedLinkId: number | null = null;
+  try {
+    await ctx.db.transaction(async (tx) => {
+      if (prepared) {
+        addedLinkId = await insertHiddenTrackingLink(tx, ctx, prepared);
+        updates.linkId = addedLinkId;
+      }
+      if (removedLinkId) {
+        await deleteHiddenTrackingLink(tx, removedLinkId);
+        updates.linkId = null;
+      }
+      if (Object.keys(updates).length > 0) {
+        await tx.update(bioBlock).set(updates).where(eq(bioBlock.id, block.id));
+      }
+    });
+  } catch (error) {
+    // Drop a freshly uploaded image the row never pointed at.
+    if (updates.content && updates.content !== block.content) {
+      await deleteImage(ctx.workspace, updates.content).catch(() => {});
+    }
+    throw error;
+  }
+
+  if (prepared && addedLinkId && destination) {
+    recordSafetyFollowUp(addedLinkId, prepared.safety);
+    checkCampaignPatternsAfterResponse([{ linkId: addedLinkId, url: destination }]);
+  }
+  if (removedLink?.alias) purgeTrackingLinkCache(removedLink.domain, removedLink.alias);
+  if (previousImage) await deleteImage(ctx.workspace, previousImage).catch(() => {});
+  revalidateBioPath(block.bioPage.slug);
+  return { success: true };
+}
+
 export async function deleteBlock(ctx: WorkspaceTRPCContext, id: number) {
   const block = await fetchBlockForWorkspace(ctx, id);
   requirePermission(ctx.workspace, "bio.edit", "edit bio pages");
 
-  if (block.type === "link" && block.linkId) {
+  // Link blocks and linked image blocks own a hidden tracking link.
+  if (block.linkId) {
     const linkId = block.linkId;
     const backing = await ctx.db.query.link.findFirst({ where: eq(link.id, linkId) });
     await ctx.db.transaction(async (tx) => {
@@ -572,6 +790,9 @@ export async function deleteBlock(ctx: WorkspaceTRPCContext, id: number) {
     if (backing?.alias) purgeTrackingLinkCache(backing.domain, backing.alias);
   } else {
     await ctx.db.delete(bioBlock).where(eq(bioBlock.id, id));
+  }
+  if (block.type === "image" && block.content) {
+    await deleteImage(ctx.workspace, block.content).catch(() => {});
   }
   revalidateBioPath(block.bioPage.slug);
   return { success: true };
@@ -618,6 +839,14 @@ export type PublicBioBlock =
   | { id: number; type: "social"; socials: BioSocialLink[] }
   | {
       id: number;
+      type: "embed";
+      title: string | null;
+      provider: EmbedProvider;
+      embedId: string;
+    }
+  | { id: number; type: "image"; src: string; alt: string | null; href: string | null }
+  | {
+      id: number;
       type: "heading" | "text" | "divider";
       title: string | null;
       content: string | null;
@@ -662,15 +891,35 @@ async function assemblePublicBioPage(
     ? await db.query.link.findMany({ where: inArray(link.id, linkIds) })
     : [];
   const linkMap = new Map(links.map((l) => [l.id, l]));
+  // A blocked/disabled or missing backing link hides its block entirely.
+  const liveShortUrl = (linkId: number | null) => {
+    const l = linkId ? linkMap.get(linkId) : undefined;
+    return l && !l.blocked && !l.disabled && l.alias ? `https://${l.domain}/${l.alias}` : null;
+  };
 
   const publicBlocks: PublicBioBlock[] = live
     .map((b): PublicBioBlock | null => {
       if (b.type === "link") {
-        const l = b.linkId ? linkMap.get(b.linkId) : undefined;
-        // A blocked/disabled or missing backing link hides the block entirely.
-        if (!l || l.blocked || l.disabled || !l.alias) return null;
+        const href = liveShortUrl(b.linkId);
+        if (!href) return null;
         const type = parseWhatsApp(b.content) ? "whatsapp" : "link";
-        return { id: b.id, type, title: b.title, href: `https://${l.domain}/${l.alias}` };
+        return { id: b.id, type, title: b.title, href };
+      }
+      if (b.type === "image") {
+        const href = b.linkId ? liveShortUrl(b.linkId) : null;
+        if (!b.content || (b.linkId && !href)) return null;
+        return { id: b.id, type: "image", src: b.content, alt: b.title, href };
+      }
+      if (b.type === "embed") {
+        const embed = parseEmbed(b.content);
+        if (!embed) return null;
+        return {
+          id: b.id,
+          type: "embed",
+          title: b.title || embed.title || null,
+          provider: embed.provider,
+          embedId: embed.embedId,
+        };
       }
       if (b.type === "social") {
         return { id: b.id, type: "social", socials: parseSocials(b.content) };
@@ -792,7 +1041,7 @@ export async function getBioPageAnalytics(
     where: eq(bioBlock.bioPageId, page.id),
     orderBy: (t, { asc }) => [asc(t.position)],
   });
-  const linkBlocks = blocks.filter((b) => b.type === "link" && b.linkId);
+  const linkBlocks = blocks.filter((b) => (b.type === "link" || b.type === "image") && b.linkId);
   const linkIds = linkBlocks.map((b) => b.linkId!);
 
   // Per-block counts plus country/device breakdowns, all grouped over the same
@@ -820,7 +1069,10 @@ export async function getBioPageAnalytics(
   const perBlock = linkBlocks
     .map((b) => ({
       blockId: b.id,
-      title: b.title || (parseWhatsApp(b.content) ? WHATSAPP_DEFAULT_LABEL : b.url) || "Link",
+      title:
+        b.type === "image"
+          ? b.title || "Image"
+          : b.title || (parseWhatsApp(b.content) ? WHATSAPP_DEFAULT_LABEL : b.url) || "Link",
       clicks: clickMap.get(b.linkId!) ?? 0,
     }))
     .sort((a, b) => b.clicks - a.clicks);

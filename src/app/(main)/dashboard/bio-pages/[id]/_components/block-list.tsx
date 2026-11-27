@@ -28,12 +28,15 @@ import {
   IconLink,
   IconMail,
   IconPencil,
+  IconPhoto,
+  IconPlayerPlay,
   IconTrash,
   IconWorld,
 } from "@tabler/icons-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { EMBED_PROVIDER_LABELS, embedFallbackTitle } from "@/components/bio/embed";
 import { WHATSAPP_DEFAULT_LABEL } from "@/components/bio/whatsapp";
 import {
   AlertDialog,
@@ -64,6 +67,8 @@ const TYPE_ICON = {
   whatsapp: IconBrandWhatsapp,
   social: IconWorld,
   divider: IconLine,
+  embed: IconPlayerPlay,
+  image: IconPhoto,
 } satisfies Record<BioEditorBlockType, typeof IconLink>;
 
 function summarize(block: EditorBlock): string {
@@ -84,6 +89,14 @@ function summarize(block: EditorBlock): string {
       }`;
     case "divider":
       return "Divider";
+    case "embed":
+      return block.embed
+        ? `${block.title || block.embed.title || embedFallbackTitle(block.embed)} · ${
+            EMBED_PROVIDER_LABELS[block.embed.provider]
+          }`
+        : block.title || "Embed";
+    case "image":
+      return block.title || (block.url ? `Image · ${block.url}` : "Image");
     default:
       return "";
   }
@@ -241,19 +254,29 @@ function SortableRow({
         <IconGripVertical size={18} stroke={1.5} />
       </button>
 
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-500 dark:bg-muted dark:text-muted-foreground">
-        <Icon size={16} stroke={1.5} />
-      </span>
+      {block.type === "image" && block.content ? (
+        // eslint-disable-next-line next/no-img-element -- user-uploaded image with unknown dimensions
+        <img
+          src={block.content}
+          alt=""
+          className="h-8 w-8 shrink-0 rounded-md bg-neutral-100 object-cover dark:bg-muted"
+        />
+      ) : (
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-500 dark:bg-muted dark:text-muted-foreground">
+          <Icon size={16} stroke={1.5} />
+        </span>
+      )}
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium text-neutral-800 dark:text-foreground">
           {summarize(block)}
         </p>
-        {(block.type === "link" || block.type === "whatsapp") && block.blocked && (
-          <Badge variant="secondary" className="mt-0.5 bg-red-100 text-red-700 hover:bg-red-100">
-            Blocked
-          </Badge>
-        )}
+        {(block.type === "link" || block.type === "whatsapp" || block.type === "image") &&
+          block.blocked && (
+            <Badge variant="secondary" className="mt-0.5 bg-red-100 text-red-700 hover:bg-red-100">
+              Blocked
+            </Badge>
+          )}
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5">
@@ -298,7 +321,9 @@ function SortableRow({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete this block?</AlertDialogTitle>
               <AlertDialogDescription>
-                {block.type === "link" || block.type === "whatsapp"
+                {block.type === "link" ||
+                block.type === "whatsapp" ||
+                (block.type === "image" && block.shortUrl)
                   ? "This removes the block, its tracking link, and that link's click history. This cannot be undone."
                   : "This removes the block from your bio page. This cannot be undone."}
               </AlertDialogDescription>

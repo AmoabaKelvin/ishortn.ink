@@ -1,0 +1,1 @@
+ALTER TABLE `BioBlock` MODIFY COLUMN `blockType` enum('link','heading','text','social','divider','email','embed','image') NOT NULL;

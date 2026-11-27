@@ -1,11 +1,12 @@
 "use client";
 
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPhoto, IconPlus, IconTrash } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { DateTimePicker } from "@/app/(main)/dashboard/_components/date-time-picker";
+import { EMBED_PROVIDER_LABELS, parseEmbedUrl } from "@/components/bio/embed";
 import { SOCIAL_PLATFORMS, socialIcon } from "@/components/bio/social-icons";
 import {
   WHATSAPP_DEFAULT_LABEL,
@@ -29,12 +30,15 @@ import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { api } from "@/trpc/react";
 
 import { useUpgradeOffer } from "../../../_components/upgrade-offer";
+import { bioBlockLimitSource } from "./utils";
 
 import type { BioEditorBlockType } from "@/server/api/routers/bio-page/bio-page.input";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type EditorBlock = RouterOutputs["bioPage"]["get"]["blocks"][number];
 type Social = { platform: string; url: string; key: string };
+
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 // Lowercase except brand names, as they follow "Add"/"Edit" in the dialog title.
 const TYPE_LABELS = {
@@ -45,6 +49,8 @@ const TYPE_LABELS = {
   whatsapp: "WhatsApp button",
   social: "social icons",
   divider: "divider",
+  embed: "embed",
+  image: "image",
 } satisfies Record<BioEditorBlockType, string>;
 
 type Props = {
@@ -94,6 +100,9 @@ function BlockForm({
   const [message, setMessage] = useState(block?.whatsapp?.message ?? "");
   const [content, setContent] = useState(block?.content ?? "");
   const [url, setUrl] = useState(block?.url ?? "");
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [image, setImage] = useState(type === "image" ? (block?.content ?? null) : null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [socials, setSocials] = useState(() => initialSocials(block, type));
   const [scheduledAt, setScheduledAt] = useState(
     block?.scheduledAt ? new Date(block.scheduledAt) : null,
@@ -114,7 +123,7 @@ function BlockForm({
     ...mutationOptions,
     onError: (error) => {
       if (error.data?.code === "FORBIDDEN" && /upgrade/i.test(error.message)) {
-        notifyPlanLimit(error.message, "bio_link_block_limit", "pro", upgradeOffer);
+        notifyPlanLimit(error.message, bioBlockLimitSource(error.message), "pro", upgradeOffer);
       } else {
         toast.error(error.message);
       }
@@ -131,13 +140,21 @@ function BlockForm({
       return setPhoneError(parsedPhone.error.issues[0]?.message ?? "Enter a valid phone number.");
     }
 
+    if (type === "embed") {
+      const parsed = parseEmbedUrl(url);
+      if (!parsed.ok) return setUrlError(parsed.error);
+    }
+    if (type === "image" && !image) return toast.error("Add an image.");
+
     const cleanSocials = socials
       .filter((s) => s.url.trim() !== "")
       .map(({ platform, url }) => ({ platform, url }));
     const payload = {
       title: title.trim() || null,
       content: type === "text" ? content : null,
-      url: type === "link" || type === "email" ? url.trim() || null : null,
+      url: ["link", "email", "embed", "image"].includes(type) ? url.trim() || null : null,
+      // Unchanged images aren't resent; the stored one stays.
+      image: type === "image" && image !== block?.content ? image : undefined,
       socials: type === "social" ? cleanSocials : undefined,
       whatsapp: parsedPhone ? { phone: parsedPhone.data, message: message.trim() } : undefined,
     };
@@ -154,6 +171,21 @@ function BlockForm({
       updateBlock.mutate({ id: block.id, ...payload, ...schedule });
     }
   }
+
+  function pickImage(file: File | undefined) {
+    if (!file) return;
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error("Image must be under 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    // SAFETY: readAsDataURL populates `result` with a data-URL string on success, and a
+    // failed read leaves it null, which clears the image (the submit then asks for one).
+    reader.onloadend = () => setImage(reader.result as string | null);
+    reader.readAsDataURL(file);
+  }
+
+  const embedPreview = type === "embed" && url.trim() ? parseEmbedUrl(url) : null;
 
   return (
     <>
@@ -278,6 +310,131 @@ function BlockForm({
               rows={4}
             />
           </div>
+        )}
+
+        {type === "embed" && (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-url">Link to embed</Label>
+              <Input
+                id="block-url"
+                name="url"
+                inputMode="url"
+                value={url}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  setUrlError(null);
+                }}
+                placeholder="https://www.youtube.com/watch?v=…"
+                aria-invalid={urlError ? true : undefined}
+                aria-describedby="block-url-hint"
+              />
+              <p
+                id="block-url-hint"
+                className={
+                  urlError ? "text-[12px] text-red-500" : "text-[12px] text-muted-foreground"
+                }
+              >
+                {urlError ??
+                  (embedPreview?.ok
+                    ? `${EMBED_PROVIDER_LABELS[embedPreview.embed.provider]} detected. The player loads only when a visitor taps it.`
+                    : "YouTube, Vimeo, Spotify, SoundCloud, TikTok or Google Maps.")}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-title">Title (optional)</Label>
+              <Input
+                id="block-title"
+                name="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Shown on the preview before it loads"
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Leave blank to use the title from the provider.
+              </p>
+            </div>
+          </>
+        )}
+
+        {type === "image" && (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-image">Image</Label>
+              {image ? (
+                <div className="space-y-2">
+                  <div className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 dark:border-border dark:bg-accent/50">
+                    {/* eslint-disable-next-line next/no-img-element -- local preview of a data URL or the stored upload */}
+                    <img src={image} alt="" className="mx-auto max-h-56 w-auto object-contain" />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => imageInputRef.current?.click()}
+                  >
+                    Replace image
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 px-4 py-8 text-center hover:border-blue-400 hover:bg-blue-50/60 dark:border-border dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 dark:bg-muted dark:text-muted-foreground">
+                    <IconPhoto size={18} stroke={1.5} />
+                  </span>
+                  <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                    Upload an image
+                  </span>
+                  <span className="text-[12px] text-neutral-400 dark:text-muted-foreground">
+                    PNG, JPG, GIF or WebP, up to 2 MB
+                  </span>
+                </button>
+              )}
+              <input
+                id="block-image"
+                ref={imageInputRef}
+                name="image"
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  pickImage(e.target.files?.[0]);
+                  // Reset so picking the same file again fires onChange.
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-title">Alt text</Label>
+              <Input
+                id="block-title"
+                name="alt"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Describe the image"
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Read aloud by screen readers in place of the image.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-url">Link (optional)</Label>
+              <Input
+                id="block-url"
+                name="url"
+                inputMode="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://example.com"
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Tapping the image opens this link. Clicks are tracked in your analytics.
+              </p>
+            </div>
+          </>
         )}
 
         {type === "social" && (

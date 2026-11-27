@@ -1,13 +1,14 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq } from "drizzle-orm";
 
-import { getBioLinkBlockLimit, getBioPageLimit } from "@/lib/billing/plans";
+import { getBioEmbedBlockLimit, getBioLinkBlockLimit, getBioPageLimit } from "@/lib/billing/plans";
 import { baseDomain, formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { bioBlock, bioPage } from "@/server/db/schema";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { workspaceFilter } from "@/server/lib/workspace";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
+import type { PlanLimitKey } from "@/lib/billing/plan-limits";
 import type { Plan } from "@/lib/billing/plans";
 import type { db } from "@/server/db";
 import type { BioPage, BioPageTheme } from "@/server/db/schema";
@@ -107,47 +108,75 @@ export async function checkBioPageLimit(ctx: WorkspaceTRPCContext): Promise<void
   }
 }
 
-/**
- * Throws when a bio page already holds its plan's maximum number of link
- * blocks. Only link blocks are capped: they're the ones backed by a link row.
- */
-export function assertBioLinkBlockCapacity(plan: Plan, currentLinkBlocks: number): void {
-  const limit = getBioLinkBlockLimit(plan);
-  if (limit === undefined || currentLinkBlocks < limit) return;
+// Block types with a per-page cap on some plans. Only those two are counted:
+// link blocks are backed by a link row, embeds load third-party players.
+const BLOCK_CAPS = {
+  link: {
+    limit: getBioLinkBlockLimit,
+    limitKey: "bio_link_blocks",
+    message: (limit: number) =>
+      `The free plan allows ${limit} link blocks per bio page. Upgrade to Pro for unlimited link blocks.`,
+  },
+  embed: {
+    limit: getBioEmbedBlockLimit,
+    limitKey: "bio_embed_blocks",
+    message: (limit: number) =>
+      `The free plan allows ${limit} embed ${limit === 1 ? "block" : "blocks"} per bio page. Upgrade to Pro for unlimited embeds.`,
+  },
+} satisfies Record<
+  string,
+  {
+    limit: (plan: Plan) => number | undefined;
+    limitKey: PlanLimitKey;
+    message: (limit: number) => string;
+  }
+>;
 
-  throw new TRPCError({
-    code: "FORBIDDEN",
-    message: `The free plan allows ${limit} link blocks per bio page. Upgrade to Pro for unlimited link blocks.`,
-  });
+export type CappedBioBlockType = keyof typeof BLOCK_CAPS;
+
+/** Throws when a bio page already holds its plan's maximum number of `type` blocks. */
+export function assertBioBlockCapacity(
+  plan: Plan,
+  type: CappedBioBlockType,
+  currentBlocks: number,
+): void {
+  const cap = BLOCK_CAPS[type];
+  const limit = cap.limit(plan);
+  if (limit === undefined || currentBlocks < limit) return;
+
+  throw new TRPCError({ code: "FORBIDDEN", message: cap.message(limit) });
 }
 
 /**
- * Enforce the per-plan link-block cap for one bio page, inside the transaction
- * that inserts the block. Locking the page row first serializes concurrent
- * adds to the same page, and because the lock is the transaction's first read,
- * the count's snapshot is taken after it and sees every block committed by the
- * add that held the lock before us. Uncapped plans skip both queries.
+ * Enforce the per-plan cap on `type` blocks for one bio page, inside the
+ * transaction that inserts the block. Locking the page row first serializes
+ * concurrent adds to the same page, and because the lock is the transaction's
+ * first read, the count's snapshot is taken after it and sees every block
+ * committed by the add that held the lock before us. Uncapped plans skip both
+ * queries.
  */
-export async function lockBioLinkBlockCapacity(
+export async function lockBioBlockCapacity(
   tx: TransactionClient,
   plan: Plan,
   bioPageId: number,
   userId: string,
+  type: CappedBioBlockType,
 ): Promise<void> {
-  if (getBioLinkBlockLimit(plan) === undefined) return;
+  const cap = BLOCK_CAPS[type];
+  if (cap.limit(plan) === undefined) return;
 
   await tx.select({ id: bioPage.id }).from(bioPage).where(eq(bioPage.id, bioPageId)).for("update");
 
   const [row] = await tx
     .select({ count: count() })
     .from(bioBlock)
-    .where(and(eq(bioBlock.bioPageId, bioPageId), eq(bioBlock.type, "link")));
+    .where(and(eq(bioBlock.bioPageId, bioPageId), eq(bioBlock.type, type)));
 
   try {
-    assertBioLinkBlockCapacity(plan, Number(row?.count ?? 0));
+    assertBioBlockCapacity(plan, type, Number(row?.count ?? 0));
   } catch (error) {
     // Root db, not tx: the transaction rolls back on this throw.
-    await recordPlanLimitHit({ userId, limitKey: "bio_link_blocks", plan });
+    await recordPlanLimitHit({ userId, limitKey: cap.limitKey, plan });
     throw error;
   }
 }

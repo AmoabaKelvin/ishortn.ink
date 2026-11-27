@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 
 import { createBioPage } from "@/server/api/routers/bio-page/bio-page.service";
-import { lockBioLinkBlockCapacity } from "@/server/api/routers/bio-page/utils";
+import { lockBioBlockCapacity } from "@/server/api/routers/bio-page/utils";
 import { createCampaign } from "@/server/api/routers/campaign/campaign.service";
 import { addDomainToUserAccount } from "@/server/api/routers/domains/domains.service";
 import { createFolder } from "@/server/api/routers/folder/folder.service";
@@ -167,7 +167,7 @@ describe.skipIf(!testDatabaseUrl)("PlanLimitHit logging (MySQL)", () => {
           .from(schema.bioPage)
           .where(eq(schema.bioPage.userId, USER_ID));
         // addBlock runs this inside the transaction that inserts the block.
-        return db.transaction((tx) => lockBioLinkBlockCapacity(tx, "free", page!.id, USER_ID));
+        return db.transaction((tx) => lockBioBlockCapacity(tx, "free", page!.id, USER_ID, "link"));
       },
     },
     {

@@ -4,21 +4,27 @@ import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 
+import { EMBED_UNSUPPORTED_MESSAGE } from "@/components/bio/embed";
+import { parseEmbed } from "@/components/bio/embed-content";
 import { buildWhatsAppUrl, parseWhatsApp, serializeWhatsApp } from "@/components/bio/whatsapp";
+import * as platform from "@/lib/platform";
 import * as schema from "@/server/db/schema";
+import { clearPlanLimitHitMemo } from "@/server/lib/plan-limit-hits";
 
 import { addBioBlockSchema } from "./bio-page.input";
 import {
   addBlock,
+  deleteBlock,
   getBioPage,
   getBioPageAnalytics,
   getPublicBioPageBySlug,
   updateBlock,
 } from "./bio-page.service";
-import { lockBioLinkBlockCapacity } from "./utils";
+import { lockBioBlockCapacity } from "./utils";
 
 import type { PublicTRPCContext, WorkspaceTRPCContext } from "../../trpc";
 import type { Plan } from "@/lib/billing/plans";
+import type { z } from "zod";
 
 // Exercises the service against a real MySQL. Set TEST_DATABASE_URL to run it;
 // see CONTRIBUTING.md, "Database tests".
@@ -371,7 +377,7 @@ describe.skipIf(!testDatabaseUrl)("bio page WhatsApp blocks (MySQL)", () => {
       { bioPageId: pageId, type: "heading", title: "Hello", position: 2 },
     ]);
     // Two link-type blocks: one more fits.
-    await db.transaction((tx) => lockBioLinkBlockCapacity(tx, "free", pageId, USER_ID));
+    await db.transaction((tx) => lockBioBlockCapacity(tx, "free", pageId, USER_ID, "link"));
 
     await db.insert(schema.bioBlock).values({
       bioPageId: pageId,
@@ -379,10 +385,10 @@ describe.skipIf(!testDatabaseUrl)("bio page WhatsApp blocks (MySQL)", () => {
       content: serializeWhatsApp(details),
       position: 3,
     });
-    const atCap = db.transaction((tx) => lockBioLinkBlockCapacity(tx, "free", pageId, USER_ID));
+    const atCap = db.transaction((tx) => lockBioBlockCapacity(tx, "free", pageId, USER_ID, "link"));
     await expect(atCap).rejects.toThrow(/3 link blocks/);
     // Pro has no cap.
-    await db.transaction((tx) => lockBioLinkBlockCapacity(tx, "pro", pageId, USER_ID));
+    await db.transaction((tx) => lockBioBlockCapacity(tx, "pro", pageId, USER_ID, "link"));
   });
 
   test("addBlock stores a whatsapp block behind a hidden link to wa.me", async () => {
@@ -468,5 +474,279 @@ describe.skipIf(!testDatabaseUrl)("bio page WhatsApp blocks (MySQL)", () => {
 
     const row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
     expect(row?.content).toBeNull();
+  });
+});
+
+describe.skipIf(!testDatabaseUrl)("bio page embed and image blocks (MySQL)", () => {
+  const pool = mysql.createPool({ uri: testDatabaseUrl ?? "", connectionLimit: 5 });
+  const db = drizzle(pool, { schema, mode: "default" });
+
+  const USER_ID = "bio_embed_image_test";
+  const SLUG = "bio-embed-image-service-test";
+  const YOUTUBE = "https://youtu.be/dQw4w9WgXcQ";
+  const PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+  let pageId = 0;
+  let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">>;
+  let afterResponseSpy: ReturnType<typeof spyOn<typeof platform, "runAfterResponse">>;
+
+  function ctx(plan: Plan) {
+    // SAFETY: mirrors what workspaceProcedure resolves for a personal workspace.
+    return {
+      db,
+      auth: { userId: USER_ID },
+      workspace: {
+        type: "personal",
+        userId: USER_ID,
+        teamId: null,
+        teamSlug: null,
+        role: "owner",
+        plan,
+      },
+    } as WorkspaceTRPCContext;
+  }
+
+  const add = (plan: Plan, input: Omit<z.input<typeof addBioBlockSchema>, "bioPageId">) =>
+    addBlock(ctx(plan), addBioBlockSchema.parse({ bioPageId: pageId, ...input }));
+
+  const blocksOnPage = () =>
+    db.query.bioBlock.findMany({
+      where: eq(schema.bioBlock.bioPageId, pageId),
+      orderBy: (t, { asc }) => [asc(t.position)],
+    });
+
+  async function cleanup() {
+    const pages = await db.query.bioPage.findMany({ where: eq(schema.bioPage.userId, USER_ID) });
+    const pageIds = pages.map((p) => p.id);
+    if (pageIds.length) {
+      await db.delete(schema.bioBlock).where(inArray(schema.bioBlock.bioPageId, pageIds));
+    }
+    await db.delete(schema.bioPage).where(eq(schema.bioPage.userId, USER_ID));
+    const links = await db.query.link.findMany({ where: eq(schema.link.userId, USER_ID) });
+    if (links.length) {
+      await db.delete(schema.linkSafetyRecheck).where(
+        inArray(
+          schema.linkSafetyRecheck.linkId,
+          links.map((l) => l.id),
+        ),
+      );
+    }
+    await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
+    await db.delete(schema.planLimitHit).where(eq(schema.planLimitHit.userId, USER_ID));
+    await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
+  }
+
+  beforeEach(async () => {
+    await cleanup();
+    clearPlanLimitHitMemo();
+    await db.insert(schema.user).values({ id: USER_ID });
+    const [page] = await db
+      .insert(schema.bioPage)
+      .values({ userId: USER_ID, slug: SLUG, isPublished: true });
+    pageId = Number(page.insertId);
+    // Keeps the oEmbed title lookup and the URL safety check off the network; both fail open.
+    fetchSpy = spyOn(globalThis, "fetch").mockRejectedValue(new Error("no network in tests"));
+    // Removing a hidden link purges its redirect cache after the response, which
+    // needs the Workers request context.
+    afterResponseSpy = spyOn(platform, "runAfterResponse").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+    afterResponseSpy.mockRestore();
+  });
+
+  afterAll(async () => {
+    await cleanup();
+    await pool.end();
+  });
+
+  test("a free page takes one YouTube embed, stored as its canonical URL and id", async () => {
+    await add("free", { type: "embed", url: YOUTUBE });
+
+    const [row] = await blocksOnPage();
+    expect(row).toMatchObject({
+      type: "embed",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      linkId: null,
+    });
+    expect(parseEmbed(row?.content ?? null)).toEqual({
+      provider: "youtube",
+      embedId: "dQw4w9WgXcQ",
+      title: undefined,
+    });
+  });
+
+  test("a second embed on a free page is refused with an upgrade message and logged", async () => {
+    await add("free", { type: "embed", url: YOUTUBE });
+
+    await expect(
+      add("free", { type: "embed", url: "https://vimeo.com/76979871" }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message:
+        "The free plan allows 1 embed block per bio page. Upgrade to Pro for unlimited embeds.",
+    });
+    expect(await blocksOnPage()).toHaveLength(1);
+    const hits = await db.query.planLimitHit.findMany({
+      where: eq(schema.planLimitHit.userId, USER_ID),
+    });
+    expect(hits.map((h) => h.limitKey)).toEqual(["bio_embed_blocks"]);
+  });
+
+  test("embeds don't count toward the free link-block cap, or the reverse", async () => {
+    await db
+      .insert(schema.bioBlock)
+      .values(
+        [0, 1, 2].map((position) => ({ bioPageId: pageId, type: "link" as const, position })),
+      );
+
+    await add("free", { type: "embed", url: YOUTUBE });
+
+    expect(await blocksOnPage()).toHaveLength(4);
+  });
+
+  test("Pro pages take several embeds", async () => {
+    await add("pro", { type: "embed", url: YOUTUBE });
+    await add("pro", {
+      type: "embed",
+      url: "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT",
+    });
+    await add("pro", { type: "embed", url: "https://www.google.com/maps?q=Accra+Mall" });
+
+    expect((await blocksOnPage()).map((b) => b.type)).toEqual(["embed", "embed", "embed"]);
+  });
+
+  test("unsupported and malformed embed URLs are rejected with the parser's message", async () => {
+    await expect(
+      add("pro", { type: "embed", url: "https://example.com/video" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: EMBED_UNSUPPORTED_MESSAGE });
+    await expect(add("pro", { type: "embed", url: "not a url" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(await blocksOnPage()).toHaveLength(0);
+  });
+
+  test("the oEmbed title is stored when the provider answers", async () => {
+    fetchSpy.mockImplementation(async (input) =>
+      String(input).startsWith("https://www.youtube.com/oembed")
+        ? Response.json({ title: "Never Gonna Give You Up" })
+        : Promise.reject(new Error("no network in tests")),
+    );
+
+    await add("free", { type: "embed", url: YOUTUBE });
+
+    const [row] = await blocksOnPage();
+    expect(parseEmbed(row?.content ?? null)?.title).toBe("Never Gonna Give You Up");
+  });
+
+  test("changing an embed's URL re-parses it, and a bad URL leaves it unchanged", async () => {
+    const { id } = await add("pro", { type: "embed", url: YOUTUBE });
+
+    await updateBlock(ctx("pro"), { id, url: "https://vimeo.com/76979871" });
+    let row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row?.url).toBe("https://vimeo.com/76979871");
+    expect(parseEmbed(row?.content ?? null)?.provider).toBe("vimeo");
+
+    await expect(updateBlock(ctx("pro"), { id, url: "https://evil.example" })).rejects.toThrow(
+      EMBED_UNSUPPORTED_MESSAGE,
+    );
+    row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row?.url).toBe("https://vimeo.com/76979871");
+  });
+
+  test("image blocks are refused on the free plan and logged", async () => {
+    await expect(add("free", { type: "image", image: PNG })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "Image blocks are available on Pro and Ultra plans.",
+    });
+    expect(await blocksOnPage()).toHaveLength(0);
+    const hits = await db.query.planLimitHit.findMany({
+      where: eq(schema.planLimitHit.userId, USER_ID),
+    });
+    expect(hits.map((h) => h.limitKey)).toEqual(["bio_image_blocks"]);
+  });
+
+  test("a linked image goes through a hidden tracking link on the public page", async () => {
+    const { id } = await add("pro", {
+      type: "image",
+      image: PNG,
+      title: "Spring menu",
+      url: "https://example.com/menu",
+    });
+
+    const row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row).toMatchObject({ type: "image", title: "Spring menu", content: PNG });
+    const backing = await db.query.link.findFirst({ where: eq(schema.link.id, row?.linkId ?? 0) });
+    expect(backing).toMatchObject({ url: "https://example.com/menu", isBioLink: true });
+
+    // SAFETY: same database client as ctx() above; public reads only use db.
+    const publicCtx = { db, headers: new Headers() } as PublicTRPCContext;
+    const page = await getPublicBioPageBySlug(publicCtx, SLUG);
+    expect(page?.blocks).toEqual([
+      {
+        id,
+        type: "image",
+        src: PNG,
+        alt: "Spring menu",
+        href: `https://${backing?.domain}/${backing?.alias}`,
+      },
+    ]);
+  });
+
+  test("an image block's link can be added and removed later", async () => {
+    const { id } = await add("pro", { type: "image", image: PNG });
+    let row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row?.linkId).toBeNull();
+
+    await updateBlock(ctx("pro"), { id, url: "https://example.com/shop" });
+    row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    const linkId = row?.linkId ?? 0;
+    expect(linkId).toBeGreaterThan(0);
+
+    await updateBlock(ctx("pro"), { id, url: null });
+    row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row).toMatchObject({ url: null, linkId: null, content: PNG });
+    expect(await db.query.link.findFirst({ where: eq(schema.link.id, linkId) })).toBeUndefined();
+  });
+
+  test("an image block's src can't be pointed at another site", async () => {
+    const { id } = await add("pro", { type: "image", image: PNG });
+
+    await expect(
+      updateBlock(ctx("pro"), { id, image: "https://evil.example/pixel.png" }),
+    ).rejects.toThrow(/must be uploaded/);
+    await updateBlock(ctx("pro"), { id, content: "https://evil.example/pixel.png" });
+    const row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row?.content).toBe(PNG);
+  });
+
+  test("deleting a linked image block deletes its hidden link", async () => {
+    const { id } = await add("pro", { type: "image", image: PNG, url: "https://example.com" });
+    const row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+
+    await deleteBlock(ctx("pro"), id);
+
+    expect(await blocksOnPage()).toHaveLength(0);
+    expect(
+      await db.query.link.findFirst({ where: eq(schema.link.id, row?.linkId ?? 0) }),
+    ).toBeUndefined();
+  });
+
+  test("the public page and the editor get the embed's details", async () => {
+    const { id } = await add("free", { type: "embed", url: YOUTUBE, title: "My video" });
+
+    // SAFETY: same database client as ctx() above; public reads only use db.
+    const publicCtx = { db, headers: new Headers() } as PublicTRPCContext;
+    const page = await getPublicBioPageBySlug(publicCtx, SLUG);
+    expect(page?.blocks).toEqual([
+      { id, type: "embed", title: "My video", provider: "youtube", embedId: "dQw4w9WgXcQ" },
+    ]);
+    const editor = await getBioPage(ctx("free"), pageId);
+    expect(editor.blocks[0]).toMatchObject({
+      type: "embed",
+      embed: { provider: "youtube", embedId: "dQw4w9WgXcQ" },
+    });
   });
 });
