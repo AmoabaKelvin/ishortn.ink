@@ -15,6 +15,7 @@ import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan
 import { generateUnreservedAlias } from "@/server/lib/reserved-alias";
 import { ServerTiming } from "@/server/lib/server-timing";
 import { claimMonthlyLinkSlot, releaseMonthlyLinkSlot } from "@/server/lib/user-plan";
+import { emitWebhookEvents } from "@/server/lib/webhooks";
 
 import {
   apiDomainWriteError,
@@ -195,9 +196,8 @@ async function createNewLink(
     account: apiSafetyAccount(token),
   });
   checkCampaignPatternsAfterResponse([{ linkId: newLinkId, url: data.url }]);
+  const created = toApiLink({ id: newLinkId, ...newLinkData });
+  emitWebhookEvents(db, { userId, teamId: newLinkData.teamId, plan }, "link.created", [created]);
 
-  return {
-    ...toApiLink({ id: newLinkId, ...newLinkData }),
-    isProtected: !!newLinkData.passwordHash,
-  };
+  return { ...created, isProtected: !!newLinkData.passwordHash };
 }

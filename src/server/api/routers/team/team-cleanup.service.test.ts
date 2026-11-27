@@ -17,6 +17,19 @@ describe.skipIf(!testDatabaseUrl)("cleanupDeletedTeams (MySQL)", () => {
   const teamIds: Record<string, number> = {};
 
   async function cleanup() {
+    const hooks = await db
+      .select({ id: schema.webhook.id })
+      .from(schema.webhook)
+      .where(eq(schema.webhook.userId, OWNER));
+    if (hooks.length > 0) {
+      await db.delete(schema.webhookDelivery).where(
+        inArray(
+          schema.webhookDelivery.webhookId,
+          hooks.map((h) => h.id),
+        ),
+      );
+    }
+    await db.delete(schema.webhook).where(eq(schema.webhook.userId, OWNER));
     await db.delete(schema.scheduledReport).where(eq(schema.scheduledReport.userId, OWNER));
     await db.delete(schema.team).where(inArray(schema.team.slug, SLUGS));
   }
@@ -32,6 +45,8 @@ describe.skipIf(!testDatabaseUrl)("cleanupDeletedTeams (MySQL)", () => {
       recipients: ["client@example.com"],
     };
   }
+
+  const webhookIds: Record<string, number> = {};
 
   beforeAll(async () => {
     // Another test file replaces @/env.mjs with a partial object for the whole run.
@@ -53,6 +68,26 @@ describe.skipIf(!testDatabaseUrl)("cleanupDeletedTeams (MySQL)", () => {
         report(teamIds["team-cleanup-active"]!),
         report(null),
       ]);
+    for (const [key, teamId] of [
+      ["deleted", teamIds["team-cleanup-deleted"]!],
+      ["active", teamIds["team-cleanup-active"]!],
+      ["personal", null],
+    ] as const) {
+      const [result] = await db.insert(schema.webhook).values({
+        userId: OWNER,
+        teamId,
+        url: "https://hooks.example.com/ishortn",
+        events: ["link.created"],
+        secret: "whsec_test",
+      });
+      webhookIds[key] = result.insertId;
+      await db.insert(schema.webhookDelivery).values({
+        webhookId: result.insertId,
+        eventId: `evt_${result.insertId}`,
+        eventType: "link.created",
+        payload: "{}",
+      });
+    }
   });
 
   afterAll(cleanup);
@@ -73,5 +108,25 @@ describe.skipIf(!testDatabaseUrl)("cleanupDeletedTeams (MySQL)", () => {
       .from(schema.team)
       .where(eq(schema.team.id, teamIds["team-cleanup-deleted"]!));
     expect(deletedTeam).toBeUndefined();
+  });
+
+  test("deletes the deleted team's webhooks and their deliveries and keeps other workspaces' ones", async () => {
+    const ids = Object.values(webhookIds);
+
+    const hooks = await db
+      .select({ id: schema.webhook.id })
+      .from(schema.webhook)
+      .where(inArray(schema.webhook.id, ids));
+    expect(hooks.map((h) => h.id).sort()).toEqual(
+      [webhookIds.active!, webhookIds.personal!].sort(),
+    );
+
+    const deliveries = await db
+      .select({ webhookId: schema.webhookDelivery.webhookId })
+      .from(schema.webhookDelivery)
+      .where(inArray(schema.webhookDelivery.webhookId, ids));
+    expect(deliveries.map((d) => d.webhookId).sort()).toEqual(
+      [webhookIds.active!, webhookIds.personal!].sort(),
+    );
   });
 });

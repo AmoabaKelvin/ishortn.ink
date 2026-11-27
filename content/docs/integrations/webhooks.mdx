@@ -1,0 +1,133 @@
+---
+title: Webhooks
+description: Get a signed HTTPS request from iShortn when a link is created, updated or deleted, or when a custom domain is verified.
+---
+
+Webhooks send an HTTPS `POST` to your server as soon as something changes in a workspace, so integrations don't have to poll the [API](/docs/api). Each request carries a JSON event and a signature you can check with your endpoint's secret.
+
+Webhooks need a **Pro** plan (up to 3 endpoints per workspace) or **Ultra** (up to 10). Team workspaces have their own endpoints, managed by the team's owner and admins, and receive only that team's events.
+
+## Add an endpoint
+
+1. Open [Settings](/dashboard/settings#webhooks) in the workspace you want events from and scroll to **Webhooks**.
+2. Click **Add endpoint** and enter:
+   - **URL**: where events are sent. It must use `https://` and resolve to a public address; private, loopback and link-local addresses are refused.
+   - **Description** (optional): a note to tell endpoints apart.
+   - **Events**: the event types this endpoint receives.
+3. Click **Add endpoint**, then copy the **signing secret** from the dialog. It's shown once. If you lose it, choose **Roll secret** from the endpoint's menu to get a new one; the old secret stops working straight away.
+
+Use **Send test event** in the endpoint's menu to send a `webhook.test` event and see how your server answered.
+
+## Events
+
+| Event | Sent when | `data` |
+| --- | --- | --- |
+| `link.created` | A link is created in the dashboard, with the API or with the browser extension. | The link |
+| `link.updated` | A link is saved in the link editor or with [Update a link](/docs/api/update-link). | The link after the change |
+| `link.deleted` | A link is deleted, one at a time or in bulk, in the dashboard or with the API. | The link as it was |
+| `domain.verified` | A custom domain finishes verification and starts serving links. | The domain |
+| `webhook.test` | You click **Send test event**. | A sample link |
+
+Archiving, pausing, moving links between folders and CSV imports don't send events.
+
+## Payload
+
+Every event has the same envelope. `id` is unique per event: use it to ignore a delivery you've already processed. `workspace.id` is your user id for a personal workspace and the team's numeric id for a team.
+
+Link events carry the link in the shape [Get a link](/docs/api/get-link#response) returns:
+
+```json title="link.created"
+{
+  "id": "evt_5f0c3a9e1b7d4c2a8e6f9b10",
+  "type": "link.created",
+  "createdAt": "2026-11-27T14:03:12.000Z",
+  "workspace": { "type": "personal", "id": "user_2abcDEF123" },
+  "data": {
+    "id": 48213,
+    "shortLink": "https://isht.app/launch-day",
+    "url": "https://example.com/launch",
+    "alias": "launch-day",
+    "createdAt": "2026-11-27T14:03:12.000Z",
+    "expiresAt": null,
+    "activatesAt": null,
+    "expiresAfter": null
+  }
+}
+```
+
+```json title="domain.verified"
+{
+  "id": "evt_9a1d2c3b4e5f60718293a4b5",
+  "type": "domain.verified",
+  "createdAt": "2026-11-27T15:20:41.000Z",
+  "workspace": { "type": "team", "id": 42 },
+  "data": {
+    "id": 731,
+    "domain": "go.example.com",
+    "verifiedAt": "2026-11-27T15:20:41.000Z"
+  }
+}
+```
+
+## Verify the signature
+
+Each request has an `X-iShortn-Signature` header:
+
+```text
+X-iShortn-Signature: t=1795788192,v1=6b1e0c8f2d...
+```
+
+`t` is when the request was signed, in Unix seconds. `v1` is the hex HMAC-SHA256 of `<t>.<raw request body>`, keyed with your endpoint's signing secret. To verify a request, compute the same HMAC over the raw body (before parsing it as JSON), compare it to `v1` in constant time, and reject timestamps more than a few minutes old so a captured request can't be replayed.
+
+```javascript title="Node.js"
+const crypto = require("node:crypto");
+
+function verifyIshortnSignature(rawBody, signatureHeader, secret, toleranceSeconds = 300) {
+  const parts = Object.fromEntries(
+    String(signatureHeader)
+      .split(",")
+      .map((part) => part.split("=")),
+  );
+  const timestamp = Number(parts.t);
+  if (!Number.isInteger(timestamp) || !parts.v1) return false;
+  if (Math.abs(Date.now() / 1000 - timestamp) > toleranceSeconds) return false;
+
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest();
+  const received = Buffer.from(parts.v1, "hex");
+  return received.length === expected.length && crypto.timingSafeEqual(received, expected);
+}
+```
+
+With Express, read the body as raw text so it matches what was signed:
+
+```javascript title="Express"
+const express = require("express");
+
+const app = express();
+
+app.post("/webhooks/ishortn", express.text({ type: "application/json" }), (req, res) => {
+  const signature = req.get("X-iShortn-Signature");
+  if (!verifyIshortnSignature(req.body, signature, process.env.ISHORTN_WEBHOOK_SECRET)) {
+    return res.status(400).send("Invalid signature");
+  }
+
+  const event = JSON.parse(req.body);
+  if (event.type === "link.created") {
+    console.log("New link:", event.data.shortLink);
+  }
+  res.sendStatus(200);
+});
+```
+
+## Delivery and retries
+
+- Respond with any `2xx` status within **10 seconds** to acknowledge an event. Do slow work after responding.
+- Redirects aren't followed; a `3xx` counts as a failure.
+- A failed delivery is retried with exponential backoff, about 5 minutes, 15 minutes, 45 minutes, 2 hours, 7 hours and 12 hours after the previous attempt, for up to 24 hours after the event. Retries are checked every 15 minutes, so they can run a few minutes late.
+- Events can arrive more than once and out of order. Deduplicate on the event `id`, and use `createdAt` to order them.
+- After **20 failed attempts in a row**, counting at most one per minute (so a burst of events during a brief outage doesn't trip it), the endpoint is turned off and the workspace owner gets one email. Turn it back on from its menu once your server is fixed. Events from while it was off aren't resent.
+
+**View deliveries** in the endpoint's menu shows its last 50 deliveries: the event, the status code your server returned, how long it took, when it was last tried and how many times it was retried.

@@ -115,6 +115,8 @@ const LIMIT_HIT_FEATURES = new Map(
     api_keys: "API access",
     api_v1: "API access",
     tokens_page_view: "API access",
+    webhooks: "webhooks",
+    webhooks_page_view: "webhooks",
     geo_rules: "geo and device targeting",
     milestones: "click milestone alerts",
     monthly_links: "more links per month",

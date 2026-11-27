@@ -45,6 +45,7 @@ export const DOCS_SECTIONS = [
       { slug: "integrations/raycast", title: "Raycast" },
       { slug: "integrations/n8n", title: "n8n" },
       { slug: "integrations/mcp", title: "MCP server" },
+      { slug: "integrations/webhooks", title: "Webhooks" },
     ],
   },
   {

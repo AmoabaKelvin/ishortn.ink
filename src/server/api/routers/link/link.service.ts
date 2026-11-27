@@ -96,6 +96,7 @@ import {
   assertCanEnableVerifiedClicks,
   issueVerifiedClickToken,
 } from "@/server/lib/verified-click";
+import { emitLinkWebhooks } from "@/server/lib/webhooks";
 import {
   getAccessibleFolderIds,
   isWorkspaceAdmin,
@@ -648,6 +649,9 @@ const createLinkSteps = async (
   // Create link without tags field
   const { tags: _tags, ...linkData } = input;
   const ownership = workspaceOwnership(ctx.workspace);
+  // Stored and sent in link.created, so the payload matches what GET /api/v1/links/:id returns.
+  // The column has second precision; drop the milliseconds rather than let MySQL round them.
+  const createdAt = new Date(Math.floor(Date.now() / 1000) * 1000);
 
   // One transaction, so a failed tag or rule write doesn't leave a half-made link.
   const result = await ctx.db.transaction(async (tx) => {
@@ -658,6 +662,7 @@ const createLinkSteps = async (
       userId: ownership.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      createdAt,
       passwordHash: input.password,
       domain,
       note: input.note,
@@ -724,6 +729,18 @@ const createLinkSteps = async (
 
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
   checkCampaignPatternsAfterResponse(linkDestinations(linkId, input.url, geoRulesInput));
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.created", [
+    {
+      id: linkId,
+      createdAt,
+      domain,
+      alias,
+      url: input.url,
+      disableLinkAfterDate: input.disableLinkAfterDate ?? null,
+      activateAt: input.activateAt ?? null,
+      disableLinkAfterClicks: input.disableLinkAfterClicks ?? null,
+    },
+  ]);
 
   return { id: linkId, alias, domain, isFirstLink: await isFirstLink(ctx, plan, linkId) };
 };
@@ -1049,6 +1066,7 @@ export const updateLink = async (
       geoRulesInput,
     ),
   );
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.updated", [updatedLink]);
 };
 
 export const deleteLink = async (ctx: WorkspaceTRPCContext, input: GetLinkInput) => {
@@ -1113,6 +1131,7 @@ export const removeLink = async (
     }),
   ]);
   if (qrCodes.length > 0) await deleteQrCodeImages(db, workspace, qrCodes);
+  emitLinkWebhooks(db, workspace, "link.deleted", [linkToDelete]);
 };
 
 export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number[]) => {
@@ -1187,6 +1206,7 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
   });
 
   if (qrCodes.length > 0) await deleteQrCodeImages(ctx.db, ctx.workspace, qrCodes);
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.deleted", linksToDelete);
 
   // Invalidate cache for all deleted links in the background. waitUntil keeps
   // the serverless function alive until every deleteFromCache settles.
@@ -1331,6 +1351,9 @@ const shortenLinkSteps = async (
   const name = fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
+  // Stored and sent in link.created, so the payload matches what GET /api/v1/links/:id returns.
+  // The column has second precision; drop the milliseconds rather than let MySQL round them.
+  const createdAt = new Date(Math.floor(Date.now() / 1000) * 1000);
 
   attempt.step = "db";
   const result = await ctx.db.transaction(async (tx) => {
@@ -1341,6 +1364,7 @@ const shortenLinkSteps = async (
       userId: ownership.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      createdAt,
       name,
       metadata: {
         title: fetchedMetadata?.title,
@@ -1360,6 +1384,18 @@ const shortenLinkSteps = async (
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
   afterCreate({ id: Number(result.insertId), domain, alias });
   checkCampaignPatternsAfterResponse(linkDestinations(Number(result.insertId), input.url));
+  emitLinkWebhooks(ctx.db, ctx.workspace, "link.created", [
+    {
+      id: Number(result.insertId),
+      createdAt,
+      domain,
+      alias,
+      url: input.url,
+      disableLinkAfterDate: null,
+      activateAt: null,
+      disableLinkAfterClicks: null,
+    },
+  ]);
 
   return {
     id: result.insertId,

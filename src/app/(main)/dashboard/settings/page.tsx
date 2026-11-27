@@ -19,6 +19,7 @@ import { ApiKeys } from "./tokens/_components/api-keys";
 import { ConnectedBrowsers } from "./tokens/_components/connected-browsers";
 import { TeamApiKeys } from "./tokens/_components/team-api-keys";
 import { AccountTransferSection } from "./transfer/account-transfer-section";
+import { Webhooks } from "./webhooks/webhooks";
 
 import type { Metadata } from "next";
 
@@ -43,6 +44,7 @@ async function SettingsPage(props: Props) {
     workspace,
     graceNotice,
     latestCheckout,
+    webhooks,
   ] = await Promise.all([
     api.siteSettings.get.query(),
     api.customDomain.list.query(),
@@ -55,6 +57,7 @@ async function SettingsPage(props: Props) {
     api.team.currentWorkspace.query(),
     getDashboardGraceNotice(),
     api.lemonsqueezy.latestCheckoutStart.query(),
+    api.webhook.list.query(),
   ]);
   // Dismissal is read on the client (annual-switch-card.tsx).
   const annualOffer = annualSwitchOffer({
@@ -211,6 +214,35 @@ async function SettingsPage(props: Props) {
             </p>
             <div className="mt-4">
               <ApiKeys tokens={tokens} apiAccess={apiAccess} />
+            </div>
+          </section>
+
+          {/* Webhooks */}
+          <section id="webhooks" className="scroll-mt-24">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[14px] font-semibold text-neutral-900 dark:text-foreground">
+                Webhooks
+              </h2>
+              <Link
+                // Absolute: docs are served on the app host only, not on team subdomains.
+                href={withProductUtm(
+                  `https://${getAppBaseDomain()}/docs/integrations/webhooks`,
+                  "app",
+                  "settings_webhook_docs",
+                )}
+                target="_blank"
+                className="text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700"
+              >
+                Docs
+              </Link>
+            </div>
+            <p className="mt-0.5 text-[12px] text-neutral-400 dark:text-muted-foreground">
+              {workspace.type === "team"
+                ? "Signed events for this team's links and domains"
+                : "Signed events for your links and domains"}
+            </p>
+            <div className="mt-4">
+              <Webhooks webhooks={webhooks} />
             </div>
           </section>
 
