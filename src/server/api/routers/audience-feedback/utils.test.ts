@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { submitAcquisitionInput } from "./audience-feedback.input";
 import {
+  ACQUISITION_PROMPT_CHECKOUT_QUIET_MS,
   ACQUISITION_PROMPT_COOLDOWN_MS,
   acquisitionAnswerValues,
   acquisitionPromptState,
@@ -103,10 +104,31 @@ describe("acquisitionPromptState", () => {
   test("asks right after checkout even inside the cooldown", () => {
     const row = {
       ...emptyRow,
-      acquisitionDismissedAt: new Date(NOW.getTime() - DAY_MS),
+      acquisitionDismissedAt: new Date(NOW.getTime() - 2 * DAY_MS),
       acquisitionDismissCount: 1,
     };
     expect(acquisitionPromptState("pro", row, NOW).showAfterCheckout).toBe(true);
+    expect(acquisitionPromptState("pro", row, NOW).showOnDashboard).toBe(false);
+  });
+
+  test("doesn't ask again after a plan change right after Not now", () => {
+    // First checkout: never asked before, so the prompt opens.
+    expect(acquisitionPromptState("pro", emptyRow, NOW).showAfterCheckout).toBe(true);
+
+    // "Not now", then an upgrade to Ultra on the same screen a minute later.
+    const dismissedAt = NOW;
+    const afterUpgrade = new Date(NOW.getTime() + 60 * 1000);
+    const row = { ...emptyRow, acquisitionDismissedAt: dismissedAt, acquisitionDismissCount: 1 };
+    expect(acquisitionPromptState("ultra", row, afterUpgrade).showAfterCheckout).toBe(false);
+
+    const nextDay = new Date(NOW.getTime() + ACQUISITION_PROMPT_CHECKOUT_QUIET_MS);
+    expect(acquisitionPromptState("ultra", row, nextDay).showAfterCheckout).toBe(true);
+  });
+
+  test("doesn't ask again after a plan change once answered", () => {
+    const row = { ...emptyRow, acquisitionAnsweredAt: NOW };
+    const afterUpgrade = new Date(NOW.getTime() + 60 * 1000);
+    expect(acquisitionPromptState("ultra", row, afterUpgrade).showAfterCheckout).toBe(false);
   });
 
   test("never shows again after the second dismissal", () => {
