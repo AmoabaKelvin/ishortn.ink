@@ -1,5 +1,7 @@
 import { PaddleApiError } from "@/lib/paddle/client";
 
+import type { PlanChangeCharge } from "@/lib/billing/plan-change-copy";
+import type { PaddleSubscriptionPreview } from "@/lib/paddle/client";
 import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
 
 export type ClientBillingError = {
@@ -101,4 +103,19 @@ export function pauseUpdate(resumesAt: Date) {
 /** The provider change that resumes a paused or a cancelled subscription. */
 export function resumeUpdate(status: string | null | undefined) {
   return status === "paused" ? { pause: null } : { cancelled: false };
+}
+
+/**
+ * The amount a Paddle preview bills today: `grand_total` already has the proration, discounts and
+ * any account credit applied. A preview with no immediate transaction or an unreadable total falls
+ * back to the prorated wording.
+ */
+export function paddlePreviewCharge(preview: PaddleSubscriptionPreview): PlanChangeCharge {
+  const totals = preview.immediate_transaction?.details.totals;
+  if (!totals || !/^-?\d+$/.test(totals.grand_total)) return { type: "prorated" };
+  return {
+    type: "amount_due",
+    amount: Number(totals.grand_total),
+    currencyCode: totals.currency_code,
+  };
 }

@@ -11,10 +11,7 @@ import { PLAN_NAMES } from "@/lib/billing/entitlements";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
-import {
-  buildPlanChangeCopy,
-  PlanChangeConfirmDialog,
-} from "../pricing/_components/plan-change-confirm-dialog";
+import { PlanChangeConfirmDialog } from "../pricing/_components/plan-change-confirm-dialog";
 import { annualSwitchDismissKey, isAnnualSwitchDismissed } from "./annual-switch-state";
 
 import type { AnnualSwitchOffer } from "./annual-switch-state";
@@ -106,7 +103,6 @@ export function AnnualSwitchCard({ offer, source, className }: AnnualSwitchCardP
   if (!visible) return null;
 
   const planName = PLAN_NAMES[offer.plan];
-  const confirmCopy = buildPlanChangeCopy("switch", offer.plan, "annual");
   // Stays busy after success until the page reloads.
   const isSwitching = createCheckoutOrUpdate.isLoading || createCheckoutOrUpdate.isSuccess;
 
@@ -161,10 +157,9 @@ export function AnnualSwitchCard({ offer, source, className }: AnnualSwitchCardP
       <PlanChangeConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={confirmCopy.title}
-        description={confirmCopy.description}
-        note={confirmCopy.note}
-        confirmLabel={confirmCopy.confirmLabel}
+        kind="switch"
+        targetPlan={offer.plan}
+        interval="annual"
         isLoading={isSwitching}
         onConfirm={() => createCheckoutOrUpdate.mutate({ plan: offer.plan, interval: "annual" })}
       />

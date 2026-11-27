@@ -125,7 +125,9 @@ are all set and their prefixes match `PADDLE_ENVIRONMENT`. A mismatch logs
 
    The fixtures live in `scripts/dev/fixtures/paddle/` (its README explains the order and the
    placeholders). Leave a second between replays: events not newer than the stored
-   `providerUpdatedAt` are dropped as stale.
+   `providerUpdatedAt` are dropped as stale. A subscription event that arrives before
+   `subscription.created` has written the row gets a 500, so Paddle redelivers it once the row
+   exists.
 
 8. Run the daily reconcile by hand:
 
@@ -138,8 +140,20 @@ Sandbox cards: `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is declined
 
 ## Sandbox test cases
 
-In-app plan changes, cancel, resume, pause and portal links are not routed to Paddle yet; manage
-sandbox subscriptions from the Paddle dashboard (Customers → Subscriptions) for these cases.
+Settings → Billing manages Paddle rows through the Paddle API, the same way it manages Lemon
+Squeezy rows:
+
+- Upgrades and interval switches change the price with `prorated_immediately`. The confirm dialog
+  shows the amount due today from `PATCH /subscriptions/{id}/preview` (proration and discounts
+  included), or prorated wording if the preview fails.
+- A downgrade to Pro also uses `prorated_immediately`: the unused Ultra time goes to the customer's
+  Paddle credit balance at once and pays toward the next charge, including a switch to annual in
+  the same period.
+- Cancel schedules a cancel at the end of the billing period.
+- Pause (monthly plans only) schedules a pause at the end of the paid period with a `resume_at`
+  1-3 months later. The plan stays until the pause starts; the billing card shows both dates.
+- Resume removes a scheduled cancel or pause, or resumes a pause in effect immediately.
+- "Invoices & payment method" opens a Paddle customer portal session.
 
 Run these against the sandbox before switching any traffic. For each, check the user's
 `Subscription` row (`billingProvider`, `providerSubscriptionId`, `status`, `plan`,
@@ -162,6 +176,11 @@ Run these against the sandbox before switching any traffic. For each, check the 
 | 13  | Delete the account while Paddle refuses the cancel and the subscription is still live (for example a wrong API key) | Deletion is refused with "We couldn't cancel your subscription…" and nothing is deleted. |
 | 14  | Replay any webhook with a bad signature or a `ts` older than 5 seconds | 401; nothing changes.                                                                                                                                          |
 | 15  | Lemon Squeezy subscriber with `BILLING_PROVIDER=paddle`              | Billing, reconcile and deletion keep using Lemon Squeezy for that row.                                                                                         |
+| 16  | Upgrade Pro monthly to Ultra monthly from Settings → Billing          | The dialog quotes the prorated amount due today; after confirming, the row is `ultra` and Paddle's transaction matches the quote.                             |
+| 17  | Downgrade Ultra to Pro, then switch to annual in the same period      | The downgrade credit appears on the customer's balance and is applied to the annual charge; the switch dialog quotes the reduced amount.                      |
+| 18  | Pause a monthly plan for 2 months                                     | The row stays `active` with `renewsAt` at the period end and `pausedUntil` 2 months later; the billing card shows "Pauses …, resumes …".                       |
+| 19  | Resume before the pause starts                                        | The scheduled pause is removed; the row has no `pausedUntil`.                                                                                                 |
+| 20  | Cancel from Settings → Billing                                         | `status=cancelled` with `endsAt` at the period end.                                                                                                           |
 
 ## Going live
 

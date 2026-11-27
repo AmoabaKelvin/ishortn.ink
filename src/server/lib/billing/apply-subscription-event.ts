@@ -58,6 +58,7 @@ export type SubscriptionEventResult =
   | "stale"
   | "superseded"
   | "no_row_matched"
+  | "not_created_yet"
   | "user_not_found"
   | "invalid_payload";
 
@@ -136,11 +137,26 @@ export async function applySubscriptionEvent(
   // updates below let a markerless row through, so decide here for every
   // event rather than relying on the predicate.
   if (isStale) {
-    log.warn(
-      { ...logContext, storedSubscriptionId: existing ? storedSubscriptionId(existing) : null },
-      "ignoring event older than stored or provider state",
-    );
+    const staleContext = {
+      ...logContext,
+      storedSubscriptionId: existing ? storedSubscriptionId(existing) : null,
+    };
+    // Paddle sends several events for one change with the same updated_at (created and
+    // activated on a purchase, updated and canceled on an expiry), and redeliveries repeat them.
+    if (existing?.providerUpdatedAt?.getTime() === providerUpdatedAt.getTime()) {
+      log.info(staleContext, "ignoring event for state already applied");
+    } else {
+      log.warn(staleContext, "ignoring event older than stored or provider state");
+    }
     return { result: "stale" };
+  }
+
+  // Paddle delivers a purchase's events concurrently and in no set order, so an update can arrive
+  // before subscription.created has written the row. It is retried rather than dropped, in case it
+  // carries newer state than the created event.
+  if (!existing && kind !== "created" && event.provider === "paddle") {
+    log.info(logContext, "no subscription row yet; asking for a redelivery");
+    return { result: "not_created_yet" };
   }
 
   const currentSubscription = and(

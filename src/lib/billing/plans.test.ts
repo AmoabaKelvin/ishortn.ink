@@ -8,6 +8,7 @@ import {
   hasProviderSubscription,
   pauseResumesAt,
   resolvePlan,
+  scheduledPause,
   subscriptionInterval,
 } from "./plans";
 
@@ -199,6 +200,16 @@ describe("Paddle subscriptions", () => {
     expect(getSubscriptionMode(paddleSub({ status: "active", pausedUntil: inPeriod }))).toBe(
       "resume",
     );
+  });
+
+  test("a scheduled pause starts at the end of the paid period and resumes on pausedUntil", () => {
+    expect(
+      scheduledPause(paddleSub({ status: "active", renewsAt: inPeriod, pausedUntil: pastPeriod })),
+    ).toEqual({ startsAt: inPeriod, resumesAt: pastPeriod });
+    expect(scheduledPause(paddleSub({ status: "active", pausedUntil: null }))).toBeNull();
+    // Once in effect it is a paused subscription, not a scheduled pause.
+    expect(scheduledPause(paddleSub({ status: "paused", pausedUntil: inPeriod }))).toBeNull();
+    expect(scheduledPause(sub({ status: "active", pausedUntil: inPeriod }))).toBeNull();
   });
 
   test("the interval comes from the stored column", () => {

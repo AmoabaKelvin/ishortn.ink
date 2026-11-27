@@ -195,6 +195,9 @@ export async function handlePaddleWebhook(
     if (result === "invalid_payload") {
       return new Response("Invalid updated_at", { status: 400 });
     }
+    if (result === "not_created_yet") {
+      return new Response("Subscription not found", { status: 500 });
+    }
     return new Response("OK", { status: 200 });
   } catch (err) {
     log.error({ ...logContext, err }, "processing failed");

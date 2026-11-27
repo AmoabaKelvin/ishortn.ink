@@ -208,15 +208,32 @@ export function getSubscriptionMode(subscription?: Subscription | null): Subscri
   if (resolvePlan(subscription) === "free") return "checkout";
   // Paddle refuses item changes while a scheduled change exists, so a scheduled pause has to be
   // removed (resumed) before the plan can change.
-  if (
-    subscription.billingProvider === "paddle" &&
-    subscription.status === "active" &&
-    subscription.pausedUntil
-  ) {
-    return "resume";
-  }
+  if (scheduledPause(subscription)) return "resume";
 
   return subscription.status === "cancelled" ? "resume" : "update";
+}
+
+/**
+ * A Paddle pause that is scheduled but not yet in effect: it starts at the end of the paid
+ * period (`renewsAt`, see normalizePaddleSubscription) and billing resumes on `pausedUntil`.
+ * Lemon Squeezy pauses take effect at once, so its rows never have one.
+ */
+export function scheduledPause(
+  subscription?: {
+    billingProvider?: string | null;
+    status?: string | null;
+    renewsAt?: Date | null;
+    pausedUntil?: Date | null;
+  } | null,
+): { startsAt: Date | null; resumesAt: Date } | null {
+  if (
+    subscription?.billingProvider !== "paddle" ||
+    subscription.status !== "active" ||
+    !subscription.pausedUntil
+  ) {
+    return null;
+  }
+  return { startsAt: subscription.renewsAt ?? null, resumesAt: subscription.pausedUntil };
 }
 
 export const PAUSE_MONTH_OPTIONS = [1, 2, 3] as const;
