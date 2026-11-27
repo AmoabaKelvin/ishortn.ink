@@ -802,14 +802,14 @@ const CLICK_CSV_HEADER = [
 
 // Quote every field, and prefix formula-trigger characters so spreadsheets
 // treat user-controlled values (destinations, referrers) as text.
-const csvField = (value: string | null) => {
+export const csvField = (value: string | null) => {
   const text = value ?? "";
   const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
   return `"${safe.replaceAll('"', '""')}"`;
 };
 
 /** `2026-11-23 14:05:09`: ISO in UTC, in the form spreadsheets parse as a date-time. */
-const formatUtcTimestamp = (date: Date | null) =>
+export const formatUtcTimestamp = (date: Date | null) =>
   date ? date.toISOString().slice(0, 19).replace("T", " ") : "";
 
 export const clicksToCsv = (rows: ClickExportRow[]) => {

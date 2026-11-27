@@ -27,6 +27,7 @@ import {
   IconLine,
   IconLink,
   IconMail,
+  IconMailPlus,
   IconPencil,
   IconPhoto,
   IconPlayerPlay,
@@ -36,6 +37,7 @@ import {
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { EMAIL_CAPTURE_DEFAULT_HEADING } from "@/components/bio/email-capture";
 import { EMBED_PROVIDER_LABELS, embedFallbackTitle } from "@/components/bio/embed";
 import { WHATSAPP_DEFAULT_LABEL } from "@/components/bio/whatsapp";
 import {
@@ -69,6 +71,7 @@ const TYPE_ICON = {
   divider: IconLine,
   embed: IconPlayerPlay,
   image: IconPhoto,
+  email_capture: IconMailPlus,
 } satisfies Record<BioEditorBlockType, typeof IconLink>;
 
 function summarize(block: EditorBlock): string {
@@ -97,6 +100,8 @@ function summarize(block: EditorBlock): string {
         : block.title || "Embed";
     case "image":
       return block.title || (block.url ? `Image · ${block.url}` : "Image");
+    case "email_capture":
+      return `${block.title || EMAIL_CAPTURE_DEFAULT_HEADING} · Email signup`;
     default:
       return "";
   }
@@ -325,7 +330,9 @@ function SortableRow({
                 block.type === "whatsapp" ||
                 (block.type === "image" && block.shortUrl)
                   ? "This removes the block, its tracking link, and that link's click history. This cannot be undone."
-                  : "This removes the block from your bio page. This cannot be undone."}
+                  : block.type === "email_capture"
+                    ? "This removes the signup form from your bio page. Subscribers you've already collected stay in the Subscribers tab."
+                    : "This removes the block from your bio page. This cannot be undone."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

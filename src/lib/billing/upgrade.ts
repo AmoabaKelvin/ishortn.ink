@@ -38,6 +38,7 @@ const UPGRADE_REASONS = new Map(
     api_access: "API access is on {plan}",
     bio_branding: "Removing iShortn branding is on {plan}",
     bio_custom_domain: "Custom domains for bio pages are on {plan}",
+    bio_email_capture_block_limit: "More email signup forms per bio page are on {plan}",
     bio_link_block_limit: "More link blocks per bio page are on {plan}",
     bio_page_limit: "More bio pages are on {plan}",
     bio_scheduled_blocks: "Scheduled bio blocks are on {plan}",

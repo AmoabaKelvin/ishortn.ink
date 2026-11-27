@@ -35,6 +35,15 @@ function toRenderModel(page: PublicBioPage): BioRenderModel {
             provider: b.provider,
             embedId: b.embedId,
           };
+        case "email_capture":
+          return {
+            id: b.id,
+            type: "email_capture",
+            heading: b.heading,
+            buttonLabel: b.buttonLabel,
+            successMessage: b.successMessage,
+            consentText: b.consentText,
+          };
         case "image":
           return {
             id: b.id,

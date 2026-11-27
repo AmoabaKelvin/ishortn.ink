@@ -1,11 +1,18 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq } from "drizzle-orm";
 
-import { getBioEmbedBlockLimit, getBioLinkBlockLimit, getBioPageLimit } from "@/lib/billing/plans";
+import {
+  getBioEmailCaptureBlockLimit,
+  getBioEmbedBlockLimit,
+  getBioLinkBlockLimit,
+  getBioPageLimit,
+} from "@/lib/billing/plans";
 import { baseDomain, formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { bioBlock, bioPage } from "@/server/db/schema";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { workspaceFilter } from "@/server/lib/workspace";
+
+import { csvField, formatUtcTimestamp } from "../link/utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { PlanLimitKey } from "@/lib/billing/plan-limits";
@@ -108,8 +115,9 @@ export async function checkBioPageLimit(ctx: WorkspaceTRPCContext): Promise<void
   }
 }
 
-// Block types with a per-page cap on some plans. Only those two are counted:
-// link blocks are backed by a link row, embeds load third-party players.
+// Block types with a per-page cap on some plans. Only these are counted: link
+// blocks are backed by a link row, embeds load third-party players, and one
+// signup form per page is enough on Free.
 const BLOCK_CAPS = {
   link: {
     limit: getBioLinkBlockLimit,
@@ -122,6 +130,12 @@ const BLOCK_CAPS = {
     limitKey: "bio_embed_blocks",
     message: (limit: number) =>
       `The free plan allows ${limit} embed ${limit === 1 ? "block" : "blocks"} per bio page. Upgrade to Pro for unlimited embeds.`,
+  },
+  email_capture: {
+    limit: getBioEmailCaptureBlockLimit,
+    limitKey: "bio_email_capture_blocks",
+    message: (limit: number) =>
+      `The free plan allows ${limit} email signup ${limit === 1 ? "block" : "blocks"} per bio page. Upgrade to Pro for unlimited signup forms.`,
   },
 } satisfies Record<
   string,
@@ -310,4 +324,14 @@ export function buildBreakdown(
     return top.sort((a, b) => b.clicks - a.clicks || a.name.localeCompare(b.name));
   }
   return [...top, { name: "Other", clicks: rest }];
+}
+
+export const MAX_SUBSCRIBER_EXPORT_ROWS = 100_000;
+
+/** Subscribers as CSV (email, signed up at in UTC), in the order given. */
+export function subscribersToCsv(rows: { email: string; createdAt: Date | null }[]): string {
+  const lines = rows.map((row) =>
+    [row.email, formatUtcTimestamp(row.createdAt)].map(csvField).join(","),
+  );
+  return [["Email", "Signed up at (UTC)"].join(","), ...lines].join("\r\n") + "\r\n";
 }

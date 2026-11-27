@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { emailCaptureSettingsSchema } from "@/components/bio/email-capture";
 import { whatsappDetailsSchema } from "@/components/bio/whatsapp";
 
 // "whatsapp" isn't a stored type: it's saved as a link block (see components/bio/whatsapp.ts).
@@ -13,6 +14,7 @@ export const bioBlockTypeSchema = z.enum([
   "whatsapp",
   "embed",
   "image",
+  "email_capture",
 ]);
 
 export const bioThemeSchema = z.object({
@@ -91,6 +93,7 @@ const blockFieldsSchema = {
   imageHeight: z.number().int().min(1).max(20000).nullish(),
   socials: z.array(bioSocialLinkSchema).max(20).optional(), // social blocks
   whatsapp: whatsappDetailsSchema.optional(), // WhatsApp blocks
+  emailCapture: emailCaptureSettingsSchema.optional(), // email signup blocks (heading is `title`)
   scheduledAt: z.date().nullish(), // Ultra
   scheduledUntil: z.date().nullish(), // Ultra
 };
@@ -114,10 +117,28 @@ export const reorderBlocksSchema = z.object({
   blockIds: z.array(z.number()),
 });
 
+export const listSubscribersSchema = z.object({
+  bioPageId: z.number(),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(25),
+});
+
+export const subscriberIdSchema = z.object({ id: z.number() });
+
+// Public signup form. `website` is a honeypot: hidden from people, filled by bots.
+export const subscribeSchema = z.object({
+  blockId: z.number().int().positive(),
+  email: z.string().max(1000),
+  consent: z.boolean().optional(),
+  website: z.string().max(1000).optional(),
+});
+
 export type BioEditorBlockType = z.infer<typeof bioBlockTypeSchema>;
 export type CreateBioPageInput = z.infer<typeof createBioPageSchema>;
 export type UpdateBioPageInput = z.infer<typeof updateBioPageSchema>;
 export type AddBioBlockInput = z.infer<typeof addBioBlockSchema>;
 export type UpdateBioBlockInput = z.infer<typeof updateBioBlockSchema>;
 export type ReorderBlocksInput = z.infer<typeof reorderBlocksSchema>;
+export type ListSubscribersInput = z.infer<typeof listSubscribersSchema>;
+export type SubscribeInput = z.infer<typeof subscribeSchema>;
 export type BioThemeInput = z.infer<typeof bioThemeSchema>;

@@ -12,6 +12,7 @@ import {
   referrerHostLabel,
   RESERVED_BIO_SLUGS,
   sameBioTheme,
+  subscribersToCsv,
 } from "./utils";
 
 import type { db } from "@/server/db";
@@ -71,6 +72,41 @@ describe("bio embed block cap", () => {
   test("the caps are separate: a full set of link blocks doesn't block an embed", () => {
     expect(() => assertBioBlockCapacity("free", "link", 3)).toThrow();
     expect(() => assertBioBlockCapacity("free", "embed", 0)).not.toThrow();
+  });
+});
+
+describe("bio email signup block cap", () => {
+  test("free pages accept one signup form and reject a second with an upgrade message", () => {
+    expect(() => assertBioBlockCapacity("free", "email_capture", 0)).not.toThrow();
+    expect(() => assertBioBlockCapacity("free", "email_capture", 1)).toThrow(
+      "The free plan allows 1 email signup block per bio page. Upgrade to Pro for unlimited signup forms.",
+    );
+  });
+
+  test("paid plans have no signup form cap", () => {
+    expect(() => assertBioBlockCapacity("pro", "email_capture", 50)).not.toThrow();
+    expect(() => assertBioBlockCapacity("ultra", "email_capture", 50)).not.toThrow();
+  });
+});
+
+describe("subscribersToCsv", () => {
+  test("writes a header and one quoted row per subscriber, in UTC", () => {
+    const csv = subscribersToCsv([
+      { email: "ana@example.com", createdAt: new Date("2026-11-23T14:05:09.000Z") },
+      { email: "bo@example.com", createdAt: new Date("2026-11-01T00:00:00.000Z") },
+    ]);
+    expect(csv).toBe(
+      'Email,Signed up at (UTC)\r\n"ana@example.com","2026-11-23 14:05:09"\r\n"bo@example.com","2026-11-01 00:00:00"\r\n',
+    );
+  });
+
+  test("neutralises spreadsheet formulas in addresses", () => {
+    const csv = subscribersToCsv([{ email: "=cmd@example.com", createdAt: null }]);
+    expect(csv.split("\r\n")[1]).toBe(`"'=cmd@example.com",""`);
+  });
+
+  test("an empty list is just the header", () => {
+    expect(subscribersToCsv([])).toBe("Email,Signed up at (UTC)\r\n");
   });
 });
 

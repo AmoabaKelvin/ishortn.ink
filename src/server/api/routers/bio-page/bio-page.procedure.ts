@@ -46,6 +46,20 @@ export const bioPageRouter = createTRPCRouter({
     .input(inputs.reorderBlocksSchema)
     .mutation(({ ctx, input }) => services.reorderBlocks(ctx, input)),
 
+  listSubscribers: workspaceProcedure
+    .input(inputs.listSubscribersSchema)
+    .query(({ ctx, input }) => services.listSubscribers(ctx, input)),
+
+  // Deleting a subscriber is cleanup, so restricted accounts can still do it.
+  deleteSubscriber: workspaceProcedure
+    .input(inputs.subscriberIdSchema)
+    .mutation(({ ctx, input }) => services.deleteSubscriber(ctx, input.id)),
+
+  // A mutation, like link.exportClicks: it's a one-off download, not cached data.
+  exportSubscribers: workspaceProcedure
+    .input(inputs.bioPageIdSchema)
+    .mutation(({ ctx, input }) => services.exportSubscribers(ctx, input.id)),
+
   getAnalytics: workspaceProcedure
     .input(inputs.getBioPageAnalyticsSchema)
     .query(({ ctx, input }) => services.getBioPageAnalytics(ctx, input)),
