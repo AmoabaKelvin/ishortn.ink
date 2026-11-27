@@ -20,6 +20,7 @@ import {
 
 import type { StaticPayloadType, StaticQrPayload } from "@/lib/qr-generator/payload";
 import type { QRCodeStyle } from "@/lib/qr-generator/types";
+import type { VCardPayload } from "@/lib/qr-generator/vcard";
 
 // ============================================================================
 // TEAM TABLES
@@ -610,15 +611,20 @@ export const qrcode = mysqlTable(
     // Generator options used for the SVG download; null for codes saved before SVG export.
     style: json("style").$type<QRCodeStyle>(),
 
-    // Static codes (contentType "text") built from a form: which form, and its fields so the
-    // editor can re-open them. Null for links, plain text and codes made before these types.
-    payloadType: varchar("payloadType", { length: 16 }).$type<StaticPayloadType>(),
-    payloadFields: json("payloadFields").$type<StaticQrPayload>(),
+    // Codes built from a form: which form, and its fields so the editor can re-open them. Static
+    // codes (contentType "text") and contact cards ("vcard", contentType "link"). Null for links,
+    // plain text and codes made before these types.
+    payloadType: varchar("payloadType", { length: 16 }).$type<StaticPayloadType | "vcard">(),
+    payloadFields: json("payloadFields").$type<StaticQrPayload | VCardPayload>(),
+
+    // A contact card's hosted page is /c/<publicId>: random, so cards can't be listed by id.
+    publicId: varchar("publicId", { length: 16 }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
     linkIdIdx: index("linkId_idx").on(table.linkId),
+    publicIdUnique: unique("qrcode_publicId_unique").on(table.publicId),
   }),
 );
 

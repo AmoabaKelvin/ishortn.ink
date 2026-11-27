@@ -70,11 +70,21 @@ export async function checkTrackingLinkQuota(
  */
 export async function prepareHiddenTrackingLink(
   ctx: WorkspaceTRPCContext,
-  opts: { url: string; name: string; domain?: string; kind: TrackingLinkKind },
+  opts: {
+    url: string;
+    name: string;
+    domain?: string;
+    kind: TrackingLinkKind;
+    /** The URL the safety scan checks instead of `url` (null: none), for links to our own pages. */
+    safetyCheckUrl?: string | null;
+  },
 ): Promise<PreparedTrackingLink> {
   const { currentCount, shouldIncrementCount } = await checkTrackingLinkQuota(ctx, opts.kind);
 
-  const safety = await assertUrlSafe(opts.url, { account: workspaceSafetyAccount(ctx) });
+  const checkUrl = opts.safetyCheckUrl === undefined ? opts.url : opts.safetyCheckUrl;
+  const safety = checkUrl
+    ? await assertUrlSafe(checkUrl, { account: workspaceSafetyAccount(ctx) })
+    : undefined;
 
   const requestedDomain = opts.domain?.trim();
   if (requestedDomain) {
