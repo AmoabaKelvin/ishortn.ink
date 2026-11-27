@@ -179,6 +179,7 @@ export async function handlePaddleWebhook(
         log: log.child({ eventId, eventType }),
         // An import moves an existing plan over, so the user is not welcomed again.
         sendWelcome: eventType !== "subscription.imported",
+        activation: eventType === "subscription.activated",
       },
     );
     log.info({ ...logContext, userId, kind, result }, "processed webhook");

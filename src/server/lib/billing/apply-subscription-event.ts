@@ -9,6 +9,7 @@ import {
   sendSubscriptionCancelledEmail,
   sendWelcomeEmail,
 } from "@/server/lib/notifications/billing";
+import { sendDuplicateSubscriptionAlert } from "@/server/lib/notifications/discord";
 
 import type { Plan } from "@/lib/billing/plans";
 import type { Logger } from "@/lib/logger";
@@ -57,6 +58,7 @@ export type SubscriptionEventResult =
   | "applied"
   | "stale"
   | "superseded"
+  | "duplicate_subscription"
   | "no_row_matched"
   | "user_not_found"
   | "invalid_payload";
@@ -78,7 +80,34 @@ export type ApplySubscriptionEventOptions = {
   isSuperseded?: (existing: Subscription) => boolean;
   /** `created` sends the welcome email unless this is false (an import of an existing plan). */
   sendWelcome?: boolean;
+  /**
+   * The event activates a subscription (Paddle's `subscription.activated`), so like `created` it
+   * is checked for a second live subscription.
+   */
+  activation?: boolean;
+  /** Internal alert for a second live subscription; defaults to the ops Discord webhook. */
+  alertDuplicateSubscription?: typeof sendDuplicateSubscriptionAlert;
 };
+
+// Paddle statuses (in the app's vocabulary) of a subscription that is billing or will bill again.
+const LIVE_PADDLE_STATUSES = new Set(["active", "on_trial", "past_due", "paused"]);
+
+/**
+ * Whether the stored row is a different Paddle subscription that is still live. A new one arriving
+ * then is a second subscription (a stale checkout paid in another tab), not a replacement.
+ */
+export function isOtherLiveSubscription(
+  existing: Subscription | null | undefined,
+  event: SubscriptionEvent,
+): existing is Subscription & { providerSubscriptionId: string } {
+  return (
+    event.provider === "paddle" &&
+    existing?.billingProvider === "paddle" &&
+    !!existing.providerSubscriptionId &&
+    existing.providerSubscriptionId !== event.providerSubscriptionId &&
+    LIVE_PADDLE_STATUSES.has(existing.status ?? "")
+  );
+}
 
 const eventSubscriptionId = (event: SubscriptionEvent) =>
   event.provider === "paddle" ? event.providerSubscriptionId : event.subscriptionId;
@@ -89,7 +118,14 @@ const storedSubscriptionId = (row: Subscription) =>
 /** Applies a subscription event to the user's row, throwing on any failure a retry could fix. */
 export async function applySubscriptionEvent(
   event: SubscriptionEvent,
-  { log, isBehindProvider, isSuperseded, sendWelcome = true }: ApplySubscriptionEventOptions,
+  {
+    log,
+    isBehindProvider,
+    isSuperseded,
+    sendWelcome = true,
+    activation = false,
+    alertDuplicateSubscription = sendDuplicateSubscriptionAlert,
+  }: ApplySubscriptionEventOptions,
 ): Promise<SubscriptionEventOutcome> {
   const { kind, userId, status, plan, endsAt, providerUpdatedAt } = event;
   const subscriptionId = eventSubscriptionId(event);
@@ -116,6 +152,29 @@ export async function applySubscriptionEvent(
       "ignoring event for a subscription managed by another provider",
     );
     return { result: "superseded" };
+  }
+
+  // Overwriting the row would stop tracking the first subscription while it keeps billing, so the
+  // row is kept and the second subscription is left for a person to cancel or refund.
+  if ((kind === "created" || activation) && isOtherLiveSubscription(existing, event)) {
+    log.error(
+      {
+        ...logContext,
+        storedSubscriptionId: existing.providerSubscriptionId,
+        storedStatus: existing.status,
+      },
+      "second live subscription for user; kept the stored subscription",
+    );
+    void runBackgroundTask(
+      alertDuplicateSubscription({
+        userId,
+        storedSubscriptionId: existing.providerSubscriptionId,
+        storedStatus: existing.status ?? "",
+        newSubscriptionId: String(subscriptionId),
+        eventType: activation ? "activated" : kind,
+      }),
+    );
+    return { result: "duplicate_subscription", previous: existing };
   }
 
   // Timestamps from different providers don't order each other: a row from the other provider

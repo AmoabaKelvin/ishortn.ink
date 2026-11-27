@@ -32,7 +32,12 @@ export type PaddleCheckoutInput = {
 /** The Paddle calls a new checkout makes. */
 export type PaddleCheckoutClient = Pick<
   PaddleClient,
-  "findCustomerByEmail" | "createCustomer" | "findActiveDiscountIdByCode" | "createTransaction"
+  | "findCustomerByEmail"
+  | "createCustomer"
+  | "findActiveDiscountIdByCode"
+  | "createTransaction"
+  | "listOpenTransactions"
+  | "cancelTransaction"
 >;
 
 type TransactionResult =
@@ -73,6 +78,26 @@ async function resolveDiscountId(
 }
 
 /**
+ * Cancels the customer's unpaid checkouts for a new subscription, so a checkout left open in
+ * another tab can't be paid as a second subscription. Transactions on an existing subscription
+ * (payment-method updates, renewals) are kept. Failures are logged, not thrown: the checkout page
+ * and the subscription webhook refuse a second subscription too.
+ */
+async function cancelOpenCheckouts(
+  client: PaddleCheckoutClient,
+  customerId: string,
+  userId: string,
+) {
+  try {
+    const open = await client.listOpenTransactions(customerId);
+    const stale = open.filter((transaction) => !transaction.subscription_id);
+    await Promise.all(stale.map((transaction) => client.cancelTransaction(transaction.id)));
+  } catch (err) {
+    log.warn({ err, userId, customerId }, "failed to cancel open paddle checkouts");
+  }
+}
+
+/**
  * Creates a Paddle transaction for a new subscription. Its checkout URL is the account's default
  * payment link (`/dashboard/checkout?_ptxn=…`), so callers redirect to it like a Lemon Squeezy
  * checkout. `discountCode` is the code the transaction was created with.
@@ -89,6 +114,8 @@ export async function createPaddleCheckout(
   ]).catch((error: Error) => {
     throw providerError("customer lookup", error, userId);
   });
+
+  if (customerId) await cancelOpenCheckouts(client, customerId, userId);
 
   const { result, discountCode } = await createCheckoutWithPromoFallback(
     (code?: string): Promise<TransactionResult> =>
