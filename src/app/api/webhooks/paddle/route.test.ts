@@ -2,15 +2,18 @@ import { afterAll, beforeAll, beforeEach, describe, expect, spyOn, test } from "
 import crypto from "node:crypto";
 
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 
 import { env } from "@/env.mjs";
 import { buildPaddleConfig } from "@/lib/paddle/config";
 import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
+import * as posthog from "@/server/lib/analytics/posthog-server";
 import * as billingEmails from "@/server/lib/notifications/billing";
 
 import { stubCloudflareContext } from "../../../../../test/cloudflare-context";
 import { eventKind, handlePaddleWebhook } from "./handler";
+import { paddleTransactionSchema } from "./transaction";
 
 import type { PaddleWebhookDeps } from "./handler";
 import type { Mock } from "bun:test";
@@ -92,6 +95,27 @@ function event(
   });
 }
 
+function transactionEvent(overrides: Partial<z.input<typeof paddleTransactionSchema>> = {}) {
+  return JSON.stringify({
+    event_id: `evt_${crypto.randomUUID()}`,
+    event_type: "transaction.completed",
+    occurred_at: "2026-11-20T00:00:05Z",
+    notification_id: `ntf_${crypto.randomUUID()}`,
+    data: {
+      id: "txn_01routetest932",
+      status: "completed",
+      origin: "web",
+      subscription_id: SUBSCRIPTION_ID,
+      customer_id: CUSTOMER_ID,
+      items: [{ price_id: PRICES.proAnnual, price: { id: PRICES.proAnnual }, quantity: 1 }],
+      details: { totals: { total: "5990", currency_code: "USD" } },
+      payments: [{ method_details: { type: "card", card: { type: "visa", last4: "4242" } } }],
+      custom_data: { user_id: USER_ID, utm_source: "newsletter", discount_code: "BFCM20" },
+      ...overrides,
+    },
+  });
+}
+
 function deliver(
   body: string,
   signature: string | null = sign(body),
@@ -166,7 +190,7 @@ describe("POST /api/webhooks/paddle without a database", () => {
   test("acknowledges events it does not handle", async () => {
     const other = JSON.stringify({
       event_id: "evt_1",
-      event_type: "transaction.completed",
+      event_type: "transaction.created",
       occurred_at: "2026-11-20T00:00:00Z",
       notification_id: "ntf_1",
       data: { id: "txn_1" },
@@ -183,6 +207,15 @@ describe("POST /api/webhooks/paddle without a database", () => {
       data: { id: "sub_1" },
     });
     expect((await deliver(other)).status).toBe(200);
+  });
+
+  test("acknowledges a completed transaction that isn't a subscription payment", async () => {
+    expect((await deliver(transactionEvent({ origin: "api" }))).status).toBe(200);
+    expect((await deliver(transactionEvent({ subscription_id: null }))).status).toBe(200);
+  });
+
+  test("rejects a malformed transaction with 400", async () => {
+    expect((await deliver(transactionEvent({ id: undefined }))).status).toBe(400);
   });
 
   test("rejects a handled event with a malformed subscription with 400", async () => {
@@ -205,6 +238,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
   let restoreContext = () => {};
   let welcomeSpy: Mock<typeof billingEmails.sendWelcomeEmail>;
   let cancelledSpy: Mock<typeof billingEmails.sendSubscriptionCancelledEmail>;
+  let captureSpy: Mock<typeof posthog.captureServerEvent>;
 
   beforeAll(() => {
     if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
@@ -212,6 +246,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
     restoreContext = stubCloudflareContext();
     welcomeSpy = spyOn(billingEmails, "sendWelcomeEmail").mockResolvedValue(true);
     cancelledSpy = spyOn(billingEmails, "sendSubscriptionCancelledEmail").mockResolvedValue(true);
+    captureSpy = spyOn(posthog, "captureServerEvent").mockImplementation(() => {});
   });
 
   async function reset() {
@@ -220,6 +255,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
     await db.insert(schema.user).values({ id: USER_ID, email: USER_EMAIL });
     welcomeSpy.mockClear();
     cancelledSpy.mockClear();
+    captureSpy.mockClear();
     customerLookups.length = 0;
     customerEmail = USER_EMAIL;
   }
@@ -238,6 +274,7 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
   afterAll(async () => {
     welcomeSpy.mockRestore();
     cancelledSpy.mockRestore();
+    captureSpy.mockRestore();
     restoreContext();
     await db.delete(schema.subscription).where(eq(schema.subscription.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
@@ -419,5 +456,100 @@ describe.skipIf(!testDatabaseUrl)("POST /api/webhooks/paddle (MySQL)", () => {
     const body = event("subscription.created", "2026-11-20T00:00:00Z", { custom_data: null });
     expect((await deliver(body, sign(body), failing)).status).toBe(500);
     expect(await storedSubscription()).toBeUndefined();
+  });
+
+  test("a first payment records the card and one order_completed", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    expect((await deliver(transactionEvent())).status).toBe(200);
+
+    expect(await storedSubscription()).toMatchObject({ cardBrand: "visa", cardLastFour: "4242" });
+    expect(captureSpy).toHaveBeenCalledTimes(1);
+    expect(captureSpy).toHaveBeenCalledWith({ id: USER_ID, email: USER_EMAIL }, "order_completed", {
+      plan: "pro",
+      interval: "annual",
+      discount_code: "BFCM20",
+      utm_source: "newsletter",
+      order_id: "txn_01routetest932",
+      amount: 59.9,
+      currency: "USD",
+      test_mode: true,
+      provider: "paddle",
+    });
+  });
+
+  test("a renewal records the card without an order_completed", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    const renewal = transactionEvent({
+      origin: "subscription_recurring",
+      payments: [{ method_details: { type: "card", card: { type: "mastercard", last4: "5555" } } }],
+    });
+    expect((await deliver(renewal)).status).toBe(200);
+
+    expect(await storedSubscription()).toMatchObject({
+      cardBrand: "mastercard",
+      cardLastFour: "5555",
+    });
+    expect(captureSpy).not.toHaveBeenCalled();
+  });
+
+  test("a first payment without user_id records the card without an order_completed", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    expect((await deliver(transactionEvent({ custom_data: null }))).status).toBe(200);
+
+    expect((await storedSubscription())?.cardLastFour).toBe("4242");
+    expect(captureSpy).not.toHaveBeenCalled();
+  });
+
+  test("a payment without a card emits order_completed and leaves the card alone", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    await deliver(transactionEvent());
+    captureSpy.mockClear();
+
+    const paypal = transactionEvent({
+      id: "txn_01routetest932b",
+      payments: [{ method_details: { type: "paypal", card: null } }],
+    });
+    expect((await deliver(paypal)).status).toBe(200);
+
+    expect((await storedSubscription())?.cardLastFour).toBe("4242");
+    expect(captureSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("a first payment before subscription.created is retried without emitting", async () => {
+    expect((await deliver(transactionEvent())).status).toBe(500);
+    expect(captureSpy).not.toHaveBeenCalled();
+
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    expect((await deliver(transactionEvent())).status).toBe(200);
+    expect((await storedSubscription())?.cardLastFour).toBe("4242");
+    expect(captureSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("later subscription events keep the card", async () => {
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+    await deliver(transactionEvent());
+
+    await deliver(event("subscription.updated", "2026-11-21T00:00:00Z"));
+
+    expect(await storedSubscription()).toMatchObject({ cardBrand: "visa", cardLastFour: "4242" });
+  });
+
+  test("created over a Lemon Squeezy row drops its card", async () => {
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      subscriptionId: 932001,
+      customerId: 932002,
+      status: "expired",
+      plan: "free",
+      cardBrand: "visa",
+      cardLastFour: "1111",
+    });
+
+    await deliver(event("subscription.created", "2026-11-20T00:00:00Z"));
+
+    expect(await storedSubscription()).toMatchObject({ cardBrand: null, cardLastFour: null });
   });
 });

@@ -1,0 +1,80 @@
+{
+  "event_id": "evt_01dev000000000000000000005",
+  "event_type": "transaction.completed",
+  "occurred_at": "__NOW_ISO__",
+  "notification_id": "ntf_01dev000000000000000000005",
+  "data": {
+    "id": "txn_01dev000000000000000000000",
+    "status": "completed",
+    "origin": "web",
+    "customer_id": "ctm_01dev000000000000000000000",
+    "address_id": "add_01dev000000000000000000000",
+    "business_id": null,
+    "subscription_id": "sub_01dev000000000000000000000",
+    "invoice_id": "inv_01dev000000000000000000000",
+    "invoice_number": "1-10000",
+    "collection_mode": "automatic",
+    "currency_code": "USD",
+    "discount_id": null,
+    "billing_period": {
+      "starts_at": "2026-01-01T00:00:00.000Z",
+      "ends_at": "2026-02-01T00:00:00.000Z"
+    },
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "__NOW_ISO__",
+    "billed_at": "2026-01-01T00:00:00.000Z",
+    "items": [
+      {
+        "price_id": "__PADDLE_PRICE_PRO_MONTHLY__",
+        "price": {
+          "id": "__PADDLE_PRICE_PRO_MONTHLY__",
+          "product_id": "pro_01dev000000000000000000000",
+          "description": "iShortn Pro monthly"
+        },
+        "quantity": 1,
+        "proration": null
+      }
+    ],
+    "details": {
+      "totals": {
+        "subtotal": "500",
+        "discount": "0",
+        "tax": "0",
+        "total": "500",
+        "credit": "0",
+        "balance": "0",
+        "grand_total": "500",
+        "fee": "55",
+        "earnings": "445",
+        "currency_code": "USD"
+      }
+    },
+    "payments": [
+      {
+        "payment_attempt_id": "00000000-0000-4000-8000-000000000000",
+        "stored_payment_method_id": "00000000-0000-4000-8000-000000000001",
+        "amount": "500",
+        "status": "captured",
+        "error_code": null,
+        "method_details": {
+          "type": "card",
+          "card": {
+            "type": "visa",
+            "last4": "4242",
+            "expiry_month": 1,
+            "expiry_year": 2030,
+            "cardholder_name": "Dev User"
+          }
+        },
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "captured_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "custom_data": {
+      "user_id": "__USER_ID__",
+      "source": "pricing",
+      "utm_source": "dev",
+      "utm_campaign": "webhook-fixture"
+    }
+  }
+}

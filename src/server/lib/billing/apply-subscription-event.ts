@@ -47,8 +47,9 @@ export type SubscriptionEvent = (LemonSqueezyIds | PaddleIds) & {
   endsAt: Date | null;
   pausedUntil: Date | null;
   createdAt: Date;
-  cardBrand: string | null;
-  cardLastFour: string | null;
+  /** Undefined when the event carries no card (Paddle), leaving the stored card as it is. */
+  cardBrand: string | null | undefined;
+  cardLastFour: string | null | undefined;
   providerUpdatedAt: Date;
 };
 
@@ -248,6 +249,9 @@ export async function applySubscriptionEvent(
             providerPriceId: null,
           };
 
+    // Another provider's card doesn't carry over to this subscription.
+    const clearCard = !sameProvider && event.cardBrand === undefined;
+
     // A returning customer already has a row, so refresh the full
     // subscription state — not just status/dates — or their plan,
     // interval, and subscriptionId would stay stale.
@@ -256,8 +260,8 @@ export async function applySubscriptionEvent(
       status,
       plan,
       billingInterval: event.billingInterval,
-      cardBrand: event.cardBrand,
-      cardLastFour: event.cardLastFour,
+      cardBrand: clearCard ? null : event.cardBrand,
+      cardLastFour: clearCard ? null : event.cardLastFour,
       renewsAt: event.renewsAt,
       endsAt,
       providerUpdatedAt,

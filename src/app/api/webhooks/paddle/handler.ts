@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
@@ -6,9 +6,18 @@ import { normalizePaddleSubscription, paddleSubscriptionSchema } from "@/lib/pad
 import { verifyPaddleSignature } from "@/lib/paddle/webhook";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
+import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
 import { applySubscriptionEvent } from "@/server/lib/billing/apply-subscription-event";
 import { syncEntitlementsAfterBillingEvent } from "@/server/lib/entitlements/grace";
 
+import {
+  orderCompletedEvent,
+  paddleTransactionSchema,
+  paidSubscriptionId,
+  transactionCard,
+} from "./transaction";
+
+import type { PaddleTransaction } from "./transaction";
 import type { PaddleClient } from "@/lib/paddle/client";
 import type { PaddleConfig } from "@/lib/paddle/config";
 import type { NormalizedPaddleSubscription } from "@/lib/paddle/normalize";
@@ -96,6 +105,17 @@ export async function handlePaddleWebhook(
   if (!envelope.success) return new Response("Malformed event", { status: 400 });
 
   const { event_id: eventId, event_type: eventType, occurred_at: occurredAt, data } = envelope.data;
+  if (eventType === "transaction.completed") {
+    const transaction = paddleTransactionSchema.safeParse(data);
+    if (!transaction.success) {
+      log.error(
+        { eventId, eventType, issues: transaction.error.issues },
+        "malformed transaction payload",
+      );
+      return new Response("Malformed transaction payload", { status: 400 });
+    }
+    return handleTransactionCompleted(eventId, transaction.data, config);
+  }
   if (!HANDLED_EVENTS.has(eventType)) return new Response("OK", { status: 200 });
 
   const parsed = paddleSubscriptionSchema.safeParse(data);
@@ -149,9 +169,9 @@ export async function handlePaddleWebhook(
         endsAt: normalized.endsAt,
         pausedUntil: normalized.pausedUntil,
         createdAt: normalized.createdAt ?? new Date(occurredAt),
-        // Paddle's subscription entity carries no card details.
-        cardBrand: null,
-        cardLastFour: null,
+        // Paddle's subscription entity carries no card details; transaction.completed sets them.
+        cardBrand: undefined,
+        cardLastFour: undefined,
         providerUpdatedAt: normalized.providerUpdatedAt,
       },
       {
@@ -174,6 +194,69 @@ export async function handlePaddleWebhook(
     if (result === "invalid_payload") {
       return new Response("Invalid updated_at", { status: 400 });
     }
+    return new Response("OK", { status: 200 });
+  } catch (err) {
+    log.error({ ...logContext, err }, "processing failed");
+    return new Response("Processing failed", { status: 500 });
+  }
+}
+
+// The card on file and the funnel's order_completed both come from the subscription's payments.
+async function handleTransactionCompleted(
+  eventId: string,
+  transaction: PaddleTransaction,
+  config: PaddleConfig,
+): Promise<Response> {
+  const subscriptionId = paidSubscriptionId(transaction);
+  if (!subscriptionId) return new Response("OK", { status: 200 });
+  const logContext = {
+    eventId,
+    eventType: "transaction.completed",
+    transactionId: transaction.id,
+    subscriptionId,
+  };
+
+  try {
+    const card = transactionCard(transaction);
+    if (card) {
+      const [result] = await db
+        .update(subscription)
+        .set(card)
+        .where(
+          and(
+            eq(subscription.billingProvider, "paddle"),
+            eq(subscription.providerSubscriptionId, subscriptionId),
+          ),
+        );
+      if (result.affectedRows === 0) {
+        // The first payment can be delivered before subscription.created writes the row; a retry
+        // lands the card on it. order_completed waits too, so the retry doesn't send it twice.
+        if (transaction.origin === "web") {
+          log.warn(logContext, "no Paddle subscription row yet for first payment; retrying");
+          return new Response("Subscription not found", { status: 500 });
+        }
+        log.warn(logContext, "no Paddle subscription row for renewal payment");
+      }
+    }
+
+    const completed = orderCompletedEvent(transaction, config);
+    if (completed) {
+      const account = await db.query.user.findFirst({
+        where: eq(user.id, completed.userId),
+        columns: { email: true },
+      });
+      if (account) {
+        captureServerEvent(
+          { id: completed.userId, email: account.email },
+          "order_completed",
+          completed.properties,
+        );
+      }
+    }
+    log.info(
+      { ...logContext, card: Boolean(card), orderCompleted: Boolean(completed) },
+      "processed webhook",
+    );
     return new Response("OK", { status: 200 });
   } catch (err) {
     log.error({ ...logContext, err }, "processing failed");
