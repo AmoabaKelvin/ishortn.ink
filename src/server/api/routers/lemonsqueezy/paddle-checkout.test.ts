@@ -10,7 +10,11 @@ import { createPaddleCheckout } from "./paddle-checkout";
 
 import type { NewCheckoutDeps, NewCheckoutInput } from "./lemonsqueezy.procedure";
 import type { PaddleCheckoutClient, PaddleCheckoutInput } from "./paddle-checkout";
-import type { CreateTransactionInput, PaddleTransaction } from "@/lib/paddle/client";
+import type {
+  CreateTransactionInput,
+  PaddleDiscount,
+  PaddleTransaction,
+} from "@/lib/paddle/client";
 import type { PaddleEnv } from "@/lib/paddle/config";
 import type { Subscription } from "@/server/db/schema";
 import type { CheckoutStartInput } from "@/server/lib/checkout-starts";
@@ -41,7 +45,7 @@ const rejectedDiscount = new PaddleApiError({
 type StubCalls = {
   findCustomerByEmail: string[];
   createCustomer: string[];
-  findActiveDiscountIdByCode: string[];
+  findActiveDiscountByCode: string[];
   createTransaction: CreateTransactionInput[];
   listOpenTransactions: string[];
   cancelTransaction: string[];
@@ -49,14 +53,17 @@ type StubCalls = {
 
 function stubPaddle(options: {
   existingCustomerId?: string;
+  /** Answers every code lookup with a discount of this id, set up as the docs describe. */
   discountId?: string;
+  /** Answers every code lookup with exactly this discount. */
+  discount?: PaddleDiscount;
   transactions?: (PaddleTransaction | Error)[];
   openTransactions?: PaddleTransaction[] | Error;
 }) {
   const calls: StubCalls = {
     findCustomerByEmail: [],
     createCustomer: [],
-    findActiveDiscountIdByCode: [],
+    findActiveDiscountByCode: [],
     createTransaction: [],
     listOpenTransactions: [],
     cancelTransaction: [],
@@ -79,9 +86,13 @@ function stubPaddle(options: {
       calls.createCustomer.push(email);
       return { id: "ctm_new", email, name: null };
     },
-    findActiveDiscountIdByCode: async (code: string) => {
-      calls.findActiveDiscountIdByCode.push(code);
-      return options.discountId;
+    findActiveDiscountByCode: async (code: string) => {
+      calls.findActiveDiscountByCode.push(code);
+      if (options.discount) return options.discount;
+      if (!options.discountId) return undefined;
+      return code.endsWith("ANNUAL")
+        ? { id: options.discountId, recur: false, maximum_recurring_intervals: null }
+        : { id: options.discountId, recur: true, maximum_recurring_intervals: 12 };
     },
     createTransaction: async (input: CreateTransactionInput) => {
       calls.createTransaction.push(input);
@@ -125,7 +136,7 @@ describe("createPaddleCheckout", () => {
     });
     expect(calls.findCustomerByEmail).toEqual(["ada@example.com"]);
     expect(calls.createCustomer).toEqual([]);
-    expect(calls.findActiveDiscountIdByCode).toEqual(["BFCM20"]);
+    expect(calls.findActiveDiscountByCode).toEqual(["BFCM20ANNUAL"]);
     expect(calls.createTransaction).toEqual([
       {
         items: [{ priceId: "pri_pro_y", quantity: 1 }],
@@ -142,6 +153,48 @@ describe("createPaddleCheckout", () => {
         discountId: "dsc_1",
       },
     ]);
+  });
+
+  test("monthly checkout applies the promo's 12-recurrence monthly discount", async () => {
+    const { calls, client } = stubPaddle({ existingCustomerId: "ctm_found", discountId: "dsc_m" });
+
+    const result = await createPaddleCheckout(client, {
+      ...baseInput,
+      interval: "monthly",
+      priceId: "pri_pro_m",
+    });
+
+    expect(result.discountCode).toBe("BFCM20");
+    expect(calls.findActiveDiscountByCode).toEqual(["BFCM20"]);
+    expect(calls.createTransaction[0]?.discountId).toBe("dsc_m");
+  });
+
+  test("annual checkout applies the promo's one-off annual discount", async () => {
+    const { calls, client } = stubPaddle({ existingCustomerId: "ctm_found", discountId: "dsc_y" });
+
+    const result = await createPaddleCheckout(client, baseInput);
+
+    expect(result.discountCode).toBe("BFCM20");
+    expect(calls.findActiveDiscountByCode).toEqual(["BFCM20ANNUAL"]);
+    expect(calls.createTransaction[0]?.discountId).toBe("dsc_y");
+  });
+
+  test("a discount whose recurrence doesn't fit the interval is not sent", async () => {
+    // One 12-recurrence discount on an annual price would discount 12 annual payments.
+    const recurring = { id: "dsc_12", recur: true, maximum_recurring_intervals: 12 };
+    const annual = stubPaddle({ existingCustomerId: "ctm_found", discount: recurring });
+    expect((await createPaddleCheckout(annual.client, baseInput)).discountCode).toBeUndefined();
+    expect(annual.calls.createTransaction[0]?.discountId).toBeUndefined();
+
+    const forever = { id: "dsc_forever", recur: true, maximum_recurring_intervals: null };
+    const monthly = stubPaddle({ existingCustomerId: "ctm_found", discount: forever });
+    const result = await createPaddleCheckout(monthly.client, {
+      ...baseInput,
+      interval: "monthly",
+      priceId: "pri_pro_m",
+    });
+    expect(result.discountCode).toBeUndefined();
+    expect(monthly.calls.createTransaction[0]?.discountId).toBeUndefined();
   });
 
   test("reuses the Paddle customer on the subscription row", async () => {

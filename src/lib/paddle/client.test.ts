@@ -197,23 +197,75 @@ describe("Paddle client", () => {
     await expect(attempt).rejects.toMatchObject({ code: "invalid_response" });
   });
 
-  test("findActiveDiscountIdByCode queries active discounts and caches for 10 minutes", async () => {
+  test("findActiveDiscountByCode queries active discounts and caches for 10 minutes", async () => {
     const client = createPaddleClient(sandbox);
     setSystemTime(new Date("2026-11-27T00:00:00Z"));
-    fetchSpy.mockResolvedValueOnce(ok([{ id: "dsc_1", code: "BFCM20", status: "active" }]));
+    const discount = { id: "dsc_1", recur: true, maximum_recurring_intervals: 12 };
+    fetchSpy.mockResolvedValueOnce(ok([{ ...discount, code: "BFCM20", status: "active" }]));
 
-    expect(await client.findActiveDiscountIdByCode("BFCM20")).toBe("dsc_1");
+    expect(await client.findActiveDiscountByCode("BFCM20")).toEqual(discount);
     expect(call().url).toBe(`${BASE}/discounts?code=BFCM20&status=active`);
     expect(call().method).toBe("GET");
 
     setSystemTime(new Date("2026-11-27T00:09:59Z"));
-    expect(await client.findActiveDiscountIdByCode("BFCM20")).toBe("dsc_1");
+    expect(await client.findActiveDiscountByCode("BFCM20")).toEqual(discount);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
     setSystemTime(new Date("2026-11-27T00:10:01Z"));
     fetchSpy.mockResolvedValueOnce(ok([]));
-    expect(await client.findActiveDiscountIdByCode("BFCM20")).toBeUndefined();
+    expect(await client.findActiveDiscountByCode("BFCM20")).toBeUndefined();
     expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test("createDiscount posts a codeless percentage discount, recurring or one-off", async () => {
+    const client = createPaddleClient(sandbox);
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve(ok({ id: "dsc_2", recur: true, maximum_recurring_intervals: 5 })),
+    );
+
+    expect(
+      await client.createDiscount({
+        percentOff: 20,
+        description: "BFCM20",
+        maximumRecurringIntervals: 5,
+        customData: { userId: "user_1" },
+      }),
+    ).toEqual({ id: "dsc_2", recur: true, maximum_recurring_intervals: 5 });
+    expect(call()).toMatchObject({
+      url: `${BASE}/discounts`,
+      method: "POST",
+      body: {
+        type: "percentage",
+        amount: "20",
+        description: "BFCM20",
+        enabled_for_checkout: false,
+        mode: "custom",
+        recur: true,
+        maximum_recurring_intervals: 5,
+        custom_data: { userId: "user_1" },
+      },
+    });
+
+    await client.createDiscount({
+      percentOff: 20,
+      description: "BFCM20",
+      maximumRecurringIntervals: null,
+    });
+    expect(call(1).body).toMatchObject({ recur: false });
+    expect(call(1).body).not.toHaveProperty("maximum_recurring_intervals");
+  });
+
+  test("archiveDiscount patches the discount's status to archived", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      ok({ id: "dsc_2", recur: false, maximum_recurring_intervals: null }),
+    );
+    const client = createPaddleClient(sandbox);
+    await client.archiveDiscount("dsc_2");
+    expect(call()).toMatchObject({
+      url: `${BASE}/discounts/dsc_2`,
+      method: "PATCH",
+      body: { status: "archived" },
+    });
   });
 
   test("findCustomerByEmail encodes the email and returns the first match", async () => {
@@ -304,6 +356,19 @@ describe("Paddle client", () => {
     fetchSpy.mockResolvedValueOnce(ok(subscription));
     await createPaddleClient(sandbox).updateSubscription("sub_1", { scheduledChange: null });
     expect(call(1).body).toEqual({ scheduled_change: null });
+  });
+
+  test("updateSubscription sets or removes the discount", async () => {
+    fetchSpy.mockImplementation(() => Promise.resolve(ok(subscription)));
+    const client = createPaddleClient(sandbox);
+
+    await client.updateSubscription("sub_1", {
+      discount: { id: "dsc_1", effectiveFrom: "immediately" },
+    });
+    expect(call(0).body).toEqual({ discount: { id: "dsc_1", effective_from: "immediately" } });
+
+    await client.updateSubscription("sub_1", { discount: null });
+    expect(call(1).body).toEqual({ discount: null });
   });
 
   test("previewSubscriptionUpdate PATCHes the preview endpoint and parses the amount due now", async () => {

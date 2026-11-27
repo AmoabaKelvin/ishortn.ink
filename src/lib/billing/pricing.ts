@@ -3,7 +3,8 @@ import { addMonths } from "date-fns";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
 import { withAttribution } from "./attribution";
-import { ACTIVE_PROMO, formatDayMonthYearShort, promoPrice } from "./promo";
+import { promoDiscountActive, promoFirstPaymentAt } from "./first-year-discount";
+import { FIRST_YEAR_PROMOS, formatDayMonthYearShort, promoPrice } from "./promo";
 
 import type { Attribution } from "./attribution";
 import type { BillingInterval, Plan } from "./plans";
@@ -81,7 +82,7 @@ export function planPriceDisplay(
   return { perMonth: formatUsd(PLAN_PRICES_USD[plan]), compareAt: null, note: "billed monthly" };
 }
 
-/** How long a checkout discount lasts: 12 monthly payments, or the first annual payment. */
+/** How long a Lemon Squeezy checkout discount lasts: 12 monthly payments, or one annual one. */
 const DISCOUNT_MONTHS = 12;
 
 export type SubscriptionDiscount = {
@@ -99,30 +100,52 @@ type DiscountCheckout = {
   createdAt: Date;
 };
 
+type DiscountSubscription = {
+  plan: Plan;
+  interval: BillingInterval;
+  provider: string;
+  /** When the subscription row was created; an earlier time than the checkout's is ignored. */
+  startedAt?: Date | null;
+  /** End of the current billing period (renewal, or the end date of a cancelled one). */
+  periodEndsAt?: Date | null;
+  /** When a Paddle plan change removed the promo discount (Subscription.promoDiscountEndedAt). */
+  discountEndedAt?: Date | null;
+};
+
 /**
  * The discount a subscription is still billed with, from the checkout that created it: the
- * user's latest checkout start, since a live subscription can't start another. It counts only
- * while the plan, interval and provider match that checkout, as a plan change may drop it.
+ * user's latest checkout start, since a live subscription can't start another. Paddle plan and
+ * interval changes carry the first-year promo over (promoDiscountActive); on Lemon Squeezy it
+ * counts only while the plan, interval and provider match that checkout, as a change may drop it.
  */
 export function subscriptionDiscount(
   checkout: DiscountCheckout | null | undefined,
-  subscription: { plan: Plan; interval: BillingInterval; provider: string },
+  subscription: DiscountSubscription,
   now = new Date(),
-  promos: Promo[] = [ACTIVE_PROMO],
+  promos: readonly Pick<Promo, "code" | "percentOff">[] = FIRST_YEAR_PROMOS,
 ): SubscriptionDiscount | null {
-  if (
-    !checkout?.promoCode ||
-    checkout.plan !== subscription.plan ||
-    checkout.interval !== subscription.interval ||
-    checkout.provider !== subscription.provider
-  ) {
+  if (!checkout?.promoCode || checkout.provider !== subscription.provider) return null;
+  const code = checkout.promoCode;
+  const percentOff = promos.find((candidate) => candidate.code === code)?.percentOff ?? null;
+
+  if (subscription.provider === "paddle") {
+    const active = promoDiscountActive({
+      checkoutInterval: checkout.interval,
+      interval: subscription.interval,
+      firstPaymentAt: promoFirstPaymentAt(subscription.startedAt, checkout.createdAt),
+      periodEndsAt: subscription.periodEndsAt ?? null,
+      endedAt: subscription.discountEndedAt,
+      now,
+    });
+    return active && { code, percentOff, endsAt: active.endsAt };
+  }
+
+  if (checkout.plan !== subscription.plan || checkout.interval !== subscription.interval) {
     return null;
   }
   const endsAt = addMonths(checkout.createdAt, DISCOUNT_MONTHS);
   if (now >= endsAt) return null;
-  const code = checkout.promoCode;
-  const promo = promos.find((candidate) => candidate.code === code);
-  return { code, percentOff: promo?.percentOff ?? null, endsAt };
+  return { code, percentOff, endsAt };
 }
 
 /** A subscriber's own price line: what they are billed, with the discount while it lasts. */

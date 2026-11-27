@@ -1,0 +1,1 @@
+ALTER TABLE `Subscription` ADD `promoDiscountEndedAt` datetime;

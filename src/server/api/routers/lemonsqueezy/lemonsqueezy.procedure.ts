@@ -10,6 +10,7 @@ import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import { checkoutCustomData, checkoutEventProperties } from "@/lib/billing/attribution";
+import { planChangeDiscount, promoFirstPaymentAt } from "@/lib/billing/first-year-discount";
 import {
   canOfferPause,
   getIntervalFromVariantId,
@@ -21,7 +22,7 @@ import {
   scheduledPause,
   subscriptionInterval,
 } from "@/lib/billing/plans";
-import { checkoutDiscountCode } from "@/lib/billing/promo";
+import { checkoutDiscountCode, findFirstYearPromo } from "@/lib/billing/promo";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { getPaddleClient, PaddleApiError } from "@/lib/paddle/client";
@@ -59,7 +60,11 @@ import type { PaddleCheckoutClient } from "./paddle-checkout";
 import type { Attribution } from "@/lib/billing/attribution";
 import type { PlanChangeCharge } from "@/lib/billing/plan-change-copy";
 import type { BillingInterval, Plan } from "@/lib/billing/plans";
-import type { PaddleClient, PaddleSubscription } from "@/lib/paddle/client";
+import type {
+  PaddleClient,
+  PaddleSubscription,
+  UpdateSubscriptionInput,
+} from "@/lib/paddle/client";
 import type { PaddleConfig, PaidPlan } from "@/lib/paddle/config";
 import type { NormalizedPaddleSubscription } from "@/lib/paddle/normalize";
 import type { Subscription } from "@/server/db/schema";
@@ -169,6 +174,8 @@ export type PaddleDeps = {
     | "resumeSubscription"
     | "getUpdatePaymentMethodTransaction"
     | "createPortalSession"
+    | "createDiscount"
+    | "archiveDiscount"
   >;
   config: PaddleConfig;
 };
@@ -224,6 +231,134 @@ function assertPaddleItemsChangeable(row: PaddleRow) {
   if (row.status === "past_due") {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Update your payment method first." });
   }
+}
+
+// The latest checkout start is the one that created a live subscription, since a live
+// subscription can't start another.
+const findLatestCheckoutStart = (ctx: ProtectedTRPCContext) =>
+  ctx.db.query.checkoutStart.findFirst({
+    where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
+    orderBy: (table, { desc }) => [desc(table.createdAt), desc(table.id)],
+    columns: { plan: true, interval: true, promoCode: true, provider: true, createdAt: true },
+  });
+
+/**
+ * The `discount` to send with a Paddle plan or interval change, or undefined to leave it as it
+ * is. A subscription that started with a first-year promo (FIRST_YEAR_PROMOS, past campaigns
+ * included) gets a new discount for what is left of that year (planChangeDiscount), or none after
+ * it; Paddle would otherwise keep counting the checkout discount's recurrences per billing period,
+ * whatever the interval. The created discount's id is returned so a failed change can archive it.
+ */
+async function promoDiscountUpdate(
+  ctx: ProtectedTRPCContext,
+  client: PaddleDeps["client"],
+  row: PaddleRow,
+  change: { to: BillingInterval; billsNow: boolean },
+): Promise<UpdateSubscriptionInput["discount"]> {
+  const checkout = await findLatestCheckoutStart(ctx);
+  if (checkout?.provider !== "paddle" || !checkout.promoCode) return undefined;
+  const from = subscriptionInterval(row);
+
+  const promo = findFirstYearPromo(checkout.promoCode);
+  if (!promo) {
+    // An unregistered code's terms are unknown, but a recurring discount must never carry into
+    // annual periods, where each recurrence is a year.
+    return from === "monthly" && change.to === "annual" ? null : undefined;
+  }
+
+  const firstPaymentAt = promoFirstPaymentAt(row.createdAt, checkout.createdAt);
+  // Once a change has ended the promo it stays ended, e.g. monthly → annual → monthly → annual.
+  if (row.promoDiscountEndedAt && row.promoDiscountEndedAt >= firstPaymentAt) return null;
+
+  const discount = planChangeDiscount({
+    firstPaymentAt,
+    from,
+    to: change.to,
+    billsNow: change.billsNow,
+  });
+  if (discount.action === "remove") return null;
+
+  const userId = ctx.auth.userId;
+  try {
+    const created = await client.createDiscount({
+      percentOff: promo.percentOff,
+      description: `${promo.code}: ${promo.percentOff}% off the first year`,
+      maximumRecurringIntervals: discount.terms.maximumRecurringIntervals,
+      customData: { user_id: userId, promo_code: promo.code },
+    });
+    return { id: created.id, effectiveFrom: discount.effectiveFrom };
+  } catch (err) {
+    const statusCode = err instanceof PaddleApiError ? err.status : null;
+    log.error(
+      {
+        err,
+        statusCode,
+        provider: "paddle",
+        userId,
+        providerSubscriptionId: row.providerSubscriptionId,
+      },
+      "paddle create discount failed",
+    );
+    // On monthly the checkout discount's remaining recurrences cover the rest of the first year,
+    // so the change goes ahead without `discount`. On annual it would recur yearly, so the change
+    // fails and can be retried.
+    if (change.to === "annual") throw new TRPCError(paddleErrorToClient(statusCode));
+    return undefined;
+  }
+}
+
+/**
+ * Moves a Paddle subscription to `priceId`, setting the first-year promo discount for the change
+ * (promoDiscountUpdate). A discount created for a change that then fails is archived, and a
+ * removed one is recorded on the row so the billing card stops showing it.
+ */
+async function changePaddleItems(
+  ctx: ProtectedTRPCContext,
+  client: PaddleDeps["client"],
+  row: PaddleRow,
+  change: { action: string; priceId: string; to: BillingInterval; billsNow: boolean },
+): Promise<PaddleSubscription> {
+  const userId = ctx.auth.userId;
+  const providerSubscriptionId = row.providerSubscriptionId;
+  const discount = await promoDiscountUpdate(ctx, client, row, change);
+
+  let updated: PaddleSubscription;
+  try {
+    updated = await callPaddle(change.action, { userId, providerSubscriptionId }, () =>
+      client.updateSubscription(providerSubscriptionId, {
+        items: [{ priceId: change.priceId, quantity: 1 }],
+        prorationBillingMode: change.billsNow
+          ? "prorated_immediately"
+          : "prorated_next_billing_period",
+        ...(discount !== undefined && { discount }),
+      }),
+    );
+  } catch (err) {
+    if (discount) {
+      await client
+        .archiveDiscount(discount.id)
+        .catch((archiveErr: Error) =>
+          log.warn(
+            { err: archiveErr, userId, providerSubscriptionId, discountId: discount.id },
+            "failed to archive unused paddle discount",
+          ),
+        );
+    }
+    throw err;
+  }
+
+  if (discount === null) {
+    try {
+      await ctx.db
+        .update(subscription)
+        .set({ promoDiscountEndedAt: new Date() })
+        .where(eq(subscription.providerSubscriptionId, providerSubscriptionId));
+    } catch (err) {
+      // Paddle already removed it; only the billing card's discount line is affected.
+      log.error({ err, userId, providerSubscriptionId }, "failed to record promo discount end");
+    }
+  }
+  return updated;
 }
 
 /** Paddle's counterpart of applyProviderState, matched on the Paddle subscription id. */
@@ -493,15 +628,12 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
             return { status: "updated" as const, message: "You are already on this plan." };
           }
 
-          const updatedSub = await callPaddle(
-            "plan change",
-            { userId, providerSubscriptionId },
-            () =>
-              client.updateSubscription(providerSubscriptionId, {
-                items: [{ priceId, quantity: 1 }],
-                prorationBillingMode: "prorated_immediately",
-              }),
-          );
+          const updatedSub = await changePaddleItems(ctx, client, userSubscription, {
+            action: "plan change",
+            priceId,
+            to: input.interval,
+            billsNow: true,
+          });
 
           try {
             await applyPaddleState(
@@ -734,14 +866,9 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
     }),
 
     // The checkout that created the current subscription, for its discount (subscriptionDiscount).
-    latestCheckoutStart: protectedProcedure.query(async ({ ctx }) => {
-      const start = await ctx.db.query.checkoutStart.findFirst({
-        where: (table, { eq }) => eq(table.userId, ctx.auth.userId),
-        orderBy: (table, { desc }) => [desc(table.createdAt), desc(table.id)],
-        columns: { plan: true, interval: true, promoCode: true, provider: true, createdAt: true },
-      });
-      return start ?? null;
-    }),
+    latestCheckoutStart: protectedProcedure.query(
+      async ({ ctx }) => (await findLatestCheckoutStart(ctx)) ?? null,
+    ),
 
     // The subscription's update-payment-method page. Lemon Squeezy signs this URL
     // and it expires, so it is fetched fresh on every visit instead of stored.
@@ -910,19 +1037,18 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         const interval = subscriptionInterval(userSubscription);
 
         if (paddleRow && paddle) {
-          const providerSubscriptionId = paddleRow.providerSubscriptionId;
           const priceId = paddlePriceId(targetPlan, interval, paddle.config);
           if (!priceId) throw new TRPCError(providerErrorToClient(null));
 
           // prorated_immediately puts the credit on the customer's Paddle balance now, so it pays
           // toward the next charge of any kind. Deferred to the next billing period, it would wait
           // a year if the user then switched to annual.
-          const updatedSub = await callPaddle("downgrade", { userId, providerSubscriptionId }, () =>
-            paddle.client.updateSubscription(providerSubscriptionId, {
-              items: [{ priceId, quantity: 1 }],
-              prorationBillingMode: "prorated_immediately",
-            }),
-          );
+          const updatedSub = await changePaddleItems(ctx, paddle.client, paddleRow, {
+            action: "downgrade",
+            priceId,
+            to: interval,
+            billsNow: true,
+          });
           await applyPaddleState(
             ctx,
             paddle.config,

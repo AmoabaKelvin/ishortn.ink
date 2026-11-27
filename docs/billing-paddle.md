@@ -73,12 +73,57 @@ Do this once per environment (sandbox first, then live). In the Paddle dashboard
      analytics event)
 
    Copy the destination's secret key into `PADDLE_WEBHOOK_SECRET`.
-6. **Discounts** (Catalog → Discounts): promo codes typed at checkout are looked up as active
-   discount codes; create the same codes as on Lemon Squeezy if they should work on Paddle too.
+6. **Discounts** (Catalog → Discounts): see [First-year promo discounts](#first-year-promo-discounts).
 
 Paddle turns on only when the API key, webhook secret, client token and the four sellable prices
 are all set and their prefixes match `PADDLE_ENVIRONMENT`. A mismatch logs
 `Paddle API key or client token does not match PADDLE_ENVIRONMENT; Paddle disabled`.
+
+## First-year promo discounts
+
+A promo such as `BFCM20` ("20% off your first year of Pro or Ultra", `src/lib/billing/promo.ts`)
+covers the first year only: the first 12 monthly payments, or the first annual payment. Paddle
+counts a discount's recurrences per billing period, so one discount with 12 recurrences would
+discount 12 annual payments. Each promo code therefore maps to two Paddle discounts, one per
+interval (`paddleDiscountCode` in `src/lib/billing/first-year-discount.ts`):
+
+| Paddle code      | Type         | Amount            | Recurring                              | Restrict to                  |
+| ---------------- | ------------ | ----------------- | -------------------------------------- | ---------------------------- |
+| `BFCM20`         | Percentage   | the promo percent | yes, maximum 12 recurring intervals    | Pro monthly, Ultra monthly   |
+| `BFCM20ANNUAL`   | Percentage   | the promo percent | no (one-off)                           | Pro annual, Ultra annual     |
+
+Set both to expire when the promo ends. A new checkout looks up the code for its interval and only
+applies it when the discount's recurrence matches the table; a mismatch logs
+`paddle discount recurrence does not match the interval; checkout created without it` and the
+checkout opens without a discount.
+
+Plan and interval changes made in the app set the subscription's discount explicitly
+(`planChangeDiscount`), counting from the first payment (the subscription's `created_at`):
+
+| Change within the first year                       | Discount sent with the change                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Pro ↔ Ultra on monthly (both billed now)           | New discount for the current month through month 12, `effective_from: immediately` |
+| Monthly → annual                                   | New one-off discount, `effective_from: immediately` (the annual charge)           |
+| Pro ↔ Ultra on annual (both billed now)            | New one-off discount on the prorated charge, `effective_from: immediately`        |
+| Annual → monthly                                   | `discount: null` (the annual payment was the discounted one)                     |
+| Any change after month 12                          | `discount: null`                                                                 |
+
+These per-change discounts are created through the API (`mode: custom`, no code, not usable at
+checkout) with the promo's percent. If the plan change then fails, the discount created for it is
+archived. If creating the discount fails, a change to monthly goes ahead without `discount` (the
+checkout discount's remaining recurrences cover the rest of the first year), and a change to
+annual fails with a retryable error.
+
+The rules apply to every code in `FIRST_YEAR_PROMOS` (`src/lib/billing/promo.ts`), past campaigns
+included, so they keep working after `ACTIVE_PROMO` moves on. Add each new campaign's code there
+before it goes live and never remove one. A checkout code that isn't registered gets
+`discount: null` on a monthly → annual change, so a recurring discount can't carry into annual
+periods; other changes leave it as it is. Subscriptions whose checkout had no promo are untouched.
+
+When a change removes the discount, `Subscription.promoDiscountEndedAt` is set; the promo then
+stays ended for that subscription. The billing card follows the same rules
+(`promoDiscountActive`): monthly shows the discount until the end of the first year, annual for an
+annual period that started in the first year, and nothing once `promoDiscountEndedAt` is set.
 
 ## Local testing
 
@@ -181,6 +226,10 @@ Run these against the sandbox before switching any traffic. For each, check the 
 | 18  | Pause a monthly plan for 2 months                                     | The row stays `active` with `renewsAt` at the period end and `pausedUntil` 2 months later; the billing card shows "Pauses …, resumes …".                       |
 | 19  | Resume before the pause starts                                        | The scheduled pause is removed; the row has no `pausedUntil`.                                                                                                 |
 | 20  | Cancel from Settings → Billing                                         | `status=cancelled` with `endsAt` at the period end.                                                                                                           |
+| 21  | Monthly checkout with the promo                                       | The subscription's discount `ends_at` is the start of month 12; month 13 is billed at full price.                                                             |
+| 22  | Annual checkout with the promo                                        | The subscription's discount is `one-off`; the renewal a year later is billed at full price.                                                                   |
+| 23  | Promo monthly subscriber upgrades to Ultra in month 3 (in the app)    | The prorated charge is discounted and the discount `ends_at` stays at month 12; the billing card still shows the discount.                                   |
+| 24  | Promo monthly subscriber switches to annual in month 5 (in the app)   | The annual charge is discounted once; the discount is `one-off` and the next annual renewal is full price.                                                    |
 
 ## Going live
 

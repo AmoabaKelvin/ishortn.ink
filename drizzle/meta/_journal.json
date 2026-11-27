@@ -722,6 +722,13 @@
       "when": 1795745826338,
       "tag": "0102_monthly_usage_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "5",
+      "when": 1795779526527,
+      "tag": "0103_subscription_promo_discount_ended_at",
+      "breakpoints": true
     }
   ]
 }

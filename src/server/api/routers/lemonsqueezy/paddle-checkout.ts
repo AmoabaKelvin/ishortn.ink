@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
 import { checkoutCustomData } from "@/lib/billing/attribution";
+import { checkoutDiscountTerms, paddleDiscountCode } from "@/lib/billing/first-year-discount";
 import { logger } from "@/lib/logger";
 import { PaddleApiError } from "@/lib/paddle/client";
 
@@ -34,7 +35,7 @@ export type PaddleCheckoutClient = Pick<
   PaddleClient,
   | "findCustomerByEmail"
   | "createCustomer"
-  | "findActiveDiscountIdByCode"
+  | "findActiveDiscountByCode"
   | "createTransaction"
   | "listOpenTransactions"
   | "cancelTransaction"
@@ -62,19 +63,40 @@ async function resolveCustomerId(client: PaddleCheckoutClient, input: PaddleChec
   return (existing ?? (await client.createCustomer({ email }))).id;
 }
 
-/** Paddle transactions take a discount id; a code with no active discount is dropped. */
+/**
+ * Paddle transactions take a discount id. The promo code maps to one Paddle discount per interval
+ * (`paddleDiscountCode`); a code with no active discount, or one whose recurrence doesn't match
+ * the interval's first-year terms, is dropped.
+ */
 async function resolveDiscountId(
   client: PaddleCheckoutClient,
-  code: string | undefined,
+  promoCode: string | undefined,
+  interval: BillingInterval,
   userId: string,
 ) {
-  if (!code) return undefined;
-  const id = await client.findActiveDiscountIdByCode(code).catch((err: Error) => {
+  if (!promoCode) return undefined;
+  const code = paddleDiscountCode(promoCode, interval);
+  const discount = await client.findActiveDiscountByCode(code).catch((err: Error) => {
     log.warn({ err, userId, discountCode: code }, "paddle discount lookup failed");
     return undefined;
   });
-  if (!id) log.warn({ userId, discountCode: code }, "no active paddle discount for promo code");
-  return id;
+  if (!discount) {
+    log.warn({ userId, discountCode: code }, "no active paddle discount for promo code");
+    return undefined;
+  }
+  const terms = checkoutDiscountTerms(interval);
+  if (
+    discount.recur !== terms.recur ||
+    discount.maximum_recurring_intervals !== terms.maximumRecurringIntervals
+  ) {
+    // A wrong recurrence would discount past the first year (12 recurrences on annual is 12 years).
+    log.error(
+      { userId, discountCode: code, discountId: discount.id, expected: terms },
+      "paddle discount recurrence does not match the interval; checkout created without it",
+    );
+    return undefined;
+  }
+  return discount.id;
 }
 
 /**
@@ -110,7 +132,7 @@ export async function createPaddleCheckout(
 
   const [customerId, discountId] = await Promise.all([
     resolveCustomerId(client, input),
-    resolveDiscountId(client, input.promoCode, userId),
+    resolveDiscountId(client, input.promoCode, interval, userId),
   ]).catch((error: Error) => {
     throw providerError("customer lookup", error, userId);
   });

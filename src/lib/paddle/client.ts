@@ -47,6 +47,12 @@ const transactionSchema = z.object({
   checkout: z.object({ url: z.string().nullable() }).nullable(),
 });
 
+const discountSchema = z.object({
+  id: z.string(),
+  recur: z.boolean(),
+  maximum_recurring_intervals: z.number().nullable(),
+});
+
 const customerSchema = z.object({
   id: z.string(),
   email: z.string(),
@@ -105,6 +111,7 @@ const errorBodySchema = z.object({
 });
 
 export type PaddleTransaction = z.infer<typeof transactionSchema>;
+export type PaddleDiscount = z.infer<typeof discountSchema>;
 export type PaddleCustomer = z.infer<typeof customerSchema>;
 export type PaddleSubscription = z.infer<typeof subscriptionSchema>;
 export type PaddlePortalSession = z.infer<typeof portalSessionSchema>;
@@ -135,6 +142,17 @@ export type UpdateSubscriptionInput = {
   prorationBillingMode?: PaddleProrationBillingMode;
   /** `null` removes a pending scheduled change (cancel, pause). */
   scheduledChange?: null;
+  /** `null` removes the subscription's discount. */
+  discount?: { id: string; effectiveFrom: PaddleEffectiveFrom } | null;
+};
+
+export type CreateDiscountInput = {
+  /** Percent off, e.g. 20. */
+  percentOff: number;
+  description: string;
+  /** `null` for a one-off discount; otherwise how many billing periods it recurs for. */
+  maximumRecurringIntervals: number | null;
+  customData?: PaddleCustomData;
 };
 
 const toPaddleItems = (items: PaddleItem[]) =>
@@ -142,7 +160,10 @@ const toPaddleItems = (items: PaddleItem[]) =>
 
 export function createPaddleClient(config: PaddleConfig) {
   const baseUrl = paddleApiBaseUrl(config);
-  const discountCache = new Map<string, { id: string | undefined; expiresAt: number }>();
+  const discountCache = new Map<
+    string,
+    { discount: PaddleDiscount | undefined; expiresAt: number }
+  >();
 
   async function request<T>(
     method: "GET" | "POST" | "PATCH",
@@ -223,20 +244,33 @@ export function createPaddleClient(config: PaddleConfig) {
       }),
 
     /** Codes (including unknown ones) are cached for 10 minutes per isolate. */
-    findActiveDiscountIdByCode: async (code: string): Promise<string | undefined> => {
+    findActiveDiscountByCode: async (code: string): Promise<PaddleDiscount | undefined> => {
       const cached = discountCache.get(code);
-      if (cached && cached.expiresAt > Date.now()) return cached.id;
+      if (cached && cached.expiresAt > Date.now()) return cached.discount;
 
       const query = new URLSearchParams({ code, status: "active" });
-      const discounts = await request(
-        "GET",
-        `/discounts?${query}`,
-        z.array(z.object({ id: z.string() })),
-      );
-      const id = discounts[0]?.id;
-      discountCache.set(code, { id, expiresAt: Date.now() + DISCOUNT_CACHE_TTL_MS });
-      return id;
+      const discounts = await request("GET", `/discounts?${query}`, z.array(discountSchema));
+      const discount = discounts[0];
+      discountCache.set(code, { discount, expiresAt: Date.now() + DISCOUNT_CACHE_TTL_MS });
+      return discount;
     },
+
+    /** A percentage discount without a code, applied to subscriptions by id only. */
+    createDiscount: (input: CreateDiscountInput) =>
+      request("POST", "/discounts", discountSchema, {
+        type: "percentage",
+        amount: String(input.percentOff),
+        description: input.description,
+        enabled_for_checkout: false,
+        mode: "custom",
+        recur: input.maximumRecurringIntervals !== null,
+        maximum_recurring_intervals: input.maximumRecurringIntervals ?? undefined,
+        custom_data: input.customData,
+      }),
+
+    /** Retires a discount so it can't be applied again. */
+    archiveDiscount: (id: string) =>
+      request("PATCH", `/discounts/${id}`, discountSchema, { status: "archived" }),
 
     findCustomerByEmail,
 
@@ -273,6 +307,10 @@ export function createPaddleClient(config: PaddleConfig) {
         items: input.items && toPaddleItems(input.items),
         proration_billing_mode: input.prorationBillingMode,
         scheduled_change: input.scheduledChange,
+        discount: input.discount && {
+          id: input.discount.id,
+          effective_from: input.discount.effectiveFrom,
+        },
       }),
 
     /** What an item change would bill, without applying it. */

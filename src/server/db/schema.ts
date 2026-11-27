@@ -250,6 +250,9 @@ export const subscription = mysqlTable(
     // When a paused subscription starts billing again (the provider's pause.resumes_at); null
     // when not paused.
     pausedUntil: datetime("pausedUntil"),
+    // When an in-app Paddle plan change removed the subscription's first-year promo discount. The
+    // row is reused across subscriptions, so it only counts if later than the promo's checkout.
+    promoDiscountEndedAt: datetime("promoDiscountEndedAt"),
 
     // details about the payment to show in the dashboard
     cardBrand: varchar("cardBrand", { length: 255 }).default(""),
