@@ -67,7 +67,8 @@ async function SettingsPage(props: Props) {
       ultra: paddlePriceId("ultra", "monthly"),
     },
   });
-  // The discount code only rides on new checkouts; plan changes for subscribers are not discounted.
+  // The running promo's code only rides on new checkouts; a subscriber's plan change keeps only
+  // their own first-year promo (planChangeDiscountTo in billing.tsx).
   const promo = subscriptions.subscriptionMode === "checkout" ? getActivePromo() : null;
   // Set by the checkout redirect (lemonsqueezy.procedure.ts).
   const { checkout } = await props.searchParams;

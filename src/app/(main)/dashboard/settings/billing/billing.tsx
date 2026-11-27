@@ -8,7 +8,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { subscribedPlan } from "@/lib/billing/entitlements";
 import { PLAN_CAPS, scheduledPause, subscriptionInterval } from "@/lib/billing/plans";
-import { subscribedPriceDisplay, subscriptionDiscount } from "@/lib/billing/pricing";
+import {
+  planChangeDiscountTo,
+  subscribedPriceDisplay,
+  subscriptionDiscount,
+} from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -113,20 +117,31 @@ export default function Billing({ subscriptions, promo, latestCheckout }: Billin
   const isPaid = currentPlan !== "free";
   const statusDisplay = subscription && isPaid ? getStatusDisplay(subscription) : null;
   const isPastDue = isPaid && subscription?.status === "past_due";
-  const currentPrice =
+  const discountSubscription =
     subscription && currentPlan !== "free"
-      ? subscribedPriceDisplay(
-          currentPlan,
-          currentInterval,
-          subscriptionDiscount(latestCheckout, {
-            plan: currentPlan,
-            interval: currentInterval,
-            provider: subscription.billingProvider,
-            startedAt: subscription.createdAt,
-            periodEndsAt: subscription.renewsAt ?? subscription.endsAt,
-            discountEndedAt: subscription.promoDiscountEndedAt,
-          }),
-        )
+      ? {
+          plan: currentPlan,
+          interval: currentInterval,
+          provider: subscription.billingProvider,
+          startedAt: subscription.createdAt,
+          periodEndsAt: subscription.renewsAt ?? subscription.endsAt,
+          discountEndedAt: subscription.promoDiscountEndedAt,
+        }
+      : null;
+  const currentPrice =
+    discountSubscription &&
+    subscribedPriceDisplay(
+      discountSubscription.plan,
+      currentInterval,
+      subscriptionDiscount(latestCheckout, discountSubscription),
+    );
+  // Only a live subscription changes in place and carries its promo over.
+  const changeDiscounts =
+    discountSubscription && subscriptionMode === "update"
+      ? {
+          monthly: planChangeDiscountTo(latestCheckout, discountSubscription, "monthly"),
+          annual: planChangeDiscountTo(latestCheckout, discountSubscription, "annual"),
+        }
       : null;
 
   const getSubscriptionDetails = api.lemonsqueezy.subscriptionDetails.useMutation({
@@ -264,6 +279,7 @@ export default function Billing({ subscriptions, promo, latestCheckout }: Billin
           renewsAt={subscription?.renewsAt ?? null}
           promo={promo}
           currentPrice={currentPrice}
+          changeDiscounts={changeDiscounts}
           subscription={subscription ?? null}
           isPaused={isPaused}
         />
