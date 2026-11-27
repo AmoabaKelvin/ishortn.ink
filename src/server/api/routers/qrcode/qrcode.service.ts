@@ -4,6 +4,7 @@ import { and, count, eq, inArray, sum } from "drizzle-orm";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { encodeStaticQrPayload } from "@/lib/qr-generator/payload";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
   link,
@@ -33,11 +34,14 @@ import { toLegacyQrStyles } from "./utils";
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type {
   QRCodeInput,
+  QRCodeStaticInput,
+  QRCodeStaticUpdateInput,
   QRCodeUpdateInput,
   QRPresetCreateInput,
   QRPresetUpdateInput,
 } from "./qrcode.input";
 import type { qrcodeSaveImageInput } from "./qrcode.input";
+import type { StaticQrPayload } from "@/lib/qr-generator/payload";
 import type { z } from "zod";
 
 const log = logger.child({ component: "qrcode.service" });
@@ -72,29 +76,42 @@ function userFacing<A extends unknown[], R>(
   };
 }
 
+async function assertQrCodeCapacity(ctx: WorkspaceTRPCContext) {
+  // Team workspaces have Ultra features (unlimited QR codes); limits apply to personal ones.
+  const qrCodeLimit =
+    ctx.workspace.type === "team" ? undefined : getPlanCaps(ctx.workspace.plan).qrCodeLimit;
+  if (qrCodeLimit === undefined) return;
+
+  const currentCount = await countWorkspaceQrCodes(ctx);
+  if (currentCount >= qrCodeLimit) {
+    await recordPlanLimitHit({
+      userId: ctx.auth.userId,
+      limitKey: "qr_codes",
+      plan: ctx.workspace.plan,
+    });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `You've reached your plan's limit of ${qrCodeLimit} QR codes. Upgrade to create more.`,
+    });
+  }
+}
+
+/** Columns for a static code's content; plain text keeps no form fields. */
+function staticContentColumns(payload: StaticQrPayload) {
+  const isForm = payload.type !== "text";
+  return {
+    contentType: "text" as const,
+    content: encodeStaticQrPayload(payload),
+    payloadType: isForm ? payload.type : null,
+    payloadFields: isForm ? payload : null,
+  };
+}
+
 export const createQrCode = userFacing(
   "createQrCode",
   "Something went wrong while creating your QR code. Please try again.",
   async (ctx: WorkspaceTRPCContext, input: QRCodeInput) => {
-    // Team workspaces have Ultra features (unlimited QR codes); limits apply to personal ones.
-    const qrCodeLimit =
-      ctx.workspace.type === "team" ? undefined : getPlanCaps(ctx.workspace.plan).qrCodeLimit;
-
-    if (qrCodeLimit !== undefined) {
-      const currentCount = await countWorkspaceQrCodes(ctx);
-
-      if (currentCount >= qrCodeLimit) {
-        await recordPlanLimitHit({
-          userId: ctx.auth.userId,
-          limitKey: "qr_codes",
-          plan: ctx.workspace.plan,
-        });
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `You've reached your plan's limit of ${qrCodeLimit} QR codes. Upgrade to create more.`,
-        });
-      }
-    }
+    await assertQrCodeCapacity(ctx);
 
     const ownership = workspaceOwnership(ctx.workspace);
 
@@ -139,6 +156,64 @@ export const createQrCode = userFacing(
     checkCampaignPatternsAfterResponse([{ linkId: hiddenLinkId, url: input.content }]);
 
     return { trackingUrl: prepared.trackingUrl, id: insertedQrCodeId };
+  },
+);
+
+// Static codes encode their content directly: no tracking link, so they use no link quota and
+// can't be tracked. They count toward the QR code limit like any other code.
+export const createStaticQrCode = userFacing(
+  "createStaticQrCode",
+  "Something went wrong while creating your QR code. Please try again.",
+  async (ctx: WorkspaceTRPCContext, input: QRCodeStaticInput) => {
+    await assertQrCodeCapacity(ctx);
+
+    const ownership = workspaceOwnership(ctx.workspace);
+    const columns = staticContentColumns(input.payload);
+    const [result] = await ctx.db.insert(qrcode).values({
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      title: input.title,
+      color: input.selectedColor,
+      ...toLegacyQrStyles(input.patternStyle, input.cornerStyle),
+      linkId: 0,
+      ...columns,
+    });
+
+    return { id: result.insertId, content: columns.content };
+  },
+);
+
+export const updateStaticQrCode = userFacing(
+  "updateStaticQrCode",
+  "Something went wrong while updating your QR code. Please try again.",
+  async (ctx: WorkspaceTRPCContext, input: QRCodeStaticUpdateInput) => {
+    const record = await ctx.db.query.qrcode.findFirst({
+      where: and(
+        eq(qrcode.id, input.id),
+        workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
+      ),
+      columns: { id: true, contentType: true, linkId: true },
+    });
+    if (!record) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "QR code not found." });
+    }
+    if (record.contentType !== "text" || (record.linkId ?? 0) > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Only static QR codes can be edited this way.",
+      });
+    }
+    assertValidImageInput(input.qrCodeBase64);
+
+    await ctx.db
+      .update(qrcode)
+      .set({
+        ...(input.title !== undefined && { title: input.title }),
+        ...staticContentColumns(input.payload),
+      })
+      .where(eq(qrcode.id, input.id));
+
+    return saveQrCodeImage(ctx, { id: input.id, qrCodeBase64: input.qrCodeBase64 });
   },
 );
 

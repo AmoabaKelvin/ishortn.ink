@@ -35,30 +35,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { notifyPlanLimit } from "@/lib/analytics/upgrade-prompt";
 import { requiredPlanForLimit } from "@/lib/billing/required-plan";
 import { nextPlanFor } from "@/lib/billing/upgrade";
 import { DEFAULT_PLATFORM_DOMAIN, PLATFORM_DOMAINS } from "@/lib/constants/domains";
 import { generateQRCode, defaultGeneratorState } from "@/lib/qr-generator";
+import {
+  encodeStaticQrPayload,
+  STATIC_PAYLOAD_LABELS,
+  staticPayloadSummary,
+} from "@/lib/qr-generator/payload";
 import { generateQRCodeSvg, hasRasterOnlyOptions, toLogoDataUri } from "@/lib/qr-generator/svg";
 import { cn } from "@/lib/utils";
 import { INVALID_URL_MESSAGE, normalizeDestinationUrl } from "@/lib/utils/destination-url";
 import { api } from "@/trpc/react";
 
 import { PromoOfferSuffix, useUpgradeOffer } from "../../_components/upgrade-offer";
+import { StaticPayloadFields } from "../_components/static-payload-fields";
 import UpgradeText from "../_components/upgrade-text";
 import {
   checkIfUserCanCreateMoreQRCodes,
+  emptyStaticFormValues,
   qrCodeFileName,
   qrCodeStyleFrom,
   saveBlob,
   saveSvg,
+  staticPayloadFrom,
   SVG_EFFECTS_NOTE,
+  validateStaticForm,
 } from "../utils";
 import QRAdvancedCustomization from "./_components/qr-advanced-customization";
 
+import type { StaticFormValues } from "../utils";
 import type { QRCodeGeneratorState } from "@/lib/qr-generator";
+import type { StaticQrPayload, StaticQrPayloadType } from "@/lib/qr-generator/payload";
 import type {
   QREffect,
   QRMarkerCenter,
@@ -66,6 +78,17 @@ import type {
   QRPixelStyle,
 } from "@/lib/qr-generator/types";
 import type { AppRouter } from "@/server/api/root";
+
+type QrType = "link" | StaticQrPayloadType;
+
+const QR_TYPES: { value: QrType; label: string }[] = [
+  { value: "link", label: "Link" },
+  ...Object.entries(STATIC_PAYLOAD_LABELS).map(([value, label]) => ({
+    // SAFETY: the keys of STATIC_PAYLOAD_LABELS are exactly the static payload types.
+    value: value as StaticQrPayloadType,
+    label,
+  })),
+];
 
 function createErrorMessage(err: Error): string {
   if (err instanceof TRPCClientError) {
@@ -88,6 +111,7 @@ function QRCodeCreationPage() {
   const canCreateMoreQRCodes = checkIfUserCanCreateMoreQRCodes(userSubDetails);
 
   const qrCodeCreateMutation = api.qrCode.create.useMutation();
+  const qrCodeCreateStaticMutation = api.qrCode.createStatic.useMutation();
   const qrCodeSaveImageMutation = api.qrCode.saveImage.useMutation();
   const qrCodeDeleteMutation = api.qrCode.delete.useMutation();
 
@@ -95,6 +119,11 @@ function QRCodeCreationPage() {
   const [destinationUrl, setDestinationUrl] = useState<string>("");
   const [selectedDomain, setSelectedDomain] = useState<string>(DEFAULT_PLATFORM_DOMAIN);
   const [downloadFormat, setDownloadFormat] = useState<"png" | "svg">("png");
+  const [qrType, setQrType] = useState<QrType>("link");
+  const [staticValues, setStaticValues] = useState<StaticFormValues>(emptyStaticFormValues);
+  // Field errors show once a save has been tried, then update as the user types.
+  const [showStaticErrors, setShowStaticErrors] = useState(false);
+  const isStatic = qrType !== "link";
 
   const customDomainsQuery = api.customDomain.list.useQuery();
   const userDomains = customDomainsQuery.data ?? [];
@@ -104,6 +133,24 @@ function QRCodeCreationPage() {
     [destinationUrl],
   );
   const destinationLooksValid = normalizedDestination !== null;
+
+  const staticResult = useMemo(
+    () => (qrType === "link" ? null : validateStaticForm(qrType, staticValues)),
+    [qrType, staticValues],
+  );
+  // The preview encodes what's typed so far, even before every field is valid.
+  const previewText = useMemo(() => {
+    if (qrType === "link") return destinationUrl || "https://ishortn.ink";
+    if (staticResult?.ok) return encodeStaticQrPayload(staticResult.payload);
+    // SAFETY: an unvalidated payload has the right shape; encoding only reads its strings.
+    return encodeStaticQrPayload(staticPayloadFrom(qrType, staticValues) as StaticQrPayload);
+  }, [qrType, destinationUrl, staticResult, staticValues]);
+  const previewCaption =
+    qrType === "link"
+      ? destinationUrl || "Enter a destination URL above"
+      : staticResult?.ok
+        ? staticPayloadSummary(staticResult.payload)
+        : `Fill in the ${STATIC_PAYLOAD_LABELS[qrType]} details above`;
 
   // The ref blocks a second click before the disabled state has rendered.
   const [isSaving, setIsSaving] = useState(false);
@@ -269,52 +316,71 @@ function QRCodeCreationPage() {
 
     await generateQRCode(canvasRef.current, {
       ...qrState,
-      text: destinationUrl || "https://ishortn.ink",
+      text: previewText,
     });
-  }, [qrState, destinationUrl]);
+  }, [qrState, previewText]);
 
   // Debounce the regeneration
   const [debouncedQrState] = useDebounce(qrState, 100);
 
   useEffect(() => {
     regenerateQRCode();
-  }, [debouncedQrState, destinationUrl, regenerateQRCode]);
+  }, [debouncedQrState, previewText, regenerateQRCode]);
 
   const handleSaveQRCode = async () => {
     if (savingRef.current) return;
 
-    if (!destinationUrl.trim()) {
-      toast.error("Please enter a destination URL");
-      return;
-    }
-    if (!normalizedDestination) {
-      toast.error(INVALID_URL_MESSAGE);
-      return;
+    let staticPayload: StaticQrPayload | null = null;
+    let linkContent = "";
+    if (qrType === "link") {
+      if (!destinationUrl.trim()) {
+        toast.error("Please enter a destination URL");
+        return;
+      }
+      if (!normalizedDestination) {
+        toast.error(INVALID_URL_MESSAGE);
+        return;
+      }
+      linkContent = normalizedDestination;
+    } else {
+      const result = validateStaticForm(qrType, staticValues);
+      if (!result.ok) {
+        setShowStaticErrors(true);
+        toast.error(result.message);
+        return;
+      }
+      staticPayload = result.payload;
     }
 
-    trackEvent(POSTHOG_EVENTS.QR_CODE_CREATED);
+    trackEvent(POSTHOG_EVENTS.QR_CODE_CREATED, { type: qrType });
     savingRef.current = true;
     setIsSaving(true);
 
     const finalTitle = qrCodeTitle.trim() || "QR Code";
 
     const promise = (async () => {
-      // Step 1: Create the hidden short link and QR record on the server
-      const { trackingUrl, id } = await qrCodeCreateMutation.mutateAsync({
+      // Step 1: Create the QR record on the server: with a hidden tracking link for Link codes,
+      // or with the encoded content for static ones.
+      const fields = {
         title: finalTitle,
-        content: normalizedDestination,
         patternStyle: qrState.pixelStyle,
         cornerStyle: qrState.markerFrame,
         selectedColor: qrState.darkColor,
-        domain: selectedDomain,
-      });
+      };
+      const { id, text: qrText } = staticPayload
+        ? await qrCodeCreateStaticMutation
+            .mutateAsync({ ...fields, payload: staticPayload })
+            .then(({ id, content }) => ({ id, text: content }))
+        : await qrCodeCreateMutation
+            .mutateAsync({ ...fields, content: linkContent, domain: selectedDomain })
+            .then(({ id, trackingUrl }) => ({ id, text: trackingUrl }));
 
       try {
         // Step 2: Update the live preview so it matches the final output
         if (canvasRef.current) {
           await generateQRCode(canvasRef.current, {
             ...qrState,
-            text: trackingUrl,
+            text: qrText,
           });
         }
 
@@ -322,7 +388,7 @@ function QRCodeCreationPage() {
         const finalCanvas = document.createElement("canvas");
         await generateQRCode(finalCanvas, {
           ...qrState,
-          text: trackingUrl,
+          text: qrText,
           scale: 20,
         });
         const qrCodeBase64 = finalCanvas.toDataURL("image/png", 1.0);
@@ -343,7 +409,7 @@ function QRCodeCreationPage() {
             ...qrState,
             ecc: style.ecc,
             logoImage,
-            text: trackingUrl,
+            text: qrText,
             scale: 20,
           });
           saveSvg(svg, qrCodeFileName(finalTitle, "svg"));
@@ -425,6 +491,46 @@ function QRCodeCreationPage() {
 
           {/* Setup Section */}
           <div className="space-y-4 rounded-lg border border-neutral-200 dark:border-border p-4">
+            {/* Type */}
+            <div className="space-y-1.5">
+              <Label
+                id="qr-type-label"
+                className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300"
+              >
+                Type
+              </Label>
+              <Tabs
+                value={qrType}
+                onValueChange={(value) => {
+                  const next = QR_TYPES.find((type) => type.value === value);
+                  if (!next) return;
+                  setQrType(next.value);
+                  setShowStaticErrors(false);
+                }}
+              >
+                <TabsList
+                  aria-labelledby="qr-type-label"
+                  className="grid h-auto w-full grid-cols-3 gap-0.5 bg-neutral-100 dark:bg-muted sm:grid-cols-6"
+                >
+                  {QR_TYPES.map((type) => (
+                    <TabsTrigger
+                      key={type.value}
+                      value={type.value}
+                      className="h-7 px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:text-neutral-900 data-[state=active]:bg-white data-[state=active]:text-neutral-900 data-[state=active]:shadow-sm dark:text-neutral-400 dark:hover:text-foreground dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground"
+                    >
+                      {type.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              {isStatic && (
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
+                  Static code: scans aren't tracked and the content can't be changed after printing.
+                  Use Link for a tracked, editable code.
+                </p>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <Label
                 htmlFor="qr-title"
@@ -441,22 +547,36 @@ function QRCodeCreationPage() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                Destination URL
-              </Label>
-              <Input
-                placeholder="https://example.com"
-                value={destinationUrl}
-                onChange={(e) => setDestinationUrl(e.target.value)}
-                className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
+            {isStatic ? (
+              <StaticPayloadFields
+                type={qrType}
+                values={staticValues}
+                onChange={(patch) => setStaticValues((prev) => ({ ...prev, ...patch }))}
+                errors={
+                  showStaticErrors && staticResult && !staticResult.ok
+                    ? staticResult.fieldErrors
+                    : {}
+                }
+                idPrefix="qr-create"
               />
-              <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
-                The URL people will be redirected to when scanning the QR code
-              </p>
-            </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                  Destination URL
+                </Label>
+                <Input
+                  placeholder="https://example.com"
+                  value={destinationUrl}
+                  onChange={(e) => setDestinationUrl(e.target.value)}
+                  className="h-9 border-neutral-200 dark:border-border bg-white dark:bg-card text-[13px] placeholder:text-neutral-400"
+                />
+                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
+                  The URL people will be redirected to when scanning the QR code
+                </p>
+              </div>
+            )}
 
-            {destinationLooksValid && (
+            {!isStatic && destinationLooksValid && (
               <div className="space-y-1.5">
                 <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                   Link domain
@@ -692,7 +812,7 @@ function QRCodeCreationPage() {
 
             <div className="mt-4 w-full max-w-[280px]">
               <p className="text-center text-[12px] text-neutral-400 dark:text-muted-foreground truncate">
-                {destinationUrl || "Enter a destination URL above"}
+                {previewCaption}
               </p>
             </div>
           </div>
