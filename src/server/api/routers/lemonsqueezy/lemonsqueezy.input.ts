@@ -8,6 +8,12 @@ const attributionValue = z.string().max(ATTRIBUTION_VALUE_MAX_LENGTH).optional()
 export const createCheckoutOrUpdateInput = z.object({
   plan: z.enum(["pro", "ultra"]),
   interval: z.enum(["monthly", "annual"]).default("monthly"),
+  /**
+   * The `billingPlanMode` the screen rendered with. When it no longer matches the stored
+   * subscription the change is refused with CONFLICT, so a screen still showing Free (or an old
+   * plan) never changes a live subscription without the confirm step.
+   */
+  displayedPlanMode: z.enum(["free", "pro", "ultra"]).optional(),
   /** Where the checkout was started from, logged to `CheckoutStart`. */
   source: attributionValue,
   /** Campaign tags carried from the pricing page, passed to the checkout's custom data. */

@@ -10,7 +10,9 @@ import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import { checkoutCustomData, checkoutEventProperties } from "@/lib/billing/attribution";
+import { billingPlanMode } from "@/lib/billing/entitlements";
 import { planChangeDiscount, promoFirstPaymentAt } from "@/lib/billing/first-year-discount";
+import { STALE_BILLING_MESSAGE } from "@/lib/billing/plan-change-copy";
 import {
   canOfferPause,
   getIntervalFromVariantId,
@@ -208,9 +210,10 @@ async function callPaddle<T>(
   try {
     return await call();
   } catch (err) {
-    const statusCode = err instanceof PaddleApiError ? err.status : null;
+    const paddleErr = err instanceof PaddleApiError ? err : null;
+    const statusCode = paddleErr?.status ?? null;
     log.error({ err, statusCode, provider: "paddle", ...context }, `paddle ${action} failed`);
-    throw new TRPCError(paddleErrorToClient(statusCode));
+    throw new TRPCError(paddleErrorToClient(statusCode, paddleErr?.code));
   }
 }
 
@@ -302,7 +305,11 @@ async function promoDiscountUpdate(
     // On monthly the checkout discount's remaining recurrences cover the rest of the first year,
     // so the change goes ahead without `discount`. On annual it would recur yearly, so the change
     // fails and can be retried.
-    if (change.to === "annual") throw new TRPCError(paddleErrorToClient(statusCode));
+    if (change.to === "annual") {
+      throw new TRPCError(
+        paddleErrorToClient(statusCode, err instanceof PaddleApiError ? err.code : null),
+      );
+    }
     return undefined;
   }
 }
@@ -615,6 +622,15 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         // replaced: a second checkout would create a second subscription that
         // keeps billing after the webhook overwrites the single local row.
         const mode = getSubscriptionMode(userSubscription);
+
+        const storedPlanMode = billingPlanMode(userSubscription);
+        if (input.displayedPlanMode && input.displayedPlanMode !== storedPlanMode) {
+          log.warn(
+            { userId, displayedPlanMode: input.displayedPlanMode, storedPlanMode },
+            "refused a plan change from a stale billing screen",
+          );
+          throw new TRPCError({ code: "CONFLICT", message: STALE_BILLING_MESSAGE });
+        }
 
         if (mode === "resume") {
           throw new TRPCError({

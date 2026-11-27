@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { billingPlanMode } from "./entitlements";
 import {
   canOfferPause,
   canUseLinkUtmParams,
@@ -109,6 +110,26 @@ describe("isSubscriptionEntitled", () => {
     ["unpaid", null, false],
   ] as const)("%s (endsAt %p) => %p", (status, endsAt, expected) => {
     expect(isSubscriptionEntitled(sub({ status, endsAt }))).toBe(expected);
+  });
+});
+
+describe("billingPlanMode", () => {
+  test("no subscription, or one that has lapsed, is Free", () => {
+    expect(billingPlanMode(null)).toBe("free");
+    expect(billingPlanMode(sub({ status: "expired", endsAt: new Date(Date.now() - DAY) }))).toBe(
+      "free",
+    );
+  });
+
+  test("a live subscription is its subscribed plan", () => {
+    expect(billingPlanMode(sub({}))).toBe("pro");
+    expect(billingPlanMode(sub({ plan: "ultra", variantId: ULTRA_MONTHLY_VARIANT_ID }))).toBe(
+      "ultra",
+    );
+  });
+
+  test("a paused subscription keeps the plan it resumes on", () => {
+    expect(billingPlanMode(sub({ status: "paused" }))).toBe("pro");
   });
 });
 

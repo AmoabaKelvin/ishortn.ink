@@ -1,6 +1,7 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 
 import {
+  billingPlanMode,
   effectivePlan,
   graceAction,
   isGraceActive,
@@ -187,6 +188,8 @@ export const subscriptionsRouter = createTRPCRouter({
       isTeamWorkspace,
       // Billing actions always act on the personal subscription.
       subscriptionMode: getSubscriptionMode(userRecord.subscriptions ?? null),
+      // Sent back with plan changes so the server can refuse one made from a stale screen.
+      planMode: billingPlanMode(userRecord.subscriptions ?? null),
       // Whether the user can create teams (based on personal subscription, not workspace)
       canCreateTeam: personalPlan === "ultra",
       // Read from the auth context (no query); hides billing offers on moderated accounts.

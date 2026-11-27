@@ -2,17 +2,23 @@
 
 import { IconLoader2 } from "@tabler/icons-react";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { subscribedPlan } from "@/lib/billing/entitlements";
 import { PLAN_CAPS, scheduledPause, subscriptionInterval } from "@/lib/billing/plans";
 import { subscribedPriceDisplay, subscriptionDiscount } from "@/lib/billing/pricing";
+import { SUPPORT_EMAIL } from "@/lib/constants/app";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { DowngradeFeedbackModal } from "../../pricing/_components/downgrade-feedback-modal";
+import {
+  CHECKOUT_CONFIRM_TIMEOUT_MS,
+  CheckoutAcquisitionPrompt,
+} from "./checkout-acquisition-prompt";
 import { PlanSwitcher } from "./plan-switcher";
 import { ResumeSubscriptionButton } from "./resume-subscription-button";
 
@@ -24,6 +30,8 @@ type BillingProps = {
   /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
   promo: Promo | null;
   latestCheckout: RouterOutputs["lemonsqueezy"]["latestCheckoutStart"];
+  /** Landed here from a completed checkout (`?checkout=success`). */
+  returnedFromCheckout: boolean;
 };
 
 type SubscriptionRow = NonNullable<RouterOutputs["subscriptions"]["get"]["subscriptions"]>;
@@ -99,12 +107,32 @@ function getStatusDisplay(subscription: SubscriptionRow): StatusDisplay {
 
 const proLinksLimit = PLAN_CAPS.pro.linksLimit?.toLocaleString() ?? "more";
 
-export default function Billing({ subscriptions, promo, latestCheckout }: BillingProps) {
+export default function Billing({
+  subscriptions,
+  promo,
+  latestCheckout,
+  returnedFromCheckout,
+}: BillingProps) {
+  const router = useRouter();
   const [loadingTarget, setLoadingTarget] = useState<"portal" | "payment" | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
+  // Read once: the acquisition prompt drops `?checkout` from the URL, and a refresh must not
+  // re-enable the plan buttons while the new subscription is still on its way.
+  const [fromCheckout] = useState(returnedFromCheckout);
+  const [confirmTimedOut, setConfirmTimedOut] = useState(false);
+  const [isRechecking, startRecheck] = useTransition();
 
   const subscription = subscriptions?.subscriptions;
   const subscriptionMode = subscriptions?.subscriptionMode ?? "checkout";
+  // Back from checkout before the subscription webhook was stored: the card still reads Free, and
+  // an upgrade from it would skip the confirm step, so plan changes wait for the stored row.
+  const awaitingSubscription = fromCheckout && subscriptionMode === "checkout";
+
+  useEffect(() => {
+    if (!awaitingSubscription) return;
+    const timer = setTimeout(() => setConfirmTimedOut(true), CHECKOUT_CONFIRM_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [awaitingSubscription]);
   // A paused subscription has Free access but still holds its plan until billing restarts.
   const isPaused = subscriptionMode === "resume" && subscription?.status === "paused";
   const currentPlan = isPaused ? subscribedPlan(subscription) : (subscriptions?.plan ?? "free");
@@ -183,7 +211,35 @@ export default function Billing({ subscriptions, promo, latestCheckout }: Billin
           )}
         </div>
 
-        {statusDisplay && subscription ? (
+        {awaitingSubscription && !confirmTimedOut ? (
+          <output className="mt-1 flex items-center gap-1.5 text-[12px] text-neutral-500 dark:text-neutral-400">
+            <IconLoader2 size={14} stroke={1.5} className="shrink-0 animate-spin" />
+            Confirming your subscription…
+          </output>
+        ) : awaitingSubscription ? (
+          <div
+            aria-live="polite"
+            className="mt-3 flex flex-col gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <p className="text-[12px] text-amber-700 dark:text-amber-400">
+              Your payment went through, but your subscription isn&apos;t confirmed yet. Check again
+              in a minute, or contact{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium underline">
+                {SUPPORT_EMAIL}
+              </a>{" "}
+              if your plan doesn&apos;t update.
+            </p>
+            <button
+              type="button"
+              onClick={() => startRecheck(() => router.refresh())}
+              disabled={isRechecking}
+              className="inline-flex shrink-0 items-center text-[12px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:opacity-50"
+            >
+              {isRechecking && <IconLoader2 size={14} stroke={1.5} className="mr-1 animate-spin" />}
+              Check again
+            </button>
+          </div>
+        ) : statusDisplay && subscription ? (
           <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
             {statusDisplay.detail && (
               <span className="text-neutral-400 dark:text-muted-foreground">
@@ -266,8 +322,19 @@ export default function Billing({ subscriptions, promo, latestCheckout }: Billin
           currentPrice={currentPrice}
           subscription={subscription ?? null}
           isPaused={isPaused}
+          planMode={subscriptions.planMode}
+          disabled={awaitingSubscription}
         />
       </div>
+
+      {fromCheckout && (
+        <CheckoutAcquisitionPrompt
+          onPaidPlan={() => {
+            // The billing card was rendered before the webhook landed; show the new plan.
+            if (subscriptionMode === "checkout") router.refresh();
+          }}
+        />
+      )}
 
       {subscriptionMode === "update" && isPaid && (
         <DowngradeFeedbackModal
