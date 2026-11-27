@@ -9,6 +9,7 @@ import { formatReferrerLabel } from "@/lib/core/analytics/referrer";
 import { getStringFromCache, setStringInCache } from "@/lib/core/cache";
 import { APP_TOP_LEVEL_SEGMENTS } from "@/lib/seo/indexing";
 import { normalizeAlias } from "@/lib/utils";
+import { isBitlyExport } from "@/lib/utils/link-csv-headers";
 import { customDomain, link, team, user } from "@/server/db/schema";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { isAliasReserved } from "@/server/lib/reserved-alias";
@@ -596,11 +597,6 @@ export const parseShortLink = (value: string): { domain: string; alias: string }
 
 type CsvRecord = Record<string, string>;
 
-const isBitlyExport = (headers: string[]) =>
-  !headers.includes("url") &&
-  (headers.includes("destination url") || headers.includes("long url")) &&
-  (headers.includes("link") || headers.includes("bitlink"));
-
 // The current export names the columns Link/Custom Link/Destination URL; exports
 // from before 2023 use Bitlink/Custom Bitlink/Long URL.
 const readBitlyRecord = (record: CsvRecord, row: number): CsvLinkRow => {
@@ -640,6 +636,7 @@ const readGenericRecord = (record: CsvRecord, row: number): CsvLinkRow => ({
   alias: record.alias?.trim() || undefined,
   domain: record.domain?.trim() || undefined,
   note: record.note || undefined,
+  name: (record.title ?? record.name)?.trim().slice(0, MAX_LINK_TEXT_LENGTH) || undefined,
 });
 
 const parsedCsvSchema = z.array(z.record(z.string(), z.string()));
