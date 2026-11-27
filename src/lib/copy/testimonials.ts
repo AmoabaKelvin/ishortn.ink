@@ -30,6 +30,7 @@ export const testimonials: Testimonial[] = [
     role: "Marketing Manager",
     company: "AIRO",
     logo: "/images/customers/airo.svg",
+    href: "/customers/airo",
     shortQuote:
       "It shows us which campaigns turn eyeballs into clicks, and it has saved us thousands of dollars.",
   },

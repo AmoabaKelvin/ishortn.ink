@@ -1,4 +1,5 @@
-import { Link } from "next-view-transitions";
+import { IconChevronRight } from "@tabler/icons-react";
+import Link from "next/link";
 
 import {
   testimonials as allTestimonials,
@@ -41,18 +42,19 @@ export const Testimonial = ({ testimonials = allTestimonials }: { testimonials?:
             </div>
             <figcaption className="flex items-center justify-between gap-4 text-base sm:text-sm">
               <div className="min-w-0">
-                <div className="font-semibold text-neutral-900">
-                  {t.href ? (
-                    <Link href={t.href} className="hover:underline">
-                      {t.name}
-                    </Link>
-                  ) : (
-                    t.name
-                  )}
-                </div>
+                <div className="font-semibold text-neutral-900">{t.name}</div>
                 <div className="mt-0.5 text-neutral-600">
                   {t.role ? `${t.role}, ${t.company}` : t.company}
                 </div>
+                {t.href && (
+                  <Link
+                    href={t.href}
+                    className="mt-3 inline-flex items-center gap-0.5 font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
+                  >
+                    Read the story<span className="sr-only"> of {t.company}</span>
+                    <IconChevronRight aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+                  </Link>
+                )}
               </div>
               {t.logo && (
                 // oxlint-disable-next-line nextjs/no-img-element -- static SVG; the Worker has no image optimizer

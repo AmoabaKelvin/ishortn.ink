@@ -138,6 +138,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: absoluteUrl("/customers/airo"),
+      lastModified: "2026-11-27",
+      changeFrequency: "yearly",
+      priority: 0.7,
+    },
+    {
       url: absoluteUrl("/abuse"),
       lastModified: "2026-09-19",
       changeFrequency: "yearly",

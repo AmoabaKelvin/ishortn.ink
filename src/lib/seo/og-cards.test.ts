@@ -118,6 +118,7 @@ describe("card copy", () => {
     extension: "extension/page.tsx",
     whatsappLinkGenerator: "whatsapp-link-generator/page.tsx",
     whatsappLinkGeneratorPtBr: "gerador-de-link-whatsapp/page.tsx",
+    customerAiro: "customers/airo/_components/airo-story.tsx",
   } satisfies Record<keyof typeof pageCards, string>;
 
   for (const [key, file] of Object.entries(sources)) {

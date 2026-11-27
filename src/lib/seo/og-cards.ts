@@ -120,6 +120,11 @@ export const pageCards = {
     visual: "links",
     visualLabel: "wa.me/5511912345678?text=Ol%C3%A1!%20Quero%20fazer%20um%20pedido.",
   }),
+  customerAiro: card({
+    eyebrow: "Customers",
+    title: "AIRO stopped guessing which marketing works. Then they stopped paying for rack cards.",
+    subtitle: "Customer story: AIRO, Missouri and Arkansas",
+  }),
 } satisfies Record<string, OgCard>;
 
 export function solutionCard(solution: Solution): OgCard {
