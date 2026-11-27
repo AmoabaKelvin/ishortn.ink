@@ -51,6 +51,8 @@ This is the most common way for a static code to "stop working". Someone redesig
 
 Shared-drive files are a common trap: check the sharing setting ("Anyone with the link"), and remember that uploading a new version as a new file gives it a new link.
 
+To catch this before customers do, see [how to check if a QR code works](/blog/how-to-check-if-a-qr-code-works), which covers manual checks and daily destination monitoring.
+
 ## Cause 3: The domain behind the code expired
 
 If the code points to your own domain, or to a branded short domain you set up, and that domain's registration lapses, every code that uses it stops working. Worse, once someone else registers an expired domain, your printed codes send customers to them.
