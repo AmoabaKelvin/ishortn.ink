@@ -14,6 +14,7 @@ export const PLAN_LIMIT_KEYS = [
   "milestones",
   "api_keys",
   "api_v1",
+  "webhooks",
   "scheduled_reports",
 ] as const;
 
@@ -23,6 +24,7 @@ export const PLAN_LIMIT_VIEW_KEYS = [
   "domains_page_view",
   "folders_page_view",
   "tokens_page_view",
+  "webhooks_page_view",
 ] as const;
 
 export type PlanLimitKey = (typeof PLAN_LIMIT_KEYS)[number];

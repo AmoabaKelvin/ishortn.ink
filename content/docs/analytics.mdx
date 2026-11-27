@@ -64,3 +64,18 @@ You get an email at 80%, 90% and 100% of the allowance. Past 100%, **links keep 
 - **Clicks** (Pro and Ultra): **Export CSV** on a link's analytics page or the analytics overview downloads every click in the selected date range (and overview filter), newest first: timestamp (UTC), short link, destination, country, city, device, browser, OS and referrer. One export holds up to 100,000 clicks; pick a shorter range for older ones. Clicks past the retention window exist only as daily totals, so they aren't in the file.
 - **Campaigns**: export a campaign's analytics as CSV from the campaign page.
 - **API**: fetch a link's full analytics as JSON with [Link analytics](/docs/api/link-analytics).
+
+## Scheduled email reports
+
+Send a link's, a folder's or a campaign's numbers to people by email on a schedule. Click **Email report** on the link's analytics page, the folder page or the campaign page, add up to 5 email addresses and pick a frequency:
+
+- **Weekly**: every Monday, covering the previous Monday to Sunday (UTC).
+- **Monthly**: on the 1st, covering the previous calendar month.
+
+Each report has total clicks and the change from the period before, top countries, devices and traffic sources, and for folders and campaigns the top links. If the link's stats are shared, the email links to the live stats page. Recipients don't need an iShortn account, and every email has an unsubscribe link.
+
+| | Free | Pro | Ultra |
+| --- | --- | --- | --- |
+| Scheduled reports per workspace | None | 3 | Unlimited |
+
+Team workspaces have no limit. If a workspace has more schedules than its plan allows (for example after a downgrade), the oldest ones keep sending and the rest pause until you upgrade.

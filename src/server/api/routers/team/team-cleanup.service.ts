@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import {
@@ -16,6 +16,8 @@ import {
   token,
   uniqueLinkVisit,
   utmTemplate,
+  webhook,
+  webhookDelivery,
 } from "@/server/db/schema";
 import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 
@@ -157,7 +159,15 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
       // 11. Delete scheduled reports (they hold recipients' email addresses)
       await tx.delete(scheduledReport).where(eq(scheduledReport.teamId, teamId));
 
-      // 12. Finally, delete the team itself
+      // 12. Delete webhook endpoints and their delivery log (they hold signing secrets)
+      const teamWebhooks = tx
+        .select({ id: webhook.id })
+        .from(webhook)
+        .where(eq(webhook.teamId, teamId));
+      await tx.delete(webhookDelivery).where(inArray(webhookDelivery.webhookId, teamWebhooks));
+      await tx.delete(webhook).where(eq(webhook.teamId, teamId));
+
+      // 13. Finally, delete the team itself
       await tx.delete(team).where(eq(team.id, teamId));
       result.teamsDeleted += 1;
     });

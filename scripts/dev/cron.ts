@@ -11,6 +11,7 @@ const CRON_ROUTES = [
   "cleanup-analytics",
   "cleanup-expired",
   "entitlements",
+  "link-health",
   "phishing-rescan",
   "api-access-sunset",
   "first-link-nudge",
@@ -19,6 +20,7 @@ const CRON_ROUTES = [
   "upgrade-nudge",
   "link-creation-health",
   "weekly-summary",
+  "webhook-retries",
 ];
 
 async function main() {

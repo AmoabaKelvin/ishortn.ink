@@ -21,6 +21,7 @@ import {
 } from "@/server/db/schema";
 import { releasePreviousAddressesOnDomain } from "@/server/lib/link-address";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
+import { emitDomainVerified } from "@/server/lib/webhooks";
 import {
   hasPermission,
   requirePermission,
@@ -233,15 +234,19 @@ export async function addDomainToUserAccount(
       throw new Error("Failed to retrieve domain configuration");
     }
 
-    await ctx.db.insert(customDomain).values({
+    // A held domain waits for review even if Cloudflare already validated it
+    const status = held && mapStatus(hostname) === "active" ? "pending" : mapStatus(hostname);
+    const [inserted] = await ctx.db.insert(customDomain).values({
       userId: ownership.userId,
       teamId: ownership.teamId,
       domain: domain,
-      // A held domain waits for review even if Cloudflare already validated it
-      status: held && mapStatus(hostname) === "active" ? "pending" : mapStatus(hostname),
+      status,
       verificationDetails: buildVerificationChallenges(domain, hostname),
       ...review,
     });
+    if (status === "active") {
+      emitDomainVerified(ctx.db, ctx.workspace, { id: Number(inserted.insertId), domain });
+    }
   } catch (error) {
     throw toUserFacingError(
       error,
@@ -501,10 +506,13 @@ export async function checkDomainStatus(
   );
 
   if (active && record.reviewStatus !== "held") {
-    await ctx.db
+    const [updated] = await ctx.db
       .update(customDomain)
       .set({ status: "active" })
       .where(and(eq(customDomain.id, record.id), domainCanGoLive));
+    if (record.status !== "active" && updated.affectedRows > 0) {
+      emitDomainVerified(ctx.db, ctx.workspace, { id: record.id, domain });
+    }
     return { status: "active" as const };
   }
 

@@ -39,6 +39,8 @@ import {
   user,
   userAttribution,
   utmTemplate,
+  webhook,
+  webhookDelivery,
   weeklySummaryEmail,
 } from "@/server/db/schema";
 import { reserveLinkAliases } from "@/server/lib/reserved-alias";
@@ -102,7 +104,7 @@ async function purgeAccount(
   result: AccountCleanupResult,
   deleteAuthUser: (userId: string) => Promise<void>,
 ): Promise<boolean> {
-  const [links, bioPages, domains, folders] = await Promise.all([
+  const [links, bioPages, domains, folders, webhooks] = await Promise.all([
     db
       .select({ id: link.id, alias: link.alias, domain: link.domain })
       .from(link)
@@ -119,11 +121,16 @@ async function purgeAccount(
       .select({ id: folder.id })
       .from(folder)
       .where(and(eq(folder.userId, userId), isNull(folder.teamId))),
+    db
+      .select({ id: webhook.id })
+      .from(webhook)
+      .where(and(eq(webhook.userId, userId), isNull(webhook.teamId))),
   ]);
 
   const linkIds = links.map((l) => l.id);
   const bioPageIds = bioPages.map((p) => p.id);
   const folderIds = folders.map((f) => f.id);
+  const webhookIds = webhooks.map((w) => w.id);
 
   const purged = await db.transaction(async (tx) => {
     // Row lock: a restore racing this purge either lands first (and we skip) or
@@ -174,6 +181,10 @@ async function purgeAccount(
       await tx.delete(folderPermission).where(inArray(folderPermission.folderId, ids));
     }
 
+    for (const ids of chunk(webhookIds)) {
+      await tx.delete(webhookDelivery).where(inArray(webhookDelivery.webhookId, ids));
+    }
+
     const ownedLinks = and(eq(link.userId, userId), isNull(link.teamId));
     await reserveLinkAliases(tx, ownedLinks, "purged");
     const deletedLinks = await tx.delete(link).where(ownedLinks);
@@ -196,6 +207,8 @@ async function purgeAccount(
     await tx
       .delete(scheduledReport)
       .where(and(eq(scheduledReport.userId, userId), isNull(scheduledReport.teamId)));
+    // Holds signing secrets; team endpoints go with their team.
+    await tx.delete(webhook).where(and(eq(webhook.userId, userId), isNull(webhook.teamId)));
     await tx.delete(campaign).where(and(eq(campaign.userId, userId), isNull(campaign.teamId)));
     await tx
       .delete(customDomain)

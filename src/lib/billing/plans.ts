@@ -375,3 +375,15 @@ export function getCampaignLimit(plan: Plan): number | undefined {
 export function canUseCampaignUtmDefaults(plan: Plan): boolean {
   return plan !== "free";
 }
+
+// ----------------------------------------------------------------------------
+// Webhooks
+// ----------------------------------------------------------------------------
+
+// Ultra has a ceiling too: every endpoint costs a fetch per event.
+const WEBHOOK_ENDPOINT_LIMITS = { free: 0, pro: 3, ultra: 10 } satisfies Record<Plan, number>;
+
+/** Max webhook endpoints per workspace; 0 means webhooks aren't available. */
+export function getWebhookEndpointLimit(plan: Plan): number {
+  return WEBHOOK_ENDPOINT_LIMITS[plan];
+}

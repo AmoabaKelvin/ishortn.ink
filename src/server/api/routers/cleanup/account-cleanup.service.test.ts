@@ -19,6 +19,19 @@ describe.skipIf(!testDatabaseUrl)("cleanupDeletedAccounts (MySQL)", () => {
   const TEAM_ID = 990_001;
 
   async function cleanup() {
+    const hooks = await db
+      .select({ id: schema.webhook.id })
+      .from(schema.webhook)
+      .where(inArray(schema.webhook.userId, USERS));
+    if (hooks.length > 0) {
+      await db.delete(schema.webhookDelivery).where(
+        inArray(
+          schema.webhookDelivery.webhookId,
+          hooks.map((h) => h.id),
+        ),
+      );
+    }
+    await db.delete(schema.webhook).where(inArray(schema.webhook.userId, USERS));
     await db.delete(schema.scheduledReport).where(inArray(schema.scheduledReport.userId, USERS));
     await db.delete(schema.user).where(inArray(schema.user.id, USERS));
   }
@@ -35,6 +48,22 @@ describe.skipIf(!testDatabaseUrl)("cleanupDeletedAccounts (MySQL)", () => {
     };
   }
 
+  function endpoint(userId: string, teamId: number | null) {
+    return {
+      userId,
+      teamId,
+      url: "https://hooks.example.com/ishortn",
+      events: ["link.created" as const],
+      secret: "whsec_test",
+    };
+  }
+
+  function delivery(webhookId: number) {
+    return { webhookId, eventId: `evt_${webhookId}`, eventType: "link.created", payload: "{}" };
+  }
+
+  const webhookIds: Record<string, number> = {};
+
   beforeAll(async () => {
     // Another test file replaces @/env.mjs with a partial object for the whole run.
     if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
@@ -46,6 +75,15 @@ describe.skipIf(!testDatabaseUrl)("cleanupDeletedAccounts (MySQL)", () => {
     await db
       .insert(schema.scheduledReport)
       .values([report(PURGED, null), report(PURGED, TEAM_ID), report(KEPT, null)]);
+    for (const [key, userId, teamId] of [
+      ["purgedPersonal", PURGED, null],
+      ["purgedTeam", PURGED, TEAM_ID],
+      ["kept", KEPT, null],
+    ] as const) {
+      const [result] = await db.insert(schema.webhook).values(endpoint(userId, teamId));
+      webhookIds[key] = result.insertId;
+      await db.insert(schema.webhookDelivery).values(delivery(result.insertId));
+    }
   });
 
   afterAll(cleanup);
@@ -63,5 +101,25 @@ describe.skipIf(!testDatabaseUrl)("cleanupDeletedAccounts (MySQL)", () => {
     expect(rows).toHaveLength(2);
     expect(rows).toContainEqual({ userId: PURGED, teamId: TEAM_ID });
     expect(rows).toContainEqual({ userId: KEPT, teamId: null });
+  });
+
+  test("deletes the purged user's personal webhooks and their deliveries and keeps the rest", async () => {
+    const ids = Object.values(webhookIds);
+
+    const hooks = await db
+      .select({ id: schema.webhook.id })
+      .from(schema.webhook)
+      .where(inArray(schema.webhook.id, ids));
+    expect(hooks.map((h) => h.id).sort()).toEqual(
+      [webhookIds.purgedTeam!, webhookIds.kept!].sort(),
+    );
+
+    const deliveries = await db
+      .select({ webhookId: schema.webhookDelivery.webhookId })
+      .from(schema.webhookDelivery)
+      .where(inArray(schema.webhookDelivery.webhookId, ids));
+    expect(deliveries.map((d) => d.webhookId).sort()).toEqual(
+      [webhookIds.purgedTeam!, webhookIds.kept!].sort(),
+    );
   });
 });
