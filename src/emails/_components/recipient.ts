@@ -1,8 +1,8 @@
-import { createContext } from "react";
-
 /**
- * The address an email is being sent to, for the footer's "Sent to …" line. Provided by
- * renderEmail at send time; templates rendered without it (previews, tests) leave the line out.
- * Kept apart from layout.tsx so the send helper can import it without loading the components.
+ * Stands in for the recipient's address in the footer's "Sent to …" line. renderEmail swaps it
+ * for the real address at send time, so templates don't need the address as a prop. A string
+ * rather than React context: these modules are reachable from server components, where
+ * createContext is unavailable. Kept apart from layout.tsx so the send helper can import it
+ * without loading the components.
  */
-export const EmailRecipientContext = createContext<string | null>(null);
+export const RECIPIENT_TOKEN = "{{recipient}}";

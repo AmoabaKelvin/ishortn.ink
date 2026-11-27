@@ -1,5 +1,4 @@
 import { Link, Text } from "@react-email/components";
-import { render } from "@react-email/render";
 
 import {
   Divider,
@@ -75,10 +74,6 @@ export const WelcomeEmail = ({ userName }: WelcomeEmailProps) => (
     </Text>
   </EmailLayout>
 );
-
-export const renderWelcomeEmail = (name: string | null) => {
-  return render(<WelcomeEmail userName={name} />);
-};
 
 WelcomeEmail.PreviewProps = {
   userName: "Kelvin Amoaba",

@@ -13,12 +13,11 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import { useContext } from "react";
 
 import { getAppUrl } from "@/lib/constants/domains";
 import { firstName } from "@/lib/utils/user-name";
 
-import { EmailRecipientContext } from "./recipient";
+import { RECIPIENT_TOKEN } from "./recipient";
 
 import type { CSSProperties, ReactNode } from "react";
 
@@ -53,7 +52,6 @@ type EmailLayoutProps = {
 
 export function EmailLayout(props: EmailLayoutProps) {
   const { preview, children, notificationSettingsUrl, unsubscribeUrl } = props;
-  const recipient = useContext(EmailRecipientContext);
   const reason = props.footerReason ?? (notificationSettingsUrl ? LIFECYCLE_REASON : null);
   const dashboardUrl = getAppUrl("/dashboard");
 
@@ -123,28 +121,25 @@ export function EmailLayout(props: EmailLayoutProps) {
 
           {/* Footer */}
           <Section className="email-footer" style={footer}>
-            {(recipient || reason || notificationSettingsUrl) && (
-              <Text style={footerText}>
-                {recipient && <>Sent to {recipient}. </>}
-                {reason}
-                {notificationSettingsUrl && (
-                  <>
-                    {" "}
-                    {unsubscribeUrl && (
-                      <>
-                        <Link href={unsubscribeUrl} style={footerLink}>
-                          Unsubscribe
-                        </Link>{" "}
-                        &middot;{" "}
-                      </>
-                    )}
-                    <Link href={notificationSettingsUrl} style={footerLink}>
-                      Email settings
-                    </Link>
-                  </>
-                )}
-              </Text>
-            )}
+            <Text style={footerText}>
+              Sent to {RECIPIENT_TOKEN}. {reason}
+              {notificationSettingsUrl && (
+                <>
+                  {" "}
+                  {unsubscribeUrl && (
+                    <>
+                      <Link href={unsubscribeUrl} style={footerLink}>
+                        Unsubscribe
+                      </Link>{" "}
+                      &middot;{" "}
+                    </>
+                  )}
+                  <Link href={notificationSettingsUrl} style={footerLink}>
+                    Email settings
+                  </Link>
+                </>
+              )}
+            </Text>
             <Text style={footerText}>
               Questions? Reply to this email.
               <br />

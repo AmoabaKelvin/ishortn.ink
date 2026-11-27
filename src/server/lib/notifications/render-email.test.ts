@@ -46,5 +46,17 @@ describe("renderEmail", () => {
     expect(text.match(/kelvin@ishortn\.ink/g)).toHaveLength(1);
     // The logo row is left out of the plain text.
     expect(text).not.toContain("https://ishortn.ink/dashboard\n");
+    expect(html).not.toContain("{{recipient}}");
+  });
+
+  test("escapes the recipient's address in the HTML part", async () => {
+    const { html, text } = await renderEmail(
+      createElement(WelcomeEmail, { userName: "Ada" }),
+      "a&b<x>@example.com",
+    );
+
+    expect(html).toContain("a&amp;b&lt;x&gt;@example.com");
+    expect(html).not.toContain("a&b<x>");
+    expect(text).toContain("Sent to a&b<x>@example.com.");
   });
 });

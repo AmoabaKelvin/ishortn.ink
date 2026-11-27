@@ -1,6 +1,6 @@
-import { createElement, type ReactElement } from "react";
+import { RECIPIENT_TOKEN } from "@/emails/_components/recipient";
 
-import { EmailRecipientContext } from "@/emails/_components/recipient";
+import type { ReactElement } from "react";
 
 // The zero-width characters <Preview> pads the inbox snippet with; the non-breaking spaces it
 // mixes in are dropped as runs below, since a single one can be real copy.
@@ -30,6 +30,15 @@ export function cleanPlainText(text: string): string {
     .trim();
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#x27;");
+}
+
 /**
  * Renders an email's HTML and plain-text parts, with the recipient's address for the footer.
  * The renderer is imported on first use, like the Resend client, so routes that only reach an
@@ -40,10 +49,9 @@ export async function renderEmail(
   to: string,
 ): Promise<{ html: string; text: string }> {
   const { render, plainTextSelectors } = await import("@react-email/components");
-  const element = createElement(EmailRecipientContext.Provider, { value: to }, react);
   const [html, text] = await Promise.all([
-    render(element),
-    render(element, {
+    render(react),
+    render(react, {
       plainText: true,
       htmlToTextOptions: {
         selectors: [
@@ -56,5 +64,8 @@ export async function renderEmail(
       },
     }),
   ]);
-  return { html, text: cleanPlainText(text) };
+  return {
+    html: html.replaceAll(RECIPIENT_TOKEN, escapeHtml(to)),
+    text: cleanPlainText(text.replaceAll(RECIPIENT_TOKEN, to)),
+  };
 }
