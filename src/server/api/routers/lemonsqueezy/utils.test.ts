@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   createCheckoutWithPromoFallback,
+  paddleErrorToClient,
   parseProviderUpdatedAt,
   pauseUpdate,
   providerErrorToClient,
@@ -29,6 +30,16 @@ describe("providerErrorToClient", () => {
       code: "INTERNAL_SERVER_ERROR",
       message: "Our payment provider is unavailable right now. Please try again in a few minutes.",
     });
+  });
+});
+
+describe("paddleErrorToClient", () => {
+  test.each([400, 409, 422])("a refused change (%p) maps like Lemon Squeezy's 422", (status) => {
+    expect(paddleErrorToClient(status)).toEqual(providerErrorToClient(422));
+  });
+
+  test.each([404, 429, 500, null])("%p maps like providerErrorToClient", (status) => {
+    expect(paddleErrorToClient(status)).toEqual(providerErrorToClient(status));
   });
 });
 
