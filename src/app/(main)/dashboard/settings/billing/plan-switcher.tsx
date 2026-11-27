@@ -7,7 +7,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { scheduledPause } from "@/lib/billing/plans";
-import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
+import {
+  planPriceDisplay,
+  resolveBillingInterval,
+  subscribedPriceDisplay,
+} from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -15,7 +19,7 @@ import { DowngradeFeedbackModal } from "../../pricing/_components/downgrade-feed
 import { PlanChangeConfirmDialog } from "../../pricing/_components/plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
-import type { PlanPriceDisplay } from "@/lib/billing/pricing";
+import type { PlanPriceDisplay, SubscriptionDiscount } from "@/lib/billing/pricing";
 import type { Promo } from "@/lib/billing/promo";
 import type { ComponentProps } from "react";
 
@@ -36,6 +40,8 @@ type PlanSwitcherProps = {
   promo: Promo | null;
   /** What the subscriber is billed for their current plan and interval, discount included. */
   currentPrice: PlanPriceDisplay | null;
+  /** The first-year promo a change to each interval keeps (planChangeDiscountTo), if any. */
+  changeDiscounts: Record<BillingInterval, SubscriptionDiscount | null> | null;
   subscription: ComponentProps<typeof DowngradeFeedbackModal>["subscription"];
   /** Set while the subscription is paused; it has to be resumed before changing plans. */
   isPaused: boolean;
@@ -48,6 +54,7 @@ export function PlanSwitcher({
   renewsAt,
   promo,
   currentPrice,
+  changeDiscounts,
   subscription,
   isPaused,
 }: PlanSwitcherProps) {
@@ -178,10 +185,13 @@ export function PlanSwitcher({
           const isUpgrade = !isResumable && planOrder[plan.id] > planOrder[currentPlan];
           const isDowngrade = canChangeInPlace && planOrder[plan.id] < planOrder[currentPlan];
 
+          const changeDiscount = changeDiscounts?.[interval] ?? null;
           const price =
             matchesCurrent && currentPrice
               ? currentPrice
-              : planPriceDisplay(plan.id, interval, promo);
+              : plan.id !== "free" && changeDiscount
+                ? subscribedPriceDisplay(plan.id, interval, changeDiscount)
+                : planPriceDisplay(plan.id, interval, promo);
 
           return (
             <div

@@ -20,8 +20,9 @@ const paddleRow = (fields: Partial<Subscription>) =>
     ...fields,
   }) as Subscription;
 
-const newSubscriptionTransaction = async () => ({ subscription_id: null });
-const paymentMethodUpdate = async () => ({ subscription_id: "sub_live" });
+const newSubscriptionTransaction = async () => ({ status: "ready", subscription_id: null });
+const paymentMethodUpdate = async () => ({ status: "ready", subscription_id: "sub_live" });
+const replacedTransaction = async () => ({ status: "canceled", subscription_id: null });
 
 describe("checkoutAccess", () => {
   test.each([
@@ -40,19 +41,34 @@ describe("checkoutAccess", () => {
     expect(await checkoutAccess(row, paymentMethodUpdate)).toBe("open");
   });
 
-  test("opens a checkout for a user without a subscription and skips the Paddle lookup", async () => {
-    let lookups = 0;
-    const lookup = async () => {
-      lookups += 1;
-      return { subscription_id: null };
-    };
-
-    expect(await checkoutAccess(null, lookup)).toBe("open");
-    expect(await checkoutAccess(paddleRow({ status: "expired" }), lookup)).toBe("open");
-    expect(lookups).toBe(0);
+  test("opens a checkout for a user without a subscription", async () => {
+    expect(await checkoutAccess(null, newSubscriptionTransaction)).toBe("open");
+    expect(await checkoutAccess(paddleRow({ status: "expired" }), newSubscriptionTransaction)).toBe(
+      "open",
+    );
   });
 
-  test("a failed transaction lookup propagates instead of opening the checkout", async () => {
+  test("a canceled checkout, replaced by a newer one, is not opened", async () => {
+    expect(await checkoutAccess(null, replacedTransaction)).toBe("replaced");
+    expect(await checkoutAccess(paddleRow({ status: "expired" }), replacedTransaction)).toBe(
+      "replaced",
+    );
+  });
+
+  test("a subscriber's stale new-subscription checkout still reads as subscribed", async () => {
+    expect(await checkoutAccess(paddleRow({ status: "active" }), replacedTransaction)).toBe(
+      "subscribed",
+    );
+  });
+
+  test("without a subscription a failed lookup still opens the checkout", async () => {
+    const failing = async () => {
+      throw new Error("paddle down");
+    };
+    expect(await checkoutAccess(null, failing)).toBe("open");
+  });
+
+  test("a subscriber's failed transaction lookup propagates instead of opening the checkout", async () => {
     const failing = async () => {
       throw new Error("paddle down");
     };
