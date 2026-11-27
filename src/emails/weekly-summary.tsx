@@ -1,5 +1,6 @@
 import { Column, Link, Row, Section, Text } from "@react-email/components";
 
+import { PLAN_CAPS } from "@/lib/billing/plans";
 import { displayName } from "@/lib/utils/user-name";
 
 import {
@@ -17,6 +18,13 @@ import type { CSSProperties } from "react";
 export type WeeklySummaryTopLink = { shortUrl: string; name: string | null; clicks: number };
 export type WeeklySummaryTop = { name: string; clicks: number };
 
+/**
+ * The one upgrade line a Free account can get: tracking paused by the monthly cap (`count` is
+ * the visits dropped), 60%+ of the cap used (`count` is the visits tracked), or clicks older
+ * than the Free analytics window (`count` is how many are hidden).
+ */
+export type WeeklySummaryUpgrade = { reason: "paused" | "cap" | "history"; count: number };
+
 export type WeeklySummaryEmailProps = {
   userName?: string | null;
   /** "November 16 – 22", the summarised Monday-Sunday week. */
@@ -26,8 +34,7 @@ export type WeeklySummaryEmailProps = {
   topLinks: WeeklySummaryTopLink[];
   topCountry: WeeklySummaryTop | null;
   topSource: WeeklySummaryTop | null;
-  /** Free accounts whose tracking is paused by the monthly cap. */
-  paused: { dropped: number; upgradeUrl: string } | null;
+  upgrade: (WeeklySummaryUpgrade & { upgradeUrl: string }) | null;
   analyticsUrl: string;
   unsubscribeUrl: string | null;
   notificationSettingsUrl: string;
@@ -47,6 +54,29 @@ export function compareWeeks(clicks: number, previousClicks: number): string {
   return `${direction} ${percent} from ${formatClicks(previousClicks)} the week before.`;
 }
 
+const fmt = (count: number) => count.toLocaleString("en-US");
+
+/** The upgrade sentence, split around the inline "Upgrade to Pro" link. */
+export function upgradeCopy({ reason, count }: WeeklySummaryUpgrade) {
+  if (reason === "paused") {
+    return {
+      lead: `The Free plan's monthly limit has paused tracking, so ${formatClicks(count)} this month ${count === 1 ? "wasn't" : "weren't"} recorded.`,
+      tail: "to record them all.",
+    };
+  }
+  if (reason === "cap") {
+    return {
+      lead: `You've used ${fmt(count)} of ${fmt(PLAN_CAPS.free.eventsLimit ?? 0)} tracked visits this month.`,
+      tail: `for ${fmt(PLAN_CAPS.pro.eventsLimit ?? 0)} a month.`,
+    };
+  }
+  const days = PLAN_CAPS.free.analyticsRangeLimitDays ?? 0;
+  return {
+    lead: `${formatClicks(count)} older than ${days} days ${count === 1 ? "is" : "are"} hidden on the Free plan.`,
+    tail: "to see your full history.",
+  };
+}
+
 export const WeeklySummaryEmail = ({
   userName,
   weekLabel,
@@ -55,7 +85,7 @@ export const WeeklySummaryEmail = ({
   topLinks,
   topCountry,
   topSource,
-  paused,
+  upgrade,
   analyticsUrl,
   unsubscribeUrl,
   notificationSettingsUrl,
@@ -108,13 +138,13 @@ export const WeeklySummaryEmail = ({
         </Section>
       )}
 
-      {paused && (
+      {upgrade && (
         <Text style={text}>
-          {`The Free plan's monthly limit has paused tracking, so ${formatClicks(paused.dropped)} this month ${paused.dropped === 1 ? "wasn't" : "weren't"} recorded.`}{" "}
-          <Link href={paused.upgradeUrl} style={link}>
+          {upgradeCopy(upgrade).lead}{" "}
+          <Link href={upgrade.upgradeUrl} style={link}>
             Upgrade to Pro
           </Link>{" "}
-          to record them all.
+          {upgradeCopy(upgrade).tail}
         </Text>
       )}
 
@@ -179,10 +209,11 @@ WeeklySummaryEmail.PreviewProps = {
   ],
   topCountry: { name: "Ghana", clicks: 611 },
   topSource: { name: "Instagram", clicks: 402 },
-  paused: {
-    dropped: 342,
+  upgrade: {
+    reason: "cap",
+    count: 640,
     upgradeUrl:
-      "https://ishortn.ink/dashboard/pricing?highlight=pro&source=weekly_summary&utm_source=email&utm_medium=lifecycle&utm_campaign=weekly_summary",
+      "https://ishortn.ink/dashboard/pricing?highlight=pro&source=weekly_summary_cap&utm_source=email&utm_medium=lifecycle&utm_campaign=weekly_summary",
   },
   analyticsUrl:
     "https://ishortn.ink/dashboard/analytics/overview?utm_source=email&utm_medium=lifecycle&utm_campaign=weekly_summary",

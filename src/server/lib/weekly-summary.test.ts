@@ -8,11 +8,12 @@ import * as schema from "@/server/db/schema";
 
 import {
   buildWeeklySummaryContent,
-  droppedClicksLine,
+  eventUpgradeLine,
   isWeeklySummaryDue,
   sendWeeklySummaries,
   summaryWeek,
   summaryWeekStarting,
+  weeklySummaryUpgrade,
   type WeeklySummaryCandidate,
 } from "./weekly-summary";
 
@@ -84,28 +85,64 @@ describe("isWeeklySummaryDue", () => {
   });
 });
 
-describe("droppedClicksLine", () => {
-  const paused = {
+describe("eventUpgradeLine", () => {
+  const free = {
     plan: "free" as const,
+    createdAt: new Date("2026-01-05T00:00:00Z"),
+    monthlyEventCount: 0,
+    lastEventCountReset: new Date("2026-11-01T00:00:05Z"),
+    droppedEventCount: 0,
+    eventTrackingPausedAt: null,
+  };
+  const paused = {
+    ...free,
+    monthlyEventCount: 1_000,
     droppedEventCount: 42,
     eventTrackingPausedAt: new Date("2026-11-12T10:00:00Z"),
   };
 
   test("shows this month's dropped visits for a paused Free account", () => {
-    expect(droppedClicksLine(paused, NOW)).toBe(42);
+    expect(eventUpgradeLine(paused, NOW)).toEqual({ reason: "paused", count: 42 });
   });
 
-  test("not for paid plans, nothing dropped, or a pause from an earlier month", () => {
-    expect(droppedClicksLine({ ...paused, plan: "pro" }, NOW)).toBeNull();
-    expect(droppedClicksLine({ ...paused, droppedEventCount: 0 }, NOW)).toBeNull();
-    expect(droppedClicksLine({ ...paused, droppedEventCount: null }, NOW)).toBeNull();
-    expect(droppedClicksLine({ ...paused, eventTrackingPausedAt: null }, NOW)).toBeNull();
+  test("shows usage from 60% of the Free cap", () => {
+    expect(eventUpgradeLine({ ...free, monthlyEventCount: 600 }, NOW)).toEqual({
+      reason: "cap",
+      count: 600,
+    });
+    expect(eventUpgradeLine({ ...free, monthlyEventCount: 599 }, NOW)).toBeNull();
+    expect(eventUpgradeLine({ ...free, monthlyEventCount: 1_200 }, NOW)).toEqual({
+      reason: "cap",
+      count: 1_000,
+    });
+  });
+
+  test("a count or pause from an earlier month is stale", () => {
+    const lastMonth = new Date("2026-10-30T00:00:00Z");
     expect(
-      droppedClicksLine(
-        { ...paused, eventTrackingPausedAt: new Date("2026-10-30T00:00:00Z") },
+      eventUpgradeLine({ ...free, monthlyEventCount: 900, lastEventCountReset: lastMonth }, NOW),
+    ).toBeNull();
+    expect(
+      eventUpgradeLine(
+        { ...paused, eventTrackingPausedAt: lastMonth, lastEventCountReset: lastMonth },
         NOW,
       ),
     ).toBeNull();
+  });
+
+  test("never for paid plans", () => {
+    expect(eventUpgradeLine({ ...paused, plan: "pro" }, NOW)).toBeNull();
+    expect(eventUpgradeLine({ ...free, plan: "pro", monthlyEventCount: 900 }, NOW)).toBeNull();
+    expect(eventUpgradeLine({ ...free, plan: "ultra", monthlyEventCount: 900 }, NOW)).toBeNull();
+  });
+});
+
+describe("weeklySummaryUpgrade", () => {
+  test("the event-cap line wins, then hidden history, else no line", () => {
+    const cap = { reason: "cap" as const, count: 700 };
+    expect(weeklySummaryUpgrade(cap, 12)).toEqual(cap);
+    expect(weeklySummaryUpgrade(null, 12)).toEqual({ reason: "history", count: 12 });
+    expect(weeklySummaryUpgrade(null, 0)).toBeNull();
   });
 });
 
@@ -125,7 +162,7 @@ describe("buildWeeklySummaryContent", () => {
       links,
       countries: [],
       referrers: [],
-      droppedClicks: null,
+      upgrade: null,
     });
     expect(content.topLinks).toEqual([
       { shortUrl: "ishortn.ink/b", name: "Launch", clicks: 9 },
@@ -138,7 +175,7 @@ describe("buildWeeklySummaryContent", () => {
       previousClicks: 7,
       topCountry: null,
       topSource: null,
-      droppedClicks: null,
+      upgrade: null,
     });
   });
 
@@ -155,10 +192,10 @@ describe("buildWeeklySummaryContent", () => {
         { country: "Kenya", clicks: 1 },
       ],
       referrers: [],
-      droppedClicks: 3,
+      upgrade: { reason: "history", count: 3 },
     });
     expect(content.topCountry).toEqual({ name: "Ghana", clicks: 2 });
-    expect(content.droppedClicks).toBe(3);
+    expect(content.upgrade).toEqual({ reason: "history", count: 3 });
   });
 
   test("groups sources the way the analytics pages do", () => {
@@ -175,7 +212,7 @@ describe("buildWeeklySummaryContent", () => {
         { referer: "direct", clicks: 2 },
         { referer: "https://www.instagram.com/p/123", clicks: 1 },
       ],
-      droppedClicks: null,
+      upgrade: null,
     });
     // null, "null" and "direct" are one Direct row (5) and beat instagram.com (4).
     expect(content.topSource).toEqual({ name: "Direct", clicks: 5 });
@@ -319,9 +356,38 @@ describe.skipIf(!testDatabaseUrl)("weekly summary job (MySQL)", () => {
       ],
       topCountry: { name: "Ghana", clicks: 5 },
       topSource: { name: "instagram.com", clicks: 5 },
-      droppedClicks: 42,
+      upgrade: { reason: "paused", count: 42 },
     });
     expect(sent.find((item) => item.userId === PRO)?.content.topCountry).toBeNull();
+  });
+
+  test("a Free account without a cap line gets its hidden older clicks, else no line", async () => {
+    const upgradeOf = async () =>
+      (await run({ dryRun: true })).previews.find((item) => item.userId === PRO)?.content.upgrade;
+    expect(await upgradeOf()).toBeNull();
+
+    const [{ id: proLink }] = await db
+      .select({ id: schema.link.id })
+      .from(schema.link)
+      .where(inArray(schema.link.userId, [PRO]));
+    // Before the Free window (17 Nov for a 23 Nov run): raw visits plus an archived day.
+    await addVisits(proLink, 2, previousWeek);
+    await db
+      .insert(schema.linkVisitDailySummary)
+      .values({ linkId: proLink, date: "2026-09-01", clicks: 10, uniqueClicks: 4 });
+    try {
+      expect(await upgradeOf()).toEqual({ reason: "history", count: 12 });
+
+      await db
+        .update(schema.user)
+        .set({ monthlyEventCount: 700, lastEventCountReset: new Date("2026-11-01T00:00:00Z") })
+        .where(inArray(schema.user.id, [PRO]));
+      expect(await upgradeOf()).toEqual({ reason: "cap", count: 700 });
+    } finally {
+      await db
+        .delete(schema.linkVisitDailySummary)
+        .where(inArray(schema.linkVisitDailySummary.linkId, [proLink]));
+    }
   });
 
   test("a dry run lists the recipients without claiming or sending", async () => {

@@ -10,6 +10,7 @@ import {
 } from "@/lib/billing/entitlements";
 import { getPlanCaps, getSubscriptionMode } from "@/lib/billing/plans";
 import { freeAnalyticsWindowStart } from "@/lib/core/analytics";
+import { companyEmailDomain } from "@/lib/email/company-domain";
 import { customDomain, folder, link, user } from "@/server/db/schema";
 import { getEventTrackingPause, nextEventCountReset } from "@/server/lib/event-usage";
 import {
@@ -190,6 +191,8 @@ export const subscriptionsRouter = createTRPCRouter({
       canCreateTeam: personalPlan === "ultra",
       // Read from the auth context (no query); hides billing offers on moderated accounts.
       isRestricted: ctx.restrictedAt !== null,
+      // Null for free-mail addresses; the link-ready dialog offers go.<domain> to the rest.
+      companyEmailDomain: companyEmailDomain(userRecord.email),
     };
   }),
 

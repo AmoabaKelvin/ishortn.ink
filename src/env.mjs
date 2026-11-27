@@ -49,6 +49,22 @@ export const env = createEnv({
     LEMONSQUEEZY_API_KEY: z.string().optional(),
     LEMONSQUEEZY_STORE_ID: z.string().optional(),
     LEMONSQUEEZY_WEBHOOK_SECRET: z.string().optional(),
+    // Paddle Billing (src/lib/paddle/config.ts). Paddle stays off unless the key, webhook secret,
+    // client token and the four sellable price IDs are all set and match PADDLE_ENVIRONMENT.
+    BILLING_PROVIDER: z.enum(["lemonsqueezy", "paddle"]).default("lemonsqueezy"),
+    PADDLE_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+    PADDLE_API_KEY: z.string().optional(),
+    PADDLE_WEBHOOK_SECRET: z.string().optional(),
+    // Read on the server and passed to the checkout page; not a NEXT_PUBLIC_ var
+    PADDLE_CLIENT_TOKEN: z.string().optional(),
+    PADDLE_PRICE_PRO_MONTHLY: z.string().optional(),
+    PADDLE_PRICE_PRO_ANNUAL: z.string().optional(),
+    PADDLE_PRICE_ULTRA_MONTHLY: z.string().optional(),
+    PADDLE_PRICE_ULTRA_ANNUAL: z.string().optional(),
+    // Recognised in webhooks as Pro monthly, never offered at checkout
+    PADDLE_PRICE_PRO_LEGACY_MONTHLY: z.string().optional(),
+    // Comma-separated user IDs that check out with Paddle while BILLING_PROVIDER is lemonsqueezy
+    PADDLE_CHECKOUT_USER_IDS: z.string().optional(),
     // Read by @ai-sdk/openai directly
     OPENAI_API_KEY: z.string().optional(),
     // Secret key used to HMAC visitor IPs before storage.
@@ -142,6 +158,17 @@ export const env = createEnv({
     LEMONSQUEEZY_API_KEY: process.env.LEMONSQUEEZY_API_KEY,
     LEMONSQUEEZY_STORE_ID: process.env.LEMONSQUEEZY_STORE_ID,
     LEMONSQUEEZY_WEBHOOK_SECRET: process.env.LEMONSQUEEZY_WEBHOOK_SECRET,
+    BILLING_PROVIDER: process.env.BILLING_PROVIDER,
+    PADDLE_ENVIRONMENT: process.env.PADDLE_ENVIRONMENT,
+    PADDLE_API_KEY: process.env.PADDLE_API_KEY,
+    PADDLE_WEBHOOK_SECRET: process.env.PADDLE_WEBHOOK_SECRET,
+    PADDLE_CLIENT_TOKEN: process.env.PADDLE_CLIENT_TOKEN,
+    PADDLE_PRICE_PRO_MONTHLY: process.env.PADDLE_PRICE_PRO_MONTHLY,
+    PADDLE_PRICE_PRO_ANNUAL: process.env.PADDLE_PRICE_PRO_ANNUAL,
+    PADDLE_PRICE_ULTRA_MONTHLY: process.env.PADDLE_PRICE_ULTRA_MONTHLY,
+    PADDLE_PRICE_ULTRA_ANNUAL: process.env.PADDLE_PRICE_ULTRA_ANNUAL,
+    PADDLE_PRICE_PRO_LEGACY_MONTHLY: process.env.PADDLE_PRICE_PRO_LEGACY_MONTHLY,
+    PADDLE_CHECKOUT_USER_IDS: process.env.PADDLE_CHECKOUT_USER_IDS,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     IP_HASH_SECRET: process.env.IP_HASH_SECRET,
     VERIFIED_CLICKS_SECRET: process.env.VERIFIED_CLICKS_SECRET,
