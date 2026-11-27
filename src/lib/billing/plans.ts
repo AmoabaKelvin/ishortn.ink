@@ -282,6 +282,18 @@ export function canScheduleBioBlocks(plan: Plan): boolean {
 }
 
 // ----------------------------------------------------------------------------
+// Links
+// ----------------------------------------------------------------------------
+
+/** Pro+ may set UTM parameters on a link. Saved UTM templates stay Ultra-only. */
+export function canUseLinkUtmParams(plan: Plan): boolean {
+  return plan !== "free";
+}
+
+export const LINK_UTM_PLAN_MESSAGE =
+  "UTM parameters are available on Pro and Ultra plans. Please upgrade to use this feature.";
+
+// ----------------------------------------------------------------------------
 // Campaigns
 // ----------------------------------------------------------------------------
 

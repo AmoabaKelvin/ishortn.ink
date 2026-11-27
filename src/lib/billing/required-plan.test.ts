@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { LINK_UTM_PLAN_MESSAGE } from "@/lib/billing/plans";
 import { domainBeyondPlanMessage } from "@/server/api/routers/link/utils";
 import { monthlyLinkLimitMessage } from "@/server/lib/user-plan";
 
@@ -12,9 +13,9 @@ import {
 
 describe("requiredPlanForLimit", () => {
   test("Ultra-only messages need Ultra", () => {
-    expect(
-      requiredPlanForLimit("UTM parameters are only available on the Ultra plan.", "free"),
-    ).toBe("ultra");
+    expect(requiredPlanForLimit("Link cloaking is only available on the Ultra plan.", "free")).toBe(
+      "ultra",
+    );
     expect(
       requiredPlanForLimit(
         "You've reached your monthly limit of 1,000 links. Upgrade to Ultra for unlimited links.",
@@ -27,6 +28,7 @@ describe("requiredPlanForLimit", () => {
     expect(
       requiredPlanForLimit("Targeting rules are only available on Pro and Ultra plans.", "free"),
     ).toBe("pro");
+    expect(requiredPlanForLimit(LINK_UTM_PLAN_MESSAGE, "free")).toBe("pro");
     expect(requiredPlanForLimit("You've reached your plan's limit of 5 QR codes.", "free")).toBe(
       "pro",
     );
@@ -94,11 +96,7 @@ describe("planLimitKey", () => {
     expect(planLimitKey("You need to upgrade to a pro plan to use password protection")).toBe(
       "password",
     );
-    expect(
-      planLimitKey(
-        "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      ),
-    ).toBe("utm");
+    expect(planLimitKey(LINK_UTM_PLAN_MESSAGE)).toBe("utm");
     expect(planLimitKey("Scheduled links are only available on Pro and Ultra plans")).toBe(
       "scheduling",
     );

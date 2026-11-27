@@ -182,7 +182,7 @@ describe("overPlanGrace", () => {
     ["a password-protected link", { passwordLinks: 1 }, "pro"],
     ["a custom domain", { customDomains: 1 }, "pro"],
     ["a scheduled link", { scheduledLinks: 1 }, "pro"],
-    ["a link with UTM parameters", { utmLinks: 1 }, "ultra"],
+    ["a link with UTM parameters", { utmLinks: 1 }, "pro"],
     ["targeting rules", { maxTargetingRulesPerLink: 2 }, "pro"],
   ] satisfies [string, Partial<PlanUsage>, Plan][])(
     "a Free account with %s gets one",

@@ -373,11 +373,18 @@ describe("usage above a plan", () => {
   });
 
   test("Ultra-only features need Ultra even on Pro", () => {
-    const usage = { ...EMPTY_USAGE, utmLinks: 2, customDomains: 5 };
+    const usage = { ...EMPTY_USAGE, cloakedLinks: 2, customDomains: 5 };
     expect(overPlanFeatures(usage, "pro").map((item) => item.requiredPlan)).toEqual([
       "ultra",
       "ultra",
     ]);
+    expect(overPlanFeatures(usage, "ultra")).toEqual([]);
+  });
+
+  test("links with UTM parameters need Pro", () => {
+    const usage = { ...EMPTY_USAGE, utmLinks: 2 };
+    expect(overPlanFeatures(usage, "free").map((item) => item.requiredPlan)).toEqual(["pro"]);
+    expect(overPlanFeatures(usage, "pro")).toEqual([]);
     expect(overPlanFeatures(usage, "ultra")).toEqual([]);
   });
 

@@ -17,7 +17,7 @@ export function orderCompletedEvent({ meta, data }: LemonsqueezyOrderEvent) {
   if (order.status !== "paid" || !userId || !plan) return null;
 
   return {
-    distinctId: userId,
+    user: { id: userId, email: order.user_email },
     properties: checkoutEventProperties({
       plan,
       interval: getIntervalFromVariantId(item?.variant_id),
