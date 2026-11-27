@@ -96,7 +96,7 @@ If your clicks come from a campaign, tag the destination first with our free [UT
 
 ### What is the cheapest URL shortener with analytics?
 
-Short.io Hobby at $5 a month is the cheapest paid plan with click tracking, but it caps you at 2,500 links in total. iShortn Pro at $8 a month ($6.67 yearly) is the cheapest plan here with 1,000 new links every month and unlimited analytics history.
+Short.io Hobby at $5 a month is the cheapest paid plan with click tracking, but it caps you at 2,500 links in total. iShortn Pro at $8 a month ($6.67 yearly) is the cheapest plan here with 1,000 new links every month and a full year of detailed analytics.
 
 ### Is there a free URL shortener with click tracking?
 
@@ -104,7 +104,7 @@ Yes. iShortn, Short.io, Cutt.ly and Dub all track clicks on their free plans. Bi
 
 ### What is the cheapest alternative to Bitly for link tracking?
 
-Bitly Core costs $10 a month, billed yearly only, and keeps 30 days of click data. Short.io Hobby ($5) and iShortn Pro ($8, with 3 custom domains and unlimited history) both cost less. If you only track a few links, several free plans will do. Our breakdown of [Bitly's free plan limits](/blog/bitly-free-plan-limits) shows what Bitly's free tier still includes.
+Bitly Core costs $10 a month, billed yearly only, and keeps 30 days of click data. Short.io Hobby ($5) and iShortn Pro ($8, with 3 custom domains and a full year of detailed analytics) both cost less. If you only track a few links, several free plans will do. Our breakdown of [Bitly's free plan limits](/blog/bitly-free-plan-limits) shows what Bitly's free tier still includes.
 
 ## Try iShortn for free
 
