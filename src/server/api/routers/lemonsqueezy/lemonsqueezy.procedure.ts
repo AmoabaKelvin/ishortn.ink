@@ -307,6 +307,19 @@ async function promoDiscountUpdate(
   }
 }
 
+/** Retires a discount created for a change that didn't happen, so it can't be applied later. */
+async function archiveUnusedDiscount(
+  client: PaddleDeps["client"],
+  discountId: string,
+  context: { userId: string; providerSubscriptionId: string },
+) {
+  await client
+    .archiveDiscount(discountId)
+    .catch((err: Error) =>
+      log.warn({ err, ...context, discountId }, "failed to archive unused paddle discount"),
+    );
+}
+
 /**
  * Moves a Paddle subscription to `priceId`, setting the first-year promo discount for the change
  * (promoDiscountUpdate). A discount created for a change that then fails is archived, and a
@@ -335,14 +348,7 @@ async function changePaddleItems(
     );
   } catch (err) {
     if (discount) {
-      await client
-        .archiveDiscount(discount.id)
-        .catch((archiveErr: Error) =>
-          log.warn(
-            { err: archiveErr, userId, providerSubscriptionId, discountId: discount.id },
-            "failed to archive unused paddle discount",
-          ),
-        );
+      await archiveUnusedDiscount(client, discount.id, { userId, providerSubscriptionId });
     }
     throw err;
   }
@@ -718,10 +724,19 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
           return { type: "prorated" };
         }
 
+        // The preview carries the discount the change would set, so the amount due matches what
+        // createCheckoutOrUpdate charges. A discount id is needed for that, so one is created
+        // here and archived once the preview is read.
+        let discount: UpdateSubscriptionInput["discount"];
         try {
+          discount = await promoDiscountUpdate(ctx, paddle.client, userSubscription, {
+            to: input.interval,
+            billsNow: true,
+          });
           const preview = await paddle.client.previewSubscriptionUpdate(providerSubscriptionId, {
             items: [{ priceId, quantity: 1 }],
             prorationBillingMode: "prorated_immediately",
+            ...(discount !== undefined && { discount }),
           });
           return paddlePreviewCharge(preview);
         } catch (err) {
@@ -730,6 +745,13 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
             "paddle plan change preview failed",
           );
           return { type: "prorated" };
+        } finally {
+          if (discount) {
+            await archiveUnusedDiscount(paddle.client, discount.id, {
+              userId,
+              providerSubscriptionId,
+            });
+          }
         }
       }),
 

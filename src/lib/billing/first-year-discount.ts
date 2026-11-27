@@ -13,8 +13,10 @@ export type DiscountTerms =
   | { recur: true; maximumRecurringIntervals: number }
   | { recur: false; maximumRecurringIntervals: null };
 
+type RecurringTerms = Extract<DiscountTerms, { recur: true }>;
+
 const oneOff: DiscountTerms = { recur: false, maximumRecurringIntervals: null };
-const recurring = (intervals: number): DiscountTerms => ({
+const recurring = (intervals: number): RecurringTerms => ({
   recur: true,
   maximumRecurringIntervals: intervals,
 });
@@ -32,9 +34,16 @@ export function paddleDiscountCode(code: string, interval: BillingInterval): str
   return interval === "monthly" ? code : `${code}ANNUAL`;
 }
 
+// Paddle rejects a one-off discount on a subscription update
+// (`subscription_one_off_discount_not_valid`), so plan-change discounts always recur: "once" is a
+// single recurrence.
 export type PlanChangeDiscount =
   | { action: "remove" }
-  | { action: "apply"; terms: DiscountTerms; effectiveFrom: "immediately" | "next_billing_period" };
+  | {
+      action: "apply";
+      terms: RecurringTerms;
+      effectiveFrom: "immediately" | "next_billing_period";
+    };
 
 const remove: PlanChangeDiscount = { action: "remove" };
 
@@ -59,7 +68,9 @@ export function planChangeDiscount(input: {
   if (month < 0 || month >= FIRST_YEAR_MONTHS) return remove;
 
   if (to === "annual") {
-    return billsNow ? { action: "apply", terms: oneOff, effectiveFrom: "immediately" } : remove;
+    return billsNow
+      ? { action: "apply", terms: recurring(1), effectiveFrom: "immediately" }
+      : remove;
   }
   if (from === "annual") return remove;
 
