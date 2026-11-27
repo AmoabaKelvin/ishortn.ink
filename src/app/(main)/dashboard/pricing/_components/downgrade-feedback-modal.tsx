@@ -65,11 +65,7 @@ type DowngradeFeedbackModalProps = {
   /** Next renewal date from the provider; a cancellation keeps access until then. */
   renewsAt: Date | null;
   /** The live subscription; decides whether cancelling first offers a pause (canOfferPause). */
-  subscription: {
-    status?: string | null;
-    subscriptionId?: number | null;
-    variantId?: number | null;
-  } | null;
+  subscription: Parameters<typeof canOfferPause>[0];
 };
 
 export function DowngradeFeedbackModal({

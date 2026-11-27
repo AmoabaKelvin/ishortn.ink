@@ -3,6 +3,7 @@ import { Link } from "next-view-transitions";
 import { withProductUtm } from "@/lib/attribution/referral";
 import { getActivePromo } from "@/lib/billing/promo";
 import { getAppBaseDomain } from "@/lib/constants/domains";
+import { paddlePriceId } from "@/lib/paddle/config";
 import { api } from "@/trpc/server";
 
 import { AnnualSwitchCard } from "../_components/annual-switch-card";
@@ -59,6 +60,10 @@ async function SettingsPage(props: Props) {
     graceActive: !!graceNotice,
     otherBannerShown: false,
     dismissedAt: null,
+    paddleMonthlyPriceIds: {
+      pro: paddlePriceId("pro", "monthly"),
+      ultra: paddlePriceId("ultra", "monthly"),
+    },
   });
   // The discount code only rides on new checkouts; plan changes for subscribers are not discounted.
   const promo = subscriptions.subscriptionMode === "checkout" ? getActivePromo() : null;
