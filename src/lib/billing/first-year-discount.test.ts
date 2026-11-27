@@ -64,7 +64,7 @@ describe("planChangeDiscount", () => {
       terms: { recur: true, maximumRecurringIntervals: 9 },
       effectiveFrom: "immediately",
     });
-    // Downgrade billed at renewal: the 8 monthly payments still to come.
+    // A change billed at renewal: the 8 monthly payments still to come.
     expect(
       planChangeDiscount({
         firstPaymentAt,

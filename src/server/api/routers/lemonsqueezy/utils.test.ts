@@ -6,6 +6,7 @@ import {
   createCheckoutWithPromoFallback,
   lemonSqueezyPromoRejected,
   paddleErrorToClient,
+  paddlePreviewCharge,
   paddlePromoRejected,
   parseProviderUpdatedAt,
   pauseUpdate,
@@ -176,5 +177,35 @@ describe("resumeUpdate", () => {
 
   test("a cancelled subscription is uncancelled", () => {
     expect(resumeUpdate("cancelled")).toEqual({ cancelled: false });
+  });
+});
+
+describe("paddlePreviewCharge", () => {
+  const preview = (grandTotal: string, currencyCode = "USD") => ({
+    immediate_transaction: {
+      details: { totals: { grand_total: grandTotal, currency_code: currencyCode } },
+    },
+  });
+
+  test("reads the prorated, discounted amount due now", () => {
+    expect(paddlePreviewCharge(preview("609"))).toEqual({
+      type: "amount_due",
+      amount: 609,
+      currencyCode: "USD",
+    });
+  });
+
+  test("a change fully covered by credit is due as zero", () => {
+    expect(paddlePreviewCharge(preview("0", "EUR"))).toEqual({
+      type: "amount_due",
+      amount: 0,
+      currencyCode: "EUR",
+    });
+  });
+
+  test("no immediate transaction or an unreadable total falls back to prorated", () => {
+    expect(paddlePreviewCharge({ immediate_transaction: null })).toEqual({ type: "prorated" });
+    expect(paddlePreviewCharge(preview("6.09"))).toEqual({ type: "prorated" });
+    expect(paddlePreviewCharge(preview(""))).toEqual({ type: "prorated" });
   });
 });

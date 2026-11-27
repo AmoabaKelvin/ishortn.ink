@@ -80,6 +80,18 @@ const subscriptionSchema = z.object({
   custom_data: jsonObjectSchema.nullable(),
 });
 
+// Paddle returns the whole subscription with the preview; only the amount due now is read.
+const subscriptionPreviewSchema = z.object({
+  immediate_transaction: z
+    .object({
+      details: z.object({
+        // Amounts are strings in the currency's lowest denomination (cents for USD).
+        totals: z.object({ grand_total: z.string(), currency_code: z.string() }),
+      }),
+    })
+    .nullable(),
+});
+
 const portalSessionSchema = z.object({
   urls: z.object({
     general: z.object({ overview: z.string() }),
@@ -103,6 +115,7 @@ export type PaddleDiscount = z.infer<typeof discountSchema>;
 export type PaddleCustomer = z.infer<typeof customerSchema>;
 export type PaddleSubscription = z.infer<typeof subscriptionSchema>;
 export type PaddlePortalSession = z.infer<typeof portalSessionSchema>;
+export type PaddleSubscriptionPreview = z.infer<typeof subscriptionPreviewSchema>;
 
 export type PaddleItem = { priceId: string; quantity: number };
 export type PaddleCustomData = z.infer<typeof jsonObjectSchema>;
@@ -299,6 +312,21 @@ export function createPaddleClient(config: PaddleConfig) {
           effective_from: input.discount.effectiveFrom,
         },
       }),
+
+    /** What an item change would bill, without applying it. */
+    previewSubscriptionUpdate: (
+      id: string,
+      input: { items: PaddleItem[]; prorationBillingMode: PaddleProrationBillingMode },
+    ) =>
+      request(
+        "PATCH",
+        `/subscriptions/${encodeURIComponent(id)}/preview`,
+        subscriptionPreviewSchema,
+        {
+          items: toPaddleItems(input.items),
+          proration_billing_mode: input.prorationBillingMode,
+        },
+      ),
 
     cancelSubscription: (id: string, effectiveFrom: PaddleEffectiveFrom) =>
       request("POST", `/subscriptions/${encodeURIComponent(id)}/cancel`, subscriptionSchema, {

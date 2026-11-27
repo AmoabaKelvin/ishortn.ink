@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { subscribedPlan } from "@/lib/billing/entitlements";
-import { PLAN_CAPS, subscriptionInterval } from "@/lib/billing/plans";
+import { PLAN_CAPS, scheduledPause, subscriptionInterval } from "@/lib/billing/plans";
 import { subscribedPriceDisplay, subscriptionDiscount } from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -45,6 +45,17 @@ type StatusDisplay = {
 
 function getStatusDisplay(subscription: SubscriptionRow): StatusDisplay {
   const { status, renewsAt, endsAt, pausedUntil } = subscription;
+  const pause = scheduledPause(subscription);
+
+  if (pause) {
+    return {
+      label: "Pause scheduled",
+      tone: "neutral",
+      detail: pause.startsAt
+        ? `Pauses ${formatDate(pause.startsAt)}, resumes ${formatDate(pause.resumesAt)}`
+        : `Resumes ${formatDate(pause.resumesAt)}`,
+    };
+  }
 
   switch (status) {
     case "active":

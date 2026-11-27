@@ -60,6 +60,7 @@ export type SubscriptionEventResult =
   | "superseded"
   | "duplicate_subscription"
   | "no_row_matched"
+  | "not_created_yet"
   | "user_not_found"
   | "invalid_payload";
 
@@ -88,6 +89,9 @@ export type ApplySubscriptionEventOptions = {
   /** Internal alert for a second live subscription; defaults to the ops Discord webhook. */
   alertDuplicateSubscription?: typeof sendDuplicateSubscriptionAlert;
 };
+
+/** How long after a purchase an event may wait for subscription.created to write the row. */
+const CREATED_REDELIVERY_WINDOW_MS = 60 * 60 * 1000;
 
 // Paddle statuses (in the app's vocabulary) of a subscription that is billing or will bill again.
 const LIVE_PADDLE_STATUSES = new Set(["active", "on_trial", "past_due", "paused"]);
@@ -195,11 +199,43 @@ export async function applySubscriptionEvent(
   // updates below let a markerless row through, so decide here for every
   // event rather than relying on the predicate.
   if (isStale) {
-    log.warn(
-      { ...logContext, storedSubscriptionId: existing ? storedSubscriptionId(existing) : null },
-      "ignoring event older than stored or provider state",
-    );
+    const staleContext = {
+      ...logContext,
+      storedSubscriptionId: existing ? storedSubscriptionId(existing) : null,
+    };
+    // Paddle sends several events for one change with the same updated_at (created and
+    // activated on a purchase, updated and canceled on an expiry), and redeliveries repeat them.
+    if (existing?.providerUpdatedAt?.getTime() === providerUpdatedAt.getTime()) {
+      log.info(staleContext, "ignoring event for state already applied");
+    } else {
+      log.warn(staleContext, "ignoring event older than stored or provider state");
+    }
     return { result: "stale" };
+  }
+
+  // Paddle delivers a purchase's events concurrently and in no set order, so an update can arrive
+  // before subscription.created has written the row (or replaced an older row from another
+  // subscription or provider). It is retried rather than dropped, in case it carries newer state
+  // than the created event, but only shortly after the purchase and while the user exists: after
+  // an account deletion or a lost purchase the row never appears, and a retry could never succeed.
+  const awaitingCreated =
+    event.provider === "paddle" &&
+    kind !== "created" &&
+    (!existing || !sameProvider || storedSubscriptionId(existing) !== subscriptionId);
+  if (awaitingCreated) {
+    const recentPurchase = Date.now() - event.createdAt.getTime() < CREATED_REDELIVERY_WINDOW_MS;
+    const owner = recentPurchase
+      ? await db.query.user.findFirst({ where: eq(user.id, userId), columns: { id: true } })
+      : undefined;
+    if (owner) {
+      log.info(logContext, "subscription not created yet; asking for a redelivery");
+      return { result: "not_created_yet" };
+    }
+    log.info(
+      { ...logContext, reason: recentPurchase ? "user_not_found" : "outside_redelivery_window" },
+      "ignoring event for a subscription with no row",
+    );
+    return { result: "no_row_matched", previous: existing ?? null };
   }
 
   const currentSubscription = and(

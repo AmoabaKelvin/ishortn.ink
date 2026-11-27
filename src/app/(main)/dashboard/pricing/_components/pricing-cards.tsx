@@ -26,7 +26,7 @@ import { api } from "@/trpc/react";
 
 import { ResumeSubscriptionButton } from "../../settings/billing/resume-subscription-button";
 import { DowngradeFeedbackModal } from "./downgrade-feedback-modal";
-import { buildPlanChangeCopy, PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
+import { PlanChangeConfirmDialog } from "./plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 import type { Promo } from "@/lib/billing/promo";
@@ -223,10 +223,6 @@ export function PricingCards({
       utm,
     });
   }, [attribution, autoCheckout, createCheckoutOrUpdate, interval, utm]);
-
-  const confirmCopy = pendingChange
-    ? buildPlanChangeCopy(pendingChange.kind, pendingChange.plan.id, interval)
-    : null;
 
   return (
     <div className="space-y-8">
@@ -511,14 +507,13 @@ export function PricingCards({
         />
       )}
 
-      {pendingChange && confirmCopy && (
+      {pendingChange && (
         <PlanChangeConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title={confirmCopy.title}
-          description={confirmCopy.description}
-          note={confirmCopy.note}
-          confirmLabel={confirmCopy.confirmLabel}
+          kind={pendingChange.kind}
+          targetPlan={pendingChange.plan.id}
+          interval={interval}
           isLoading={createCheckoutOrUpdateMutation.isLoading}
           onConfirm={() => runUpgrade(pendingChange.plan)}
         />

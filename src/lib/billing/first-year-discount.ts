@@ -43,7 +43,7 @@ const remove: PlanChangeDiscount = { action: "remove" };
  * Within the first year, monthly keeps the discount for the rest of that year's monthly payments
  * (a Pro/Ultra switch), and a change billed now to annual gets it once on that annual charge.
  * Nothing carries past the first year, nothing moves from annual back to monthly, and a change
- * billed at the next renewal (a downgrade) only covers the monthly payments still to come.
+ * billed at the next renewal only covers the monthly payments still to come.
  */
 export function planChangeDiscount(input: {
   firstPaymentAt: Date;

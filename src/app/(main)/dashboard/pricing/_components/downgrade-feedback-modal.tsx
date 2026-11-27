@@ -157,7 +157,10 @@ export function DowngradeFeedbackModal({
     pauseMutation.mutate({ months: pauseMonths, reason, feedback: additionalFeedback });
   };
 
-  const restartDate = format(pauseResumesAt(pauseMonths), "MMM d, yyyy");
+  // Paddle pauses at the end of the paid period (the next renewal), Lemon Squeezy right away.
+  const pausesAtPeriodEnd = subscription?.billingProvider === "paddle";
+  const pauseStart = pausesAtPeriodEnd && renewsAt ? new Date(renewsAt) : new Date();
+  const restartDate = format(pauseResumesAt(pauseMonths, pauseStart), "MMM d, yyyy");
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
@@ -167,9 +170,9 @@ export function DowngradeFeedbackModal({
             <DialogHeader>
               <DialogTitle>Pause instead of cancelling?</DialogTitle>
               <DialogDescription>
-                Billing stops for the months you choose and restarts on {restartDate}. Your links
-                keep redirecting while paused; paid features follow Free plan limits until billing
-                restarts.
+                {pausesAtPeriodEnd
+                  ? `You keep ${currentPlanName} until ${renewalDate ?? "the end of your billing period"}. The pause runs from then and your subscription resumes on ${restartDate}. Your links keep redirecting while paused; paid features follow Free plan limits during the pause.`
+                  : `Billing stops for the months you choose and restarts on ${restartDate}. Your links keep redirecting while paused; paid features follow Free plan limits until billing restarts.`}
               </DialogDescription>
             </DialogHeader>
 

@@ -371,6 +371,28 @@ describe("Paddle client", () => {
     expect(call(1).body).toEqual({ discount: null });
   });
 
+  test("previewSubscriptionUpdate PATCHes the preview endpoint and parses the amount due now", async () => {
+    const totals = { grand_total: "609", currency_code: "USD", total: "1500", credit: "891" };
+    fetchSpy.mockResolvedValueOnce(
+      ok({ ...subscription, immediate_transaction: { details: { totals } } }),
+    );
+    const result = await createPaddleClient(sandbox).previewSubscriptionUpdate("sub_1", {
+      items: [{ priceId: "pri_ultra_m", quantity: 1 }],
+      prorationBillingMode: "prorated_immediately",
+    });
+    expect(call()).toMatchObject({
+      url: `${BASE}/subscriptions/sub_1/preview`,
+      method: "PATCH",
+      body: {
+        items: [{ price_id: "pri_ultra_m", quantity: 1 }],
+        proration_billing_mode: "prorated_immediately",
+      },
+    });
+    expect(result).toEqual({
+      immediate_transaction: { details: { totals: { grand_total: "609", currency_code: "USD" } } },
+    });
+  });
+
   test("cancel, pause and resume post effective_from to their endpoints", async () => {
     const client = createPaddleClient(sandbox);
     fetchSpy.mockImplementation(() => Promise.resolve(ok(subscription)));

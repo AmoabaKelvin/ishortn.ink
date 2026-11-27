@@ -19,6 +19,7 @@ import {
   getVariantId,
   pauseResumesAt,
   resolvePlan,
+  scheduledPause,
   subscriptionInterval,
 } from "@/lib/billing/plans";
 import { checkoutDiscountCode, findFirstYearPromo } from "@/lib/billing/promo";
@@ -39,12 +40,14 @@ import {
   downgradeReasonLabels,
   downgradeWithFeedbackInput,
   pauseSubscriptionInput,
+  previewPlanChangeInput,
 } from "./lemonsqueezy.input";
 import { createPaddleCheckout } from "./paddle-checkout";
 import {
   createCheckoutWithPromoFallback,
   lemonSqueezyPromoRejected,
   paddleErrorToClient,
+  paddlePreviewCharge,
   parseProviderUpdatedAt,
   pauseUpdate,
   providerErrorToClient,
@@ -55,6 +58,7 @@ import type { ProtectedTRPCContext } from "../../trpc";
 import type { CreateCheckoutOrUpdateInput } from "./lemonsqueezy.input";
 import type { PaddleCheckoutClient } from "./paddle-checkout";
 import type { Attribution } from "@/lib/billing/attribution";
+import type { PlanChangeCharge } from "@/lib/billing/plan-change-copy";
 import type { BillingInterval, Plan } from "@/lib/billing/plans";
 import type {
   PaddleClient,
@@ -70,8 +74,12 @@ import type { SQL } from "drizzle-orm";
 
 const log = logger.child({ component: "billing.lemonsqueezy" });
 
-const resumeFirstMessage = (status: string | null | undefined) =>
-  `Your subscription is ${status === "paused" ? "paused" : "cancelled"}. Resume it before changing plans.`;
+function resumeFirstMessage(row: Subscription | null | undefined) {
+  if (scheduledPause(row)) {
+    return "Your subscription is set to pause. Resume it before changing plans.";
+  }
+  return `Your subscription is ${row?.status === "paused" ? "paused" : "cancelled"}. Resume it before changing plans.`;
+}
 
 type ProviderErrorContext = {
   userId: string;
@@ -160,6 +168,7 @@ export type PaddleDeps = {
     PaddleClient,
     | "getSubscription"
     | "updateSubscription"
+    | "previewSubscriptionUpdate"
     | "cancelSubscription"
     | "pauseSubscription"
     | "resumeSubscription"
@@ -604,7 +613,7 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         if (mode === "resume") {
           throw new TRPCError({
             code: "CONFLICT",
-            message: resumeFirstMessage(userSubscription?.status),
+            message: resumeFirstMessage(userSubscription),
           });
         }
 
@@ -693,6 +702,37 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         );
       }),
 
+    // What createCheckoutOrUpdate would charge today, for its confirm dialog. Never throws: a
+    // failed preview falls back to the prorated wording.
+    previewPlanChange: protectedProcedure
+      .input(previewPlanChangeInput)
+      .query(async ({ ctx, input }): Promise<PlanChangeCharge> => {
+        const userId = ctx.auth.userId;
+        const userSubscription = await getUserSubscription(ctx);
+        if (!isPaddleRow(userSubscription)) return { type: "list_price" };
+
+        const paddle = deps.paddle();
+        const priceId = paddle && paddlePriceId(input.plan, input.interval, paddle.config);
+        const providerSubscriptionId = userSubscription.providerSubscriptionId;
+        if (!paddle || !priceId || getSubscriptionMode(userSubscription) !== "update") {
+          return { type: "prorated" };
+        }
+
+        try {
+          const preview = await paddle.client.previewSubscriptionUpdate(providerSubscriptionId, {
+            items: [{ priceId, quantity: 1 }],
+            prorationBillingMode: "prorated_immediately",
+          });
+          return paddlePreviewCharge(preview);
+        } catch (err) {
+          log.warn(
+            { err, userId, providerSubscriptionId, provider: "paddle" },
+            "paddle plan change preview failed",
+          );
+          return { type: "prorated" };
+        }
+      }),
+
     cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
       const userId = ctx.auth.userId;
       const userSubscription = await getUserSubscription(ctx);
@@ -702,8 +742,8 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         throw new TRPCError({
           code: "CONFLICT",
           message:
-            userSubscription?.status === "paused"
-              ? resumeFirstMessage("paused")
+            userSubscription?.status === "paused" || scheduledPause(userSubscription)
+              ? resumeFirstMessage(userSubscription)
               : "Your subscription is already cancelled.",
         });
       }
@@ -904,9 +944,9 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
           throw new TRPCError({
             code: "CONFLICT",
             message:
-              targetPlan === "free" && userSubscription?.status !== "paused"
+              targetPlan === "free" && userSubscription?.status === "cancelled"
                 ? "Your subscription is already cancelled."
-                : resumeFirstMessage(userSubscription?.status),
+                : resumeFirstMessage(userSubscription),
           });
         }
         const paddleRow = isPaddleRow(userSubscription) ? userSubscription : null;
@@ -992,19 +1032,22 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         }
 
         // Downgrade to Pro (from Ultra), keeping the current interval. Both
-        // providers switch the plan now and credit the unused time on the next
-        // invoice, so the plan changes now.
+        // providers switch the plan now and credit the unused time toward the
+        // next invoice.
         const interval = subscriptionInterval(userSubscription);
 
         if (paddleRow && paddle) {
           const priceId = paddlePriceId(targetPlan, interval, paddle.config);
           if (!priceId) throw new TRPCError(providerErrorToClient(null));
 
+          // prorated_immediately puts the credit on the customer's Paddle balance now, so it pays
+          // toward the next charge of any kind. Deferred to the next billing period, it would wait
+          // a year if the user then switched to annual.
           const updatedSub = await changePaddleItems(ctx, paddle.client, paddleRow, {
             action: "downgrade",
             priceId,
             to: interval,
-            billsNow: false,
+            billsNow: true,
           });
           await applyPaddleState(
             ctx,
@@ -1061,7 +1104,7 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         }
 
         const currentPlan = resolvePlan(userSubscription);
-        let restartsAt: Date;
+        let message: string;
 
         if (isPaddleRow(userSubscription)) {
           const { client, config } = requirePaddle(deps, userId);
@@ -1072,10 +1115,8 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
             client.getSubscription(providerSubscriptionId),
           );
           const periodEnd = current.current_billing_period?.ends_at;
-          const resumesAt = pauseResumesAt(
-            input.months,
-            periodEnd ? new Date(periodEnd) : new Date(),
-          );
+          const pausesAt = periodEnd ? new Date(periodEnd) : new Date();
+          const resumesAt = pauseResumesAt(input.months, pausesAt);
 
           const pausedSub = await callPaddle("pause", context, () =>
             client.pauseSubscription(providerSubscriptionId, {
@@ -1084,7 +1125,10 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
             }),
           );
           const normalized = await applyPaddleState(ctx, config, pausedSub);
-          restartsAt = normalized.pausedUntil ?? resumesAt;
+          const scheduledStart = pausedSub.scheduled_change?.effective_at;
+          message = `Your subscription pauses on ${formatDate(
+            scheduledStart ? new Date(scheduledStart) : pausesAt,
+          )} and resumes on ${formatDate(normalized.pausedUntil ?? resumesAt)}.`;
         } else {
           const subscriptionId = userSubscription.subscriptionId ?? 0;
           const resumesAt = pauseResumesAt(input.months);
@@ -1097,9 +1141,10 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
 
           const attributes = pausedSub.data.data.attributes;
           await applyProviderState(ctx, subscriptionId, attributes);
-          restartsAt = attributes.pause?.resumes_at
+          const restartsAt = attributes.pause?.resumes_at
             ? new Date(attributes.pause.resumes_at)
             : resumesAt;
+          message = `Billing is paused. It restarts on ${formatDate(restartsAt)}.`;
         }
 
         await recordCancellation(ctx, userSubscription, currentPlan, {
@@ -1122,9 +1167,7 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
           }),
         );
 
-        return {
-          message: `Billing is paused. It restarts on ${formatDate(restartsAt)}.`,
-        };
+        return { message };
       }),
   });
 

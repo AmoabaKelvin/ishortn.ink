@@ -102,11 +102,10 @@ Plan and interval changes made in the app set the subscription's discount explic
 
 | Change within the first year                       | Discount sent with the change                                                    |
 | -------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Pro ↔ Ultra on monthly, billed now (upgrade)       | New discount for the current month through month 12, `effective_from: immediately` |
-| Ultra → Pro on monthly, billed at renewal          | New discount for the monthly payments left, `effective_from: next_billing_period`  |
+| Pro ↔ Ultra on monthly (both billed now)           | New discount for the current month through month 12, `effective_from: immediately` |
 | Monthly → annual                                   | New one-off discount, `effective_from: immediately` (the annual charge)           |
-| Pro → Ultra on annual, billed now                  | New one-off discount on the prorated charge, `effective_from: immediately`        |
-| Ultra → Pro on annual, or annual → monthly         | `discount: null` (the annual payment was the discounted one)                     |
+| Pro ↔ Ultra on annual (both billed now)            | New one-off discount on the prorated charge, `effective_from: immediately`        |
+| Annual → monthly                                   | `discount: null` (the annual payment was the discounted one)                     |
 | Any change after month 12                          | `discount: null`                                                                 |
 
 These per-change discounts are created through the API (`mode: custom`, no code, not usable at
@@ -171,7 +170,9 @@ annual period that started in the first year, and nothing once `promoDiscountEnd
 
    The fixtures live in `scripts/dev/fixtures/paddle/` (its README explains the order and the
    placeholders). Leave a second between replays: events not newer than the stored
-   `providerUpdatedAt` are dropped as stale.
+   `providerUpdatedAt` are dropped as stale. A subscription event that arrives before
+   `subscription.created` has written the row gets a 500, so Paddle redelivers it once the row
+   exists.
 
 8. Run the daily reconcile by hand:
 
@@ -183,6 +184,21 @@ Sandbox cards: `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is declined
 `4000 0027 6000 3184` asks for 3-D Secure; any future expiry and any CVC.
 
 ## Sandbox test cases
+
+Settings → Billing manages Paddle rows through the Paddle API, the same way it manages Lemon
+Squeezy rows:
+
+- Upgrades and interval switches change the price with `prorated_immediately`. The confirm dialog
+  shows the amount due today from `PATCH /subscriptions/{id}/preview` (proration and discounts
+  included), or prorated wording if the preview fails.
+- A downgrade to Pro also uses `prorated_immediately`: the unused Ultra time goes to the customer's
+  Paddle credit balance at once and pays toward the next charge, including a switch to annual in
+  the same period.
+- Cancel schedules a cancel at the end of the billing period.
+- Pause (monthly plans only) schedules a pause at the end of the paid period with a `resume_at`
+  1-3 months later. The plan stays until the pause starts; the billing card shows both dates.
+- Resume removes a scheduled cancel or pause, or resumes a pause in effect immediately.
+- "Invoices & payment method" opens a Paddle customer portal session.
 
 Run these against the sandbox before switching any traffic. For each, check the user's
 `Subscription` row (`billingProvider`, `providerSubscriptionId`, `status`, `plan`,
@@ -205,10 +221,15 @@ Run these against the sandbox before switching any traffic. For each, check the 
 | 13  | Delete the account while Paddle refuses the cancel and the subscription is still live (for example a wrong API key) | Deletion is refused with "We couldn't cancel your subscription…" and nothing is deleted. |
 | 14  | Replay any webhook with a bad signature or a `ts` older than 5 seconds | 401; nothing changes.                                                                                                                                          |
 | 15  | Lemon Squeezy subscriber with `BILLING_PROVIDER=paddle`              | Billing, reconcile and deletion keep using Lemon Squeezy for that row.                                                                                         |
-| 16  | Monthly checkout with the promo                                       | The subscription's discount `ends_at` is the start of month 12; month 13 is billed at full price.                                                             |
-| 17  | Annual checkout with the promo                                        | The subscription's discount is `one-off`; the renewal a year later is billed at full price.                                                                   |
-| 18  | Promo monthly subscriber upgrades to Ultra in month 3 (in the app)    | The prorated charge is discounted and the discount `ends_at` stays at month 12; the billing card still shows the discount.                                   |
-| 19  | Promo monthly subscriber switches to annual in month 5 (in the app)   | The annual charge is discounted once; the discount is `one-off` and the next annual renewal is full price.                                                    |
+| 16  | Upgrade Pro monthly to Ultra monthly from Settings → Billing          | The dialog quotes the prorated amount due today; after confirming, the row is `ultra` and Paddle's transaction matches the quote.                             |
+| 17  | Downgrade Ultra to Pro, then switch to annual in the same period      | The downgrade credit appears on the customer's balance and is applied to the annual charge; the switch dialog quotes the reduced amount.                      |
+| 18  | Pause a monthly plan for 2 months                                     | The row stays `active` with `renewsAt` at the period end and `pausedUntil` 2 months later; the billing card shows "Pauses …, resumes …".                       |
+| 19  | Resume before the pause starts                                        | The scheduled pause is removed; the row has no `pausedUntil`.                                                                                                 |
+| 20  | Cancel from Settings → Billing                                         | `status=cancelled` with `endsAt` at the period end.                                                                                                           |
+| 21  | Monthly checkout with the promo                                       | The subscription's discount `ends_at` is the start of month 12; month 13 is billed at full price.                                                             |
+| 22  | Annual checkout with the promo                                        | The subscription's discount is `one-off`; the renewal a year later is billed at full price.                                                                   |
+| 23  | Promo monthly subscriber upgrades to Ultra in month 3 (in the app)    | The prorated charge is discounted and the discount `ends_at` stays at month 12; the billing card still shows the discount.                                   |
+| 24  | Promo monthly subscriber switches to annual in month 5 (in the app)   | The annual charge is discounted once; the discount is `one-off` and the next annual renewal is full price.                                                    |
 
 ## Going live
 
