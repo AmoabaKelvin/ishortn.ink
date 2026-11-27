@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -7,7 +7,9 @@ import mysql from "mysql2/promise";
 import { buildWhatsAppUrl, parseWhatsApp, serializeWhatsApp } from "@/components/bio/whatsapp";
 import * as schema from "@/server/db/schema";
 
+import { addBioBlockSchema } from "./bio-page.input";
 import {
+  addBlock,
   getBioPage,
   getBioPageAnalytics,
   getPublicBioPageBySlug,
@@ -266,6 +268,7 @@ describe.skipIf(!testDatabaseUrl)("bio page WhatsApp blocks (MySQL)", () => {
   let pageId = 0;
   let blockId = 0;
   let linkId = 0;
+  let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">>;
 
   function ctx(plan: Plan) {
     // SAFETY: mirrors what workspaceProcedure resolves for a personal workspace.
@@ -290,6 +293,13 @@ describe.skipIf(!testDatabaseUrl)("bio page WhatsApp blocks (MySQL)", () => {
       await db.delete(schema.bioBlock).where(inArray(schema.bioBlock.bioPageId, pageIds));
     }
     await db.delete(schema.bioPage).where(eq(schema.bioPage.userId, USER_ID));
+    const links = await db.query.link.findMany({ where: eq(schema.link.userId, USER_ID) });
+    if (links.length) {
+      const linkIds = links.map((l) => l.id);
+      await db
+        .delete(schema.linkSafetyRecheck)
+        .where(inArray(schema.linkSafetyRecheck.linkId, linkIds));
+    }
     await db.delete(schema.link).where(eq(schema.link.userId, USER_ID));
     await db.delete(schema.user).where(eq(schema.user.id, USER_ID));
   }
@@ -320,6 +330,13 @@ describe.skipIf(!testDatabaseUrl)("bio page WhatsApp blocks (MySQL)", () => {
       position: 0,
     });
     blockId = Number(block.insertId);
+    // addBlock runs the URL safety check; keep it off the network. It fails open, so the add
+    // goes through and leaves a recheck row for the re-scan.
+    fetchSpy = spyOn(globalThis, "fetch").mockRejectedValue(new Error("no network in tests"));
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
   });
 
   afterAll(async () => {
@@ -366,6 +383,65 @@ describe.skipIf(!testDatabaseUrl)("bio page WhatsApp blocks (MySQL)", () => {
     await expect(atCap).rejects.toThrow(/3 link blocks/);
     // Pro has no cap.
     await db.transaction((tx) => lockBioLinkBlockCapacity(tx, "pro", pageId, USER_ID));
+  });
+
+  test("addBlock stores a whatsapp block behind a hidden link to wa.me", async () => {
+    const input = addBioBlockSchema.parse({
+      bioPageId: pageId,
+      type: "whatsapp",
+      whatsapp: { phone: "+44 7700 900123", message: "Table for 2?" },
+    });
+    const { id } = await addBlock(ctx("free"), input);
+
+    const row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    const stored = { phone: "+447700900123", message: "Table for 2?" };
+    expect(row).toMatchObject({
+      type: "link",
+      content: serializeWhatsApp(stored),
+      url: "https://wa.me/447700900123?text=Table%20for%202%3F",
+      position: 1,
+    });
+    const backing = await db.query.link.findFirst({
+      where: eq(schema.link.id, row?.linkId ?? 0),
+    });
+    expect(backing).toMatchObject({
+      url: "https://wa.me/447700900123?text=Table%20for%202%3F",
+      userId: USER_ID,
+      isBioLink: true,
+    });
+  });
+
+  test("addBlock rejects a whatsapp block without details", async () => {
+    const input = addBioBlockSchema.parse({ bioPageId: pageId, type: "whatsapp" });
+    const add = addBlock(ctx("free"), input);
+
+    await expect(add).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "A WhatsApp block needs a phone number.",
+    });
+  });
+
+  test("addBlock rejects a fourth link block on the free plan", async () => {
+    await db.insert(schema.bioBlock).values([
+      { bioPageId: pageId, type: "link", title: "Shop", position: 1 },
+      { bioPageId: pageId, type: "link", title: "Blog", position: 2 },
+    ]);
+
+    const input = addBioBlockSchema.parse({
+      bioPageId: pageId,
+      type: "whatsapp",
+      whatsapp: details,
+    });
+    const add = addBlock(ctx("free"), input);
+
+    await expect(add).rejects.toThrow(/3 link blocks/);
+    const blocks = await db.query.bioBlock.findMany({
+      where: eq(schema.bioBlock.bioPageId, pageId),
+    });
+    expect(blocks).toHaveLength(3);
+    // The hidden link is rolled back with the block.
+    const links = await db.query.link.findMany({ where: eq(schema.link.userId, USER_ID) });
+    expect(links.map((l) => l.id)).toEqual([linkId]);
   });
 
   test("editing the label keeps it a whatsapp block and ignores raw url/content", async () => {

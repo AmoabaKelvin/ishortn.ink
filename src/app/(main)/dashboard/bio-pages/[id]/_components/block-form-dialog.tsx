@@ -36,14 +36,15 @@ import type { RouterOutputs } from "@/trpc/shared";
 type EditorBlock = RouterOutputs["bioPage"]["get"]["blocks"][number];
 type Social = { platform: string; url: string; key: string };
 
+// Lowercase except brand names, as they follow "Add"/"Edit" in the dialog title.
 const TYPE_LABELS = {
-  link: "Link button",
-  heading: "Heading",
-  text: "Text",
-  email: "Email button",
+  link: "link button",
+  heading: "heading",
+  text: "text",
+  email: "email button",
   whatsapp: "WhatsApp button",
-  social: "Social icons",
-  divider: "Divider",
+  social: "social icons",
+  divider: "divider",
 } satisfies Record<BioEditorBlockType, string>;
 
 type Props = {
@@ -158,7 +159,7 @@ function BlockForm({
     <>
       <DialogHeader>
         <DialogTitle>
-          {mode === "add" ? "Add" : "Edit"} {TYPE_LABELS[type].toLowerCase()}
+          {mode === "add" ? "Add" : "Edit"} {TYPE_LABELS[type]}
         </DialogTitle>
       </DialogHeader>
 
