@@ -17,11 +17,16 @@ import {
   syncProviderEndedSubscriptions,
   teamGraceEmail,
 } from "./grace";
-import { ProviderSubscriptionNotFoundError } from "./provider-status";
+import {
+  lookupProviderSubscription,
+  ProviderNotConfiguredError,
+  ProviderSubscriptionNotFoundError,
+} from "./provider-status";
 
-import type { ProviderSubscriptionState } from "./provider-status";
+import type { ProviderSubscriptionRef, ProviderSubscriptionState } from "./provider-status";
 import type { PlanUsage } from "@/lib/billing/entitlements";
 import type { Plan } from "@/lib/billing/plans";
+import type { PaddleSubscription } from "@/lib/paddle/client";
 import type { Subscription } from "@/server/db/schema";
 
 const NOW = new Date("2026-11-20T12:00:00Z");
@@ -207,10 +212,13 @@ describe("paymentUpdateEmailAllowed", () => {
 
   function check(provider: ProviderSubscriptionState | Error) {
     const synced: ProviderSubscriptionState[] = [];
+    const looked: ProviderSubscriptionRef[] = [];
     return {
       synced,
+      looked,
       check: {
-        lookup: async () => {
+        lookup: async (sub: ProviderSubscriptionRef) => {
+          looked.push(sub);
           if (provider instanceof Error) throw provider;
           return provider;
         },
@@ -252,15 +260,23 @@ describe("paymentUpdateEmailAllowed", () => {
     );
   });
 
-  test("sends it for a Paddle row without asking the Lemon Squeezy lookup", async () => {
-    const { check: unused } = check(new Error("not called"));
-    const paddle = {
-      ...unpaid,
-      subscriptionId: 0,
-      billingProvider: "paddle",
-      providerSubscriptionId: "sub_01h8",
-    };
-    expect(await paymentUpdateEmailAllowed(paddle, NOW, unused)).toBe(true);
+  const paddle = {
+    ...unpaid,
+    subscriptionId: 0,
+    billingProvider: "paddle",
+    providerSubscriptionId: "sub_01h8",
+  };
+
+  test("checks a Paddle row with the lookup too", async () => {
+    const { check: expired, looked, synced } = check(providerState("expired"));
+    expect(await paymentUpdateEmailAllowed(paddle, NOW, expired)).toBe(false);
+    expect(looked[0]?.providerSubscriptionId).toBe("sub_01h8");
+    expect(synced).toHaveLength(1);
+  });
+
+  test("sends it for a Paddle row while Paddle isn't configured", async () => {
+    const { check: unconfigured } = check(new ProviderNotConfiguredError("no Paddle"));
+    expect(await paymentUpdateEmailAllowed(paddle, NOW, unconfigured)).toBe(true);
   });
 });
 
@@ -320,8 +336,8 @@ describe.skipIf(!testDatabaseUrl)("syncProviderEndedSubscriptions: failed paymen
 
   test("syncs only the rows the provider has ended", async () => {
     const looked: number[] = [];
-    const synced = await syncProviderEndedSubscriptions(NOW, async (subscriptionId) => {
-      looked.push(subscriptionId);
+    const synced = await syncProviderEndedSubscriptions(NOW, async ({ subscriptionId }) => {
+      looked.push(subscriptionId ?? 0);
       return providerState(
         subscriptionId === SUBSCRIPTION_IDS.grace_sync_expired ? "expired" : "unpaid",
       );
@@ -369,10 +385,15 @@ describe.skipIf(!testDatabaseUrl)("syncProviderEndedSubscriptions: active rows (
   const TEAM_SLUG = "grace-sync-stale-team";
   const bySubscriptionId = new Map(Object.values(ROWS).map((row) => [row.subscriptionId, row]));
 
-  async function lookup(subscriptionId: number): Promise<ProviderSubscriptionState> {
-    const row = bySubscriptionId.get(subscriptionId);
+  async function lookup({ subscriptionId }: ProviderSubscriptionRef) {
+    const row = bySubscriptionId.get(subscriptionId ?? 0);
     if (!row?.status) throw new ProviderSubscriptionNotFoundError("not found");
-    return { status: row.status, endsAt: row.endsAt, updatedAt: row.endsAt };
+    const state: ProviderSubscriptionState = {
+      status: row.status,
+      endsAt: row.endsAt,
+      updatedAt: row.endsAt,
+    };
+    return state;
   }
 
   beforeAll(() => {
@@ -472,5 +493,114 @@ describe.skipIf(!testDatabaseUrl)("syncProviderEndedSubscriptions: active rows (
 
     // Idempotent: the next run changes nothing.
     expect(await syncProviderEndedSubscriptions(NOW, lookup)).toBe(0);
+  });
+});
+
+describe.skipIf(!testDatabaseUrl)("syncProviderEndedSubscriptions: Paddle rows (MySQL)", () => {
+  const PADDLE_USER = "grace_sync_paddle";
+  const LS_USER = "grace_sync_paddle_ls";
+  const PADDLE_ID = "sub_grace_sync_paddle";
+  const LS_ID = 964001;
+  const CANCELED_AT = "2026-11-18T09:00:00Z";
+
+  const canceled: PaddleSubscription = {
+    id: PADDLE_ID,
+    status: "canceled",
+    customer_id: "ctm_grace_sync",
+    items: [{ price: { id: "pri_unknown" } }],
+    scheduled_change: null,
+    current_billing_period: null,
+    next_billed_at: null,
+    canceled_at: CANCELED_AT,
+    started_at: "2026-10-18T09:00:00Z",
+    created_at: "2026-10-18T09:00:00Z",
+    updated_at: CANCELED_AT,
+    custom_data: null,
+  };
+
+  beforeAll(() => {
+    if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
+  });
+
+  async function clean() {
+    for (const id of [PADDLE_USER, LS_USER]) {
+      await db.delete(schema.subscription).where(eq(schema.subscription.userId, id));
+      await db.delete(schema.user).where(eq(schema.user.id, id));
+    }
+  }
+
+  beforeEach(async () => {
+    await clean();
+    for (const id of [PADDLE_USER, LS_USER]) {
+      await db.insert(schema.user).values({ id, email: `${id}@example.com` });
+    }
+    await db.insert(schema.subscription).values([
+      {
+        userId: PADDLE_USER,
+        billingProvider: "paddle",
+        subscriptionId: 0,
+        variantId: 0,
+        providerSubscriptionId: PADDLE_ID,
+        providerCustomerId: "ctm_grace_sync",
+        status: "active",
+        plan: "pro",
+        billingInterval: "monthly",
+        providerUpdatedAt: new Date("2026-10-18T09:00:00Z"),
+      },
+      {
+        userId: LS_USER,
+        subscriptionId: LS_ID,
+        status: "active",
+        plan: "pro",
+        variantId: PRO_VARIANT,
+        providerUpdatedAt: new Date("2026-10-18T09:00:00Z"),
+      },
+    ]);
+  });
+
+  afterAll(clean);
+
+  const stored = (id: string) =>
+    db.query.subscription.findFirst({ where: eq(schema.subscription.userId, id) });
+
+  test("looks up a Paddle row through Paddle and syncs a canceled subscription", async () => {
+    const paddleLookups: string[] = [];
+    const lemonSqueezyLookups: number[] = [];
+    const paddle = {
+      getSubscription: async (id: string) => {
+        paddleLookups.push(id);
+        return canceled;
+      },
+    };
+    const lookup = async (sub: ProviderSubscriptionRef) => {
+      if (sub.billingProvider === "paddle") return lookupProviderSubscription(sub, paddle);
+      lemonSqueezyLookups.push(sub.subscriptionId ?? 0);
+      return providerState("active");
+    };
+
+    expect(await syncProviderEndedSubscriptions(NOW, lookup)).toBe(1);
+    expect(paddleLookups).toEqual([PADDLE_ID]);
+    expect(lemonSqueezyLookups).toEqual([LS_ID]);
+
+    const paddleRow = await stored(PADDLE_USER);
+    expect(paddleRow?.status).toBe("expired");
+    expect(paddleRow?.plan).toBe("free");
+    expect(paddleRow?.endsAt).toEqual(new Date(CANCELED_AT));
+    expect(paddleRow?.providerUpdatedAt).toEqual(new Date(CANCELED_AT));
+    const account = await db.query.user.findFirst({ where: eq(schema.user.id, PADDLE_USER) });
+    expect(account?.planGraceReason).toBe("lapsed");
+
+    const lemonSqueezyRow = await stored(LS_USER);
+    expect(lemonSqueezyRow?.status).toBe("active");
+    expect(lemonSqueezyRow?.plan).toBe("pro");
+  });
+
+  test("leaves a Paddle row unchanged while Paddle isn't configured", async () => {
+    const lookup = async (sub: ProviderSubscriptionRef) =>
+      sub.billingProvider === "paddle"
+        ? lookupProviderSubscription(sub, null)
+        : providerState("active");
+    expect(await syncProviderEndedSubscriptions(NOW, lookup)).toBe(0);
+    expect((await stored(PADDLE_USER))?.status).toBe("active");
   });
 });

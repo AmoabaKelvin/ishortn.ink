@@ -7,6 +7,7 @@ import { isSubscriptionEntitled, resolvePlan } from "@/lib/billing/plans";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { getPaddleClient } from "@/lib/paddle/client";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
   accountDeletion,
@@ -19,6 +20,8 @@ import {
 } from "@/server/db/schema";
 import { sendAccountDeletionEmail } from "@/server/lib/notifications/account-deletion";
 import { sendAccountDeletionNotification } from "@/server/lib/notifications/discord";
+
+import { CANCEL_FAILED_MESSAGE, cancelPaddleSubscriptionForDeletion } from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
 import type { RequestAccountDeletionInput } from "./account-deletion.input";
@@ -118,12 +121,23 @@ export async function requestAccountDeletion(
 
   // A cancelled subscription stays entitled until endsAt; don't cancel it twice.
   const alreadyCancelled = userSubscription?.status === "cancelled";
+  const stillBilling = !alreadyCancelled && isSubscriptionEntitled(userSubscription);
 
   if (
-    userSubscription?.subscriptionId &&
-    !alreadyCancelled &&
-    isSubscriptionEntitled(userSubscription)
+    stillBilling &&
+    userSubscription?.billingProvider === "paddle" &&
+    userSubscription.providerSubscriptionId
   ) {
+    const remote = await cancelPaddleSubscriptionForDeletion(
+      getPaddleClient(),
+      userSubscription.providerSubscriptionId,
+      userId,
+    );
+    await ctx.db
+      .update(subscription)
+      .set({ status: remote.status, endsAt: remote.endsAt })
+      .where(eq(subscription.userId, userId));
+  } else if (stillBilling && userSubscription?.subscriptionId) {
     configureLemonSqueezy();
     const cancelled = await cancelSubscription(userSubscription.subscriptionId);
     let remote = cancelled.data?.data.attributes;
@@ -138,11 +152,7 @@ export async function requestAccountDeletion(
           { err: cancelled.error, userId },
           "failed to cancel subscription before deletion",
         );
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            "We couldn't cancel your subscription, so your account was not deleted. Please try again or contact support@ishortn.ink.",
-        });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: CANCEL_FAILED_MESSAGE });
       }
     }
 
