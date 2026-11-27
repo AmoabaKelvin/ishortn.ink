@@ -6,6 +6,10 @@
 //
 // Needs DATABASE_URL. Destinations use NEXT_PUBLIC_APP_URL (default https://ishortn.ink).
 // Idempotent; refuses to write if any alias belongs to another account or is reserved.
+//
+// --user must be an account on a plan without a monthly event cap (Ultra). Clicks on these links count
+// toward that account's usage, so on a capped plan email CTA clicks would stop being recorded once
+// the cap is hit, and the account would receive cap alerts and upgrade nudges for this traffic.
 
 import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
