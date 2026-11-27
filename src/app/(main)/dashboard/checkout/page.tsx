@@ -1,8 +1,15 @@
+import { auth } from "@clerk/nextjs/server";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { env } from "@/env.mjs";
+import { getPaddleClient } from "@/lib/paddle/client";
 import { getPaddleConfig } from "@/lib/paddle/config";
+import { db } from "@/server/db";
+import { subscription } from "@/server/db/schema";
 
+import { AlreadySubscribedState } from "./_components/already-subscribed";
+import { checkoutAccess } from "./_components/checkout-access";
 import { PaddleCheckout } from "./_components/paddle-checkout";
 import { parseTransactionId } from "./_components/transaction-id";
 
@@ -18,10 +25,19 @@ export const dynamic = "force-dynamic";
 export default async function CheckoutPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { _ptxn } = await props.searchParams;
+  const [{ _ptxn }, { userId }] = await Promise.all([props.searchParams, auth()]);
   const config = getPaddleConfig();
+  const client = getPaddleClient();
   const transactionId = parseTransactionId(_ptxn);
-  if (!config || !transactionId) redirect("/dashboard/pricing");
+  if (!config || !client || !transactionId || !userId) redirect("/dashboard/pricing");
+
+  const userSubscription = await db.query.subscription.findFirst({
+    where: eq(subscription.userId, userId),
+  });
+  // A failed lookup falls through to the dashboard error boundary rather than opening a checkout
+  // that could start a second subscription.
+  const access = await checkoutAccess(userSubscription, () => client.getTransaction(transactionId));
+  if (access === "subscribed") return <AlreadySubscribedState />;
 
   return (
     <PaddleCheckout

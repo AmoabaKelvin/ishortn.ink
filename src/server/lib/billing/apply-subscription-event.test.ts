@@ -8,9 +8,13 @@ import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
 import { stubCloudflareContext } from "../../../../test/cloudflare-context";
-import { applySubscriptionEvent } from "./apply-subscription-event";
+import { applySubscriptionEvent, isOtherLiveSubscription } from "./apply-subscription-event";
 
 import type { SubscriptionEvent, SubscriptionEventKind } from "./apply-subscription-event";
+import type { Subscription } from "@/server/db/schema";
+import type { sendDuplicateSubscriptionAlert } from "@/server/lib/notifications/discord";
+
+type DuplicateAlert = Parameters<typeof sendDuplicateSubscriptionAlert>[0];
 
 const USER_ID = "apply_subscription_event_test";
 const USER_EMAIL = "apply-subscription-event-test@example.com";
@@ -46,6 +50,44 @@ function paddleEvent(
     ...overrides,
   };
 }
+
+describe("isOtherLiveSubscription", () => {
+  // SAFETY: the check reads only billingProvider, providerSubscriptionId and status.
+  const row = (fields: Partial<Subscription>) =>
+    ({
+      billingProvider: "paddle",
+      providerSubscriptionId: PADDLE_SUBSCRIPTION_ID,
+      status: "active",
+      ...fields,
+    }) as Subscription;
+  const second = paddleEvent("created", "2026-11-28T00:00:00Z", {
+    providerSubscriptionId: "sub_01second",
+  });
+
+  test.each(["active", "on_trial", "past_due", "paused"])(
+    "a different %s Paddle subscription is live",
+    (status) => {
+      expect(isOtherLiveSubscription(row({ status }), second)).toBe(true);
+    },
+  );
+
+  test.each(["cancelled", "expired"])("a %s Paddle subscription can be replaced", (status) => {
+    expect(isOtherLiveSubscription(row({ status }), second)).toBe(false);
+  });
+
+  test("the same subscription, no row, or a Lemon Squeezy row is not a second one", () => {
+    expect(isOtherLiveSubscription(row({}), paddleEvent("created", "2026-11-28T00:00:00Z"))).toBe(
+      false,
+    );
+    expect(isOtherLiveSubscription(null, second)).toBe(false);
+    expect(
+      isOtherLiveSubscription(
+        row({ billingProvider: "lemonsqueezy", providerSubscriptionId: null }),
+        second,
+      ),
+    ).toBe(false);
+  });
+});
 
 // Runs against a disposable MySQL with the schema pushed (test/setup.ts points
 // the app's db client at it); see CONTRIBUTING.md, "Database tests".
@@ -254,6 +296,72 @@ describe.skipIf(!testDatabaseUrl)("applySubscriptionEvent with Paddle (MySQL)", 
     expect(row?.subscriptionId).toBe(0);
     expect(row?.customerId).toBe(0);
     expect(row?.plan).toBe("ultra");
+  });
+
+  describe("a second live Paddle subscription", () => {
+    let alerts: DuplicateAlert[];
+    const alertDuplicateSubscription = async (alert: DuplicateAlert) => {
+      alerts.push(alert);
+      return true;
+    };
+    const secondSubscription = { providerSubscriptionId: "sub_01second", plan: "ultra" as const };
+
+    beforeEach(async () => {
+      alerts = [];
+      await applySubscriptionEvent(paddleEvent("created", "2026-11-27T00:00:00Z"), { log });
+    });
+
+    test("created keeps the original row and alerts with both ids", async () => {
+      const outcome = await applySubscriptionEvent(
+        paddleEvent("created", "2026-11-28T00:00:00Z", secondSubscription),
+        { log, alertDuplicateSubscription },
+      );
+
+      expect(outcome.result).toBe("duplicate_subscription");
+      const row = await storedSubscription();
+      expect(row?.providerSubscriptionId).toBe(PADDLE_SUBSCRIPTION_ID);
+      expect(row?.plan).toBe("pro");
+      expect(row?.providerUpdatedAt?.toISOString()).toBe("2026-11-27T00:00:00.000Z");
+      // The alert goes out in the background.
+      await Bun.sleep(0);
+      expect(alerts).toEqual([
+        {
+          userId: USER_ID,
+          storedSubscriptionId: PADDLE_SUBSCRIPTION_ID,
+          storedStatus: "active",
+          newSubscriptionId: "sub_01second",
+          eventType: "created",
+        },
+      ]);
+    });
+
+    test("activated for the second subscription alerts and leaves the row", async () => {
+      const outcome = await applySubscriptionEvent(
+        paddleEvent("updated", "2026-11-28T00:00:00Z", secondSubscription),
+        { log, activation: true, alertDuplicateSubscription },
+      );
+
+      expect(outcome.result).toBe("duplicate_subscription");
+      expect((await storedSubscription())?.providerSubscriptionId).toBe(PADDLE_SUBSCRIPTION_ID);
+      await Bun.sleep(0);
+      expect(alerts.map((alert) => alert.eventType)).toEqual(["activated"]);
+    });
+
+    test("a new subscription after the first expired replaces the row", async () => {
+      await applySubscriptionEvent(
+        paddleEvent("expired", "2026-11-28T00:00:00Z", { status: "expired" }),
+        { log },
+      );
+
+      const outcome = await applySubscriptionEvent(
+        paddleEvent("created", "2026-11-29T00:00:00Z", secondSubscription),
+        { log, alertDuplicateSubscription },
+      );
+
+      expect(outcome.result).toBe("applied");
+      expect((await storedSubscription())?.providerSubscriptionId).toBe("sub_01second");
+      expect(alerts).toEqual([]);
+    });
   });
 
   test("a Paddle update leaves a Lemon Squeezy row alone", async () => {
