@@ -22,6 +22,7 @@ import UpgradeNudgeEmail, {
   type UpgradeNudgeEmailProps,
 } from "./upgrade-nudge";
 import WeeklySummaryEmail, { compareWeeks, upgradeCopy } from "./weekly-summary";
+import WelcomeEmail from "./welcome";
 
 type Template = FunctionComponent<object> & { PreviewProps?: object };
 
@@ -31,7 +32,7 @@ const files = readdirSync(import.meta.dir).filter(
 
 describe("email templates", () => {
   test("every template is covered", () => {
-    expect(files.length).toBe(20);
+    expect(files.length).toBe(21);
   });
 
   for (const file of files) {
@@ -143,6 +144,48 @@ describe("first link nudge", () => {
 
     expect(html).toContain("Hi <!-- -->Ama<!-- -->,");
     expect(html).not.toContain("null");
+  });
+});
+
+describe("welcome", () => {
+  const plain = async (props: Parameters<typeof WelcomeEmail>[0]) =>
+    (await renderEmail(createElement(WelcomeEmail, props), "ama@example.com")).text.replace(
+      /\s+/g,
+      " ",
+    );
+
+  test("greets by first name, points at creating a link and signs off as the founder", async () => {
+    const html = await render(createElement(WelcomeEmail, WelcomeEmail.PreviewProps));
+    const text = await plain(WelcomeEmail.PreviewProps);
+
+    expect(text).toStartWith(
+      "Paste a long URL, get a short link and a QR code. Here is where to start. Hi Ama,",
+    );
+    expect(html).toContain('href="https://ishortn.ink/e-welcome-link"');
+    expect(html).toContain(">Create a link</a>");
+    expect(html).toContain('href="https://ishortn.ink/e-welcome-domains"');
+    expect(html).toContain('href="https://ishortn.ink/e-welcome-qr"');
+    expect(text).toContain("reply to this email. A person reads every reply.");
+    expect(text).toContain("Kelvin Founder, iShortn");
+  });
+
+  test("has no hire paragraph, personal site, hard-coded address, exclamation or em dash", async () => {
+    const html = await render(createElement(WelcomeEmail, WelcomeEmail.PreviewProps));
+    const text = await plain(WelcomeEmail.PreviewProps);
+
+    expect(html).not.toMatch(/for hire|kelvinamoaba|Developer|mailto:|@ishortn\.ink/i);
+    expect(text).not.toMatch(/[!\u2014]/);
+  });
+
+  test("greets users without a real name as there and signs off as the team without a founder", async () => {
+    for (const userName of [null, "", "null null"]) {
+      const text = await plain({ userName, founderName: null });
+
+      expect(text).toContain("Hi there,");
+      expect(text).not.toContain("null");
+      expect(text).toContain("The iShortn team");
+      expect(text).not.toContain("Founder");
+    }
   });
 });
 

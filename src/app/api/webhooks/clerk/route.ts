@@ -2,12 +2,12 @@ import { and, eq, isNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 
+import WelcomeEmail from "@/emails/welcome";
 import { env } from "@/env.mjs";
-import WelcomeEmail from "@/lib/email/templates/welcome-email";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
-import { sendEmail } from "@/server/lib/notifications/send-email";
+import { EMAIL_FROM_FIRST_NAME, sendEmail } from "@/server/lib/notifications/send-email";
 
 import { clerkUserDeletedEventSchema, clerkUserEventSchema, getUserInfo } from "./user-info";
 
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
       to: userInfo.email,
       essential: false,
       subject: "Welcome to iShortn",
-      react: WelcomeEmail({ userName: userInfo.name }),
+      react: WelcomeEmail({ userName: userInfo.name, founderName: EMAIL_FROM_FIRST_NAME }),
       context: { eventId: id, eventType },
     });
   }
