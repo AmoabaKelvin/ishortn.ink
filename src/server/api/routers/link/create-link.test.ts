@@ -13,9 +13,9 @@ type InsertedLink = { url: string; name: string; alias: string; domain: string }
 
 // In-memory stand-in for the queries createLink makes on a free personal
 // workspace: the plan lookup, the reserved-alias check for the generated alias
-// (none reserved), the link insert, failure records and the
-// monthly count update. `failInsert` makes the link insert throw like a
-// database outage would.
+// (none reserved), the link insert, failure records, the monthly count update
+// and the first-link check (no other links). `failInsert` makes the link insert
+// throw like a database outage would.
 function fakeContext({ failInsert = false } = {}) {
   const inserted: InsertedLink[] = [];
   const recordedFailures: LinkCreationFailure[] = [];
@@ -92,13 +92,18 @@ describe("createLink", () => {
       },
     );
 
-    expect(result).toEqual({ id: 7, alias: expect.any(String), domain: DEFAULT_PLATFORM_DOMAIN });
+    expect(result).toEqual({
+      id: 7,
+      alias: expect.any(String),
+      domain: DEFAULT_PLATFORM_DOMAIN,
+      isFirstLink: true,
+    });
     expect(inserted).toHaveLength(1);
     expect(inserted[0]).toMatchObject({ url: URL, name: "Untitled Link" });
     expect(recordedFailures).toEqual([]);
   });
 
-  test("returns the id, alias and domain of the inserted link", async () => {
+  test("returns the id, alias, domain and first-link flag of the inserted link", async () => {
     const { ctx, inserted } = fakeContext();
     const generated = await createLink(
       ctx,
@@ -109,6 +114,7 @@ describe("createLink", () => {
       id: 7,
       alias: inserted[0]!.alias,
       domain: DEFAULT_PLATFORM_DOMAIN,
+      isFirstLink: true,
     });
     expect(generated.alias).not.toBe("");
 
@@ -117,7 +123,12 @@ describe("createLink", () => {
       { url: URL, alias: "spring-sale" },
       { ...allowUrl, fetchMetadata: noMetadata },
     );
-    expect(custom).toEqual({ id: 7, alias: "spring-sale", domain: DEFAULT_PLATFORM_DOMAIN });
+    expect(custom).toEqual({
+      id: 7,
+      alias: "spring-sale",
+      domain: DEFAULT_PLATFORM_DOMAIN,
+      isFirstLink: true,
+    });
     expect(inserted[1]).toMatchObject({ alias: "spring-sale", domain: DEFAULT_PLATFORM_DOMAIN });
   });
 

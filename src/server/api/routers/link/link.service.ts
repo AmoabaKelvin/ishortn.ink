@@ -13,6 +13,7 @@ import {
   like,
   lt,
   lte,
+  ne,
   or,
   sql,
   sum,
@@ -704,7 +705,33 @@ const createLinkSteps = async (
   await incrementWorkspaceLinkCount(ctx, currentCount, limit);
   checkCampaignPatternsAfterResponse(linkDestinations(linkId, input.url, geoRulesInput));
 
-  return { id: linkId, alias, domain };
+  return { id: linkId, alias, domain, isFirstLink: await isFirstLink(ctx, plan, linkId) };
+};
+
+/**
+ * Whether `linkId` is the only short link in the workspace, for the link-ready dialog's
+ * first-link offer. That offer is for Free personal workspaces only, so nobody else pays the query,
+ * and a failed lookup only hides it: the link already exists.
+ */
+const isFirstLink = async (ctx: WorkspaceTRPCContext, plan: Plan, linkId: number) => {
+  if (plan !== "free" || ctx.workspace.type !== "personal") return false;
+  const otherLinks = await ctx.db
+    .select({ id: link.id })
+    .from(link)
+    .where(
+      and(
+        workspaceFilter(ctx.workspace, link.userId, link.teamId),
+        eq(link.isQrCode, false),
+        eq(link.isBioLink, false),
+        ne(link.id, linkId),
+      ),
+    )
+    .limit(1)
+    .catch((err) => {
+      log.warn({ err, linkId }, "first-link check failed");
+      return null;
+    });
+  return otherLinks?.length === 0;
 };
 
 export const updateLink = async (
@@ -1250,7 +1277,7 @@ const shortenLinkSteps = async (
   input: QuickLinkShorteningInput,
   attempt: LinkCreationAttempt,
 ) => {
-  const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
+  const { plan, currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
 
   const savedDomain = await getWorkspaceDefaultDomain(ctx);
   // The saved default can outlive the domain (deleted, or never verified)
@@ -1300,6 +1327,7 @@ const shortenLinkSteps = async (
     id: result.insertId,
     alias,
     domain,
+    isFirstLink: await isFirstLink(ctx, plan, Number(result.insertId)),
   };
 };
 

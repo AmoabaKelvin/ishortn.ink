@@ -47,6 +47,7 @@ const UPGRADE_REASONS = new Map(
     campaign_unarchive: "More active campaigns are on {plan}",
     campaign_utm_defaults: "Campaign UTM defaults are on {plan}",
     custom_domain: "Custom domains are on {plan}",
+    first_link_own_domain: "Custom domains are on {plan}",
     folder_create: "More folders are on {plan}",
     folder_move: "Folders are on {plan}",
     folders: "Folders are on {plan}",
