@@ -20,9 +20,11 @@ import {
 import { isDocsPath, legacyDocsRedirectPath, toInternalDocsPath } from "@/lib/docs/routing";
 import { NO_INDEX_HEADER, getMarketingRedirectUrl, isShortLinkPath } from "@/lib/seo/indexing";
 
+import type { NextFetchEvent, NextRequest } from "next/server";
+
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
-export default clerkMiddleware(async (auth, req) => {
+const clerk = clerkMiddleware(async (auth, req) => {
   const { pathname, search, host: urlHost } = new URL(req.url);
   // Same precedence as the [linkAlias] page: a proxy may forward the custom
   // domain in x-forwarded-host while the URL holds the platform host.
@@ -101,13 +103,38 @@ export default clerkMiddleware(async (auth, req) => {
   }
 });
 
+/**
+ * The MCP endpoint is https://<app host>/mcp. Only the app host serves it, so /mcp stays a
+ * short-link alias on every short-link domain. It authenticates with an API key, so it skips
+ * Clerk, which would otherwise try to read the bearer key as a session token.
+ */
+function mcpRewrite(req: NextRequest): NextResponse | null {
+  const url = req.nextUrl;
+  if (url.pathname !== "/mcp") return null;
+  const hostname = (req.headers.get("x-forwarded-host") ?? url.host).split(":")[0]!.toLowerCase();
+  const appHost = getAppBaseDomain();
+  if (
+    hostname !== appHost &&
+    hostname !== `www.${appHost}` &&
+    !hostname.includes("localhost") &&
+    !hostname.endsWith(".workers.dev")
+  ) {
+    return null;
+  }
+  return NextResponse.rewrite(new URL(`/api/mcp${url.search}`, req.url));
+}
+
+export default function middleware(req: NextRequest, event: NextFetchEvent) {
+  return mcpRewrite(req) ?? clerk(req, event);
+}
+
 // /api/health and /api/health/* are excluded: they are public or check their
 // own token, and an uptime probe must not depend on Clerk being reachable.
 // /api/extension/* is excluded too: it authenticates with its own bearer token,
-// which Clerk would otherwise try to read as a session token.
+// which Clerk would otherwise try to read as a session token. /api/mcp likewise (see mcpRewrite).
 export const config = {
   matcher: [
-    "/((?!_next|favicon|api/health(?:/|$)|api/extension(?:/|$)|^[^/]+$|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api(?!/health(?:/|$)|/extension(?:/|$))|trpc)(.*)",
+    "/((?!_next|favicon|api/health(?:/|$)|api/extension(?:/|$)|api/mcp(?:/|$)|^[^/]+$|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api(?!/health(?:/|$)|/extension(?:/|$)|/mcp(?:/|$))|trpc)(.*)",
   ],
 };

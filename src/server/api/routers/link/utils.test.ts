@@ -225,6 +225,7 @@ describe("reserved app route aliases", () => {
       "whatsapp-link-generator",
       "gerador-de-link-whatsapp",
       "social",
+      "mcp",
       "Pricing",
     ]) {
       expect(isAppRouteAlias(alias, "ishortn.ink")).toBe(true);
@@ -239,6 +240,9 @@ describe("reserved app route aliases", () => {
   test("validateAlias rejects them before looking up the alias", () => {
     // Throws synchronously, before the database is queried.
     expect(() => validateAlias({ db }, "utm-builder", "ishortn.ink", true)).toThrow(
+      "This alias is reserved. Choose another one.",
+    );
+    expect(() => validateAlias({ db }, "mcp", "ishortn.ink", true)).toThrow(
       "This alias is reserved. Choose another one.",
     );
   });
