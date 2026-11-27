@@ -1,8 +1,17 @@
 import { describe, expect, test } from "bun:test";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 
 import { createElement } from "react";
 
-import { deliverEmail, EMAIL_FROM, type SendEmailInput } from "./send-email";
+import {
+  deliverEmail,
+  EMAIL_FROM,
+  EMAIL_REPLY_TO,
+  type SendEmailInput,
+  withReplyTo,
+  withSenderName,
+} from "./send-email";
 
 import type { Context } from "@/lib/logger/shared";
 import type { CreateEmailOptions, CreateEmailResponse } from "resend";
@@ -93,6 +102,14 @@ describe("deliverEmail", () => {
     expect(client.sent[0]).not.toHaveProperty("template");
   });
 
+  test("sets reply_to to the monitored inbox from EMAIL_REPLY_TO", async () => {
+    const client = clientReturning({ data: { id: "email_1" }, error: null });
+
+    expect(await deliverEmail(client, recordingLog(), input, notSuppressed)).toBe(true);
+    expect(EMAIL_REPLY_TO).toBe("replies@mail.ishortn.ink");
+    expect(client.sent[0]?.reply_to).toBe(EMAIL_REPLY_TO);
+  });
+
   test("sends from the given sender when one is set", async () => {
     const client = clientReturning({ data: { id: "email_1" }, error: null });
     const from = "iShortn <updates@mail.example.com>";
@@ -154,5 +171,52 @@ describe("deliverEmail", () => {
 
     expect(await deliverEmail(client, log, { ...input, essential: false }, failing)).toBe(true);
     expect(log.calls[0]?.message).toBe("email suppression check failed");
+  });
+});
+
+describe("withSenderName", () => {
+  test("puts one sender's display name on another's address", () => {
+    expect(
+      withSenderName(
+        "iShortn <hello@updates.ishortn.ink>",
+        "Kelvin from iShortn <kelvin@ishortn.ink>",
+      ),
+    ).toBe("Kelvin from iShortn <hello@updates.ishortn.ink>");
+  });
+
+  test("handles a bare address on either side", () => {
+    expect(withSenderName("hello@updates.ishortn.ink", "iShortn <notifications@ishortn.ink>")).toBe(
+      "iShortn <hello@updates.ishortn.ink>",
+    );
+    expect(withSenderName("iShortn <hello@updates.ishortn.ink>", "kelvin@ishortn.ink")).toBe(
+      "hello@updates.ishortn.ink",
+    );
+  });
+});
+
+describe("every Resend send", () => {
+  const SRC = path.join(import.meta.dir, "../../..");
+  const sources = readdirSync(SRC, { recursive: true, encoding: "utf8" }).filter(
+    (file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file),
+  );
+  const senders = sources.filter((file) =>
+    /\.(emails|batch)\.send\(/.test(readFileSync(path.join(SRC, file), "utf8")),
+  );
+
+  test("finds the senders", () => {
+    expect(senders.length).toBeGreaterThanOrEqual(4);
+  });
+
+  for (const file of senders) {
+    test(`${file} sets reply_to through withReplyTo`, () => {
+      expect(readFileSync(path.join(SRC, file), "utf8")).toContain("withReplyTo(");
+    });
+  }
+
+  test("withReplyTo keeps the payload and adds reply_to", () => {
+    expect(withReplyTo({ to: "ama@example.com" })).toEqual({
+      to: "ama@example.com",
+      reply_to: EMAIL_REPLY_TO,
+    });
   });
 });

@@ -104,7 +104,7 @@ Free plans and enterprise contracts usually share the same core: short links, a 
 | Access control | One user | Shared workspace with roles | SSO/SAML, SCIM, audit logs |
 | Support | Help center | Email | Named contact, uptime SLA |
 
-Most small businesses and freelancers need the volume and history upgrades, not the access controls. iShortn Pro ($8 a month) removes the analytics history limit, and Ultra ($15 a month) adds team workspaces with owner, admin and member roles. iShortn doesn't offer SSO. If you need it, look at Rebrandly's or Dub's Enterprise plan. Both list SAML single sign-on.
+Most small businesses and freelancers need the volume and history upgrades, not the access controls. iShortn Pro ($8 a month) extends detailed analytics history to a full year, and Ultra ($15 a month) adds team workspaces with owner, admin and member roles. iShortn doesn't offer SSO. If you need it, look at Rebrandly's or Dub's Enterprise plan. Both list SAML single sign-on.
 
 ## How to evaluate a link management company
 

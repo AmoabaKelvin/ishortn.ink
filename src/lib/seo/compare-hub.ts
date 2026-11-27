@@ -52,7 +52,7 @@ export function ishortnRows({ caps, prices, freeQrCodes }: BillingFacts = liveBi
   const shared = {
     name: "iShortn",
     href: "/pricing",
-    freeAnalytics: `${amount(caps.free.analyticsRangeLimitDays)} days on Free, unlimited history on Pro`,
+    freeAnalytics: `${amount(caps.free.analyticsRangeLimitDays)} days on Free, 1 year on Pro`,
     qrCodes: `${freeQrCodes} dynamic on Free, never expire`,
     pricing: `Pro ${pro}, Ultra $${prices.ultra}/mo`,
     isOwn: true,
@@ -123,7 +123,7 @@ export function compareIntro({ caps, prices, freeQrCodes }: BillingFacts = liveB
     caps.free.bioPageLimit === 1
       ? "one link-in-bio page"
       : `${amount(caps.free.bioPageLimit)} link-in-bio pages`;
-  return `iShortn Free gives you ${amount(caps.free.linksLimit)} links a month, ${amount(caps.free.analyticsRangeLimitDays)} days of click analytics, ${bioPages} and ${freeQrCodes} dynamic QR codes that never expire. Pro is $${prices.pro} a month and adds ${amount(caps.pro.domainLimit)} custom domains and unlimited analytics history. If you need more free links or custom domains on a free plan, Short.io and Dub are more generous; if you want short links, QR codes and a bio page on your own domain for one low price, iShortn is the cheaper option. Every competitor figure below links to its full comparison and shows the date we last checked their pricing page.`;
+  return `iShortn Free gives you ${amount(caps.free.linksLimit)} links a month, ${amount(caps.free.analyticsRangeLimitDays)} days of click analytics, ${bioPages} and ${freeQrCodes} dynamic QR codes that never expire. Pro is $${prices.pro} a month and adds ${amount(caps.pro.domainLimit)} custom domains and a full year of detailed analytics. If you need more free links or custom domains on a free plan, Short.io and Dub are more generous; if you want short links, QR codes and a bio page on your own domain for one low price, iShortn is the cheaper option. Every competitor figure below links to its full comparison and shows the date we last checked their pricing page.`;
 }
 
 export function compareFaqs({ caps, prices, freeQrCodes }: BillingFacts = liveBilling) {

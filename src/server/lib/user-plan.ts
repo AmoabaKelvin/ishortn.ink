@@ -4,7 +4,7 @@ import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { effectivePlan } from "@/lib/billing/entitlements";
 import { getPlanCaps, Plan, resolvePlan } from "@/lib/billing/plans";
 import { db } from "@/server/db";
-import { subscription, user } from "@/server/db/schema";
+import { monthlyUsageSnapshot, subscription, user } from "@/server/db/schema";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 
 import type { PLAN_CAPS } from "@/lib/billing/plans";
@@ -70,6 +70,11 @@ export async function getUserPlanContext(
   };
 }
 
+/** YYYY-MM of `date` in the same (server-local) calendar getMonthStart uses. */
+export function usageMonth(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export async function normalizeMonthlyEventCount(
   ctx: UserPlanContext,
   dbClient: DbClient = db,
@@ -78,18 +83,48 @@ export async function normalizeMonthlyEventCount(
   const lastReset = ctx.userRecord.lastEventCountReset ?? ctx.userRecord.createdAt ?? new Date();
 
   if (lastReset < monthStart) {
-    await dbClient
-      .update(user)
-      .set({
-        monthlyEventCount: 0,
-        lastEventCountReset: new Date(),
-        eventUsageAlertLevel: 0,
-        droppedEventCount: 0,
-        eventTrackingPausedAt: null,
-      })
-      .where(eq(user.id, ctx.userRecord.id));
+    return dbClient.transaction(async (tx) => {
+      // `ctx` may be a snapshot read: lock the row and re-read the counters so the snapshot holds
+      // the final counts, and a parallel batch that already reset this month isn't zeroed again.
+      const [current] = await tx
+        .select({
+          monthlyEventCount: user.monthlyEventCount,
+          droppedEventCount: user.droppedEventCount,
+          lastEventCountReset: user.lastEventCountReset,
+          createdAt: user.createdAt,
+        })
+        .from(user)
+        .where(eq(user.id, ctx.userRecord.id))
+        .for("update");
+      if (!current) return 0;
 
-    return 0;
+      const currentReset = current.lastEventCountReset ?? current.createdAt ?? new Date();
+      if (currentReset >= monthStart) return current.monthlyEventCount ?? 0;
+
+      const recordedEventCount = current.monthlyEventCount ?? 0;
+      const droppedEventCount = current.droppedEventCount ?? 0;
+      if (recordedEventCount > 0 || droppedEventCount > 0) {
+        await tx.insert(monthlyUsageSnapshot).values({
+          userId: ctx.userRecord.id,
+          month: usageMonth(currentReset),
+          recordedEventCount,
+          droppedEventCount,
+        });
+      }
+
+      await tx
+        .update(user)
+        .set({
+          monthlyEventCount: 0,
+          lastEventCountReset: new Date(),
+          eventUsageAlertLevel: 0,
+          droppedEventCount: 0,
+          eventTrackingPausedAt: null,
+        })
+        .where(eq(user.id, ctx.userRecord.id));
+
+      return 0;
+    });
   }
 
   return ctx.userRecord.monthlyEventCount ?? 0;

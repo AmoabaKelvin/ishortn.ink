@@ -9,7 +9,29 @@ import type { Context } from "@/lib/logger/shared";
 import type { ReactElement } from "react";
 import type { CreateEmailOptions, CreateEmailResponse } from "resend";
 
+/** Founder voice: welcome, nudges, plan changes. Also the default for sendEmail. */
 export const EMAIL_FROM = env.EMAIL_FROM ?? "Kelvin from iShortn <kelvin@ishortn.ink>";
+
+/** System notices: reports, cap alerts, plan grace, domain, account, team and transfer emails. */
+export const EMAIL_FROM_SYSTEM = env.EMAIL_FROM_SYSTEM ?? "iShortn <notifications@ishortn.ink>";
+
+/** The monitored inbox that replies to every product email go to. */
+export const EMAIL_REPLY_TO = env.EMAIL_REPLY_TO;
+
+/** Adds `reply_to: EMAIL_REPLY_TO`; every Resend send goes through this. */
+export function withReplyTo<T extends object>(payload: T): T & { reply_to?: string } {
+  return EMAIL_REPLY_TO ? { ...payload, reply_to: EMAIL_REPLY_TO } : payload;
+}
+
+/**
+ * `from` under the display name of `nameFrom`, keeping `from`'s address so the email still leaves
+ * from its own sending domain (lifecycle email has a separate subdomain).
+ */
+export function withSenderName(from: string, nameFrom: string): string {
+  const address = from.match(/<([^>]+)>/)?.[1] ?? from.trim();
+  const name = nameFrom.match(/^(.*?)\s*</)?.[1]?.trim();
+  return name ? `${name} <${address}>` : address;
+}
 
 type EmailClient = {
   emails: { send: (payload: CreateEmailOptions) => Promise<CreateEmailResponse> };
@@ -37,7 +59,6 @@ export type SendEmailInput = {
   from?: string;
   subject: string;
   react: ReactElement;
-  reply_to?: string;
   headers?: UnsubscribeHeaders;
   /** Extra fields for the failure log line. */
   context?: Context;
@@ -71,7 +92,7 @@ export async function deliverEmail(
   }
 
   try {
-    const { error } = await client.emails.send({ from, ...payload });
+    const { error } = await client.emails.send(withReplyTo({ from, ...payload }));
     if (!error) return true;
     log.error(
       { ...context, template, recipientId, err: { name: error.name, message: error.message } },

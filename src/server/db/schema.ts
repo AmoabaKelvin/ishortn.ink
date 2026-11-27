@@ -254,9 +254,25 @@ export const subscription = mysqlTable(
     // details about the payment to show in the dashboard
     cardBrand: varchar("cardBrand", { length: 255 }).default(""),
     cardLastFour: varchar("cardLastFour", { length: 4 }).default(""),
+
+    // Which provider manages this subscription. Rows created before a second provider existed
+    // read as Lemon Squeezy through the default, with no data rewrite.
+    billingProvider: varchar("billingProvider", { length: 16 }).notNull().default("lemonsqueezy"),
+    // Paddle ids are strings (`sub_…`, `ctm_…`, `pri_…`), so they can't use the int
+    // `subscriptionId` / `customerId` / `variantId` columns above, which stay as they are for
+    // Lemon Squeezy rows. Null on Lemon Squeezy rows.
+    providerSubscriptionId: varchar("providerSubscriptionId", { length: 64 }),
+    providerCustomerId: varchar("providerCustomerId", { length: 64 }),
+    providerPriceId: varchar("providerPriceId", { length: 64 }),
   },
   (table) => ({
     userIdx: index("userId_idx").on(table.userId),
+    providerSubscriptionIdIdx: index("subscription_providerSubscriptionId_idx").on(
+      table.providerSubscriptionId,
+    ),
+    providerCustomerIdIdx: index("subscription_providerCustomerId_idx").on(
+      table.providerCustomerId,
+    ),
   }),
 );
 
@@ -1643,6 +1659,31 @@ export const planLimitHit = mysqlTable(
 
 export type PlanLimitHit = typeof planLimitHit.$inferSelect;
 
+// One row per user and month with event usage, written by the lazy monthly reset
+// (normalizeMonthlyEventCount in src/server/lib/user-plan.ts) just before it zeroes the counters,
+// so recorded and dropped (over-cap) visits survive the reset.
+export const monthlyUsageSnapshot = mysqlTable(
+  "MonthlyUsageSnapshot",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    // YYYY-MM of the month the counts belong to.
+    month: char("month", { length: 7 }).notNull(),
+    recordedEventCount: int("recordedEventCount").notNull().default(0),
+    droppedEventCount: int("droppedEventCount").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    userMonthUnique: unique("monthlyUsageSnapshot_userId_month_unique").on(
+      table.userId,
+      table.month,
+    ),
+    monthIdx: index("monthlyUsageSnapshot_month_idx").on(table.month),
+  }),
+);
+
+export type MonthlyUsageSnapshot = typeof monthlyUsageSnapshot.$inferSelect;
+
 /** One row per hosted checkout handed to a user, so the funnel from checkout to payment can be measured. */
 export const checkoutStart = mysqlTable(
   "CheckoutStart",
@@ -1656,6 +1697,8 @@ export const checkoutStart = mysqlTable(
     source: varchar("source", { length: 64 }),
     // The discount code the checkout was created with; null when none was sent or the provider rejected it.
     promoCode: varchar("promoCode", { length: 64 }),
+    // Which billing provider hosted the checkout; existing rows read as Lemon Squeezy.
+    provider: varchar("provider", { length: 16 }).notNull().default("lemonsqueezy"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({
@@ -1683,6 +1726,9 @@ export const subscriptionCancellation = mysqlTable(
     offerShown: mysqlEnum("offerShown", ["pause", "none"]).notNull(),
     outcome: mysqlEnum("outcome", ["cancelled", "paused", "downgraded"]).notNull(),
     pauseMonths: int("pauseMonths"),
+    // Paddle subscription ids are strings (`sub_…`), so they can't use the int `subscriptionId`
+    // column, which stays as it is for Lemon Squeezy rows. Null on Lemon Squeezy rows.
+    providerSubscriptionId: varchar("providerSubscriptionId", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({

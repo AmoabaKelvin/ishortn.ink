@@ -1,0 +1,141 @@
+---
+title: MCP server
+description: Connect Claude, ChatGPT (Codex), Cursor and other AI assistants to iShortn with the remote MCP server at https://ishortn.ink/mcp, authenticated with an API key.
+---
+
+iShortn runs a remote [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server, so AI assistants can create and manage your short links, read their analytics and make QR codes for you. Ask in plain language, for example "shorten https://example.com/spring-sale as spring-sale" or "which countries did my launch link get clicks from this week?".
+
+| | |
+| --- | --- |
+| Server URL | `https://ishortn.ink/mcp` |
+| Transport | Streamable HTTP |
+| Authentication | `Authorization: Bearer YOUR_API_KEY` |
+
+The server is built on the [iShortn API](/docs/api), so it uses the same API keys, and API keys need a **Pro** or **Ultra** plan.
+
+## Create an API key
+
+1. Open [Settings](/dashboard/settings#api-keys) in the dashboard and scroll to **API Keys**.
+2. Click **Create API Key** and copy the key from the dialog. It's shown once.
+
+The key works in your personal workspace: links the assistant creates are added there, and the other tools only find links in it. See [Which links the API can reach](/docs/api#which-links-the-api-can-reach). Anyone with the key can change and delete your links, so keep it out of shared files and repositories.
+
+## Connect your assistant
+
+In each example, replace `YOUR_API_KEY` with your key.
+
+### Claude Code
+
+```bash
+claude mcp add --transport http ishortn https://ishortn.ink/mcp \
+  --header "Authorization: Bearer YOUR_API_KEY"
+```
+
+Run `/mcp` in Claude Code to check that **ishortn** is connected.
+
+### Claude Desktop
+
+Claude Desktop's **Add custom connector** form only supports servers that sign in with OAuth, so connect through the `mcp-remote` bridge instead. It needs [Node.js](https://nodejs.org). Open **Settings** → **Developer** → **Edit Config** and add iShortn to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "ishortn": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://ishortn.ink/mcp",
+        "--header",
+        "Authorization:${ISHORTN_AUTH}"
+      ],
+      "env": { "ISHORTN_AUTH": "Bearer YOUR_API_KEY" }
+    }
+  }
+}
+```
+
+Restart Claude Desktop. The iShortn tools show up in the tools menu of a new chat.
+
+### Cursor
+
+Open **Cursor Settings** → **Tools & MCP** → **New MCP Server**, or edit `~/.cursor/mcp.json` (all projects) or `.cursor/mcp.json` (one project):
+
+```json
+{
+  "mcpServers": {
+    "ishortn": {
+      "url": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer YOUR_API_KEY" }
+    }
+  }
+}
+```
+
+### ChatGPT and OpenAI
+
+ChatGPT's **Add custom MCP server** form signs in with OAuth only and can't send an API key, so it can't connect to the iShortn server yet. [Codex](https://developers.openai.com/codex), OpenAI's coding agent that comes with ChatGPT plans, can. Add this to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.ishortn]
+url = "https://ishortn.ink/mcp"
+bearer_token_env_var = "ISHORTN_API_KEY"
+```
+
+Then set `ISHORTN_API_KEY` to your key in the environment Codex runs in.
+
+In your own app, the OpenAI Responses API's MCP tool connects with the key in its `authorization` field:
+
+```json
+{
+  "type": "mcp",
+  "server_label": "ishortn",
+  "server_url": "https://ishortn.ink/mcp",
+  "authorization": "YOUR_API_KEY"
+}
+```
+
+### Other clients
+
+Any MCP client that supports the streamable HTTP transport and custom headers can connect: point it at `https://ishortn.ink/mcp` and send `Authorization: Bearer YOUR_API_KEY`. Clients that can only set an `x-api-key` header work too. To try the server without an assistant, run the [MCP Inspector](https://github.com/modelcontextprotocol/inspector):
+
+```bash
+npx @modelcontextprotocol/inspector --cli https://ishortn.ink/mcp --transport http \
+  --header "Authorization: Bearer YOUR_API_KEY" --method tools/list
+```
+
+## Tools
+
+| Tool | What it does | API equivalent |
+| --- | --- | --- |
+| `create_link` | Creates a short link, with an optional alias, domain, password, expiry, activation time, click limit and UTM tags. | [Create a link](/docs/api/create-link) |
+| `get_link` | Looks up a link by alias and domain. | [Get a link](/docs/api/get-link) |
+| `list_links` | Lists your links, newest first, 25 per page by default (up to 100). | [List links](/docs/api/list-links) |
+| `update_link` | Changes a link's destination, alias, domain, expiry, activation time or click limit. Renamed and moved links keep redirecting from the old address. | [Update a link](/docs/api/update-link) |
+| `delete_link` | Deletes a link and its analytics. | [Delete a link](/docs/api/delete-link) |
+| `get_link_analytics` | Clicks and unique clicks, by country, city, device, browser, OS and referrer. | [Link analytics](/docs/api/link-analytics) |
+| `create_qr_code` | Returns a PNG QR code that opens a short link. Give a URL to create a new link for it, or the alias of an existing link. | |
+| `get_account` | Your plan, default domain, links created this month against your monthly limit, and your API rate limits. | [Get your account](/docs/api/get-me) |
+
+`delete_link` is marked as destructive in its tool hints, and the read-only tools as read-only, for clients that use them to decide when to ask you first.
+
+QR codes from `create_qr_code` are plain black-on-white PNGs. Scans go through the short link, so they're counted in its analytics, but the QR code isn't saved under **QR Codes** in the dashboard. To style a QR code or keep it in your QR code list, create it in the [dashboard](/docs/qr-codes).
+
+## Plans and limits
+
+The tools apply the same rules as the API:
+
+- **Plans**: the server needs a Pro or Ultra plan. With a key on the Free plan, your assistant can connect, but every tool returns `The iShortn API and MCP server need a Pro or Ultra plan. Upgrade at https://ishortn.ink/pricing`. See [API access by plan](/docs/api#api-access-by-plan).
+- **Monthly links**: links created with `create_link` and `create_qr_code` count toward your monthly link limit, like links created in the dashboard. See [Plans and limits](/docs/plans).
+- **Rate limits**: every request to the MCP server counts toward your account's [API rate limit](/docs/api#rate-limits), including the requests your assistant makes to connect and list the tools.
+- **Analytics window**: `get_link_analytics` covers the same date range as the dashboard for your plan.
+
+## Errors
+
+When a tool fails, the assistant gets the API's error message and usually tells you what went wrong, such as an alias that's already taken or a domain that isn't available to your key. See [Responses and errors](/docs/api#responses-and-errors).
+
+| Problem | What to do |
+| --- | --- |
+| The assistant can't connect, or asks you to sign in | The key is missing, mistyped or deleted, and the server answered `401`. Check the `Authorization` header in your client's config, or create a new key in [Settings](/dashboard/settings#api-keys). |
+| `need a Pro or Ultra plan` | The key's account is on the Free plan. Upgrade on the [Pricing](/pricing) page. |
+| `Rate limit exceeded. Retry in N seconds.` | Your account made too many API requests in a short time. Wait and ask again. |

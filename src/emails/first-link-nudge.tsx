@@ -1,5 +1,6 @@
 import { Link, Text } from "@react-email/components";
 
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { displayName } from "@/lib/utils/user-name";
 
 import { EmailButton, EmailLayout, link, text } from "./_components/layout";
@@ -46,10 +47,8 @@ export const FirstLinkNudgeEmail = ({
 
 FirstLinkNudgeEmail.PreviewProps = {
   userName: "Ama",
-  createLinkUrl:
-    "https://ishortn.ink/dashboard/link/new?utm_source=email&utm_medium=lifecycle&utm_campaign=first_link_nudge",
-  createQrCodeUrl:
-    "https://ishortn.ink/dashboard/qrcodes/create?utm_source=email&utm_medium=lifecycle&utm_campaign=first_link_nudge",
+  createLinkUrl: emailLinkUrl(EMAIL_LINKS.firstLinkNudge.createLink),
+  createQrCodeUrl: emailLinkUrl(EMAIL_LINKS.firstLinkNudge.createQrCode),
   notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
 } satisfies FirstLinkNudgeEmailProps;
 

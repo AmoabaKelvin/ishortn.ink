@@ -1,4 +1,3 @@
-import { pricingHighlightHref } from "@/app/(main)/dashboard/_components/tracking-paused";
 import UpgradeNudgeEmail, {
   upgradeNudgeSubject,
   type UpgradeNudgeAngle,
@@ -6,10 +5,10 @@ import UpgradeNudgeEmail, {
 } from "@/emails/upgrade-nudge";
 import { env } from "@/env.mjs";
 import { getActivePromo, promoOfferLine } from "@/lib/billing/promo";
-import { SUPPORT_EMAIL } from "@/lib/constants/app";
 import { getAppUrl } from "@/lib/constants/domains";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
-import { sendEmail } from "./send-email";
+import { EMAIL_FROM, sendEmail, withSenderName } from "./send-email";
 import { buildUnsubscribeHeaders, NOTIFICATION_SETTINGS_PATH, unsubscribeUrl } from "./unsubscribe";
 
 export type UpgradeNudgeContent = {
@@ -21,14 +20,7 @@ export type UpgradeNudgeContent = {
 };
 
 export function upgradeNudgeUrl(reason: UpgradeNudgeAngle["reason"]): string {
-  return getAppUrl(
-    pricingHighlightHref("pro", "upgrade_nudge", {
-      utm_source: "lifecycle",
-      utm_medium: "email",
-      utm_campaign: "upgrade_nudge",
-      utm_content: reason,
-    }),
-  );
+  return emailLinkUrl(EMAIL_LINKS.upgradeNudge[reason]);
 }
 
 /** The email's props at `now`; the promo line is decided at send time. */
@@ -70,8 +62,8 @@ export function sendUpgradeNudgeEmail({
     recipientId: userId,
     to: email,
     essential: false,
-    from: env.EMAIL_FROM_LIFECYCLE,
-    reply_to: SUPPORT_EMAIL,
+    // Founder voice, from the lifecycle sending domain.
+    from: env.EMAIL_FROM_LIFECYCLE && withSenderName(env.EMAIL_FROM_LIFECYCLE, EMAIL_FROM),
     subject: upgradeNudgeSubject(props.angle),
     react: UpgradeNudgeEmail(props),
     headers: buildUnsubscribeHeaders(userId, env.EMAIL_UNSUBSCRIBE_SECRET),

@@ -54,7 +54,7 @@ iShortn gives you the same 30 new links a month as TinyURL Free, and adds what T
 
 Free links use our `isht.app` short domain. Every QR code uses one of your 30 monthly links, because each code points at a tracked short link.
 
-**When you need more:** [Pro](/pricing) is $8 a month, or $80 a year, with 1,000 links and 10,000 tracked events a month, full analytics history, 3 custom domains, branded QR codes, password-protected links and the REST API. Compared with TinyURL Pro at $9 a month billed annually for 125 links, it costs a little less and includes eight times as many links. Ultra is $15 a month for unlimited links and domains, plus team workspaces.
+**When you need more:** [Pro](/pricing) is $8 a month, or $80 a year, with 1,000 links and 10,000 tracked events a month, a full year of detailed analytics, 3 custom domains, branded QR codes, password-protected links and the REST API. Compared with TinyURL Pro at $9 a month billed annually for 125 links, it costs a little less and includes eight times as many links. Ultra is $15 a month for unlimited links and domains, plus team workspaces.
 
 **Where iShortn falls short:** free analytics only goes back 7 days, there's no custom domain on Free, and the API needs Pro. See the full [TinyURL vs iShortn comparison](/compare/tinyurl).
 

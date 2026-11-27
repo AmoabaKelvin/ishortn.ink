@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
 
+import { getApiRateLimits, getPlanCaps } from "@/lib/billing/plans";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
+import { linksUsedThisMonth } from "@/server/lib/user-plan";
 
 import { apiError } from "../errors";
 import { getUserDefaultDomain, withApiKey } from "../utils";
@@ -23,5 +25,11 @@ export const GET = withApiKey(async (_request: Request, token) => {
     name: owner.name,
     plan: token.plan,
     defaultDomain,
+    // The token row already carries the counter, so usage costs no extra query.
+    usage: {
+      linksThisMonth: linksUsedThisMonth(token.owner),
+      linksLimit: getPlanCaps(token.plan).linksLimit ?? null,
+    },
+    rateLimits: getApiRateLimits(token.plan),
   });
 });

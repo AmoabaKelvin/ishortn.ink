@@ -22,7 +22,7 @@ describe("compare hub", () => {
     expect(shortener.pricing).toBe("Pro $8/mo, Ultra $15/mo");
     expect(shortener.customDomains).toBe("3 on Pro ($8/mo), unlimited on Ultra");
     expect(shortener.qrCodes).toBe("5 dynamic on Free, never expire");
-    expect(shortener.freeAnalytics).toBe("7 days on Free, unlimited history on Pro");
+    expect(shortener.freeAnalytics).toBe("7 days on Free, 1 year on Pro");
     expect(linkInBio.freeLinks).toBe("1 on Free (3 link blocks), 3 on Pro, unlimited on Ultra");
     expect(linkInBio.customDomains).toBe("Bio pages on your own domain from Pro ($8/mo)");
     expect(compareIntro(billing)).toContain("5 dynamic QR codes");

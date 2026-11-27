@@ -1,5 +1,6 @@
 import { Section, Text } from "@react-email/components";
 
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { displayName } from "@/lib/utils/user-name";
 
 import {
@@ -137,7 +138,7 @@ PlanGraceEmail.PreviewProps = {
     "Links on custom domains beyond the first one",
     "Password protection on new or edited links",
   ],
-  upgradeUrl: "https://ishortn.ink/dashboard/pricing",
+  upgradeUrl: emailLinkUrl(EMAIL_LINKS.planGrace.pro),
 } satisfies PlanGraceEmailProps;
 
 export default PlanGraceEmail;

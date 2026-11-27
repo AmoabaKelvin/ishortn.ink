@@ -7,6 +7,12 @@ import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pr
 import { buildLlmsTxt } from "./llms-txt";
 
 describe("buildLlmsTxt", () => {
+  it("points agents at the MCP server and its setup docs", () => {
+    const body = buildLlmsTxt();
+    expect(body).toContain("https://ishortn.ink/mcp (streamable HTTP");
+    expect(body).toContain("(https://ishortn.ink/docs/integrations/mcp)");
+  });
+
   it("states the current plan prices and limits", () => {
     const body = buildLlmsTxt();
     expect(body.startsWith("# iShortn\n")).toBe(true);

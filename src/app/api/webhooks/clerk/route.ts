@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 import { getResend } from "@/server/lib/notifications/resend-client";
+import { EMAIL_FROM, withReplyTo } from "@/server/lib/notifications/send-email";
 import { isEmailSuppressed } from "@/server/lib/notifications/suppression";
 
 import { clerkUserDeletedEventSchema, clerkUserEventSchema, getUserInfo } from "./user-info";
@@ -99,12 +100,14 @@ export async function POST(req: Request) {
   // A lifecycle email, so it skips addresses that hard-bounced or complained.
   const resend = eventType === "user.created" ? await getResend() : null;
   if (resend && userInfo.email && !(await isEmailSuppressed(userInfo.email))) {
-    const { error } = await resend.emails.send({
-      from: env.EMAIL_FROM ?? "Kelvin <developer@ishortn.ink>",
-      to: userInfo.email,
-      subject: "Welcome to iShortn",
-      react: WelcomeEmail({ userName: userInfo.name }),
-    });
+    const { error } = await resend.emails.send(
+      withReplyTo({
+        from: EMAIL_FROM,
+        to: userInfo.email,
+        subject: "Welcome to iShortn",
+        react: WelcomeEmail({ userName: userInfo.name }),
+      }),
+    );
 
     if (error) {
       log.error({ err: error, eventId: id, eventType }, "failed to send welcome email");

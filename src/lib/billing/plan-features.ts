@@ -25,7 +25,7 @@ export const PLAN_FEATURES = {
     features: [
       `${fmt(pro.linksLimit ?? 0)} links per month`,
       `${fmt(pro.eventsLimit ?? 0)} tracked events`,
-      "Unlimited analytics history (1 year of raw events; daily summaries kept beyond that)",
+      "1 year of detailed analytics (daily totals kept beyond that)",
       `${pro.domainLimit} custom domains`,
       "Branded + dynamic QR codes",
       "3 link-in-bio pages (custom domain, themes, no branding)",
@@ -52,6 +52,6 @@ export const PLAN_FEATURES = {
       "Team workspaces",
       "Priority support",
     ],
-    comingSoon: ["Conversion tracking", "Customization of password-protected pages"],
+    comingSoon: ["Customization of password-protected pages"],
   },
 } satisfies Record<Plan, PlanFeatures>;

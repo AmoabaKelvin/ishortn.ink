@@ -95,7 +95,7 @@ On Bitly, a custom domain starts on Growth at $29 a month. [iShortn Pro](/pricin
 
 - 3 custom domains
 - 1,000 links and 10,000 tracked events a month
-- Full analytics history
+- A full year of detailed analytics
 - Branded QR codes
 - Password-protected links, scheduled links, and geo and device targeting
 - The REST API
