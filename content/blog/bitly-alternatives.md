@@ -114,7 +114,7 @@ Bitly's cheapest way to see clicks is Core at $120 a year. Here's what tracking 
 
 | Tool | Cheapest plan with click analytics | What you get |
 | --- | --- | --- |
-| iShortn | Free, or Pro at $8/month | Free: 7 days of history. Pro: full history, 3 custom domains |
+| iShortn | Free, or Pro at $8/month | Free: 7 days of history. Pro: 1 year of detailed history, 3 custom domains |
 | Short.io | Free, or Hobby at $5/month | Free: 50,000 tracked clicks a month. Hobby adds country targeting |
 | TinyURL | Pro, $9/month billed annually | 125 links a month, 3 branded domains |
 | Bitly | Core, $10/month billed annually | 100 links a month, 30 days of history |

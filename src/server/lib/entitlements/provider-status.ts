@@ -1,4 +1,9 @@
+import { PaddleApiError, getPaddleClient } from "@/lib/paddle/client";
+import { normalizePaddleSubscription, paddleSubscriptionSchema } from "@/lib/paddle/normalize";
 import { parseProviderUpdatedAt } from "@/server/api/routers/lemonsqueezy/utils";
+
+import type { PaddleClient, PaddleSubscription } from "@/lib/paddle/client";
+import type { Subscription } from "@/server/db/schema";
 
 export type ProviderSubscriptionState = {
   status: string;
@@ -6,15 +11,52 @@ export type ProviderSubscriptionState = {
   updatedAt: Date | null;
 };
 
+export type ProviderSubscriptionRef = Pick<
+  Subscription,
+  "billingProvider" | "subscriptionId" | "providerSubscriptionId"
+>;
+
 export type ProviderSubscriptionLookup = (
-  subscriptionId: number,
+  sub: ProviderSubscriptionRef,
 ) => Promise<ProviderSubscriptionState>;
 
-/** Lemon Squeezy has no subscription with this id (404). */
+/** The provider has no subscription with this id (404). */
 export class ProviderSubscriptionNotFoundError extends Error {}
 
-/** The subscription's current state at Lemon Squeezy. Throws when it can't be read. */
-export const lookupProviderSubscription: ProviderSubscriptionLookup = async (subscriptionId) => {
+/** The row's provider isn't configured in this environment, so it can't be checked. */
+export class ProviderNotConfiguredError extends Error {}
+
+/**
+ * A Paddle subscription in the app's (Lemon Squeezy) status vocabulary: `canceled` reads as
+ * `expired`, a scheduled cancel as `cancelled` with its end date.
+ */
+export function paddleSubscriptionState(sub: PaddleSubscription): ProviderSubscriptionState {
+  const normalized = normalizePaddleSubscription(paddleSubscriptionSchema.parse(sub));
+  return {
+    status: normalized.status,
+    endsAt: normalized.endsAt,
+    updatedAt: normalized.providerUpdatedAt,
+  };
+}
+
+async function lookupPaddleSubscription(
+  id: string,
+  client: Pick<PaddleClient, "getSubscription"> | null,
+): Promise<ProviderSubscriptionState> {
+  if (!client) throw new ProviderNotConfiguredError("Paddle is not configured");
+  try {
+    return paddleSubscriptionState(await client.getSubscription(id));
+  } catch (err) {
+    if (err instanceof PaddleApiError && err.status === 404) {
+      throw new ProviderSubscriptionNotFoundError(`subscription ${id} not found`);
+    }
+    throw err;
+  }
+}
+
+async function lookupLemonSqueezySubscription(
+  subscriptionId: number,
+): Promise<ProviderSubscriptionState> {
   // Imported on use: this module is in the API auth path (via grace.ts), which never calls it.
   const [{ getSubscription }, { configureLemonSqueezy }] = await Promise.all([
     import("@lemonsqueezy/lemonsqueezy.js"),
@@ -32,7 +74,21 @@ export const lookupProviderSubscription: ProviderSubscriptionLookup = async (sub
     endsAt: ends_at ? new Date(ends_at) : null,
     updatedAt: parseProviderUpdatedAt(updated_at),
   };
-};
+}
+
+/**
+ * The subscription's current state at the provider stored on the row. Throws when it can't be
+ * read, and ProviderNotConfiguredError for a Paddle row while Paddle isn't configured.
+ */
+export async function lookupProviderSubscription(
+  sub: ProviderSubscriptionRef,
+  paddleClient: Pick<PaddleClient, "getSubscription"> | null = getPaddleClient(),
+): Promise<ProviderSubscriptionState> {
+  if (sub.billingProvider === "paddle") {
+    return lookupPaddleSubscription(sub.providerSubscriptionId ?? "", paddleClient);
+  }
+  return lookupLemonSqueezySubscription(sub.subscriptionId ?? 0);
+}
 
 /**
  * Lemon Squeezy statuses that end a failed renewal for good. The

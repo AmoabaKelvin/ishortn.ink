@@ -1,8 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
+import { PaddleApiError } from "@/lib/paddle/client";
+
 import {
   createCheckoutWithPromoFallback,
+  lemonSqueezyPromoRejected,
   paddleErrorToClient,
+  paddlePromoRejected,
   parseProviderUpdatedAt,
   pauseUpdate,
   providerErrorToClient,
@@ -72,7 +76,7 @@ describe("createCheckoutWithPromoFallback", () => {
 
   test("without a code it calls once and never retries", async () => {
     const { calls, create } = recorder([rejected]);
-    expect(await createCheckoutWithPromoFallback(create)).toEqual({
+    expect(await createCheckoutWithPromoFallback(create, lemonSqueezyPromoRejected)).toEqual({
       result: rejected,
       discountCode: undefined,
     });
@@ -81,7 +85,11 @@ describe("createCheckoutWithPromoFallback", () => {
 
   test("a code that applies is sent once", async () => {
     const { calls, create } = recorder([ok]);
-    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20");
+    const { result, discountCode } = await createCheckoutWithPromoFallback(
+      create,
+      lemonSqueezyPromoRejected,
+      "BFCM20",
+    );
     expect(result).toBe(ok);
     expect(discountCode).toBe("BFCM20");
     expect(calls).toEqual(["BFCM20"]);
@@ -92,8 +100,11 @@ describe("createCheckoutWithPromoFallback", () => {
     const { calls, create } = recorder([rejected, retried]);
     const onPromoRejected: Result[] = [];
 
-    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20", (r) =>
-      onPromoRejected.push(r),
+    const { result, discountCode } = await createCheckoutWithPromoFallback(
+      create,
+      lemonSqueezyPromoRejected,
+      "BFCM20",
+      (r) => onPromoRejected.push(r),
     );
 
     expect(result).toBe(retried);
@@ -105,10 +116,48 @@ describe("createCheckoutWithPromoFallback", () => {
   test.each([500, 429, null])("a %p failure is returned without a retry", async (statusCode) => {
     const failed: Result = { error: new Error("boom"), statusCode };
     const { calls, create } = recorder([failed]);
-    const { result, discountCode } = await createCheckoutWithPromoFallback(create, "BFCM20");
+    const { result, discountCode } = await createCheckoutWithPromoFallback(
+      create,
+      lemonSqueezyPromoRejected,
+      "BFCM20",
+    );
     expect(result).toBe(failed);
     expect(discountCode).toBe("BFCM20");
     expect(calls).toEqual(["BFCM20"]);
+  });
+});
+
+describe("paddlePromoRejected", () => {
+  const paddleError = (status: number, code: string) => ({
+    error: new PaddleApiError({
+      method: "POST",
+      path: "/transactions",
+      status,
+      code,
+      detail: "detail",
+      requestId: null,
+    }),
+  });
+
+  test.each([
+    [400, "transaction_discount_not_eligible"],
+    [400, "discount_expired"],
+    [409, "discount_usage_limit_reached"],
+  ])("a %p %s is a rejected discount", (status, code) => {
+    expect(paddlePromoRejected(paddleError(status, code))).toBe(true);
+  });
+
+  test.each([
+    [400, "transaction_price_not_found"],
+    [500, "discount_internal_error"],
+    [429, "too_many_requests"],
+  ])("a %p %s is not", (status, code) => {
+    expect(paddlePromoRejected(paddleError(status, code))).toBe(false);
+  });
+
+  test("non-Paddle errors and successes are not", () => {
+    expect(paddlePromoRejected({ error: new Error("discount") })).toBe(false);
+    expect(paddlePromoRejected({ error: null })).toBe(false);
   });
 });
 

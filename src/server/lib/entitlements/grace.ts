@@ -38,6 +38,7 @@ import {
   FAILED_PAYMENT_STATUSES,
   isEndedProviderStatus,
   lookupProviderSubscription,
+  ProviderNotConfiguredError,
   ProviderSubscriptionNotFoundError,
   providerEndedSubscription,
 } from "./provider-status";
@@ -55,7 +56,7 @@ const log = logger.child({ component: "entitlements" });
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EMAIL_BATCH_SIZE = 100; // Resend's batch limit
 const LOOKUP_CHUNK = 1000;
-// Local statuses the daily reconcile checks against Lemon Squeezy: still paid, or retrying a renewal.
+// Local statuses the daily reconcile checks with the provider: still paid, or retrying a renewal.
 const PROVIDER_CHECKED_STATUSES = ["active", "on_trial", ...FAILED_PAYMENT_STATUSES];
 // A subscription that ended longer ago than this gets no lapse grace or emails
 // when the reconcile finds it: the customer stopped paying long ago.
@@ -347,8 +348,22 @@ async function recordStaleLapse(dbClient: DbClient, sub: Subscription, endedAt: 
     );
 }
 
+// The provider's id for the row, matched by guarded updates and logged with it.
+const providerIdCondition = (sub: Subscription) =>
+  sub.billingProvider === "paddle"
+    ? eq(subscription.providerSubscriptionId, sub.providerSubscriptionId ?? "")
+    : eq(subscription.subscriptionId, sub.subscriptionId ?? 0);
+
+const subscriptionLogContext = (sub: Subscription) => ({
+  id: sub.id,
+  userId: sub.userId,
+  billingProvider: sub.billingProvider,
+  subscriptionId:
+    sub.billingProvider === "paddle" ? sub.providerSubscriptionId : sub.subscriptionId,
+});
+
 /**
- * Mirrors a subscription that Lemon Squeezy has ended (see
+ * Mirrors a subscription that its provider has ended (see
  * providerEndedSubscription) onto the local row still holding it as paid or
  * retrying a renewal, for when that webhook was missed: the same writes as the
  * webhook, with the entitlement sync in the same transaction. One that ended
@@ -361,7 +376,11 @@ export async function syncEndedSubscription(
   provider: ProviderSubscriptionState,
   now = new Date(),
 ): Promise<boolean> {
-  if (!sub.subscriptionId || !sub.status || !providerEndedSubscription(sub.status, provider, now)) {
+  if (
+    !hasProviderSubscription(sub) ||
+    !sub.status ||
+    !providerEndedSubscription(sub.status, provider, now)
+  ) {
     return false;
   }
   const changes =
@@ -381,7 +400,7 @@ export async function syncEndedSubscription(
       .where(
         and(
           eq(subscription.id, sub.id),
-          eq(subscription.subscriptionId, sub.subscriptionId ?? 0),
+          providerIdCondition(sub),
           eq(subscription.status, sub.status ?? ""),
           provider.updatedAt
             ? or(
@@ -401,9 +420,7 @@ export async function syncEndedSubscription(
     }
     log.info(
       {
-        id: sub.id,
-        userId: sub.userId,
-        subscriptionId: sub.subscriptionId,
+        ...subscriptionLogContext(sub),
         from: sub.status,
         to: provider.status,
         endsAt,
@@ -417,10 +434,11 @@ export async function syncEndedSubscription(
 
 /**
  * Checks every subscription held locally as paid or in a failed payment
- * against Lemon Squeezy and syncs the ones it has ended, so accounts the
+ * with its provider (Lemon Squeezy or Paddle) and syncs the ones it has ended, so accounts the
  * provider stopped billing lose their paid plan and failed payments stop asking
  * for a card update. A row the provider doesn't know, or that can't be checked,
- * is left unchanged (the latter for the next run). Returns how many rows changed.
+ * is left unchanged (the latter for the next run), as is a Paddle row while
+ * Paddle isn't configured. Returns how many rows changed.
  */
 export async function syncProviderEndedSubscriptions(
   now = new Date(),
@@ -432,18 +450,20 @@ export async function syncProviderEndedSubscriptions(
     .where(
       and(
         inArray(subscription.status, PROVIDER_CHECKED_STATUSES),
-        gt(subscription.subscriptionId, 0),
+        or(gt(subscription.subscriptionId, 0), isNotNull(subscription.providerSubscriptionId)),
       ),
     );
   let synced = 0;
   // Sequential: one lookup per paying account a day stays well inside the provider's rate limit.
   for (const sub of held) {
     try {
-      const provider = await lookup(sub.subscriptionId ?? 0);
+      const provider = await lookup(sub);
       if (await syncEndedSubscription(sub, provider, now)) synced++;
     } catch (err) {
-      const context = { id: sub.id, userId: sub.userId, subscriptionId: sub.subscriptionId };
-      if (err instanceof ProviderSubscriptionNotFoundError) {
+      const context = subscriptionLogContext(sub);
+      if (err instanceof ProviderNotConfiguredError) {
+        log.warn(context, "provider not configured; subscription not checked");
+      } else if (err instanceof ProviderSubscriptionNotFoundError) {
         log.warn(context, "subscription not found at provider; left unchanged");
       } else {
         log.warn({ err, ...context }, "could not check subscription with provider");
@@ -467,8 +487,8 @@ const PROVIDER_CHECK: ProviderCheck = {
 /**
  * Whether an email asking for a card update may go out for this subscription.
  * The local row may have missed the webhook that ended it, and the
- * update-payment-method link can't revive an expired subscription, so Lemon
- * Squeezy is asked first. An ended subscription is synced and its email skipped
+ * update-payment-method link can't revive an expired subscription, so the
+ * provider is asked first. An ended subscription is synced and its email skipped
  * (the next run sends the one for its new state); one that can't be checked is
  * left for the next run.
  */
@@ -477,20 +497,25 @@ export async function paymentUpdateEmailAllowed(
   now: Date,
   check: ProviderCheck = PROVIDER_CHECK,
 ): Promise<boolean> {
-  // Rows from before subscription ids were stored can't be checked, and the lookup only knows
-  // Lemon Squeezy subscriptions.
-  if (sub.billingProvider === "paddle" || !hasProviderSubscription(sub)) return true;
+  // Rows from before subscription ids were stored can't be checked.
+  if (!hasProviderSubscription(sub)) return true;
+  const context = subscriptionLogContext(sub);
   try {
-    const provider = await check.lookup(sub.subscriptionId ?? 0);
+    const provider = await check.lookup(sub);
     if (!isEndedProviderStatus(provider.status)) return true;
     await check.sync(sub, provider, now);
     log.info(
-      { userId: sub.userId, subscriptionId: sub.subscriptionId, status: provider.status },
+      { ...context, status: provider.status },
       "skipped card-update email for subscription ended at provider",
     );
   } catch (err) {
+    // Like a row without an id, one whose provider isn't configured here can't be checked.
+    if (err instanceof ProviderNotConfiguredError) {
+      log.warn(context, "provider not configured; card-update email sent unchecked");
+      return true;
+    }
     log.warn(
-      { err, userId: sub.userId, subscriptionId: sub.subscriptionId },
+      { err, ...context },
       "could not confirm failed payment with provider; card-update email deferred",
     );
   }
@@ -531,7 +556,7 @@ export async function reconcileEntitlements(now = new Date()): Promise<Reconcile
     emailsSent: 0,
   };
 
-  // 0. Paid or failed-payment subscriptions Lemon Squeezy has since ended
+  // 0. Paid or failed-payment subscriptions the provider has since ended
   //    (webhook missed), so the steps below and the emails see the real state.
   result.subscriptionsSynced = await syncProviderEndedSubscriptions(now);
 

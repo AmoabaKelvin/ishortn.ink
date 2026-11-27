@@ -24,7 +24,7 @@ import { checkoutDiscountCode } from "@/lib/billing/promo";
 import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { getPaddleClient, PaddleApiError } from "@/lib/paddle/client";
-import { getPaddleConfig, paddlePriceId } from "@/lib/paddle/config";
+import { checkoutProviderFor, getPaddleConfig, paddlePriceId } from "@/lib/paddle/config";
 import { normalizePaddleSubscription, paddleSubscriptionSchema } from "@/lib/paddle/normalize";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { subscription, subscriptionCancellation } from "@/server/db/schema";
@@ -39,8 +39,10 @@ import {
   downgradeWithFeedbackInput,
   pauseSubscriptionInput,
 } from "./lemonsqueezy.input";
+import { createPaddleCheckout } from "./paddle-checkout";
 import {
   createCheckoutWithPromoFallback,
+  lemonSqueezyPromoRejected,
   paddleErrorToClient,
   parseProviderUpdatedAt,
   pauseUpdate,
@@ -49,11 +51,15 @@ import {
 } from "./utils";
 
 import type { ProtectedTRPCContext } from "../../trpc";
+import type { CreateCheckoutOrUpdateInput } from "./lemonsqueezy.input";
+import type { PaddleCheckoutClient } from "./paddle-checkout";
+import type { Attribution } from "@/lib/billing/attribution";
 import type { BillingInterval, Plan } from "@/lib/billing/plans";
 import type { PaddleClient, PaddleSubscription } from "@/lib/paddle/client";
 import type { PaddleConfig, PaidPlan } from "@/lib/paddle/config";
 import type { NormalizedPaddleSubscription } from "@/lib/paddle/normalize";
 import type { Subscription } from "@/server/db/schema";
+import type { CheckoutStartInput } from "@/server/lib/checkout-starts";
 import type { Subscription as ProviderSubscription } from "@lemonsqueezy/lemonsqueezy.js";
 import type { SQL } from "drizzle-orm";
 
@@ -305,6 +311,140 @@ async function getUserSubscription(ctx: ProtectedTRPCContext) {
   });
 }
 
+export type NewCheckoutDeps = {
+  recordStart: (start: CheckoutStartInput) => Promise<void>;
+  paddleConfig: PaddleConfig | null;
+  paddleClient: PaddleCheckoutClient | null;
+  createLemonSqueezyCheckout: typeof createCheckout;
+};
+
+export type NewCheckoutInput = CreateCheckoutOrUpdateInput & {
+  userId: string;
+  user: { email: string | null } | null | undefined;
+  subscription: Subscription | null | undefined;
+};
+
+async function lemonSqueezyCheckout(
+  createLemonSqueezyCheckout: NewCheckoutDeps["createLemonSqueezyCheckout"],
+  input: NewCheckoutInput,
+  attribution: Attribution,
+  promoCode: string | undefined,
+) {
+  const { userId } = input;
+  const variantId = getVariantId(input.plan, input.interval);
+  const { result: checkout, discountCode } = await createCheckoutWithPromoFallback(
+    (discountCode) =>
+      createLemonSqueezyCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
+        checkoutOptions: {
+          // The app opens the URL as a full page; an embed checkout's close button only works
+          // inside the Lemon.js overlay.
+          embed: false,
+          media: false,
+        },
+        checkoutData: {
+          email: input.user?.email ?? undefined,
+          discountCode,
+          // Read back by the order webhook to attribute the order like the checkout.
+          custom: checkoutCustomData(userId, attribution, discountCode),
+        },
+        productOptions: {
+          enabledVariants: [variantId],
+          // The flag opens the "how did you find us" prompt (checkout-acquisition-prompt.tsx).
+          redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?checkout=success#billing`,
+          receiptButtonText: "Go to Dashboard",
+          receiptThankYouNote: `Thank you for signing up to iShortn ${
+            input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
+          }!`,
+        },
+      }),
+    lemonSqueezyPromoRejected,
+    promoCode,
+    (rejected) =>
+      log.warn(
+        { userId, variantId, discountCode: promoCode, err: rejected.error },
+        "promo code rejected, retrying checkout without it",
+      ),
+  );
+
+  if (checkout.error) {
+    throw providerError("checkout", checkout, { userId, variantId });
+  }
+
+  const url = checkout.data.data.attributes.url;
+  if (!url) {
+    log.error({ userId, variantId }, "lemon squeezy checkout returned no url");
+    throw new TRPCError(providerErrorToClient(null));
+  }
+  return { url, discountCode };
+}
+
+/**
+ * A checkout for a user with no subscription to change: Paddle when the provider switch selects
+ * it for this user (`checkoutProviderFor`), Lemon Squeezy otherwise.
+ */
+export async function startNewCheckout(deps: NewCheckoutDeps, input: NewCheckoutInput) {
+  const { userId, plan, interval } = input;
+  // A subscription that still exists with either provider is changed or resumed in place; a
+  // second checkout would bill twice while only one row is kept.
+  if (getSubscriptionMode(input.subscription) !== "checkout") {
+    log.error(
+      { userId, provider: input.subscription?.billingProvider },
+      "refused a new checkout for a user with a live subscription",
+    );
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "You already have a subscription. Change your plan from billing settings.",
+    });
+  }
+  const promoCode = checkoutDiscountCode();
+  const attribution = { source: input.source, ...input.utm };
+  const priceId = paddlePriceId(plan, interval, deps.paddleConfig);
+  // Configured Paddle always has a client and every price; the checks only narrow the types.
+  const paddle =
+    checkoutProviderFor(userId, deps.paddleConfig) === "paddle" && deps.paddleClient && priceId
+      ? { client: deps.paddleClient, priceId }
+      : null;
+  const provider = paddle ? "paddle" : "lemonsqueezy";
+
+  const { url, discountCode } = paddle
+    ? await createPaddleCheckout(paddle.client, {
+        userId,
+        email: input.user?.email,
+        subscription: input.subscription,
+        plan,
+        interval,
+        priceId: paddle.priceId,
+        attribution,
+        promoCode,
+      })
+    : await lemonSqueezyCheckout(deps.createLemonSqueezyCheckout, input, attribution, promoCode);
+
+  void runBackgroundTask(
+    deps.recordStart({
+      userId,
+      plan,
+      interval,
+      source: input.source ?? null,
+      promoCode: discountCode ?? null,
+      provider,
+    }),
+  );
+
+  captureServerEvent(
+    { id: userId, email: input.user?.email },
+    "checkout_started",
+    checkoutEventProperties({
+      plan,
+      interval,
+      discount_code: discountCode,
+      provider,
+      ...attribution,
+    }),
+  );
+
+  return { status: "redirect" as const, url };
+}
+
 export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps) =>
   createTRPCRouter({
     createCheckoutOrUpdate: protectedProcedure
@@ -406,74 +546,15 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
           return { status: "updated" as const, message: "Plan updated successfully!" };
         }
 
-        const promoCode = checkoutDiscountCode();
-        const attribution = { source: input.source, ...input.utm };
-        const { result: checkout, discountCode: sentPromoCode } =
-          await createCheckoutWithPromoFallback(
-            (discountCode) =>
-              createCheckout(env.LEMONSQUEEZY_STORE_ID!, variantId, {
-                checkoutOptions: {
-                  // The app opens the URL as a full page; an embed checkout's close button only works
-                  // inside the Lemon.js overlay.
-                  embed: false,
-                  media: false,
-                },
-                checkoutData: {
-                  email: user?.email ?? undefined,
-                  discountCode,
-                  // Read back by the order webhook to attribute the order like the checkout.
-                  custom: checkoutCustomData(userId, attribution, discountCode),
-                },
-                productOptions: {
-                  enabledVariants: [variantId],
-                  // The flag opens the "how did you find us" prompt (checkout-acquisition-prompt.tsx).
-                  redirectUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings?checkout=success#billing`,
-                  receiptButtonText: "Go to Dashboard",
-                  receiptThankYouNote: `Thank you for signing up to iShortn ${
-                    input.plan.charAt(0).toUpperCase() + input.plan.slice(1)
-                  }!`,
-                },
-              }),
-            promoCode,
-            (rejected) =>
-              log.warn(
-                { userId, variantId, discountCode: promoCode, err: rejected.error },
-                "promo code rejected, retrying checkout without it",
-              ),
-          );
-
-        if (checkout.error) {
-          throw providerError("checkout", checkout, { userId, variantId });
-        }
-
-        const url = checkout.data.data.attributes.url;
-        if (!url) {
-          log.error({ userId, variantId }, "lemon squeezy checkout returned no url");
-          throw new TRPCError(providerErrorToClient(null));
-        }
-
-        void runBackgroundTask(
-          recordCheckoutStart({
-            userId,
-            plan: input.plan,
-            interval: input.interval,
-            source: input.source ?? null,
-            promoCode: sentPromoCode ?? null,
-          }),
+        return startNewCheckout(
+          {
+            recordStart: (start) => recordCheckoutStart(start, ctx.db),
+            paddleConfig: getPaddleConfig(),
+            paddleClient: getPaddleClient(),
+            createLemonSqueezyCheckout: createCheckout,
+          },
+          { userId, user, subscription: userSubscription, ...input },
         );
-
-        captureServerEvent(
-          { id: userId, email: user?.email },
-          "checkout_started",
-          checkoutEventProperties({
-            plan: input.plan,
-            interval: input.interval,
-            discount_code: sentPromoCode,
-            ...attribution,
-          }),
-        );
-
-        return { status: "redirect" as const, url };
       }),
 
     cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
