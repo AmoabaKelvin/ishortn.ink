@@ -108,7 +108,7 @@ Rules of thumb:
 
 ## Putting it together: a worked example
 
-Say you run a café with two locations and you're launching a winter menu. You want to know whether the table tents or the window posters drive more orders, and which location's customers engage most.
+Say you run a café with two locations and you're launching [a winter menu](/blog/qr-code-for-restaurant-menu). You want to know whether the table tents or the window posters drive more orders, and which location's customers engage most.
 
 1. Create four dynamic QR codes: table tent and window poster for each location.
 2. Point each one at your online menu with its own tags, for example `?utm_source=qr&utm_medium=print&utm_campaign=winter_menu&utm_content=table_tent_east`.
