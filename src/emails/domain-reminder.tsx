@@ -1,4 +1,4 @@
-import { Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
 
 import { displayName } from "@/lib/utils/user-name";
 
@@ -7,11 +7,11 @@ import {
   EmailButton,
   EmailLayout,
   fieldLabel,
-  panel,
   recordTitle,
   Signoff,
   smallText,
   text,
+  Well,
 } from "./_components/layout";
 
 type Challenge = {
@@ -56,13 +56,13 @@ export const DomainReminderEmail = ({
 
       {/* One stacked block per record: tables overflow on narrow screens. */}
       {challenges.map((challenge, index) => (
-        <Section key={`${challenge.type}-${challenge.domain}-${index}`} style={panel}>
+        <Well key={`${challenge.type}-${challenge.domain}-${index}`}>
           <Text style={recordTitle}>{challenge.type} record</Text>
           <Text style={fieldLabel}>Name</Text>
           <CodeBlock>{challenge.domain}</CodeBlock>
           <Text style={fieldLabel}>Value</Text>
           <CodeBlock>{challenge.value}</CodeBlock>
-        </Section>
+        </Well>
       ))}
 
       <Text style={smallText}>

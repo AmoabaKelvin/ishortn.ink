@@ -10,9 +10,11 @@ import { PLAN_CAPS } from "@/lib/billing/plans";
 import { ACTIVE_PROMO } from "@/lib/billing/promo";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 import { promoPausedNoticeUrl } from "@/server/lib/notifications/promo-paused-notice";
+import { renderEmail } from "@/server/lib/notifications/render-email";
 import { upgradeNudgeEmailProps } from "@/server/lib/notifications/upgrade-nudge";
 import { weeklySummaryEmailProps } from "@/server/lib/notifications/weekly-summary";
 
+import { EmailLayout, POSTAL_ADDRESS } from "./_components/layout";
 import FirstLinkNudgeEmail from "./first-link-nudge";
 import PromoPausedNoticeEmail from "./promo-paused-notice";
 import UpgradeNudgeEmail, {
@@ -41,15 +43,70 @@ describe("email templates", () => {
 
       const html = await render(createElement(Template, Template.PreviewProps));
 
-      // Logo and footer from EmailLayout
-      expect(html).toContain('alt="iShortn"');
-      expect(html).toContain('src="https://ishortn.ink/email/logo@2x.png"');
-      expect(html).toContain("mailto:support@ishortn.ink");
+      // Header, dark-mode support and footer from EmailLayout
+      expect(html).toContain('src="https://ishortn.ink/email/logo-tile@2x.png"');
+      expect(html).toContain(">iShortn</a>");
       expect(html).toContain("https://ishortn.ink/dashboard");
+      expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
+      expect(html).toContain("prefers-color-scheme: dark");
+      expect(html).toContain("Questions? Reply to this email.");
+      expect(html).toContain(POSTAL_ADDRESS);
       // No fixed widths that could overflow a 390px screen
       expect(html).not.toMatch(/(?<![-\w])width:\s*\d{3,}px/);
     });
+
+    test(`${file} sends a clean plain-text part`, async () => {
+      const mod: { default: Template } = await import(path.join(import.meta.dir, file));
+      const Template = mod.default;
+      const { text } = await renderEmail(
+        createElement(Template, Template.PreviewProps),
+        "ama@example.com",
+      );
+
+      expect(text).not.toMatch(/[\u00A0\u200B-\u200F\uFEFF]{2,}/);
+      const urls = text.match(/https?:\/\/\S+/g) ?? [];
+      expect(urls).toEqual([...new Set(urls)]);
+      expect(text).toContain("Sent to ama@example.com.");
+      expect(text).toEndWith(POSTAL_ADDRESS);
+    });
   }
+});
+
+describe("email layout", () => {
+  test("a system email shows its eyebrow and headline", async () => {
+    const html = await render(
+      createElement(
+        EmailLayout,
+        {
+          preview: "Your week",
+          eyebrow: "Weekly summary · 16-22 Nov",
+          headline: "1,284 clicks",
+        },
+        null,
+      ),
+    );
+
+    expect(html).toContain("Weekly summary · 16-22 Nov");
+    expect(html).toContain("text-transform:uppercase");
+    expect(html).toMatch(/<h1[^>]*>1,284 clicks<\/h1>/);
+  });
+
+  test("a letter opens with the first name and has no headline", async () => {
+    const html = await render(
+      createElement(
+        EmailLayout,
+        {
+          preview: "A note",
+          variant: "letter",
+          recipientName: "Ama Osei",
+        },
+        null,
+      ),
+    );
+
+    expect(html).toContain("Hi <!-- -->Ama<!-- -->,");
+    expect(html).not.toContain("<h1");
+  });
 });
 
 describe("first link nudge", () => {
@@ -63,7 +120,7 @@ describe("first link nudge", () => {
     expect(html).toContain("Prefer a QR code?");
     expect(html).toContain("https://ishortn.ink/dashboard/qrcodes/create?utm_source=email");
     expect(html).toContain("The iShortn team");
-    expect(html).toContain("Manage notifications");
+    expect(html).toContain("Email settings");
   });
 
   test("greets users stored without a real name as there", async () => {
@@ -107,7 +164,7 @@ describe("promo paused notice", () => {
     expect(html).toContain(
       "/dashboard/pricing?highlight=pro&amp;source=events_promo_email&amp;utm_source=ishortn&amp;utm_medium=email&amp;utm_campaign=bfcm2026",
     );
-    expect(html).toContain("Manage notifications");
+    expect(html).toContain("Email settings");
   });
 
   test("an account over Pro's allowance is offered Ultra", async () => {
@@ -163,7 +220,7 @@ describe("weekly summary", () => {
     expect(html).toContain(
       "https://ishortn.ink/dashboard/analytics/overview?utm_source=email&amp;utm_medium=lifecycle&amp;utm_campaign=weekly_summary",
     );
-    expect(html).toContain("Manage notifications");
+    expect(html).toContain("Email settings");
     expect(html).not.toContain("Upgrade to Pro");
   });
 
@@ -376,7 +433,7 @@ describe("upgrade nudge", () => {
         "https://ishortn.ink/api/email/unsubscribe?token=user_1.",
       );
       expect(rendered).toContain(">Unsubscribe</a>");
-      expect(rendered).toContain("Manage notifications");
+      expect(rendered).toContain("Email settings");
       expect(rendered).toContain(
         "You&#x27;re getting this one-time email because you have an iShortn account with product emails turned on.",
       );

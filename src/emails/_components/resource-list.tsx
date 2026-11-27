@@ -1,6 +1,6 @@
-import { Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
 
-import { panel, panelItem } from "./layout";
+import { panelItem, Well } from "./layout";
 
 import type { ResourceCounts } from "@/server/api/routers/account-transfer/account-transfer.service";
 
@@ -24,13 +24,13 @@ export function ResourceList({
   const rows = LABELS.filter(([key]) => counts[key] > 0);
 
   return (
-    <Section style={panel}>
+    <Well>
       {rows.map(([key, one, many]) => (
         <Text key={key} style={panelItem}>
           {counts[key].toLocaleString()} {counts[key] === 1 ? one : many}
         </Text>
       ))}
       {rows.length === 0 && <Text style={panelItem}>{emptyLabel}</Text>}
-    </Section>
+    </Well>
   );
 }

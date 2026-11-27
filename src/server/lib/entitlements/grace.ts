@@ -29,6 +29,7 @@ import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, team, user } from "@/server/db/schema";
+import { renderEmail } from "@/server/lib/notifications/render-email";
 import { getResend } from "@/server/lib/notifications/resend-client";
 import { EMAIL_FROM } from "@/server/lib/notifications/send-email";
 
@@ -997,14 +998,15 @@ export async function sendDueGraceEmails(options: {
   for (const batch of chunk(claimed, EMAIL_BATCH_SIZE)) {
     let error: Error | null = null;
     try {
-      ({ error } = await resend.batch.send(
-        batch.map((email) => ({
+      const emails = await Promise.all(
+        batch.map(async (email) => ({
           from: EMAIL_FROM,
           to: email.to,
           subject: email.subject,
-          react: PlanGraceEmail(email.props),
+          ...(await renderEmail(PlanGraceEmail(email.props), email.to)),
         })),
-      ));
+      );
+      ({ error } = await resend.batch.send(emails));
     } catch (err) {
       error = err instanceof Error ? err : new Error(String(err));
     }

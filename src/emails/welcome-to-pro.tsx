@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Link, Text } from "@react-email/components";
 
 import { PLAN_CAPS, type Plan } from "@/lib/billing/plans";
 import { SUPPORT_EMAIL } from "@/lib/constants/app";
@@ -10,9 +10,9 @@ import {
   EmailLayout,
   headingText,
   link,
-  panel,
   panelItem,
   text,
+  Well,
 } from "./_components/layout";
 
 type PaidPlan = Exclude<Plan, "free">;
@@ -62,13 +62,13 @@ export const WelcomeEmail = ({ userName, plan = "pro" }: WelcomeEmailProps) => {
       </Text>
 
       <Text style={headingText}>What&apos;s included in your plan</Text>
-      <Section style={panel}>
+      <Well>
         {planBenefits[plan].map((benefit) => (
           <Text key={benefit} style={panelItem}>
             ✓ {benefit}
           </Text>
         ))}
-      </Section>
+      </Well>
 
       <EmailButton href={getAppUrl(plan === "ultra" ? "/dashboard/teams/new" : "/dashboard")}>
         {plan === "ultra" ? "Create your team" : "Go to your dashboard"}

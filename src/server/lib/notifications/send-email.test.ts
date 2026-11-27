@@ -93,6 +93,15 @@ describe("deliverEmail", () => {
     expect(client.sent[0]).not.toHaveProperty("template");
   });
 
+  test("sends rendered HTML and plain-text parts instead of the React element", async () => {
+    const client = clientReturning({ data: { id: "email_1" }, error: null });
+
+    expect(await deliverEmail(client, recordingLog(), input, notSuppressed)).toBe(true);
+    expect(client.sent[0]?.html).toContain("<p>Hi</p>");
+    expect(client.sent[0]?.text).toBe("Hi");
+    expect(client.sent[0]).not.toHaveProperty("react");
+  });
+
   test("sends from the given sender when one is set", async () => {
     const client = clientReturning({ data: { id: "email_1" }, error: null });
     const from = "iShortn <updates@mail.example.com>";

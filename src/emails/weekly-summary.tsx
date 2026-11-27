@@ -4,13 +4,14 @@ import { PLAN_CAPS } from "@/lib/billing/plans";
 import { displayName } from "@/lib/utils/user-name";
 
 import {
+  bigNumber,
   EmailButton,
   EmailLayout,
   headingText,
   link,
-  panel,
   panelItem,
   text,
+  Well,
 } from "./_components/layout";
 
 import type { CSSProperties } from "react";
@@ -101,12 +102,12 @@ export const WeeklySummaryEmail = ({
 
       <Text style={text}>Here&apos;s how your links did last week ({weekLabel}, UTC).</Text>
 
-      <Section style={panel}>
+      <Well>
         <Text style={bigNumber}>{formatClicks(clicks)}</Text>
-        <Text style={{ ...panelItem, color: "#6b7280" }}>
+        <Text style={{ ...panelItem, color: "#737373" }}>
           {compareWeeks(clicks, previousClicks)}
         </Text>
-      </Section>
+      </Well>
 
       {topLinks.length > 0 && (
         <>
@@ -153,16 +154,8 @@ export const WeeklySummaryEmail = ({
   );
 };
 
-const bigNumber: CSSProperties = {
-  color: "#111827",
-  fontSize: "28px",
-  fontWeight: 600,
-  lineHeight: "36px",
-  margin: "0 0 4px",
-};
-
 const row: CSSProperties = {
-  borderBottom: "1px solid #e5e7eb",
+  borderBottom: "1px solid #e8e8e8",
 };
 
 const rowLabel: CSSProperties = {
@@ -171,7 +164,7 @@ const rowLabel: CSSProperties = {
 };
 
 const rowName: CSSProperties = {
-  color: "#111827",
+  color: "#171717",
   fontSize: "14px",
   lineHeight: "20px",
   margin: 0,
@@ -179,7 +172,7 @@ const rowName: CSSProperties = {
 };
 
 const rowUrlMuted: CSSProperties = {
-  color: "#6b7280",
+  color: "#737373",
   fontSize: "13px",
   lineHeight: "18px",
   margin: 0,
@@ -187,7 +180,7 @@ const rowUrlMuted: CSSProperties = {
 };
 
 const rowValue: CSSProperties = {
-  color: "#111827",
+  color: "#171717",
   fontSize: "14px",
   fontWeight: 600,
   padding: "8px 0",
