@@ -21,27 +21,45 @@ import { api } from "@/trpc/react";
 
 import type { RouterOutputs } from "@/trpc/shared";
 
-type Token = RouterOutputs["token"]["list"][number];
+type Token = RouterOutputs["token"]["list"][number] & {
+  // Team keys only: the member who created it (null once their account is gone).
+  createdBy?: { name: string | null; email: string | null } | null;
+};
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
-const TokenCard = ({ token, active = true }: { token: Token; active?: boolean }) => {
+const TokenCard = ({
+  token,
+  active = true,
+  team = false,
+  canRevoke = true,
+}: {
+  token: Token;
+  active?: boolean;
+  /** A team API key: revoked through the team procedure. */
+  team?: boolean;
+  canRevoke?: boolean;
+}) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Keys created before names were stored have none.
   const name = token.name ?? "API key";
+  const creator = token.createdBy ? (token.createdBy.name ?? token.createdBy.email) : null;
 
-  const deleteTokenMutation = api.token.delete.useMutation({
+  const revokeOptions = {
     onSuccess: async () => {
       trackEvent(POSTHOG_EVENTS.API_KEY_REVOKED);
       toast.success("API key revoked");
       setConfirmOpen(false);
       await revalidateRoute("/dashboard/settings");
     },
-    onError: (error) => {
+    onError: (error: { message: string }) => {
       toast.error(error.message);
     },
-  });
+  };
+  const deletePersonal = api.token.delete.useMutation(revokeOptions);
+  const deleteTeam = api.token.deleteTeam.useMutation(revokeOptions);
+  const deleteTokenMutation = team ? deleteTeam : deletePersonal;
 
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -72,7 +90,12 @@ const TokenCard = ({ token, active = true }: { token: Token; active?: boolean })
           )}
         </div>
         <p className="mt-0.5 truncate text-[12px] text-neutral-400 dark:text-muted-foreground">
-          {token.createdAt && <>Created {formatDate(token.createdAt)} &middot; </>}
+          {token.createdAt && (
+            <>
+              Created {formatDate(token.createdAt)}
+              {creator && <> by {creator}</>} &middot;{" "}
+            </>
+          )}
           {token.lastUsedAt ? (
             <span title={token.lastUsedAt.toLocaleString()}>
               Last used {formatDistanceToNow(token.lastUsedAt, { addSuffix: true })}
@@ -83,15 +106,17 @@ const TokenCard = ({ token, active = true }: { token: Token; active?: boolean })
         </p>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setConfirmOpen(true)}
-        aria-label={`Revoke ${name}`}
-        className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:border-red-200 hover:bg-red-50 dark:border-border dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-500/10"
-      >
-        <IconTrash size={13} stroke={1.5} />
-        <span className="hidden sm:inline">Revoke</span>
-      </button>
+      {canRevoke && (
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          aria-label={`Revoke ${name}`}
+          className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:border-red-200 hover:bg-red-50 dark:border-border dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-500/10"
+        >
+          <IconTrash size={13} stroke={1.5} />
+          <span className="hidden sm:inline">Revoke</span>
+        </button>
+      )}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="max-w-md rounded-xl">

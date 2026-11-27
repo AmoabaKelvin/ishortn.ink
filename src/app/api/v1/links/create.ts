@@ -54,7 +54,7 @@ export type TokenLinkSafetyDeps = UrlSafetyDeps & {
 };
 
 /**
- * Creates a link in the token owner's personal workspace with the plan's checks, the URL safety
+ * Creates a link in the key's workspace (the creator's personal one, or the key's team) with the plan's checks, the URL safety
  * check and the monthly quota. Shared by POST /api/v1/links and the browser extension. Throws
  * TRPCErrors with user-facing messages; plan refusals are FORBIDDEN. Step durations go to
  * `serverTiming` for the route's Server-Timing header.
@@ -77,11 +77,10 @@ export async function createTokenLink(
     safety.catch(() => undefined);
 
     const { requestedDomain, domainError } = await serverTiming.measure("domain", async () => {
-      const domain = await resolveApiDomainForUser(token.userId, parsedData, token.defaultDomain);
+      const domain = await resolveApiDomainForUser(token, parsedData);
       return {
         requestedDomain: domain,
-        domainError:
-          domain && (await apiDomainWriteError(token.userId, token.graceUsagePlan, domain)),
+        domainError: domain && (await apiDomainWriteError(token, token.graceUsagePlan, domain)),
       };
     });
     if (!requestedDomain) {
@@ -171,6 +170,7 @@ async function createNewLink(
     passwordHash: data.password ?? null,
     domain,
     userId,
+    teamId: token.team?.id ?? null,
     createdByUserId: userId,
     utmParams: data.utmParams ?? null,
     // TIMESTAMP keeps whole seconds; truncating here makes the response match the stored row.
