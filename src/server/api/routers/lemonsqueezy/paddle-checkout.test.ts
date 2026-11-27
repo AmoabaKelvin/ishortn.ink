@@ -318,4 +318,61 @@ describe("startNewCheckout", () => {
       },
     ]);
   });
+
+  const paddleDeps = (client: PaddleCheckoutClient): NewCheckoutDeps => ({
+    recordStart,
+    paddleConfig: buildPaddleConfig(PADDLE_ENV),
+    paddleClient: client,
+    createLemonSqueezyCheckout,
+  });
+
+  // SAFETY: getSubscriptionMode reads only these fields of the row.
+  const paddleRow = (fields: Partial<Subscription>) =>
+    ({
+      billingProvider: "paddle",
+      subscriptionId: null,
+      providerSubscriptionId: "sub_live",
+      providerCustomerId: "ctm_row",
+      variantId: null,
+      productId: null,
+      plan: "pro",
+      endsAt: null,
+      pausedUntil: null,
+      ...fields,
+    }) as Subscription;
+
+  test.each([
+    ["active", paddleRow({ status: "active" })],
+    ["past due", paddleRow({ status: "past_due" })],
+    ["paused", paddleRow({ status: "paused" })],
+    [
+      "cancelled in its paid period",
+      paddleRow({ status: "cancelled", endsAt: new Date(Date.now() + 86_400_000) }),
+    ],
+  ])("a user with a %s Paddle subscription never gets a second checkout", async (_, row) => {
+    const { calls, client } = stubPaddle({});
+
+    const result = startNewCheckout(paddleDeps(client), {
+      ...input("user_paddle"),
+      plan: "ultra",
+      subscription: row,
+    });
+
+    await expect(result).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(calls.createTransaction).toHaveLength(0);
+    expect(lemonSqueezyCalls).toBe(0);
+    expect(starts).toEqual([]);
+  });
+
+  test("a Paddle subscription that has ended can check out again", async () => {
+    const { calls, client } = stubPaddle({});
+
+    await startNewCheckout(paddleDeps(client), {
+      ...input("user_paddle"),
+      subscription: paddleRow({ status: "expired" }),
+    });
+
+    expect(calls.createTransaction).toHaveLength(1);
+    expect(calls.createTransaction[0]?.customerId).toBe("ctm_row");
+  });
 });

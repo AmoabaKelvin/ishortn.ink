@@ -38,6 +38,14 @@ export function providerErrorToClient(statusCode: number | null): ClientBillingE
   };
 }
 
+/**
+ * providerErrorToClient for a failed Paddle call. Paddle rejects a change it can't apply (a
+ * renewal in progress, a pending change) with 400 or 409 where Lemon Squeezy uses 422.
+ */
+export function paddleErrorToClient(statusCode: number | null): ClientBillingError {
+  return providerErrorToClient(statusCode === 400 || statusCode === 409 ? 422 : statusCode);
+}
+
 /** `updated_at` from a provider response, or null when it can't be trusted as an ordering marker. */
 export function parseProviderUpdatedAt(updatedAt: string | null | undefined): Date | null {
   if (!updatedAt) return null;
