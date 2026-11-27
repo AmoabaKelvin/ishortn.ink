@@ -76,6 +76,8 @@ export function getMarketingRedirectUrl(
 // path falls through to the [linkAlias] route; indexing.test.ts fails when a
 // new top-level route under src/app is missing here.
 export const APP_TOP_LEVEL_SEGMENTS = new Set([
+  // Domain proofs such as /.well-known/mcp-registry-auth (app host only).
+  ".well-known",
   "abuse",
   "account",
   "api",
