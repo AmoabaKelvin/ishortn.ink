@@ -47,6 +47,11 @@ describe("sitemap", () => {
     expect(urls).toContain("https://ishortn.ink/open-source-url-shortener");
   });
 
+  it("lists the AIRO customer story", async () => {
+    const entry = (await entries()).find((e) => e.url === "https://ishortn.ink/customers/airo");
+    expect(entry?.lastModified).toBe("2026-11-27");
+  });
+
   it("lists the Chrome extension page", async () => {
     const urls = (await entries()).map((entry) => entry.url);
     expect(urls).toContain("https://ishortn.ink/extension");

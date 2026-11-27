@@ -47,12 +47,30 @@ describe("Testimonial", () => {
     expect(html).toMatch(/<img[^>]*alt="AIRO"/);
   });
 
+  it("links to the customer story when given", () => {
+    const entry = {
+      id: "with-story",
+      quote: "Quote.",
+      name: "Chris Lastra",
+      company: "AIRO",
+      href: "/customers/airo",
+    };
+    const html = renderToStaticMarkup(<Testimonial testimonials={[entry]} />);
+    expect(html).toMatch(/<a[^>]*href="\/customers\/airo"/);
+    expect(text(html)).toContain("Read the story");
+  });
+
+  it("links the AIRO quote to its story", () => {
+    expect(testimonials.find((t) => t.id === "chris-lastra-airo")?.href).toBe("/customers/airo");
+  });
+
   it("shows only the company and no image without a role or logo", () => {
     const entry = { id: "plain", quote: "Quote.", name: "Sam Lee", company: "Acme" };
     const html = renderToStaticMarkup(<Testimonial testimonials={[entry]} />);
     expect(text(html)).toContain("Acme");
     expect(text(html)).not.toContain(", Acme");
     expect(html).not.toContain("<img");
+    expect(html).not.toContain("<a ");
   });
 
   it("renders nothing without entries", () => {
