@@ -64,7 +64,7 @@ Sources: [Rebrandly pricing](https://www.rebrandly.com/pricing), [Bitly pricing]
 
 **Free:** 30 new links a month, 1,000 tracked events a month (clicks, QR scans and bio page views) with a 7-day analytics view, 5 dynamic QR codes that don't expire, 1 bio page and link expiry by date or click count. You can edit any link's destination.
 
-**Pro, $8 a month ($80 a year):** 1,000 new links every month, 10,000 tracked events, 3 custom domains, unlimited analytics history, password-protected links, geo and device targeting, scheduled links, CSV import and the API.
+**Pro, $8 a month ($80 a year):** 1,000 new links every month, 10,000 tracked events, 3 custom domains, a full year of detailed analytics, password-protected links, geo and device targeting, scheduled links, CSV import and the API.
 
 **Ultra, $15 a month:** unlimited links, events and domains, link cloaking, UTM fields in the link editor, and team workspaces with owner, admin and member roles.
 

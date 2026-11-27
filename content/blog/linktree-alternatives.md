@@ -65,7 +65,7 @@ Sources: [Beacons pricing](https://beacons.ai/i/pricing), [Carrd Pro](https://ca
 
 **Free:** 1 bio page at `ishortn.ink/p/yourname` with up to 3 link buttons, plus headings, text, an email button and social icons, which don't count toward the 3. The page shows views, unique visitors, clicks on each button and click-through rate, for the last 7 days. You also get 30 short links a month and 5 dynamic QR codes that don't expire. Views and clicks share an allowance of 1,000 tracked events a month. Past that, the page keeps working, but new visits aren't counted until the next month.
 
-**Pro, $8 a month ($80 a year):** up to 3 bio pages with no limit on link buttons, on your own domain such as `links.yourshop.com`, with no iShortn badge, your own colours, fonts and button styles, and a custom social preview image. Pro includes 3 custom domains, 1,000 new links and 10,000 tracked events a month, unlimited analytics history, password-protected links and the API. On Pro, bio link buttons count toward the 1,000 links.
+**Pro, $8 a month ($80 a year):** up to 3 bio pages with no limit on link buttons, on your own domain such as `links.yourshop.com`, with no iShortn badge, your own colours, fonts and button styles, and a custom social preview image. Pro includes 3 custom domains, 1,000 new links and 10,000 tracked events a month, a full year of detailed analytics, password-protected links and the API. On Pro, bio link buttons count toward the 1,000 links.
 
 Compared with Linktree, iShortn shows clicks per link on the free plan, where Linktree starts that on Starter. Pro serves the page on your own domain, which no Linktree plan does, and removes the badge for $8 against Linktree Pro's $17.
 
