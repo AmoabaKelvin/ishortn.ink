@@ -7,6 +7,7 @@ import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 
 import { runLinkHealthCheck } from ".";
+import { getDestinationDownByLinkId, resetLinkHealth } from "./status";
 
 import type { SendLinkHealthAlertInput } from "@/server/lib/notifications/link-health";
 
@@ -169,5 +170,37 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("runLinkHealthCheck", () => {
       sendIntervalMs: 0,
     });
     expect(ours()).toHaveLength(1);
+  });
+
+  test("the badge shows only on live links, and a reset clears it", async () => {
+    const ids = [linkIds.notFound, linkIds.dns];
+    expect([...(await getDestinationDownByLinkId(db, "pro", ids)).keys()].sort()).toEqual(
+      [...ids].sort(),
+    );
+    expect((await getDestinationDownByLinkId(db, "free", ids)).size).toBe(0);
+
+    await db.update(schema.link).set({ archived: true }).where(eq(schema.link.id, linkIds.dns));
+    expect([...(await getDestinationDownByLinkId(db, "pro", ids)).keys()]).toEqual([
+      linkIds.notFound,
+    ]);
+    await db.update(schema.link).set({ archived: false }).where(eq(schema.link.id, linkIds.dns));
+
+    await resetLinkHealth(db, linkIds.notFound);
+    expect((await healthOf()).notFound).toBeNull();
+    expect([...(await getDestinationDownByLinkId(db, "pro", ids)).keys()]).toEqual([linkIds.dns]);
+  });
+
+  test("a run removes health rows of deleted links", async () => {
+    await db.insert(schema.linkHealth).values({
+      linkId: 2_000_000_000,
+      lastCheckedAt: DAY_1,
+      consecutiveFailures: 1,
+    });
+    await runLinkHealthCheck({ now: DAY_2, deps, send: async () => true, sendIntervalMs: 0 });
+    const left = await db
+      .select()
+      .from(schema.linkHealth)
+      .where(eq(schema.linkHealth.linkId, 2_000_000_000));
+    expect(left).toHaveLength(0);
   });
 });

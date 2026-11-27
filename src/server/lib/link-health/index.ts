@@ -9,6 +9,7 @@ import {
   isNotNull,
   isNull,
   lt,
+  notExists,
   or,
   sql,
 } from "drizzle-orm";
@@ -26,11 +27,11 @@ import {
 import { isSuppressedSql } from "@/server/lib/notifications/suppression";
 
 import { checkDestination, MAX_SUBREQUESTS_PER_CHECK, type CheckDeps } from "./check";
+import { liveLink, notSet } from "./status";
 import { hostLanes, nextLinkHealth, type LinkHealthState } from "./utils";
 
 import type { CheckResult } from "./check";
 import type { Plan } from "@/lib/billing/plans";
-import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 const log = logger.child({ component: "link-health" });
 
@@ -56,8 +57,6 @@ const MAX_CONSECUTIVE_SEND_FAILURES = 5;
 
 // mysql2 returns `exists (...)` as 0 or 1.
 const isTrue = (value: number | string) => Number(value) === 1;
-
-const notSet = (column: AnyMySqlColumn) => or(isNull(column), eq(column, false));
 
 const hasQrCode = () =>
   exists(db.select({ id: qrcode.id }).from(qrcode).where(eq(qrcode.linkId, link.id)));
@@ -115,9 +114,6 @@ function paidOwnerFilter(paid: PaidAccounts) {
     paid.userIds.length ? and(isNull(link.teamId), inArray(link.userId, paid.userIds)) : undefined,
   );
 }
-
-const liveLink = () =>
-  and(notSet(link.archived), notSet(link.blocked), notSet(link.disabled), isNotNull(link.url));
 
 type Candidate = { linkId: number; url: string; health: LinkHealthState | null };
 
@@ -440,6 +436,10 @@ export async function runLinkHealthCheck({
   }
 
   await writeHealth(rows);
+  // Deleted links leave their row behind; there are few, and nothing else cleans them up.
+  await db
+    .delete(linkHealth)
+    .where(notExists(db.select({ id: link.id }).from(link).where(eq(link.id, linkHealth.linkId))));
   const alerts = await sendAlerts(now, paid, send, sendIntervalMs);
   log.info({ ...counts, alerts, durationMs: Date.now() - started }, "link health checked");
   return { ...counts, alerts };

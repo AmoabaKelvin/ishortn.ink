@@ -76,7 +76,7 @@ import {
   recordLinkCreationFailures,
   trackLinkCreation,
 } from "@/server/lib/link-creation/failures";
-import { getDestinationDownByLinkId } from "@/server/lib/link-health/status";
+import { getDestinationDownByLinkId, resetLinkHealth } from "@/server/lib/link-health/status";
 import { getTargetingTypesByLinkId } from "@/server/lib/link-targeting";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe, assertUrlSafeFast, canDeferLlmCheck } from "@/server/lib/phishing";
@@ -983,6 +983,9 @@ export const updateLink = async (
       );
     }
     await tx.update(link).set(linkData).where(linkWhere);
+    if (linkData.url !== undefined && linkData.url !== existingLink.url) {
+      await resetLinkHealth(tx, input.id);
+    }
 
     if (tagNames) {
       await associateTagsWithLink({ ...ctx, db: tx }, input.id, tagNames);

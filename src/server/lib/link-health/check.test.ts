@@ -6,6 +6,8 @@ import {
   checkDestination,
   classifyFetchError,
   classifyStatus,
+  createCheckResolver,
+  DnsLookupFailed,
   LINK_CHECK_USER_AGENT,
 } from "./check";
 
@@ -117,6 +119,17 @@ describe("checkDestination", () => {
     expect(calls).toHaveLength(0);
   });
 
+  test("a failed DNS lookup is inconclusive, without a fetch", async () => {
+    const { impl, calls } = fakeFetch({});
+    const failing = async () => {
+      throw new DnsLookupFailed("lookup failed");
+    };
+    expect(await checkDestination("https://x.test/", { fetch: impl, resolve: failing })).toEqual({
+      kind: "inconclusive",
+    });
+    expect(calls).toHaveLength(0);
+  });
+
   test("private addresses are never fetched", async () => {
     const { impl, calls } = fakeFetch({});
     const check = await checkDestination("http://127.0.0.1/admin", { fetch: impl, resolve });
@@ -178,5 +191,54 @@ describe("describeLinkHealth", () => {
     expect(describeLinkHealth(522, null)).toBe("522 Server error");
     expect(describeLinkHealth(null, "dns_failure")).toBe("DNS lookup failed");
     expect(describeLinkHealth(null, null)).toBe("Unreachable");
+  });
+});
+
+describe("createCheckResolver", () => {
+  const dnsError = (code: string) => Object.assign(new Error(`queryA ${code} x.test`), { code });
+  type Lookup = (hostname: string) => Promise<string[]>;
+  const found =
+    (addresses: string[]): Lookup =>
+    async () =>
+      addresses;
+  const fails =
+    (code: string): Lookup =>
+    async () => {
+      throw dnsError(code);
+    };
+  const resolver = (resolve4: Lookup, resolve6: Lookup) =>
+    createCheckResolver({ resolve4, resolve6 });
+
+  test("returns the addresses any lookup found", async () => {
+    expect(await resolver(found([PUBLIC_IP]), fails("ETIMEOUT"))("x.test")).toEqual([PUBLIC_IP]);
+    expect(await resolver(fails("ENODATA"), found(["2606:2800::1"]))("x.test")).toEqual([
+      "2606:2800::1",
+    ]);
+  });
+
+  test("NXDOMAIN and no records mean the name has no address", async () => {
+    expect(await resolver(fails("ENOTFOUND"), fails("ENOTFOUND"))("x.test")).toEqual([]);
+    expect(await resolver(fails("ENODATA"), fails("ENOTFOUND"))("x.test")).toEqual([]);
+    expect(await resolver(found([]), fails("ENODATA"))("x.test")).toEqual([]);
+  });
+
+  for (const code of ["ETIMEOUT", "ESERVFAIL", "ECONNREFUSED", "EBADRESP", "EBADQUERY"]) {
+    test(`${code} from the resolver throws instead of reading as a missing name`, async () => {
+      await expect(resolver(fails("ENOTFOUND"), fails(code))("x.test")).rejects.toBeInstanceOf(
+        DnsLookupFailed,
+      );
+      await expect(resolver(fails(code), fails(code))("x.test")).rejects.toBeInstanceOf(
+        DnsLookupFailed,
+      );
+    });
+  }
+
+  test("an error without a code throws", async () => {
+    const lookup = async () => {
+      throw new Error("network down");
+    };
+    await expect(
+      createCheckResolver({ resolve4: lookup, resolve6: lookup })("x.test"),
+    ).rejects.toThrow(DnsLookupFailed);
   });
 });

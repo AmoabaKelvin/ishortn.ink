@@ -1,3 +1,5 @@
+import { resolve4, resolve6 } from "node:dns/promises";
+
 import { checkHttpUrl } from "@/server/lib/ssrf";
 
 import type { LinkHealthError } from "@/lib/link-health";
@@ -20,11 +22,49 @@ export type CheckResult =
 
 export type CheckDeps = {
   fetch?: typeof fetch;
+  /** Returns no addresses for a name that doesn't exist; throws when the lookup itself failed. */
   resolve?: (hostname: string) => Promise<string[]>;
   timeoutMs?: number;
   /** Called once per outbound request (DNS lookups and fetches), for the run's budget. */
   onSubrequest?: (count: number) => void;
 };
+
+// Answers that say the name has no address. Anything else (ETIMEOUT, ESERVFAIL, workerd's
+// BADRESP/BADQUERY when its DoH request fails or is rate limited) says nothing about the site.
+const NAME_NOT_FOUND_CODES = new Set(["ENOTFOUND", "ENODATA"]);
+
+/** Thrown when a lookup failed without the name being shown not to exist. */
+export class DnsLookupFailed extends Error {
+  override name = "DnsLookupFailed";
+}
+
+const saysNoAddress = (result: PromiseSettledResult<string[]>) =>
+  result.status === "fulfilled" ||
+  (result.reason instanceof Error &&
+    "code" in result.reason &&
+    NAME_NOT_FOUND_CODES.has(String(result.reason.code)));
+
+/**
+ * A resolver for `checkHttpUrl` that, unlike the default one, keeps resolver errors apart from
+ * a missing name: it returns no addresses only when every lookup said the name has none, and
+ * throws DnsLookupFailed otherwise.
+ */
+export function createCheckResolver(lookup = { resolve4, resolve6 }) {
+  return async (hostname: string): Promise<string[]> => {
+    const results = await Promise.allSettled([
+      lookup.resolve4(hostname),
+      lookup.resolve6(hostname),
+    ]);
+    const addresses = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+    if (addresses.length) return addresses;
+    if (!results.every(saysNoAddress)) {
+      throw new DnsLookupFailed(`DNS lookup for ${hostname} failed`);
+    }
+    return [];
+  };
+}
+
+const checkResolver = createCheckResolver();
 
 /** Requests one check can make at most: a DNS pair, HEAD and GET per hop. */
 export const MAX_SUBREQUESTS_PER_CHECK = (LINK_CHECK_MAX_REDIRECTS + 1) * 4;
@@ -65,7 +105,13 @@ export async function checkDestination(url: string, deps: CheckDeps = {}): Promi
 
   for (let hop = 0; hop <= LINK_CHECK_MAX_REDIRECTS; hop++) {
     deps.onSubrequest?.(2);
-    const address = await checkHttpUrl(current, deps.resolve);
+    let address: Awaited<ReturnType<typeof checkHttpUrl>>;
+    try {
+      address = await checkHttpUrl(current, deps.resolve ?? checkResolver);
+    } catch {
+      // The resolver failed (timeout, SERVFAIL, rate limit): the site may be fine.
+      return { kind: "inconclusive" };
+    }
     if (address === "unresolved") return { kind: "failure", status: null, error: "dns_failure" };
     if (address !== "public") return { kind: "inconclusive" };
 
