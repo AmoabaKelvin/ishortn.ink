@@ -7,6 +7,11 @@ import { toast } from "sonner";
 
 import { DateTimePicker } from "@/app/(main)/dashboard/_components/date-time-picker";
 import { SOCIAL_PLATFORMS, socialIcon } from "@/components/bio/social-icons";
+import {
+  WHATSAPP_DEFAULT_LABEL,
+  WHATSAPP_MESSAGE_MAX,
+  whatsappPhoneSchema,
+} from "@/components/bio/whatsapp";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,25 +30,27 @@ import { api } from "@/trpc/react";
 
 import { useUpgradeOffer } from "../../../_components/upgrade-offer";
 
-import type { BioBlockType } from "@/server/db/schema";
+import type { BioEditorBlockType } from "@/server/api/routers/bio-page/bio-page.input";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type EditorBlock = RouterOutputs["bioPage"]["get"]["blocks"][number];
 type Social = { platform: string; url: string; key: string };
 
+// Lowercase except brand names, as they follow "Add"/"Edit" in the dialog title.
 const TYPE_LABELS = {
-  link: "Link button",
-  heading: "Heading",
-  text: "Text",
-  email: "Email button",
-  social: "Social icons",
-  divider: "Divider",
-} satisfies Record<BioBlockType, string>;
+  link: "link button",
+  heading: "heading",
+  text: "text",
+  email: "email button",
+  whatsapp: "WhatsApp button",
+  social: "social icons",
+  divider: "divider",
+} satisfies Record<BioEditorBlockType, string>;
 
 type Props = {
   pageId: number;
   mode: "add" | "edit";
-  type: BioBlockType;
+  type: BioEditorBlockType;
   block?: EditorBlock;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -61,7 +68,7 @@ export function BlockFormDialog({ open, onOpenChange, ...form }: Props) {
   );
 }
 
-function initialSocials(block: EditorBlock | undefined, type: BioBlockType): Social[] {
+function initialSocials(block: EditorBlock | undefined, type: BioEditorBlockType): Social[] {
   if (block?.socials && block.socials.length > 0) {
     return block.socials.map((s) => ({ ...s, key: crypto.randomUUID() }));
   }
@@ -79,7 +86,12 @@ function BlockForm({
   onSaved,
   canSchedule,
 }: Omit<Props, "open">) {
-  const [title, setTitle] = useState(block?.title ?? "");
+  const [title, setTitle] = useState(
+    block?.title ?? (mode === "add" && type === "whatsapp" ? WHATSAPP_DEFAULT_LABEL : ""),
+  );
+  const [phone, setPhone] = useState(block?.whatsapp?.phone ?? "");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [message, setMessage] = useState(block?.whatsapp?.message ?? "");
   const [content, setContent] = useState(block?.content ?? "");
   const [url, setUrl] = useState(block?.url ?? "");
   const [socials, setSocials] = useState(() => initialSocials(block, type));
@@ -113,6 +125,12 @@ function BlockForm({
   const pending = addBlock.isLoading || updateBlock.isLoading;
 
   function submit() {
+    // Same schema the server validates with, so the field error matches it.
+    const parsedPhone = type === "whatsapp" ? whatsappPhoneSchema.safeParse(phone) : null;
+    if (parsedPhone && !parsedPhone.success) {
+      return setPhoneError(parsedPhone.error.issues[0]?.message ?? "Enter a valid phone number.");
+    }
+
     const cleanSocials = socials
       .filter((s) => s.url.trim() !== "")
       .map(({ platform, url }) => ({ platform, url }));
@@ -121,6 +139,7 @@ function BlockForm({
       content: type === "text" ? content : null,
       url: type === "link" || type === "email" ? url.trim() || null : null,
       socials: type === "social" ? cleanSocials : undefined,
+      whatsapp: parsedPhone ? { phone: parsedPhone.data, message: message.trim() } : undefined,
     };
 
     if (type === "link" && !payload.url) return toast.error("Add a destination URL.");
@@ -140,21 +159,72 @@ function BlockForm({
     <>
       <DialogHeader>
         <DialogTitle>
-          {mode === "add" ? "Add" : "Edit"} {TYPE_LABELS[type].toLowerCase()}
+          {mode === "add" ? "Add" : "Edit"} {TYPE_LABELS[type]}
         </DialogTitle>
       </DialogHeader>
 
       <DialogBody className="space-y-4 overflow-y-auto">
-        {(type === "link" || type === "email") && (
+        {(type === "link" || type === "email" || type === "whatsapp") && (
           <div className="space-y-1.5">
             <Label htmlFor="block-title">Label</Label>
             <Input
               id="block-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={type === "email" ? "Email me" : "Visit my store"}
+              placeholder={
+                type === "email"
+                  ? "Email me"
+                  : type === "whatsapp"
+                    ? WHATSAPP_DEFAULT_LABEL
+                    : "Visit my store"
+              }
             />
           </div>
+        )}
+
+        {type === "whatsapp" && (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-phone">WhatsApp number</Label>
+              <Input
+                id="block-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setPhoneError(null);
+                }}
+                placeholder="+233241234567"
+                aria-invalid={phoneError ? true : undefined}
+                aria-describedby={phoneError ? "block-phone-error" : "block-phone-hint"}
+              />
+              {phoneError ? (
+                <p id="block-phone-error" className="text-[12px] text-red-500">
+                  {phoneError}
+                </p>
+              ) : (
+                <p id="block-phone-hint" className="text-[12px] text-muted-foreground">
+                  International format with the country code.
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="block-message">Prefilled message (optional)</Label>
+              <Textarea
+                id="block-message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Hi! I'd like to place an order."
+                maxLength={WHATSAPP_MESSAGE_MAX}
+                rows={3}
+              />
+              <p className="text-[12px] text-muted-foreground">
+                Visitors can edit it before sending. Clicks are tracked in your analytics.
+              </p>
+            </div>
+          </>
         )}
 
         {type === "heading" && (

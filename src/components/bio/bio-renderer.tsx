@@ -1,9 +1,12 @@
+import { IconBrandWhatsapp } from "@tabler/icons-react";
+
 import { getBioReferralUrl } from "@/lib/attribution/referral";
 import { cn } from "@/lib/utils";
 
 import { getInitials } from "./initials";
 import { socialIcon } from "./social-icons";
 import { type ResolvedBioTheme, resolveBioTheme } from "./theme";
+import { WHATSAPP_DEFAULT_LABEL } from "./whatsapp";
 
 import type { BioPageTheme } from "@/server/db/schema";
 import type { CSSProperties } from "react";
@@ -19,6 +22,7 @@ type BioRenderBlockBase = { id: number | string; previewNote?: string | null };
 export type BioRenderBlock = BioRenderBlockBase &
   (
     | { type: "link"; title: string | null; href?: string | null }
+    | { type: "whatsapp"; title: string | null; href?: string | null }
     | { type: "email"; title: string | null; href?: string | null }
     | { type: "heading"; title: string | null }
     | { type: "text"; content: string | null }
@@ -197,6 +201,7 @@ function BioBlockView({ block, t }: { block: BioRenderBlock; t: ResolvedBioTheme
       );
 
     case "link":
+    case "whatsapp":
     case "email": {
       const href = block.href ?? undefined;
       const isOutline = t.buttonVariant === "outline";
@@ -211,15 +216,24 @@ function BioBlockView({ block, t }: { block: BioRenderBlock; t: ResolvedBioTheme
             background: t.accentColor,
             color: t.accentTextColor,
           };
-      const label = block.title || (block.type === "email" ? "Email me" : "Visit");
+      const label =
+        block.title ||
+        (block.type === "email"
+          ? "Email me"
+          : block.type === "whatsapp"
+            ? WHATSAPP_DEFAULT_LABEL
+            : "Visit");
       return (
         <a
           href={href}
-          {...(block.type === "link" ? { target: "_blank", rel: "noreferrer" } : {})}
-          className="block w-full break-words px-5 py-3.5 text-center text-sm font-medium shadow-sm transition-transform motion-safe:hover:-translate-y-0.5"
+          {...(block.type === "email" ? {} : { target: "_blank", rel: "noreferrer" })}
+          className="flex w-full items-center justify-center gap-2 break-words px-5 py-3.5 text-center text-sm font-medium shadow-sm transition-transform motion-safe:hover:-translate-y-0.5"
           style={style}
         >
-          {label}
+          {block.type === "whatsapp" && (
+            <IconBrandWhatsapp size={18} stroke={1.75} aria-hidden="true" className="shrink-0" />
+          )}
+          <span className="min-w-0">{label}</span>
         </a>
       );
     }

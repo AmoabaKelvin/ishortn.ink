@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "1c751ca0-d7e4-487e-80c7-4fb4c2be37cf",
+  "id": "ee0bcac6-7466-4c6e-b9c6-99d124b95512",
   "prevId": "d1816c92-154e-4f6a-86e7-9dac95a29fff",
   "tables": {
     "AccountDeletion": {
@@ -1301,6 +1301,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'lemonsqueezy'"
         },
         "createdAt": {
           "name": "createdAt",
@@ -2951,84 +2959,6 @@
       },
       "checkConstraint": {}
     },
-    "MonthlyUsageSnapshot": {
-      "name": "MonthlyUsageSnapshot",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "month": {
-          "name": "month",
-          "type": "char(7)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "recordedEventCount": {
-          "name": "recordedEventCount",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "droppedEventCount": {
-          "name": "droppedEventCount",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "monthlyUsageSnapshot_month_idx": {
-          "name": "monthlyUsageSnapshot_month_idx",
-          "columns": [
-            "month"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "MonthlyUsageSnapshot_id": {
-          "name": "MonthlyUsageSnapshot_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "monthlyUsageSnapshot_userId_month_unique": {
-          "name": "monthlyUsageSnapshot_userId_month_unique",
-          "columns": [
-            "userId",
-            "month"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
     "PlanLimitHit": {
       "name": "PlanLimitHit",
       "columns": {
@@ -3688,6 +3618,35 @@
           "notNull": false,
           "autoincrement": false,
           "default": "''"
+        },
+        "billingProvider": {
+          "name": "billingProvider",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'lemonsqueezy'"
+        },
+        "providerSubscriptionId": {
+          "name": "providerSubscriptionId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "providerCustomerId": {
+          "name": "providerCustomerId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "providerPriceId": {
+          "name": "providerPriceId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -3695,6 +3654,20 @@
           "name": "userId_idx",
           "columns": [
             "userId"
+          ],
+          "isUnique": false
+        },
+        "subscription_providerSubscriptionId_idx": {
+          "name": "subscription_providerSubscriptionId_idx",
+          "columns": [
+            "providerSubscriptionId"
+          ],
+          "isUnique": false
+        },
+        "subscription_providerCustomerId_idx": {
+          "name": "subscription_providerCustomerId_idx",
+          "columns": [
+            "providerCustomerId"
           ],
           "isUnique": false
         }
@@ -3801,6 +3774,13 @@
         "pauseMonths": {
           "name": "pauseMonths",
           "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "providerSubscriptionId": {
+          "name": "providerSubscriptionId",
+          "type": "varchar(64)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

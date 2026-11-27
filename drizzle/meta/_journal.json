@@ -712,8 +712,15 @@
     {
       "idx": 101,
       "version": "5",
-      "when": 1795738780552,
-      "tag": "0101_monthly_usage_snapshot",
+      "when": 1795741439477,
+      "tag": "0101_billing_provider_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "5",
+      "when": 1795745826338,
+      "tag": "0102_monthly_usage_snapshot",
       "breakpoints": true
     }
   ]

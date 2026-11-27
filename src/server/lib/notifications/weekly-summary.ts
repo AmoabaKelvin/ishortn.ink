@@ -2,6 +2,7 @@ import { pricingHighlightHref } from "@/app/(main)/dashboard/_components/trackin
 import WeeklySummaryEmail, {
   formatClicks,
   type WeeklySummaryEmailProps,
+  type WeeklySummaryUpgrade,
 } from "@/emails/weekly-summary";
 import { env } from "@/env.mjs";
 import { getAppUrl } from "@/lib/constants/domains";
@@ -19,9 +20,16 @@ export type WeeklySummaryContent = Pick<
   WeeklySummaryEmailProps,
   "weekLabel" | "clicks" | "previousClicks" | "topLinks" | "topCountry" | "topSource"
 > & {
-  /** Visits dropped this month while a Free account's tracking was paused, or null. */
-  droppedClicks: number | null;
+  /** The Free upgrade line, or null for paid accounts and Free accounts with nothing to say. */
+  upgrade: WeeklySummaryUpgrade | null;
 };
+
+// Pricing `source` per line, so conversions can be told apart.
+const UPGRADE_SOURCES = {
+  paused: "weekly_summary",
+  cap: "weekly_summary_cap",
+  history: "weekly_summary_history",
+} satisfies Record<WeeklySummaryUpgrade["reason"], string>;
 
 export type SendWeeklySummaryInput = {
   userId: string;
@@ -33,18 +41,15 @@ export type SendWeeklySummaryInput = {
 export function weeklySummaryEmailProps(
   userId: string,
   name: string | null,
-  { droppedClicks, ...content }: WeeklySummaryContent,
+  { upgrade, ...content }: WeeklySummaryContent,
 ): WeeklySummaryEmailProps {
   return {
     ...content,
     userName: name,
-    paused:
-      droppedClicks === null
-        ? null
-        : {
-            dropped: droppedClicks,
-            upgradeUrl: getAppUrl(pricingHighlightHref("pro", "weekly_summary", UTM)),
-          },
+    upgrade: upgrade && {
+      ...upgrade,
+      upgradeUrl: getAppUrl(pricingHighlightHref("pro", UPGRADE_SOURCES[upgrade.reason], UTM)),
+    },
     analyticsUrl: getAppUrl(`/dashboard/analytics/overview?${new URLSearchParams(UTM).toString()}`),
     unsubscribeUrl: unsubscribeUrl(userId, env.EMAIL_UNSUBSCRIBE_SECRET, "weekly-summary"),
     notificationSettingsUrl: getAppUrl(NOTIFICATION_SETTINGS_PATH),

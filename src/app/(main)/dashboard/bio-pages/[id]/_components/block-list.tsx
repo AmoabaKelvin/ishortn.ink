@@ -19,6 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   IconAlignLeft,
+  IconBrandWhatsapp,
   IconEye,
   IconEyeOff,
   IconGripVertical,
@@ -33,6 +34,7 @@ import {
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { WHATSAPP_DEFAULT_LABEL } from "@/components/bio/whatsapp";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +51,7 @@ import { api } from "@/trpc/react";
 
 import { BlockFormDialog } from "./block-form-dialog";
 
-import type { BioBlockType } from "@/server/db/schema";
+import type { BioEditorBlockType } from "@/server/api/routers/bio-page/bio-page.input";
 import type { RouterOutputs } from "@/trpc/shared";
 
 type EditorBlock = RouterOutputs["bioPage"]["get"]["blocks"][number];
@@ -59,9 +61,10 @@ const TYPE_ICON = {
   heading: IconHeading,
   text: IconAlignLeft,
   email: IconMail,
+  whatsapp: IconBrandWhatsapp,
   social: IconWorld,
   divider: IconLine,
-} satisfies Record<BioBlockType, typeof IconLink>;
+} satisfies Record<BioEditorBlockType, typeof IconLink>;
 
 function summarize(block: EditorBlock): string {
   switch (block.type) {
@@ -73,6 +76,8 @@ function summarize(block: EditorBlock): string {
       return block.content || "Text";
     case "email":
       return block.title || block.url || "Email button";
+    case "whatsapp":
+      return `${block.title || WHATSAPP_DEFAULT_LABEL} · ${block.whatsapp?.phone ?? ""}`;
     case "social":
       return `${block.socials?.length ?? 0} social ${
         (block.socials?.length ?? 0) === 1 ? "link" : "links"
@@ -244,7 +249,7 @@ function SortableRow({
         <p className="truncate text-[13px] font-medium text-neutral-800 dark:text-foreground">
           {summarize(block)}
         </p>
-        {block.type === "link" && block.blocked && (
+        {(block.type === "link" || block.type === "whatsapp") && block.blocked && (
           <Badge variant="secondary" className="mt-0.5 bg-red-100 text-red-700 hover:bg-red-100">
             Blocked
           </Badge>
@@ -293,7 +298,7 @@ function SortableRow({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete this block?</AlertDialogTitle>
               <AlertDialogDescription>
-                {block.type === "link"
+                {block.type === "link" || block.type === "whatsapp"
                   ? "This removes the block, its tracking link, and that link's click history. This cannot be undone."
                   : "This removes the block from your bio page. This cannot be undone."}
               </AlertDialogDescription>

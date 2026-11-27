@@ -46,7 +46,7 @@ export function QuickCreateLink({ onCreated }: QuickCreateLinkProps) {
     onSuccess: (data) => {
       setUrl("");
       trackEvent(POSTHOG_EVENTS.LINK_QUICK_SHORTENED, { domain: data.domain, source: "dashboard" });
-      onCreated({ alias: data.alias, domain: data.domain });
+      onCreated({ alias: data.alias, domain: data.domain, isFirstLink: data.isFirstLink });
       router.refresh();
     },
     onError: (mutationError) => {

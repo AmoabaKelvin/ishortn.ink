@@ -111,7 +111,9 @@ describe("POST /api/webhooks/lemonsqueezy order_created", () => {
     Object.assign(env, { NEXT_PUBLIC_POSTHOG_HOST: undefined, NEXT_PUBLIC_POSTHOG_KEY: undefined });
   });
 
-  const orderEvent = (attributes: Partial<{ status: string; total: number | string }> = {}) =>
+  const orderEvent = (
+    attributes: Partial<{ status: string; total: number | string; user_email: string }> = {},
+  ) =>
     JSON.stringify({
       meta: {
         event_name: "order_created",
@@ -162,6 +164,11 @@ describe("POST /api/webhooks/lemonsqueezy order_created", () => {
         }),
       }),
     ]);
+  });
+
+  test("an order from an internal account is acknowledged without an event", async () => {
+    expect((await deliver(orderEvent({ user_email: "qa@mail.ishortn.ink" }))).status).toBe(200);
+    expect(captures()).toEqual([]);
   });
 
   test("an unpaid order is acknowledged without an event", async () => {

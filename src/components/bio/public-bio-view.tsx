@@ -17,6 +17,8 @@ function toRenderModel(page: PublicBioPage): BioRenderModel {
       switch (b.type) {
         case "link":
           return { id: b.id, type: "link", title: b.title, href: b.href };
+        case "whatsapp":
+          return { id: b.id, type: "whatsapp", title: b.title, href: b.href };
         case "email":
           return { id: b.id, type: "email", title: b.title, href: b.href };
         case "social":
