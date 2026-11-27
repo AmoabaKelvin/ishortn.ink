@@ -18,6 +18,11 @@ describe("cleanPlainText", () => {
     expect(cleanPlainText("10\u00A0clicks")).toBe("10\u00A0clicks");
   });
 
+  test("keeps the zero-width joiner inside an emoji sequence", () => {
+    const family = "\u{1F468}\u200D\u{1F469}\u200D\u{1F467} Family";
+    expect(cleanPlainText(`Team ${family}`)).toBe(`Team ${family}`);
+  });
+
   test("prints a repeated URL once, at its last occurrence", () => {
     const url = "https://ishortn.ink/dashboard/pricing";
     expect(

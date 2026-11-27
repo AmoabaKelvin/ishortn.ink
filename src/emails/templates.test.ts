@@ -14,7 +14,7 @@ import { renderEmail } from "@/server/lib/notifications/render-email";
 import { upgradeNudgeEmailProps } from "@/server/lib/notifications/upgrade-nudge";
 import { weeklySummaryEmailProps } from "@/server/lib/notifications/weekly-summary";
 
-import { EmailLayout, POSTAL_ADDRESS } from "./_components/layout";
+import { EmailLayout, EMAIL_POSTAL_ADDRESS } from "./_components/layout";
 import FirstLinkNudgeEmail from "./first-link-nudge";
 import PromoPausedNoticeEmail from "./promo-paused-notice";
 import UpgradeNudgeEmail, {
@@ -50,7 +50,7 @@ describe("email templates", () => {
       expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
       expect(html).toContain("prefers-color-scheme: dark");
       expect(html).toContain("Questions? Reply to this email.");
-      expect(html).toContain(POSTAL_ADDRESS);
+      expect(html).toContain(EMAIL_POSTAL_ADDRESS);
       // No fixed widths that could overflow a 390px screen
       expect(html).not.toMatch(/(?<![-\w])width:\s*\d{3,}px/);
     });
@@ -67,7 +67,7 @@ describe("email templates", () => {
       const urls = text.match(/https?:\/\/\S+/g) ?? [];
       expect(urls).toEqual([...new Set(urls)]);
       expect(text).toContain("Sent to ama@example.com.");
-      expect(text).toEndWith(POSTAL_ADDRESS);
+      expect(text).toEndWith(EMAIL_POSTAL_ADDRESS);
     });
   }
 });

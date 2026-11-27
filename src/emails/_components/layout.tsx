@@ -22,7 +22,7 @@ import { RECIPIENT_TOKEN } from "./recipient";
 import type { CSSProperties, ReactNode } from "react";
 
 /** The postal address campaign emails carry; every email footer shows it. */
-export const POSTAL_ADDRESS = "iShortn, Lauterbourg, Grand Est, France";
+export const EMAIL_POSTAL_ADDRESS = "iShortn, Lauterbourg, Grand Est, France";
 
 const LIFECYCLE_REASON =
   "You received this because product notification emails are on for your account.";
@@ -143,7 +143,7 @@ export function EmailLayout(props: EmailLayoutProps) {
             <Text style={footerText}>
               Questions? Reply to this email.
               <br />
-              {POSTAL_ADDRESS}
+              {EMAIL_POSTAL_ADDRESS}
             </Text>
           </Section>
         </Container>

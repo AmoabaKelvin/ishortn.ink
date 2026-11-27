@@ -2,9 +2,10 @@ import { RECIPIENT_TOKEN } from "@/emails/_components/recipient";
 
 import type { ReactElement } from "react";
 
-// The zero-width characters <Preview> pads the inbox snippet with; the non-breaking spaces it
-// mixes in are dropped as runs below, since a single one can be real copy.
-const PREVIEW_SPACERS = /[\u200B-\u200F\uFEFF]/g;
+// <Preview> pads the inbox snippet with runs of non-breaking spaces and zero-width characters.
+// Only runs are stripped: a single one can be real copy, such as "10\u00A0clicks" or the
+// zero-width joiner inside an emoji sequence in a team or link name.
+const PREVIEW_SPACERS = /[\u00A0\u200B-\u200F\uFEFF]{2,}/g;
 const URL_TOKEN = /(^|[ \t]+)(https?:\/\/\S+)/gm;
 
 /**
@@ -19,7 +20,6 @@ export function cleanPlainText(text: string): string {
   }
   return text
     .replace(PREVIEW_SPACERS, "")
-    .replace(/\u00A0{2,}/g, "")
     .replace(URL_TOKEN, (match, _space: string, url: string) => {
       const left = (counts.get(url) ?? 1) - 1;
       counts.set(url, left);
