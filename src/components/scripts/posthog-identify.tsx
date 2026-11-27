@@ -1,16 +1,19 @@
 "use client";
 
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect } from "react";
 
+import { isInternalEmail } from "@/lib/analytics/internal-accounts";
 import { identifyUser, resetPostHogIdentity } from "@/lib/analytics/posthog";
 
 // Separate from posthog.tsx so marketing pages, which have no ClerkProvider, don't ship Clerk.
 export function PostHogIdentify() {
-  const { isLoaded, userId } = useAuth();
+  const { isLoaded, user } = useUser();
+  const userId = user?.id ?? null;
+  const internal = isInternalEmail(user?.primaryEmailAddress?.emailAddress);
   useEffect(() => {
-    if (isLoaded) identifyUser(userId ?? null);
-  }, [isLoaded, userId]);
+    if (isLoaded) identifyUser(userId, internal);
+  }, [isLoaded, userId, internal]);
   return null;
 }
 

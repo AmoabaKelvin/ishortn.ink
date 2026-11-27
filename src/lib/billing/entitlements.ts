@@ -1,4 +1,4 @@
-import { getPlanCaps, getPlanFromIds } from "@/lib/billing/plans";
+import { canUseLinkUtmParams, getPlanCaps, getPlanFromIds } from "@/lib/billing/plans";
 
 import type { Plan } from "@/lib/billing/plans";
 import type { Subscription } from "@/server/db/schema";
@@ -310,7 +310,7 @@ const FEATURE_LIMITS = {
   passwordLinks: (plan) => (plan === "free" ? 0 : undefined),
   scheduledLinks: (plan) => (plan === "free" ? 0 : undefined),
   verifiedClickLinks: (plan) => (plan === "free" ? 0 : undefined),
-  utmLinks: (plan) => (plan === "ultra" ? undefined : 0),
+  utmLinks: (plan) => (canUseLinkUtmParams(plan) ? undefined : 0),
   cloakedLinks: (plan) => (plan === "ultra" ? undefined : 0),
 } satisfies Record<UsageFeature, (plan: Plan) => number | undefined>;
 

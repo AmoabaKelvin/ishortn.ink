@@ -316,7 +316,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
               description="Add UTM parameters for campaign tracking"
               isOpen={isUtmParamsOpen}
               onToggle={() => setIsUtmParamsOpen(!isUtmParamsOpen)}
-              badge={!isUltraUser ? <PlanBadge plan="Ultra" /> : undefined}
+              badge={!isProOrUltraUser ? <PlanBadge plan="Pro" /> : undefined}
             >
               {isUltraUser && (
                 <div className="flex justify-end">
@@ -331,7 +331,7 @@ function EditQRCodeBody({ qr, geoRules, onClose }: EditQRCodeBodyProps) {
                   />
                 </div>
               )}
-              <UtmParamsForm form={form} disabled={!isUltraUser} />
+              <UtmParamsForm form={form} disabled={!isProOrUltraUser} />
             </SectionToggle>
 
             {/* Geotargeting Rules */}

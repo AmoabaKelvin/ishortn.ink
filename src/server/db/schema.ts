@@ -1676,7 +1676,8 @@ export const checkoutStart = mysqlTable(
     userId: varchar("userId", { length: 32 }).notNull(),
     plan: mysqlEnum("plan", ["pro", "ultra"]).notNull(),
     interval: mysqlEnum("interval", ["monthly", "annual"]).notNull(),
-    // Pricing-page `source` param, `auto_signup` or `settings_billing`; null when none was given.
+    // Pricing-page `source` param, else the visit's `utm_source`, else `auto_signup` or
+    // `settings_billing`; null when none was given.
     source: varchar("source", { length: 64 }),
     // The discount code the checkout was created with; null when none was sent or the provider rejected it.
     promoCode: varchar("promoCode", { length: 64 }),

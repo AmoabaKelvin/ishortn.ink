@@ -897,7 +897,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
               description="Add UTM parameters for campaign tracking"
               isOpen={isUtmParamsOpen}
               onToggle={() => setIsUtmParamsOpen(!isUtmParamsOpen)}
-              badge={!isUltraUser ? <PlanBadge plan="Ultra" /> : undefined}
+              badge={!isProUser ? <PlanBadge plan="Pro" /> : undefined}
             >
               {isUltraUser && (
                 <div className="flex justify-end">
@@ -912,7 +912,7 @@ function CreateLinkForm({ ignoreUrlParam, onCreated }: CreateLinkFormProps) {
                   />
                 </div>
               )}
-              <UtmParamsForm form={form} disabled={!isUltraUser} />
+              <UtmParamsForm form={form} disabled={!isProUser} />
             </SectionToggle>
 
             {/* Link Cloaking Section */}

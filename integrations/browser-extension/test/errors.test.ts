@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { mapApiError } from "../src/lib/errors.ts";
+import type { Me } from "../src/lib/api.ts";
+import { mapApiError, monthlyLimitError } from "../src/lib/errors.ts";
 import { defaultAutoShorten, qrFileName, usageText } from "../src/lib/format.ts";
 
 describe("mapApiError", () => {
@@ -76,5 +77,34 @@ describe("format helpers", () => {
   it("builds a safe QR file name", () => {
     assert.equal(qrFileName("https://ishortn.ink/abc"), "qr-ishortn-ink-abc.png");
     assert.equal(qrFileName("nonsense"), "qr-link.png");
+  });
+});
+
+describe("monthlyLimitError", () => {
+  const me = (overrides: Partial<Me>): Me => ({
+    email: "ada@example.com",
+    plan: "free",
+    linksUsedThisMonth: 3,
+    linksLimit: 30,
+    domains: [],
+    upgradeUrl: "https://ishortn.ink/dashboard/pricing",
+    ...overrides,
+  });
+
+  it("is null below the cap and on plans without one", () => {
+    assert.equal(monthlyLimitError(me({ linksUsedThisMonth: 29 })), null);
+    assert.equal(monthlyLimitError(me({ plan: "ultra", linksUsedThisMonth: 5000, linksLimit: null })), null);
+  });
+
+  it("shows the server's limit message with the upgrade link once the cap is reached", () => {
+    assert.deepEqual(monthlyLimitError(me({ linksUsedThisMonth: 30 })), {
+      kind: "upgrade",
+      message: "You've reached your monthly limit of 30 links. Upgrade to Pro for more.",
+      upgradeUrl: "https://ishortn.ink/dashboard/pricing",
+    });
+    assert.equal(
+      monthlyLimitError(me({ plan: "pro", linksUsedThisMonth: 1200, linksLimit: 1000 }))?.message,
+      "You've reached your monthly limit of 1,000 links. Upgrade to Ultra for unlimited links.",
+    );
   });
 });

@@ -123,7 +123,7 @@ const shortLinkFeatures: { title: string; body: string; icon: ReactNode }[] = [
   },
   {
     title: "Keeps your naming consistent",
-    body: "On Pro, a campaign adds your source and medium to every link in it. On Ultra, the link editor has UTM fields and saved templates.",
+    body: "On Pro, the link editor has UTM fields and a campaign adds your source and medium to every link in it. Ultra adds saved templates.",
     icon: <IconTagFilled aria-hidden="true" />,
   },
 ];

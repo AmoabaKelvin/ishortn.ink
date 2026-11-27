@@ -6,6 +6,7 @@ import { env } from "@/env.mjs";
 import { getIntervalFromVariantId, getPlanFromIds } from "@/lib/billing/plans";
 import { logger } from "@/lib/logger";
 import {
+  lemonsqueezyOrderEventSchema,
   lemonsqueezySubscriptionEventNameSchema,
   lemonsqueezySubscriptionEventSchema,
   lemonsqueezyWebhookEnvelopeSchema,
@@ -13,6 +14,7 @@ import {
 import { runBackgroundTask } from "@/lib/utils/background";
 import { db } from "@/server/db";
 import { subscription, user } from "@/server/db/schema";
+import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
 import {
   applyBillingEventEntitlements,
   syncEntitlementsAfterBillingEvent,
@@ -22,6 +24,7 @@ import {
   sendWelcomeEmail,
 } from "@/server/lib/notifications/billing";
 
+import { orderCompletedEvent } from "./order-event";
 import { eventIsBehindProvider } from "./reconcile";
 
 import type { LemonsqueezySubscriptionEvent } from "@/lib/types/lemonsqueezy";
@@ -62,8 +65,19 @@ export async function POST(request: Request) {
     });
   }
 
-  // order_created and the other event types carry no subscription state to apply.
   const eventName = envelope.data.meta.event_name;
+  if (eventName === "order_created") {
+    // Analytics only, so a payload it can't read is logged and still acknowledged.
+    const order = lemonsqueezyOrderEventSchema.safeParse(body);
+    const completed = order.success ? orderCompletedEvent(order.data) : null;
+    if (!order.success) log.warn({ issues: order.error.issues }, "unreadable order payload");
+    if (completed) {
+      captureServerEvent(completed.user, "order_completed", completed.properties);
+    }
+    return new Response("OK", { status: 200 });
+  }
+
+  // The other event types carry no subscription state to apply.
   if (!lemonsqueezySubscriptionEventNameSchema.safeParse(eventName).success) {
     return new Response("OK", { status: 200 });
   }
