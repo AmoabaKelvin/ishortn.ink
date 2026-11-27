@@ -354,6 +354,7 @@ export const solutions = {
       },
     ],
     related: [
+      { href: "/customers/airo", label: "Customer story: how AIRO cut its rack card spend" },
       {
         href: "/blog/qr-code-on-product-packaging",
         label: "QR codes on product packaging and labels",
@@ -939,6 +940,7 @@ export const solutions = {
       },
     ],
     related: [
+      { href: "/customers/airo", label: "Customer story: how AIRO cut its rack card spend" },
       { href: "/blog/qr-code-for-flyers", label: "Put a QR code on a flyer" },
       { href: "/qr-code-generator", label: "Free QR code generator" },
       { href: "/blog/how-to-track-qr-code-scans", label: "How to track QR code scans" },
