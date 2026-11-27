@@ -38,6 +38,9 @@ import { qrcodeUpdateInput } from "@/server/api/routers/qrcode/qrcode.input";
 import { normalizeTagName } from "@/server/api/routers/tag/utils";
 import { api } from "@/trpc/react";
 
+import { savedQrCodeSvgState, staticTypeOf } from "../utils";
+import { EditStaticQRCodeBody } from "./edit-static-qrcode-body";
+
 import type { RouterOutputs } from "@/trpc/shared";
 import type { z } from "zod";
 
@@ -496,6 +499,12 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
   );
   const geoRulesReady = !qr.link?.id || geoRules !== undefined;
   const scans = qr.visitCount ?? 0;
+  // Static codes edit their content in place, redrawn with the saved style.
+  const staticType = staticTypeOf(qr);
+  const staticState = useMemo(
+    () => (staticType ? savedQrCodeSvgState(qr) : null),
+    [qr, staticType],
+  );
 
   return (
     <AnimatePresence>
@@ -533,14 +542,16 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
                     {qr.title || "Untitled QR Code"}
                   </p>
                   <div className="mt-2 flex items-center gap-3 text-[12px] text-neutral-400 dark:text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <IconClick
-                        size={14}
-                        stroke={1.5}
-                        className="text-blue-600 dark:text-blue-400"
-                      />
-                      {scans} scans
-                    </span>
+                    {!staticType && (
+                      <span className="flex items-center gap-1">
+                        <IconClick
+                          size={14}
+                          stroke={1.5}
+                          className="text-blue-600 dark:text-blue-400"
+                        />
+                        {scans} scans
+                      </span>
+                    )}
                     <span>
                       Created{" "}
                       {qr.createdAt ? format(new Date(qr.createdAt), "MMM d, yyyy") : "Unknown"}
@@ -558,7 +569,15 @@ export function EditQRCodeDrawer({ qr, open, onClose }: EditQRCodeDrawerProps) {
               </div>
             </div>
 
-            {geoRulesReady ? (
+            {staticType && staticState ? (
+              <EditStaticQRCodeBody
+                key={qr.id}
+                qr={qr}
+                type={staticType}
+                state={staticState}
+                onClose={onClose}
+              />
+            ) : geoRulesReady ? (
               <EditQRCodeBody key={qr.id} qr={qr} geoRules={geoRules} onClose={onClose} />
             ) : (
               <div className="flex flex-1 items-center justify-center text-[13px] text-neutral-400">

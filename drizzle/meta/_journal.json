@@ -729,6 +729,13 @@
       "when": 1795779526527,
       "tag": "0103_subscription_promo_discount_ended_at",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "5",
+      "when": 1795782084758,
+      "tag": "0104_qr_code_static_payload",
+      "breakpoints": true
     }
   ]
 }
