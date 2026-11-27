@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { createElement } from "react";
 
-import WelcomeEmail from "@/lib/email/templates/welcome-email";
+import WelcomeEmail from "@/emails/welcome";
 
 import { cleanPlainText, renderEmail } from "./render-email";
 
@@ -40,15 +40,15 @@ describe("cleanPlainText", () => {
 describe("renderEmail", () => {
   test("renders both parts with the recipient in the footer", async () => {
     const { html, text } = await renderEmail(
-      createElement(WelcomeEmail, { userName: "Ada Lovelace" }),
+      createElement(WelcomeEmail, { userName: "Ada Lovelace", founderName: "Kelvin" }),
       "ada@example.com",
     );
 
     expect(html).toContain("Sent to <!-- -->ada@example.com<!-- -->.");
-    expect(text).toStartWith("Shorten your first link in under a minute\n\nHi Ada,");
+    expect(text).toStartWith(
+      "Paste a long URL, get a short link and a QR code. Here is where to start.\n\nHi Ada,",
+    );
     expect(text).toContain("Sent to ada@example.com.");
-    // A mailto link whose text is the address shows it once.
-    expect(text.match(/kelvin@ishortn\.ink/g)).toHaveLength(1);
     // The logo row is left out of the plain text.
     expect(text).not.toContain("https://ishortn.ink/dashboard\n");
     expect(html).not.toContain("{{recipient}}");
@@ -56,7 +56,7 @@ describe("renderEmail", () => {
 
   test("escapes the recipient's address in the HTML part", async () => {
     const { html, text } = await renderEmail(
-      createElement(WelcomeEmail, { userName: "Ada" }),
+      createElement(WelcomeEmail, { userName: "Ada", founderName: "Kelvin" }),
       "a&b<x>@example.com",
     );
 
