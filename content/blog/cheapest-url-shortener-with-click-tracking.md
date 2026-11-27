@@ -108,4 +108,4 @@ Bitly Core costs $10 a month, billed yearly only, and keeps 30 days of click dat
 
 ## Try iShortn for free
 
-[Create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=cheapest-url-shortener-with-click-tracking) and track your first 30 links a month with no card. When you need your own domain and full history, [Pro is $8 a month](/pricing).
+[Create a free iShortn account](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=cheapest-url-shortener-with-click-tracking) and track your first 30 links a month with no card. When you need your own domain and 1 year of detailed click history, [Pro is $8 a month](/pricing).

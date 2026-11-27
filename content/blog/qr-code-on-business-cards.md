@@ -97,7 +97,7 @@ The same pattern works for staff badges at [trade shows](/blog/qr-codes-for-trad
 
 If your current cards print a branded domain that runs through Bitly, [move it over first](/docs/migrate-from-bitly) so the codes already in circulation keep working. Our [iShortn vs Bitly](/compare/bitly) page compares the two.
 
-Custom domains and CSV import need [Pro](/pricing), which costs $8 a month or $80 a year. Pro includes 3 custom domains, 1,000 new links a month and the full scan history. One person can run the whole team's cards from one Pro account.
+Custom domains and CSV import need [Pro](/pricing), which costs $8 a month or $80 a year. Pro includes 3 custom domains, 1,000 new links a month and 1 year of detailed scan history. One person can run the whole team's cards from one Pro account.
 
 If several people need to log in and manage links, Ultra ($15 a month or $150 a year) adds team workspaces with no limit on members. Your links stay yours on either plan. They export as CSV or JSON, so if you ever move to another tool, you recreate them there, point the domain at it, and the printed cards keep working.
 

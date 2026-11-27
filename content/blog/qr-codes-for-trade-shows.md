@@ -113,7 +113,7 @@ In iShortn, each placement is one dynamic QR code:
 3. Add all of the show's codes to one **campaign**. The campaign page adds up scans across its codes and lists them side by side, and you can export the campaign's analytics as CSV for the post-show report.
 4. Change destinations before, during and after the show without reprinting.
 
-The free plan includes 5 dynamic QR codes and one active campaign, which covers a small booth. Free analytics show the last 7 days, though, and you'll probably want to look at a show's numbers more than a week later. [Pro](/pricing), at $8 a month, keeps the full history and lets you print your own domain on the banner (`go.yourcompany.com/expo`) with up to 3 custom domains. Campaigns on Pro can also stamp default UTM values onto every link you add to them. If several sales reps or an agency run your shows, Ultra adds team workspaces with no limit on members.
+The free plan includes 5 dynamic QR codes and one active campaign, which covers a small booth. Free analytics show the last 7 days, though, and you'll probably want to look at a show's numbers more than a week later. [Pro](/pricing), at $8 a month, keeps a year of scan history and lets you print your own domain on the banner (`go.yourcompany.com/expo`) with up to 3 custom domains. Campaigns on Pro can also stamp default UTM values onto every link you add to them. If several sales reps or an agency run your shows, Ultra adds team workspaces with no limit on members.
 
 We wrote separately about [how to track QR code scans](/blog/how-to-track-qr-code-scans) in more detail, and about [QR codes for events and posters](/solutions/events) if you organise events as well as exhibit at them.
 
@@ -135,4 +135,4 @@ Make the codes while the graphics are still being designed, so they go into the 
 
 **[Create your trade show QR codes free →](https://ishortn.ink/auth/sign-up?utm_source=blog&utm_medium=content&utm_campaign=qr-codes-for-trade-shows)**
 
-5 dynamic QR codes and one campaign free, no card needed. Pro keeps the full scan history for $8 a month.
+5 dynamic QR codes and one campaign free, no card needed. Pro keeps 1 year of detailed scan history for $8 a month.
