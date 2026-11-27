@@ -98,6 +98,7 @@ describe("isShortLinkPath", () => {
       "verify-password",
       "verified-redirect",
       "cloaked",
+      "c",
     ];
     const segments: string[] = [];
     const collect = (dir: string) => {

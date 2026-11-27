@@ -747,8 +747,15 @@
     {
       "idx": 106,
       "version": "5",
-      "when": 1795792798061,
-      "tag": "0106_scheduled_report",
+      "when": 1795792317824,
+      "tag": "0106_qr_code_public_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "5",
+      "when": 1795793683549,
+      "tag": "0107_scheduled_report",
       "breakpoints": true
     }
   ]

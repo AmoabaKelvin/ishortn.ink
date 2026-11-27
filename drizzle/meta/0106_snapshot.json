@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "87ee20b9-f836-4a30-bcc3-74d3a385a083",
+  "id": "43b37e2c-66c4-43c1-8261-4d712215f840",
   "prevId": "29fbe7c8-ab9d-4470-acc9-c5b2b35f85fd",
   "tables": {
     "AccountDeletion": {
@@ -3404,6 +3404,13 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "publicId": {
+          "name": "publicId",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -3438,7 +3445,14 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "qrcode_publicId_unique": {
+          "name": "qrcode_publicId_unique",
+          "columns": [
+            "publicId"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "ReservedAlias": {
@@ -3500,147 +3514,6 @@
           ]
         }
       },
-      "checkConstraint": {}
-    },
-    "ScheduledReport": {
-      "name": "ScheduledReport",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "teamId": {
-          "name": "teamId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdBy": {
-          "name": "createdBy",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "targetType": {
-          "name": "targetType",
-          "type": "enum('link','folder','campaign')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "targetId": {
-          "name": "targetId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "frequency": {
-          "name": "frequency",
-          "type": "enum('weekly','monthly')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "recipients": {
-          "name": "recipients",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "unsubscribed": {
-          "name": "unsubscribed",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lastPeriodKey": {
-          "name": "lastPeriodKey",
-          "type": "varchar(16)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lastSentAt": {
-          "name": "lastSentAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "onUpdate": true
-        }
-      },
-      "indexes": {
-        "scheduledReport_userId_idx": {
-          "name": "scheduledReport_userId_idx",
-          "columns": [
-            "userId"
-          ],
-          "isUnique": false
-        },
-        "scheduledReport_teamId_idx": {
-          "name": "scheduledReport_teamId_idx",
-          "columns": [
-            "teamId"
-          ],
-          "isUnique": false
-        },
-        "scheduledReport_target_idx": {
-          "name": "scheduledReport_target_idx",
-          "columns": [
-            "targetType",
-            "targetId"
-          ],
-          "isUnique": false
-        },
-        "scheduledReport_due_idx": {
-          "name": "scheduledReport_due_idx",
-          "columns": [
-            "frequency",
-            "lastPeriodKey"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "ScheduledReport_id": {
-          "name": "ScheduledReport_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "SiteSettings": {

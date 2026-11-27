@@ -28,6 +28,7 @@ import {
   linkVisitDailySummary,
   qrcode,
   qrPreset,
+  scheduledReport,
   siteSettings,
   subscription,
   tag,
@@ -191,6 +192,10 @@ async function purgeAccount(
     await tx
       .delete(utmTemplate)
       .where(and(eq(utmTemplate.userId, userId), isNull(utmTemplate.teamId)));
+    // Holds recipients' email addresses; team schedules go with their team.
+    await tx
+      .delete(scheduledReport)
+      .where(and(eq(scheduledReport.userId, userId), isNull(scheduledReport.teamId)));
     await tx.delete(campaign).where(and(eq(campaign.userId, userId), isNull(campaign.teamId)));
     await tx
       .delete(customDomain)

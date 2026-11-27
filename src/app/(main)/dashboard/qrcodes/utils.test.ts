@@ -17,7 +17,11 @@ import {
   SVG_EFFECTS_NOTE,
   SVG_LEGACY_NOTE,
   svgNoteFor,
+  emptyVCardFormValues,
   validateStaticForm,
+  validateVCardForm,
+  vcardFormValuesFrom,
+  vcardOf,
   vectorNoteFor,
 } from "./utils";
 
@@ -278,5 +282,45 @@ describe("static codes", () => {
 
     const email = validateStaticForm("email", { ...emptyStaticFormValues, to: "nope" });
     expect(email.ok || email.fieldErrors.to).toBe("Enter a valid email address");
+  });
+});
+
+describe("contact card codes", () => {
+  const card = {
+    type: "vcard" as const,
+    ...emptyVCardFormValues,
+    firstName: "Ada",
+    website: "https://example.com",
+  };
+
+  test("aren't static codes and read their card back", () => {
+    expect(staticTypeOf({ contentType: "link", payloadFields: card })).toBeNull();
+    expect(vcardOf({ payloadType: "vcard", payloadFields: card })).toEqual(card);
+    expect(vcardOf({ payloadType: null, payloadFields: null })).toBeNull();
+    expect(vcardFormValuesFrom(card)).toEqual({
+      ...emptyVCardFormValues,
+      firstName: "Ada",
+      website: "https://example.com",
+    });
+  });
+
+  test("validate the form, needing a first name or an organisation", () => {
+    const missing = validateVCardForm(emptyVCardFormValues);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) {
+      expect(missing.fieldErrors.firstName).toBe("Enter a first name or an organisation");
+    }
+
+    const valid = validateVCardForm({
+      ...emptyVCardFormValues,
+      organization: " Acme ",
+      website: "acme.com",
+    });
+    expect(valid.ok && valid.card).toEqual({
+      ...card,
+      firstName: "",
+      organization: "Acme",
+      website: "https://acme.com",
+    });
   });
 });
