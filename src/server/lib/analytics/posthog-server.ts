@@ -5,6 +5,8 @@ import { runBackgroundTask } from "@/lib/utils/background";
 const log = logger.child({ component: "posthog-server" });
 
 export type ServerEventName =
+  | "checkout_started"
+  | "order_completed"
   | "extension_connected"
   | "extension_link_created"
   | "extension_limit_hit";

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { checkoutSource, readAttribution, utmTags } from "@/lib/billing/attribution";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
@@ -122,6 +123,10 @@ export function PricingCards({
   // only preselects the plan that removes the limit; it never starts checkout.
   const highlightPlan = resolveHighlightPlan(searchParams?.get("highlight"), currentPlan);
   const source = searchParams?.get("source") ?? null;
+  // Source and UTM tags carried from /pricing through sign-up, read once on arrival and sent with
+  // the checkout.
+  const [attribution] = useState(() => readAttribution(searchParams));
+  const [utm] = useState(() => utmTags(attribution));
   const highlightReason = highlightPlan ? getUpgradeReason(source, highlightPlan) : null;
   const fromEventsCap = source?.startsWith("events_") ?? false;
   const autoCheckout = autoUpgrade && subscriptionMode === "checkout" ? autoUpgrade : null;
@@ -177,7 +182,8 @@ export function PricingCards({
     createCheckoutOrUpdateMutation.mutate({
       plan: plan.id,
       interval,
-      source: source?.slice(0, 64),
+      source: checkoutSource(attribution),
+      utm,
     });
   };
 
@@ -210,8 +216,13 @@ export function PricingCards({
     if (!autoCheckout || autoCheckoutFired.current) return;
     autoCheckoutFired.current = true;
     replaceWithCheckoutReturn(autoCheckout.id);
-    createCheckoutOrUpdate({ plan: autoCheckout.id, interval, source: "auto_signup" });
-  }, [autoCheckout, createCheckoutOrUpdate, interval]);
+    createCheckoutOrUpdate({
+      plan: autoCheckout.id,
+      interval,
+      source: checkoutSource(attribution, "auto_signup"),
+      utm,
+    });
+  }, [attribution, autoCheckout, createCheckoutOrUpdate, interval, utm]);
 
   const confirmCopy = pendingChange
     ? buildPlanChangeCopy(pendingChange.kind, pendingChange.plan.id, interval)
