@@ -59,8 +59,17 @@ describe("listTools", () => {
 });
 
 describe("/mcp transport", () => {
-  test("refuses GET with 405 and answers CORS preflight", async () => {
-    expect(GET().status).toBe(405);
+  test("redirects browsers to the docs, refuses other GETs with 405, answers CORS preflight", async () => {
+    const get = (accept?: string) =>
+      GET(new Request("https://ishortn.ink/api/mcp", accept ? { headers: { accept } } : {}));
+    const browser = get("text/html,application/xhtml+xml,*/*;q=0.8");
+    expect(browser.status).toBe(302);
+    expect(browser.headers.get("Location")).toBe("https://ishortn.ink/docs/integrations/mcp");
+    for (const accept of ["text/event-stream", "text/event-stream, text/html", undefined]) {
+      const refused = get(accept);
+      expect(refused.status).toBe(405);
+      expect(refused.headers.get("Allow")).toBe("POST, OPTIONS");
+    }
     const preflight = OPTIONS();
     expect(preflight.status).toBe(204);
     expect(preflight.headers.get("Access-Control-Allow-Headers")).toContain("Authorization");
