@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   canOfferPause,
+  canUseLinkUtmParams,
   getSubscriptionMode,
   isSubscriptionEntitled,
   pauseResumesAt,
@@ -155,5 +156,13 @@ describe("pauseResumesAt", () => {
     [3, "2027-02-23T10:00:00.000Z"],
   ])("%p months", (months, expected) => {
     expect(pauseResumesAt(months, new Date("2026-11-23T10:00:00Z")).toISOString()).toBe(expected);
+  });
+});
+
+describe("canUseLinkUtmParams", () => {
+  test("allows per-link UTM parameters on Pro and Ultra only", () => {
+    expect(canUseLinkUtmParams("free")).toBe(false);
+    expect(canUseLinkUtmParams("pro")).toBe(true);
+    expect(canUseLinkUtmParams("ultra")).toBe(true);
   });
 });

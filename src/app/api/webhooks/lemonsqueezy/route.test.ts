@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import crypto from "node:crypto";
 
 import { eq } from "drizzle-orm";
@@ -10,11 +10,14 @@ import * as schema from "@/server/db/schema";
 import { stubCloudflareContext } from "../../../../../test/cloudflare-context";
 import { POST } from "./route";
 
+import type { Mock } from "bun:test";
+
 const SECRET = "lemonsqueezy-route-test-secret";
 const USER_ID = "lemonsqueezy_route_test";
 const USER_EMAIL = "lemonsqueezy-route-test@example.com";
 const CUSTOMER_ID = 942001;
 const SUBSCRIPTION_ID = 942002;
+const PRO_ANNUAL_VARIANT = 1809620;
 
 beforeAll(() => {
   Object.assign(env, { LEMONSQUEEZY_WEBHOOK_SECRET: SECRET });
@@ -83,6 +86,92 @@ describe("POST /api/webhooks/lemonsqueezy signature", () => {
 
   test("rejects a well-formed but wrong signature with 401", async () => {
     expect((await deliver(body, sign(`${body} `))).status).toBe(401);
+  });
+});
+
+describe("POST /api/webhooks/lemonsqueezy order_created", () => {
+  let restoreContext = () => {};
+  let fetchSpy: Mock<typeof fetch>;
+
+  beforeAll(() => {
+    // Captures go to the stubbed fetch, never to a real PostHog project.
+    Object.assign(env, {
+      NEXT_PUBLIC_POSTHOG_HOST: "https://posthog.test",
+      NEXT_PUBLIC_POSTHOG_KEY: "phc_test",
+    });
+    restoreContext = stubCloudflareContext();
+    fetchSpy = spyOn(globalThis, "fetch").mockImplementation(async () => new Response("{}"));
+  });
+
+  beforeEach(() => fetchSpy.mockClear());
+
+  afterAll(() => {
+    fetchSpy.mockRestore();
+    restoreContext();
+    Object.assign(env, { NEXT_PUBLIC_POSTHOG_HOST: undefined, NEXT_PUBLIC_POSTHOG_KEY: undefined });
+  });
+
+  const orderEvent = (attributes: Partial<{ status: string; total: number | string }> = {}) =>
+    JSON.stringify({
+      meta: {
+        event_name: "order_created",
+        custom_data: {
+          user_id: USER_ID,
+          source: "browser-extension",
+          utm_source: "browser-extension",
+          discount_code: "BFCM20",
+        },
+      },
+      data: {
+        id: "5501",
+        attributes: {
+          status: "paid",
+          currency: "USD",
+          total: 6400,
+          total_usd: 6400,
+          test_mode: true,
+          first_order_item: { variant_id: PRO_ANNUAL_VARIANT, product_id: 0 },
+          ...attributes,
+        },
+      },
+    });
+
+  const captures = () =>
+    fetchSpy.mock.calls.map(([, init]) => {
+      // SAFETY: captureServerEvent always sends a string JSON body.
+      return JSON.parse(init?.body as string) as { event: string; distinct_id: string };
+    });
+
+  test("a paid subscription order sends order_completed with the checkout's attribution", async () => {
+    expect((await deliver(orderEvent())).status).toBe(200);
+    expect(captures()).toEqual([
+      expect.objectContaining({
+        event: "order_completed",
+        distinct_id: USER_ID,
+        properties: expect.objectContaining({
+          plan: "pro",
+          interval: "annual",
+          discount_code: "BFCM20",
+          source: "browser-extension",
+          utm_source: "browser-extension",
+          order_id: "5501",
+          amount: 64,
+          amount_usd: 64,
+          currency: "USD",
+          test_mode: true,
+        }),
+      }),
+    ]);
+  });
+
+  test("an unpaid order is acknowledged without an event", async () => {
+    expect((await deliver(orderEvent({ status: "pending" }))).status).toBe(200);
+    expect(captures()).toEqual([]);
+  });
+
+  test("an unreadable order payload is still acknowledged", async () => {
+    expect((await deliver(orderEvent({ total: "64.00" }))).status).toBe(200);
+    expect(captures()).toEqual([]);
   });
 });
 

@@ -9,6 +9,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { checkoutCustomData, checkoutEventProperties } from "@/lib/billing/attribution";
 import {
   canOfferPause,
   getIntervalFromVariantId,
@@ -23,6 +24,7 @@ import { configureLemonSqueezy } from "@/lib/config/lemonsqueezy";
 import { logger } from "@/lib/logger";
 import { runBackgroundTask } from "@/lib/utils/background";
 import { subscription, subscriptionCancellation } from "@/server/db/schema";
+import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
 import { recordCheckoutStart } from "@/server/lib/checkout-starts";
 import { sendDowngradeFeedbackNotification } from "@/server/lib/notifications/discord";
 
@@ -213,6 +215,7 @@ export const lemonsqueezyRouter = createTRPCRouter({
       }
 
       const promoCode = checkoutDiscountCode();
+      const attribution = { source: input.source, ...input.utm };
       const { result: checkout, discountCode: sentPromoCode } =
         await createCheckoutWithPromoFallback(
           (discountCode) =>
@@ -226,9 +229,8 @@ export const lemonsqueezyRouter = createTRPCRouter({
               checkoutData: {
                 email: user?.email ?? undefined,
                 discountCode,
-                custom: {
-                  user_id: userId,
-                },
+                // Read back by the order webhook to attribute the order like the checkout.
+                custom: checkoutCustomData(userId, attribution, discountCode),
               },
               productOptions: {
                 enabledVariants: [variantId],
@@ -265,6 +267,17 @@ export const lemonsqueezyRouter = createTRPCRouter({
           interval: input.interval,
           source: input.source ?? null,
           promoCode: sentPromoCode ?? null,
+        }),
+      );
+
+      captureServerEvent(
+        { id: userId, email: user?.email },
+        "checkout_started",
+        checkoutEventProperties({
+          plan: input.plan,
+          interval: input.interval,
+          discount_code: sentPromoCode,
+          ...attribution,
         }),
       );
 

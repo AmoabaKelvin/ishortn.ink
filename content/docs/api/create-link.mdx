@@ -21,7 +21,7 @@ Send a JSON body with `Content-Type: application/json` and your key in `x-api-ke
 | `expiresAfter` | number | No | Number of clicks after which the link stops redirecting. |
 | `activatesAt` | string | No | Date and time the link starts redirecting, as an ISO 8601 string with a time zone (`Z` or an offset such as `+01:00`). Pro and Ultra only. |
 | `password` | string | No | Visitors must enter this password before they're redirected. Pro and Ultra only. Stored as a bcrypt hash. |
-| `utmParams` | object | No | UTM parameters added to the destination when the link is visited. Ultra only. See below. |
+| `utmParams` | object | No | UTM parameters added to the destination when the link is visited. Pro and Ultra only. See below. |
 
 `utmParams` accepts these optional string fields, each up to 255 characters: `utm_source`, `utm_medium`, `utm_campaign`, `utm_term` and `utm_content`.
 
@@ -138,7 +138,7 @@ Error bodies use the [standard error shape](/docs/api#responses-and-errors), exc
 | `403` | `forbidden` | `Your plan includes 3 custom domains, so links.example.com can't take new or edited links. Upgrade to Ultra to keep using it.` | `domain` is a custom domain beyond your plan's allowance, for example after a downgrade. Without custom domains on your plan the message is `Custom domains are available on Pro and Ultra. Upgrade to create or edit links on links.example.com.` |
 | `403` | `forbidden` | `Scheduled links are only available on Pro and Ultra plans` | `activatesAt` on the Free plan. |
 | `403` | `forbidden` | `You need to upgrade to a pro plan to use password protection` | `password` without Pro or Ultra. |
-| `403` | `forbidden` | `UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.` | `utmParams` on Free or Pro. |
+| `403` | `forbidden` | `UTM parameters are available on Pro and Ultra plans. Please upgrade to use this feature.` | `utmParams` on the Free plan. |
 | `403` | `forbidden` | `You've reached your monthly limit of 30 links. Upgrade to Pro for more.` | Free plan monthly limit. On Pro the message names the 1,000-link limit and suggests Ultra. |
 | `409` | `conflict` | `Alias already exists` | The alias is taken on that domain, compared case-insensitively. Aliases of deleted or renamed links on platform domains stay taken. |
 | `429` | `rate_limited` | `Rate limit exceeded. Retry in N seconds.` | See [Rate limits](/docs/api#rate-limits). |

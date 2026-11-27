@@ -46,3 +46,42 @@ export const lemonsqueezySubscriptionEventSchema = z.object({
 });
 
 export type LemonsqueezySubscriptionEvent = z.infer<typeof lemonsqueezySubscriptionEventSchema>;
+
+// An order created outside the in-app checkout may carry any custom data; a value of another
+// type reads as unset rather than failing the delivery.
+const customString = z.string().optional().catch(undefined);
+const orderCustomDataSchema = z
+  .object({
+    user_id: customString,
+    discount_code: customString,
+    source: customString,
+    utm_source: customString,
+    utm_medium: customString,
+    utm_campaign: customString,
+    utm_term: customString,
+    utm_content: customString,
+  })
+  .nullish()
+  .catch(null);
+
+export const lemonsqueezyOrderEventSchema = z.object({
+  meta: z.object({
+    event_name: z.literal("order_created"),
+    custom_data: orderCustomDataSchema,
+  }),
+  data: z.object({
+    id: z.string(),
+    attributes: z.object({
+      status: z.string(),
+      user_email: z.string().nullish(),
+      currency: z.string(),
+      // Amounts are in cents.
+      total: z.number(),
+      total_usd: z.number(),
+      test_mode: z.boolean().optional(),
+      first_order_item: z.object({ variant_id: z.number(), product_id: z.number() }).nullish(),
+    }),
+  }),
+});
+
+export type LemonsqueezyOrderEvent = z.infer<typeof lemonsqueezyOrderEventSchema>;

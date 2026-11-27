@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 import { env } from "@/env.mjs";
-import { PLAN_VARIANT_IDS } from "@/lib/billing/plans";
+import { LINK_UTM_PLAN_MESSAGE, PLAN_VARIANT_IDS } from "@/lib/billing/plans";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { INVALID_URL_MESSAGE } from "@/lib/utils/destination-url";
 import { db } from "@/server/db";
@@ -270,8 +270,18 @@ describe.skipIf(!testDatabaseUrl)("POST /api/v1/links (MySQL)", () => {
     });
     const response = await createLink({ utmParams: { utm_source: "newsletter" } });
     expect(response.status).toBe(403);
-    expect((await response.json()).error.message).toContain("Ultra plan");
+    expect((await response.json()).error.message).toBe(LINK_UTM_PLAN_MESSAGE);
   });
+
+  for (const plan of ["pro", "ultra"] as const) {
+    test(`saves UTM parameters on ${plan}`, async () => {
+      await subscribe({ status: "active", plan, variantId: PLAN_VARIANT_IDS[plan].monthly });
+      const response = await createLink({ utmParams: { utm_source: "newsletter" } });
+      expect(response.status).toBe(201);
+      const stored = await db.query.link.findFirst({ where: eq(schema.link.userId, USER_ID) });
+      expect(stored?.utmParams).toEqual({ utm_source: "newsletter" });
+    });
+  }
 
   test("refuses creates and edits from a restricted account with 403", async () => {
     expect((await createLink({ alias: "restricted-edit" })).status).toBe(201);
