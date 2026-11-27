@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { LINK_UTM_PLAN_MESSAGE, PLAN_VARIANT_IDS } from "@/lib/billing/plans";
 import { DEFAULT_PLATFORM_DOMAIN } from "@/lib/constants/domains";
 import { link, linkCreationFailure } from "@/server/db/schema";
 import { parseScrapedPage } from "@/server/lib/metadata";
@@ -9,14 +10,23 @@ import { createLink } from "./link.service";
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type { LinkCreationFailure } from "@/server/lib/link-creation/failures";
 
-type InsertedLink = { url: string; name: string; alias: string; domain: string };
+type InsertedLink = {
+  url: string;
+  name: string;
+  alias: string;
+  domain: string;
+  utmParams?: unknown;
+};
 
 // In-memory stand-in for the queries createLink makes on a free personal
 // workspace: the plan lookup, the reserved-alias check for the generated alias
 // (none reserved), the link insert, failure records and the
 // monthly count update. `failInsert` makes the link insert throw like a
 // database outage would.
-function fakeContext({ failInsert = false } = {}) {
+function fakeContext({
+  failInsert = false,
+  plan = "free",
+}: { failInsert?: boolean; plan?: "free" | "pro" | "ultra" } = {}) {
   const inserted: InsertedLink[] = [];
   const recordedFailures: LinkCreationFailure[] = [];
   const db = {
@@ -27,7 +37,10 @@ function fakeContext({ failInsert = false } = {}) {
           monthlyLinkCount: 0,
           lastLinkCountReset: new Date(),
           createdAt: new Date(),
-          subscriptions: null,
+          subscriptions:
+            plan === "free"
+              ? null
+              : { status: "active", plan, variantId: PLAN_VARIANT_IDS[plan].monthly },
         }),
       },
     },
@@ -61,7 +74,7 @@ function fakeContext({ failInsert = false } = {}) {
       teamId: null,
       teamSlug: null,
       role: "owner",
-      plan: "free",
+      plan,
     },
   } as WorkspaceTRPCContext;
   return { ctx, inserted, recordedFailures };
@@ -161,5 +174,25 @@ describe("createLink", () => {
     expect(recordedFailures).toEqual([
       { source: "dashboard", step: "validation", code: "FORBIDDEN", serverError: false },
     ]);
+  });
+});
+
+describe("createLink UTM parameters", () => {
+  const utmParams = { utm_source: "newsletter", utm_medium: "email" };
+
+  test("are refused on Free with a prompt that points to Pro", async () => {
+    const { ctx, inserted } = fakeContext();
+    await expect(
+      createLink(ctx, { url: URL, utmParams }, { ...allowUrl, fetchMetadata: noMetadata }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: LINK_UTM_PLAN_MESSAGE });
+    expect(inserted).toEqual([]);
+  });
+
+  test("are saved on Pro and Ultra", async () => {
+    for (const plan of ["pro", "ultra"] as const) {
+      const { ctx, inserted } = fakeContext({ plan });
+      await createLink(ctx, { url: URL, utmParams }, { ...allowUrl, fetchMetadata: noMetadata });
+      expect(inserted[0]).toMatchObject({ utmParams });
+    }
   });
 });

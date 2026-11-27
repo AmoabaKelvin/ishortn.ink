@@ -73,12 +73,12 @@ export const lemonsqueezyOrderEventSchema = z.object({
     id: z.string(),
     attributes: z.object({
       status: z.string(),
+      user_email: z.string().nullish(),
       currency: z.string(),
       // Amounts are in cents.
       total: z.number(),
       total_usd: z.number(),
       test_mode: z.boolean().optional(),
-      user_email: z.string().nullish(),
       first_order_item: z.object({ variant_id: z.number(), product_id: z.number() }).nullish(),
     }),
   }),

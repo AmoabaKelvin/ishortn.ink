@@ -1,10 +1,19 @@
-import { and, asc, count, eq, gte, inArray, isNull, lt } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, isNull, lt, sum } from "drizzle-orm";
 
 import { effectivePlan } from "@/lib/billing/entitlements";
+import { PLAN_CAPS } from "@/lib/billing/plans";
+import { bucketKey, freeAnalyticsWindowStart } from "@/lib/core/analytics";
 import { groupReferrers } from "@/lib/core/analytics/referrer";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
-import { link, linkVisit, subscription, user, weeklySummaryEmail } from "@/server/db/schema";
+import {
+  link,
+  linkVisit,
+  linkVisitDailySummary,
+  subscription,
+  user,
+  weeklySummaryEmail,
+} from "@/server/db/schema";
 
 import { isSuppressedSql } from "./notifications/suppression";
 import {
@@ -13,6 +22,7 @@ import {
   type WeeklySummaryContent,
 } from "./notifications/weekly-summary";
 
+import type { WeeklySummaryUpgrade } from "@/emails/weekly-summary";
 import type { Plan } from "@/lib/billing/plans";
 
 const log = logger.child({ component: "weekly-summary" });
@@ -20,6 +30,8 @@ const log = logger.child({ component: "weekly-summary" });
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const WEEKLY_SUMMARY_MIN_CLICKS = 5;
 const TOP_LINKS = 3;
+/** Share of the Free monthly event cap at which the summary starts showing usage. */
+export const WEEKLY_SUMMARY_CAP_WARNING = 0.6;
 const WEEKLY_SUMMARY_MAX_SENDS = 300;
 const CHUNK_SIZE = 100;
 // Resend allows 2 requests per second per team by default; stay just under it.
@@ -103,15 +115,42 @@ export function isWeeklySummaryDue(candidate: WeeklySummaryCandidate): boolean {
   );
 }
 
-/** Visits dropped this month by the Free plan's cap, or null when the line doesn't apply. */
-export function droppedClicksLine(
-  input: { plan: Plan; droppedEventCount: number | null; eventTrackingPausedAt: Date | null },
+/**
+ * The Free account's event-cap line: visits dropped this month while tracking is paused, else
+ * visits tracked this month once they reach 60% of the cap. Null for paid plans and lighter use.
+ */
+export function eventUpgradeLine(
+  input: {
+    plan: Plan;
+    createdAt: Date | null;
+    monthlyEventCount: number | null;
+    lastEventCountReset: Date | null;
+    droppedEventCount: number | null;
+    eventTrackingPausedAt: Date | null;
+  },
   now: Date,
-): number | null {
+): WeeklySummaryUpgrade | null {
+  const limit = PLAN_CAPS.free.eventsLimit;
+  if (input.plan !== "free" || limit === undefined) return null;
+  // The counters reset lazily, so a pause or reset from an earlier month is stale.
+  const start = monthStart(now);
   const dropped = input.droppedEventCount ?? 0;
-  if (input.plan !== "free" || dropped <= 0 || !input.eventTrackingPausedAt) return null;
-  // The counter resets lazily, so a pause from an earlier month is stale.
-  return input.eventTrackingPausedAt >= monthStart(now) ? dropped : null;
+  if (dropped > 0 && input.eventTrackingPausedAt && input.eventTrackingPausedAt >= start) {
+    return { reason: "paused", count: dropped };
+  }
+  const lastReset = input.lastEventCountReset ?? input.createdAt;
+  const used = !lastReset || lastReset < start ? 0 : (input.monthlyEventCount ?? 0);
+  if (used < limit * WEEKLY_SUMMARY_CAP_WARNING) return null;
+  return { reason: "cap", count: Math.min(used, limit) };
+}
+
+/** The upgrade line: the event-cap line first, else clicks hidden by the Free history window. */
+export function weeklySummaryUpgrade(
+  eventLine: WeeklySummaryUpgrade | null,
+  hiddenClicks: number,
+): WeeklySummaryUpgrade | null {
+  if (eventLine) return eventLine;
+  return hiddenClicks > 0 ? { reason: "history", count: hiddenClicks } : null;
 }
 
 // Values the click pipeline stores when it couldn't resolve a location.
@@ -127,7 +166,7 @@ export function buildWeeklySummaryContent(input: {
   links: Array<{ domain: string; alias: string | null; name: string | null; clicks: number }>;
   countries: Array<{ country: string | null; clicks: number }>;
   referrers: Array<{ referer: string | null; clicks: number }>;
-  droppedClicks: number | null;
+  upgrade: WeeklySummaryUpgrade | null;
 }): WeeklySummaryContent {
   const topLinks = input.links
     .map((row) => ({
@@ -161,7 +200,7 @@ export function buildWeeklySummaryContent(input: {
     topLinks,
     topCountry: topCountry ? { name: topCountry.country, clicks: topCountry.clicks } : null,
     topSource: topSource ? { name: topSource.name, clicks: topSource.clicks } : null,
-    droppedClicks: input.droppedClicks,
+    upgrade: input.upgrade,
   };
 }
 
@@ -239,11 +278,14 @@ export async function sendWeeklySummaries({
         id: user.id,
         email: user.email,
         name: user.name,
+        createdAt: user.createdAt,
         banned: user.banned,
         restrictedAt: user.restrictedAt,
         deletedAt: user.deletedAt,
         productEmailsEnabled: user.productEmailsEnabled,
         weeklySummaryEnabled: user.weeklySummaryEnabled,
+        monthlyEventCount: user.monthlyEventCount,
+        lastEventCountReset: user.lastEventCountReset,
         droppedEventCount: user.droppedEventCount,
         eventTrackingPausedAt: user.eventTrackingPausedAt,
         planGracePlan: user.planGracePlan,
@@ -263,11 +305,22 @@ export async function sendWeeklySummaries({
     counts.skipped += chunk.length - due.length;
     if (!due.length) continue;
 
+    // Hidden history is only counted for Free accounts without an event-cap line.
+    const eventLines = new Map<string, WeeklySummaryUpgrade>();
+    const historyIds: string[] = [];
+    for (const row of due) {
+      const plan = effectivePlan(row.subscription ?? undefined, row, now);
+      const line = eventUpgradeLine({ ...row, plan }, now);
+      if (line) eventLines.set(row.id, line);
+      else if (plan === "free") historyIds.push(row.id);
+    }
+    const windowStart = freeAnalyticsWindowStart(now);
+
     // Grouped per chunk, never per account.
     const dueIds = due.map((row) => row.id);
     const forDue = (from: Date, to: Date) =>
       and(visitedBetween(from, to), personalLinks, inArray(link.userId, dueIds));
-    const [previous, links, countries, referrers] = await Promise.all([
+    const [previous, links, countries, referrers, olderVisits, olderArchived] = await Promise.all([
       db
         .select({ userId: link.userId, clicks: count() })
         .from(linkVisit)
@@ -298,8 +351,45 @@ export async function sendWeeklySummaries({
         .innerJoin(link, eq(link.id, linkVisit.linkId))
         .where(forDue(week.start, week.end))
         .groupBy(link.userId, linkVisit.referer),
+      // Clicks before the Free window, as the analytics overview counts them: raw visits plus
+      // the daily summaries archived past retention. `windowStart` is a UTC midnight.
+      historyIds.length
+        ? db
+            .select({ userId: link.userId, clicks: count() })
+            .from(linkVisit)
+            .innerJoin(link, eq(link.id, linkVisit.linkId))
+            .where(
+              and(
+                lt(linkVisit.createdAt, windowStart),
+                personalLinks,
+                inArray(link.userId, historyIds),
+              ),
+            )
+            .groupBy(link.userId)
+        : [],
+      historyIds.length
+        ? db
+            .select({
+              userId: link.userId,
+              clicks: sum(linkVisitDailySummary.clicks).mapWith(Number),
+            })
+            .from(linkVisitDailySummary)
+            .innerJoin(link, eq(link.id, linkVisitDailySummary.linkId))
+            .where(
+              and(
+                lt(linkVisitDailySummary.date, bucketKey(windowStart)),
+                personalLinks,
+                inArray(link.userId, historyIds),
+              ),
+            )
+            .groupBy(link.userId)
+        : [],
     ]);
     const previousByUser = new Map(previous.map((row) => [row.userId, row.clicks]));
+    const hiddenByUser = new Map<string, number>();
+    for (const row of [...olderVisits, ...olderArchived]) {
+      hiddenByUser.set(row.userId, (hiddenByUser.get(row.userId) ?? 0) + (row.clicks ?? 0));
+    }
 
     for (const row of due) {
       if (done()) break;
@@ -312,9 +402,9 @@ export async function sendWeeklySummaries({
         links: links.filter((item) => item.userId === row.id),
         countries: countries.filter((item) => item.userId === row.id),
         referrers: referrers.filter((item) => item.userId === row.id),
-        droppedClicks: droppedClicksLine(
-          { ...row, plan: effectivePlan(row.subscription ?? undefined, row, now) },
-          now,
+        upgrade: weeklySummaryUpgrade(
+          eventLines.get(row.id) ?? null,
+          hiddenByUser.get(row.id) ?? 0,
         ),
       });
 
