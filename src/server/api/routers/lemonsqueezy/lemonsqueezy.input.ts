@@ -24,6 +24,11 @@ export const createCheckoutOrUpdateInput = z.object({
 
 export type CreateCheckoutOrUpdateInput = z.infer<typeof createCheckoutOrUpdateInput>;
 
+export const previewPlanChangeInput = createCheckoutOrUpdateInput.pick({
+  plan: true,
+  interval: true,
+});
+
 export const DOWNGRADE_REASONS = [
   "too_expensive",
   "not_using_features",

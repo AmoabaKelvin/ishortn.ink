@@ -62,6 +62,7 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
   // What the stubbed Paddle answers with; a PaddleApiError is thrown instead of returned.
   let respond: (method: string) => PaddleSubscription | PaddleApiError;
   let portalFails = false;
+  let previewFails = false;
 
   function paddleSub(overrides: Partial<PaddleSubscription> = {}): PaddleSubscription {
     updatedAt += 1000;
@@ -105,6 +106,15 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
     updateSubscription: async (id, input) => {
       calls.push(["updateSubscription", id, input]);
       return answer("updateSubscription");
+    },
+    previewSubscriptionUpdate: async (id, input) => {
+      calls.push(["previewSubscriptionUpdate", id, input]);
+      if (previewFails) throw paddleError(500);
+      return {
+        immediate_transaction: {
+          details: { totals: { grand_total: "609", currency_code: "USD" } },
+        },
+      };
     },
     cancelSubscription: async (id, effectiveFrom) => {
       calls.push(["cancelSubscription", id, effectiveFrom]);
@@ -200,6 +210,7 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
   beforeEach(async () => {
     calls = [];
     portalFails = false;
+    previewFails = false;
     respond = () => paddleSub();
     fetchSpy.mockReset();
     fetchSpy.mockImplementation(async () => Response.json({ errors: [] }, { status: 500 }));
@@ -237,6 +248,49 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
       status: "active",
     });
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("previewPlanChange quotes Paddle's prorated, discounted amount due today", async () => {
+    await seed();
+
+    const charge = await caller().previewPlanChange({ plan: "pro", interval: "annual" });
+
+    expect(charge).toEqual({ type: "amount_due", amount: 609, currencyCode: "USD" });
+    expect(calls).toEqual([
+      [
+        "previewSubscriptionUpdate",
+        SUBSCRIPTION_ID,
+        {
+          items: [{ priceId: PRICES.proAnnual, quantity: 1 }],
+          prorationBillingMode: "prorated_immediately",
+        },
+      ],
+    ]);
+  });
+
+  test("previewPlanChange falls back to prorated wording when the preview fails", async () => {
+    await seed();
+    previewFails = true;
+
+    expect(await caller().previewPlanChange({ plan: "ultra", interval: "monthly" })).toEqual({
+      type: "prorated",
+    });
+    expect(await caller(null).previewPlanChange({ plan: "ultra", interval: "monthly" })).toEqual({
+      type: "prorated",
+    });
+  });
+
+  test("previewPlanChange quotes the list price for a Lemon Squeezy row", async () => {
+    await seed({
+      billingProvider: "lemonsqueezy",
+      subscriptionId: 935001,
+      providerSubscriptionId: null,
+    });
+
+    expect(await caller().previewPlanChange({ plan: "ultra", interval: "monthly" })).toEqual({
+      type: "list_price",
+    });
+    expect(calls).toHaveLength(0);
   });
 
   test("an interval change stores the new interval and price", async () => {
@@ -287,7 +341,7 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
     expect((await stored())?.plan).toBe("pro");
   });
 
-  test("a downgrade to Pro switches now and credits the next invoice", async () => {
+  test("a downgrade to Pro switches now and credits the unused time right away", async () => {
     await seed({ plan: "ultra", providerPriceId: PRICES.ultraAnnual, billingInterval: "annual" });
     respond = () => paddleSub({ items: [{ price: { id: PRICES.proAnnual } }] });
 
@@ -306,7 +360,9 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
         SUBSCRIPTION_ID,
         {
           items: [{ priceId: PRICES.proAnnual, quantity: 1 }],
-          prorationBillingMode: "prorated_next_billing_period",
+          // Credited to the Paddle balance now, so a switch to annual in the same period uses it
+          // instead of waiting for the next renewal a year later.
+          prorationBillingMode: "prorated_immediately",
         },
       ],
     ]);
@@ -415,13 +471,19 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
 
     const result = await caller().pauseSubscription({ months: 2, reason: "temporary_pause" });
 
-    expect(result).toEqual({ message: "Billing is paused. It restarts on March 15, 2027." });
+    expect(result).toEqual({
+      message: "Your subscription pauses on January 15, 2027 and resumes on March 15, 2027.",
+    });
     expect(calls).toEqual([
       ["getSubscription", SUBSCRIPTION_ID],
       ["pauseSubscription", SUBSCRIPTION_ID, { effectiveFrom: "next_billing_period", resumeAt }],
     ]);
     const row = await stored();
-    expect(row).toMatchObject({ status: "active", pausedUntil: new Date(resumeAt) });
+    expect(row).toMatchObject({
+      status: "active",
+      renewsAt: new Date(PERIOD_END),
+      pausedUntil: new Date(resumeAt),
+    });
     const records = await cancellations();
     expect(records[0]).toMatchObject({
       subscriptionId: 0,

@@ -6,15 +6,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
+import { scheduledPause } from "@/lib/billing/plans";
 import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { DowngradeFeedbackModal } from "../../pricing/_components/downgrade-feedback-modal";
-import {
-  buildPlanChangeCopy,
-  PlanChangeConfirmDialog,
-} from "../../pricing/_components/plan-change-confirm-dialog";
+import { PlanChangeConfirmDialog } from "../../pricing/_components/plan-change-confirm-dialog";
 
 import type { BillingInterval, Plan, SubscriptionMode } from "@/lib/billing/plans";
 import type { PlanPriceDisplay } from "@/lib/billing/pricing";
@@ -124,10 +122,8 @@ export function PlanSwitcher({
 
   const canChangeInPlace = subscriptionMode === "update";
   const isResumable = subscriptionMode === "resume";
+  const pause = scheduledPause(subscription);
   const currentPlanName = PLANS.find((p) => p.id === currentPlan)?.name ?? currentPlan;
-  const confirmCopy = pendingChange
-    ? buildPlanChangeCopy(pendingChange.kind, pendingChange.plan, interval)
-    : null;
 
   return (
     <div>
@@ -163,7 +159,10 @@ export function PlanSwitcher({
 
       {isResumable && (
         <p className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-400">
-          Your subscription is {isPaused ? "paused" : "cancelled"}. Resume it to change plans.
+          {pause
+            ? // The status line above already shows the pause dates.
+              "Resume it now to change plans."
+            : `Your subscription is ${isPaused ? "paused" : "cancelled"}. Resume it to change plans.`}
         </p>
       )}
 
@@ -276,14 +275,13 @@ export function PlanSwitcher({
         />
       )}
 
-      {pendingChange && confirmCopy && (
+      {pendingChange && (
         <PlanChangeConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title={confirmCopy.title}
-          description={confirmCopy.description}
-          note={confirmCopy.note}
-          confirmLabel={confirmCopy.confirmLabel}
+          kind={pendingChange.kind}
+          targetPlan={pendingChange.plan}
+          interval={interval}
           isLoading={createCheckoutOrUpdate.isLoading}
           onConfirm={() => runUpgrade(pendingChange.plan)}
         />

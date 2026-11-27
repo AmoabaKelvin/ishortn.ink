@@ -100,6 +100,9 @@ export function normalizePaddleSubscription(
         renewsAt = null;
       } else if (change?.action === "pause") {
         pausedUntil = parseDate(change.resume_at);
+        // Paddle clears next_billed_at once a pause is scheduled; the pause starts at the end of
+        // the paid period, kept here so the billing card can show it (scheduledPause in plans.ts).
+        renewsAt = parseDate(change.effective_at) ?? renewsAt;
       }
       break;
     case "paused":

@@ -94,6 +94,15 @@ describe("normalizePaddleSubscription", () => {
     expect(result.endsAt).toBeNull();
   });
 
+  test("a scheduled pause keeps its start date although Paddle clears next_billed_at", () => {
+    const result = normalize({
+      next_billed_at: null,
+      scheduled_change: { action: "pause", effective_at: NEXT, resume_at: LATER },
+    });
+    expect(result.renewsAt).toEqual(new Date(NEXT));
+    expect(result.pausedUntil).toEqual(new Date(LATER));
+  });
+
   test("past_due keeps its status and the active dates", () => {
     const result = normalize({ status: "past_due" });
     expect(result.status).toBe("past_due");
