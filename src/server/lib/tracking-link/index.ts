@@ -30,7 +30,9 @@ import type { UrlSafetyResult } from "@/server/lib/phishing";
 
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export type TrackingLinkKind = "qr" | "bio";
+// "bio-image" backs a linked image block: a bio link that never takes a slot of
+// the monthly link allowance on any plan.
+export type TrackingLinkKind = "qr" | "bio" | "bio-image";
 
 export type PreparedTrackingLink = {
   values: typeof link.$inferInsert;
@@ -51,7 +53,10 @@ export async function checkTrackingLinkQuota(
   ctx: WorkspaceTRPCContext,
   kind: TrackingLinkKind,
 ): Promise<Pick<PreparedTrackingLink, "currentCount" | "shouldIncrementCount">> {
-  if (!countsTowardMonthlyLinkQuota(ctx.workspace.plan, { isBioLink: kind === "bio" })) {
+  if (
+    kind === "bio-image" ||
+    !countsTowardMonthlyLinkQuota(ctx.workspace.plan, { isBioLink: kind === "bio" })
+  ) {
     return { currentCount: 0, shouldIncrementCount: false };
   }
   const { currentCount, limit } = await checkWorkspaceLinkLimit(ctx);
@@ -66,7 +71,8 @@ export async function checkTrackingLinkQuota(
  * a transaction is opened: the link-quota check, URL safety scan, domain
  * authorization, and alias generation. Throws TRPCError("FORBIDDEN") when the
  * workspace's monthly link quota is reached. Bio links skip the quota on plans
- * with a per-page block cap, which callers enforce instead.
+ * with a per-page block cap, which callers enforce instead; image-block links
+ * always skip it.
  */
 export async function prepareHiddenTrackingLink(
   ctx: WorkspaceTRPCContext,
@@ -103,7 +109,7 @@ export async function prepareHiddenTrackingLink(
       domain,
       name: opts.name,
       isQrCode: opts.kind === "qr",
-      isBioLink: opts.kind === "bio",
+      isBioLink: opts.kind === "bio" || opts.kind === "bio-image",
       userId: ownership.userId ?? ctx.auth.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId,

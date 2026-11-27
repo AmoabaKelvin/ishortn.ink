@@ -60,6 +60,7 @@ import {
   countryLabel,
   deviceLabel,
   lockBioBlockCapacity,
+  precheckBioBlockCapacity,
   pageBelongsToWorkspace,
   referrerHostLabel,
   rethrowBioDuplicate,
@@ -556,6 +557,8 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
 
   if (input.type === "embed") {
     const embed = resolveEmbed(input.url);
+    // Fail a full page before waiting on the provider's oEmbed request.
+    await precheckBioBlockCapacity(ctx.db, ctx.workspace.plan, page.id, ctx.auth.userId, "embed");
     const details = await embedDetails(embed);
     const id = await ctx.db.transaction(async (tx) => {
       await lockBioBlockCapacity(tx, ctx.workspace.plan, page.id, ctx.auth.userId, "embed");
@@ -586,7 +589,7 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
       ? await prepareHiddenTrackingLink(ctx, {
           url: destination,
           name: input.title || page.title || "Bio image",
-          kind: "bio",
+          kind: "bio-image",
         })
       : null;
     const { value: src } = await uploadBlockImage(ctx, input.image, null);
@@ -725,7 +728,7 @@ async function updateImageBlock(
       prepared = await prepareHiddenTrackingLink(ctx, {
         url: destination,
         name: input.title || block.bioPage.title || "Bio image",
-        kind: "bio",
+        kind: "bio-image",
       });
     } else if (block.linkId) {
       removedLinkId = block.linkId;
@@ -745,6 +748,19 @@ async function updateImageBlock(
   let addedLinkId: number | null = null;
   try {
     await ctx.db.transaction(async (tx) => {
+      // The link decisions above were made from an unlocked read; a concurrent
+      // save that added or removed the link since would orphan one or double-delete.
+      const [current] = await tx
+        .select({ linkId: bioBlock.linkId })
+        .from(bioBlock)
+        .where(eq(bioBlock.id, block.id))
+        .for("update");
+      if (!current || current.linkId !== block.linkId) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This block was changed somewhere else. Reload the page and try again.",
+        });
+      }
       if (prepared) {
         addedLinkId = await insertHiddenTrackingLink(tx, ctx, prepared);
         updates.linkId = addedLinkId;

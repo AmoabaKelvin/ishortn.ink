@@ -127,9 +127,13 @@ function parseMaps(url: URL): EmbedParseResult {
     return fail("Paste a Google Maps link.");
   }
 
+  // searchParams decodes, but real pb values carry encoded place ids
+  // (`0x…%3A0x…`) and names (`Empire%20State`), so re-encode before the
+  // allow-list check and keep the iframe src exactly as Google wrote it.
   const pb = url.searchParams.get("pb");
   if (path[1] === "embed" && pb) {
-    return ok("maps", `pb:${pb}`, `https://www.google.com/maps/embed?pb=${pb}`);
+    const encoded = encodeURIComponent(pb);
+    return ok("maps", `pb:${encoded}`, `https://www.google.com/maps/embed?pb=${encoded}`);
   }
 
   // /maps/place/<name>/@lat,lng,zoom or /maps/search/<query>, else ?q= / ?query=.

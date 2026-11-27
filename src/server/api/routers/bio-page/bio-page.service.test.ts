@@ -7,6 +7,7 @@ import mysql from "mysql2/promise";
 import { EMBED_UNSUPPORTED_MESSAGE } from "@/components/bio/embed";
 import { parseEmbed } from "@/components/bio/embed-content";
 import { buildWhatsAppUrl, parseWhatsApp, serializeWhatsApp } from "@/components/bio/whatsapp";
+import { getPlanCaps } from "@/lib/billing/plans";
 import * as platform from "@/lib/platform";
 import * as schema from "@/server/db/schema";
 import { clearPlanLimitHitMemo } from "@/server/lib/plan-limit-hits";
@@ -618,6 +619,16 @@ describe.skipIf(!testDatabaseUrl)("bio page embed and image blocks (MySQL)", () 
     expect((await blocksOnPage()).map((b) => b.type)).toEqual(["embed", "embed", "embed"]);
   });
 
+  test("an embed on a full free page is refused before the oEmbed request", async () => {
+    await add("free", { type: "embed", url: YOUTUBE });
+    fetchSpy.mockClear();
+
+    await expect(
+      add("free", { type: "embed", url: "https://vimeo.com/76979871" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   test("unsupported and malformed embed URLs are rejected with the parser's message", async () => {
     await expect(
       add("pro", { type: "embed", url: "https://example.com/video" }),
@@ -709,6 +720,36 @@ describe.skipIf(!testDatabaseUrl)("bio page embed and image blocks (MySQL)", () 
     row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
     expect(row).toMatchObject({ url: null, linkId: null, content: PNG });
     expect(await db.query.link.findFirst({ where: eq(schema.link.id, linkId) })).toBeUndefined();
+  });
+
+  test("linked image blocks don't use or need the monthly link allowance", async () => {
+    const used = getPlanCaps("pro").linksLimit ?? 0;
+    await db
+      .update(schema.user)
+      .set({ monthlyLinkCount: used, lastLinkCountReset: new Date() })
+      .where(eq(schema.user.id, USER_ID));
+
+    const { id } = await add("pro", { type: "image", image: PNG, url: "https://example.com/a" });
+    const other = await add("pro", { type: "image", image: PNG });
+    await updateBlock(ctx("pro"), { id: other.id, url: "https://example.com/b" });
+
+    const row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row?.linkId).toBeGreaterThan(0);
+    const owner = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
+    expect(owner?.monthlyLinkCount).toBe(used);
+  });
+
+  test("concurrent saves adding a link to an image block leave exactly one hidden link", async () => {
+    const { id } = await add("pro", { type: "image", image: PNG });
+
+    await Promise.allSettled([
+      updateBlock(ctx("pro"), { id, url: "https://example.com/one" }),
+      updateBlock(ctx("pro"), { id, url: "https://example.com/two" }),
+    ]);
+
+    const links = await db.query.link.findMany({ where: eq(schema.link.userId, USER_ID) });
+    const row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(links.map((l) => l.id)).toEqual([row?.linkId ?? 0]);
   });
 
   test("an image block's src can't be pointed at another site", async () => {

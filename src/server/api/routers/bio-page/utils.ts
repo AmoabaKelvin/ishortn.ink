@@ -147,6 +147,43 @@ export function assertBioBlockCapacity(
   throw new TRPCError({ code: "FORBIDDEN", message: cap.message(limit) });
 }
 
+async function assertBioBlockCountUnderCap(
+  client: TransactionClient | typeof db,
+  plan: Plan,
+  bioPageId: number,
+  userId: string,
+  type: CappedBioBlockType,
+): Promise<void> {
+  const [row] = await client
+    .select({ count: count() })
+    .from(bioBlock)
+    .where(and(eq(bioBlock.bioPageId, bioPageId), eq(bioBlock.type, type)));
+
+  try {
+    assertBioBlockCapacity(plan, type, Number(row?.count ?? 0));
+  } catch (error) {
+    // Root db, not tx: the transaction rolls back on this throw.
+    await recordPlanLimitHit({ userId, limitKey: BLOCK_CAPS[type].limitKey, plan });
+    throw error;
+  }
+}
+
+/**
+ * Unlocked early version of lockBioBlockCapacity, for adds that do slow work
+ * (a provider request) before their transaction: a page that is already full
+ * fails fast. The locked check inside the transaction still decides.
+ */
+export async function precheckBioBlockCapacity(
+  client: typeof db,
+  plan: Plan,
+  bioPageId: number,
+  userId: string,
+  type: CappedBioBlockType,
+): Promise<void> {
+  if (BLOCK_CAPS[type].limit(plan) === undefined) return;
+  await assertBioBlockCountUnderCap(client, plan, bioPageId, userId, type);
+}
+
 /**
  * Enforce the per-plan cap on `type` blocks for one bio page, inside the
  * transaction that inserts the block. Locking the page row first serializes
@@ -162,23 +199,10 @@ export async function lockBioBlockCapacity(
   userId: string,
   type: CappedBioBlockType,
 ): Promise<void> {
-  const cap = BLOCK_CAPS[type];
-  if (cap.limit(plan) === undefined) return;
+  if (BLOCK_CAPS[type].limit(plan) === undefined) return;
 
   await tx.select({ id: bioPage.id }).from(bioPage).where(eq(bioPage.id, bioPageId)).for("update");
-
-  const [row] = await tx
-    .select({ count: count() })
-    .from(bioBlock)
-    .where(and(eq(bioBlock.bioPageId, bioPageId), eq(bioBlock.type, type)));
-
-  try {
-    assertBioBlockCapacity(plan, type, Number(row?.count ?? 0));
-  } catch (error) {
-    // Root db, not tx: the transaction rolls back on this throw.
-    await recordPlanLimitHit({ userId, limitKey: cap.limitKey, plan });
-    throw error;
-  }
+  await assertBioBlockCountUnderCap(tx, plan, bioPageId, userId, type);
 }
 
 /** In-memory ownership check mirroring workspaceFilter (for already-loaded rows). */

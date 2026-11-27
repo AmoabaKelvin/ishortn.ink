@@ -380,7 +380,7 @@ function BlockForm({
                 <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
-                  className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 px-4 py-8 text-center hover:border-blue-400 hover:bg-blue-50/60 dark:border-border dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10"
+                  className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 px-4 py-8 text-center hover:border-blue-400 hover:bg-blue-50/60 dark:border-border dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 dark:bg-muted dark:text-muted-foreground">
                     <IconPhoto size={18} stroke={1.5} />
@@ -517,7 +517,7 @@ function BlockForm({
                   { platform: "website", url: "", key: crypto.randomUUID() },
                 ])
               }
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 py-2.5 text-[13px] font-medium text-neutral-600 transition-colors hover:border-blue-400 hover:bg-blue-50/60 hover:text-blue-600 dark:border-border dark:text-neutral-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 py-2.5 text-[13px] font-medium text-neutral-600 transition-colors hover:border-blue-400 hover:bg-blue-50/60 hover:text-blue-600 dark:border-border dark:text-neutral-400 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
               <IconPlus size={15} stroke={1.5} />
               Add social link

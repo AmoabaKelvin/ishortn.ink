@@ -176,6 +176,16 @@ describe("parseEmbedUrl: Google Maps", () => {
     });
   });
 
+  test("a real Embed a map snippet with a place id and name is accepted unchanged", () => {
+    const pb =
+      "!1m18!1m12!1m3!1d3022.2150523!2d-73.9878441!3d40.7484405!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c259a9b3117469%3A0xd134e199a405a163!2sEmpire%20State%20Building!5e0!3m2!1sen!2sus!4v1700000000000!5m2!1sen!2sus";
+    const snippet = `<iframe src="https://www.google.com/maps/embed?pb=${pb}" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+    expect(parsed(snippet)).toMatchObject({
+      embedId: `pb:${pb}`,
+      src: `https://www.google.com/maps/embed?pb=${pb}`,
+    });
+  });
+
   test("rejects other Google pages and short links", () => {
     expect(error("https://www.google.com/search?q=maps")).toBe("Paste a Google Maps link.");
     expect(error("https://maps.app.goo.gl/abc")).toMatch(/short link/);
