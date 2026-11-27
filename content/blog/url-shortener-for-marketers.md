@@ -28,6 +28,8 @@ The short link counts clicks. Google Analytics only knows which campaign brought
 
 If the same link goes into your newsletter, your Instagram bio and a printed flyer, you can't tell which one worked. Make one short link for each placement, each with its own `utm_source` and `utm_medium`, and compare clicks side by side. For print, put the link in a QR code; the [free QR code generator](/qr-code-generator) makes one without sign-up.
 
+Customer story: [how AIRO cut its rack card spend](/customers/airo). AIRO's small marketing team tracks traffic from each source and partner with iShortn, and uses the numbers to hold partners to the visits they promised.
+
 ### Links you can edit later
 
 Campaign pages move and offers end. If the link is already in an email or on a poster, you need to change where it points without changing the link. Check how many edits a plan allows, because some tools count them.

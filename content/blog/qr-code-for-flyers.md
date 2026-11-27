@@ -127,6 +127,8 @@ Use **one code per place or batch you want to compare**, for example:
 
 Each code points to the same page, but each one counts its own scans. After two weeks you'll see that, say, the café brought 60 scans and the door drop brought 4, and you'll know where to put the next print run.
 
+Customer story: [how AIRO cut its rack card spend](/customers/airo). The helicopter tour company's iShortn click data showed its rack cards weren't working, so it is cancelling at least $5,000 of rack card printing for next year.
+
 Two ways to go further:
 
 - **Group them.** In iShortn, add the codes to one campaign. The free plan includes one active campaign, and the campaign page totals scans across its codes and ranks them side by side.

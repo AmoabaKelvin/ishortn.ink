@@ -95,12 +95,13 @@ describe("solution copy", () => {
   });
 
   // A mistyped blog slug would hide the link forever instead of failing.
-  it("links only to existing docs pages, blog posts, comparison pages and the QR code generator", () => {
+  it("links only to existing docs pages, blog posts, comparison pages, the QR code generator and customer stories", () => {
     const docs = new Set([
       ...DOCS_PAGES.map((page) => docsHref(page.slug)),
       ...Object.values(competitors).map((competitor) => `/compare/${competitor.slug}`),
       "/qr-code-generator",
       "/whatsapp-link-generator",
+      "/customers/airo",
     ]);
     const farFuture = new Date("2100-01-01");
     for (const { href } of solutionList.flatMap((solution) => solution.related)) {

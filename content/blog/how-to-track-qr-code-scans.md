@@ -116,6 +116,8 @@ Say you run a café with two locations and you're launching [a winter menu](/blo
 4. After two weeks, compare: scans per code in iShortn, then online orders by `utm_content` in GA4.
 5. Move your budget toward what worked. Because the codes are dynamic, you can repoint the weaker ones at a different offer instead of throwing the print away.
 
+Customer story: [AIRO](/customers/airo), a helicopter tour company in Missouri and Arkansas, tracks traffic from each source with iShortn. When the numbers showed its rack cards weren't working, it stopped using them in two markets and is cancelling at least $5,000 of rack card spend for next year.
+
 ## Common mistakes
 
 - **Making a static code for something you'll want to measure later.** You can't add tracking to a static code after printing.
