@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  IconBuildingStore,
   IconCheck,
   IconChevronDown,
   IconDeviceDesktop,
@@ -14,7 +15,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { UpgradeCta } from "@/components/upgrade-cta";
 import { DEVICE_TYPES, OS_TYPES, type TargetingRuleType } from "@/lib/constants/targeting";
+import { buildAmazonStorefrontRules } from "@/lib/core/geo-rules/marketplace";
 import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
@@ -441,9 +443,9 @@ export function GeoRulesForm({
   maxRules,
   isUnlimited = false,
 }: GeoRulesFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const idCounter = useRef(0);
   const geoRules: GeoRuleFormData[] = form.watch("geoRules") || [];
+  const destinationUrl: string = form.watch("url") || "";
 
   const generateId = useCallback(() => {
     return `rule-${Date.now()}-${idCounter.current++}`;
@@ -477,12 +479,50 @@ export function GeoRulesForm({
   const canAddMore = isUnlimited || !maxRules || geoRules.length < maxRules;
   const showLimitBadge = !isUnlimited && maxRules !== undefined;
 
+  // Proposes storefront rules when the destination is an Amazon product page.
+  const marketplaceRules = disabled
+    ? []
+    : buildAmazonStorefrontRules(destinationUrl, {
+        existingCountries: geoRules.flatMap((rule) =>
+          rule.type === "country" && rule.condition === "in" ? rule.values : [],
+        ),
+        maxRules: isUnlimited || !maxRules ? undefined : maxRules - geoRules.length,
+      });
+
+  const addMarketplaceRules = () => {
+    const newRules: GeoRuleFormData[] = marketplaceRules.map((rule) => ({
+      _tempId: generateId(),
+      type: rule.type,
+      condition: rule.condition,
+      values: rule.values,
+      action: rule.action,
+      destination: rule.destination,
+    }));
+    form.setValue("geoRules", [...geoRules, ...newRules]);
+  };
+
+  // Opens the section once when a storefront suggestion first appears (the plan loads after the
+  // first render, so this can't be the initial state), unless the user has already toggled it.
+  const [isOpen, setIsOpen] = useState(false);
+  const autoOpened = useRef(false);
+  const hasMarketplaceRules = marketplaceRules.length > 0;
+  useEffect(() => {
+    if (!hasMarketplaceRules || autoOpened.current) return;
+    autoOpened.current = true;
+    setIsOpen(true);
+  }, [hasMarketplaceRules]);
+
+  const toggleOpen = () => {
+    autoOpened.current = true;
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div className="rounded-lg border border-neutral-200 dark:border-border p-4">
       <button
         type="button"
         className="flex w-full items-center justify-between text-left"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleOpen}
       >
         <div className="flex flex-col gap-0.5">
           <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
@@ -504,7 +544,9 @@ export function GeoRulesForm({
             )}
           </p>
           <span className="text-[12px] text-neutral-400">
-            Redirect or block visitors by location, device, or OS
+            {marketplaceRules.length > 0
+              ? "Amazon link detected: send visitors to their local store"
+              : "Redirect or block visitors by location, device, or OS"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -554,6 +596,39 @@ export function GeoRulesForm({
                 </div>
               ) : (
                 <>
+                  {marketplaceRules.length > 0 && (
+                    <div className="flex flex-col gap-3 rounded-lg bg-blue-50 p-4 sm:flex-row sm:items-center dark:bg-blue-500/10">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <IconBuildingStore
+                          size={16}
+                          stroke={1.5}
+                          className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-400"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
+                            Route visitors to their local Amazon store
+                          </p>
+                          <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
+                            Adds {marketplaceRules.length === 1 ? "a rule" : "rules"} for{" "}
+                            {marketplaceRules.map((rule) => rule.storefront).join(", ")} with the
+                            same product path. You can edit them before saving.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addMarketplaceRules}
+                        className="shrink-0 gap-1.5 border-neutral-200 bg-white text-[13px] dark:border-border dark:bg-card"
+                      >
+                        <IconPlus size={14} stroke={1.5} />
+                        Add {marketplaceRules.length}{" "}
+                        {marketplaceRules.length === 1 ? "rule" : "rules"}
+                      </Button>
+                    </div>
+                  )}
+
                   <AnimatePresence mode="popLayout">
                     {geoRules.map((rule, index) => (
                       <GeoRuleItem
