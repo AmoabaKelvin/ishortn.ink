@@ -3,6 +3,7 @@ export type ImageType =
   | "qr-logo"
   | "qr-code"
   | "qr-code-logo"
+  | "qr-code-bulk-logo"
   | "feedback"
   | "bio-avatar"
   | "bio-og";

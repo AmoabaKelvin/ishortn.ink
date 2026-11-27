@@ -104,6 +104,11 @@ import {
 } from "@/server/lib/workspace";
 
 import { mergeCampaignUtm } from "../campaign/utils";
+import {
+  createBulkQrCodes,
+  deleteQrCodeImages,
+  prepareBulkQrCodes,
+} from "../qrcode/qrcode-bulk.service";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 import { LINK_ALIAS_MAX_LENGTH, LINK_NOTE_MAX_LENGTH } from "./link.input";
 import {
@@ -1066,17 +1071,26 @@ export const removeLink = async (
     eq(link.id, linkToDelete.id),
     workspaceFilter(workspace, link.userId, link.teamId),
   );
-  const cacheKeys = [
-    buildCacheKey(linkToDelete.domain, linkToDelete.alias!),
-    ...(await previousAddressCacheKeys(db, linkToDelete.id)),
-  ];
+  // QR codes made by a CSV import encode this link and go with it.
+  const qrWhere = and(
+    eq(qrcode.linkId, linkToDelete.id),
+    workspaceFilter(workspace, qrcode.userId, qrcode.teamId),
+  );
+  const [cacheKeys, qrCodes] = await Promise.all([
+    previousAddressCacheKeys(db, linkToDelete.id),
+    db.select({ qrCode: qrcode.qrCode, style: qrcode.style }).from(qrcode).where(qrWhere),
+  ]);
   await Promise.all([
-    ...cacheKeys.map((key) => deleteFromCache(key)),
+    ...[buildCacheKey(linkToDelete.domain, linkToDelete.alias!), ...cacheKeys].map((key) =>
+      deleteFromCache(key),
+    ),
     db.transaction(async (tx) => {
+      if (qrCodes.length > 0) await tx.delete(qrcode).where(qrWhere);
       await reserveLinkAliases(tx, where, "deleted");
       await tx.delete(link).where(where);
     }),
   ]);
+  if (qrCodes.length > 0) await deleteQrCodeImages(db, workspace, qrCodes);
 };
 
 export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number[]) => {
@@ -1123,6 +1137,11 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     }
   }
 
+  const qrCodes = await ctx.db
+    .select({ qrCode: qrcode.qrCode, style: qrcode.style })
+    .from(qrcode)
+    .where(inArray(qrcode.linkId, validLinkIds));
+
   // Delete from database in transaction (delete dependents first)
   await ctx.db.transaction(async (tx) => {
     // 1. Delete link visits
@@ -1144,6 +1163,8 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     await reserveLinkAliases(tx, inArray(link.id, validLinkIds), "deleted");
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
+
+  if (qrCodes.length > 0) await deleteQrCodeImages(ctx.db, ctx.workspace, qrCodes);
 
   // Invalidate cache for all deleted links in the background. waitUntil keeps
   // the serverless function alive until every deleteFromCache settles.
@@ -1404,6 +1425,9 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
 
   if (!foundLink) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
+  }
+  if (foundLink.folderId) {
+    await requireFolderAccess(ctx.db, ctx.workspace, foundLink.folderId);
   }
 
   const { range, custom } = resolveAnalyticsRange(input, userHasPaidPlan);
@@ -1927,12 +1951,16 @@ type ImportLink = {
   unavailableAlias?: string;
 };
 
-type PreparedLink = { record: ImportLink; alreadyImported: boolean };
+type PreparedLink = { record: ImportLink; alreadyImported: boolean; linkId?: number };
 
 export type BulkCreateLinksOptions = {
   /** Bitly exports: also create the random code of a custom link on the same domain. */
   keepBitlyCodes?: boolean;
+  /** Also create a QR code for each row's new link, drawn with this saved style (null: default). */
+  qrCodes?: { presetId: number | null };
 };
+
+type BulkQrCodeResult = { id: number; row: number; domain: string; alias: string };
 
 type CheckImportUrl = (url: string) => Promise<UrlSafetyResult | void>;
 
@@ -2000,13 +2028,18 @@ const bulkCreateLinkRows = async (
   ctx: WorkspaceTRPCContext,
   csvContent: string,
   checkUrl: CheckImportUrl,
-  { keepBitlyCodes = true }: BulkCreateLinksOptions,
+  { keepBitlyCodes = true, qrCodes }: BulkCreateLinksOptions,
 ) => {
   const parsed = parseLinkCsv(csvContent);
   const isBitlyFile = parsed.some((row) => row.bitly);
   // Links deleted in Bitly are neither created nor counted toward the allowance.
   const rows = parsed.filter((row) => !row.bitly?.deleted);
   const skipped = parsed.length - rows.length;
+
+  // Rejects the whole import before any link exists when the plan can't add the QR codes.
+  const qrPlan = qrCodes
+    ? await prepareBulkQrCodes(ctx, { rowCount: rows.length, presetId: qrCodes.presetId })
+    : undefined;
 
   // Throws when the monthly allowance and the custom-domain import allowance are
   // both used up, rejecting the whole import.
@@ -2204,8 +2237,9 @@ const bulkCreateLinkRows = async (
           ...restrictedLinkValues(ctx.restrictedAt),
         });
         recordSafetyFollowUp(Number(inserted.insertId), safety);
-        createdDestinations.push({ linkId: Number(inserted.insertId), url: record.url });
-        return { record: { ...record, alias }, alreadyImported: false };
+        const linkId = Number(inserted.insertId);
+        createdDestinations.push({ linkId, url: record.url });
+        return { record: { ...record, alias }, alreadyImported: false, linkId };
       },
     );
     const importCreated = results.filter(
@@ -2308,6 +2342,40 @@ const bulkCreateLinkRows = async (
   await incrementCustomDomainImportCount(ctx, importCreated);
   checkCampaignPatternsAfterResponse(createdDestinations);
 
+  // Codes for each row's own new link; Bitly code links and earlier imports get none.
+  let createdQrCodes: BulkQrCodeResult[] = [];
+  let qrCodeNotice = "";
+  if (qrPlan) {
+    const qrLinks = primary.results.flatMap((result) =>
+      result.status === "fulfilled" && result.value.linkId
+        ? [{ ...result.value.record, linkId: result.value.linkId }]
+        : [],
+    );
+    try {
+      const rows = await createBulkQrCodes(
+        ctx,
+        qrPlan,
+        qrLinks.map((entry) => ({
+          linkId: entry.linkId,
+          url: entry.url,
+          title: entry.name || `${entry.domain}/${entry.alias}`,
+        })),
+      );
+      const byLink = new Map(qrLinks.map((entry) => [entry.linkId, entry]));
+      createdQrCodes = rows.flatMap((row) => {
+        const entry = row.linkId ? byLink.get(row.linkId) : undefined;
+        return entry?.alias
+          ? [{ id: row.id, row: entry.row, domain: entry.domain, alias: entry.alias }]
+          : [];
+      });
+      createdQrCodes.sort((a, b) => a.row - b.row);
+      qrCodeNotice = `, ${createdQrCodes.length} ${createdQrCodes.length === 1 ? "QR code" : "QR codes"} created`;
+    } catch (error) {
+      log.error({ err: error }, "failed to create QR codes for a CSV import");
+      qrCodeNotice = ". The links were created, but their QR codes couldn't be. Please try again";
+    }
+  }
+
   const importAllowanceRemaining = importAllowanceLeft - importCreated;
   const importNotice =
     importCreated > 0
@@ -2332,7 +2400,10 @@ const bulkCreateLinkRows = async (
     domainNotices,
     importAllowanceUsed: importCreated,
     importAllowanceRemaining,
-    message: `${summary.join(", ")}${importNotice}`,
+    qrCodes: createdQrCodes,
+    qrStyle:
+      qrPlan && createdQrCodes.length > 0 ? { ...qrPlan.style, logoImage: qrPlan.logo } : null,
+    message: `${summary.join(", ")}${qrCodeNotice}${importNotice}`,
   };
 };
 

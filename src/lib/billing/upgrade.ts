@@ -43,6 +43,7 @@ const UPGRADE_REASONS = new Map(
     bio_scheduled_blocks: "Scheduled bio blocks are on {plan}",
     bio_theme: "Theme customization is on {plan}",
     bulk_import: "Bulk link import is on {plan}",
+    bulk_qr: "Bulk QR codes are on {plan}",
     campaign_create: "More active campaigns are on {plan}",
     campaign_unarchive: "More active campaigns are on {plan}",
     campaign_utm_defaults: "Campaign UTM defaults are on {plan}",

@@ -7,7 +7,7 @@ import { api } from "@/trpc/server";
 
 import { QRCodeEmptyState } from "./_components/empty-state-new";
 import { QRCodeList } from "./_components/qrcode-list";
-import { checkIfUserCanCreateMoreQRCodes } from "./utils";
+import { bulkQrLimitFor, checkIfUserCanCreateMoreQRCodes } from "./utils";
 
 import type { Metadata } from "next";
 
@@ -77,7 +77,15 @@ async function QRCodePage() {
       )}
 
       {/* Content */}
-      {userCodes.length === 0 ? <QRCodeEmptyState /> : <QRCodeList codes={userCodes} />}
+      {userCodes.length === 0 ? (
+        <QRCodeEmptyState />
+      ) : (
+        <QRCodeList
+          codes={userCodes}
+          plan={subDetails.plan}
+          bulkLimit={bulkQrLimitFor(subDetails)}
+        />
+      )}
     </div>
   );
 }

@@ -99,6 +99,7 @@ export const linkRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return services.bulkCreateLinks(ctx, input.csv, undefined, {
         keepBitlyCodes: input.keepBitlyCodes,
+        qrCodes: input.qrCodes,
       });
     }),
 
