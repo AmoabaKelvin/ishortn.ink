@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { createQrPdf, pdfLabelText, svgPathToPdf } from "./pdf";
 import { defaultGeneratorState } from "./state";
+import { buildQrVector } from "./svg";
 
 import type { QRCodeGeneratorState } from "./types";
 
@@ -50,7 +51,7 @@ describe("createQrPdf", () => {
   test("a frame adds the border and label band around the code at its size", () => {
     const sizeMm = 50;
     const [width, height] = mediaBox(
-      createQrPdf(state(), { sizeMm, frame: { label: "Scan me" } }),
+      createQrPdf(state({ margin: 4 }), { sizeMm, frame: { label: "Scan me" } }),
     )!;
     const side = (sizeMm * 72) / 25.4;
     expect(width).toBeCloseTo(side * 1.12, 2);
@@ -58,6 +59,44 @@ describe("createQrPdf", () => {
     const pdf = decode(createQrPdf(state(), { sizeMm, frame: { label: "Scan me" } }));
     expect(pdf).toContain("(Scan me) Tj");
     expect(pdf).toContain("/BaseFont /Helvetica-Bold");
+  });
+
+  test.each([
+    { margin: 0, marginNoise: false },
+    { margin: 2, marginNoise: false },
+    { margin: 4, marginNoise: false },
+    { margin: 6, marginNoise: false },
+    { margin: 4, marginNoise: true },
+  ])("a frame keeps a 4-module quiet zone around the code (%o)", (extra) => {
+    const sizeMm = 30;
+    const pdf = createQrPdf(state(extra), { sizeMm, frame: { label: "Scan me" } });
+    const text = decode(pdf);
+    const [, height] = mediaBox(pdf)!;
+    const side = (sizeMm * 72) / 25.4;
+
+    // The light window inside the frame, and the transform that places the code.
+    // SAFETY: both regexes capture exactly three numbers.
+    const [winX, winY, winSide] = /\n([\d.]+) ([\d.]+) ([\d.]+) [\d.]+ re\nf\n/
+      .exec(text)!
+      .slice(1)
+      .map(Number) as [number, number, number];
+    // SAFETY: as above.
+    const [unit, qrX, qrTop] = /\n([\d.]+) 0 0 -[\d.]+ ([\d.]+) ([\d.]+) cm\n/
+      .exec(text)!
+      .slice(1)
+      .map(Number) as [number, number, number];
+
+    // The code keeps its chosen size and gets at least 4 modules of light on every side.
+    expect(unit * buildQrVector(state(extra)).size).toBeCloseTo(side, 2);
+    const clear = extra.marginNoise ? 0 : extra.margin;
+    const gaps = [
+      qrX - winX,
+      winX + winSide - (qrX + side),
+      qrTop - side - winY,
+      winY + winSide - qrTop,
+    ].map((gap) => gap / unit + clear);
+    for (const gap of gaps) expect(gap).toBeGreaterThan(4 - 0.01);
+    expect(winY + winSide).toBeLessThan(height!);
   });
 
   test("escapes the label for a PDF string", () => {
