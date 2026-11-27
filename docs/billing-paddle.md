@@ -49,8 +49,10 @@ Set in `.env` locally and as Worker secrets in production (`.env.example` has th
 Do this once per environment (sandbox first, then live). In the Paddle dashboard:
 
 1. **Products and prices** (Catalog → Products): create a Pro and an Ultra product, each with a
-   monthly and an annual recurring price in USD that match the pricing page. Copy the four price
-   ids into the `PADDLE_PRICE_*` variables. Set `PADDLE_PRICE_PRO_LEGACY_MONTHLY` only if an older
+   monthly and an annual recurring price in USD that match the pricing page. On every price, set
+   the quantity to minimum 1 and maximum 1: Paddle's default allows up to 100, which lets a
+   customer buy several seats at checkout. Copy the four price ids into the `PADDLE_PRICE_*`
+   variables. Set `PADDLE_PRICE_PRO_LEGACY_MONTHLY` only if an older
    Pro price has live subscriptions.
 2. **Client-side token** (Developer tools → Authentication → Client-side tokens): create one and set
    it as `PADDLE_CLIENT_TOKEN`.
@@ -59,8 +61,9 @@ Do this once per environment (sandbox first, then live). In the Paddle dashboard
    it as `PADDLE_API_KEY`.
 4. **Default payment link** (Checkout → Checkout settings): `https://<app host>/dashboard/checkout`.
    Paddle opens server-created transactions there with `?_ptxn=txn_…` (new checkouts and
-   payment-method updates, including links in Paddle's own emails). The domain must be approved
-   in Paddle before it can be used.
+   payment-method updates, including links in Paddle's own emails). The link must be `https`
+   (`http://localhost:3000` is rejected with an SSL error; see "Local testing" for a tunnel), and
+   the domain must be approved in Paddle before it can be used.
 5. **Notification destination** (Developer tools → Notifications): URL
    `https://<app host>/api/webhooks/paddle`, type webhook, with these events:
    - `subscription.created`, `subscription.imported`, `subscription.updated`,
@@ -79,11 +82,38 @@ are all set and their prefixes match `PADDLE_ENVIRONMENT`. A mismatch logs
 
 ## Local testing
 
-1. Create a [sandbox account](https://sandbox-vendors.paddle.com/signup) and do the setup above in
-   it, with `http://localhost:3000/dashboard/checkout` as the default payment link.
-2. Fill the `PADDLE_*` block in `.env` with the sandbox values, leave `BILLING_PROVIDER` unset and
-   put your local Clerk user id in `PADDLE_CHECKOUT_USER_IDS`. Restart `bun dev`.
-3. **Without a tunnel**, replay signed fixtures against the local app:
+1. Create a [sandbox account](https://sandbox-login.paddle.com/signup).
+2. Start the dev server (`bun dev`) and, in a second terminal, an https tunnel to it:
+
+   ```bash
+   bun run tunnel   # cloudflared tunnel --url http://localhost:3000
+   ```
+
+   It prints a `https://<random>.trycloudflare.com` URL. Paddle needs this because the default
+   payment link must be `https`. A quick tunnel gets a new hostname every time it starts, so
+   update the payment link and notification destination below whenever it changes.
+3. Let the dev server accept requests from the tunnel host. Next.js blocks cross-origin requests
+   to dev assets, and without this the page loads but sign-in never appears. Add this to the
+   `config` object in `next.config.js` (local only, don't commit it) and restart `bun dev`:
+
+   ```js
+   allowedDevOrigins: ["*.trycloudflare.com"],
+   ```
+
+4. Do the [setup above](#paddle-setup) in the sandbox account with the tunnel URL as the app host:
+   default payment link `<tunnel URL>/dashboard/checkout` and notification destination
+   `<tunnel URL>/api/webhooks/paddle`.
+5. Fill the `PADDLE_*` block in `.env` with the sandbox values, leave `BILLING_PROVIDER` unset and
+   put your local Clerk user id in `PADDLE_CHECKOUT_USER_IDS`. Restart `bun dev`, then open the app
+   through the tunnel URL (not `localhost`) to check out.
+
+   Checkouts created by the app show up in Paddle (Transactions) with `origin: api`, not `web`:
+   the server creates the transaction through the API and Paddle.js opens it from `?_ptxn=`.
+   That is expected.
+
+6. Real sandbox events reach `/api/webhooks/paddle` through the tunnel. Paddle's notification
+   simulator (Developer tools → Simulations) can also send single events to it.
+7. To test webhook handling without Paddle, replay signed fixtures against the local app:
 
    ```bash
    bun run webhook paddle subscription.created --user <clerkUserId>
@@ -97,11 +127,7 @@ are all set and their prefixes match `PADDLE_ENVIRONMENT`. A mismatch logs
    placeholders). Leave a second between replays: events not newer than the stored
    `providerUpdatedAt` are dropped as stale.
 
-4. **With real sandbox events**, expose the dev server (for example
-   `cloudflared tunnel --url http://localhost:3000`) and point a sandbox notification destination at
-   `<tunnel URL>/api/webhooks/paddle`. Paddle's notification simulator (Developer tools →
-   Simulations) can also send single events to it.
-5. Run the daily reconcile by hand:
+8. Run the daily reconcile by hand:
 
    ```bash
    curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/entitlements
