@@ -104,7 +104,9 @@ export function getBlockPreviewNote(
   now: number,
 ): string | null {
   if (!block.isVisible) return "Hidden";
-  if (block.type === "link" && block.blocked) return "Blocked, not shown";
+  if ((block.type === "link" || block.type === "whatsapp") && block.blocked) {
+    return "Blocked, not shown";
+  }
   if (block.scheduledAt && block.scheduledAt.getTime() > now) return "Scheduled";
   if (block.scheduledUntil && block.scheduledUntil.getTime() <= now) return "Ended";
   return null;

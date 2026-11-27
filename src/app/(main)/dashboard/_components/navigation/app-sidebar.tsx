@@ -47,6 +47,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 import type { EventUsage } from "./sidebar-stats";
+import type { SidebarUpgradeSignals } from "./sidebar-upgrade-reason";
 
 const sidebarWordmarkClass = "text-[17px] dark:text-foreground [&>svg]:size-5";
 
@@ -117,6 +118,8 @@ type AppSidebarProps = {
   linkLimit?: number | null;
   eventUsage?: EventUsage | undefined;
   folderUsage?: { count: number; limit: number | null } | undefined;
+  qrCodeUsage?: { count: number; limit: number | null } | undefined;
+  upgradeSignals?: Promise<SidebarUpgradeSignals | null> | null;
   plan?: "free" | "pro" | "ultra";
   teams?: Team[];
   currentWorkspace?: CurrentWorkspace;
@@ -131,6 +134,8 @@ export function AppSidebar({
   linkLimit = null,
   eventUsage,
   folderUsage,
+  qrCodeUsage,
+  upgradeSignals = null,
   plan = "free",
   teams = [],
   currentWorkspace = { type: "personal", plan: "free" },
@@ -342,6 +347,8 @@ export function AppSidebar({
                   linkLimit={linkLimit}
                   eventUsage={eventUsage}
                   folderUsage={folderUsage}
+                  qrCodeUsage={qrCodeUsage}
+                  upgradeSignals={upgradeSignals}
                   plan={plan}
                   shown={isDesktop || isMobileMenuOpen}
                 />

@@ -1,6 +1,6 @@
 "use client";
 
-import { IconCheck, IconCopy, IconDownload } from "@tabler/icons-react";
+import { IconCheck, IconCopy, IconDownload, IconWorld } from "@tabler/icons-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -29,9 +29,15 @@ import { copyToClipboard } from "@/lib/utils/clipboard";
 import { api } from "@/trpc/react";
 
 import { downloadQRCodePng, renderQRCodePreview } from "./link-card/qrcode-export";
-import { LINK_READY_SOURCE, linkReadyOffer } from "./link-ready-offer";
+import {
+  FIRST_LINK_OWN_DOMAIN_SOURCE,
+  LINK_READY_SOURCE,
+  linkReadyOffer,
+  ownDomainOffer,
+} from "./link-ready-offer";
 
-export type CreatedLink = { alias: string; domain: string };
+/** `isFirstLink`: the only link in a Free personal workspace (see `isFirstLink` in link.service). */
+export type CreatedLink = { alias: string; domain: string; isFirstLink?: boolean };
 
 type LinkReadyDialogProps = {
   link: CreatedLink | null;
@@ -52,14 +58,27 @@ export function LinkReadyDialog({ link, onDone, onCreateAnother }: LinkReadyDial
     refetchOnWindowFocus: false,
   });
   const offer = linkReadyOffer({ subscription: subscription ?? null });
+  const domainOffer = ownDomainOffer({
+    subscription: subscription ?? null,
+    isFirstLink: shownLink?.isFirstLink ?? false,
+  });
+  const showDomainOffer = domainOffer !== null;
+  const domainOfferPromo = domainOffer?.promo?.code;
 
-  // One impression per opened dialog, sent once the offer line is actually on screen.
+  // One impression per opened dialog, sent once the offer is actually on screen.
   const trackedLink = useRef<CreatedLink | null>(null);
   useEffect(() => {
     if (!link || !offer || trackedLink.current === link) return;
     trackedLink.current = link;
-    trackUpgradeShown(LINK_READY_SOURCE);
-  }, [link, offer]);
+    if (showDomainOffer) {
+      trackUpgradeShown(
+        FIRST_LINK_OWN_DOMAIN_SOURCE,
+        domainOfferPromo ? { promo: domainOfferPromo } : undefined,
+      );
+    } else {
+      trackUpgradeShown(LINK_READY_SOURCE);
+    }
+  }, [link, offer, showDomainOffer, domainOfferPromo]);
 
   // Browser extension note: desktop Chromium only, never next to the plan offer, and only for
   // accounts with no connected browser. Both server snapshots are "hidden" so hydration matches.
@@ -184,8 +203,44 @@ export function LinkReadyDialog({ link, onDone, onCreateAnother }: LinkReadyDial
               </div>
             </div>
 
+            {/* Own-domain offer (first link, Free personal workspace, company email) */}
+            {domainOffer && (
+              <div className="flex flex-col gap-3 border-t border-neutral-100 pt-4 dark:border-border/50 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                    <IconWorld
+                      size={16}
+                      stroke={1.5}
+                      className="text-blue-600 dark:text-blue-400"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="break-all text-[13px] font-medium text-neutral-900 dark:text-foreground">
+                      {domainOffer.title}
+                    </p>
+                    <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
+                      {domainOffer.detail}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild variant="outline" className="h-10 shrink-0 text-[13px] sm:h-9">
+                  <Link
+                    href={buildUpgradeUrl("pro", FIRST_LINK_OWN_DOMAIN_SOURCE, domainOffer.promo)}
+                    onClick={() =>
+                      trackUpgradeClick(
+                        FIRST_LINK_OWN_DOMAIN_SOURCE,
+                        domainOfferPromo ? { promo: domainOfferPromo } : undefined,
+                      )
+                    }
+                  >
+                    Upgrade to Pro
+                  </Link>
+                </Button>
+              </div>
+            )}
+
             {/* Plan offer (Free personal workspaces only) */}
-            {offer && (
+            {offer && !domainOffer && (
               <p className="border-t border-neutral-100 pt-4 text-[12px] text-neutral-500 dark:border-border/50 dark:text-neutral-400">
                 {offer}{" "}
                 <Link
