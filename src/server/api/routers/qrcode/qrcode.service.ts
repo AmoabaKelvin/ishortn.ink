@@ -1,9 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { and, count, eq, inArray, sum } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
 import { getPlanCaps } from "@/lib/billing/plans";
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
 import { logger } from "@/lib/logger";
+import { encodeStaticQrPayload } from "@/lib/qr-generator/payload";
+import { absoluteUrl } from "@/lib/utils/absolute-url";
 import { runBackgroundTask } from "@/lib/utils/background";
 import {
   link,
@@ -13,7 +16,8 @@ import {
   qrPreset,
   uniqueLinkVisit,
 } from "@/server/db/schema";
-import { recordSafetyFollowUp } from "@/server/lib/phishing/follow-up";
+import { assertUrlSafe } from "@/server/lib/phishing";
+import { recordSafetyFollowUp, workspaceSafetyAccount } from "@/server/lib/phishing/follow-up";
 import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { reserveLinkAliases } from "@/server/lib/reserved-alias";
@@ -23,6 +27,7 @@ import {
   getAccessibleFolderIds,
   requireFolderAccess,
   workspaceFilter,
+  workspaceHasPaidPlan,
   workspaceOwnership,
 } from "@/server/lib/workspace";
 
@@ -33,11 +38,16 @@ import { toLegacyQrStyles } from "./utils";
 import type { WorkspaceTRPCContext } from "../../trpc";
 import type {
   QRCodeInput,
+  QRCodeStaticInput,
+  QRCodeStaticUpdateInput,
   QRCodeUpdateInput,
+  QRCodeVCardInput,
+  QRCodeVCardUpdateInput,
   QRPresetCreateInput,
   QRPresetUpdateInput,
 } from "./qrcode.input";
 import type { qrcodeSaveImageInput } from "./qrcode.input";
+import type { StaticQrPayload } from "@/lib/qr-generator/payload";
 import type { z } from "zod";
 
 const log = logger.child({ component: "qrcode.service" });
@@ -72,52 +82,76 @@ function userFacing<A extends unknown[], R>(
   };
 }
 
+async function assertQrCodeCapacity(ctx: WorkspaceTRPCContext) {
+  // Team workspaces have Ultra features (unlimited QR codes); limits apply to personal ones.
+  const qrCodeLimit =
+    ctx.workspace.type === "team" ? undefined : getPlanCaps(ctx.workspace.plan).qrCodeLimit;
+  if (qrCodeLimit === undefined) return;
+
+  const currentCount = await countWorkspaceQrCodes(ctx);
+  if (currentCount >= qrCodeLimit) {
+    await recordPlanLimitHit({
+      userId: ctx.auth.userId,
+      limitKey: "qr_codes",
+      plan: ctx.workspace.plan,
+    });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `You've reached your plan's limit of ${qrCodeLimit} QR codes. Upgrade to create more.`,
+    });
+  }
+}
+
+/** Columns for a static code's content; plain text keeps no form fields. */
+function staticContentColumns(payload: StaticQrPayload) {
+  const isForm = payload.type !== "text";
+  return {
+    contentType: "text" as const,
+    content: encodeStaticQrPayload(payload),
+    payloadType: isForm ? payload.type : null,
+    payloadFields: isForm ? payload : null,
+  };
+}
+
+const CONTACT_CARD_PLAN_MESSAGE =
+  "vCard QR codes are available on Pro and Ultra. Upgrade to use them.";
+
+/**
+ * prepareHiddenTrackingLink with its link-limit error re-messaged for the QR context: each QR code
+ * needs a tracking link, which counts toward the monthly link quota.
+ */
+async function prepareQrTrackingLink(
+  ctx: WorkspaceTRPCContext,
+  opts: Omit<Parameters<typeof prepareHiddenTrackingLink>[1], "kind">,
+) {
+  try {
+    return await prepareHiddenTrackingLink(ctx, { ...opts, kind: "qr" });
+  } catch (error) {
+    if (error instanceof TRPCError && error.code === "FORBIDDEN" && /link/i.test(error.message)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "You've reached your monthly link limit. Each QR code requires a tracking link, which counts toward your plan's link quota. Please upgrade your plan to create more QR codes.",
+      });
+    }
+    throw error;
+  }
+}
+
 export const createQrCode = userFacing(
   "createQrCode",
   "Something went wrong while creating your QR code. Please try again.",
   async (ctx: WorkspaceTRPCContext, input: QRCodeInput) => {
-    // Team workspaces have Ultra features (unlimited QR codes); limits apply to personal ones.
-    const qrCodeLimit =
-      ctx.workspace.type === "team" ? undefined : getPlanCaps(ctx.workspace.plan).qrCodeLimit;
-
-    if (qrCodeLimit !== undefined) {
-      const currentCount = await countWorkspaceQrCodes(ctx);
-
-      if (currentCount >= qrCodeLimit) {
-        await recordPlanLimitHit({
-          userId: ctx.auth.userId,
-          limitKey: "qr_codes",
-          plan: ctx.workspace.plan,
-        });
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `You've reached your plan's limit of ${qrCodeLimit} QR codes. Upgrade to create more.`,
-        });
-      }
-    }
+    await assertQrCodeCapacity(ctx);
 
     const ownership = workspaceOwnership(ctx.workspace);
 
-    // Prepare the hidden tracking link (quota check + URL safety + domain +
-    // alias). Re-message the link-limit error for the QR context.
-    let prepared: Awaited<ReturnType<typeof prepareHiddenTrackingLink>>;
-    try {
-      prepared = await prepareHiddenTrackingLink(ctx, {
-        url: input.content,
-        name: input.title || "QR Code",
-        domain: input.domain?.trim() || undefined,
-        kind: "qr",
-      });
-    } catch (error) {
-      if (error instanceof TRPCError && error.code === "FORBIDDEN" && /link/i.test(error.message)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message:
-            "You've reached your monthly link limit. Each QR code requires a tracking link, which counts toward your plan's link quota. Please upgrade your plan to create more QR codes.",
-        });
-      }
-      throw error;
-    }
+    // Prepare the hidden tracking link (quota check + URL safety + domain + alias).
+    const prepared = await prepareQrTrackingLink(ctx, {
+      url: input.content,
+      name: input.title || "QR Code",
+      domain: input.domain?.trim() || undefined,
+    });
 
     const { insertedQrCodeId, hiddenLinkId } = await ctx.db.transaction(async (tx) => {
       const hiddenLinkId = await insertHiddenTrackingLink(tx, ctx, prepared);
@@ -139,6 +173,150 @@ export const createQrCode = userFacing(
     checkCampaignPatternsAfterResponse([{ linkId: hiddenLinkId, url: input.content }]);
 
     return { trackingUrl: prepared.trackingUrl, id: insertedQrCodeId };
+  },
+);
+
+// Static codes encode their content directly: no tracking link, so they use no link quota and
+// can't be tracked. They count toward the QR code limit like any other code.
+export const createStaticQrCode = userFacing(
+  "createStaticQrCode",
+  "Something went wrong while creating your QR code. Please try again.",
+  async (ctx: WorkspaceTRPCContext, input: QRCodeStaticInput) => {
+    await assertQrCodeCapacity(ctx);
+
+    const ownership = workspaceOwnership(ctx.workspace);
+    const columns = staticContentColumns(input.payload);
+    const [result] = await ctx.db.insert(qrcode).values({
+      userId: ownership.userId,
+      teamId: ownership.teamId,
+      title: input.title,
+      color: input.selectedColor,
+      ...toLegacyQrStyles(input.patternStyle, input.cornerStyle),
+      linkId: 0,
+      ...columns,
+    });
+
+    return { id: result.insertId, content: columns.content };
+  },
+);
+
+export const updateStaticQrCode = userFacing(
+  "updateStaticQrCode",
+  "Something went wrong while updating your QR code. Please try again.",
+  async (ctx: WorkspaceTRPCContext, input: QRCodeStaticUpdateInput) => {
+    const record = await ctx.db.query.qrcode.findFirst({
+      where: and(
+        eq(qrcode.id, input.id),
+        workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
+      ),
+      columns: { id: true, contentType: true, linkId: true },
+    });
+    if (!record) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "QR code not found." });
+    }
+    if (record.contentType !== "text" || (record.linkId ?? 0) > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Only static QR codes can be edited this way.",
+      });
+    }
+    assertValidImageInput(input.qrCodeBase64);
+
+    await ctx.db
+      .update(qrcode)
+      .set({
+        ...(input.title !== undefined && { title: input.title }),
+        ...staticContentColumns(input.payload),
+      })
+      .where(eq(qrcode.id, input.id));
+
+    return saveQrCodeImage(ctx, { id: input.id, qrCodeBase64: input.qrCodeBase64 });
+  },
+);
+
+// A contact card code encodes a tracking link to its hosted page, so scans are counted and the
+// card can change after printing. The page is ours; the safety scan checks the card's website,
+// which the page links to.
+export const createVCardQrCode = userFacing(
+  "createVCardQrCode",
+  "Something went wrong while creating your QR code. Please try again.",
+  async (ctx: WorkspaceTRPCContext, input: QRCodeVCardInput) => {
+    if (!workspaceHasPaidPlan(ctx.workspace)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: CONTACT_CARD_PLAN_MESSAGE });
+    }
+    await assertQrCodeCapacity(ctx);
+
+    const publicId = nanoid(12);
+    const pageUrl = absoluteUrl(`/c/${publicId}`);
+    const prepared = await prepareQrTrackingLink(ctx, {
+      url: pageUrl,
+      name: input.title || "QR Code",
+      domain: input.domain?.trim() || undefined,
+      safetyCheckUrl: input.card.website || null,
+    });
+
+    const ownership = workspaceOwnership(ctx.workspace);
+    const { insertedQrCodeId, hiddenLinkId } = await ctx.db.transaction(async (tx) => {
+      const hiddenLinkId = await insertHiddenTrackingLink(tx, ctx, prepared);
+      const [result] = await tx.insert(qrcode).values({
+        userId: ownership.userId,
+        teamId: ownership.teamId,
+        title: input.title,
+        color: input.selectedColor,
+        content: pageUrl,
+        ...toLegacyQrStyles(input.patternStyle, input.cornerStyle),
+        linkId: hiddenLinkId,
+        contentType: "link",
+        payloadType: "vcard",
+        payloadFields: input.card,
+        publicId,
+      });
+      return { insertedQrCodeId: result.insertId, hiddenLinkId };
+    });
+    recordSafetyFollowUp(hiddenLinkId, prepared.safety);
+    if (input.card.website) {
+      checkCampaignPatternsAfterResponse([{ linkId: hiddenLinkId, url: input.card.website }]);
+    }
+
+    return { trackingUrl: prepared.trackingUrl, id: insertedQrCodeId };
+  },
+);
+
+// The short link and its page stay the same; the page and its .vcf read the new fields. Not
+// plan-gated, so a card printed before a downgrade can still be corrected.
+export const updateVCardQrCode = userFacing(
+  "updateVCardQrCode",
+  "Something went wrong while updating your QR code. Please try again.",
+  async (ctx: WorkspaceTRPCContext, input: QRCodeVCardUpdateInput) => {
+    const qrCode = await fetchQrCodeWithLink(ctx, input.id);
+    if (qrCode.payloadType !== "vcard") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "This QR code isn't a vCard code." });
+    }
+    const previousWebsite =
+      qrCode.payloadFields?.type === "vcard" ? qrCode.payloadFields.website : "";
+    const websiteChanged = Boolean(input.card.website) && input.card.website !== previousWebsite;
+    const safety = websiteChanged
+      ? await assertUrlSafe(input.card.website, { account: workspaceSafetyAccount(ctx) })
+      : undefined;
+
+    await ctx.db.transaction(async (tx) => {
+      await tx
+        .update(qrcode)
+        .set({
+          ...(input.title !== undefined && { title: input.title }),
+          payloadFields: input.card,
+        })
+        .where(eq(qrcode.id, input.id));
+      if (input.title !== undefined) {
+        await tx.update(link).set({ name: input.title }).where(eq(link.id, qrCode.linkId));
+      }
+    });
+    recordSafetyFollowUp(qrCode.linkId, safety);
+    if (websiteChanged) {
+      checkCampaignPatternsAfterResponse([{ linkId: qrCode.linkId, url: input.card.website }]);
+    }
+
+    return true;
   },
 );
 
@@ -379,6 +557,17 @@ export const updateQrCode = userFacing(
   "Something went wrong while updating your QR code. Please try again.",
   async (ctx: WorkspaceTRPCContext, input: QRCodeUpdateInput) => {
     const qrCode = await fetchQrCodeWithLink(ctx, input.id);
+    // A contact card's link always points at its hosted page.
+    if (
+      qrCode.payloadType === "vcard" &&
+      input.url !== undefined &&
+      input.url !== qrCode.link.url
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "A contact card's destination can't be changed. Edit the card's details instead.",
+      });
+    }
 
     const qrUpdates: Partial<Pick<typeof qrcode.$inferInsert, "title" | "content">> = {};
     if (input.title !== undefined) qrUpdates.title = input.title;

@@ -9,9 +9,11 @@ import {
   linkTag,
   linkVisit,
   qrcode,
+  scheduledReport,
   siteSettings,
   tag,
   team,
+  token,
   uniqueLinkVisit,
   utmTemplate,
 } from "@/server/db/schema";
@@ -149,7 +151,13 @@ export async function cleanupDeletedTeams(): Promise<CleanupResult> {
       const settingsResult = await tx.delete(siteSettings).where(eq(siteSettings.teamId, teamId));
       result.siteSettingsDeleted += settingsResult[0].affectedRows;
 
-      // 10. Finally, delete the team itself
+      // 10. Delete team API keys (refused since the team was deleted)
+      await tx.delete(token).where(eq(token.teamId, teamId));
+
+      // 11. Delete scheduled reports (they hold recipients' email addresses)
+      await tx.delete(scheduledReport).where(eq(scheduledReport.teamId, teamId));
+
+      // 12. Finally, delete the team itself
       await tx.delete(team).where(eq(team.id, teamId));
       result.teamsDeleted += 1;
     });

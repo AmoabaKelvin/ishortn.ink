@@ -10,7 +10,9 @@ import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
 import { checkoutCustomData, checkoutEventProperties } from "@/lib/billing/attribution";
+import { billingPlanMode } from "@/lib/billing/entitlements";
 import { planChangeDiscount, promoFirstPaymentAt } from "@/lib/billing/first-year-discount";
+import { STALE_BILLING_MESSAGE } from "@/lib/billing/plan-change-copy";
 import {
   canOfferPause,
   getIntervalFromVariantId,
@@ -208,9 +210,10 @@ async function callPaddle<T>(
   try {
     return await call();
   } catch (err) {
-    const statusCode = err instanceof PaddleApiError ? err.status : null;
+    const paddleErr = err instanceof PaddleApiError ? err : null;
+    const statusCode = paddleErr?.status ?? null;
     log.error({ err, statusCode, provider: "paddle", ...context }, `paddle ${action} failed`);
-    throw new TRPCError(paddleErrorToClient(statusCode));
+    throw new TRPCError(paddleErrorToClient(statusCode, paddleErr?.code));
   }
 }
 
@@ -302,9 +305,26 @@ async function promoDiscountUpdate(
     // On monthly the checkout discount's remaining recurrences cover the rest of the first year,
     // so the change goes ahead without `discount`. On annual it would recur yearly, so the change
     // fails and can be retried.
-    if (change.to === "annual") throw new TRPCError(paddleErrorToClient(statusCode));
+    if (change.to === "annual") {
+      throw new TRPCError(
+        paddleErrorToClient(statusCode, err instanceof PaddleApiError ? err.code : null),
+      );
+    }
     return undefined;
   }
+}
+
+/** Retires a discount created for a change that didn't happen, so it can't be applied later. */
+async function archiveUnusedDiscount(
+  client: PaddleDeps["client"],
+  discountId: string,
+  context: { userId: string; providerSubscriptionId: string },
+) {
+  await client
+    .archiveDiscount(discountId)
+    .catch((err: Error) =>
+      log.warn({ err, ...context, discountId }, "failed to archive unused paddle discount"),
+    );
 }
 
 /**
@@ -335,14 +355,7 @@ async function changePaddleItems(
     );
   } catch (err) {
     if (discount) {
-      await client
-        .archiveDiscount(discount.id)
-        .catch((archiveErr: Error) =>
-          log.warn(
-            { err: archiveErr, userId, providerSubscriptionId, discountId: discount.id },
-            "failed to archive unused paddle discount",
-          ),
-        );
+      await archiveUnusedDiscount(client, discount.id, { userId, providerSubscriptionId });
     }
     throw err;
   }
@@ -610,6 +623,15 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
         // keeps billing after the webhook overwrites the single local row.
         const mode = getSubscriptionMode(userSubscription);
 
+        const storedPlanMode = billingPlanMode(userSubscription);
+        if (input.displayedPlanMode && input.displayedPlanMode !== storedPlanMode) {
+          log.warn(
+            { userId, displayedPlanMode: input.displayedPlanMode, storedPlanMode },
+            "refused a plan change from a stale billing screen",
+          );
+          throw new TRPCError({ code: "CONFLICT", message: STALE_BILLING_MESSAGE });
+        }
+
         if (mode === "resume") {
           throw new TRPCError({
             code: "CONFLICT",
@@ -718,10 +740,19 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
           return { type: "prorated" };
         }
 
+        // The preview carries the discount the change would set, so the amount due matches what
+        // createCheckoutOrUpdate charges. A discount id is needed for that, so one is created
+        // here and archived once the preview is read.
+        let discount: UpdateSubscriptionInput["discount"];
         try {
+          discount = await promoDiscountUpdate(ctx, paddle.client, userSubscription, {
+            to: input.interval,
+            billsNow: true,
+          });
           const preview = await paddle.client.previewSubscriptionUpdate(providerSubscriptionId, {
             items: [{ priceId, quantity: 1 }],
             prorationBillingMode: "prorated_immediately",
+            ...(discount !== undefined && { discount }),
           });
           return paddlePreviewCharge(preview);
         } catch (err) {
@@ -730,6 +761,13 @@ export const createLemonsqueezyRouter = (deps: BillingDeps = defaultBillingDeps)
             "paddle plan change preview failed",
           );
           return { type: "prorated" };
+        } finally {
+          if (discount) {
+            await archiveUnusedDiscount(paddle.client, discount.id, {
+              userId,
+              providerSubscriptionId,
+            });
+          }
         }
       }),
 

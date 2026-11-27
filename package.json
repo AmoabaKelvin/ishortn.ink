@@ -143,6 +143,7 @@
     "autoprefixer": "^10.4.19",
     "dotenv-cli": "^7.4.1",
     "drizzle-kit": "0.31.10",
+    "jsqr": "1.4.0",
     "oxfmt": "^0.79.0",
     "oxlint": "^1.81.0",
     "pino-pretty": "^13.1.3",

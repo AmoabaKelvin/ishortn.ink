@@ -1,6 +1,8 @@
 import { z } from "zod";
 
+import { staticQrPayloadSchema } from "@/lib/qr-generator/payload";
 import { MarkerFrames, PixelStyles, QREffects, QRMarkerCenters } from "@/lib/qr-generator/types";
+import { vcardPayloadSchema } from "@/lib/qr-generator/vcard";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
 
 import { geoRuleInputSchema, linkDomainSchema, linkNoteSchema } from "../link/link.input";
@@ -16,6 +18,36 @@ export const qrcodeInput = z.object({
   selectedColor: z.string(),
   domain: linkDomainSchema.optional(),
 });
+
+// A static code encodes its content directly, with no tracking link.
+export const qrcodeStaticInput = qrcodeInput.omit({ content: true, domain: true }).extend({
+  payload: staticQrPayloadSchema,
+});
+
+export const qrcodeStaticUpdateInput = z.object({
+  id: z.number(),
+  title: z.string().max(255, "Title must be 255 characters or fewer").optional(),
+  payload: staticQrPayloadSchema,
+  // The code redrawn with the new content in its saved style.
+  qrCodeBase64: z.string(),
+});
+
+// A contact card code encodes a tracking link to its hosted contact page.
+export const qrcodeVCardInput = qrcodeInput.omit({ content: true }).extend({
+  card: vcardPayloadSchema,
+});
+
+// The code keeps its short link, so the printed code shows the new details without a redraw.
+export const qrcodeVCardUpdateInput = z.object({
+  id: z.number(),
+  title: z.string().max(255, "Title must be 255 characters or fewer").optional(),
+  card: vcardPayloadSchema,
+});
+
+export type QRCodeStaticInput = z.infer<typeof qrcodeStaticInput>;
+export type QRCodeVCardInput = z.infer<typeof qrcodeVCardInput>;
+export type QRCodeVCardUpdateInput = z.infer<typeof qrcodeVCardUpdateInput>;
+export type QRCodeStaticUpdateInput = z.infer<typeof qrcodeStaticUpdateInput>;
 
 export const qrcodeUpdateInput = z.object({
   id: z.number(),

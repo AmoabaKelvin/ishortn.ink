@@ -39,12 +39,32 @@ describe("providerErrorToClient", () => {
 });
 
 describe("paddleErrorToClient", () => {
-  test.each([400, 409, 422])("a refused change (%p) maps like Lemon Squeezy's 422", (status) => {
-    expect(paddleErrorToClient(status)).toEqual(providerErrorToClient(422));
+  const GENERIC = {
+    code: "BAD_REQUEST",
+    message: "We couldn't apply this change. Please try again or contact support.",
+  };
+
+  test.each([
+    [400, "subscription_one_off_discount_not_valid"],
+    [400, "subscription_discount_not_valid_for_items"],
+    [400, "subscription_archived_discount_application_attempt"],
+    [409, "subscription_locked_renewal"],
+    [422, "subscription_new_items_not_valid"],
+  ])("a refused change (%p %s) gets the generic message", (status, code) => {
+    expect(paddleErrorToClient(status, code)).toEqual(GENERIC);
+    expect(paddleErrorToClient(status, code).message).not.toContain("payment");
+  });
+
+  test.each([
+    "subscription_payment_declined",
+    "subscription_payment_retry_attempts_exceeded",
+    "subscription_missing_payment_method_cannot_update",
+  ])("a payment failure (%s) points at the payment method", (code) => {
+    expect(paddleErrorToClient(400, code)).toEqual(providerErrorToClient(422));
   });
 
   test.each([404, 429, 500, null])("%p maps like providerErrorToClient", (status) => {
-    expect(paddleErrorToClient(status)).toEqual(providerErrorToClient(status));
+    expect(paddleErrorToClient(status, "some_code")).toEqual(providerErrorToClient(status));
   });
 });
 

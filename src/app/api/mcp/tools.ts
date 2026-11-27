@@ -219,7 +219,7 @@ export const TOOLS: Tool[] = [
     name: "update_link",
     title: "Update short link",
     description:
-      "Change a link's destination, alias, domain, schedule or click limit. Renamed or moved links keep redirecting from their old address. Pass null to clear expiresAt, activatesAt or expiresAfter.",
+      "Change a link's destination, alias, domain, schedule or click limit. Moving a link to another domain keeps its old address redirecting. Renaming the alias on the same domain retires the old alias: it stops redirecting and can't be reused, so warn the user before renaming a link that is already printed or shared. Pass null to clear expiresAt, activatesAt or expiresAfter.",
     input: linkInput.extend({
       url: z.string().optional().describe("The new destination URL."),
       newAlias: z.string().optional().describe("Rename the link to this alias."),
@@ -287,7 +287,7 @@ export const TOOLS: Tool[] = [
     name: "get_link_analytics",
     title: "Get link analytics",
     description:
-      "Click analytics for one link: total and unique clicks, and clicks by country, city, device, browser, OS and referrer, over the plan's analytics window.",
+      "Click analytics for one link over the plan's analytics window: total clicks, verified clicks, clicks and unique clicks per day, and clicks by country, continent, city, device, model, browser, OS and referrer. There is no unique-clicks total.",
     input: linkInput,
     annotations: { readOnlyHint: true },
     call: async (caller, { alias, domain }) => {

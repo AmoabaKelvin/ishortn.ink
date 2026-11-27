@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { buildCacheKey, deleteFromCache } from "@/lib/core/cache";
@@ -17,7 +17,9 @@ import { checkCampaignPatternsAfterResponse } from "@/server/lib/phishing/rescan
 import { apiError, errorResponse, readJsonBody, validationError } from "../../errors";
 import {
   apiDomainWriteError,
+  apiLinkFilter,
   apiSafetyAccount,
+  apiWorkspaceContext,
   getApiDomainParamsFromSearchParams,
   resolveApiDomainForUser,
   restrictedAccountResponse,
@@ -25,9 +27,8 @@ import {
   withApiKey,
 } from "../../utils";
 
-import type { ApiToken } from "../../utils";
+import type { ApiScope } from "../../utils";
 import type { UrlSafetyResult } from "@/server/lib/phishing";
-import type { PersonalWorkspaceContext } from "@/server/lib/workspace";
 import type { NextRequest } from "next/server";
 
 const log = logger.child({ component: "api.v1.links" });
@@ -68,14 +69,14 @@ export const GET = withApiKey(
     const alias = params.alias;
 
     const domain = await resolveApiDomainForUser(
-      token.userId,
+      token,
       getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
     );
     if (!domain) {
       return apiError(403, "forbidden", "Domain not available for this API key");
     }
 
-    const retrievedLink = await getOwnedLinkByAlias(alias, domain, token.userId);
+    const retrievedLink = await getOwnedLinkByAlias(alias, domain, token);
     if (!retrievedLink) {
       return apiError(404, "not_found", "Link not found");
     }
@@ -93,7 +94,7 @@ export const PATCH = withApiKey(
     const alias = params.alias;
 
     const domain = await resolveApiDomainForUser(
-      token.userId,
+      token,
       getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
     );
     if (!domain) {
@@ -112,14 +113,14 @@ export const PATCH = withApiKey(
     // Authorize before doing any work. assertUrlSafe below reaches an external
     // reputation service and an LLM, so running it first would let any API key
     // burn those on aliases the caller doesn't own.
-    const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
+    const existingLink = await getOwnedLinkByAlias(alias, domain, token);
     if (!existingLink) {
       return apiError(404, "not_found", "Link not found");
     }
 
     // Links on a custom domain past the plan's allowance keep redirecting but
     // can't be edited.
-    const domainError = await apiDomainWriteError(token.userId, token.graceUsagePlan, domain);
+    const domainError = await apiDomainWriteError(token, token.graceUsagePlan, domain);
     if (domainError) {
       return apiError(403, "forbidden", domainError);
     }
@@ -139,16 +140,16 @@ export const PATCH = withApiKey(
     }
     let targetDomain = existingLink.domain;
     if (parsed.data.domain !== undefined) {
-      // Same domains the create endpoint accepts: platform, or the key owner's
+      // Same domains the create endpoint accepts: platform, or the workspace's
       // verified custom domains within the plan's allowance.
-      const requestedDomain = await resolveApiDomainForUser(token.userId, {
+      const requestedDomain = await resolveApiDomainForUser(token, {
         domain: parsed.data.domain,
       });
       if (!requestedDomain) {
         return apiError(403, "forbidden", "Domain not available for this API key");
       }
       const targetDomainError = await apiDomainWriteError(
-        token.userId,
+        token,
         token.graceUsagePlan,
         requestedDomain,
       );
@@ -278,20 +279,20 @@ export const DELETE = withApiKey(
     const { alias } = await props.params;
 
     const domain = await resolveApiDomainForUser(
-      token.userId,
+      token,
       getApiDomainParamsFromSearchParams(request.nextUrl.searchParams),
     );
     if (!domain) {
       return apiError(403, "forbidden", "Domain not available for this API key");
     }
 
-    const existingLink = await getOwnedLinkByAlias(alias, domain, token.userId);
+    const existingLink = await getOwnedLinkByAlias(alias, domain, token);
     if (!existingLink) {
       return apiError(404, "not_found", "Link not found");
     }
 
     try {
-      await removeLink(db, personalWorkspace(token), existingLink);
+      await removeLink(db, apiWorkspaceContext(token), existingLink);
     } catch (error) {
       log.error({ err: error, alias, domain }, "failed to delete link");
       return apiError(500, "internal_error", "Failed to delete link due to a server error");
@@ -301,31 +302,13 @@ export const DELETE = withApiKey(
   },
 );
 
-/** API keys act in the owner's personal workspace (see getOwnedLinkByAlias). */
-function personalWorkspace(token: ApiToken): PersonalWorkspaceContext {
-  return {
-    type: "personal",
-    userId: token.userId,
-    teamId: null,
-    teamSlug: null,
-    role: "owner",
-    plan: token.plan,
-  };
-}
-
 /**
- * Loads a link by (alias, domain) but only when it belongs to the API token
- * owner's personal workspace. (alias, domain) is public information, so
- * without the ownership predicate any token could read or rewrite any
- * account's short link.
+ * Loads a link by (alias, domain) but only when it belongs to the API key's
+ * workspace. (alias, domain) is public information, so without the ownership
+ * predicate any key could read or rewrite any account's short link.
  */
-async function getOwnedLinkByAlias(alias: string, domain: string, userId: string) {
+async function getOwnedLinkByAlias(alias: string, domain: string, scope: ApiScope) {
   return db.query.link.findFirst({
-    where: and(
-      eq(link.alias, alias),
-      eq(link.domain, domain),
-      eq(link.userId, userId),
-      isNull(link.teamId),
-    ),
+    where: and(eq(link.alias, alias), eq(link.domain, domain), apiLinkFilter(scope)),
   });
 }

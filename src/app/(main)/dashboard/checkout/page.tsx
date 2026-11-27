@@ -10,6 +10,7 @@ import { subscription } from "@/server/db/schema";
 
 import { AlreadySubscribedState } from "./_components/already-subscribed";
 import { checkoutAccess } from "./_components/checkout-access";
+import { CheckoutReplacedState } from "./_components/checkout-replaced";
 import { PaddleCheckout } from "./_components/paddle-checkout";
 import { parseTransactionId } from "./_components/transaction-id";
 
@@ -38,6 +39,7 @@ export default async function CheckoutPage(props: {
   // that could start a second subscription.
   const access = await checkoutAccess(userSubscription, () => client.getTransaction(transactionId));
   if (access === "subscribed") return <AlreadySubscribedState />;
+  if (access === "replaced") return <CheckoutReplacedState />;
 
   return (
     <PaddleCheckout

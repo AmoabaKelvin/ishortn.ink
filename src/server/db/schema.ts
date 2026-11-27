@@ -18,7 +18,9 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 
+import type { StaticPayloadType, StaticQrPayload } from "@/lib/qr-generator/payload";
 import type { QRCodeStyle } from "@/lib/qr-generator/types";
+import type { VCardPayload } from "@/lib/qr-generator/vcard";
 
 // ============================================================================
 // TEAM TABLES
@@ -517,6 +519,39 @@ export const weeklySummaryEmail = mysqlTable(
   }),
 );
 
+// Emailed analytics report for a link, folder or campaign, sent weekly (Mondays, the previous
+// week) or monthly (the 1st, the previous calendar month) to addresses that need no account.
+// lastPeriodKey ("w:2026-11-16" / "m:2026-10-01") is claimed with a conditional update before a
+// period is sent, so a retried or overlapping run never sends it twice.
+export const scheduledReport = mysqlTable(
+  "ScheduledReport",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("userId", { length: 32 }).notNull(),
+    teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    // Who set the report up: in a team, the report only covers links in folders they can see.
+    createdBy: varchar("createdBy", { length: 32 }),
+    targetType: mysqlEnum("targetType", ["link", "folder", "campaign"]).notNull(),
+    targetId: int("targetId").notNull(),
+    frequency: mysqlEnum("frequency", ["weekly", "monthly"]).notNull(),
+    recipients: json("recipients").$type<string[]>().notNull(),
+    // Addresses that used the unsubscribe link: kept so editing this schedule can't add them back.
+    unsubscribed: json("unsubscribed").$type<string[]>(),
+    lastPeriodKey: varchar("lastPeriodKey", { length: 16 }),
+    lastSentAt: timestamp("lastSentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").onUpdateNow(),
+  },
+  (table) => ({
+    userIdIdx: index("scheduledReport_userId_idx").on(table.userId),
+    teamIdIdx: index("scheduledReport_teamId_idx").on(table.teamId),
+    targetIdx: index("scheduledReport_target_idx").on(table.targetType, table.targetId),
+    dueIdx: index("scheduledReport_due_idx").on(table.frequency, table.lastPeriodKey),
+  }),
+);
+
+export type ScheduledReport = typeof scheduledReport.$inferSelect;
+
 export const linkMilestone = mysqlTable(
   "LinkMilestone",
   {
@@ -555,11 +590,16 @@ export const token = mysqlTable(
     label: varchar("label", { length: 64 }),
     lastUsedAt: timestamp("lastUsedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
+    // The creator. Personal keys act in this user's personal workspace.
     userId: varchar("userId", { length: 32 }).notNull(),
+    // Set on team keys (kind "api" only): the key belongs to and acts in this team workspace.
+    teamId: int("teamId"),
+    createdByUserId: varchar("createdByUserId", { length: 32 }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     tokenIdx: index("token_idx").on(table.token),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
   }),
 );
 
@@ -608,11 +648,21 @@ export const qrcode = mysqlTable(
 
     // Generator options used for the SVG download; null for codes saved before SVG export.
     style: json("style").$type<QRCodeStyle>(),
+
+    // Codes built from a form: which form, and its fields so the editor can re-open them. Static
+    // codes (contentType "text") and contact cards ("vcard", contentType "link"). Null for links,
+    // plain text and codes made before these types.
+    payloadType: varchar("payloadType", { length: 16 }).$type<StaticPayloadType | "vcard">(),
+    payloadFields: json("payloadFields").$type<StaticQrPayload | VCardPayload>(),
+
+    // A contact card's hosted page is /c/<publicId>: random, so cards can't be listed by id.
+    publicId: varchar("publicId", { length: 16 }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     teamIdIdx: index("teamId_idx").on(table.teamId),
     linkIdIdx: index("linkId_idx").on(table.linkId),
+    publicIdUnique: unique("qrcode_publicId_unique").on(table.publicId),
   }),
 );
 

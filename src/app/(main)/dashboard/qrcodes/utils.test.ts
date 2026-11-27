@@ -5,15 +5,23 @@ import { qrCodeStyleInput } from "@/server/api/routers/qrcode/qrcode.input";
 
 import {
   checkIfUserCanCreateMoreQRCodes,
+  emptyStaticFormValues,
   qrCodeFileName,
   pdfSizeCm,
   qrCodeStyleFrom,
   qrPreviewSrc,
   qrZipBaseNames,
   savedQrCodeSvgState,
+  staticFormValuesFrom,
+  staticTypeOf,
   SVG_EFFECTS_NOTE,
   SVG_LEGACY_NOTE,
   svgNoteFor,
+  emptyVCardFormValues,
+  validateStaticForm,
+  validateVCardForm,
+  vcardFormValuesFrom,
+  vcardOf,
   vectorNoteFor,
 } from "./utils";
 
@@ -208,5 +216,111 @@ describe("pdfSizeCm", () => {
     for (const value of ["", "0.5", "51", "abc"]) {
       expect(pdfSizeCm("custom", value)).toEqual({ error: "Enter a size from 1 to 50 cm" });
     }
+  });
+});
+
+describe("static codes", () => {
+  const style = qrCodeStyleFrom(defaultGeneratorState(), undefined);
+  const wifi = {
+    type: "wifi" as const,
+    ssid: "Cafe",
+    password: "latte",
+    security: "WPA" as const,
+    hidden: false,
+  };
+  const content = "WIFI:T:WPA;S:Cafe;P:latte;H:false;;";
+
+  test("redraw from their own content and saved style", () => {
+    const state = savedQrCodeSvgState({
+      style,
+      color: "#000000",
+      link: null,
+      contentType: "text",
+      content,
+    });
+    expect(state?.text).toBe(content);
+    // Legacy codes without a saved style or a link still can't be redrawn.
+    expect(
+      savedQrCodeSvgState({
+        style: null,
+        color: "#000000",
+        link: null,
+        contentType: "text",
+        content,
+      }),
+    ).toBeNull();
+    expect(
+      savedQrCodeSvgState({ style, color: "#000000", link: null, contentType: "link", content }),
+    ).toBeNull();
+  });
+
+  test("know their type, with plain text for codes without form fields", () => {
+    expect(staticTypeOf({ contentType: "text", payloadFields: wifi })).toBe("wifi");
+    expect(staticTypeOf({ contentType: "text", payloadFields: null })).toBe("text");
+    expect(staticTypeOf({ contentType: "link", payloadFields: null })).toBeNull();
+  });
+
+  test("re-open their saved form fields", () => {
+    expect(staticFormValuesFrom({ content, payloadFields: wifi })).toEqual({
+      ...emptyStaticFormValues,
+      ssid: "Cafe",
+      password: "latte",
+    });
+    expect(staticFormValuesFrom({ content: "Hello", payloadFields: null }).text).toBe("Hello");
+  });
+
+  test("validate the active type's fields", () => {
+    const missing = validateStaticForm("wifi", emptyStaticFormValues);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.fieldErrors.ssid).toBe("Enter the network name");
+
+    const phone = validateStaticForm("phone", {
+      ...emptyStaticFormValues,
+      phone: "+1 415-555-0100",
+    });
+    expect(phone).toEqual({ ok: true, payload: { type: "phone", phone: "+14155550100" } });
+
+    const email = validateStaticForm("email", { ...emptyStaticFormValues, to: "nope" });
+    expect(email.ok || email.fieldErrors.to).toBe("Enter a valid email address");
+  });
+});
+
+describe("contact card codes", () => {
+  const card = {
+    type: "vcard" as const,
+    ...emptyVCardFormValues,
+    firstName: "Ada",
+    website: "https://example.com",
+  };
+
+  test("aren't static codes and read their card back", () => {
+    expect(staticTypeOf({ contentType: "link", payloadFields: card })).toBeNull();
+    expect(vcardOf({ payloadType: "vcard", payloadFields: card })).toEqual(card);
+    expect(vcardOf({ payloadType: null, payloadFields: null })).toBeNull();
+    expect(vcardFormValuesFrom(card)).toEqual({
+      ...emptyVCardFormValues,
+      firstName: "Ada",
+      website: "https://example.com",
+    });
+  });
+
+  test("validate the form, needing a first name or an organisation", () => {
+    const missing = validateVCardForm(emptyVCardFormValues);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) {
+      expect(missing.fieldErrors.firstName).toBe("Enter a first name or an organisation");
+    }
+
+    const valid = validateVCardForm({
+      ...emptyVCardFormValues,
+      organization: " Acme ",
+      website: "acme.com",
+    });
+    expect(valid.ok && valid.card).toEqual({
+      ...card,
+      firstName: "",
+      organization: "Acme",
+      website: "https://acme.com",
+    });
   });
 });

@@ -733,8 +733,36 @@
     {
       "idx": 104,
       "version": "5",
-      "when": 1795782725430,
-      "tag": "0104_uneven_starhawk",
+      "when": 1795782084758,
+      "tag": "0104_qr_code_static_payload",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "5",
+      "when": 1795789908577,
+      "tag": "0105_last_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "5",
+      "when": 1795792317824,
+      "tag": "0106_qr_code_public_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "5",
+      "when": 1795793683549,
+      "tag": "0107_scheduled_report",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "5",
+      "when": 1795796171677,
+      "tag": "0108_chemical_supernaut",
       "breakpoints": true
     }
   ]

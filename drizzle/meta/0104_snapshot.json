@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "aeeb2432-f2bf-47c0-a1f2-f7a509351aa7",
+  "id": "cc6b1a33-8070-4a7e-847c-f1a89eb7c8f8",
   "prevId": "085d83d8-d30e-42ad-93cb-ec84b828f49b",
   "tables": {
     "AccountDeletion": {
@@ -2466,88 +2466,6 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "LinkHealth": {
-      "name": "LinkHealth",
-      "columns": {
-        "linkId": {
-          "name": "linkId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "lastCheckedAt": {
-          "name": "lastCheckedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "lastStatus": {
-          "name": "lastStatus",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lastError": {
-          "name": "lastError",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "consecutiveFailures": {
-          "name": "consecutiveFailures",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "brokenSince": {
-          "name": "brokenSince",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "alertedAt": {
-          "name": "alertedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "linkHealth_lastCheckedAt_idx": {
-          "name": "linkHealth_lastCheckedAt_idx",
-          "columns": [
-            "lastCheckedAt"
-          ],
-          "isUnique": false
-        },
-        "linkHealth_brokenSince_idx": {
-          "name": "linkHealth_brokenSince_idx",
-          "columns": [
-            "brokenSince"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "LinkHealth_linkId": {
-          "name": "LinkHealth_linkId",
-          "columns": [
-            "linkId"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
     "LinkMilestone": {
       "name": "LinkMilestone",
       "columns": {
@@ -3468,6 +3386,20 @@
         },
         "style": {
           "name": "style",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "payloadType": {
+          "name": "payloadType",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "payloadFields": {
+          "name": "payloadFields",
           "type": "json",
           "primaryKey": false,
           "notNull": false,

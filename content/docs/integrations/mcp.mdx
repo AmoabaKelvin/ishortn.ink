@@ -1,6 +1,6 @@
 ---
 title: MCP server
-description: Connect Claude, ChatGPT (Codex), Cursor and other AI assistants to iShortn with the remote MCP server at https://ishortn.ink/mcp, authenticated with an API key.
+description: Connect Claude, ChatGPT (Codex), Cursor, VS Code (GitHub Copilot), Windsurf, Gemini CLI and other AI assistants to iShortn with the remote MCP server at https://ishortn.ink/mcp, authenticated with an API key.
 ---
 
 iShortn runs a remote [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server, so AI assistants can create and manage your short links, read their analytics and make QR codes for you. Ask in plain language, for example "shorten https://example.com/spring-sale as spring-sale" or "which countries did my launch link get clicks from this week?".
@@ -18,7 +18,7 @@ The server is built on the [iShortn API](/docs/api), so it uses the same API key
 1. Open [Settings](/dashboard/settings#api-keys) in the dashboard and scroll to **API Keys**.
 2. Click **Create API Key** and copy the key from the dialog. It's shown once.
 
-The key works in your personal workspace: links the assistant creates are added there, and the other tools only find links in it. See [Which links the API can reach](/docs/api#which-links-the-api-can-reach). Anyone with the key can change and delete your links, so keep it out of shared files and repositories.
+The key works in one workspace: your personal workspace for a personal key, or the team for a [team key](/docs/teams#api-access). Links the assistant creates are added there, and the other tools only find links in it. See [Which links the API can reach](/docs/api#which-links-the-api-can-reach). Anyone with the key can change and delete your links, so keep it out of shared files and repositories.
 
 ## Connect your assistant
 
@@ -72,6 +72,79 @@ Open **Cursor Settings** → **Tools & MCP** → **New MCP Server**, or edit `~/
 }
 ```
 
+### VS Code
+
+GitHub Copilot in VS Code reads remote MCP servers from `~/.copilot/mcp-config.json` (all workspaces) or `.mcp.json` at the root of a workspace. Run **MCP: Add Server** from the Command Palette and choose **Global** → **Copilot Global** to create the user file, or add iShortn to it yourself:
+
+```json
+{
+  "mcpServers": {
+    "ishortn": {
+      "type": "http",
+      "url": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer ${ISHORTN_API_KEY}" },
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+Copilot reads the key from the `ISHORTN_API_KEY` environment variable, so set it in the environment VS Code starts from (for example your shell profile) and restart VS Code. Keep the key out of a `.mcp.json` you commit. To check the connection, pick **Copilot** as the chat's session target, run **Chat: Open Customizations** and open **MCP Servers**: **ishortn** should be listed with its tools.
+
+The older Local harness, which VS Code removes in February 2027, uses a different format in `.vscode/mcp.json` and can prompt for the key instead:
+
+```json
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "ishortn-api-key",
+      "description": "iShortn API key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "ishortn": {
+      "type": "http",
+      "url": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer ${input:ishortn-api-key}" }
+    }
+  }
+}
+```
+
+### Windsurf
+
+Windsurf is now called Devin Desktop. Its agents read MCP servers from `~/.config/devin/mcp_config.json` (`%AppData%/devin/mcp_config.json` on Windows). Open it from **Customize** → **MCPs**, or with **Open MCP config file** in Cascade's MCP menu:
+
+```json
+{
+  "mcpServers": {
+    "ishortn": {
+      "url": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer YOUR_API_KEY" }
+    }
+  }
+}
+```
+
+### Gemini CLI
+
+Add iShortn to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "ishortn": {
+      "httpUrl": "https://ishortn.ink/mcp",
+      "headers": { "Authorization": "Bearer YOUR_API_KEY" }
+    }
+  }
+}
+```
+
+Run `/mcp` in Gemini CLI to check that **ishortn** is connected.
+
 ### ChatGPT and OpenAI
 
 ChatGPT's **Add custom MCP server** form signs in with OAuth only and can't send an API key, so it can't connect to the iShortn server yet. [Codex](https://developers.openai.com/codex), OpenAI's coding agent that comes with ChatGPT plans, can. Add this to `~/.codex/config.toml`:
@@ -111,9 +184,9 @@ npx @modelcontextprotocol/inspector --cli https://ishortn.ink/mcp --transport ht
 | `create_link` | Creates a short link, with an optional alias, domain, password, expiry, activation time, click limit and UTM tags. | [Create a link](/docs/api/create-link) |
 | `get_link` | Looks up a link by alias and domain. | [Get a link](/docs/api/get-link) |
 | `list_links` | Lists your links, newest first, 25 per page by default (up to 100). | [List links](/docs/api/list-links) |
-| `update_link` | Changes a link's destination, alias, domain, expiry, activation time or click limit. Renamed and moved links keep redirecting from the old address. | [Update a link](/docs/api/update-link) |
+| `update_link` | Changes a link's destination, alias, domain, expiry, activation time or click limit. Links moved to another domain keep redirecting from the old address; a renamed alias stops working. | [Update a link](/docs/api/update-link) |
 | `delete_link` | Deletes a link and its analytics. | [Delete a link](/docs/api/delete-link) |
-| `get_link_analytics` | Clicks and unique clicks, by country, city, device, browser, OS and referrer. | [Link analytics](/docs/api/link-analytics) |
+| `get_link_analytics` | Total and verified clicks, clicks and unique clicks per day, and clicks by country, continent, city, device, model, browser, OS and referrer. | [Link analytics](/docs/api/link-analytics) |
 | `create_qr_code` | Returns a PNG QR code that opens a short link. Give a URL to create a new link for it, or the alias of an existing link. | |
 | `get_account` | Your plan, default domain, links created this month against your monthly limit, and your API rate limits. | [Get your account](/docs/api/get-me) |
 

@@ -10,15 +10,20 @@ import * as schema from "@/server/db/schema";
 import {
   MAX_EXTENSION_TOKENS_PER_USER,
   createExtensionToken,
+  createTeamToken,
   createToken,
   deleteExtensionToken,
+  deleteTeamToken,
   deleteToken,
+  getTeamTokens,
   getApiAccessStatus,
   getExtensionTokens,
   getTokens,
 } from "./token.service";
 
-import type { ProtectedTRPCContext } from "../../trpc";
+import type { ProtectedTRPCContext, TeamTRPCContext } from "../../trpc";
+import type { Team, TeamRole } from "@/server/db/schema";
+import type { TeamWorkspaceContext } from "@/server/lib/workspace";
 
 // Exercises the service against a real MySQL. Set TEST_DATABASE_URL to run it;
 // see CONTRIBUTING.md, "Database tests".
@@ -137,5 +142,85 @@ describe.skipIf(!testDatabaseUrl)("token service (MySQL)", () => {
     });
     await deleteExtensionToken(ctx, { id: extension!.id });
     expect(await tokenCount()).toBe(0);
+  });
+
+  describe("team keys", () => {
+    const TEAM_ID = 987_654;
+
+    function teamCtx(role: TeamRole): TeamTRPCContext {
+      const team: Team = {
+        id: TEAM_ID,
+        name: "Acme",
+        slug: "acme",
+        avatarUrl: null,
+        defaultDomain: null,
+        ownerId: USER_ID,
+        createdAt: null,
+        updatedAt: null,
+        deletedAt: null,
+        ownerPlanGraceEndsAt: null,
+        ownerPlanGraceEmailStage: 0,
+      };
+      const workspace: TeamWorkspaceContext = {
+        type: "team",
+        userId: USER_ID,
+        teamId: TEAM_ID,
+        teamSlug: team.slug,
+        team,
+        membership: {
+          id: 1,
+          teamId: TEAM_ID,
+          userId: USER_ID,
+          role,
+          createdAt: null,
+          updatedAt: null,
+        },
+        role,
+        plan: "ultra",
+        readOnly: false,
+        ownerGraceEndsAt: null,
+      };
+      // SAFETY: the team key services read only ctx.db, ctx.auth, ctx.restrictedAt and
+      // ctx.workspace.
+      return { db, auth: { userId: USER_ID }, restrictedAt: null, workspace } as TeamTRPCContext;
+    }
+
+    beforeEach(() => db.delete(schema.token).where(eq(schema.token.teamId, TEAM_ID)));
+    afterAll(() => db.delete(schema.token).where(eq(schema.token.teamId, TEAM_ID)));
+
+    test("admins create team keys; they stay out of the creator's personal list", async () => {
+      await db
+        .update(schema.user)
+        .set({ name: "Ada", email: "ada@example.com" })
+        .where(eq(schema.user.id, USER_ID));
+      const created = await createTeamToken(teamCtx("admin"), { name: "Zapier" });
+
+      const team = await getTeamTokens(teamCtx("member"));
+      expect(team.keys.map((key) => key.id)).toEqual([created.id]);
+      expect(team.keys[0]?.createdBy).toEqual({ name: "Ada", email: "ada@example.com" });
+      expect(team.canManage).toBe(false);
+      expect(await getTokens(ctx)).toEqual([]);
+      // Personal revoke can't reach a team key.
+      await expect(deleteToken(ctx, { id: created.id })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+
+      const stored = await db.query.token.findFirst({ where: eq(schema.token.id, created.id) });
+      expect(stored).toMatchObject({ teamId: TEAM_ID, userId: USER_ID, createdByUserId: USER_ID });
+    });
+
+    test("members can't create or revoke team keys", async () => {
+      const created = await createTeamToken(teamCtx("owner"), { name: "n8n" });
+
+      await expect(createTeamToken(teamCtx("member"), { name: "x" })).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+      await expect(deleteTeamToken(teamCtx("member"), { id: created.id })).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+
+      await deleteTeamToken(teamCtx("admin"), { id: created.id });
+      expect((await getTeamTokens(teamCtx("admin"))).keys).toEqual([]);
+    });
   });
 });

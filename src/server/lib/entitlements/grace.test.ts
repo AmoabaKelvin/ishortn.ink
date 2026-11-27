@@ -49,7 +49,6 @@ function ownerSubscription(status: string, plan: "pro" | "ultra" = "ultra"): Sub
 const email = (sub: Subscription | null, kind: "started" | "reminder" = "started") =>
   teamGraceEmail({
     teamName: "Acme",
-    ownerName: "Ama",
     ownerSubscription: sub,
     endsAt: ENDS_AT,
     kind,
@@ -97,7 +96,6 @@ const accountEmail = (
   usage: PlanUsage = { ...EMPTY_USAGE, customDomains: 3 },
 ) =>
   accountGraceEmail({
-    name: "Ama",
     subscription: sub,
     usage,
     gracePlan,
@@ -136,7 +134,7 @@ describe("accountGraceEmail", () => {
       "ultra",
       "over_plan",
     )!;
-    expect(subject).toBe("Some of your iShortn features need Ultra after November 27, 2026");
+    expect(subject).toBe("Keep your Ultra features after November 27, 2026");
     expect(props.updatePaymentUrl).toBeUndefined();
     expect(props.upgradeUrl).toBe("https://ishortn.ink/e-grace-ultra");
   });
@@ -160,6 +158,11 @@ describe("accountGraceEmail", () => {
   test("a lapse with nothing over the plan still gets its email", () => {
     const email = accountEmail(null, "pro", "lapsed", EMPTY_USAGE);
     expect(email?.props.items.length).toBeGreaterThan(0);
+    expect(email?.props.itemsAreFreePlan).toBe(true);
+  });
+
+  test("a lapse with features over the plan lists them, not the Free plan summary", () => {
+    expect(accountEmail(null, "pro", "lapsed")?.props.itemsAreFreePlan).toBe(false);
   });
 });
 

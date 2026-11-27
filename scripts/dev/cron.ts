@@ -16,6 +16,7 @@ const CRON_ROUTES = [
   "api-access-sunset",
   "first-link-nudge",
   "promo-paused-notice",
+  "scheduled-reports",
   "upgrade-nudge",
   "link-creation-health",
   "weekly-summary",

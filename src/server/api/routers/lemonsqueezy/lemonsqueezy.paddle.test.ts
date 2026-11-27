@@ -5,6 +5,7 @@ import { addMonths } from "date-fns";
 import { eq } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { STALE_BILLING_MESSAGE } from "@/lib/billing/plan-change-copy";
 import { ACTIVE_PROMO } from "@/lib/billing/promo";
 import { PaddleApiError } from "@/lib/paddle/client";
 import { buildPaddleConfig } from "@/lib/paddle/config";
@@ -139,7 +140,7 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
       if (discountFails) throw paddleError(500);
       return {
         id: "dsc_01firstyear",
-        recur: input.maximumRecurringIntervals !== null,
+        recur: true,
         maximum_recurring_intervals: input.maximumRecurringIntervals,
       };
     },
@@ -366,12 +367,92 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
     });
 
     test("monthly to annual in the first year discounts that annual payment once", async () => {
+      // Paddle rejects one-off discounts on subscription updates; one recurrence covers the
+      // annual charge and leaves the next renewal at full price.
       await seedPromo(5);
       respond = () => paddleSub({ items: [{ price: { id: PRICES.proAnnual } }] });
 
       await caller().createCheckoutOrUpdate({ plan: "pro", interval: "annual" });
 
-      expect(discountCall()).toMatchObject({ percentOff: 20, maximumRecurringIntervals: null });
+      expect(discountCall()).toMatchObject({ percentOff: 20, maximumRecurringIntervals: 1 });
+      expect(updateCall()).toEqual({
+        items: [{ priceId: PRICES.proAnnual, quantity: 1 }],
+        prorationBillingMode: "prorated_immediately",
+        discount: { id: "dsc_01firstyear", effectiveFrom: "immediately" },
+      });
+    });
+
+    test("the monthly to annual preview carries the same discount, then archives it", async () => {
+      await seedPromo(5);
+
+      const charge = await caller().previewPlanChange({ plan: "pro", interval: "annual" });
+
+      expect(charge).toEqual({ type: "amount_due", amount: 609, currencyCode: "USD" });
+      expect(calls).toEqual([
+        [
+          "createDiscount",
+          expect.objectContaining({ percentOff: 20, maximumRecurringIntervals: 1 }),
+        ],
+        [
+          "previewSubscriptionUpdate",
+          SUBSCRIPTION_ID,
+          {
+            items: [{ priceId: PRICES.proAnnual, quantity: 1 }],
+            prorationBillingMode: "prorated_immediately",
+            discount: { id: "dsc_01firstyear", effectiveFrom: "immediately" },
+          },
+        ],
+        ["archiveDiscount", "dsc_01firstyear"],
+      ]);
+      expect(await stored()).toMatchObject({
+        billingInterval: "monthly",
+        promoDiscountEndedAt: null,
+      });
+    });
+
+    test("a failed preview still archives the discount created for it", async () => {
+      await seedPromo(5);
+      previewFails = true;
+
+      expect(await caller().previewPlanChange({ plan: "pro", interval: "annual" })).toEqual({
+        type: "prorated",
+      });
+      expect(calls.map(([method]) => method)).toEqual([
+        "createDiscount",
+        "previewSubscriptionUpdate",
+        "archiveDiscount",
+      ]);
+    });
+
+    test("a preview after the first year previews the discount's removal", async () => {
+      await seedPromo(13);
+
+      await caller().previewPlanChange({ plan: "pro", interval: "annual" });
+
+      expect(calls).toEqual([
+        [
+          "previewSubscriptionUpdate",
+          SUBSCRIPTION_ID,
+          {
+            items: [{ priceId: PRICES.proAnnual, quantity: 1 }],
+            prorationBillingMode: "prorated_immediately",
+            discount: null,
+          },
+        ],
+      ]);
+    });
+
+    test("an annual Pro to Ultra upgrade discounts its prorated charge with one recurrence", async () => {
+      await seedPromo(
+        2,
+        { providerPriceId: PRICES.proAnnual, billingInterval: "annual" },
+        "annual",
+      );
+      respond = () => paddleSub({ items: [{ price: { id: PRICES.ultraAnnual } }] });
+
+      await caller().createCheckoutOrUpdate({ plan: "ultra", interval: "annual" });
+
+      expect(discountCall()).toMatchObject({ maximumRecurringIntervals: 1 });
       expect(updateCall()).toMatchObject({
         discount: { id: "dsc_01firstyear", effectiveFrom: "immediately" },
       });
@@ -511,6 +592,41 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
     });
   });
 
+  test("a change sent from a screen still showing Free is refused before Paddle is called", async () => {
+    await seed();
+
+    const error = await caller()
+      .createCheckoutOrUpdate({ plan: "ultra", interval: "monthly", displayedPlanMode: "free" })
+      .catch((err: Error) => err);
+
+    expect(error).toMatchObject({ code: "CONFLICT", message: STALE_BILLING_MESSAGE });
+    expect(calls).toHaveLength(0);
+    expect((await stored())?.plan).toBe("pro");
+  });
+
+  test("a change sent with the stored plan mode goes ahead", async () => {
+    await seed();
+    respond = () => paddleSub({ items: [{ price: { id: PRICES.ultraMonthly } }] });
+
+    const result = await caller().createCheckoutOrUpdate({
+      plan: "ultra",
+      interval: "monthly",
+      displayedPlanMode: "pro",
+    });
+
+    expect(result).toEqual({ status: "updated", message: "Plan updated successfully!" });
+    expect(calls.map(([method]) => method)).toEqual(["updateSubscription"]);
+  });
+
+  test("a change sent from a screen showing a paid plan after it expired is refused", async () => {
+    await seed({ status: "expired", endsAt: new Date(Date.now() - DAY) });
+
+    await expect(
+      caller().createCheckoutOrUpdate({ plan: "ultra", displayedPlanMode: "pro" }),
+    ).rejects.toMatchObject({ code: "CONFLICT", message: STALE_BILLING_MESSAGE });
+    expect(calls).toHaveLength(0);
+  });
+
   test("choosing the current price changes nothing", async () => {
     await seed();
 
@@ -541,8 +657,35 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
       .catch((err: Error) => err);
 
     expect(error).toMatchObject({ code: "BAD_REQUEST" });
-    expect(error.message).toStartWith("Our payment provider couldn't apply this change.");
+    expect(error.message).toBe(
+      "We couldn't apply this change. Please try again or contact support.",
+    );
     expect((await stored())?.plan).toBe("pro");
+  });
+
+  test("a discount Paddle won't apply gets the generic message, a declined card the payment one", async () => {
+    await seed();
+    const refused = (code: string) =>
+      new PaddleApiError({
+        method: "PATCH",
+        path: `/subscriptions/${SUBSCRIPTION_ID}`,
+        status: 400,
+        code,
+        detail: "refused",
+        requestId: null,
+      });
+
+    respond = () => refused("subscription_one_off_discount_not_valid");
+    await expect(caller().createCheckoutOrUpdate({ plan: "ultra" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "We couldn't apply this change. Please try again or contact support.",
+    });
+
+    respond = () => refused("subscription_payment_declined");
+    await expect(caller().createCheckoutOrUpdate({ plan: "ultra" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining("Check your payment method"),
+    });
   });
 
   test("a downgrade to Pro switches now and credits the unused time right away", async () => {
