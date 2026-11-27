@@ -42,6 +42,7 @@ const CAP_ROWS: { label: string; cap: Cap }[] = [
   { label: "Bio pages", cap: "bioPageLimit" },
   { label: "Link blocks per bio page", cap: "bioLinkBlocksPerPageLimit" },
   { label: "Active campaigns", cap: "campaignLimit" },
+  { label: "Scheduled email reports", cap: "scheduledReportLimit" },
 ];
 
 const FEATURE_ROWS: { label: string; allowed: (plan: Plan) => boolean }[] = [

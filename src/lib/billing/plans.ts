@@ -18,6 +18,7 @@ type PlanCaps = {
   campaignLimit?: number; // Max ACTIVE campaigns (archived don't count; undefined => unlimited)
   qrCodeLimit?: number; // Max QR codes in the personal workspace (undefined => unlimited)
   bulkQrBatchLimit?: number; // Max QR codes created by one CSV import (0 => not available)
+  scheduledReportLimit?: number; // Max emailed report schedules per workspace (0 => not available)
 };
 
 // Lemon Squeezy variant IDs per plan + billing interval.
@@ -106,6 +107,7 @@ export const PLAN_CAPS: PlanCapsByPlan = {
     campaignLimit: 1,
     qrCodeLimit: 5,
     bulkQrBatchLimit: 0,
+    scheduledReportLimit: 0,
   },
   pro: {
     eventsLimit: 10000,
@@ -117,6 +119,7 @@ export const PLAN_CAPS: PlanCapsByPlan = {
     bioPageLimit: 3,
     campaignLimit: 2,
     bulkQrBatchLimit: 100,
+    scheduledReportLimit: 3,
   },
   ultra: {
     // unlimited

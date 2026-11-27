@@ -212,16 +212,16 @@ export const WeeklySummaryEmail = (props: WeeklySummaryEmailProps) => {
   );
 };
 
-const row: CSSProperties = {
+export const row: CSSProperties = {
   borderTop: "1px solid #e8e8e8",
 };
 
-const rowLabel: CSSProperties = {
+export const rowLabel: CSSProperties = {
   padding: "8px 12px 8px 0",
   verticalAlign: "top",
 };
 
-const rowName: CSSProperties = {
+export const rowName: CSSProperties = {
   color: "#171717",
   fontSize: "14px",
   lineHeight: "20px",
@@ -229,7 +229,7 @@ const rowName: CSSProperties = {
   overflowWrap: "anywhere",
 };
 
-const rowUrl: CSSProperties = {
+export const rowUrl: CSSProperties = {
   color: "#737373",
   fontFamily: monoFontFamily,
   fontSize: "12px",
@@ -238,14 +238,14 @@ const rowUrl: CSSProperties = {
   wordBreak: "break-all",
 };
 
-const wellHeading: CSSProperties = {
+export const wellHeading: CSSProperties = {
   ...panelItem,
   color: "#171717",
   fontWeight: 600,
   margin: "16px 0 0",
 };
 
-const rowValue: CSSProperties = {
+export const rowValue: CSSProperties = {
   color: "#171717",
   fontSize: "14px",
   fontWeight: 600,

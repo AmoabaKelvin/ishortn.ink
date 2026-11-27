@@ -26,6 +26,7 @@ const CRON_ROUTES = new Map([
       "/api/cron/api-access-sunset",
       "/api/cron/first-link-nudge",
       "/api/cron/promo-paused-notice",
+      "/api/cron/scheduled-reports",
       "/api/cron/upgrade-nudge",
     ],
   ],
