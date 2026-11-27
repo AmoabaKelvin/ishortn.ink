@@ -2,7 +2,7 @@ import { type Api, ApiError, type CreatedLink, type Me, type RecentLink, createA
 import { ext } from "./lib/browser.ts";
 import { BASE_URL, urls } from "./lib/config.ts";
 import { h, icon } from "./lib/dom.ts";
-import { type UiError, mapApiError } from "./lib/errors.ts";
+import { type UiError, mapApiError, monthlyLimitError } from "./lib/errors.ts";
 import { planName, qrFileName, usageText } from "./lib/format.ts";
 import { type CachedLink, lookupCachedLink, withCachedLink } from "./lib/link-cache.ts";
 import { meCache, shouldAutoShorten } from "./lib/me-cache.ts";
@@ -367,20 +367,26 @@ const showConnected = async (token: string) => {
   ]);
   if (gen !== generation) return;
 
+  // An account cached at its monthly cap waits for /me instead of creating: showTarget then shows
+  // the limit screen without a request, or the usual flow once a new month has reset the count.
+  const usableMe = cachedMe && !monthlyLimitError(cachedMe) ? cachedMe : null;
+
   // Start creating in parallel with /me whenever the answer is already known: from the saved
   // switch, or from the cached plan's default.
   const pageUrl = isShortenableUrl(tabUrl) ? tabUrl : null;
   const cachedLink = pageUrl ? lookupCachedLink(linkCache, pageUrl, Date.now()) : null;
-  const autoKnown = cachedMe ? shouldAutoShorten(storedAuto, cachedMe.plan) : storedAuto === true;
+  const autoKnown = usableMe
+    ? shouldAutoShorten(storedAuto, usableMe.plan)
+    : !cachedMe && storedAuto === true;
   const earlyCreate = pageUrl && !cachedLink && autoKnown ? api.createLink({ url: pageUrl }) : null;
   earlyCreate?.catch(() => undefined);
 
   const target: Target = { recentPromise, cachedLink, storedAuto, earlyCreate };
 
-  if (cachedMe) {
+  if (usableMe) {
     // Render from the last known account now and revalidate behind it.
-    const ctx: Ctx = { api, me: cachedMe, gen };
-    setPlan(cachedMe);
+    const ctx: Ctx = { api, me: usableMe, gen };
+    setPlan(usableMe);
     revalidate(ctx, mePromise);
     return showTarget(ctx, target);
   }
@@ -423,6 +429,8 @@ const showTarget = (ctx: Ctx, { recentPromise, cachedLink, storedAuto, earlyCrea
   if (!isShortenableUrl(tabUrl)) return;
   const auto = shouldAutoShorten(storedAuto, ctx.me.plan);
   if (cachedLink) return showResult(ctx, toShown(cachedLink, tabUrl), auto, true);
+  const limit = monthlyLimitError(ctx.me);
+  if (limit) return showShortenError(ctx, auto, limit);
   if (!auto) return showManual(ctx, auto);
   return shortenPage(ctx, auto, earlyCreate);
 };

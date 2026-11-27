@@ -100,4 +100,11 @@ describe("planSignupHref", () => {
     const monthly = new URL(planSignupHref("ultra", "monthly"), "https://ishortn.ink");
     expect(monthly.searchParams.get("next")).toBe("/dashboard/pricing?plan=ultra&interval=monthly");
   });
+
+  test("carries the visit's source and UTM tags to the checkout after sign-up", () => {
+    const href = planSignupHref("pro", "annual", { utm_source: "browser-extension" });
+    expect(new URL(href, "https://ishortn.ink").searchParams.get("next")).toBe(
+      "/dashboard/pricing?plan=pro&interval=annual&utm_source=browser-extension",
+    );
+  });
 });

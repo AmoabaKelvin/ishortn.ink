@@ -3,6 +3,7 @@
 import { IconCheck, IconTagFilled } from "@tabler/icons-react";
 import { useState, useSyncExternalStore } from "react";
 
+import { readAttribution } from "@/lib/billing/attribution";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { planPriceDisplay, planSignupHref, resolveBillingInterval } from "@/lib/billing/pricing";
 import { promoBannerText } from "@/lib/billing/promo";
@@ -17,10 +18,11 @@ import {
   SectionHeading,
 } from "./site-primitives";
 
+import type { Attribution } from "@/lib/billing/attribution";
 import type { BillingInterval } from "@/lib/billing/plans";
 import type { Promo } from "@/lib/billing/promo";
 
-const buildPlans = (interval: BillingInterval, promo: Promo | null) => [
+const buildPlans = (interval: BillingInterval, promo: Promo | null, attribution: Attribution) => [
   {
     name: "Free",
     price: planPriceDisplay("free", interval),
@@ -35,7 +37,7 @@ const buildPlans = (interval: BillingInterval, promo: Promo | null) => [
     price: planPriceDisplay("pro", interval, promo),
     tagline: "For creators, makers, and growing teams.",
     cta: "Get Pro",
-    href: planSignupHref("pro", interval),
+    href: planSignupHref("pro", interval, attribution),
     featured: true,
     features: PLAN_FEATURES.pro.features,
   },
@@ -44,14 +46,14 @@ const buildPlans = (interval: BillingInterval, promo: Promo | null) => [
     price: planPriceDisplay("ultra", interval, promo),
     tagline: "For agencies and teams that want no limits.",
     cta: "Go Ultra",
-    href: planSignupHref("ultra", interval),
+    href: planSignupHref("ultra", interval, attribution),
     featured: false,
     features: PLAN_FEATURES.ultra.features,
   },
 ];
 
 const subscribeToNothing = () => () => {};
-const readIntervalParam = () => new URLSearchParams(window.location.search).get("interval");
+const readSearch = () => window.location.search;
 
 // The /pricing page renders its own hero heading, so it hides this one. `promo` is resolved on the
 // server by the page so the offer is in the first paint.
@@ -65,11 +67,15 @@ export const Pricing = ({
   // The marketing pages are static, so `?interval=monthly` is read from the URL on the client
   // (the server snapshot is the annual default) rather than through useSearchParams, which would
   // need a Suspense boundary around the whole section.
-  const intervalParam = useSyncExternalStore(subscribeToNothing, readIntervalParam, () => null);
+  // The same goes for `?source=`/`utm_*`, carried into the sign-up link so the checkout after
+  // sign-up keeps the visit's attribution.
+  const search = useSyncExternalStore(subscribeToNothing, readSearch, () => "");
+  const params = new URLSearchParams(search);
+  const intervalParam = params.get("interval");
   const [selected, setBillingInterval] = useState<BillingInterval | null>(null);
   const [priceFade, setPriceFade] = useState(false);
   const interval = selected ?? resolveBillingInterval(intervalParam);
-  const plans = buildPlans(interval, promo);
+  const plans = buildPlans(interval, promo, readAttribution(params));
 
   return (
     <Section id="pricing">

@@ -1,7 +1,9 @@
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
 
+import { withAttribution } from "./attribution";
 import { promoPrice } from "./promo";
 
+import type { Attribution } from "./attribution";
 import type { BillingInterval, Plan } from "./plans";
 import type { Promo } from "./promo";
 
@@ -77,8 +79,15 @@ export function planPriceDisplay(
   return { perMonth: formatUsd(PLAN_PRICES_USD[plan]), compareAt: null, note: "billed monthly" };
 }
 
-/** Sign-up link for a paid plan; after sign-up the dashboard pricing page starts its checkout. */
-export function planSignupHref(plan: Exclude<Plan, "free">, interval: BillingInterval): string {
-  const next = `/dashboard/pricing?plan=${plan}&interval=${interval}`;
+/**
+ * Sign-up link for a paid plan; after sign-up the dashboard pricing page starts its checkout,
+ * attributed to the visit's source and UTM tags.
+ */
+export function planSignupHref(
+  plan: Exclude<Plan, "free">,
+  interval: BillingInterval,
+  attribution: Attribution = {},
+): string {
+  const next = withAttribution(`/dashboard/pricing?plan=${plan}&interval=${interval}`, attribution);
   return `/auth/sign-up?next=${encodeURIComponent(next)}`;
 }

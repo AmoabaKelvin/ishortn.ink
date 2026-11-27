@@ -3,6 +3,7 @@ import { getHTTPStatusCodeFromError } from "@trpc/server/http";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
+import { planLimitKey } from "@/lib/billing/required-plan";
 import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { EXTENSION_UPGRADE_URL } from "@/lib/extension/connect";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
@@ -17,6 +18,7 @@ import { apiReadableLinkDomain } from "../../v1/utils";
 import { extensionError, extensionPreflight, withExtensionToken } from "../auth";
 
 import type { ApiToken } from "../../v1/utils";
+import type { ServerEventUser } from "@/server/lib/analytics/posthog-server";
 import type { NextRequest } from "next/server";
 
 export const OPTIONS = extensionPreflight;
@@ -74,7 +76,7 @@ export async function POST(request: Request): Promise<Response> {
 
     try {
       const created = await createTokenLink(token, input.data, "extension", serverTiming);
-      captureServerEvent(token.userId, "extension_link_created", { plan: token.plan });
+      captureServerEvent(eventUser(token), "extension_link_created", { plan: token.plan });
       return Response.json(
         {
           shortUrl: created.shortLink,
@@ -96,10 +98,17 @@ export async function POST(request: Request): Promise<Response> {
 function creationErrorResponse(token: ApiToken, cause: unknown): Response {
   if (!(cause instanceof TRPCError)) return extensionError(500, "Something went wrong. Try again.");
   if (cause.code === "FORBIDDEN") {
-    captureServerEvent(token.userId, "extension_limit_hit", { plan: token.plan });
+    captureServerEvent(eventUser(token), "extension_limit_hit", {
+      plan: token.plan,
+      limit_key: planLimitKey(cause.message),
+    });
     return extensionError(403, cause.message, { upgradeUrl: EXTENSION_UPGRADE_URL });
   }
   const status = getHTTPStatusCodeFromError(cause);
   if (status >= 500) return extensionError(500, "Something went wrong. Try again.");
   return extensionError(status === 404 ? 400 : status, cause.message);
+}
+
+function eventUser(token: ApiToken): ServerEventUser {
+  return { id: token.userId, email: token.owner.email };
 }
