@@ -16,6 +16,7 @@ A short link is a domain plus an alias, such as `isht.app/spring-sale`, that red
 | Verified clicks | No | Yes | Yes |
 | Geo and device targeting rules per link | No | <PlanValue plan="pro" cap="geoRulesLimit" /> | <PlanValue plan="ultra" cap="geoRulesLimit" /> |
 | Click milestone alerts per link | No | <PlanValue plan="pro" cap="milestonesPerLinkLimit" /> | <PlanValue plan="ultra" cap="milestonesPerLinkLimit" /> |
+| Broken-destination alerts | No | Yes | Yes |
 | UTM parameters and templates | No | No | Yes |
 | Link cloaking | No | No | Yes |
 
@@ -90,6 +91,55 @@ Rules are checked in order and the first one that matches wins. Visitors that ma
 ## Click milestones
 
 **Pro (<PlanValue plan="pro" cap="milestonesPerLinkLimit" /> per link) and Ultra (unlimited).** Get an email when a link reaches a number of clicks you choose, such as 1,000.
+
+## Broken-destination alerts
+
+**Pro and Ultra.** iShortn checks link destinations once a day and tells you when one stops working, so you can change the destination before more visitors reach a dead page. Free accounts don't see the badge or get the email.
+
+### Which links are checked
+
+The check runs every day at 07:00 UTC. It covers:
+
+- Every link with a [QR code](/docs/qr-codes).
+- Every other link that was clicked in the last 30 days.
+
+Archived, disabled and blocked links aren't checked. A link is checked at most once every 20 hours. When you change a link's destination, its check history is cleared and the new URL is checked on the next run.
+
+### What counts as down
+
+iShortn sends a `HEAD` request to the destination (or a `GET` if the server refuses `HEAD`), follows up to 5 redirects and judges the final answer. Response bodies are never read. A check fails when:
+
+- The page returns 404, 410 or any 5xx status.
+- The domain doesn't exist (DNS failure).
+- The server doesn't answer within 10 seconds.
+- The connection or the TLS/SSL handshake fails, for example because the certificate has expired.
+- There are more than 5 redirects.
+
+A 2xx or 3xx answer counts as working. Some answers count as neither, because the page may well work for people: 401, 403, 429 and other 4xx statuses, bot challenges, destinations on private network addresses, and DNS lookups that fail without showing the domain is gone. These don't break or reset a link's streak.
+
+The requests use the user agent `iShortnLinkCheck/1.0 (+https://ishortn.ink/abuse)`. If your site blocks bots, allow it.
+
+One failed check could be a blip, so a link is marked as down only after **two failed checks in a row**. One successful check clears it.
+
+### Where you see it
+
+- **In the dashboard**: the link's analytics page shows a **Destination down** badge with what the last check saw, such as "404 Not Found", and when. In your [links list](/dashboard) the link shows the same badge; hover over or focus it for the details. QR code links aren't in the links list, so for them the badge is on the analytics page only.
+- **By email**: you get one email listing the links that went down, with each link's destination, the problem, its clicks in the last 7 days and a link to its analytics page. An email lists up to 20 links and counts the rest. Alerts for links in a [team workspace](/docs/teams) go to the team owner.
+
+You aren't emailed again about the same outage. Once the page works again the link resets, so a later outage sends a new email.
+
+The emails are part of **Product notification emails** in [Settings → Notifications](/dashboard/settings#notifications). Turn that off, or use the unsubscribe link in an alert email, to stop them. The badge still shows.
+
+### What it can't catch
+
+The check looks only at the server's status, not at the page. It misses:
+
+- **Soft 404s**: pages that say "not found" or "out of stock" but answer with a 200 status.
+- **The wrong page**: a destination that redirects to your homepage instead of the page you meant still counts as working.
+- **Pages that block automated checks**: logins, rate limits and bot challenges count as neither working nor failed, so an outage behind them isn't reported.
+- **Short outages**: a page that is down for less than a day can recover before the second check.
+
+Open your most important links yourself from time to time, especially before you print them.
 
 ## Monthly link limit
 

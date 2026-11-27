@@ -98,7 +98,7 @@ One failure could be a blip, so a link is only marked as broken after two failed
 - The link shows a "Destination down" badge in your dashboard, with what the last check saw (for example "404 Not Found") and when.
 - You get one email listing the links that broke. Links in a team workspace alert the team owner. You won't get another email for the same outage, and once the page works again the link resets, so a later outage alerts you again.
 
-Pages behind a login, rate limits and bot challenges aren't counted as failures, because the page may well work for real visitors. The emails are part of "Product notification emails" under Settings, Notifications, so turning that off stops them.
+Pages behind a login, rate limits and bot challenges aren't counted as failures, because the page may well work for real visitors. The emails are part of "Product notification emails" under Settings, Notifications, so turning that off stops them. The [broken-destination alerts docs](/docs/short-links#broken-destination-alerts) cover the details.
 
 Because an iShortn QR code points at your short link, the fix is to change the link's destination in the dashboard. Every printed copy of the code opens the new page straight away, and nothing needs reprinting.
 
