@@ -1,3 +1,5 @@
+import { PaddleApiError } from "@/lib/paddle/client";
+
 import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
 
 export type ClientBillingError = {
@@ -6,7 +8,7 @@ export type ClientBillingError = {
 };
 
 /**
- * User-facing message for a failed Lemon Squeezy call. Provider messages are
+ * User-facing message for a failed payment provider call. Provider messages are
  * technical (JSON:API validation details, ids) and are logged, never shown.
  */
 export function providerErrorToClient(statusCode: number | null): ClientBillingError {
@@ -43,21 +45,38 @@ export function parseProviderUpdatedAt(updatedAt: string | null | undefined): Da
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-type ProviderResult = { error: unknown; statusCode: number | null };
+/** Lemon Squeezy answers 422 when it rejects a discount code (expired, capped, disabled or unknown). */
+export function lemonSqueezyPromoRejected(result: {
+  error: Error | null;
+  statusCode: number | null;
+}) {
+  return Boolean(result.error) && result.statusCode === 422;
+}
+
+/** Paddle rejects a discount it won't apply with a 4xx whose error code names the discount. */
+export function paddlePromoRejected(result: { error: Error | null }) {
+  const { error } = result;
+  return (
+    error instanceof PaddleApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.code.includes("discount")
+  );
+}
 
 /**
- * Runs a checkout create with the promo code and, when the provider rejects the code (422: expired,
- * redemption cap reached, disabled or unknown), once more without it, so a dead promo code never
- * blocks upgrades. Any other failure is returned as-is. `discountCode` is the code the returned
- * result was created with.
+ * Runs a checkout create with the promo code and, when `isPromoRejected` says the provider
+ * rejected the code, once more without it, so a dead promo code never blocks upgrades. Any other
+ * failure is returned as-is. `discountCode` is the code the returned result was created with.
  */
-export async function createCheckoutWithPromoFallback<T extends ProviderResult>(
+export async function createCheckoutWithPromoFallback<T>(
   create: (discountCode?: string) => Promise<T>,
+  isPromoRejected: (result: T) => boolean,
   discountCode?: string,
   onPromoRejected?: (result: T) => void,
 ): Promise<{ result: T; discountCode?: string }> {
   const result = await create(discountCode);
-  if (!discountCode || !result.error || result.statusCode !== 422) return { result, discountCode };
+  if (!discountCode || !isPromoRejected(result)) return { result, discountCode };
 
   onPromoRejected?.(result);
   return { result: await create(undefined), discountCode: undefined };
