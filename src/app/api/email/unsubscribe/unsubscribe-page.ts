@@ -70,7 +70,7 @@ const LIST_SCOPES = {
 // Report recipients have no account, so their footer line never points at notification settings.
 const REPORT_META = {
   confirm: "Only this report stops. Anything else sent to this address isn't affected.",
-  done: "The person who set up the report can see you unsubscribed, and can't add you back.",
+  done: "Any other report sent to this address has its own unsubscribe link.",
   invalid: `Write to <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a> and we'll take you off it.`,
 } satisfies Record<UnsubscribePageState, string>;
 

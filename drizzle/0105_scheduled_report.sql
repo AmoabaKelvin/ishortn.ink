@@ -2,6 +2,7 @@ CREATE TABLE `ScheduledReport` (
 	`id` serial AUTO_INCREMENT NOT NULL,
 	`userId` varchar(32) NOT NULL,
 	`teamId` int,
+	`createdBy` varchar(32),
 	`targetType` enum('link','folder','campaign') NOT NULL,
 	`targetId` int NOT NULL,
 	`frequency` enum('weekly','monthly') NOT NULL,

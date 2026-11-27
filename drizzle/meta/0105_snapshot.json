@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "4c85ceaa-a299-444d-aa3c-6f5ee1f68b6d",
+  "id": "e0de5ad3-4525-455f-a33d-2f8cb8b4f386",
   "prevId": "cc6b1a33-8070-4a7e-847c-f1a89eb7c8f8",
   "tables": {
     "AccountDeletion": {
@@ -3522,6 +3522,13 @@
         "teamId": {
           "name": "teamId",
           "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdBy": {
+          "name": "createdBy",
+          "type": "varchar(32)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

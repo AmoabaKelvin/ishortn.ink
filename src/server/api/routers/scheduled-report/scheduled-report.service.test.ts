@@ -106,11 +106,24 @@ describe.skipIf(!testDatabaseUrl)("scheduled report schedules (MySQL)", () => {
 
     const target = { targetType: "link", targetId: linkIds[0]! } as const;
     expect(await listScheduledReports(ctx, target)).toMatchObject({
-      reports: [{ id, frequency: "weekly", recipients: ["client@example.com"], unsubscribed: [] }],
+      reports: [
+        {
+          id,
+          frequency: "weekly",
+          recipients: ["client@example.com"],
+          unsubscribed: [],
+          paused: false,
+        },
+      ],
       plan: "pro",
       limit: 3,
       used: 1,
     });
+    const [created] = await db
+      .select({ createdBy: schema.scheduledReport.createdBy })
+      .from(schema.scheduledReport)
+      .where(eq(schema.scheduledReport.id, id));
+    expect(created?.createdBy).toBe(USER);
 
     await updateScheduledReport(ctx, {
       id,
@@ -138,6 +151,23 @@ describe.skipIf(!testDatabaseUrl)("scheduled report schedules (MySQL)", () => {
     for (const id of linkIds.slice(0, 3)) await create("pro", id);
     await expect(create("pro", linkIds[3]!)).rejects.toThrow("Upgrade to Ultra");
     expect(await create("ultra", linkIds[3]!)).toHaveProperty("id");
+  });
+
+  test("after a downgrade, schedules past the plan's oldest-first limit are paused", async () => {
+    const ids: number[] = [];
+    for (const id of linkIds) ids.push((await create("ultra", id)).id);
+    const pausedOn = async (plan: Plan, index: number) =>
+      (
+        await listScheduledReports(ctxFor(USER, plan), {
+          targetType: "link",
+          targetId: linkIds[index]!,
+        })
+      ).reports.map((row) => ({ id: row.id, paused: row.paused }));
+
+    expect(await pausedOn("pro", 2)).toEqual([{ id: ids[2]!, paused: false }]);
+    expect(await pausedOn("pro", 3)).toEqual([{ id: ids[3]!, paused: true }]);
+    expect(await pausedOn("free", 0)).toEqual([{ id: ids[0]!, paused: true }]);
+    expect(await pausedOn("ultra", 3)).toEqual([{ id: ids[3]!, paused: false }]);
   });
 
   test("schedules on deleted links don't count toward the limit", async () => {

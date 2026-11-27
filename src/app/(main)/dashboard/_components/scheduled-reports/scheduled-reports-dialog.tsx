@@ -156,6 +156,8 @@ export function ScheduledReportsDialog({
   };
 
   const data = list.data;
+  const isFree = data?.limit === 0;
+  const hasPaused = !!data?.reports.some((report) => report.paused);
   const atLimit = !!data && data.limit !== null && data.used >= data.limit;
   const saving = create.isLoading || update.isLoading;
   const unsubscribedInForm =
@@ -295,85 +297,108 @@ export function ScheduledReportsDialog({
                   <p className="text-[13px] text-red-600 dark:text-red-400">
                     {list.error.message || "Couldn't load reports."}
                   </p>
-                ) : data && data.limit === 0 ? (
-                  /* Free: upgrade prompt */
-                  <div className="flex flex-col items-center rounded-lg border border-dashed border-neutral-200 px-4 py-8 text-center dark:border-border">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
-                      <IconMail
-                        size={22}
-                        stroke={1.5}
-                        className="text-neutral-400 dark:text-muted-foreground"
-                      />
-                    </div>
-                    <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
-                      Email reports are on Pro
-                    </p>
-                    <p className="mt-1 max-w-xs text-[13px] text-neutral-500 dark:text-neutral-400">
-                      Send clients and teammates a weekly or monthly summary automatically. Pro
-                      includes 3 reports, Ultra unlimited.
-                    </p>
-                    <UpgradeCta
-                      requiredPlan="pro"
-                      source={UPGRADE_SOURCE}
-                      promo={upgradeOffer}
-                      className="mt-4 inline-flex h-9 items-center rounded-lg bg-blue-600 px-4 text-[13px] font-medium text-white transition-[background-color,transform] hover:bg-blue-700 active:scale-[0.97]"
-                    >
-                      Upgrade to Pro
-                    </UpgradeCta>
-                  </div>
-                ) : data && data.reports.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-neutral-200 px-4 py-6 text-center text-[13px] text-neutral-500 dark:border-border dark:text-neutral-400">
-                    No reports yet. Create one to email these stats every week or month.
-                  </div>
                 ) : data ? (
-                  <ul className="divide-y divide-neutral-300/60 rounded-lg border border-neutral-200 dark:divide-border dark:border-border">
-                    {data.reports.map((report) => {
-                      const off = report.recipients.filter((email) =>
-                        report.unsubscribed.includes(email),
-                      ).length;
-                      return (
-                        <li key={report.id} className="flex items-center gap-3 px-3 py-2.5">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-medium text-neutral-900 dark:text-foreground">
-                              {FREQUENCIES[report.frequency].title}
-                              <span className="font-normal text-neutral-400 dark:text-muted-foreground">
-                                {" "}
-                                &middot;{" "}
-                                {report.frequency === "weekly" ? "Mondays" : "1st of the month"}
-                              </span>
-                            </p>
-                            <p className="truncate text-[12px] text-neutral-500 dark:text-neutral-400">
-                              {report.recipients.join(", ")}
-                            </p>
-                            <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
-                              {report.lastSentAt
-                                ? `Last sent ${sentFmt.format(report.lastSentAt)}`
-                                : "Not sent yet"}
-                              {off > 0 && <> &middot; {off} unsubscribed</>}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-0.5">
-                            <button
-                              type="button"
-                              aria-label="Edit report"
-                              onClick={() => openForm(report)}
-                              className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground"
-                            >
-                              <IconPencil size={15} stroke={1.5} />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Delete report"
-                              onClick={() => setConfirmDelete(report)}
-                              className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-muted-foreground dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                            >
-                              <IconTrash size={15} stroke={1.5} />
-                            </button>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <>
+                    {/* Free: upgrade prompt, plus any schedules left from a paid plan */}
+                    {isFree && (
+                      <div className="flex flex-col items-center rounded-lg border border-dashed border-neutral-200 px-4 py-8 text-center dark:border-border">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-100 dark:bg-muted">
+                          <IconMail
+                            size={22}
+                            stroke={1.5}
+                            className="text-neutral-400 dark:text-muted-foreground"
+                          />
+                        </div>
+                        <p className="mt-4 text-[14px] font-medium text-neutral-900 dark:text-foreground">
+                          Email reports are on Pro
+                        </p>
+                        <p className="mt-1 max-w-xs text-[13px] text-neutral-500 dark:text-neutral-400">
+                          Send clients and teammates a weekly or monthly summary automatically. Pro
+                          includes 3 reports, Ultra unlimited.
+                        </p>
+                        <UpgradeCta
+                          requiredPlan="pro"
+                          source={UPGRADE_SOURCE}
+                          promo={upgradeOffer}
+                          className="mt-4 inline-flex h-9 items-center rounded-lg bg-blue-600 px-4 text-[13px] font-medium text-white transition-[background-color,transform] hover:bg-blue-700 active:scale-[0.97]"
+                        >
+                          Upgrade to Pro
+                        </UpgradeCta>
+                      </div>
+                    )}
+                    {data.reports.length === 0 && !isFree ? (
+                      <div className="rounded-lg border border-dashed border-neutral-200 px-4 py-6 text-center text-[13px] text-neutral-500 dark:border-border dark:text-neutral-400">
+                        No reports yet. Create one to email these stats every week or month.
+                      </div>
+                    ) : data.reports.length > 0 ? (
+                      <ul className="divide-y divide-neutral-300/60 rounded-lg border border-neutral-200 dark:divide-border dark:border-border">
+                        {data.reports.map((report) => {
+                          const off = report.recipients.filter((email) =>
+                            report.unsubscribed.includes(email),
+                          ).length;
+                          return (
+                            <li key={report.id} className="flex items-center gap-3 px-3 py-2.5">
+                              <div className="min-w-0 flex-1">
+                                <p className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-900 dark:text-foreground">
+                                  <span className="min-w-0 truncate">
+                                    {FREQUENCIES[report.frequency].title}
+                                    <span className="font-normal text-neutral-400 dark:text-muted-foreground">
+                                      {" "}
+                                      &middot;{" "}
+                                      {report.frequency === "weekly"
+                                        ? "Mondays"
+                                        : "1st of the month"}
+                                    </span>
+                                  </span>
+                                  {report.paused && (
+                                    <span className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+                                      Paused
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="truncate text-[12px] text-neutral-500 dark:text-neutral-400">
+                                  {report.recipients.join(", ")}
+                                </p>
+                                <p className="text-[12px] text-neutral-400 dark:text-muted-foreground">
+                                  {report.lastSentAt
+                                    ? `Last sent ${sentFmt.format(report.lastSentAt)}`
+                                    : "Not sent yet"}
+                                  {off > 0 && <> &middot; {off} unsubscribed</>}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                {!isFree && (
+                                  <button
+                                    type="button"
+                                    aria-label="Edit report"
+                                    onClick={() => openForm(report)}
+                                    className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground"
+                                  >
+                                    <IconPencil size={15} stroke={1.5} />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  aria-label="Delete report"
+                                  onClick={() => setConfirmDelete(report)}
+                                  className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-muted-foreground dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                                >
+                                  <IconTrash size={15} stroke={1.5} />
+                                </button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+                    {hasPaused && (
+                      <p className="text-[12px] text-neutral-500 dark:text-neutral-400">
+                        {isFree
+                          ? "These reports are paused until you upgrade. Delete any you no longer need."
+                          : "Paused reports are over your plan's limit. They resume when you upgrade or delete others."}
+                      </p>
+                    )}
+                  </>
                 ) : null}
 
                 {data && data.limit !== null && data.limit > 0 && (
@@ -406,7 +431,7 @@ export function ScheduledReportsDialog({
                 >
                   Done
                 </Button>
-                {data && data.limit !== 0 && (
+                {data && !isFree && (
                   <Button
                     type="button"
                     onClick={() => openForm("new")}

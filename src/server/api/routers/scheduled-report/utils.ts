@@ -55,6 +55,34 @@ export function inReportWorkspace(report: Owned, row: Owned): boolean {
     : row.teamId === report.teamId;
 }
 
+export type CreatorFolderAccess = {
+  /** Restricted folders among the reports' links. */
+  restricted: Set<number>;
+  /** `${teamId}:${userId}` of creators who are a team's owner or admin. */
+  admins: Set<string>;
+  /** `${folderId}:${userId}` grants on restricted folders. */
+  grants: Set<string>;
+};
+
+/**
+ * Whether a team report may include a link, by its creator's folder access (the rules of
+ * `getAccessibleFolderIds`): owners and admins see every folder, members see unrestricted folders
+ * and restricted ones they're granted. A creator who left the team, or an unknown creator, only
+ * gets unrestricted folders. Personal workspaces have no folder restrictions.
+ */
+export function creatorCanSeeLink(
+  report: { teamId: number | null; createdBy: string | null },
+  folderId: number | null,
+  access: CreatorFolderAccess,
+): boolean {
+  if (report.teamId === null || folderId === null || !access.restricted.has(folderId)) return true;
+  if (!report.createdBy) return false;
+  return (
+    access.admins.has(`${report.teamId}:${report.createdBy}`) ||
+    access.grants.has(`${folderId}:${report.createdBy}`)
+  );
+}
+
 /**
  * Which schedules a workspace's plan covers: all of them without a cap, else the oldest `cap`.
  * More than `cap` only exist after a downgrade; the newest ones pause until it's lifted.

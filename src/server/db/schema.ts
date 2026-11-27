@@ -528,11 +528,13 @@ export const scheduledReport = mysqlTable(
     id: serial("id").primaryKey(),
     userId: varchar("userId", { length: 32 }).notNull(),
     teamId: int("teamId"), // null = personal workspace, non-null = team workspace
+    // Who set the report up: in a team, the report only covers links in folders they can see.
+    createdBy: varchar("createdBy", { length: 32 }),
     targetType: mysqlEnum("targetType", ["link", "folder", "campaign"]).notNull(),
     targetId: int("targetId").notNull(),
     frequency: mysqlEnum("frequency", ["weekly", "monthly"]).notNull(),
     recipients: json("recipients").$type<string[]>().notNull(),
-    // Addresses that used the unsubscribe link: kept so editing the schedule can't add them back.
+    // Addresses that used the unsubscribe link: kept so editing this schedule can't add them back.
     unsubscribed: json("unsubscribed").$type<string[]>(),
     lastPeriodKey: varchar("lastPeriodKey", { length: 16 }),
     lastSentAt: timestamp("lastSentAt"),

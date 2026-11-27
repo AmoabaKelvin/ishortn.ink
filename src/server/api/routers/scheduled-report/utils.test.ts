@@ -4,6 +4,7 @@ import {
   activeRecipients,
   buildScheduledReportContent,
   coveredScheduleIds,
+  creatorCanSeeLink,
   inReportWorkspace,
   reportPeriod,
 } from "./utils";
@@ -60,6 +61,29 @@ describe("inReportWorkspace", () => {
     expect(inReportWorkspace(team, { userId: "user_b", teamId: 7 })).toBe(true);
     expect(inReportWorkspace(team, { userId: "user_a", teamId: null })).toBe(false);
     expect(inReportWorkspace(team, { userId: "user_a", teamId: 8 })).toBe(false);
+  });
+});
+
+describe("creatorCanSeeLink", () => {
+  const access = {
+    restricted: new Set([7]),
+    admins: new Set(["1:admin"]),
+    grants: new Set(["7:granted"]),
+  };
+  const team = (createdBy: string | null) => ({ teamId: 1, createdBy });
+
+  test("unrestricted folders, loose links and personal workspaces are always included", () => {
+    expect(creatorCanSeeLink(team("member"), 3, access)).toBe(true);
+    expect(creatorCanSeeLink(team("member"), null, access)).toBe(true);
+    expect(creatorCanSeeLink({ teamId: null, createdBy: null }, 7, access)).toBe(true);
+  });
+
+  test("a restricted folder needs an admin or a grant", () => {
+    expect(creatorCanSeeLink(team("admin"), 7, access)).toBe(true);
+    expect(creatorCanSeeLink(team("granted"), 7, access)).toBe(true);
+    expect(creatorCanSeeLink(team("member"), 7, access)).toBe(false);
+    expect(creatorCanSeeLink(team(null), 7, access)).toBe(false);
+    expect(creatorCanSeeLink({ teamId: 2, createdBy: "admin" }, 7, access)).toBe(false);
   });
 });
 

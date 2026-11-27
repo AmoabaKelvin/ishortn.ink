@@ -1,4 +1,18 @@
-import { and, asc, count, eq, exists, gt, gte, inArray, isNull, lt, ne, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  exists,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { effectivePlan, teamAccess } from "@/lib/billing/entitlements";
 import { getPlanCaps } from "@/lib/billing/plans";
@@ -8,8 +22,10 @@ import {
   activeRecipients,
   buildScheduledReportContent,
   coveredScheduleIds,
+  creatorCanSeeLink,
   inReportWorkspace,
   reportPeriod,
+  type CreatorFolderAccess,
   type ReportPeriod,
 } from "@/server/api/routers/scheduled-report/utils";
 import { db } from "@/server/db";
@@ -17,11 +33,13 @@ import {
   campaign,
   emailSuppression,
   folder,
+  folderPermission,
   link,
   linkVisit,
   scheduledReport,
   subscription,
   team,
+  teamMember,
   user,
 } from "@/server/db/schema";
 
@@ -103,20 +121,23 @@ export function scheduledReportTargetExists() {
   );
 }
 
-/** Removes one address from one report, from its unsubscribe link (`id` from the token). */
+/**
+ * Removes one address from one report, from its unsubscribe link (`id` from the token). One
+ * conditional UPDATE, so unsubscribes arriving together each land and a repeat is a no-op.
+ */
 export async function unsubscribeReportRecipient(id: string): Promise<void> {
   const parsed = parseScheduledReportRecipientId(id);
   if (!parsed) return;
-  const [report] = await db
-    .select({ unsubscribed: scheduledReport.unsubscribed })
-    .from(scheduledReport)
-    .where(eq(scheduledReport.id, parsed.reportId));
-  const unsubscribed = report?.unsubscribed ?? [];
-  if (!report || unsubscribed.includes(parsed.email)) return;
+  const current = sql`COALESCE(${scheduledReport.unsubscribed}, JSON_ARRAY())`;
   await db
     .update(scheduledReport)
-    .set({ unsubscribed: [...unsubscribed, parsed.email] })
-    .where(eq(scheduledReport.id, parsed.reportId));
+    .set({ unsubscribed: sql`JSON_ARRAY_APPEND(${current}, '$', ${parsed.email})` })
+    .where(
+      and(
+        eq(scheduledReport.id, parsed.reportId),
+        sql`NOT JSON_CONTAINS(${current}, JSON_QUOTE(${parsed.email}))`,
+      ),
+    );
 }
 
 type Owner = {
@@ -210,6 +231,7 @@ type TargetLink = {
   name: string | null;
   folderId: number | null;
   campaignId: number | null;
+  isBioLink: boolean | null;
   statsShareToken: string | null;
 };
 
@@ -222,10 +244,71 @@ const targetLinkColumns = {
   name: link.name,
   folderId: link.folderId,
   campaignId: link.campaignId,
+  isBioLink: link.isBioLink,
   statsShareToken: link.statsShareToken,
 };
 
 type ResolvedTarget = { name: string; statsUrl: string | null; links: TargetLink[] };
+
+/**
+ * The folder access of each team schedule's creator over the restricted folders among
+ * `folderIds`. Up to three queries per chunk, and none when no team folder is restricted.
+ */
+async function loadCreatorFolderAccess(
+  reports: ScheduledReport[],
+  folderIds: number[],
+): Promise<CreatorFolderAccess> {
+  const access: CreatorFolderAccess = {
+    restricted: new Set(),
+    admins: new Set(),
+    grants: new Set(),
+  };
+  const teamReports = reports.filter((row) => row.teamId !== null);
+  if (!teamReports.length || !folderIds.length) return access;
+
+  const restricted = await db
+    .select({ id: folder.id })
+    .from(folder)
+    .where(and(inArray(folder.id, folderIds), eq(folder.isRestricted, true)));
+  for (const row of restricted) access.restricted.add(row.id);
+  const creators = [
+    ...new Set(teamReports.flatMap((row) => (row.createdBy ? [row.createdBy] : []))),
+  ];
+  if (!access.restricted.size || !creators.length) return access;
+
+  const teamIds = [
+    ...new Set(teamReports.flatMap((row) => (row.teamId === null ? [] : [row.teamId]))),
+  ];
+  const [admins, grants] = await Promise.all([
+    db
+      .select({ teamId: teamMember.teamId, userId: teamMember.userId })
+      .from(teamMember)
+      .where(
+        and(
+          inArray(teamMember.teamId, teamIds),
+          inArray(teamMember.userId, creators),
+          inArray(teamMember.role, ["owner", "admin"]),
+        ),
+      ),
+    db
+      .select({ folderId: folderPermission.folderId, userId: folderPermission.userId })
+      .from(folderPermission)
+      .innerJoin(folder, eq(folder.id, folderPermission.folderId))
+      .innerJoin(
+        teamMember,
+        and(eq(teamMember.teamId, folder.teamId), eq(teamMember.userId, folderPermission.userId)),
+      )
+      .where(
+        and(
+          inArray(folderPermission.folderId, [...access.restricted]),
+          inArray(folderPermission.userId, creators),
+        ),
+      ),
+  ]);
+  for (const row of admins) access.admins.add(`${row.teamId}:${row.userId}`);
+  for (const row of grants) access.grants.add(`${row.folderId}:${row.userId}`);
+  return access;
+}
 
 /** Each schedule's target and the links it covers, or nothing when the target is gone. */
 async function loadTargets(reports: ScheduledReport[]) {
@@ -267,12 +350,22 @@ async function loadTargets(reports: ScheduledReport[]) {
           .where(
             or(
               folderIds.length ? inArray(link.folderId, folderIds) : undefined,
-              campaignIds.length ? inArray(link.campaignId, campaignIds) : undefined,
+              campaignIds.length
+                ? and(inArray(link.campaignId, campaignIds), eq(link.isBioLink, false))
+                : undefined,
             ),
           )
       : [],
   ]);
 
+  const access = await loadCreatorFolderAccess(reports, [
+    ...new Set([
+      ...folders.flatMap((row) => (row.teamId === null ? [] : [row.id])),
+      ...[...links, ...members].flatMap((row) =>
+        row.teamId === null || row.folderId === null ? [] : [row.folderId],
+      ),
+    ]),
+  ]);
   const linksById = new Map(links.map((row) => [row.id, row]));
   const foldersById = new Map(folders.map((row) => [row.id, row]));
   const campaignsById = new Map(campaigns.map((row) => [row.id, row]));
@@ -282,6 +375,7 @@ async function loadTargets(reports: ScheduledReport[]) {
     if (report.targetType === "link") {
       const row = linksById.get(report.targetId);
       if (!row || !inReportWorkspace(report, row)) continue;
+      if (!creatorCanSeeLink(report, row.folderId, access)) continue;
       targets.set(report.id, {
         name: `${row.domain}/${row.alias ?? ""}`,
         statsUrl: row.statsShareToken ? absoluteUrl(`/stats/${row.statsShareToken}`) : null,
@@ -294,11 +388,19 @@ async function loadTargets(reports: ScheduledReport[]) {
         ? foldersById.get(report.targetId)
         : campaignsById.get(report.targetId);
     if (!group || !inReportWorkspace(report, group)) continue;
+    if (report.targetType === "folder" && !creatorCanSeeLink(report, group.id, access)) continue;
     const key = report.targetType === "folder" ? "folderId" : "campaignId";
     targets.set(report.id, {
       name: group.name,
       statsUrl: null,
-      links: members.filter((row) => row[key] === group.id && inReportWorkspace(report, row)),
+      // The same links the campaign page shows its viewer: no bio links, no folders they can't see.
+      links: members.filter(
+        (row) =>
+          row[key] === group.id &&
+          inReportWorkspace(report, row) &&
+          (report.targetType === "folder" || !row.isBioLink) &&
+          creatorCanSeeLink(report, row.folderId, access),
+      ),
     });
   }
   return targets;

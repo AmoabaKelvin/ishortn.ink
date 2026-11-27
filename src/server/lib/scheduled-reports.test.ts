@@ -357,3 +357,204 @@ describe.skipIf(!testDatabaseUrl)("scheduled reports job (MySQL)", () => {
     expect(sentFor("linkWeekly")).toHaveLength(1);
   });
 });
+
+describe.skipIf(!testDatabaseUrl)("scheduled reports in a team (MySQL)", () => {
+  const PREFIX = "srt_test_";
+  const OWNER = `${PREFIX}owner`;
+  const ADMIN = `${PREFIX}admin`;
+  const MEMBER = `${PREFIX}member`;
+  const GRANTED = `${PREFIX}granted`;
+  const LEFT = `${PREFIX}left`;
+  const USERS = [OWNER, ADMIN, MEMBER, GRANTED, LEFT];
+
+  let sent: SendScheduledReportInput[] = [];
+  const run = () =>
+    sendScheduledReports({
+      now: NOW,
+      sendIntervalMs: 0,
+      send: async (input) => {
+        sent.push(input);
+        return true;
+      },
+    });
+  const ids: Record<string, number> = {};
+  const clicksFor = (key: string) =>
+    sent.find((item) => item.reportId === ids[key])?.content.clicks;
+
+  beforeAll(() => {
+    if (!env.DATABASE_URL) Object.assign(env, { DATABASE_URL: testDatabaseUrl });
+    if (!env.NEXT_PUBLIC_APP_URL) {
+      Object.assign(env, { NEXT_PUBLIC_APP_URL: "https://ishortn.ink" });
+    }
+  });
+
+  async function cleanup() {
+    const teams = await db
+      .select({ id: schema.team.id })
+      .from(schema.team)
+      .where(eq(schema.team.ownerId, OWNER));
+    const teamIds = teams.map((row) => row.id);
+    const links = await db
+      .select({ id: schema.link.id })
+      .from(schema.link)
+      .where(inArray(schema.link.userId, USERS));
+    if (links.length) {
+      await db.delete(schema.linkVisit).where(
+        inArray(
+          schema.linkVisit.linkId,
+          links.map((row) => row.id),
+        ),
+      );
+    }
+    await db.delete(schema.link).where(inArray(schema.link.userId, USERS));
+    await db.delete(schema.folderPermission).where(inArray(schema.folderPermission.userId, USERS));
+    await db.delete(schema.folder).where(inArray(schema.folder.userId, USERS));
+    await db.delete(schema.campaign).where(inArray(schema.campaign.userId, USERS));
+    await db.delete(schema.scheduledReport).where(inArray(schema.scheduledReport.userId, USERS));
+    if (teamIds.length) {
+      await db.delete(schema.teamMember).where(inArray(schema.teamMember.teamId, teamIds));
+      await db.delete(schema.team).where(inArray(schema.team.id, teamIds));
+    }
+    await db.delete(schema.subscription).where(inArray(schema.subscription.userId, USERS));
+    await db.delete(schema.user).where(inArray(schema.user.id, USERS));
+  }
+
+  beforeEach(async () => {
+    await cleanup();
+    sent = [];
+
+    await db
+      .insert(schema.user)
+      .values(USERS.map((id) => ({ id, email: `${id}@example.com`, name: id })));
+    await db
+      .insert(schema.subscription)
+      .values({ userId: OWNER, status: "active", plan: "ultra", variantId: 1108002 });
+    const [teamRow] = await db
+      .insert(schema.team)
+      .values({ name: "Agency", slug: `${PREFIX}agency`, ownerId: OWNER });
+    const teamId = teamRow.insertId;
+    await db.insert(schema.teamMember).values([
+      { teamId, userId: OWNER, role: "owner" },
+      { teamId, userId: ADMIN, role: "admin" },
+      { teamId, userId: MEMBER, role: "member" },
+      { teamId, userId: GRANTED, role: "member" },
+    ]);
+
+    const [openRow] = await db
+      .insert(schema.folder)
+      .values({ name: "Open", userId: OWNER, teamId });
+    const [secretRow] = await db
+      .insert(schema.folder)
+      .values({ name: "Secret", userId: OWNER, teamId, isRestricted: true });
+    const secretId = secretRow.insertId;
+    // LEFT was granted the folder, then left the team: the grant no longer counts.
+    await db.insert(schema.folderPermission).values([
+      { folderId: secretId, userId: GRANTED },
+      { folderId: secretId, userId: LEFT },
+    ]);
+    const [campaignRow] = await db
+      .insert(schema.campaign)
+      .values({ name: "Launch", slug: `${PREFIX}launch`, userId: OWNER, teamId });
+    const campaignId = campaignRow.insertId;
+
+    const addLink = async (alias: string, extra: Partial<typeof schema.link.$inferInsert>) => {
+      const [result] = await db.insert(schema.link).values({
+        url: "https://example.com",
+        alias: `${PREFIX}${alias}`,
+        userId: OWNER,
+        teamId,
+        campaignId,
+        ...extra,
+      });
+      return result.insertId;
+    };
+    const visits = (linkId: number, total: number) =>
+      db.insert(schema.linkVisit).values(
+        Array.from({ length: total }, () => ({
+          linkId,
+          createdAt: new Date("2026-11-18T12:00:00Z"),
+        })),
+      );
+    await visits(await addLink("open", { folderId: openRow.insertId }), 2);
+    const secretLink = await addLink("secret", { folderId: secretId });
+    await visits(secretLink, 3);
+    await visits(await addLink("loose", {}), 1);
+    await visits(await addLink("bio", { isBioLink: true }), 5);
+
+    const addReport = async (
+      key: string,
+      createdBy: string | null,
+      target: Pick<typeof schema.scheduledReport.$inferInsert, "targetType" | "targetId">,
+    ) => {
+      const [result] = await db.insert(schema.scheduledReport).values({
+        userId: createdBy ?? OWNER,
+        teamId,
+        createdBy,
+        frequency: "weekly",
+        recipients: [`${key}@example.com`],
+        createdAt: CREATED,
+        ...target,
+      });
+      ids[key] = result.insertId;
+    };
+    const onCampaign = { targetType: "campaign", targetId: campaignId } as const;
+    await addReport("byMember", MEMBER, onCampaign);
+    await addReport("byGranted", GRANTED, onCampaign);
+    await addReport("byAdmin", ADMIN, onCampaign);
+    await addReport("byOwner", OWNER, onCampaign);
+    await addReport("byLeft", LEFT, onCampaign);
+    await addReport("byUnknown", null, onCampaign);
+    await addReport("secretByMember", MEMBER, { targetType: "folder", targetId: secretId });
+    await addReport("secretByGranted", GRANTED, { targetType: "folder", targetId: secretId });
+    await addReport("secretLinkByMember", MEMBER, { targetType: "link", targetId: secretLink });
+  });
+
+  afterAll(cleanup);
+
+  test("campaign reports never include bio links", async () => {
+    await run();
+    // open 2 + secret 3 + loose 1; the bio link's 5 clicks are left out.
+    expect(clicksFor("byOwner")).toBe(6);
+    expect(
+      sent
+        .find((item) => item.reportId === ids.byOwner)
+        ?.content.topLinks.map((row) => row.shortUrl),
+    ).not.toContain(`ishortn.ink/${PREFIX}bio`);
+  });
+
+  test("a member's report leaves out restricted folders they can't see", async () => {
+    await run();
+    expect(clicksFor("byMember")).toBe(3);
+    expect(clicksFor("byLeft")).toBe(3);
+    expect(clicksFor("byUnknown")).toBe(3);
+    expect(clicksFor("byGranted")).toBe(6);
+    expect(clicksFor("secretByGranted")).toBe(3);
+    expect(sent.some((item) => item.reportId === ids.secretByMember)).toBe(false);
+    expect(sent.some((item) => item.reportId === ids.secretLinkByMember)).toBe(false);
+  });
+
+  test("an admin's report covers every folder", async () => {
+    await run();
+    expect(clicksFor("byAdmin")).toBe(6);
+  });
+
+  test("unsubscribes arriving together all land", async () => {
+    const recipients = ["a@example.com", "b@example.com", "c@example.com", "d@example.com"];
+    await db
+      .update(schema.scheduledReport)
+      .set({ recipients })
+      .where(eq(schema.scheduledReport.id, ids.byOwner!));
+
+    await Promise.all(
+      [...recipients, "a@example.com"].map((email) =>
+        unsubscribeReportRecipient(`${ids.byOwner}:${email}`),
+      ),
+    );
+
+    const [row] = await db
+      .select({ unsubscribed: schema.scheduledReport.unsubscribed })
+      .from(schema.scheduledReport)
+      .where(eq(schema.scheduledReport.id, ids.byOwner!));
+    expect([...(row?.unsubscribed ?? [])].sort()).toEqual(recipients);
+  });
+});

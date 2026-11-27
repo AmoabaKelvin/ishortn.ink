@@ -114,7 +114,8 @@ export const listScheduledReports = async (
   input: ListScheduledReportsInput,
 ) => {
   await requireTarget(ctx, input, false);
-  const [reports, used] = await Promise.all([
+  const limit = getPlanCaps(ctx.workspace.plan).scheduledReportLimit;
+  const [reports, used, covered] = await Promise.all([
     ctx.db
       .select({
         id: scheduledReport.id,
@@ -133,12 +134,31 @@ export const listScheduledReports = async (
       )
       .orderBy(asc(scheduledReport.id)),
     countWorkspaceReports(ctx),
+    // The oldest `limit` schedules keep sending (the job's rule); the rest wait for an upgrade.
+    limit
+      ? ctx.db
+          .select({ id: scheduledReport.id })
+          .from(scheduledReport)
+          .where(
+            and(
+              workspaceFilter(ctx.workspace, scheduledReport.userId, scheduledReport.teamId),
+              scheduledReportTargetExists(),
+            ),
+          )
+          .orderBy(asc(scheduledReport.id))
+          .limit(limit)
+      : [],
   ]);
+  const coveredIds = new Set(covered.map((row) => row.id));
 
   return {
-    reports: reports.map((row) => ({ ...row, unsubscribed: row.unsubscribed ?? [] })),
+    reports: reports.map((row) => ({
+      ...row,
+      unsubscribed: row.unsubscribed ?? [],
+      paused: limit !== undefined && !coveredIds.has(row.id),
+    })),
     plan: ctx.workspace.plan,
-    limit: getPlanCaps(ctx.workspace.plan).scheduledReportLimit ?? null,
+    limit: limit ?? null,
     used,
   };
 };
@@ -171,6 +191,7 @@ export const createScheduledReport = async (
       .insert(scheduledReport)
       .values({
         ...workspaceOwnership(ctx.workspace),
+        createdBy: ctx.auth.userId,
         targetType: input.targetType,
         targetId: input.targetId,
         frequency: input.frequency,
