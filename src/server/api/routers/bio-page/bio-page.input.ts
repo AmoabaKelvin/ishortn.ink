@@ -87,6 +87,8 @@ const blockFieldsSchema = {
   content: z.string().max(5000).nullish(), // text body
   url: z.string().max(2048).nullish(), // link/image destination, email address, embed source URL
   image: z.string().nullish(), // image blocks: base64 data URL (new upload) or the stored URL
+  imageWidth: z.number().int().min(1).max(20000).nullish(), // image blocks: intrinsic size of `image`
+  imageHeight: z.number().int().min(1).max(20000).nullish(),
   socials: z.array(bioSocialLinkSchema).max(20).optional(), // social blocks
   whatsapp: whatsappDetailsSchema.optional(), // WhatsApp blocks
   scheduledAt: z.date().nullish(), // Ultra

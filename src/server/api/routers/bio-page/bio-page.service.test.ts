@@ -702,6 +702,8 @@ describe.skipIf(!testDatabaseUrl)("bio page embed and image blocks (MySQL)", () 
         src: PNG,
         alt: "Spring menu",
         href: `https://${backing?.domain}/${backing?.alias}`,
+        width: null,
+        height: null,
       },
     ]);
   });
@@ -722,21 +724,69 @@ describe.skipIf(!testDatabaseUrl)("bio page embed and image blocks (MySQL)", () 
     expect(await db.query.link.findFirst({ where: eq(schema.link.id, linkId) })).toBeUndefined();
   });
 
-  test("linked image blocks don't use or need the monthly link allowance", async () => {
+  test("a linked image takes a slot of the monthly link allowance", async () => {
+    await db
+      .update(schema.user)
+      .set({ monthlyLinkCount: 3, lastLinkCountReset: new Date() })
+      .where(eq(schema.user.id, USER_ID));
+
+    await add("pro", { type: "image", image: PNG, url: "https://example.com/a" });
+    const unlinked = await add("pro", { type: "image", image: PNG });
+    let owner = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
+    expect(owner?.monthlyLinkCount).toBe(4);
+
+    await updateBlock(ctx("pro"), { id: unlinked.id, url: "https://example.com/b" });
+    owner = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
+    expect(owner?.monthlyLinkCount).toBe(5);
+  });
+
+  test("a Pro workspace at its monthly link limit is refused a linked image", async () => {
     const used = getPlanCaps("pro").linksLimit ?? 0;
     await db
       .update(schema.user)
       .set({ monthlyLinkCount: used, lastLinkCountReset: new Date() })
       .where(eq(schema.user.id, USER_ID));
 
-    const { id } = await add("pro", { type: "image", image: PNG, url: "https://example.com/a" });
-    const other = await add("pro", { type: "image", image: PNG });
-    await updateBlock(ctx("pro"), { id: other.id, url: "https://example.com/b" });
+    await expect(
+      add("pro", { type: "image", image: PNG, url: "https://example.com/a" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
 
-    const row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
-    expect(row?.linkId).toBeGreaterThan(0);
+    // An unlinked image needs no link, but adding a destination later does.
+    const { id } = await add("pro", { type: "image", image: PNG });
+    await expect(
+      updateBlock(ctx("pro"), { id, url: "https://example.com/b" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const blocks = await blocksOnPage();
+    expect(blocks.map((b) => b.linkId)).toEqual([null]);
+    expect(await db.query.link.findMany({ where: eq(schema.link.userId, USER_ID) })).toEqual([]);
     const owner = await db.query.user.findFirst({ where: eq(schema.user.id, USER_ID) });
     expect(owner?.monthlyLinkCount).toBe(used);
+  });
+
+  test("an image's dimensions are stored and replaced with the image", async () => {
+    const { id } = await add("pro", {
+      type: "image",
+      image: PNG,
+      imageWidth: 1200,
+      imageHeight: 800,
+    });
+    let row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row).toMatchObject({ imageWidth: 1200, imageHeight: 800 });
+
+    // Editing other fields keeps them; a new image brings its own.
+    await updateBlock(ctx("pro"), { id, title: "Menu" });
+    row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row).toMatchObject({ imageWidth: 1200, imageHeight: 800 });
+
+    await updateBlock(ctx("pro"), {
+      id,
+      image: PNG.replace("AAAA", "AAAB"),
+      imageWidth: 1,
+      imageHeight: 1,
+    });
+    row = await db.query.bioBlock.findFirst({ where: eq(schema.bioBlock.id, id) });
+    expect(row).toMatchObject({ imageWidth: 1, imageHeight: 1 });
   });
 
   test("concurrent saves adding a link to an image block leave exactly one hidden link", async () => {

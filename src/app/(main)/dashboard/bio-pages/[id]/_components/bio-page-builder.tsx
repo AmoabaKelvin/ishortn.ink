@@ -119,7 +119,15 @@ function toRenderBlock(b: EditorBlock): BioRenderBlock | null {
           }
         : null;
     case "image":
-      return { id: b.id, type: "image", src: b.content, alt: b.title, href: b.shortUrl };
+      return {
+        id: b.id,
+        type: "image",
+        src: b.content,
+        alt: b.title,
+        href: b.shortUrl,
+        width: b.imageWidth,
+        height: b.imageHeight,
+      };
     default:
       return { id: b.id, type: "divider" };
   }

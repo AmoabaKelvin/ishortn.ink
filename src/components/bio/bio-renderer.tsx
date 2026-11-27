@@ -32,7 +32,14 @@ export type BioRenderBlock = BioRenderBlockBase &
     | { type: "social"; socials: { platform: string; url: string }[] }
     | { type: "divider" }
     | { type: "embed"; title: string | null; provider: EmbedProvider; embedId: string }
-    | { type: "image"; src: string | null; alt: string | null; href?: string | null }
+    | {
+        type: "image";
+        src: string | null;
+        alt: string | null;
+        href?: string | null;
+        width?: number | null;
+        height?: number | null;
+      }
   );
 
 export type BioRenderModel = {
@@ -59,6 +66,10 @@ const BIO_ENTER_MEDIA =
 // The stagger stops growing after this many blocks, so long pages finish
 // entering in under a second instead of trickling in one block at a time.
 const MAX_STAGGER_INDEX = 8;
+
+// Images in the first few blocks are likely in the first screen (often the
+// LCP), so they load eagerly at high priority; later ones stay lazy.
+const EAGER_MEDIA_BLOCKS = 3;
 
 // `heightClass` controls how the themed background fills its container: the
 // builder preview fills the fixed-height phone frame (min-h-full), while the
@@ -142,10 +153,10 @@ export function BioRenderer({
                   <p className="mb-1 text-center text-[11px] font-medium uppercase tracking-wide">
                     {block.previewNote}
                   </p>
-                  <BioBlockView block={block} t={t} />
+                  <BioBlockView block={block} t={t} eager={i < EAGER_MEDIA_BLOCKS} />
                 </div>
               ) : (
-                <BioBlockView block={block} t={t} />
+                <BioBlockView block={block} t={t} eager={i < EAGER_MEDIA_BLOCKS} />
               )}
             </div>
           ))}
@@ -168,7 +179,15 @@ export function BioRenderer({
   );
 }
 
-function BioBlockView({ block, t }: { block: BioRenderBlock; t: ResolvedBioTheme }) {
+function BioBlockView({
+  block,
+  t,
+  eager,
+}: {
+  block: BioRenderBlock;
+  t: ResolvedBioTheme;
+  eager: boolean;
+}) {
   // Media follows the theme's corners: square for sharp buttons, rounded otherwise
   // (a pill radius would crop a 16:9 frame into a capsule).
   const mediaRadius = t.buttonRadius === "0px" ? "0px" : "0.75rem";
@@ -187,11 +206,15 @@ function BioBlockView({ block, t }: { block: BioRenderBlock; t: ResolvedBioTheme
     case "image": {
       if (!block.src) return null;
       const image = (
-        // eslint-disable-next-line next/no-img-element -- user-uploaded image with unknown dimensions
+        // width/height reserve the box before load; h-auto keeps the real ratio once it arrives.
+        // eslint-disable-next-line next/no-img-element -- user-uploaded R2 image, served as uploaded
         <img
           src={block.src}
           alt={block.alt ?? ""}
-          loading="lazy"
+          width={block.width ?? undefined}
+          height={block.height ?? undefined}
+          loading={eager ? "eager" : "lazy"}
+          fetchPriority={eager ? "high" : "auto"}
           decoding="async"
           className="block h-auto w-full"
           style={{ borderRadius: mediaRadius }}

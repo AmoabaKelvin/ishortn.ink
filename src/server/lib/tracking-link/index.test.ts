@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import { getPlanCaps } from "@/lib/billing/plans";
+
 import { checkTrackingLinkQuota, insertHiddenTrackingLink } from "./index";
 
 import type { Plan } from "@/lib/billing/plans";
@@ -81,9 +83,17 @@ describe("bio tracking links and the monthly link quota", () => {
     expect(await addBioLink("pro")).toBe(6);
   });
 
-  test("an image block's link doesn't increment the monthly link count on Pro or Ultra", async () => {
-    expect(await addBioLink("pro", "bio-image")).toBe(5);
-    expect(await addBioLink("ultra", "bio-image")).toBe(5);
+  test("an image block's link increments the monthly link count on every plan", async () => {
+    expect(await addBioLink("free", "bio-image")).toBe(6);
+    expect(await addBioLink("pro", "bio-image")).toBe(6);
+  });
+
+  test("an image block's link is refused once the monthly link allowance is used", async () => {
+    const { ctx, userRow } = fakeWorkspace("pro");
+    userRow.monthlyLinkCount = getPlanCaps("pro").linksLimit ?? 0;
+    await expect(checkTrackingLinkQuota(ctx, "bio-image")).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 
   test("a QR tracking link on the free plan still increments the monthly link count", async () => {

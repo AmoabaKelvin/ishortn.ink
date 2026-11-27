@@ -107,6 +107,7 @@ function BlockForm({
   const [url, setUrl] = useState(block?.url ?? "");
   const [urlError, setUrlError] = useState<string | null>(null);
   const [image, setImage] = useState(type === "image" ? (block?.content ?? null) : null);
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [socials, setSocials] = useState(() => initialSocials(block, type));
   const [scheduledAt, setScheduledAt] = useState(
@@ -160,6 +161,8 @@ function BlockForm({
       url: ["link", "email", "embed", "image"].includes(type) ? url.trim() || null : null,
       // Unchanged images aren't resent; the stored one stays.
       image: type === "image" && image !== block?.content ? image : undefined,
+      imageWidth: type === "image" && image !== block?.content ? imageSize?.width : undefined,
+      imageHeight: type === "image" && image !== block?.content ? imageSize?.height : undefined,
       socials: type === "social" ? cleanSocials : undefined,
       whatsapp: parsedPhone ? { phone: parsedPhone.data, message: message.trim() } : undefined,
     };
@@ -184,9 +187,18 @@ function BlockForm({
       return;
     }
     const reader = new FileReader();
-    // SAFETY: readAsDataURL populates `result` with a data-URL string on success, and a
-    // failed read leaves it null, which clears the image (the submit then asks for one).
-    reader.onloadend = () => setImage(reader.result as string | null);
+    reader.onloadend = () => {
+      // SAFETY: readAsDataURL populates `result` with a data-URL string on success, and a
+      // failed read leaves it null, which clears the image (the submit then asks for one).
+      const dataUrl = reader.result as string | null;
+      setImage(dataUrl);
+      setImageSize(null);
+      if (!dataUrl) return;
+      // Stored with the block so the public page reserves the image's box before it loads.
+      const probe = new Image();
+      probe.onload = () => setImageSize({ width: probe.naturalWidth, height: probe.naturalHeight });
+      probe.src = dataUrl;
+    };
     reader.readAsDataURL(file);
   }
 
@@ -436,7 +448,8 @@ function BlockForm({
                 placeholder="https://example.com"
               />
               <p className="text-[12px] text-muted-foreground">
-                Tapping the image opens this link. Clicks are tracked in your analytics.
+                Tapping the image opens this link. Clicks are tracked, and the link uses one from
+                your monthly allowance.
               </p>
             </div>
           </>

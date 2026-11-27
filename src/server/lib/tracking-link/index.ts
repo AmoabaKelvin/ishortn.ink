@@ -31,8 +31,9 @@ import type { UrlSafetyResult } from "@/server/lib/phishing";
 
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-// "bio-image" backs a linked image block: a bio link that never takes a slot of
-// the monthly link allowance on any plan.
+// "bio-image" backs a linked image block. Unlike a link block, which a per-page
+// cap limits on Free, it always takes a slot of the monthly link allowance, so
+// image blocks can't be used to create tracked links outside the quota.
 export type TrackingLinkKind = "qr" | "bio" | "bio-image";
 
 export type PreparedTrackingLink = {
@@ -55,7 +56,7 @@ export async function checkTrackingLinkQuota(
   kind: TrackingLinkKind,
 ): Promise<Pick<PreparedTrackingLink, "currentCount" | "shouldIncrementCount">> {
   if (
-    kind === "bio-image" ||
+    kind !== "bio-image" &&
     !countsTowardMonthlyLinkQuota(ctx.workspace.plan, { isBioLink: kind === "bio" })
   ) {
     return { currentCount: 0, shouldIncrementCount: false };
@@ -73,7 +74,7 @@ export async function checkTrackingLinkQuota(
  * authorization, and alias generation. Throws TRPCError("FORBIDDEN") when the
  * workspace's monthly link quota is reached. Bio links skip the quota on plans
  * with a per-page block cap, which callers enforce instead; image-block links
- * always skip it.
+ * always count.
  */
 export async function prepareHiddenTrackingLink(
   ctx: WorkspaceTRPCContext,

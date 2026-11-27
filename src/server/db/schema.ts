@@ -1600,6 +1600,8 @@ export const bioBlock = mysqlTable(
     content: text("content"), // text body, JSON array of BioSocialLink for social blocks, JSON EmbedDetails for embed blocks, image URL for image blocks
     url: text("url"), // destination for link/image blocks, email/mailto for email blocks, source URL for embed blocks
     linkId: int("linkId"), // backing hidden Link row for link and linked image blocks (clicks reuse the redirect pipeline)
+    imageWidth: int("imageWidth"), // image blocks: intrinsic size, so the page reserves the space before the image loads
+    imageHeight: int("imageHeight"),
     position: int("position").notNull().default(0),
     isVisible: boolean("isVisible").default(true).notNull(),
     scheduledAt: datetime("scheduledAt"), // Ultra: reveal at

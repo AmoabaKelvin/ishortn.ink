@@ -289,6 +289,8 @@ function toEditorBlock(
     socials: b.type === "social" ? parseSocials(b.content) : undefined,
     whatsapp,
     embed: b.type === "embed" ? parseEmbed(b.content) : null,
+    imageWidth: b.imageWidth,
+    imageHeight: b.imageHeight,
     shortUrl: trackingLink?.alias ? `https://${trackingLink.domain}/${trackingLink.alias}` : null,
     blocked: trackingLink?.blocked ?? false,
   };
@@ -604,6 +606,8 @@ export async function addBlock(ctx: WorkspaceTRPCContext, input: AddBioBlockInpu
           content: src,
           url: destination,
           linkId,
+          imageWidth: input.imageWidth ?? null,
+          imageHeight: input.imageHeight ?? null,
           position,
           scheduledAt: input.scheduledAt ?? null,
           scheduledUntil: input.scheduledUntil ?? null,
@@ -742,6 +746,8 @@ async function updateImageBlock(
   if (input.image !== undefined) {
     const { value, previousToDelete } = await uploadBlockImage(ctx, input.image, block.content);
     updates.content = value;
+    updates.imageWidth = input.imageWidth ?? null;
+    updates.imageHeight = input.imageHeight ?? null;
     previousImage = previousToDelete;
   }
 
@@ -860,7 +866,15 @@ export type PublicBioBlock =
       provider: EmbedProvider;
       embedId: string;
     }
-  | { id: number; type: "image"; src: string; alt: string | null; href: string | null }
+  | {
+      id: number;
+      type: "image";
+      src: string;
+      alt: string | null;
+      href: string | null;
+      width: number | null;
+      height: number | null;
+    }
   | {
       id: number;
       type: "heading" | "text" | "divider";
@@ -924,7 +938,15 @@ async function assemblePublicBioPage(
       if (b.type === "image") {
         const href = b.linkId ? liveShortUrl(b.linkId) : null;
         if (!b.content || (b.linkId && !href)) return null;
-        return { id: b.id, type: "image", src: b.content, alt: b.title, href };
+        return {
+          id: b.id,
+          type: "image",
+          src: b.content,
+          alt: b.title,
+          href,
+          width: b.imageWidth,
+          height: b.imageHeight,
+        };
       }
       if (b.type === "embed") {
         const embed = parseEmbed(b.content);

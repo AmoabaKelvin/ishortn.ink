@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "4d8dd2d3-f9ed-4f64-a71c-9399b7f76f5f",
+  "id": "91e60c9f-7ae3-4b60-83d3-5c84e38e2033",
   "prevId": "9a62b504-7356-46bf-9e20-4f5c0361b0ff",
   "tables": {
     "AccountDeletion": {
@@ -564,6 +564,20 @@
         },
         "linkId": {
           "name": "linkId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "imageWidth": {
+          "name": "imageWidth",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "imageHeight": {
+          "name": "imageHeight",
           "type": "int",
           "primaryKey": false,
           "notNull": false,

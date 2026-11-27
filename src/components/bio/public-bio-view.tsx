@@ -36,7 +36,15 @@ function toRenderModel(page: PublicBioPage): BioRenderModel {
             embedId: b.embedId,
           };
         case "image":
-          return { id: b.id, type: "image", src: b.src, alt: b.alt, href: b.href };
+          return {
+            id: b.id,
+            type: "image",
+            src: b.src,
+            alt: b.alt,
+            href: b.href,
+            width: b.width,
+            height: b.height,
+          };
         default:
           return { id: b.id, type: "divider" };
       }
