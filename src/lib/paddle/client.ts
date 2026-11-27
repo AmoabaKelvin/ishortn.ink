@@ -64,6 +64,7 @@ const subscriptionSchema = z.object({
     .nullable(),
   current_billing_period: z.object({ starts_at: z.string(), ends_at: z.string() }).nullable(),
   next_billed_at: z.string().nullable(),
+  canceled_at: z.string().nullish(),
   started_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
