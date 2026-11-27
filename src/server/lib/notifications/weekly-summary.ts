@@ -1,5 +1,5 @@
 import WeeklySummaryEmail, {
-  formatClicks,
+  weeklySummarySubject,
   type WeeklySummaryEmailProps,
   type WeeklySummaryUpgrade,
 } from "@/emails/weekly-summary";
@@ -14,7 +14,7 @@ export type WeeklySummaryContent = Pick<
   WeeklySummaryEmailProps,
   "weekLabel" | "clicks" | "previousClicks" | "topLinks" | "topCountry" | "topSource"
 > & {
-  /** The Free upgrade line, or null for paid accounts and Free accounts with nothing to say. */
+  /** The Free upgrade prompt, or null for paid accounts and Free accounts with nothing to say. */
   upgrade: WeeklySummaryUpgrade | null;
 };
 
@@ -27,12 +27,10 @@ export type SendWeeklySummaryInput = {
 
 export function weeklySummaryEmailProps(
   userId: string,
-  name: string | null,
   { upgrade, ...content }: WeeklySummaryContent,
 ): WeeklySummaryEmailProps {
   return {
     ...content,
-    userName: name,
     upgrade: upgrade && {
       ...upgrade,
       upgradeUrl: emailLinkUrl(EMAIL_LINKS.weeklySummary.upgrade[upgrade.reason]),
@@ -50,7 +48,6 @@ export function weeklySummaryEmailProps(
 export function sendWeeklySummaryEmail({
   userId,
   email,
-  name,
   content,
 }: SendWeeklySummaryInput): Promise<boolean> {
   return sendEmail({
@@ -59,8 +56,8 @@ export function sendWeeklySummaryEmail({
     to: email,
     essential: false,
     from: env.EMAIL_FROM_LIFECYCLE && withSenderName(env.EMAIL_FROM_LIFECYCLE, EMAIL_FROM_SYSTEM),
-    subject: `Your links got ${formatClicks(content.clicks)} last week`,
-    react: WeeklySummaryEmail(weeklySummaryEmailProps(userId, name, content)),
+    subject: weeklySummarySubject(content.clicks, content.previousClicks),
+    react: WeeklySummaryEmail(weeklySummaryEmailProps(userId, content)),
     headers: buildUnsubscribeHeaders(userId, env.EMAIL_UNSUBSCRIBE_SECRET, "weekly-summary"),
   });
 }

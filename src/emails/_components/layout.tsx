@@ -230,6 +230,7 @@ const css = `
   .email-card table, .email-card .email-divider { border-color: #262626 !important; }
   .email-card code { background-color: #262626 !important; color: #fafafa !important; }
   .email-card .email-well { background-color: #262626 !important; }
+  .email-card .email-well table { border-color: #404040 !important; }
   .email-card .email-code { background-color: #0a0a0a !important; border-color: #262626 !important; color: #fafafa !important; }
   .email-card .email-warning { background-color: #451a03 !important; border-color: #92400e !important; }
   .email-card .email-warning p { color: #fbbf24 !important; }
