@@ -9,8 +9,9 @@ import {
   IconSettings,
   IconTrash,
   IconUser,
+  IconUsers,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -19,14 +20,19 @@ const navItems = [
   { id: "general", label: "General", icon: IconSettings },
   { id: "notifications", label: "Notifications", icon: IconBell },
   { id: "billing", label: "Billing", icon: IconCreditCard },
+  { id: "team-api-keys", label: "Team API Keys", icon: IconUsers, teamOnly: true },
   { id: "api-keys", label: "API Keys", icon: IconKey },
   { id: "connected-browsers", label: "Browsers", icon: IconBrowser },
   { id: "account-transfer", label: "Transfer", icon: IconArrowsExchange },
   { id: "delete-account", label: "Delete", icon: IconTrash },
 ];
 
-export function SettingsNav() {
+export function SettingsNav({ showTeamApiKeys = false }: { showTeamApiKeys?: boolean }) {
   const [activeSection, setActiveSection] = useState("profile");
+  const items = useMemo(
+    () => navItems.filter((item) => showTeamApiKeys || !item.teamOnly),
+    [showTeamApiKeys],
+  );
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -43,13 +49,13 @@ export function SettingsNav() {
       },
     );
 
-    navItems.forEach((item) => {
+    items.forEach((item) => {
       const element = document.getElementById(item.id);
       if (element) observer.observe(element);
     });
 
     return () => observer.disconnect();
-  }, []);
+  }, [items]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -62,7 +68,7 @@ export function SettingsNav() {
     <nav className="hidden lg:block w-44 flex-shrink-0">
       <div className="sticky top-24">
         <div className="space-y-0.5">
-          {navItems.map((item) => {
+          {items.map((item) => {
             const Icon = item.icon;
             return (
               <button

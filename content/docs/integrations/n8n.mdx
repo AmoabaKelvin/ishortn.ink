@@ -25,7 +25,7 @@ The nodes then show up when you search for **iShortn** in the nodes panel. To in
 1. Open [Settings](/dashboard/settings#api-keys) in the dashboard and scroll to **API Keys**.
 2. Click **Create API Key** and copy the key from the dialog. It's shown once.
 
-The key works in your personal workspace: links created from n8n are added there, and the other operations only find links in it. See [Which links the API can reach](/docs/api#which-links-the-api-can-reach).
+The key works in one workspace: your personal workspace for a personal key, or the team for a [team key](/docs/teams#api-access). Links created from n8n are added there, and the other operations only find links in it. See [Which links the API can reach](/docs/api#which-links-the-api-can-reach).
 
 ## Connect n8n
 
@@ -58,7 +58,7 @@ Dates you pick in **Expires At** and **Activates At** are read in the workflow's
 
 The **iShortn Trigger** node has one event, **New Link**. It checks your newest links on the schedule you set in **Poll Times** and starts the workflow once for each link created since the last check, oldest first. Each item has the same fields as [Get a link](/docs/api/get-link#response) returns, such as `shortLink`, `url` and `alias`.
 
-- It sees links created anywhere in your personal workspace: in the dashboard, through the API or from another workflow.
+- It sees links created anywhere in the key's workspace: in the dashboard, through the API or from another workflow.
 - When you activate the workflow, it records the links you already have and only fires for links created after that.
 - **Fetch Test Event** returns your newest link so you can map its fields, without changing what the trigger has recorded.
 - Set **Domain** to only watch links on one domain.
@@ -84,8 +84,8 @@ When a request fails, n8n shows the HTTP status as the error and the API's messa
 | --- | --- |
 | `Invalid or missing API key` | The key was mistyped or deleted. Create a new one in [Settings](/dashboard/settings#api-keys) and update the credential. |
 | `API access requires Pro` | The key's account isn't on a paid plan. See [API access by plan](/docs/api#api-access-by-plan). |
-| `Link not found` | No link with that alias on that domain in your personal workspace. Check the **Domain** field. |
-| `Domain not available for this API key` | The domain isn't a platform domain or an active custom domain in your personal workspace. |
+| `Link not found` | No link with that alias on that domain in the key's workspace. Check the **Domain** field. |
+| `Domain not available for this API key` | The domain isn't a platform domain or an active custom domain in the key's workspace. |
 | `Rate limit exceeded. Retry in N seconds.` | Too many requests in a short time. Turn on **Retry On Fail** in the node's settings, or space out the workflow. See [Rate limits](/docs/api#rate-limits). |
 
 Other errors, such as an alias that's already taken, are listed in [Responses and errors](/docs/api#responses-and-errors).

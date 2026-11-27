@@ -79,24 +79,26 @@ Keys aren't deleted. [Upgrading to Pro or Ultra](/pricing) makes the same keys w
 
 ## Which links the API can reach
 
-An API key belongs to you, not to a team, so it works in your **personal workspace**:
+A key works in one workspace:
 
-- Links created through the API are added to your personal workspace.
-- Listing, `GET`, `PATCH`, `DELETE` and analytics requests only find links in your personal workspace. Links in a [team workspace](/docs/teams) return `404`.
+- A **personal key** (created in your personal workspace) works in your **personal workspace**. Links created with it are added there, and listing, `GET`, `PATCH`, `DELETE` and analytics requests only find links there. Links in a [team workspace](/docs/teams) return `404`.
+- A **team key** (created by a team owner or admin under [Team API Keys](/docs/teams#api-access)) works in that **team workspace**, on the team's Ultra plan. Links created with it belong to the team, and requests only find the team's links. Personal links, including those of the member who created the key, and other teams' links return `404`.
+
+[`GET /api/v1/me`](/docs/api/get-me) returns the key's `workspace`, so a tool can tell which one it's connected to.
 
 ## Domains
 
 A short link is identified by its alias **and** its domain: `isht.app/launch-day` and `isht.ink/launch-day` are different links. Each endpoint that takes an alias also accepts a `domain`:
 
-- When you leave `domain` out, the API uses the **default domain** from [Settings → General](/dashboard/settings#general). If you haven't picked one, it uses `isht.app`.
-- You can pass any [platform domain](/docs/platform-domains) (`isht.app`, `isht.ink`, `ishortn.ink`) or a [custom domain](/docs/custom-domains) that is **active** in your personal workspace.
+- When you leave `domain` out, the API uses the **default domain** from [Settings → General](/dashboard/settings#general) (for a team key, the team's default domain). If none is picked, it uses `isht.app`.
+- You can pass any [platform domain](/docs/platform-domains) (`isht.app`, `isht.ink`, `ishortn.ink`) or a [custom domain](/docs/custom-domains) that is **active** in the key's workspace.
 - Any other domain returns `403` with the code `forbidden` and the message `Domain not available for this API key`.
 
 Domains are matched case-insensitively and a trailing dot is ignored.
 
 ## Plans and limits
 
-Requests are checked against the plan of the key's owner, exactly as in the dashboard. The Free column applies only to keys in their [notice period](#api-access-by-plan):
+Requests are checked against the plan of the key's owner, exactly as in the dashboard; team keys use the team's Ultra plan. The Free column applies only to keys in their [notice period](#api-access-by-plan):
 
 | Rule | Free | Pro | Ultra |
 | --- | --- | --- | --- |
@@ -160,7 +162,7 @@ The one exception to this shape is the [plan-gated `403`](#api-access-by-plan) a
 | `validation_failed` | `400` | The body or query string doesn't match the endpoint's schema. The message is `Request body is invalid`, or `Query parameters are invalid` for [List links](/docs/api/list-links), and `details` lists the fields. |
 | `unauthorized` | `401` | Missing or invalid API key. |
 | `forbidden` | `403` | The domain isn't available to the key, the feature or domain isn't on your plan, the monthly link limit is reached, or the account is restricted. |
-| `not_found` | `404` | No link with that alias on that domain in your personal workspace. |
+| `not_found` | `404` | No link with that alias on that domain in the key's workspace. |
 | `conflict` | `409` | The alias is already taken on that domain. |
 | `rate_limited` | `429` | Rate limit exceeded. See [Rate limits](#rate-limits). |
 | `internal_error` | `500` | Something went wrong on our side. Retry later. |
@@ -174,7 +176,7 @@ The one exception to this shape is the [plan-gated `403`](#api-access-by-plan) a
 | `400` | The request is invalid. `bad_request`, `invalid_json` or `validation_failed`. |
 | `401` | Missing or invalid API key |
 | `403` | Domain not available, a plan-only feature, the monthly link limit, or a restricted account (`forbidden`). The key's account isn't on Pro or Ultra and its notice period has ended (`{"error": "API access requires Pro", "upgrade_url": "https://ishortn.ink/pricing"}`). |
-| `404` | No link with that alias on that domain in your personal workspace |
+| `404` | No link with that alias on that domain in the key's workspace |
 | `409` | The alias is already taken on that domain |
 | `429` | Rate limit exceeded. See [Rate limits](#rate-limits). |
 | `500` | Something went wrong on our side. Retry later. |
