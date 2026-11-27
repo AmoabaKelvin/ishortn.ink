@@ -58,6 +58,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
   const [shareStatsDialog, setShareStatsDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [pdfDialog, setPdfDialog] = useState(false);
+  const [deactivateLinkDialog, setDeactivateLinkDialog] = useState(false);
 
   const isActive = !qr.link?.disabled;
   // Legacy QR codes without a tracking link can only be downloaded or deleted.
@@ -69,6 +70,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
   const toggleStatusMutation = api.qrCode.toggleStatus.useMutation({
     onSuccess: async () => {
       await revalidateRoute("/dashboard/qrcodes");
+      setDeactivateLinkDialog(false);
     },
   });
 
@@ -147,12 +149,21 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
     }
   };
 
-  const handleToggleStatus = () => {
+  const subject = sharesLink ? "link" : "QR code";
+  const toggleStatus = () => {
     toast.promise(toggleStatusMutation.mutateAsync({ id: qr.id }), {
       loading: "Updating...",
-      success: isActive ? "QR code deactivated" : "QR code activated",
+      success: `${sharesLink ? "Link" : "QR code"} ${isActive ? "deactivated" : "activated"}`,
       error: "Failed to update",
     });
+  };
+  // Deactivating an import-made code takes its short link down everywhere, so confirm it first.
+  const handleToggleStatus = () => {
+    if (sharesLink && isActive) {
+      setDeactivateLinkDialog(true);
+      return;
+    }
+    toggleStatus();
   };
 
   return (
@@ -264,7 +275,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
                       stroke={1.5}
                       className="mr-2 text-neutral-400 dark:text-muted-foreground"
                     />
-                    Deactivate QR code
+                    Deactivate {subject}
                   </>
                 ) : (
                   <>
@@ -273,7 +284,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
                       stroke={1.5}
                       className="mr-2 text-neutral-400 dark:text-muted-foreground"
                     />
-                    Activate QR code
+                    Activate {subject}
                   </>
                 )}
               </DropdownMenuItem>
@@ -315,6 +326,40 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           onOpenChange={setShareStatsDialog}
         />
       )}
+
+      {/* Deactivate Shared Link Dialog */}
+      <AlertDialog open={deactivateLinkDialog} onOpenChange={setDeactivateLinkDialog}>
+        <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
+              Deactivate link?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="break-all text-[13px] text-neutral-500 dark:text-neutral-400">
+              This QR code uses your short link{" "}
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                {qr.link?.domain}/{qr.link?.alias}
+              </span>
+              . Deactivating it stops the link from redirecting everywhere it is shared, not only
+              from this QR code.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                toggleStatus();
+              }}
+              disabled={toggleStatusMutation.isLoading}
+              className="h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {toggleStatusMutation.isLoading ? "Deactivating..." : "Deactivate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Reset Statistics Dialog */}
       <AlertDialog open={resetStatsDialog} onOpenChange={setResetStatsDialog}>

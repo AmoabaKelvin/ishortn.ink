@@ -73,7 +73,7 @@ export function QRCodeCard({
                 "flex h-[18px] w-[18px] items-center justify-center rounded border-[1.5px] transition-colors",
                 selected
                   ? "border-blue-600 bg-blue-600"
-                  : "border-neutral-300 bg-white hover:border-neutral-400 dark:bg-card",
+                  : "border-neutral-300 bg-white hover:border-neutral-400 dark:border-border dark:bg-card",
               )}
             >
               {selected && <IconCheck size={11} stroke={3} className="text-white" />}

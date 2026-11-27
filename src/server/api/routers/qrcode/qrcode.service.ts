@@ -19,7 +19,12 @@ import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { reserveLinkAliases } from "@/server/lib/reserved-alias";
 import { assertValidImageInput, deleteImage, uploadImage } from "@/server/lib/storage";
 import { insertHiddenTrackingLink, prepareHiddenTrackingLink } from "@/server/lib/tracking-link";
-import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
+import {
+  getAccessibleFolderIds,
+  requireFolderAccess,
+  workspaceFilter,
+  workspaceOwnership,
+} from "@/server/lib/workspace";
 
 import { updateLink } from "../link/link.service";
 import { countWorkspaceQrCodes, deleteQrCodeImages } from "./qrcode-bulk.service";
@@ -36,6 +41,17 @@ import type { qrcodeSaveImageInput } from "./qrcode.input";
 import type { z } from "zod";
 
 const log = logger.child({ component: "qrcode.service" });
+
+// A code's own hidden tracking link never sits in a folder, but a code made by a CSV import encodes
+// one of the workspace's visible links, which can. Those follow the link's folder access.
+async function requireQrCodeLinkAccess(
+  ctx: WorkspaceTRPCContext,
+  qrLink: { isQrCode: boolean | null; folderId: number | null } | null | undefined,
+) {
+  if (qrLink && !qrLink.isQrCode && qrLink.folderId) {
+    await requireFolderAccess(ctx.db, ctx.workspace, qrLink.folderId);
+  }
+}
 
 function userFacing<A extends unknown[], R>(
   operation: string,
@@ -207,6 +223,7 @@ export const getQrCode = userFacing(
         message: "QR code not found.",
       });
     }
+    await requireQrCodeLinkAccess(ctx, qrCode.link);
 
     return qrCode;
   },
@@ -216,12 +233,30 @@ export const retrieveUserQrCodes = userFacing(
   "retrieveUserQrCodes",
   "Something went wrong while loading your QR codes. Please try again.",
   async (ctx: WorkspaceTRPCContext) => {
-    const qrCodes = await ctx.db.query.qrcode.findMany({
+    const allQrCodes = await ctx.db.query.qrcode.findMany({
       where: workspaceFilter(ctx.workspace, qrcode.userId, qrcode.teamId),
       with: {
         link: true,
       },
     });
+
+    const folderIds = [
+      ...new Set(
+        allQrCodes
+          .map((qr) => (qr.link && !qr.link.isQrCode ? qr.link.folderId : null))
+          .filter((id): id is number => id != null),
+      ),
+    ];
+    const accessibleFolderIds = new Set(
+      await getAccessibleFolderIds(ctx.db, ctx.workspace, folderIds),
+    );
+    const qrCodes = allQrCodes.filter(
+      (qr) =>
+        !qr.link ||
+        qr.link.isQrCode ||
+        !qr.link.folderId ||
+        accessibleFolderIds.has(qr.link.folderId),
+    );
 
     // Get visit counts in a single aggregation query instead of loading all visit rows.
     // Combine raw visits with archived clicks rolled up by the analytics cleanup job.
@@ -274,6 +309,8 @@ export const deleteQrCode = userFacing(
         message: "QR code not found.",
       });
     }
+
+    await requireQrCodeLinkAccess(ctx, qrCode.link);
 
     // Only a code's own hidden tracking link goes with it. Codes made by a CSV import encode one
     // of the workspace's visible links, which stays.
@@ -332,6 +369,7 @@ async function fetchQrCodeWithLink(ctx: WorkspaceTRPCContext, id: number) {
       message: "This QR code has no associated link.",
     });
   }
+  await requireQrCodeLinkAccess(ctx, trackingLink);
 
   return { ...qrCode, linkId, link: trackingLink };
 }

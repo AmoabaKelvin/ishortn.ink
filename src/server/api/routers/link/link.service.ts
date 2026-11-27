@@ -1424,6 +1424,9 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
   if (!foundLink) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
   }
+  if (foundLink.folderId) {
+    await requireFolderAccess(ctx.db, ctx.workspace, foundLink.folderId);
+  }
 
   const { range, custom } = resolveAnalyticsRange(input, userHasPaidPlan);
   const window = resolveRangeWindow(range, new Date(), custom);
