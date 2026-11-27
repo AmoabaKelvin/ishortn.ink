@@ -111,9 +111,9 @@ npx @modelcontextprotocol/inspector --cli https://ishortn.ink/mcp --transport ht
 | `create_link` | Creates a short link, with an optional alias, domain, password, expiry, activation time, click limit and UTM tags. | [Create a link](/docs/api/create-link) |
 | `get_link` | Looks up a link by alias and domain. | [Get a link](/docs/api/get-link) |
 | `list_links` | Lists your links, newest first, 25 per page by default (up to 100). | [List links](/docs/api/list-links) |
-| `update_link` | Changes a link's destination, alias, domain, expiry, activation time or click limit. Renamed and moved links keep redirecting from the old address. | [Update a link](/docs/api/update-link) |
+| `update_link` | Changes a link's destination, alias, domain, expiry, activation time or click limit. Links moved to another domain keep redirecting from the old address; a renamed alias stops working. | [Update a link](/docs/api/update-link) |
 | `delete_link` | Deletes a link and its analytics. | [Delete a link](/docs/api/delete-link) |
-| `get_link_analytics` | Clicks and unique clicks, by country, city, device, browser, OS and referrer. | [Link analytics](/docs/api/link-analytics) |
+| `get_link_analytics` | Total and verified clicks, clicks and unique clicks per day, and clicks by country, continent, city, device, model, browser, OS and referrer. | [Link analytics](/docs/api/link-analytics) |
 | `create_qr_code` | Returns a PNG QR code that opens a short link. Give a URL to create a new link for it, or the alias of an existing link. | |
 | `get_account` | Your plan, default domain, links created this month against your monthly limit, and your API rate limits. | [Get your account](/docs/api/get-me) |
 
