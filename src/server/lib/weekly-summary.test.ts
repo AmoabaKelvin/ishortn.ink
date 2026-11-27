@@ -29,7 +29,7 @@ describe("summaryWeek", () => {
     expect(WEEK.start.toISOString()).toBe("2026-11-16T00:00:00.000Z");
     expect(WEEK.end.toISOString()).toBe("2026-11-23T00:00:00.000Z");
     expect(WEEK.previousStart.toISOString()).toBe("2026-11-09T00:00:00.000Z");
-    expect(WEEK.label).toBe("November 16 – 22");
+    expect(WEEK.label).toBe("16-22 Nov");
   });
 
   test("any time during a week picks the same previous week", () => {
@@ -39,7 +39,7 @@ describe("summaryWeek", () => {
   });
 
   test("names both months when the week spans two", () => {
-    expect(summaryWeek(new Date("2026-12-07T09:00:00Z")).label).toBe("November 30 – December 6");
+    expect(summaryWeek(new Date("2026-12-07T09:00:00Z")).label).toBe("30 Nov-6 Dec");
   });
 
   test("an explicit week must start on a Monday", () => {
@@ -170,7 +170,7 @@ describe("buildWeeklySummaryContent", () => {
       { shortUrl: "ishortn.ink/d", name: null, clicks: 4 },
     ]);
     expect(content).toMatchObject({
-      weekLabel: "November 16 – 22",
+      weekLabel: "16-22 Nov",
       clicks: 19,
       previousClicks: 7,
       topCountry: null,
@@ -347,7 +347,7 @@ describe.skipIf(!testDatabaseUrl)("weekly summary job (MySQL)", () => {
 
     expect(active?.email).toBe(emailOf(ACTIVE));
     expect(active?.content).toEqual({
-      weekLabel: "November 16 – 22",
+      weekLabel: "16-22 Nov",
       clicks: 9,
       previousClicks: 3,
       topLinks: [
@@ -355,7 +355,7 @@ describe.skipIf(!testDatabaseUrl)("weekly summary job (MySQL)", () => {
         { shortUrl: `ishortn.ink/${PREFIX}a2`, name: null, clicks: 4 },
       ],
       topCountry: { name: "Ghana", clicks: 5 },
-      topSource: { name: "instagram.com", clicks: 5 },
+      topSource: { name: "Instagram", clicks: 5 },
       upgrade: { reason: "paused", count: 42 },
     });
     expect(sent.find((item) => item.userId === PRO)?.content.topCountry).toBeNull();
