@@ -2,6 +2,7 @@ import { staticQrPayloadSchema } from "@/lib/qr-generator/payload";
 import { PDF_MAX_SIZE_CM, PDF_MIN_SIZE_CM } from "@/lib/qr-generator/pdf";
 import { defaultGeneratorState } from "@/lib/qr-generator/state";
 import { generateQRCodeSvg } from "@/lib/qr-generator/svg";
+import { vcardPayloadSchema } from "@/lib/qr-generator/vcard";
 import { logoImageSchema } from "@/server/api/routers/qrcode/qrcode.input";
 
 import type {
@@ -10,6 +11,7 @@ import type {
   WifiSecurity,
 } from "@/lib/qr-generator/payload";
 import type { QRCodeGeneratorState, QRCodeStyle } from "@/lib/qr-generator/types";
+import type { VCardPayload } from "@/lib/qr-generator/vcard";
 import type { RouterOutputs } from "@/trpc/shared";
 
 export const SVG_EFFECTS_NOTE = "SVG uses the plain style; effects are PNG only";
@@ -237,14 +239,23 @@ export function staticTypeOf(
   qr: Pick<SavedQrCodeRow, "contentType" | "payloadFields">,
 ): StaticQrPayloadType | null {
   if (qr.contentType !== "text") return null;
-  return qr.payloadFields?.type ?? "text";
+  const type = qr.payloadFields?.type ?? "text";
+  return type === "vcard" ? null : type;
+}
+
+/** A contact card code's fields, or null for every other code. */
+export function vcardOf(qr: Pick<SavedQrCodeRow, "payloadType" | "payloadFields">) {
+  return qr.payloadType === "vcard" && qr.payloadFields?.type === "vcard" ? qr.payloadFields : null;
 }
 
 /** The form fields to re-open a saved static code with. */
 export function staticFormValuesFrom(
   qr: Pick<SavedQrCodeRow, "content" | "payloadFields">,
 ): StaticFormValues {
-  const payload: StaticQrPayload = qr.payloadFields ?? { type: "text", text: qr.content };
+  const payload: StaticQrPayload =
+    qr.payloadFields && qr.payloadFields.type !== "vcard"
+      ? qr.payloadFields
+      : { type: "text", text: qr.content };
   const { type: _type, ...fields } = payload;
   return { ...emptyStaticFormValues, ...fields };
 }
@@ -264,6 +275,46 @@ export function validateStaticForm(
   const fieldErrors: Partial<Record<keyof StaticFormValues, string>> = {};
   for (const issue of result.error.issues) {
     const name = STATIC_FIELD_NAMES.find((field) => field === issue.path[0]);
+    if (name) fieldErrors[name] ??= issue.message;
+  }
+  return { ok: false, fieldErrors, message: result.error.issues[0]?.message ?? "Check the fields" };
+}
+
+export type VCardFormValues = Omit<VCardPayload, "type">;
+
+export const emptyVCardFormValues: VCardFormValues = {
+  firstName: "",
+  lastName: "",
+  organization: "",
+  jobTitle: "",
+  phone: "",
+  phone2: "",
+  email: "",
+  website: "",
+  address: "",
+  note: "",
+};
+
+export function vcardFormValuesFrom(card: VCardPayload): VCardFormValues {
+  const { type: _type, ...fields } = card;
+  return { ...emptyVCardFormValues, ...fields };
+}
+
+// SAFETY: Object.keys of a VCardFormValues literal lists exactly its keys.
+const VCARD_FIELD_NAMES = Object.keys(emptyVCardFormValues) as (keyof VCardFormValues)[];
+
+export type VCardFormResult =
+  | { ok: true; card: VCardPayload }
+  | { ok: false; fieldErrors: Partial<Record<keyof VCardFormValues, string>>; message: string };
+
+/** Validates a contact card form: the first message per field, plus one for a toast. */
+export function validateVCardForm(values: VCardFormValues): VCardFormResult {
+  const result = vcardPayloadSchema.safeParse({ type: "vcard", ...values });
+  if (result.success) return { ok: true, card: result.data };
+
+  const fieldErrors: Partial<Record<keyof VCardFormValues, string>> = {};
+  for (const issue of result.error.issues) {
+    const name = VCARD_FIELD_NAMES.find((field) => field === issue.path[0]);
     if (name) fieldErrors[name] ??= issue.message;
   }
   return { ok: false, fieldErrors, message: result.error.issues[0]?.message ?? "Check the fields" };
