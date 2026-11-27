@@ -55,21 +55,21 @@ export type SummaryWeek = {
   previousStart: Date;
   /** `start` as YYYY-MM-DD, the idempotency key. */
   key: string;
-  /** "November 16 – 22" or "November 30 – December 6". */
+  /** "16-22 Nov" or "30 Nov-6 Dec". */
   label: string;
 };
 
 function weekStartingAt(start: Date): SummaryWeek {
   const lastDay = new Date(start.getTime() + 6 * DAY_MS);
   const month = (date: Date) =>
-    date.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
+    date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
   const sameMonth = start.getUTCMonth() === lastDay.getUTCMonth();
   return {
     start,
     end: new Date(start.getTime() + 7 * DAY_MS),
     previousStart: new Date(start.getTime() - 7 * DAY_MS),
     key: start.toISOString().slice(0, 10),
-    label: `${month(start)} ${start.getUTCDate()} – ${sameMonth ? "" : `${month(lastDay)} `}${lastDay.getUTCDate()}`,
+    label: `${start.getUTCDate()}${sameMonth ? "" : ` ${month(start)}`}-${lastDay.getUTCDate()} ${month(lastDay)}`,
   };
 }
 
@@ -277,7 +277,6 @@ export async function sendWeeklySummaries({
       .select({
         id: user.id,
         email: user.email,
-        name: user.name,
         createdAt: user.createdAt,
         banned: user.banned,
         restrictedAt: user.restrictedAt,
@@ -426,7 +425,7 @@ export async function sendWeeklySummaries({
       if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
       lastSendAt = Date.now();
 
-      if (await send({ userId: row.id, email: row.email, name: row.name, content })) {
+      if (await send({ userId: row.id, email: row.email, content })) {
         counts.sent++;
         consecutiveFailures = 0;
         await db

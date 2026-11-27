@@ -3,6 +3,7 @@
 import {
   IconDots,
   IconDownload,
+  IconFileTypePdf,
   IconLink,
   IconLinkOff,
   IconPencil,
@@ -39,7 +40,9 @@ import { generateQRCodeSvg, toDataUri } from "@/lib/qr-generator/svg";
 import { api } from "@/trpc/react";
 
 import { revalidateRoute } from "../../revalidate-homepage";
+import { renderQrPng } from "../qr-export";
 import { qrCodeFileName, savedQrCodeSvgState, saveBlob, saveSvg, svgNoteFor } from "../utils";
+import { DownloadPdfDialog } from "./download-pdf-dialog";
 import { EditQRCodeDrawer } from "./edit-qrcode-drawer";
 
 import type { RouterOutputs } from "@/trpc/shared";
@@ -54,15 +57,20 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
   const [resetStatsDialog, setResetStatsDialog] = useState(false);
   const [shareStatsDialog, setShareStatsDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [pdfDialog, setPdfDialog] = useState(false);
+  const [deactivateLinkDialog, setDeactivateLinkDialog] = useState(false);
 
   const isActive = !qr.link?.disabled;
   // Legacy QR codes without a tracking link can only be downloaded or deleted.
   const hasLink = Boolean(qr.link);
+  // Codes made by a CSV import encode one of the workspace's own links, which deleting keeps.
+  const sharesLink = Boolean(qr.link && !qr.link.isQrCode);
   const svgNote = svgNoteFor(qr);
 
   const toggleStatusMutation = api.qrCode.toggleStatus.useMutation({
     onSuccess: async () => {
       await revalidateRoute("/dashboard/qrcodes");
+      setDeactivateLinkDialog(false);
     },
   });
 
@@ -87,6 +95,23 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
 
   const handleDownload = async () => {
     const image = qr.qrCode;
+    const state = savedQrCodeSvgState(qr);
+    if (!image && state) {
+      // Codes made by a CSV import store no PNG; draw it from the saved style.
+      trackEvent(POSTHOG_EVENTS.QR_CODE_DOWNLOADED, { format: "png" });
+      try {
+        const logoImage = state.logoImage ? await toDataUri(state.logoImage) : undefined;
+        const png = await renderQrPng({ ...state, logoImage });
+        saveBlob(new Blob([png], { type: "image/png" }), qrCodeFileName(qr.title));
+      } catch (error) {
+        clientLogger.warn(
+          { err: error instanceof Error ? error : String(error), qrCodeId: qr.id },
+          "QR code PNG render failed",
+        );
+        toast.error("Couldn't create the PNG. Please try again.");
+      }
+      return;
+    }
     if (!image) {
       toast.error("QR code image is not available for download.");
       return;
@@ -124,12 +149,21 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
     }
   };
 
-  const handleToggleStatus = () => {
+  const subject = sharesLink ? "link" : "QR code";
+  const toggleStatus = () => {
     toast.promise(toggleStatusMutation.mutateAsync({ id: qr.id }), {
       loading: "Updating...",
-      success: isActive ? "QR code deactivated" : "QR code activated",
+      success: `${sharesLink ? "Link" : "QR code"} ${isActive ? "deactivated" : "activated"}`,
       error: "Failed to update",
     });
+  };
+  // Deactivating an import-made code takes its short link down everywhere, so confirm it first.
+  const handleToggleStatus = () => {
+    if (sharesLink && isActive) {
+      setDeactivateLinkDialog(true);
+      return;
+    }
+    toggleStatus();
   };
 
   return (
@@ -198,6 +232,19 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           )}
           {hasLink && (
             <DropdownMenuItem
+              onClick={() => setPdfDialog(true)}
+              className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
+            >
+              <IconFileTypePdf
+                size={15}
+                stroke={1.5}
+                className="mr-2 text-neutral-400 dark:text-muted-foreground"
+              />
+              Download PDF for print
+            </DropdownMenuItem>
+          )}
+          {hasLink && (
+            <DropdownMenuItem
               onClick={() => setShareStatsDialog(true)}
               className="rounded-md px-2 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 focus:bg-neutral-50 dark:focus:bg-accent/50 focus:text-neutral-900 dark:focus:text-foreground"
             >
@@ -228,7 +275,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
                       stroke={1.5}
                       className="mr-2 text-neutral-400 dark:text-muted-foreground"
                     />
-                    Deactivate QR code
+                    Deactivate {subject}
                   </>
                 ) : (
                   <>
@@ -237,7 +284,7 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
                       stroke={1.5}
                       className="mr-2 text-neutral-400 dark:text-muted-foreground"
                     />
-                    Activate QR code
+                    Activate {subject}
                   </>
                 )}
               </DropdownMenuItem>
@@ -246,7 +293,8 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
 
           <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-muted" />
 
-          {hasLink && (
+          {/* An import-made code's clicks are its link's, so they are reset from the link. */}
+          {hasLink && !sharesLink && (
             <DropdownMenuItem
               onClick={() => setResetStatsDialog(true)}
               className="rounded-md px-2 py-1.5 text-[13px] text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10 focus:text-red-600"
@@ -269,6 +317,8 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
         <EditQRCodeDrawer qr={qr} open={openEditDrawer} onClose={() => setOpenEditDrawer(false)} />
       )}
 
+      {hasLink && <DownloadPdfDialog qr={qr} open={pdfDialog} onOpenChange={setPdfDialog} />}
+
       {qr.link && (
         <ShareStatsDialog
           linkId={qr.link.id}
@@ -276,6 +326,40 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
           onOpenChange={setShareStatsDialog}
         />
       )}
+
+      {/* Deactivate Shared Link Dialog */}
+      <AlertDialog open={deactivateLinkDialog} onOpenChange={setDeactivateLinkDialog}>
+        <AlertDialogContent className="max-w-sm border-neutral-200 dark:border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[15px] font-semibold text-neutral-900 dark:text-foreground">
+              Deactivate link?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="break-all text-[13px] text-neutral-500 dark:text-neutral-400">
+              This QR code uses your short link{" "}
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                {qr.link?.domain}/{qr.link?.alias}
+              </span>
+              . Deactivating it stops the link from redirecting everywhere it is shared, not only
+              from this QR code.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="h-9 border-neutral-200 dark:border-border text-[13px] hover:bg-neutral-50 dark:hover:bg-accent/50">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                toggleStatus();
+              }}
+              disabled={toggleStatusMutation.isLoading}
+              className="h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {toggleStatusMutation.isLoading ? "Deactivating..." : "Deactivate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Reset Statistics Dialog */}
       <AlertDialog open={resetStatsDialog} onOpenChange={setResetStatsDialog}>
@@ -325,8 +409,10 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
               This will permanently delete{" "}
               <span className="font-medium text-neutral-700 dark:text-neutral-300">
                 {qr.title || "this QR code"}
-              </span>{" "}
-              and all its scan data. This cannot be undone.
+              </span>
+              {sharesLink
+                ? ". Its short link and clicks stay in your links. This cannot be undone."
+                : " and all its scan data. This cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">

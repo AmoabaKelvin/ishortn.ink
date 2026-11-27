@@ -14,6 +14,7 @@ import { Resend } from "resend";
 import { z } from "zod";
 
 import DomainMigrationEmail from "../src/emails/domain-migration";
+import { renderEmail } from "../src/server/lib/notifications/render-email";
 
 const CNAME_TARGET = process.env.CUSTOM_DOMAIN_CNAME_TARGET ?? "cname.ishortn.ink";
 const DASHBOARD_URL = "https://ishortn.ink/dashboard/domains";
@@ -165,7 +166,7 @@ if (previewIndex !== -1) {
     from: FROM,
     to,
     subject: `[PREVIEW] ${subject}`,
-    react: buildEmail(recipient),
+    ...(await renderEmail(buildEmail(recipient), to)),
   });
   if (result.error) throw new Error(`Resend error: ${result.error.message}`);
   console.log(`preview sent to ${to} (id ${result.data?.id}) using ${account}'s domains:`);
@@ -179,7 +180,7 @@ if (previewIndex !== -1) {
       from: FROM,
       to: recipient.email,
       subject,
-      react: buildEmail(recipient),
+      ...(await renderEmail(buildEmail(recipient), recipient.email)),
     });
     if (result.error) {
       failed.push(`${recipient.email}: ${result.error.message}`);

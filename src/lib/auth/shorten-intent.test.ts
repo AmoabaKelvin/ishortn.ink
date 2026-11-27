@@ -117,6 +117,18 @@ describe("getPostAuthUrl", () => {
     expect(withRedirect(pricing)).toBe(pricing);
   });
 
+  test("keeps the Paddle transaction on a checkout link opened while signed out", () => {
+    const checkout = "/dashboard/checkout?_ptxn=txn_01hv8wptq8987qeep44cyrewp9";
+    expect(
+      getPostAuthUrl({
+        next: undefined,
+        intent: undefined,
+        redirectUrl: `https://ishortn.ink${checkout}`,
+        appUrl,
+      }),
+    ).toBe(checkout);
+  });
+
   test("ignores redirect_url values that leave the app's origin", () => {
     for (const redirectUrl of [
       "https://evil.example/",

@@ -1,6 +1,7 @@
 import { env } from "@/env.mjs";
 import { logger } from "@/lib/logger";
 
+import { renderEmail } from "./render-email";
 import { getResend } from "./resend-client";
 import { isEmailSuppressed } from "./suppression";
 
@@ -9,7 +10,37 @@ import type { Context } from "@/lib/logger/shared";
 import type { ReactElement } from "react";
 import type { CreateEmailOptions, CreateEmailResponse } from "resend";
 
+/** Founder voice: welcome, nudges, plan changes. Also the default for sendEmail. */
 export const EMAIL_FROM = env.EMAIL_FROM ?? "Kelvin from iShortn <kelvin@ishortn.ink>";
+
+/** "Kelvin" from "Kelvin from iShortn <…>": the founder-voice sign-off, so it follows EMAIL_FROM. */
+export const EMAIL_FROM_FIRST_NAME = senderFirstName(EMAIL_FROM);
+
+/** System notices: reports, cap alerts, plan grace, domain, account, team and transfer emails. */
+export const EMAIL_FROM_SYSTEM = env.EMAIL_FROM_SYSTEM ?? "iShortn <notifications@ishortn.ink>";
+
+/** The monitored inbox that replies to every product email go to. */
+export const EMAIL_REPLY_TO = env.EMAIL_REPLY_TO;
+
+/** Adds `reply_to: EMAIL_REPLY_TO`; every Resend send goes through this. */
+export function withReplyTo<T extends object>(payload: T): T & { reply_to?: string } {
+  return EMAIL_REPLY_TO ? { ...payload, reply_to: EMAIL_REPLY_TO } : payload;
+}
+
+/**
+ * `from` under the display name of `nameFrom`, keeping `from`'s address so the email still leaves
+ * from its own sending domain (lifecycle email has a separate subdomain).
+ */
+export function withSenderName(from: string, nameFrom: string): string {
+  const address = from.match(/<([^>]+)>/)?.[1] ?? from.trim();
+  const name = nameFrom.match(/^(.*?)\s*</)?.[1]?.trim();
+  return name ? `${name} <${address}>` : address;
+}
+
+/** The first name in a "<name> from iShortn" display name, or null for any other sender. */
+export function senderFirstName(from: string): string | null {
+  return from.match(/^\s*"?([^\s"<]+) from /i)?.[1] ?? null;
+}
 
 type EmailClient = {
   emails: { send: (payload: CreateEmailOptions) => Promise<CreateEmailResponse> };
@@ -37,20 +68,27 @@ export type SendEmailInput = {
   from?: string;
   subject: string;
   react: ReactElement;
-  reply_to?: string;
   headers?: UnsubscribeHeaders;
   /** Extra fields for the failure log line. */
   context?: Context;
 };
 
 /**
- * Sends one email and reports whether Resend accepted it. Resend v3 returns
- * API failures as `{ error }` instead of throwing, so both paths are logged.
+ * Sends one email, with HTML and plain-text parts, and reports whether Resend accepted it.
+ * Resend v3 returns API failures as `{ error }` instead of throwing, so both paths are logged.
  */
 export async function deliverEmail(
   client: EmailClient | null,
   log: EmailLog,
-  { template, recipientId, context, essential, from = EMAIL_FROM, ...payload }: SendEmailInput,
+  {
+    template,
+    recipientId,
+    context,
+    essential,
+    from = EMAIL_FROM,
+    react,
+    ...payload
+  }: SendEmailInput,
   isSuppressed: SuppressionCheck,
 ): Promise<boolean> {
   if (!client) return false;
@@ -71,7 +109,9 @@ export async function deliverEmail(
   }
 
   try {
-    const { error } = await client.emails.send({ from, ...payload });
+    const { error } = await client.emails.send(
+      withReplyTo({ from, ...payload, ...(await renderEmail(react, payload.to)) }),
+    );
     if (!error) return true;
     log.error(
       { ...context, template, recipientId, err: { name: error.name, message: error.message } },

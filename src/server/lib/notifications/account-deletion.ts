@@ -1,7 +1,7 @@
 import AccountDeletionEmail from "@/emails/account-deletion";
 import { getAppUrl } from "@/lib/constants/domains";
 
-import { sendEmail } from "./send-email";
+import { EMAIL_FROM_SYSTEM, sendEmail } from "./send-email";
 
 type SendAccountDeletionEmailInput = {
   userId: string;
@@ -20,6 +20,7 @@ export async function sendAccountDeletionEmail({
 
   await sendEmail({
     template: "account-deletion",
+    from: EMAIL_FROM_SYSTEM,
     recipientId: userId,
     to: toEmail,
     essential: true,

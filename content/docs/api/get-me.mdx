@@ -6,7 +6,7 @@ endpoint:
   path: /api/v1/me
 ---
 
-Returns the account that owns the API key: its ID, email, name, plan and default domain. Automation tools such as Zapier, Make and n8n call it to test a connection, and it's a cheap way to check a key in your own code.
+Returns the account that owns the API key: its ID, email, name, plan, default domain, links created this month and API rate limits. Automation tools such as Zapier, Make and n8n call it to test a connection, and it's a cheap way to check a key in your own code.
 
 ## Request
 
@@ -60,6 +60,10 @@ print(response.json()["email"])
 | `name` | string \| null | The account's name. |
 | `plan` | string | `free`, `pro` or `ultra`: the plan the API applies to this key's requests. A cancelled plan counts until the end of the paid period. |
 | `defaultDomain` | string | The domain new links use when a request leaves out `domain`. See [Domains](/docs/api#domains). |
+| `usage.linksThisMonth` | number | Links created this calendar month, which count toward the monthly limit. |
+| `usage.linksLimit` | number \| null | The plan's monthly link limit, or `null` when it's unlimited (Ultra). See [Plans and limits](/docs/api#plans-and-limits). |
+| `rateLimits.perMinute` | number | Requests per minute the plan allows. See [Rate limits](/docs/api#rate-limits). |
+| `rateLimits.perDay` | number | Requests per day the plan allows. |
 
 ```json
 {
@@ -67,7 +71,9 @@ print(response.json()["email"])
   "email": "ada@example.com",
   "name": "Ada Lovelace",
   "plan": "pro",
-  "defaultDomain": "isht.app"
+  "defaultDomain": "isht.app",
+  "usage": { "linksThisMonth": 42, "linksLimit": 1000 },
+  "rateLimits": { "perMinute": 300, "perDay": 10000 }
 }
 ```
 

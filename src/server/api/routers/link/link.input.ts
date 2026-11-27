@@ -302,4 +302,6 @@ export type BulkToggleLinkStatusInput = z.infer<typeof bulkToggleLinkStatusSchem
 export const bulkUploadSchema = z.object({
   csv: z.string(),
   keepBitlyCodes: z.boolean().default(true),
+  /** Also create a QR code per row, drawn with a saved QR style (null: the default style). */
+  qrCodes: z.object({ presetId: z.number().int().positive().nullable() }).optional(),
 });

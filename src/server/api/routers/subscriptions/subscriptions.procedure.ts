@@ -22,7 +22,7 @@ import { workspaceFilter } from "@/server/lib/workspace";
 
 import { createTRPCRouter, workspaceProcedure } from "../../trpc";
 import { countClicksBefore } from "../link/link.service";
-import { countWorkspaceQrCodes } from "../qrcode/qrcode.service";
+import { countWorkspaceQrCodes } from "../qrcode/qrcode-bulk.service";
 import { workEmailDomain } from "./utils";
 
 export const subscriptionsRouter = createTRPCRouter({

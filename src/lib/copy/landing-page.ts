@@ -16,7 +16,7 @@ export const landingPageCopy = {
     },
     {
       question: "Is iShortn free to use?",
-      answer: `Yes. The Free plan gives you ${free.linksLimit} links a month, ${free.eventsLimit?.toLocaleString("en-US")} tracked clicks and scans, ${free.analyticsRangeLimitDays} days of analytics, one link-in-bio page and ${FREE_QR_CODE_LIMIT} dynamic QR codes. No credit card is needed. Pro (${proPrice}) adds ${pro.linksLimit?.toLocaleString("en-US")} links a month, ${pro.domainLimit} custom domains and unlimited analytics history. Ultra ($${PLAN_PRICES_USD.ultra} a month) removes the limits and adds team workspaces.`,
+      answer: `Yes. The Free plan gives you ${free.linksLimit} links a month, ${free.eventsLimit?.toLocaleString("en-US")} tracked clicks and scans, ${free.analyticsRangeLimitDays} days of analytics, one link-in-bio page and ${FREE_QR_CODE_LIMIT} dynamic QR codes. No credit card is needed. Pro (${proPrice}) adds ${pro.linksLimit?.toLocaleString("en-US")} links a month, ${pro.domainLimit} custom domains and a full year of detailed analytics. Ultra ($${PLAN_PRICES_USD.ultra} a month) removes the limits and adds team workspaces.`,
     },
     {
       question: "Is iShortn a good free alternative to Bitly?",

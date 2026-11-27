@@ -1,16 +1,18 @@
-import { Column, Link, Row, Section, Text } from "@react-email/components";
+import { Column, Link, Row, Text } from "@react-email/components";
 
 import { PLAN_CAPS } from "@/lib/billing/plans";
-import { displayName } from "@/lib/utils/user-name";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 
 import {
+  bigNumber,
   EmailButton,
   EmailLayout,
-  headingText,
   link,
-  panel,
+  monoFontFamily,
   panelItem,
+  smallText,
   text,
+  Well,
 } from "./_components/layout";
 
 import type { CSSProperties } from "react";
@@ -19,15 +21,15 @@ export type WeeklySummaryTopLink = { shortUrl: string; name: string | null; clic
 export type WeeklySummaryTop = { name: string; clicks: number };
 
 /**
- * The one upgrade line a Free account can get: tracking paused by the monthly cap (`count` is
- * the visits dropped), 60%+ of the cap used (`count` is the visits tracked), or clicks older
- * than the Free analytics window (`count` is how many are hidden).
+ * The one upgrade prompt a Free account can get: tracking paused by the monthly cap (`count` is
+ * the clicks not tracked; the main button becomes the upgrade), 60%+ of the cap used (`count` is
+ * the clicks tracked), or clicks older than the Free analytics window (`count` is how many are
+ * hidden).
  */
 export type WeeklySummaryUpgrade = { reason: "paused" | "cap" | "history"; count: number };
 
 export type WeeklySummaryEmailProps = {
-  userName?: string | null;
-  /** "November 16 – 22", the summarised Monday-Sunday week. */
+  /** "16-22 Nov", the summarised Monday-Sunday week. */
   weekLabel: string;
   clicks: number;
   previousClicks: number;
@@ -40,33 +42,57 @@ export type WeeklySummaryEmailProps = {
   notificationSettingsUrl: string;
 };
 
-export const formatClicks = (count: number) =>
-  `${count.toLocaleString("en-US")} ${count === 1 ? "click" : "clicks"}`;
+const fmt = (count: number) => count.toLocaleString("en-US");
 
-/** "Up 23% from 1,003 clicks the week before", or the equivalent for no change or no clicks. */
+export const formatClicks = (count: number) => `${fmt(count)} ${count === 1 ? "click" : "clicks"}`;
+
+/** The week-on-week change as a whole percentage, or null with no prior week or no change. */
+export function weekChange(clicks: number, previousClicks: number) {
+  if (previousClicks === 0) return null;
+  const percent = Math.round((Math.abs(clicks - previousClicks) / previousClicks) * 100);
+  if (percent === 0) return null;
+  return { direction: clicks > previousClicks ? "up" : "down", percent } as const;
+}
+
+/** "Your links got 1,284 clicks last week, up 23%"; the change is left out when there is none. */
+export function weeklySummarySubject(clicks: number, previousClicks: number): string {
+  const change = weekChange(clicks, previousClicks);
+  const subject = `Your links got ${formatClicks(clicks)} last week`;
+  return change ? `${subject}, ${change.direction} ${fmt(change.percent)}%` : subject;
+}
+
+/** "Top link: Spring launch with 742 clicks. Most clicks came from Ghana." */
+export function weeklySummaryPreview({
+  clicks,
+  previousClicks,
+  topLinks: [topLink],
+  topCountry,
+}: Pick<WeeklySummaryEmailProps, "clicks" | "previousClicks" | "topLinks" | "topCountry">) {
+  const parts = [
+    topLink
+      ? `Top link: ${topLink.name ?? topLink.shortUrl} with ${formatClicks(topLink.clicks)}.`
+      : weeklySummarySubject(clicks, previousClicks) + ".",
+  ];
+  if (topCountry) parts.push(`Most clicks came from ${topCountry.name}.`);
+  return parts.join(" ");
+}
+
+/** "Up 23% from 1,043 the week before", or the equivalent for no change or no clicks. */
 export function compareWeeks(clicks: number, previousClicks: number): string {
   if (previousClicks === 0) return "Your links had no clicks the week before.";
   if (clicks === previousClicks) return "The same as the week before.";
-  const change = Math.round((Math.abs(clicks - previousClicks) / previousClicks) * 100);
   // Under 1% rounds to 0; say "less than 1%" rather than "Up 0%".
-  const percent = change === 0 ? "less than 1%" : `${change.toLocaleString("en-US")}%`;
+  const change = weekChange(clicks, previousClicks);
+  const percent = change ? `${fmt(change.percent)}%` : "less than 1%";
   const direction = clicks > previousClicks ? "Up" : "Down";
-  return `${direction} ${percent} from ${formatClicks(previousClicks)} the week before.`;
+  return `${direction} ${percent} from ${fmt(previousClicks)} the week before.`;
 }
 
-const fmt = (count: number) => count.toLocaleString("en-US");
-
-/** The upgrade sentence, split around the inline "Upgrade to Pro" link. */
+/** The inline upgrade sentence for "cap" and "history", split around the "Upgrade to Pro" link. */
 export function upgradeCopy({ reason, count }: WeeklySummaryUpgrade) {
-  if (reason === "paused") {
-    return {
-      lead: `The Free plan's monthly limit has paused tracking, so ${formatClicks(count)} this month ${count === 1 ? "wasn't" : "weren't"} recorded.`,
-      tail: "to record them all.",
-    };
-  }
   if (reason === "cap") {
     return {
-      lead: `You've used ${fmt(count)} of ${fmt(PLAN_CAPS.free.eventsLimit ?? 0)} tracked visits this month.`,
+      lead: `You've used ${fmt(count)} of ${fmt(PLAN_CAPS.free.eventsLimit ?? 0)} tracked clicks this month.`,
       tail: `for ${fmt(PLAN_CAPS.pro.eventsLimit ?? 0)} a month.`,
     };
   }
@@ -77,92 +103,117 @@ export function upgradeCopy({ reason, count }: WeeklySummaryUpgrade) {
   };
 }
 
-export const WeeklySummaryEmail = ({
-  userName,
-  weekLabel,
-  clicks,
-  previousClicks,
-  topLinks,
-  topCountry,
-  topSource,
-  upgrade,
-  analyticsUrl,
-  unsubscribeUrl,
-  notificationSettingsUrl,
-}: WeeklySummaryEmailProps) => {
+/** The paused-tracking well: what was missed, then what each plan tracks. */
+export function pausedCopy(count: number) {
+  return {
+    lead: `${formatClicks(count)} this month ${count === 1 ? "wasn't" : "weren't"} tracked.`,
+    detail: `Free includes ${fmt(PLAN_CAPS.free.eventsLimit ?? 0)} tracked clicks a month and your links passed that. Pro includes ${fmt(PLAN_CAPS.pro.eventsLimit ?? 0)}.`,
+  };
+}
+
+export const WeeklySummaryEmail = (props: WeeklySummaryEmailProps) => {
+  const {
+    weekLabel,
+    clicks,
+    previousClicks,
+    topLinks,
+    topCountry,
+    topSource,
+    upgrade,
+    analyticsUrl,
+    unsubscribeUrl,
+    notificationSettingsUrl,
+  } = props;
+  const paused = upgrade?.reason === "paused" ? upgrade : null;
+  const inlineUpgrade = upgrade && upgrade.reason !== "paused" ? upgrade : null;
+  const pausedText = paused && pausedCopy(paused.count);
+  const upgradeText = inlineUpgrade && upgradeCopy(inlineUpgrade);
+
   return (
     <EmailLayout
-      preview={`${formatClicks(clicks)} on your links, ${weekLabel}`}
+      preview={weeklySummaryPreview(props)}
+      eyebrow={`Weekly summary · ${weekLabel}`}
       notificationSettingsUrl={notificationSettingsUrl}
       footerReason="You received this weekly summary because your links got clicks last week."
       unsubscribeUrl={unsubscribeUrl}
     >
-      <Text style={text}>Hi {displayName(userName) ?? "there"},</Text>
-
-      <Text style={text}>Here&apos;s how your links did last week ({weekLabel}, UTC).</Text>
-
-      <Section style={panel}>
+      <Well>
         <Text style={bigNumber}>{formatClicks(clicks)}</Text>
-        <Text style={{ ...panelItem, color: "#6b7280" }}>
+        <Text style={{ ...panelItem, color: "#737373" }}>
           {compareWeeks(clicks, previousClicks)}
         </Text>
-      </Section>
 
-      {topLinks.length > 0 && (
-        <>
-          <Text style={headingText}>Top links</Text>
-          {topLinks.map((item) => (
-            <Row key={item.shortUrl} style={row}>
-              <Column style={rowLabel}>
-                {item.name && <Text style={rowName}>{item.name}</Text>}
-                <Text style={item.name ? rowUrlMuted : rowName}>{item.shortUrl}</Text>
-              </Column>
-              <Column style={rowValue}>{item.clicks.toLocaleString("en-US")}</Column>
-            </Row>
-          ))}
-        </>
-      )}
+        {topLinks.length > 0 && (
+          <>
+            <Text style={wellHeading}>Top links</Text>
+            {topLinks.map((item, index) => (
+              <Row key={item.shortUrl} style={index === 0 ? undefined : row}>
+                <Column style={rowLabel}>
+                  {item.name && <Text style={rowName}>{item.name}</Text>}
+                  <Text style={rowUrl}>{item.shortUrl}</Text>
+                </Column>
+                <Column style={rowValue}>{fmt(item.clicks)}</Column>
+              </Row>
+            ))}
+          </>
+        )}
+      </Well>
 
       {(topCountry || topSource) && (
-        <Section style={{ margin: "16px 0 0" }}>
-          {topCountry && (
-            <Text style={panelItem}>
-              Top country: <strong>{topCountry.name}</strong> ({formatClicks(topCountry.clicks)})
-            </Text>
-          )}
-          {topSource && (
-            <Text style={panelItem}>
-              Top source: <strong>{topSource.name}</strong> ({formatClicks(topSource.clicks)})
-            </Text>
-          )}
-        </Section>
-      )}
-
-      {upgrade && (
         <Text style={text}>
-          {upgradeCopy(upgrade).lead}{" "}
-          <Link href={upgrade.upgradeUrl} style={link}>
-            Upgrade to Pro
-          </Link>{" "}
-          {upgradeCopy(upgrade).tail}
+          Most clicks came from{" "}
+          {topCountry && (
+            <>
+              <strong>{topCountry.name}</strong> ({fmt(topCountry.clicks)})
+            </>
+          )}
+          {topCountry && topSource && " and "}
+          {topSource && (
+            <>
+              <strong>{topSource.name}</strong> ({fmt(topSource.clicks)})
+            </>
+          )}
+          .
         </Text>
       )}
 
-      <EmailButton href={analyticsUrl}>View your analytics</EmailButton>
+      {pausedText && (
+        <Well>
+          <Text style={{ ...panelItem, color: "#171717", fontWeight: 600 }}>{pausedText.lead}</Text>
+          <Text style={panelItem}>{pausedText.detail}</Text>
+        </Well>
+      )}
+
+      {inlineUpgrade && upgradeText && (
+        <Text style={text}>
+          {upgradeText.lead}{" "}
+          <Link href={inlineUpgrade.upgradeUrl} style={link}>
+            Upgrade to Pro
+          </Link>{" "}
+          {upgradeText.tail}
+        </Text>
+      )}
+
+      {paused ? (
+        <>
+          <EmailButton href={paused.upgradeUrl}>Track every click</EmailButton>
+          <Text style={smallText}>
+            Or{" "}
+            <Link href={analyticsUrl} style={link}>
+              open your analytics
+            </Link>
+            .
+          </Text>
+        </>
+      ) : (
+        <EmailButton href={analyticsUrl}>View analytics</EmailButton>
+      )}
     </EmailLayout>
   );
 };
 
-const bigNumber: CSSProperties = {
-  color: "#111827",
-  fontSize: "28px",
-  fontWeight: 600,
-  lineHeight: "36px",
-  margin: "0 0 4px",
-};
-
 const row: CSSProperties = {
-  borderBottom: "1px solid #e5e7eb",
+  borderTop: "1px solid #e8e8e8",
 };
 
 const rowLabel: CSSProperties = {
@@ -171,23 +222,31 @@ const rowLabel: CSSProperties = {
 };
 
 const rowName: CSSProperties = {
-  color: "#111827",
+  color: "#171717",
   fontSize: "14px",
   lineHeight: "20px",
   margin: 0,
   overflowWrap: "anywhere",
 };
 
-const rowUrlMuted: CSSProperties = {
-  color: "#6b7280",
-  fontSize: "13px",
+const rowUrl: CSSProperties = {
+  color: "#737373",
+  fontFamily: monoFontFamily,
+  fontSize: "12px",
   lineHeight: "18px",
   margin: 0,
   wordBreak: "break-all",
 };
 
+const wellHeading: CSSProperties = {
+  ...panelItem,
+  color: "#171717",
+  fontWeight: 600,
+  margin: "16px 0 0",
+};
+
 const rowValue: CSSProperties = {
-  color: "#111827",
+  color: "#171717",
   fontSize: "14px",
   fontWeight: 600,
   padding: "8px 0",
@@ -198,8 +257,7 @@ const rowValue: CSSProperties = {
 };
 
 WeeklySummaryEmail.PreviewProps = {
-  userName: "Ama",
-  weekLabel: "November 16 – 22",
+  weekLabel: "16-22 Nov",
   clicks: 1_284,
   previousClicks: 1_043,
   topLinks: [
@@ -210,13 +268,11 @@ WeeklySummaryEmail.PreviewProps = {
   topCountry: { name: "Ghana", clicks: 611 },
   topSource: { name: "Instagram", clicks: 402 },
   upgrade: {
-    reason: "cap",
-    count: 640,
-    upgradeUrl:
-      "https://ishortn.ink/dashboard/pricing?highlight=pro&source=weekly_summary_cap&utm_source=email&utm_medium=lifecycle&utm_campaign=weekly_summary",
+    reason: "paused",
+    count: 342,
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.weeklySummary.upgrade.paused),
   },
-  analyticsUrl:
-    "https://ishortn.ink/dashboard/analytics/overview?utm_source=email&utm_medium=lifecycle&utm_campaign=weekly_summary",
+  analyticsUrl: emailLinkUrl(EMAIL_LINKS.weeklySummary.analytics),
   unsubscribeUrl: "https://ishortn.ink/api/email/unsubscribe?token=user_1.sig&list=weekly-summary",
   notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
 } satisfies WeeklySummaryEmailProps;

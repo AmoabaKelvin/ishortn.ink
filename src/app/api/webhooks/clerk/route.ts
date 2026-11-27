@@ -2,13 +2,12 @@ import { and, eq, isNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 
+import WelcomeEmail from "@/emails/welcome";
 import { env } from "@/env.mjs";
-import WelcomeEmail from "@/lib/email/templates/welcome-email";
 import { logger } from "@/lib/logger";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
-import { getResend } from "@/server/lib/notifications/resend-client";
-import { isEmailSuppressed } from "@/server/lib/notifications/suppression";
+import { EMAIL_FROM_FIRST_NAME, sendEmail } from "@/server/lib/notifications/send-email";
 
 import { clerkUserDeletedEventSchema, clerkUserEventSchema, getUserInfo } from "./user-info";
 
@@ -97,18 +96,16 @@ export async function POST(req: Request) {
 
   // Only on sign-up: user.updated fires on every profile change, including email changes.
   // A lifecycle email, so it skips addresses that hard-bounced or complained.
-  const resend = eventType === "user.created" ? await getResend() : null;
-  if (resend && userInfo.email && !(await isEmailSuppressed(userInfo.email))) {
-    const { error } = await resend.emails.send({
-      from: env.EMAIL_FROM ?? "Kelvin <developer@ishortn.ink>",
+  if (eventType === "user.created" && userInfo.email) {
+    await sendEmail({
+      template: "welcome",
+      recipientId: id,
       to: userInfo.email,
+      essential: false,
       subject: "Welcome to iShortn",
-      react: WelcomeEmail({ userName: userInfo.name }),
+      react: WelcomeEmail({ userName: userInfo.name, founderName: EMAIL_FROM_FIRST_NAME }),
+      context: { eventId: id, eventType },
     });
-
-    if (error) {
-      log.error({ err: error, eventId: id, eventType }, "failed to send welcome email");
-    }
   }
 
   return new Response("", { status: 201 });

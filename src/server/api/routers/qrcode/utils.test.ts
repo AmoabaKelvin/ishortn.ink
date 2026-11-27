@@ -8,7 +8,12 @@ import { MarkerFrames, PixelStyles } from "@/lib/qr-generator/types";
 import * as schema from "@/server/db/schema";
 
 import { qrcodeInput } from "./qrcode.input";
-import { storedQrImageSource, toLegacyQrStyles } from "./utils";
+import {
+  bulkQrCodeLimitError,
+  qrStyleFromPreset,
+  storedQrImageSource,
+  toLegacyQrStyles,
+} from "./utils";
 
 describe("toLegacyQrStyles", () => {
   test.each(PixelStyles)("pixel style %s maps to a legacy pattern style", (pixelStyle) => {
@@ -25,6 +30,75 @@ describe("toLegacyQrStyles", () => {
     expect(toLegacyQrStyles("rounded", "circle")).toEqual({
       patternStyle: "rounded",
       cornerStyle: "circle",
+    });
+  });
+});
+
+describe("bulkQrCodeLimitError", () => {
+  test("Free plans can't create QR codes from an import", () => {
+    expect(bulkQrCodeLimitError({ plan: "free", rowCount: 1, qrCodeCount: 0 })).toContain(
+      "available on Pro and Ultra",
+    );
+  });
+
+  test("Pro allows up to 100 per import", () => {
+    expect(bulkQrCodeLimitError({ plan: "pro", rowCount: 100, qrCodeCount: 5000 })).toBeNull();
+    expect(bulkQrCodeLimitError({ plan: "pro", rowCount: 101, qrCodeCount: 0 })).toContain(
+      "up to 100 QR codes per import, and this file has 101 rows",
+    );
+  });
+
+  test("Ultra has no per-import cap", () => {
+    expect(bulkQrCodeLimitError({ plan: "ultra", rowCount: 1000, qrCodeCount: 0 })).toBeNull();
+  });
+});
+
+describe("qrStyleFromPreset", () => {
+  const preset = {
+    pixelStyle: "dot",
+    markerFrame: "circle",
+    markerCenter: "eye",
+    darkColor: "#1d4ed8",
+    lightColor: "#ffffff",
+    effect: "none",
+    marginNoise: false,
+    marginNoiseRate: "0.3",
+    logoSize: 20,
+    logoMargin: 4,
+    logoBorderRadius: 8,
+  };
+
+  test("uses the preset's style and the import's seed", () => {
+    expect(qrStyleFromPreset(preset, { seed: 42, hasLogo: false })).toMatchObject({
+      pixelStyle: "dot",
+      markerFrame: "circle",
+      markerCenter: "eye",
+      darkColor: "#1d4ed8",
+      marginNoiseRate: 0.3,
+      seed: 42,
+      ecc: "M",
+      logoImage: null,
+    });
+  });
+
+  test("a logo raises error correction to H", () => {
+    expect(qrStyleFromPreset(preset, { seed: 1, hasLogo: true }).ecc).toBe("H");
+  });
+
+  test("unknown stored values fall back to the defaults", () => {
+    const style = qrStyleFromPreset(
+      { ...preset, pixelStyle: "hexagon", effect: "glow" },
+      { seed: 1, hasLogo: false },
+    );
+    expect(style.pixelStyle).toBe("rounded");
+    expect(style.effect).toBe("none");
+  });
+
+  test("no preset gives the default style", () => {
+    expect(qrStyleFromPreset(null, { seed: 1, hasLogo: false })).toMatchObject({
+      pixelStyle: "rounded",
+      markerFrame: "square",
+      darkColor: "#000000",
     });
   });
 });

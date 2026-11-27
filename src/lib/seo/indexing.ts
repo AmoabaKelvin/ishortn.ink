@@ -94,6 +94,8 @@ export const APP_TOP_LEVEL_SEGMENTS = new Set([
   "fonts",
   "llms.txt",
   "manifest.webmanifest",
+  // The MCP endpoint: src/middleware.ts rewrites /mcp on the app host to /api/mcp.
+  "mcp",
   "open-source-url-shortener",
   "opengraph-image",
   "p",

@@ -2,6 +2,7 @@ import { Text } from "@react-email/components";
 
 import { PLAN_CAPS } from "@/lib/billing/plans";
 import { PLAN_PRICES_ANNUAL_USD, PLAN_PRICES_USD } from "@/lib/constants/plan-pricing";
+import { EMAIL_LINKS, emailLinkUrl } from "@/lib/email/links";
 import { displayName } from "@/lib/utils/user-name";
 
 import { EmailButton, EmailLayout, text } from "./_components/layout";
@@ -164,9 +165,6 @@ const listItem: CSSProperties = {
   margin: "0 0 4px",
 };
 
-const UPGRADE_URL =
-  "https://ishortn.ink/dashboard/pricing?highlight=pro&source=upgrade_nudge&utm_source=lifecycle&utm_medium=email&utm_campaign=upgrade_nudge&utm_content=limit_hit";
-
 UpgradeNudgeEmail.PreviewProps = {
   userName: "Ama",
   signupDate: "18 November",
@@ -175,7 +173,7 @@ UpgradeNudgeEmail.PreviewProps = {
   angle: { reason: "limit_hit", feature: "custom domains", hitDate: "21 November" },
   promoLine:
     "Black Friday: Pro is 20% off your first year until Tuesday 1 December. The discount is applied at checkout.",
-  upgradeUrl: UPGRADE_URL,
+  upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.limit_hit),
   unsubscribeUrl: "https://ishortn.ink/api/email/unsubscribe?token=user_1.sig",
   notificationSettingsUrl: "https://ishortn.ink/dashboard/settings#notifications",
 } satisfies UpgradeNudgeEmailProps;
@@ -192,13 +190,13 @@ export const UPGRADE_NUDGE_PREVIEWS = {
       projectedDate: "27 November",
       resetDate: "1 December",
     },
-    upgradeUrl: UPGRADE_URL.replace("limit_hit", "events"),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.events),
   },
   links: {
     ...UpgradeNudgeEmail.PreviewProps,
     linkCount: 18,
     angle: { reason: "links", monthlyLinkCount: 18, resetDate: "1 December" },
-    upgradeUrl: UPGRADE_URL.replace("limit_hit", "links"),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.links),
   },
   analytics: {
     ...UpgradeNudgeEmail.PreviewProps,
@@ -210,7 +208,7 @@ export const UPGRADE_NUDGE_PREVIEWS = {
       viewStartDate: "16 November",
     },
     promoLine: null,
-    upgradeUrl: UPGRADE_URL.replace("limit_hit", "analytics"),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.analytics),
   },
   domain: {
     ...UpgradeNudgeEmail.PreviewProps,
@@ -218,7 +216,7 @@ export const UPGRADE_NUDGE_PREVIEWS = {
     clickCount: 0,
     angle: { reason: "domain" },
     promoLine: null,
-    upgradeUrl: UPGRADE_URL.replace("limit_hit", "domain"),
+    upgradeUrl: emailLinkUrl(EMAIL_LINKS.upgradeNudge.domain),
   },
 } satisfies Record<UpgradeNudgeReason, UpgradeNudgeEmailProps>;
 

@@ -41,6 +41,54 @@ function escapeAttr(value: string) {
  * the light background. `state.logoImage` is embedded as given, so pass a data URI.
  */
 export function generateQRCodeSvg(state: QRCodeGeneratorState): string {
+  const { size, background, foreground, d, fadedD, logo } = buildQrVector(state);
+  const width = size * state.scale;
+
+  const parts = [
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${size} ${size}" width="${width}" height="${width}">`,
+  ];
+  if (background) {
+    parts.push(`<rect width="${size}" height="${size}" fill="${escapeAttr(background)}"/>`);
+  }
+  if (foreground) {
+    if (d) parts.push(`<path fill="${escapeAttr(foreground)}" d="${d}"/>`);
+    if (fadedD) {
+      parts.push(
+        `<path fill="${escapeAttr(foreground)}" fill-opacity="${num(state.marginNoiseOpacity)}" d="${fadedD}"/>`,
+      );
+    }
+  }
+
+  if (state.logoImage && logo) {
+    const { backdrop, offset } = logo;
+    parts.push(
+      `<rect x="${num(backdrop.x)}" y="${num(backdrop.x)}" width="${num(backdrop.size)}" height="${num(backdrop.size)}" rx="${num(backdrop.radius)}" fill="${escapeAttr(state.lightColor)}"/>`,
+      `<clipPath id="qr-logo-clip"><rect x="${num(offset.x)}" y="${num(offset.x)}" width="${num(offset.size)}" height="${num(offset.size)}" rx="${num(offset.radius)}"/></clipPath>`,
+      `<image x="${num(offset.x)}" y="${num(offset.x)}" width="${num(offset.size)}" height="${num(offset.size)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#qr-logo-clip)" xlink:href="${escapeAttr(state.logoImage)}"/>`,
+    );
+  }
+
+  parts.push("</svg>");
+  return parts.join("\n");
+}
+
+type Square = { x: number; size: number; radius: number };
+
+export type QrVector = {
+  /** Side of the square drawing in modules, margin included. */
+  size: number;
+  background: string | null;
+  foreground: string | null;
+  /** Dark shapes as SVG path data in module units (non-zero fill). */
+  d: string;
+  /** Margin-noise shapes drawn at `marginNoiseOpacity`. */
+  fadedD: string;
+  /** Where a logo goes (x = y, the logo is centred): its light backdrop and its clipped image. */
+  logo: { backdrop: Square; offset: Square } | null;
+};
+
+/** The vector shapes shared by the SVG and PDF exports. */
+export function buildQrVector(state: QRCodeGeneratorState): QrVector {
   const qr = createQrInstance(state);
   const { margin, seed, pixelStyle, markerSub, invert, renderPointsType } = state;
   const size = qr.size + margin * 2;
@@ -281,40 +329,34 @@ export function generateQRCodeSvg(state: QRCodeGeneratorState): string {
   const lightColor = state.transparent ? null : state.lightColor;
   const background = invert ? state.darkColor : lightColor;
   const foreground = invert ? lightColor : state.darkColor;
-  const width = size * state.scale;
 
-  const parts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${size} ${size}" width="${width}" height="${width}">`,
-  ];
-  if (background) {
-    parts.push(`<rect width="${size}" height="${size}" fill="${escapeAttr(background)}"/>`);
-  }
-  if (foreground) {
-    const d = squareRuns(squares) + subpaths.join("");
-    if (d) parts.push(`<path fill="${escapeAttr(foreground)}" d="${d}"/>`);
-    const fadedD = squareRuns(fadedSquares) + fadedSubpaths.join("");
-    if (fadedD) {
-      parts.push(
-        `<path fill="${escapeAttr(foreground)}" fill-opacity="${num(state.marginNoiseOpacity)}" d="${fadedD}"/>`,
-      );
-    }
-  }
-
+  let logo: QrVector["logo"] = null;
   if (state.logoImage) {
     // Same geometry as drawLogo in generate.ts; logoMargin is in output pixels.
     const logoSize = (size * state.logoSize) / 100;
     const total = logoSize + (state.logoMargin / state.scale) * 2;
-    const backdrop = (size - total) / 2;
-    const offset = (size - logoSize) / 2;
-    parts.push(
-      `<rect x="${num(backdrop)}" y="${num(backdrop)}" width="${num(total)}" height="${num(total)}" rx="${num((total * state.logoBorderRadius) / 100)}" fill="${escapeAttr(state.lightColor)}"/>`,
-      `<clipPath id="qr-logo-clip"><rect x="${num(offset)}" y="${num(offset)}" width="${num(logoSize)}" height="${num(logoSize)}" rx="${num((logoSize * state.logoBorderRadius) / 100)}"/></clipPath>`,
-      `<image x="${num(offset)}" y="${num(offset)}" width="${num(logoSize)}" height="${num(logoSize)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#qr-logo-clip)" xlink:href="${escapeAttr(state.logoImage)}"/>`,
-    );
+    logo = {
+      backdrop: {
+        x: (size - total) / 2,
+        size: total,
+        radius: (total * state.logoBorderRadius) / 100,
+      },
+      offset: {
+        x: (size - logoSize) / 2,
+        size: logoSize,
+        radius: (logoSize * state.logoBorderRadius) / 100,
+      },
+    };
   }
 
-  parts.push("</svg>");
-  return parts.join("\n");
+  return {
+    size,
+    background,
+    foreground,
+    d: squareRuns(squares) + subpaths.join(""),
+    fadedD: squareRuns(fadedSquares) + fadedSubpaths.join(""),
+    logo,
+  };
 }
 
 /** Reads an image (data URI or CORS-enabled URL) into a data URI so the SVG is self-contained. */

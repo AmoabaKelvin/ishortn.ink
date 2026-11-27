@@ -2,6 +2,7 @@
 export const PLAN_LIMIT_KEYS = [
   "monthly_links",
   "qr_codes",
+  "bulk_qr_codes",
   "bio_pages",
   "bio_link_blocks",
   "campaigns",

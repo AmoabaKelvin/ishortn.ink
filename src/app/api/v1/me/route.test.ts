@@ -78,6 +78,10 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/me (MySQL)", () => {
       variantId: PLAN_VARIANT_IDS.pro.monthly,
     });
     await db.insert(schema.siteSettings).values({ userId: USER_ID, defaultDomain: "isht.ink" });
+    await db
+      .update(schema.user)
+      .set({ monthlyLinkCount: 12, lastLinkCountReset: new Date() })
+      .where(eq(schema.user.id, USER_ID));
 
     const response = await me();
     expect(response.status).toBe(200);
@@ -89,7 +93,26 @@ describe.skipIf(!testDatabaseUrl)("GET /api/v1/me (MySQL)", () => {
       name: "Ada Lovelace",
       plan: "pro",
       defaultDomain: "isht.ink",
+      usage: { linksThisMonth: 12, linksLimit: 1000 },
+      rateLimits: API_RATE_LIMITS.pro,
     });
+  });
+
+  test("counts no links for a month that hasn't been reset yet, and no limit on Ultra", async () => {
+    await db.insert(schema.subscription).values({
+      userId: USER_ID,
+      status: "active",
+      plan: "ultra",
+      variantId: PLAN_VARIANT_IDS.ultra.monthly,
+    });
+    await db
+      .update(schema.user)
+      .set({ monthlyLinkCount: 40, lastLinkCountReset: new Date(Date.now() - 62 * DAY) })
+      .where(eq(schema.user.id, USER_ID));
+
+    const body = await (await me()).json();
+    expect(body.usage).toEqual({ linksThisMonth: 0, linksLimit: null });
+    expect(body.rateLimits).toEqual(API_RATE_LIMITS.ultra);
   });
 
   test("answers keys of banned or deleted accounts with 401", async () => {

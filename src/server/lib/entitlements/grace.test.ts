@@ -112,7 +112,7 @@ describe("accountGraceEmail", () => {
     const html = await render(createElement(PlanGraceEmail, props));
     expect(html).toContain("Update payment method");
     expect(html).toContain(`href="${props.updatePaymentUrl}"`);
-    expect(html).not.toContain("/dashboard/pricing");
+    expect(html).not.toContain(`href="${props.upgradeUrl}"`);
   });
 
   test("an over-plan grace the unpaid subscription covers asks for a payment method update", () => {
@@ -133,7 +133,7 @@ describe("accountGraceEmail", () => {
     )!;
     expect(subject).toBe("Some of your iShortn features need Ultra after November 27, 2026");
     expect(props.updatePaymentUrl).toBeUndefined();
-    expect(props.upgradeUrl).toContain("/dashboard/pricing?plan=ultra");
+    expect(props.upgradeUrl).toBe("https://ishortn.ink/e-grace-ultra");
   });
 
   test("an over-plan grace with nothing it covers left produces no email", () => {

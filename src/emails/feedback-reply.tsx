@@ -1,8 +1,8 @@
-import { Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
 
 import { displayName } from "@/lib/utils/user-name";
 
-import { EmailLayout, fieldLabel, panel, panelItem, text } from "./_components/layout";
+import { EmailLayout, fieldLabel, panelItem, text, Well } from "./_components/layout";
 
 import type { CSSProperties } from "react";
 
@@ -26,10 +26,10 @@ export const FeedbackReplyEmail = ({
       <Text style={text}>If you have more questions, just reply to this email.</Text>
       <Text style={{ ...text, fontWeight: 500 }}>Kelvin &amp; the iShortn team</Text>
 
-      <Section style={panel}>
+      <Well>
         <Text style={{ ...fieldLabel, margin: 0 }}>Your feedback</Text>
         <Text style={quotedText}>{originalMessage}</Text>
-      </Section>
+      </Well>
     </EmailLayout>
   );
 };
