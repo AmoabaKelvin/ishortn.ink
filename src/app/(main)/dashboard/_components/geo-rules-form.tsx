@@ -16,6 +16,7 @@ import {
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,10 +38,14 @@ import {
 } from "@/components/ui/select";
 import { UpgradeCta } from "@/components/upgrade-cta";
 import { DEVICE_TYPES, OS_TYPES, type TargetingRuleType } from "@/lib/constants/targeting";
+import { detectAppStore, isAppStoreRule } from "@/lib/core/geo-rules/app-download";
 import { buildAmazonStorefrontRules } from "@/lib/core/geo-rules/marketplace";
 import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
+import { AppDownloadPreset } from "./app-download-preset";
+
+import type { AppDownloadRule } from "@/lib/core/geo-rules/app-download";
 import type { UseFormReturn } from "react-hook-form";
 
 const CONTINENTS = {
@@ -501,16 +506,32 @@ export function GeoRulesForm({
     form.setValue("geoRules", [...geoRules, ...newRules]);
   };
 
+  // Applying the preset again replaces its earlier store rules instead of stacking duplicates.
+  const rulesKeptByAppPreset = geoRules.filter((rule) => !isAppStoreRule(rule));
+  const appPresetHasRoom = isUnlimited || !maxRules || rulesKeptByAppPreset.length + 2 <= maxRules;
+
+  const applyAppDownloadPreset = (preset: { destination: string; rules: AppDownloadRule[] }) => {
+    const newRules: GeoRuleFormData[] = preset.rules.map((rule) => ({
+      _tempId: generateId(),
+      ...rule,
+    }));
+    form.setValue("url", preset.destination, { shouldDirty: true, shouldValidate: true });
+    form.setValue("geoRules", [...rulesKeptByAppPreset, ...newRules]);
+    toast.success("Store rules added. The website is now the link's destination.");
+  };
+
+  const isAppStoreDestination = !disabled && detectAppStore(destinationUrl) !== null;
+
   // Opens the section once when a storefront suggestion first appears (the plan loads after the
   // first render, so this can't be the initial state), unless the user has already toggled it.
   const [isOpen, setIsOpen] = useState(false);
   const autoOpened = useRef(false);
-  const hasMarketplaceRules = marketplaceRules.length > 0;
+  const hasSuggestion = marketplaceRules.length > 0 || isAppStoreDestination;
   useEffect(() => {
-    if (!hasMarketplaceRules || autoOpened.current) return;
+    if (!hasSuggestion || autoOpened.current) return;
     autoOpened.current = true;
     setIsOpen(true);
-  }, [hasMarketplaceRules]);
+  }, [hasSuggestion]);
 
   const toggleOpen = () => {
     autoOpened.current = true;
@@ -546,7 +567,9 @@ export function GeoRulesForm({
           <span className="text-[12px] text-neutral-400">
             {marketplaceRules.length > 0
               ? "Amazon link detected: send visitors to their local store"
-              : "Redirect or block visitors by location, device, or OS"}
+              : isAppStoreDestination
+                ? "App store link detected: send each phone to its store"
+                : "Redirect or block visitors by location, device, or OS"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -591,7 +614,8 @@ export function GeoRulesForm({
                   </p>
                   <p className="mt-1 text-[12px] text-neutral-400">
                     Redirect visitors to different URLs or block access based on their country,
-                    continent, device, or operating system.
+                    continent, device, or operating system, or send app downloads to the right
+                    store.
                   </p>
                 </div>
               ) : (
@@ -628,6 +652,12 @@ export function GeoRulesForm({
                       </Button>
                     </div>
                   )}
+
+                  <AppDownloadPreset
+                    destinationUrl={destinationUrl}
+                    hasRoom={appPresetHasRoom}
+                    onApply={applyAppDownloadPreset}
+                  />
 
                   <AnimatePresence mode="popLayout">
                     {geoRules.map((rule, index) => (
