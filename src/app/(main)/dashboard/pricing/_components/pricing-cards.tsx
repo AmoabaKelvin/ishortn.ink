@@ -2,14 +2,15 @@
 
 import { IconTag } from "@tabler/icons-react";
 import { Check, Loader2, Sparkles } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { POSTHOG_EVENTS, trackEvent } from "@/lib/analytics/events";
 import { checkoutSource, readAttribution, utmTags } from "@/lib/billing/attribution";
+import { STALE_BILLING_MESSAGE } from "@/lib/billing/plan-change-copy";
 import { PLAN_FEATURES } from "@/lib/billing/plan-features";
 import { getPlanCaps } from "@/lib/billing/plans";
 import { planPriceDisplay, resolveBillingInterval } from "@/lib/billing/pricing";
@@ -40,6 +41,8 @@ type PricingCardsProps = {
   /** Running promo, only passed when the next upgrade is a new checkout that gets the code. */
   promo: Promo | null;
   subscription: ComponentProps<typeof DowngradeFeedbackModal>["subscription"];
+  /** `planMode` from subscriptions.get, sent with every change so a stale screen is refused. */
+  planMode: Plan;
 };
 
 type PricingPlanSpec = {
@@ -107,7 +110,10 @@ export function PricingCards({
   renewsAt,
   promo,
   subscription,
+  planMode,
 }: PricingCardsProps) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
   const searchParams = useSearchParams();
   const [interval, setIntervalState] = useState<BillingInterval>(
     resolveBillingInterval(searchParams?.get("interval"), currentPlan, currentInterval),
@@ -156,9 +162,19 @@ export function PricingCards({
       }
       setLoadingPlan(null);
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error, variables) => {
       setLoadingPlan(null);
+      const plan = paidPlans.find((p) => p.id === variables.plan);
+      if (error.message === STALE_BILLING_MESSAGE && plan) {
+        // The subscription changed under this screen (e.g. the checkout webhook landed): reload
+        // the billing state and ask for confirmation instead of charging it straight away.
+        toast(error.message);
+        setPendingChange({ plan, kind: plan.id === currentPlan ? "switch" : "upgrade" });
+        setConfirmOpen(true);
+        startRefresh(() => router.refresh());
+        return;
+      }
+      toast.error(error.message);
     },
   });
 
@@ -182,6 +198,7 @@ export function PricingCards({
     createCheckoutOrUpdateMutation.mutate({
       plan: plan.id,
       interval,
+      displayedPlanMode: planMode,
       source: checkoutSource(attribution),
       utm,
     });
@@ -219,10 +236,11 @@ export function PricingCards({
     createCheckoutOrUpdate({
       plan: autoCheckout.id,
       interval,
+      displayedPlanMode: planMode,
       source: checkoutSource(attribution, "auto_signup"),
       utm,
     });
-  }, [attribution, autoCheckout, createCheckoutOrUpdate, interval, utm]);
+  }, [attribution, autoCheckout, createCheckoutOrUpdate, interval, planMode, utm]);
 
   return (
     <div className="space-y-8">
@@ -514,7 +532,7 @@ export function PricingCards({
           kind={pendingChange.kind}
           targetPlan={pendingChange.plan.id}
           interval={interval}
-          isLoading={createCheckoutOrUpdateMutation.isLoading}
+          isLoading={createCheckoutOrUpdateMutation.isLoading || isRefreshing}
           onConfirm={() => runUpgrade(pendingChange.plan)}
         />
       )}

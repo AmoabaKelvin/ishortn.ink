@@ -5,6 +5,7 @@ import { addMonths } from "date-fns";
 import { eq } from "drizzle-orm";
 
 import { env } from "@/env.mjs";
+import { STALE_BILLING_MESSAGE } from "@/lib/billing/plan-change-copy";
 import { ACTIVE_PROMO } from "@/lib/billing/promo";
 import { PaddleApiError } from "@/lib/paddle/client";
 import { buildPaddleConfig } from "@/lib/paddle/config";
@@ -591,6 +592,41 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
     });
   });
 
+  test("a change sent from a screen still showing Free is refused before Paddle is called", async () => {
+    await seed();
+
+    const error = await caller()
+      .createCheckoutOrUpdate({ plan: "ultra", interval: "monthly", displayedPlanMode: "free" })
+      .catch((err: Error) => err);
+
+    expect(error).toMatchObject({ code: "CONFLICT", message: STALE_BILLING_MESSAGE });
+    expect(calls).toHaveLength(0);
+    expect((await stored())?.plan).toBe("pro");
+  });
+
+  test("a change sent with the stored plan mode goes ahead", async () => {
+    await seed();
+    respond = () => paddleSub({ items: [{ price: { id: PRICES.ultraMonthly } }] });
+
+    const result = await caller().createCheckoutOrUpdate({
+      plan: "ultra",
+      interval: "monthly",
+      displayedPlanMode: "pro",
+    });
+
+    expect(result).toEqual({ status: "updated", message: "Plan updated successfully!" });
+    expect(calls.map(([method]) => method)).toEqual(["updateSubscription"]);
+  });
+
+  test("a change sent from a screen showing a paid plan after it expired is refused", async () => {
+    await seed({ status: "expired", endsAt: new Date(Date.now() - DAY) });
+
+    await expect(
+      caller().createCheckoutOrUpdate({ plan: "ultra", displayedPlanMode: "pro" }),
+    ).rejects.toMatchObject({ code: "CONFLICT", message: STALE_BILLING_MESSAGE });
+    expect(calls).toHaveLength(0);
+  });
+
   test("choosing the current price changes nothing", async () => {
     await seed();
 
@@ -621,8 +657,35 @@ describe.skipIf(!testDatabaseUrl)("subscription management for Paddle rows (MySQ
       .catch((err: Error) => err);
 
     expect(error).toMatchObject({ code: "BAD_REQUEST" });
-    expect(error.message).toStartWith("Our payment provider couldn't apply this change.");
+    expect(error.message).toBe(
+      "We couldn't apply this change. Please try again or contact support.",
+    );
     expect((await stored())?.plan).toBe("pro");
+  });
+
+  test("a discount Paddle won't apply gets the generic message, a declined card the payment one", async () => {
+    await seed();
+    const refused = (code: string) =>
+      new PaddleApiError({
+        method: "PATCH",
+        path: `/subscriptions/${SUBSCRIPTION_ID}`,
+        status: 400,
+        code,
+        detail: "refused",
+        requestId: null,
+      });
+
+    respond = () => refused("subscription_one_off_discount_not_valid");
+    await expect(caller().createCheckoutOrUpdate({ plan: "ultra" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "We couldn't apply this change. Please try again or contact support.",
+    });
+
+    respond = () => refused("subscription_payment_declined");
+    await expect(caller().createCheckoutOrUpdate({ plan: "ultra" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining("Check your payment method"),
+    });
   });
 
   test("a downgrade to Pro switches now and credits the unused time right away", async () => {

@@ -11,7 +11,6 @@ import { annualSwitchOffer } from "../_components/annual-switch-state";
 import { getDashboardGraceNotice } from "../_lib/get-subscription";
 import { SettingsNav } from "./_components/settings-nav";
 import Billing from "./billing/billing";
-import { CheckoutAcquisitionPrompt } from "./billing/checkout-acquisition-prompt";
 import { DeleteAccountSection } from "./delete-account/delete-account-section";
 import { SettingsForm } from "./general/settings-form";
 import { NotificationSettings } from "./notifications/notification-settings";
@@ -159,8 +158,8 @@ async function SettingsPage(props: Props) {
                 subscriptions={subscriptions}
                 promo={promo}
                 latestCheckout={latestCheckout}
+                returnedFromCheckout={checkout === "success"}
               />
-              {checkout === "success" && <CheckoutAcquisitionPrompt />}
             </div>
           </section>
 
