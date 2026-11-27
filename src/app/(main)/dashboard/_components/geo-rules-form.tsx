@@ -15,7 +15,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -443,7 +443,6 @@ export function GeoRulesForm({
   maxRules,
   isUnlimited = false,
 }: GeoRulesFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const idCounter = useRef(0);
   const geoRules: GeoRuleFormData[] = form.watch("geoRules") || [];
   const destinationUrl: string = form.watch("url") || "";
@@ -502,12 +501,28 @@ export function GeoRulesForm({
     form.setValue("geoRules", [...geoRules, ...newRules]);
   };
 
+  // Opens the section once when a storefront suggestion first appears (the plan loads after the
+  // first render, so this can't be the initial state), unless the user has already toggled it.
+  const [isOpen, setIsOpen] = useState(false);
+  const autoOpened = useRef(false);
+  const hasMarketplaceRules = marketplaceRules.length > 0;
+  useEffect(() => {
+    if (!hasMarketplaceRules || autoOpened.current) return;
+    autoOpened.current = true;
+    setIsOpen(true);
+  }, [hasMarketplaceRules]);
+
+  const toggleOpen = () => {
+    autoOpened.current = true;
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div className="rounded-lg border border-neutral-200 dark:border-border p-4">
       <button
         type="button"
         className="flex w-full items-center justify-between text-left"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleOpen}
       >
         <div className="flex flex-col gap-0.5">
           <p className="flex items-center gap-2 text-[14px] font-semibold text-neutral-900 dark:text-foreground">
@@ -582,7 +597,7 @@ export function GeoRulesForm({
               ) : (
                 <>
                   {marketplaceRules.length > 0 && (
-                    <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-blue-50 p-4 sm:flex-row sm:items-center dark:border-border dark:bg-blue-500/10">
+                    <div className="flex flex-col gap-3 rounded-lg bg-blue-50 p-4 sm:flex-row sm:items-center dark:bg-blue-500/10">
                       <div className="flex min-w-0 flex-1 items-start gap-3">
                         <IconBuildingStore
                           size={16}
