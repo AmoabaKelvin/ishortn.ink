@@ -190,7 +190,7 @@ export const sendTestWebhook = async (ctx: WorkspaceTRPCContext, input: WebhookI
       eventId: event.id,
       eventType: WEBHOOK_TEST_EVENT,
       payload: JSON.stringify(event),
-      nextAttemptAt: now,
+      nextAttemptAt: null,
       createdAt: now,
     },
   ]);

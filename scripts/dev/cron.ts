@@ -11,6 +11,7 @@ const CRON_ROUTES = [
   "cleanup-analytics",
   "cleanup-expired",
   "entitlements",
+  "link-health",
   "phishing-rescan",
   "api-access-sunset",
   "first-link-nudge",

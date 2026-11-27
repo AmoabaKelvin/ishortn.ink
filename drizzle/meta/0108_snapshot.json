@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "8199128f-11b6-460f-aea5-00f45f886131",
+  "id": "71fb84eb-20e3-4772-9236-d99524b436d0",
   "prevId": "524088f8-8ef9-46b9-8502-f86c417ccadb",
   "tables": {
     "AccountDeletion": {
@@ -2460,6 +2460,88 @@
           "name": "LinkCreationFailure_id",
           "columns": [
             "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "LinkHealth": {
+      "name": "LinkHealth",
+      "columns": {
+        "linkId": {
+          "name": "linkId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lastCheckedAt": {
+          "name": "lastCheckedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lastStatus": {
+          "name": "lastStatus",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastError": {
+          "name": "lastError",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "consecutiveFailures": {
+          "name": "consecutiveFailures",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "brokenSince": {
+          "name": "brokenSince",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "alertedAt": {
+          "name": "alertedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "linkHealth_lastCheckedAt_idx": {
+          "name": "linkHealth_lastCheckedAt_idx",
+          "columns": [
+            "lastCheckedAt"
+          ],
+          "isUnique": false
+        },
+        "linkHealth_brokenSince_idx": {
+          "name": "linkHealth_brokenSince_idx",
+          "columns": [
+            "brokenSince"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "LinkHealth_linkId": {
+          "name": "LinkHealth_linkId",
+          "columns": [
+            "linkId"
           ]
         }
       },
@@ -5265,275 +5347,6 @@
       "compositePrimaryKeys": {
         "UtmTemplate_id": {
           "name": "UtmTemplate_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "Webhook": {
-      "name": "Webhook",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "teamId": {
-          "name": "teamId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "url": {
-          "name": "url",
-          "type": "varchar(2048)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "events": {
-          "name": "events",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "secret": {
-          "name": "secret",
-          "type": "varchar(80)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
-        },
-        "consecutiveFailures": {
-          "name": "consecutiveFailures",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "lastFailureAt": {
-          "name": "lastFailureAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "disabledAt": {
-          "name": "disabledAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "onUpdate": true
-        }
-      },
-      "indexes": {
-        "webhook_userId_idx": {
-          "name": "webhook_userId_idx",
-          "columns": [
-            "userId"
-          ],
-          "isUnique": false
-        },
-        "webhook_teamId_idx": {
-          "name": "webhook_teamId_idx",
-          "columns": [
-            "teamId"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "Webhook_id": {
-          "name": "Webhook_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "WebhookDelivery": {
-      "name": "WebhookDelivery",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "webhookId": {
-          "name": "webhookId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "eventId": {
-          "name": "eventId",
-          "type": "varchar(40)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "eventType": {
-          "name": "eventType",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "payload": {
-          "name": "payload",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('pending','succeeded','failed')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "responseStatus": {
-          "name": "responseStatus",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "durationMs": {
-          "name": "durationMs",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "error": {
-          "name": "error",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "nextAttemptAt": {
-          "name": "nextAttemptAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lastAttemptAt": {
-          "name": "lastAttemptAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "webhookDelivery_webhookId_createdAt_idx": {
-          "name": "webhookDelivery_webhookId_createdAt_idx",
-          "columns": [
-            "webhookId",
-            "createdAt"
-          ],
-          "isUnique": false
-        },
-        "webhookDelivery_eventId_idx": {
-          "name": "webhookDelivery_eventId_idx",
-          "columns": [
-            "eventId"
-          ],
-          "isUnique": false
-        },
-        "webhookDelivery_createdAt_idx": {
-          "name": "webhookDelivery_createdAt_idx",
-          "columns": [
-            "createdAt"
-          ],
-          "isUnique": false
-        },
-        "webhookDelivery_status_nextAttemptAt_idx": {
-          "name": "webhookDelivery_status_nextAttemptAt_idx",
-          "columns": [
-            "status",
-            "nextAttemptAt"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "WebhookDelivery_id": {
-          "name": "WebhookDelivery_id",
           "columns": [
             "id"
           ]

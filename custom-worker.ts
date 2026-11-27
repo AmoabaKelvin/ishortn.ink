@@ -17,6 +17,7 @@ const CRON_ROUTES = new Map([
   ["0 2 * * SUN", ["/api/cron/cleanup-analytics"]],
   ["0 4 * * *", ["/api/cron/cleanup-expired"]],
   ["0 5 * * *", ["/api/cron/entitlements"]],
+  ["0 7 * * *", ["/api/cron/link-health"]],
   ["25 * * * *", ["/api/cron/entitlements?emails=1"]],
   ["30 */6 * * *", ["/api/cron/phishing-rescan"]],
   ["5,20,35,50 * * * *", ["/api/cron/phishing-rescan?backlog=1", "/api/cron/webhook-retries"]],

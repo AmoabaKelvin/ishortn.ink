@@ -76,6 +76,7 @@ import {
   recordLinkCreationFailures,
   trackLinkCreation,
 } from "@/server/lib/link-creation/failures";
+import { getDestinationDownByLinkId, resetLinkHealth } from "@/server/lib/link-health/status";
 import { getTargetingTypesByLinkId } from "@/server/lib/link-targeting";
 import { scrapeMetadata } from "@/server/lib/metadata";
 import { assertUrlSafe, assertUrlSafeFast, canDeferLlmCheck } from "@/server/lib/phishing";
@@ -340,9 +341,14 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     linksQuery,
   ]);
 
-  // Started now so it runs alongside the creator and tag lookups below.
+  // Started now so they run alongside the creator and tag lookups below.
   const targetingByLink = getTargetingTypesByLinkId(
     ctx.db,
+    links.map((l) => l.id),
+  );
+  const downByLink = getDestinationDownByLinkId(
+    ctx.db,
+    ctx.workspace.plan,
     links.map((l) => l.id),
   );
 
@@ -397,7 +403,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     }),
   );
 
-  const targetingTypes = await targetingByLink;
+  const [targetingTypes, destinationDown] = await Promise.all([targetingByLink, downByLink]);
 
   const totalLinks = totalLinksResult?.[0]?.count ?? 0;
   // Tells a brand-new workspace (first-link prompt) apart from a filter that
@@ -414,6 +420,7 @@ export const getLinks = async (ctx: WorkspaceTRPCContext, input: ListLinksInput)
     links: linksWithTags.map((linkItem) => ({
       ...linkItem,
       targetingTypes: targetingTypes.get(linkItem.id) ?? [],
+      destinationDown: destinationDown.get(linkItem.id) ?? null,
     })),
     totalLinks,
     totalClicks,
@@ -642,6 +649,9 @@ const createLinkSteps = async (
   // Create link without tags field
   const { tags: _tags, ...linkData } = input;
   const ownership = workspaceOwnership(ctx.workspace);
+  // Stored and sent in link.created, so the payload matches what GET /api/v1/links/:id returns.
+  // The column has second precision; drop the milliseconds rather than let MySQL round them.
+  const createdAt = new Date(Math.floor(Date.now() / 1000) * 1000);
 
   // One transaction, so a failed tag or rule write doesn't leave a half-made link.
   const result = await ctx.db.transaction(async (tx) => {
@@ -652,6 +662,7 @@ const createLinkSteps = async (
       userId: ownership.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      createdAt,
       passwordHash: input.password,
       domain,
       note: input.note,
@@ -721,7 +732,7 @@ const createLinkSteps = async (
   emitLinkWebhooks(ctx.db, ctx.workspace, "link.created", [
     {
       id: linkId,
-      createdAt: new Date(),
+      createdAt,
       domain,
       alias,
       url: input.url,
@@ -989,6 +1000,9 @@ export const updateLink = async (
       );
     }
     await tx.update(link).set(linkData).where(linkWhere);
+    if (linkData.url !== undefined && linkData.url !== existingLink.url) {
+      await resetLinkHealth(tx, input.id);
+    }
 
     if (tagNames) {
       await associateTagsWithLink({ ...ctx, db: tx }, input.id, tagNames);
@@ -1337,6 +1351,9 @@ const shortenLinkSteps = async (
   const name = fetchedMetadata?.title ?? "Untitled Link";
   const tagNames = input.tags ?? [];
   const ownership = workspaceOwnership(ctx.workspace);
+  // Stored and sent in link.created, so the payload matches what GET /api/v1/links/:id returns.
+  // The column has second precision; drop the milliseconds rather than let MySQL round them.
+  const createdAt = new Date(Math.floor(Date.now() / 1000) * 1000);
 
   attempt.step = "db";
   const result = await ctx.db.transaction(async (tx) => {
@@ -1347,6 +1364,7 @@ const shortenLinkSteps = async (
       userId: ownership.userId,
       teamId: ownership.teamId,
       createdByUserId: ctx.auth.userId, // Track the actual user who created the link
+      createdAt,
       name,
       metadata: {
         title: fetchedMetadata?.title,
@@ -1369,7 +1387,7 @@ const shortenLinkSteps = async (
   emitLinkWebhooks(ctx.db, ctx.workspace, "link.created", [
     {
       id: Number(result.insertId),
-      createdAt: new Date(),
+      createdAt,
       domain,
       alias,
       url: input.url,
@@ -1489,6 +1507,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
     prevCounts,
     prevSummaries,
     hiddenClicks,
+    downByLink,
   ] = await Promise.all([
     getLinkVisitsInWindow(ctx.db, foundLink.id, startDate, now),
     ctx.db.query.geoRule.findMany({
@@ -1543,9 +1562,11 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
     userHasPaidPlan
       ? Promise.resolve(0)
       : countClicksBefore(ctx.db, [foundLink.id], freeAnalyticsWindowStart(now)),
+    getDestinationDownByLinkId(ctx.db, plan, [foundLink.id]),
   ]);
 
   const archived = summarizeArchived(summaries);
+  const destinationDown = downByLink.get(foundLink.id) ?? null;
 
   const previous = prevCounts
     ? {
@@ -1568,6 +1589,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
       previous,
       archived,
       hiddenClicks,
+      destinationDown,
       domain,
       range,
       custom,
@@ -1607,6 +1629,7 @@ export const getLinkVisits = async (ctx: WorkspaceTRPCContext, input: LinkVisits
     previous,
     archived,
     hiddenClicks,
+    destinationDown,
     domain,
     range,
     custom,

@@ -76,7 +76,8 @@ export type NewDelivery = {
   eventId: string;
   eventType: string;
   payload: string;
-  nextAttemptAt: Date;
+  /** Null keeps the row out of the retry cron's reach (test events are attempted once). */
+  nextAttemptAt: Date | null;
   createdAt: Date;
 };
 

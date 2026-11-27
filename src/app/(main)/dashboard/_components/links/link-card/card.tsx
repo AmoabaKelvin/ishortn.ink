@@ -18,6 +18,7 @@ import { copyToClipboard } from "@/lib/utils/clipboard";
 
 import { useSelection } from "../selection-context";
 import { LinkActions } from "./actions";
+import { DestinationDownBadge } from "./destination-down-badge";
 import { LinkNoteTooltip } from "./note-tooltip";
 import { LinkTargetingTooltip } from "./targeting-tooltip";
 
@@ -239,6 +240,8 @@ const Link = ({ link, onTagClick }: LinkProps) => {
           {link.note && <LinkNoteTooltip note={link.note} />}
 
           <LinkTargetingTooltip types={link.targetingTypes} />
+
+          {link.destinationDown && <DestinationDownBadge down={link.destinationDown} />}
 
           {link.archived && (
             <span
