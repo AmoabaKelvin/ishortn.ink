@@ -114,6 +114,17 @@ function FreeUpgradeButton({ reason, shown, promo }: FreeUpgradeButtonProps) {
       className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-blue-700"
     >
       <span className="min-w-0 truncate tabular-nums">{reason.label}</span>
+      {/* The stat may truncate; the action word always stays visible. */}
+      {!isGeneric && (
+        <>
+          <span aria-hidden="true" className="shrink-0">
+            &middot;
+          </span>
+          <span aria-hidden="true" className="shrink-0">
+            Upgrade
+          </span>
+        </>
+      )}
       <IconArrowUpRight size={13} stroke={2} className="shrink-0" />
     </UpgradeCta>
   );
