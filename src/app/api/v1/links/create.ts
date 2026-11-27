@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
+import { canUseLinkUtmParams, LINK_UTM_PLAN_MESSAGE } from "@/lib/billing/plans";
 import { destinationUrlSchema } from "@/lib/utils/destination-url";
 import { linkAliasSchema, linkDomainSchema } from "@/server/api/routers/link/link.input";
 import { restrictedLinkValues, validateAlias } from "@/server/api/routers/link/utils";
@@ -142,18 +143,13 @@ async function createNewLink(
     data.password = hashedPassword;
   }
 
-  // Check for UTM params - Ultra plan only
   if (data.utmParams) {
     const utmParamsValues = Object.values(data.utmParams);
     const hasUtmParams = utmParamsValues.some(
       (value) => value !== undefined && value !== null && value !== "",
     );
-    if (hasUtmParams && plan !== "ultra") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "UTM parameters are only available on the Ultra plan. Please upgrade to use this feature.",
-      });
+    if (hasUtmParams && !canUseLinkUtmParams(plan)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: LINK_UTM_PLAN_MESSAGE });
     }
   }
 
