@@ -282,7 +282,8 @@ export function QRCodeActions({ qr }: QRCodeActionsProps) {
 
           <DropdownMenuSeparator className="my-1 bg-neutral-100 dark:bg-muted" />
 
-          {hasLink && (
+          {/* An import-made code's clicks are its link's, so they are reset from the link. */}
+          {hasLink && !sharesLink && (
             <DropdownMenuItem
               onClick={() => setResetStatsDialog(true)}
               className="rounded-md px-2 py-1.5 text-[13px] text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10 focus:text-red-600"

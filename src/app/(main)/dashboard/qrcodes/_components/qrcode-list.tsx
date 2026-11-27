@@ -36,7 +36,7 @@ export function QRCodeList({ codes, plan, bulkLimit }: QRCodeListProps) {
       ids.includes(id) ? ids.filter((other) => other !== id) : [...ids, id],
     );
 
-  const overLimit = bulkLimit !== null && selected.length > bulkLimit;
+  const overLimit = bulkLimit !== null && bulkLimit > 0 && selected.length > bulkLimit;
 
   const handleDownloadZip = () => {
     const names = qrZipBaseNames(
@@ -96,9 +96,11 @@ export function QRCodeList({ codes, plan, bulkLimit }: QRCodeListProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed bottom-6 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2"
+            // Centred by the flex row: motion's `y` replaces the element's transform, so a
+            // translate-x class would be dropped.
+            className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4"
           >
-            <div className="flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 py-1.5 shadow-lg dark:border-border dark:bg-card">
+            <div className="pointer-events-auto flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 py-1.5 shadow-lg dark:border-border dark:bg-card">
               {/* Count */}
               <div className="flex items-center gap-2 px-2.5 py-1">
                 <div className="flex h-6 min-w-6 items-center justify-center rounded-md bg-blue-600 px-1">
@@ -106,7 +108,7 @@ export function QRCodeList({ codes, plan, bulkLimit }: QRCodeListProps) {
                     {selected.length.toLocaleString()}
                   </span>
                 </div>
-                <span className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
+                <span className="hidden text-[13px] font-medium text-neutral-500 dark:text-neutral-400 sm:inline">
                   selected
                 </span>
               </div>
@@ -118,7 +120,7 @@ export function QRCodeList({ codes, plan, bulkLimit }: QRCodeListProps) {
                 <button
                   type="button"
                   onClick={() => setSelectedIds(allSelected ? [] : codes.map((qr) => qr.id))}
-                  className="rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-accent/50 dark:hover:text-foreground"
+                  className="whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-accent/50 dark:hover:text-foreground"
                 >
                   {allSelected ? "Deselect all" : "Select all"}
                 </button>
@@ -144,10 +146,17 @@ export function QRCodeList({ codes, plan, bulkLimit }: QRCodeListProps) {
                     type="button"
                     onClick={handleDownloadZip}
                     disabled={isZipping}
+                    aria-label="Download as ZIP"
                     className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                   >
                     <IconFileZip size={15} stroke={2} />
-                    {isZipping ? "Preparing..." : "Download as ZIP"}
+                    {isZipping ? (
+                      "Preparing..."
+                    ) : (
+                      <span>
+                        <span className="hidden sm:inline">Download as </span>ZIP
+                      </span>
+                    )}
                   </button>
                 )}
 

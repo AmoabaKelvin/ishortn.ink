@@ -31,6 +31,11 @@ export function QRCodeCard({
   const previewSrc = useMemo(() => qrPreviewSrc(qr), [qr]);
   const daysSinceCreation = daysSinceDate(new Date(qr.createdAt!));
   const scans = qr.visitCount ?? 0;
+  // Codes made by a CSV import encode a visible link, so the count is all of that link's clicks.
+  const countLabel =
+    qr.link && !qr.link.isQrCode
+      ? `${scans.toLocaleString()} ${scans === 1 ? "click" : "clicks"} on this link`
+      : `${scans.toLocaleString()} ${scans === 1 ? "scan" : "scans"}`;
   const activateAt = qr.link?.activateAt;
   const scheduledFor =
     activateAt && new Date(activateAt) > new Date() ? new Date(activateAt) : null;
@@ -138,10 +143,12 @@ export function QRCodeCard({
 
             <Link
               href={`/dashboard/qrcodes/${qr.id}`}
+              aria-label={countLabel}
+              title={countLabel}
               className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] tabular-nums text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-accent hover:text-neutral-900 dark:hover:text-foreground"
             >
               <IconClick size={14} stroke={1.5} />
-              <span className="font-medium">{scans}</span>
+              <span className="font-medium">{scans.toLocaleString()}</span>
             </Link>
 
             <div className="w-7 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">

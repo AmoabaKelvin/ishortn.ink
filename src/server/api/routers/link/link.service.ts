@@ -104,7 +104,11 @@ import {
 } from "@/server/lib/workspace";
 
 import { mergeCampaignUtm } from "../campaign/utils";
-import { createBulkQrCodes, prepareBulkQrCodes } from "../qrcode/qrcode-bulk.service";
+import {
+  createBulkQrCodes,
+  deleteQrCodeImages,
+  prepareBulkQrCodes,
+} from "../qrcode/qrcode-bulk.service";
 import { associateTagsWithLink, getTagsForLink } from "../tag/tag.service";
 import { LINK_ALIAS_MAX_LENGTH, LINK_NOTE_MAX_LENGTH } from "./link.input";
 import {
@@ -1066,17 +1070,26 @@ export const removeLink = async (
     eq(link.id, linkToDelete.id),
     workspaceFilter(workspace, link.userId, link.teamId),
   );
-  const cacheKeys = [
-    buildCacheKey(linkToDelete.domain, linkToDelete.alias!),
-    ...(await previousAddressCacheKeys(db, linkToDelete.id)),
-  ];
+  // QR codes made by a CSV import encode this link and go with it.
+  const qrWhere = and(
+    eq(qrcode.linkId, linkToDelete.id),
+    workspaceFilter(workspace, qrcode.userId, qrcode.teamId),
+  );
+  const [cacheKeys, qrCodes] = await Promise.all([
+    previousAddressCacheKeys(db, linkToDelete.id),
+    db.select({ qrCode: qrcode.qrCode, style: qrcode.style }).from(qrcode).where(qrWhere),
+  ]);
   await Promise.all([
-    ...cacheKeys.map((key) => deleteFromCache(key)),
+    ...[buildCacheKey(linkToDelete.domain, linkToDelete.alias!), ...cacheKeys].map((key) =>
+      deleteFromCache(key),
+    ),
     db.transaction(async (tx) => {
+      if (qrCodes.length > 0) await tx.delete(qrcode).where(qrWhere);
       await reserveLinkAliases(tx, where, "deleted");
       await tx.delete(link).where(where);
     }),
   ]);
+  if (qrCodes.length > 0) await deleteQrCodeImages(db, workspace, qrCodes);
 };
 
 export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number[]) => {
@@ -1123,6 +1136,11 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     }
   }
 
+  const qrCodes = await ctx.db
+    .select({ qrCode: qrcode.qrCode, style: qrcode.style })
+    .from(qrcode)
+    .where(inArray(qrcode.linkId, validLinkIds));
+
   // Delete from database in transaction (delete dependents first)
   await ctx.db.transaction(async (tx) => {
     // 1. Delete link visits
@@ -1144,6 +1162,8 @@ export const bulkDeleteLinks = async (ctx: WorkspaceTRPCContext, linkIds: number
     await reserveLinkAliases(tx, inArray(link.id, validLinkIds), "deleted");
     await tx.delete(link).where(inArray(link.id, validLinkIds));
   });
+
+  if (qrCodes.length > 0) await deleteQrCodeImages(ctx.db, ctx.workspace, qrCodes);
 
   // Invalidate cache for all deleted links in the background. waitUntil keeps
   // the serverless function alive until every deleteFromCache settles.

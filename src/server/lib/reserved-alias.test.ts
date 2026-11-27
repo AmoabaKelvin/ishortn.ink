@@ -53,10 +53,15 @@ describe.skipIf(!testDatabaseUrl)("alias tombstones (MySQL)", () => {
   // SAFETY: checkAliasAvailability reads only ctx.db.
   const publicCtx = { db } as PublicTRPCContext;
 
-  async function insertLink(alias: string, domain = "ishortn.ink", userId = OWNER) {
+  async function insertLink(
+    alias: string,
+    domain = "ishortn.ink",
+    userId = OWNER,
+    isQrCode = false,
+  ) {
     const [result] = await db
       .insert(schema.link)
-      .values({ url: "https://example.com", alias, domain, userId });
+      .values({ url: "https://example.com", alias, domain, userId, isQrCode });
     return Number(result.insertId);
   }
 
@@ -131,7 +136,7 @@ describe.skipIf(!testDatabaseUrl)("alias tombstones (MySQL)", () => {
   });
 
   test("deleting a QR code reserves its link's alias", async () => {
-    const linkId = await insertLink("tomb-qr");
+    const linkId = await insertLink("tomb-qr", "ishortn.ink", OWNER, true);
     const [qr] = await db.insert(schema.qrcode).values({
       userId: OWNER,
       linkId,

@@ -86,13 +86,18 @@ describe.skipIf(!testDatabaseUrl)("click limits (MySQL)", () => {
     await cleanup();
   });
 
-  async function createLink(alias: string, disableLinkAfterClicks: number | null) {
+  async function createLink(
+    alias: string,
+    disableLinkAfterClicks: number | null,
+    isQrCode = false,
+  ) {
     const [inserted] = await db.insert(schema.link).values({
       userId: USER_ID,
       url: DESTINATION,
       alias,
       domain: DOMAIN,
       disableLinkAfterClicks,
+      isQrCode,
     });
     return inserted.insertId;
   }
@@ -177,7 +182,7 @@ describe.skipIf(!testDatabaseUrl)("click limits (MySQL)", () => {
   });
 
   test("resetting a QR code's statistics restarts its link's click limit", async () => {
-    const id = await createLink("limit-qr-reset", 3);
+    const id = await createLink("limit-qr-reset", 3, true);
     const [qr] = await db.insert(schema.qrcode).values({
       userId: USER_ID,
       linkId: id,

@@ -22,7 +22,7 @@ import { insertHiddenTrackingLink, prepareHiddenTrackingLink } from "@/server/li
 import { workspaceFilter, workspaceOwnership } from "@/server/lib/workspace";
 
 import { updateLink } from "../link/link.service";
-import { countWorkspaceQrCodes } from "./qrcode-bulk.service";
+import { countWorkspaceQrCodes, deleteQrCodeImages } from "./qrcode-bulk.service";
 import { toLegacyQrStyles } from "./utils";
 
 import type { WorkspaceTRPCContext } from "../../trpc";
@@ -275,16 +275,6 @@ export const deleteQrCode = userFacing(
       });
     }
 
-    // Delete the QR code image and its logo from R2 if present
-    for (const image of [qrCode.qrCode, qrCode.style?.logoImage]) {
-      if (!image) continue;
-      try {
-        await deleteImage(ctx.workspace, image);
-      } catch (error) {
-        log.error({ err: error, qrCodeId: id }, "failed to delete QR code image from R2");
-      }
-    }
-
     // Only a code's own hidden tracking link goes with it. Codes made by a CSV import encode one
     // of the workspace's visible links, which stays.
     const ownsLink = Boolean(qrCode.linkId && qrCode.linkId > 0 && qrCode.link?.isQrCode);
@@ -308,6 +298,9 @@ export const deleteQrCode = userFacing(
         await tx.delete(link).where(eq(link.id, qrCode.linkId));
       }
     });
+
+    // After the row is gone, so a logo shared with other import-made codes is seen as still used
+    await deleteQrCodeImages(ctx.db, ctx.workspace, [qrCode]);
 
     // Invalidate cache after the transaction commits successfully
     if (cacheKey) {
@@ -377,6 +370,14 @@ export const resetQrCodeStatistics = userFacing(
   "Something went wrong while resetting statistics. Please try again.",
   async (ctx: WorkspaceTRPCContext, id: number) => {
     const qrCode = await fetchQrCodeWithLink(ctx, id);
+    // A code made by a CSV import encodes one of the workspace's visible links; its visits are
+    // every click on that link, not only scans, so they are not this code's to delete.
+    if (!qrCode.link.isQrCode) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "This QR code uses one of your links. Reset its statistics from the link instead.",
+      });
+    }
 
     // Delete both visit tables to fully reset stats (matches deleteQrCode cleanup), and clear
     // the click-limit counter so the limit restarts from what is left of the recorded total.
