@@ -28,7 +28,7 @@ We make iShortn, one of the tools below. Every competitor number comes from that
 
 Sources: [Short.io pricing](https://short.io/pricing), [iShortn pricing](/pricing), [TinyURL pricing](https://tinyurl.com/app/pricing), [Bitly pricing](https://bitly.com/pages/pricing), [Rebrandly pricing](https://www.rebrandly.com/pricing), [Cutt.ly pricing](https://cutt.ly/pricing), [Dub pricing](https://dub.co/pricing/links).
 
-Short.io is the cheapest on paper, and if 2,500 links in total will last you, it's a good deal. If you share links every week and want the count to reset each month, iShortn Pro is the cheapest plan here that gives you 1,000 new links every month along with full analytics history and your own domain.
+Short.io is the cheapest on paper, and if 2,500 links in total will last you, it's a good deal. If you share links every week and want the count to reset each month, iShortn Pro is the cheapest plan here that gives you 1,000 new links every month along with a full year of detailed analytics and your own domain.
 
 ## Free URL shorteners with click tracking
 

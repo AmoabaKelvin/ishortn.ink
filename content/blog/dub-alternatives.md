@@ -53,7 +53,7 @@ Sources: [Short.io pricing](https://short.io/pricing), [Rebrandly pricing](https
 **Pro, $8 a month ($80 a year):**
 - 1,000 links and 10,000 tracked events a month
 - 3 custom domains
-- Full analytics history, password-protected links, geo and device targeting, scheduled links, click milestone alerts
+- A full year of detailed analytics, password-protected links, geo and device targeting, scheduled links, click milestone alerts
 - Branded QR codes and the REST API
 
 **Ultra, $15 a month:** unlimited links, events and domains, UTM fields and templates in the link editor, link cloaking, and team workspaces.
