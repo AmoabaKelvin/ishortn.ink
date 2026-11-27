@@ -557,11 +557,16 @@ export const token = mysqlTable(
     label: varchar("label", { length: 64 }),
     lastUsedAt: timestamp("lastUsedAt"),
     createdAt: timestamp("createdAt").defaultNow(),
+    // The creator. Personal keys act in this user's personal workspace.
     userId: varchar("userId", { length: 32 }).notNull(),
+    // Set on team keys (kind "api" only): the key belongs to and acts in this team workspace.
+    teamId: int("teamId"),
+    createdByUserId: varchar("createdByUserId", { length: 32 }),
   },
   (table) => ({
     userIdIdx: index("userId_idx").on(table.userId),
     tokenIdx: index("token_idx").on(table.token),
+    teamIdIdx: index("teamId_idx").on(table.teamId),
   }),
 );
 

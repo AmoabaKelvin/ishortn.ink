@@ -33,9 +33,7 @@ export const GET = withExtensionToken(async (request: NextRequest, token) => {
   const rows = await db
     .select({ domain: link.domain, alias: link.alias, url: link.url, createdAt: link.createdAt })
     .from(link)
-    .where(
-      and(eq(link.userId, token.userId), isNull(link.teamId), apiReadableLinkDomain(token.userId)),
-    )
+    .where(and(eq(link.userId, token.userId), isNull(link.teamId), apiReadableLinkDomain(token)))
     .orderBy(desc(link.createdAt), desc(link.id))
     .limit(query.data.limit);
 

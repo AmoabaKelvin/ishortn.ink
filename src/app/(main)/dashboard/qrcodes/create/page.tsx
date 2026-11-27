@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { TRPCClientError } from "@trpc/client";
 import { useTransitionRouter } from "next-view-transitions";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
@@ -111,6 +112,7 @@ function createErrorMessage(err: Error): string {
 
 function QRCodeCreationPage() {
   const router = useTransitionRouter();
+  const searchParams = useSearchParams();
   const userSubDetails = api.subscriptions.get.useQuery().data;
   const upgradeOffer = useUpgradeOffer();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -127,7 +129,10 @@ function QRCodeCreationPage() {
   const [destinationUrl, setDestinationUrl] = useState<string>("");
   const [selectedDomain, setSelectedDomain] = useState<string>(DEFAULT_PLATFORM_DOMAIN);
   const [downloadFormat, setDownloadFormat] = useState<"png" | "svg">("png");
-  const [qrType, setQrType] = useState<QrType>("link");
+  // `?type=vcard` (or any other type) opens the form on that type, for links from elsewhere.
+  const [qrType, setQrType] = useState<QrType>(
+    () => QR_TYPES.find((type) => type.value === searchParams.get("type"))?.value ?? "link",
+  );
   const [staticValues, setStaticValues] = useState<StaticFormValues>(emptyStaticFormValues);
   const [vcardValues, setVCardValues] = useState<VCardFormValues>(emptyVCardFormValues);
   // Field errors show once a save has been tried, then update as the user types.

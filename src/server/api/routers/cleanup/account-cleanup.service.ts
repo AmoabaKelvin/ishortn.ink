@@ -198,7 +198,8 @@ async function purgeAccount(
     await tx
       .delete(siteSettings)
       .where(and(eq(siteSettings.userId, userId), isNull(siteSettings.teamId)));
-    await tx.delete(token).where(eq(token.userId, userId));
+    // Team keys belong to their team and keep working without their creator.
+    await tx.delete(token).where(and(eq(token.userId, userId), isNull(token.teamId)));
     await tx.delete(subscription).where(eq(subscription.userId, userId));
     await tx.delete(audienceFeedback).where(eq(audienceFeedback.userId, userId));
     await tx.delete(userAttribution).where(eq(userAttribution.userId, userId));

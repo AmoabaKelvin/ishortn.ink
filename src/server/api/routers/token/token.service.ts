@@ -1,19 +1,21 @@
 import crypto from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 
 import { canUseApi, getApiAccess } from "@/lib/billing/api-access";
 import { NO_GRACE } from "@/lib/billing/entitlements";
+import { ACCOUNT_RESTRICTED_MESSAGE } from "@/lib/constants/moderation";
 import { browserFromLabel } from "@/lib/extension/connect";
-import { token } from "@/server/db/schema";
+import { token, user } from "@/server/db/schema";
 import { captureServerEvent } from "@/server/lib/analytics/posthog-server";
 import { getApiSunset } from "@/server/lib/api-access";
 import { recordPlanLimitHit } from "@/server/lib/plan-limit-hits";
 import { getUserPlanContext } from "@/server/lib/user-plan";
+import { hasMinimumRole, requireMinimumRole } from "@/server/lib/workspace";
 
-import type { ProtectedTRPCContext } from "../../trpc";
+import type { ProtectedTRPCContext, TeamTRPCContext } from "../../trpc";
 import type { CreateExtensionTokenInput, CreateTokenInput, DeleteTokenInput } from "./token.input";
 
 function generateToken() {
@@ -28,8 +30,9 @@ function hashToken(token: string) {
 }
 
 const TOKEN_PREFIX_LENGTH = 6;
-// Keeps the settings list (which shows every key) bounded.
+// Keeps the settings lists (which show every key) bounded.
 const MAX_TOKENS_PER_USER = 25;
+const MAX_TOKENS_PER_TEAM = 25;
 export const MAX_EXTENSION_TOKENS_PER_USER = 10;
 // extension_connected's `newAccount`: connected within an hour of signing up.
 const NEW_ACCOUNT_WINDOW_MS = 60 * 60 * 1000;
@@ -45,7 +48,7 @@ export const getTokens = async (ctx: ProtectedTRPCContext) => {
       lastUsedAt: token.lastUsedAt,
     })
     .from(token)
-    .where(and(eq(token.userId, ctx.auth.userId), eq(token.kind, "api")))
+    .where(and(eq(token.userId, ctx.auth.userId), eq(token.kind, "api"), isNull(token.teamId)))
     .orderBy(desc(token.createdAt), desc(token.id));
 };
 
@@ -78,7 +81,7 @@ export const createToken = async (ctx: ProtectedTRPCContext, input: CreateTokenI
   const [existing] = await ctx.db
     .select({ count: count() })
     .from(token)
-    .where(and(eq(token.userId, ctx.auth.userId), eq(token.kind, "api")));
+    .where(and(eq(token.userId, ctx.auth.userId), eq(token.kind, "api"), isNull(token.teamId)));
   if ((existing?.count ?? 0) >= MAX_TOKENS_PER_USER) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -101,7 +104,90 @@ export const createToken = async (ctx: ProtectedTRPCContext, input: CreateTokenI
 export const deleteToken = async (ctx: ProtectedTRPCContext, input: DeleteTokenInput) => {
   const [result] = await ctx.db
     .delete(token)
-    .where(and(eq(token.id, input.id), eq(token.userId, ctx.auth.userId), eq(token.kind, "api")));
+    .where(
+      and(
+        eq(token.id, input.id),
+        eq(token.userId, ctx.auth.userId),
+        eq(token.kind, "api"),
+        isNull(token.teamId),
+      ),
+    );
+
+  if (result.affectedRows === 0) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "API key not found" });
+  }
+};
+
+const MANAGE_TEAM_KEYS = "Managing team API keys";
+
+/**
+ * The team's API keys for the settings page: every member sees them, owners and admins
+ * manage them. Keys belong to the team, so a removed member's keys stay listed.
+ */
+export const getTeamTokens = async (ctx: TeamTRPCContext) => {
+  const keys = await ctx.db
+    .select({
+      id: token.id,
+      name: token.name,
+      prefix: token.prefix,
+      createdAt: token.createdAt,
+      lastUsedAt: token.lastUsedAt,
+      createdBy: { name: user.name, email: user.email },
+    })
+    .from(token)
+    .leftJoin(user, eq(user.id, token.userId))
+    .where(and(eq(token.teamId, ctx.workspace.teamId), eq(token.kind, "api")))
+    .orderBy(desc(token.createdAt), desc(token.id))
+    .limit(MAX_TOKENS_PER_TEAM);
+  return {
+    keys,
+    canManage: hasMinimumRole(ctx.workspace, "admin"),
+    active: !ctx.workspace.readOnly,
+  };
+};
+
+export const createTeamToken = async (ctx: TeamTRPCContext, input: CreateTokenInput) => {
+  requireMinimumRole(ctx.workspace, "admin", MANAGE_TEAM_KEYS);
+  if (ctx.restrictedAt) {
+    throw new TRPCError({ code: "FORBIDDEN", message: ACCOUNT_RESTRICTED_MESSAGE });
+  }
+  const teamId = ctx.workspace.teamId;
+  const generatedToken = generateToken();
+
+  // Locking the team's keys keeps two parallel creates from both passing the limit.
+  const id = await ctx.db.transaction(async (tx) => {
+    const existing = await tx
+      .select({ id: token.id })
+      .from(token)
+      .where(and(eq(token.teamId, teamId), eq(token.kind, "api")))
+      .for("update");
+    if (existing.length >= MAX_TOKENS_PER_TEAM) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `A team can have up to ${MAX_TOKENS_PER_TEAM} API keys. Revoke one to create another.`,
+      });
+    }
+    const [inserted] = await tx.insert(token).values({
+      name: input.name,
+      prefix: generatedToken.slice(0, TOKEN_PREFIX_LENGTH),
+      token: hashToken(generatedToken),
+      userId: ctx.auth.userId,
+      teamId,
+      createdByUserId: ctx.auth.userId,
+    });
+    return inserted.insertId;
+  });
+
+  return { id, name: input.name, token: generatedToken };
+};
+
+export const deleteTeamToken = async (ctx: TeamTRPCContext, input: DeleteTokenInput) => {
+  requireMinimumRole(ctx.workspace, "admin", MANAGE_TEAM_KEYS);
+  const [result] = await ctx.db
+    .delete(token)
+    .where(
+      and(eq(token.id, input.id), eq(token.teamId, ctx.workspace.teamId), eq(token.kind, "api")),
+    );
 
   if (result.affectedRows === 0) {
     throw new TRPCError({ code: "NOT_FOUND", message: "API key not found" });

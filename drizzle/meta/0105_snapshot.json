@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "132e099e-c9c5-45fe-b588-4e9982e552bb",
+  "id": "29fbe7c8-ab9d-4470-acc9-c5b2b35f85fd",
   "prevId": "cc6b1a33-8070-4a7e-847c-f1a89eb7c8f8",
   "tables": {
     "AccountDeletion": {
@@ -3404,13 +3404,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "publicId": {
-          "name": "publicId",
-          "type": "varchar(16)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
       "indexes": {
@@ -3445,14 +3438,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "qrcode_publicId_unique": {
-          "name": "qrcode_publicId_unique",
-          "columns": [
-            "publicId"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "ReservedAlias": {
@@ -4401,6 +4387,20 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -4415,6 +4415,13 @@
           "name": "token_idx",
           "columns": [
             "token"
+          ],
+          "isUnique": false
+        },
+        "teamId_idx": {
+          "name": "teamId_idx",
+          "columns": [
+            "teamId"
           ],
           "isUnique": false
         }
