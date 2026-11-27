@@ -8,6 +8,10 @@ Replay in this order so each event acts on the same subscription row (`data.id` 
 `subscription.created` -> `subscription.updated` (schedules a cancel at the period end) ->
 `subscription.past_due` -> `subscription.canceled`.
 
+`transaction.completed` is the first payment from the checkout (`origin: "web"`): send it after
+`subscription.created` to set the card on the row (Visa 4242) and capture `order_completed` with the
+fixture's attribution. It answers 500 (so Paddle would retry) until that row exists.
+
 Placeholders substituted by `scripts/dev/webhook.ts` before signing:
 
 - `__USER_ID__` in `data.custom_data.user_id` (Clerk user id; must exist in `User` or
