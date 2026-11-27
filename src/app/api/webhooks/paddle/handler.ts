@@ -244,7 +244,9 @@ async function handleTransactionCompleted(
       }
     }
 
-    const completed = orderCompletedEvent(transaction, config);
+    // Sandbox purchases are test runs; sending them would count them as sales in the funnel.
+    const completed =
+      config.environment === "sandbox" ? null : orderCompletedEvent(transaction, config);
     if (completed) {
       const account = await db.query.user.findFirst({
         where: eq(user.id, completed.userId),

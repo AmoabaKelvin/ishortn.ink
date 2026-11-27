@@ -140,6 +140,7 @@ describe("orderCompletedEvent", () => {
         currency: "USD",
         test_mode: true,
         provider: "paddle",
+        billing_env: "sandbox",
       },
     });
   });
@@ -153,6 +154,7 @@ describe("orderCompletedEvent", () => {
   test("is not test mode in production", () => {
     const event = orderCompletedEvent(transaction(), testConfig("production"));
     expect(event?.properties.test_mode).toBe(false);
+    expect(event?.properties.billing_env).toBe("production");
   });
 
   test("reads zero-decimal amounts as whole units", () => {
